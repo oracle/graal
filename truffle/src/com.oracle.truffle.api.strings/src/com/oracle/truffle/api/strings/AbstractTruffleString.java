@@ -48,6 +48,7 @@ import static com.oracle.truffle.api.strings.TStringGuards.isUTF32;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
@@ -1142,6 +1143,9 @@ public abstract class AbstractTruffleString {
         return TruffleString.EqualNode.checkContentEquals(this, codeRangeA, b, codeRangeB,
                         TruffleString.ToIndexableNode.getUncached(),
                         TruffleString.ToIndexableNode.getUncached(),
+                        ConditionProfile.getUncached(),
+                        BranchProfile.getUncached(),
+                        ConditionProfile.getUncached(),
                         TruffleString.EqualNode.getUncached());
     }
 

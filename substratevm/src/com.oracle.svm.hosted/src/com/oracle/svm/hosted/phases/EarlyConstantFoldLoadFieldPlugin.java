@@ -31,11 +31,9 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
-import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
@@ -49,13 +47,13 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class EarlyConstantFoldLoadFieldPlugin implements NodePlugin {
 
-    private final ResolvedJavaField isImageBuildTimeField;
     private final SnippetReflectionProvider snippetReflection;
 
     private final Map<ResolvedJavaType, ResolvedJavaType> primitiveTypes;
 
+    private static final String SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME = "$assertionsDisabled";
+
     public EarlyConstantFoldLoadFieldPlugin(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection) {
-        isImageBuildTimeField = metaAccess.lookupJavaField(ReflectionUtil.lookupField(ClassInitializationTracking.class, "IS_IMAGE_BUILD_TIME"));
         this.snippetReflection = snippetReflection;
 
         primitiveTypes = new HashMap<>();
@@ -68,14 +66,7 @@ public class EarlyConstantFoldLoadFieldPlugin implements NodePlugin {
 
     @Override
     public boolean handleLoadStaticField(GraphBuilderContext b, ResolvedJavaField field) {
-        if (field.equals(isImageBuildTimeField)) {
-            /*
-             * Loads of this field are injected into class initializers to provide stack traces when
-             * a class is wrongly initialized at image build time.
-             */
-            b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
-            return true;
-        } else if (field.isSynthetic() && field.getName().startsWith("$assertionsDisabled")) {
+        if (field.isSynthetic() && field.getName().startsWith(SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME)) {
             /*
              * Intercept assertion status: the value of the field during image generation does not
              * matter at all (because it is the hosted assertion status), we instead return the

@@ -76,17 +76,6 @@ public final class OptionDescriptor {
                     String[] extraHelp,
                     Class<?> declaringClass,
                     String fieldName,
-                    OptionKey<?> option) {
-        return create(name, optionType, optionValueType, help, extraHelp, declaringClass, fieldName, option, false, "");
-    }
-
-    public static OptionDescriptor create(String name,
-                    OptionType optionType,
-                    Class<?> optionValueType,
-                    String help,
-                    String[] extraHelp,
-                    Class<?> declaringClass,
-                    String fieldName,
                     OptionKey<?> option,
                     boolean deprecated,
                     String deprecationMessage) {

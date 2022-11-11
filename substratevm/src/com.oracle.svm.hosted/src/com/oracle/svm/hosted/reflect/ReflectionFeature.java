@@ -38,23 +38,26 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
-import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.MethodPointer;
@@ -71,24 +74,36 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.analysis.Inflation;
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtracter;
+import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
-import com.oracle.svm.util.AnnotationExtracter;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.internal.reflect.CallerSensitive;
+import jdk.internal.reflect.Reflection;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 public class ReflectionFeature implements InternalFeature, ReflectionSubstitutionSupport {
+
+    /**
+     * The CallerSensitiveAdapter mechanism of the JDK (introduced after JDK 17) is a formalization
+     * of {@link CallerSensitive} methods: the "caller sensitive adapter for a
+     * {@link CallerSensitive} method is a method with the same name and same signature (except for
+     * a trailing Class parameter). When a {@link CallerSensitive} method is invoked via reflection
+     * or a method handle, then the adapter is invoked instead and the caller class is passed in
+     * explicitly. This avoids corner cases where {@link Reflection#getCallerClass} returns an
+     * internal method of the reflection / method handle implementation.
+     */
+    private static final Method findCallerSensitiveAdapterMethod = JavaVersionUtil.JAVA_SPEC <= 17 ? null
+                    : ReflectionUtil.lookupMethod(ReflectionUtil.lookupClass(false, "jdk.internal.reflect.DirectMethodHandleAccessor"), "findCSMethodAdapter", Method.class);
 
     private AnnotationSubstitutionProcessor annotationSubstitutions;
 
@@ -103,6 +118,8 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
     private static final Method invokePrototype = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "invokePrototype",
                     Object.class, Object[].class, CFunctionPointer.class);
+    private static final Method invokePrototypeForCallerSensitiveAdapter = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "invokePrototypeForCallerSensitiveAdapter",
+                    Object.class, Object[].class, CFunctionPointer.class, Class.class);
     private static final Method methodHandleInvokeErrorMethod = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "methodHandleInvokeError",
                     Object.class, Object[].class, CFunctionPointer.class);
     private static final Method newInstanceErrorMethod = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "newInstanceError",
@@ -147,13 +164,26 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         if (member instanceof Method) {
             int vtableOffset = SubstrateMethodAccessor.STATICALLY_BOUND;
             Class<?> receiverType = null;
+            boolean callerSensitiveAdapter = false;
 
             if (member.getDeclaringClass() == MethodHandle.class && (member.getName().equals("invoke") || member.getName().equals("invokeExact"))) {
                 /* Method handles must not be invoked via reflection. */
                 expandSignature = register(analysisAccess.getMetaAccess().lookupJavaMethod(methodHandleInvokeErrorMethod));
             } else {
-                expandSignature = createExpandSignatureMethod(member);
-                AnalysisMethod targetMethod = analysisAccess.getMetaAccess().lookupJavaMethod(member);
+                Method target = (Method) member;
+                if (JavaVersionUtil.JAVA_SPEC > 17) {
+                    try {
+                        Method adapter = (Method) findCallerSensitiveAdapterMethod.invoke(null, member);
+                        if (adapter != null) {
+                            target = adapter;
+                            callerSensitiveAdapter = true;
+                        }
+                    } catch (ReflectiveOperationException ex) {
+                        throw VMError.shouldNotReachHere(ex);
+                    }
+                }
+                expandSignature = createExpandSignatureMethod(target, callerSensitiveAdapter);
+                AnalysisMethod targetMethod = analysisAccess.getMetaAccess().lookupJavaMethod(target);
                 /*
                  * The SubstrateMethodAccessor is also used for the implementation of MethodHandle
                  * that are created to do an invokespecial. So non-abstract instance methods have
@@ -168,13 +198,13 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
                 }
                 VMError.guarantee(directTarget != null || vtableOffset != SubstrateMethodAccessor.STATICALLY_BOUND, "Must have either a directTarget or a vtableOffset");
                 if (!targetMethod.isStatic()) {
-                    receiverType = member.getDeclaringClass();
+                    receiverType = target.getDeclaringClass();
                 }
                 if (targetMethod.isStatic() && !targetMethod.getDeclaringClass().isInitialized()) {
                     initializeBeforeInvoke = analysisAccess.getHostVM().dynamicHub(targetMethod.getDeclaringClass());
                 }
             }
-            return new SubstrateMethodAccessor(member, receiverType, expandSignature, directTarget, vtableOffset, initializeBeforeInvoke);
+            return new SubstrateMethodAccessor(member, receiverType, expandSignature, directTarget, vtableOffset, initializeBeforeInvoke, callerSensitiveAdapter);
 
         } else {
             Class<?> holder = member.getDeclaringClass();
@@ -187,7 +217,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
                  */
                 expandSignature = register(analysisAccess.getMetaAccess().lookupJavaMethod(newInstanceErrorMethod));
             } else {
-                expandSignature = createExpandSignatureMethod(member);
+                expandSignature = createExpandSignatureMethod(member, false);
                 AnalysisMethod constructor = analysisAccess.getMetaAccess().lookupJavaMethod(member);
                 AnalysisMethod factoryMethod = (AnalysisMethod) FactoryMethodSupport.singleton().lookup(analysisAccess.getMetaAccess(), constructor, false);
                 directTarget = register(factoryMethod);
@@ -199,10 +229,11 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         }
     }
 
-    private MethodPointer createExpandSignatureMethod(Executable member) {
-        return expandSignatureMethods.computeIfAbsent(new SignatureKey(member), signatureKey -> {
-            ResolvedJavaMethod prototype = analysisAccess.getMetaAccess().lookupJavaMethod(invokePrototype).getWrapped();
-            return register(new ReflectionExpandSignatureMethod(signatureKey.uniqueShortName(), prototype, signatureKey.isStatic, signatureKey.argTypes, signatureKey.returnKind));
+    private MethodPointer createExpandSignatureMethod(Executable member, boolean callerSensitiveAdapter) {
+        return expandSignatureMethods.computeIfAbsent(new SignatureKey(member, callerSensitiveAdapter), signatureKey -> {
+            ResolvedJavaMethod prototype = analysisAccess.getMetaAccess().lookupJavaMethod(callerSensitiveAdapter ? invokePrototypeForCallerSensitiveAdapter : invokePrototype).getWrapped();
+            return register(new ReflectionExpandSignatureMethod("invoke_" + signatureKey.uniqueShortName(), prototype, signatureKey.isStatic, signatureKey.argTypes, signatureKey.returnKind,
+                            signatureKey.callerSensitiveAdapter));
         });
     }
 
@@ -218,7 +249,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
         ImageSingletons.add(ReflectionSubstitutionSupport.class, this);
 
-        reflectionData = new ReflectionDataBuilder((SubstrateAnnotationExtracter) ImageSingletons.lookup(AnnotationExtracter.class));
+        reflectionData = new ReflectionDataBuilder((SubstrateAnnotationExtractor) ImageSingletons.lookup(AnnotationExtractor.class));
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
         ImageSingletons.add(ReflectionHostedSupport.class, reflectionData);
     }
@@ -290,7 +321,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     @Override
     public String getDeletionReason(Field reflectionField) {
         ResolvedJavaField field = hMetaAccess.lookupJavaField(reflectionField);
-        Delete annotation = GuardedAnnotationAccess.getAnnotation(field, Delete.class);
+        Delete annotation = AnnotationAccess.getAnnotation(field, Delete.class);
         return annotation != null ? annotation.value() : null;
     }
 
@@ -305,16 +336,27 @@ final class SignatureKey {
     final boolean isStatic;
     final Class<?>[] argTypes;
     final JavaKind returnKind;
+    final boolean callerSensitiveAdapter;
 
-    SignatureKey(Executable member) {
+    SignatureKey(Executable member, boolean callerSensitiveAdapter) {
         isStatic = member instanceof Constructor || Modifier.isStatic(member.getModifiers());
-        argTypes = member.getParameterTypes();
+        Class<?>[] types = member.getParameterTypes();
+        if (callerSensitiveAdapter) {
+            /*
+             * Drop the trailing Class parameter, it is provided explicitly when invoking the
+             * expand-signature method.
+             */
+            assert types[types.length - 1] == Class.class;
+            types = Arrays.copyOf(types, types.length - 1);
+        }
+        argTypes = types;
         if (member instanceof Method) {
             returnKind = JavaKind.fromJavaClass(((Method) member).getReturnType());
         } else {
             /* Constructor = factory method that returns the newly allocated object. */
             returnKind = JavaKind.Object;
         }
+        this.callerSensitiveAdapter = callerSensitiveAdapter;
     }
 
     @Override
@@ -325,12 +367,13 @@ final class SignatureKey {
         SignatureKey other = (SignatureKey) obj;
         return isStatic == other.isStatic &&
                         Arrays.equals(argTypes, other.argTypes) &&
-                        Objects.equals(returnKind, other.returnKind);
+                        Objects.equals(returnKind, other.returnKind) &&
+                        callerSensitiveAdapter == other.callerSensitiveAdapter;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(isStatic, Arrays.hashCode(argTypes), returnKind);
+        return Objects.hash(isStatic, Arrays.hashCode(argTypes), returnKind, callerSensitiveAdapter);
     }
 
     @Override
@@ -343,6 +386,9 @@ final class SignatureKey {
         }
         fullName.append(')');
         fullName.append(returnKind);
+        if (callerSensitiveAdapter) {
+            fullName.append(" CallerSensitiveAdapter");
+        }
         return fullName.toString();
     }
 

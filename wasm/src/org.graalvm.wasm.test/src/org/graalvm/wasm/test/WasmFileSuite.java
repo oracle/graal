@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,6 +66,7 @@ import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
@@ -307,12 +308,6 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 }
             });
 
-            final String signExtensionOpsProperty = "wasm.SignExtensionOps";
-            final String signExtensionOpsValue = testCase.options().getProperty(signExtensionOpsProperty);
-            if (signExtensionOpsValue != null) {
-                contextBuilder.option(signExtensionOpsProperty, signExtensionOpsValue);
-            }
-
             final String envString = testCase.options().getProperty("env");
             if (envString != null) {
                 for (String var : envString.split(" ")) {
@@ -323,7 +318,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
 
             final boolean enableIO = Boolean.parseBoolean(testCase.options().getProperty("enable-io"));
             if (enableIO) {
-                contextBuilder.allowIO(true);
+                contextBuilder.allowIO(IOAccess.ALL);
                 tempWorkingDirectory = Files.createTempDirectory("graalwasm-io-test");
                 contextBuilder.currentWorkingDirectory(tempWorkingDirectory);
                 contextBuilder.option("wasm.WasiMapDirs", "test::" + tempWorkingDirectory);

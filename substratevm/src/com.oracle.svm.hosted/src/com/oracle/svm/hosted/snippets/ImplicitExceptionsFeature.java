@@ -26,16 +26,15 @@ package com.oracle.svm.hosted.snippets;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NonSnippetLowerings;
-import com.oracle.svm.core.snippets.ExceptionUnwind;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 final class ImplicitExceptionsFeature implements InternalFeature {
 
     @Override
@@ -43,9 +42,6 @@ final class ImplicitExceptionsFeature implements InternalFeature {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
 
         for (SubstrateForeignCallDescriptor descriptor : ImplicitExceptions.FOREIGN_CALLS) {
-            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()), true);
-        }
-        for (SubstrateForeignCallDescriptor descriptor : ExceptionUnwind.FOREIGN_CALLS) {
             access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()), true);
         }
         if (SubstrateOptions.VerifyTypes.getValue()) {
@@ -56,7 +52,6 @@ final class ImplicitExceptionsFeature implements InternalFeature {
     @Override
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         foreignCalls.register(ImplicitExceptions.FOREIGN_CALLS);
-        foreignCalls.register(ExceptionUnwind.FOREIGN_CALLS);
         if (SubstrateOptions.VerifyTypes.getValue()) {
             foreignCalls.register(NonSnippetLowerings.REPORT_VERIFY_TYPES_ERROR);
         }

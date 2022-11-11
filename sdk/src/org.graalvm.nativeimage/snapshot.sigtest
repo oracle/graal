@@ -119,6 +119,12 @@ CLSS public abstract interface java.util.function.BooleanSupplier
  anno 0 java.lang.FunctionalInterface()
 meth public abstract boolean getAsBoolean()
 
+CLSS public final org.graalvm.nativeimage.AnnotationAccess
+meth public static <%0 extends java.lang.annotation.Annotation> {%%0} getAnnotation(java.lang.reflect.AnnotatedElement,java.lang.Class<{%%0}>)
+meth public static boolean isAnnotationPresent(java.lang.reflect.AnnotatedElement,java.lang.Class<? extends java.lang.annotation.Annotation>)
+meth public static java.lang.Class<? extends java.lang.annotation.Annotation>[] getAnnotationTypes(java.lang.reflect.AnnotatedElement)
+supr java.lang.Object
+
 CLSS public final org.graalvm.nativeimage.CurrentIsolate
 meth public static org.graalvm.nativeimage.Isolate getIsolate()
 meth public static org.graalvm.nativeimage.IsolateThread getCurrentThread()
@@ -251,11 +257,13 @@ meth public static boolean includedIn(java.lang.Class<? extends org.graalvm.nati
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$AARCH64
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.Platform
+intf org.graalvm.nativeimage.impl.InternalPlatform$NATIVE_ONLY
 meth public java.lang.String getArchitecture()
 
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$AMD64
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.Platform
+intf org.graalvm.nativeimage.impl.InternalPlatform$NATIVE_ONLY
 meth public java.lang.String getArchitecture()
 
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$ANDROID
@@ -272,6 +280,7 @@ supr java.lang.Object
 
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$DARWIN
  outer org.graalvm.nativeimage.Platform
+intf org.graalvm.nativeimage.impl.InternalPlatform$NATIVE_ONLY
 intf org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
 
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$DARWIN_AARCH64
@@ -310,6 +319,7 @@ supr java.lang.Object
 
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$LINUX
  outer org.graalvm.nativeimage.Platform
+intf org.graalvm.nativeimage.impl.InternalPlatform$NATIVE_ONLY
 intf org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
 meth public java.lang.String getOS()
 
@@ -358,6 +368,7 @@ supr java.lang.Object
 
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$WINDOWS
  outer org.graalvm.nativeimage.Platform
+intf org.graalvm.nativeimage.impl.InternalPlatform$NATIVE_ONLY
 intf org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
 meth public java.lang.String getOS()
 
@@ -920,9 +931,9 @@ meth public abstract void registerAsInHeap(java.lang.Class<?>)
 meth public abstract void registerAsUnsafeAccessed(java.lang.reflect.Field)
 meth public abstract void registerAsUsed(java.lang.Class<?>)
 meth public abstract void registerClassInitializerReachabilityHandler(java.util.function.Consumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess>,java.lang.Class<?>)
+meth public abstract void registerFieldValueTransformer(java.lang.reflect.Field,org.graalvm.nativeimage.hosted.FieldValueTransformer)
 meth public abstract void registerMethodOverrideReachabilityHandler(java.util.function.BiConsumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess,java.lang.reflect.Executable>,java.lang.reflect.Executable)
 meth public abstract void registerSubtypeReachabilityHandler(java.util.function.BiConsumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess,java.lang.Class<?>>,java.lang.Class<?>)
-meth public abstract void registerFieldValueTransformer(java.lang.reflect.Field,org.graalvm.nativeimage.hosted.FieldValueTransformer)
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$BeforeCompilationAccess
  outer org.graalvm.nativeimage.hosted.Feature
@@ -978,11 +989,24 @@ meth public abstract boolean isReachable(java.lang.reflect.Field)
 meth public abstract java.util.Set<java.lang.Class<?>> reachableSubtypes(java.lang.Class<?>)
 meth public abstract java.util.Set<java.lang.reflect.Executable> reachableMethodOverrides(java.lang.reflect.Executable)
 
+CLSS public abstract interface org.graalvm.nativeimage.hosted.FieldValueTransformer
+meth public abstract java.lang.Object transform(java.lang.Object,java.lang.Object)
+
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeClassInitialization
 meth public !varargs static void initializeAtBuildTime(java.lang.Class<?>[])
 meth public !varargs static void initializeAtBuildTime(java.lang.String[])
 meth public !varargs static void initializeAtRunTime(java.lang.Class<?>[])
 meth public !varargs static void initializeAtRunTime(java.lang.String[])
+supr java.lang.Object
+
+CLSS public final org.graalvm.nativeimage.hosted.RuntimeJNIAccess
+meth public !varargs static void register(java.lang.Class<?>[])
+meth public !varargs static void register(java.lang.reflect.Executable[])
+meth public !varargs static void register(java.lang.reflect.Field[])
+supr java.lang.Object
+
+CLSS public final org.graalvm.nativeimage.hosted.RuntimeProxyCreation
+meth public !varargs static void register(java.lang.Class<?>[])
 supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeReflection
@@ -997,14 +1021,28 @@ meth public !varargs static void registerAsQueried(java.lang.reflect.Executable[
 meth public !varargs static void registerForReflectiveInstantiation(java.lang.Class<?>[])
 supr java.lang.Object
 
+CLSS public final org.graalvm.nativeimage.hosted.RuntimeResourceAccess
+meth public static void addResource(java.lang.Module,java.lang.String)
+meth public static void addResource(java.lang.Module,java.lang.String,byte[])
+meth public static void addResourceBundle(java.lang.Module,java.lang.String)
+meth public static void addResourceBundle(java.lang.Module,java.lang.String,java.util.Locale[])
+supr java.lang.Object
+
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeSerialization
 meth public !varargs static void register(java.lang.Class<?>[])
+meth public !varargs static void registerProxyClass(java.lang.Class<?>[])
 meth public static void registerIncludingAssociatedClasses(java.lang.Class<?>)
+meth public static void registerLambdaCapturingClass(java.lang.Class<?>)
 meth public static void registerWithTargetConstructorClass(java.lang.Class<?>,java.lang.Class<?>)
 supr java.lang.Object
 
 CLSS public abstract interface org.graalvm.nativeimage.impl.InternalPlatform
+innr public abstract interface static NATIVE_ONLY
 innr public abstract interface static PLATFORM_JNI
+
+CLSS public abstract interface static org.graalvm.nativeimage.impl.InternalPlatform$NATIVE_ONLY
+ outer org.graalvm.nativeimage.impl.InternalPlatform
+intf org.graalvm.nativeimage.Platform
 
 CLSS public abstract interface static org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
  outer org.graalvm.nativeimage.impl.InternalPlatform
@@ -1025,5 +1063,3 @@ meth public abstract boolean equals(java.lang.Object)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public abstract long rawValue()
 
-CLSS public abstract interface org.graalvm.nativeimage.hosted.FieldValueTransformer
-meth public abstract java.lang.Object transform(java.lang.Object,java.lang.Object)

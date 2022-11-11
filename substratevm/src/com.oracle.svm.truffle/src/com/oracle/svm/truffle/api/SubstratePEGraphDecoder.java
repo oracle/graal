@@ -56,11 +56,11 @@ public class SubstratePEGraphDecoder extends PEGraphDecoder {
                     SourceLanguagePositionProvider sourceLanguagePosition, ConcurrentHashMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache,
                     ConcurrentHashMap<ResolvedJavaMethod, Object> invocationPluginsCache) {
         super(architecture, graph, providers, loopExplosionPlugin, invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins,
-                        peRootForInlining, sourceLanguagePosition, specialCallTargetCache, invocationPluginsCache, false);
+                        peRootForInlining, sourceLanguagePosition, specialCallTargetCache, invocationPluginsCache, false, false);
     }
 
     @Override
-    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution, boolean trackNodeSourcePosition) {
+    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
         /*
          * The EncodedGraph instance also serves as a cache for some information during decoding,
          * e.g., the start offsets of encoded nodes. So it is beneficial to have a cache of the
@@ -68,7 +68,7 @@ public class SubstratePEGraphDecoder extends PEGraphDecoder {
          */
         EncodedGraph result = graphCache.get(method);
         if (result == null) {
-            result = createGraph(method, trackNodeSourcePosition);
+            result = createGraph(method, graph.trackNodeSourcePosition());
         }
         return result;
     }

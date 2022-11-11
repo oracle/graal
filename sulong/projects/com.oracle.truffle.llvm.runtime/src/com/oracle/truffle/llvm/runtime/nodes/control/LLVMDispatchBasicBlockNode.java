@@ -49,6 +49,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMFrameNullerUtil;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCatchSwitchNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInvokeNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMResumeNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnreachableNode;
@@ -142,6 +143,34 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode impl
                     nullDeadSlots(frame, bodyNodes[basicBlockIndex].nullableBefore);
                     continue outer;
                 }
+            } else if (controlFlowNode instanceof LLVMCatchSwitchNode) {
+                LLVMCatchSwitchNode switchNode = (LLVMCatchSwitchNode) controlFlowNode;
+                Object condition = switchNode.executeCondition(frame);
+                int[] successors = switchNode.getSuccessors();
+                int successorCount = switchNode.getConditionalSuccessorCount();
+                for (int i = 0; i < successorCount; i++) {
+                    if (CompilerDirectives.injectBranchProbability(bb.getBranchProbability(i), switchNode.checkCase(frame, i, condition))) {
+                        bb.enterSuccessor(i);
+                        nullDeadSlots(frame, bb.nullableAfter);
+                        executePhis(frame, switchNode, i);
+                        basicBlockIndex = successors[i];
+                        nullDeadSlots(frame, bodyNodes[basicBlockIndex].nullableBefore);
+                        continue outer;
+                    }
+                }
+
+                if (switchNode.hasDefaultBlock()) {
+                    int i = successors.length - 1;
+                    bb.enterSuccessor(i);
+                    nullDeadSlots(frame, bb.nullableAfter);
+                    executePhis(frame, switchNode, i);
+                    basicBlockIndex = successors[i];
+                    nullDeadSlots(frame, bodyNodes[basicBlockIndex].nullableBefore);
+                } else {
+                    switchNode.throwException(frame);
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw new IllegalStateException("must not reach here");
+                }
             } else if (controlFlowNode instanceof LLVMSwitchNode) {
                 LLVMSwitchNode switchNode = (LLVMSwitchNode) controlFlowNode;
                 Object condition = switchNode.executeCondition(frame);
@@ -207,6 +236,14 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode impl
                 continue outer;
             } else if (controlFlowNode instanceof LLVMBrUnconditionalNode) {
                 LLVMBrUnconditionalNode unconditionalNode = (LLVMBrUnconditionalNode) controlFlowNode;
+                unconditionalNode.execute(frame); // required for instrumentation
+                nullDeadSlots(frame, bb.nullableAfter);
+                executePhis(frame, unconditionalNode, 0);
+                basicBlockIndex = unconditionalNode.getSuccessor();
+                nullDeadSlots(frame, bodyNodes[basicBlockIndex].nullableBefore);
+                continue outer;
+            } else if (controlFlowNode instanceof LLVMCatchReturnNode) {
+                LLVMCatchReturnNode unconditionalNode = (LLVMCatchReturnNode) controlFlowNode;
                 unconditionalNode.execute(frame); // required for instrumentation
                 nullDeadSlots(frame, bb.nullableAfter);
                 executePhis(frame, unconditionalNode, 0);

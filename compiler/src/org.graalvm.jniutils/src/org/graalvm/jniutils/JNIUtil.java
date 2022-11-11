@@ -707,6 +707,21 @@ public final class JNIUtil {
         return array;
     }
 
+    public static JObjectArray createHSArray(JNIEnv jniEnv, Object[] array, int sourcePosition, int length, String componentTypeBinaryName) {
+        JObjectArray hsArray;
+        if (array != null) {
+            hsArray = JNIUtil.NewObjectArray(jniEnv, length, JNIUtil.findClass(jniEnv, WordFactory.nullPointer(), componentTypeBinaryName, true), WordFactory.nullPointer());
+            for (int i = 0; i < length; i++) {
+                HSObject element = (HSObject) array[sourcePosition + i];
+                JObject hsElement = element != null ? element.getHandle() : WordFactory.nullPointer();
+                JNIUtil.SetObjectArrayElement(jniEnv, hsArray, i, hsElement);
+            }
+        } else {
+            hsArray = WordFactory.nullPointer();
+        }
+        return hsArray;
+    }
+
     public static void arrayCopy(JNIEnv jniEnv, JBooleanArray src, int srcPos, boolean[] dest, int destPos, int length) {
         CCharPointer staticBuffer = StackValue.get(ARRAY_COPY_STATIC_BUFFER_SIZE);
         CCharPointer booleanPointer = length <= ARRAY_COPY_STATIC_BUFFER_SIZE ? staticBuffer : UnmanagedMemory.malloc(length);

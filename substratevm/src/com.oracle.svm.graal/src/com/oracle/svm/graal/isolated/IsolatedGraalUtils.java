@@ -115,7 +115,7 @@ public final class IsolatedGraalUtils {
 
         SubstrateMethod method = ImageHeapObjects.deref(methodRef);
         DebugContext debug = new Builder(RuntimeOptionValues.singleton(), new GraalDebugHandlersFactory(GraalSupport.getRuntimeConfig().getSnippetReflection())).build();
-        CompilationResult compilationResult = SubstrateGraalUtils.doCompile(debug, GraalSupport.getRuntimeConfig(), GraalSupport.getSuites(), GraalSupport.getLIRSuites(), method);
+        CompilationResult compilationResult = SubstrateGraalUtils.doCompile(debug, GraalSupport.getRuntimeConfig(), GraalSupport.getLIRSuites(), method);
         ClientHandle<SubstrateInstalledCode> installedCodeHandle = IsolatedRuntimeCodeInstaller.installInClientIsolate(
                         methodRef, compilationResult, IsolatedHandles.nullHandle());
         Log.log().string("Code for " + method.format("%H.%n(%p)") + ": " + compilationResult.getTargetCodeSize() + " bytes").newline();
@@ -144,7 +144,7 @@ public final class IsolatedGraalUtils {
 
         IsolatedCompileContext.set(new IsolatedCompileContext(clientIsolate));
         try (DebugContext debug = new Builder(RuntimeOptionValues.singleton(), new GraalDebugHandlersFactory(GraalSupport.getRuntimeConfig().getSnippetReflection())).build()) {
-            SubstrateGraalUtils.doCompile(debug, GraalSupport.getRuntimeConfig(), GraalSupport.getSuites(), GraalSupport.getLIRSuites(), ImageHeapObjects.deref(methodRef));
+            SubstrateGraalUtils.doCompile(debug, GraalSupport.getRuntimeConfig(), GraalSupport.getLIRSuites(), ImageHeapObjects.deref(methodRef));
         }
         IsolatedCompileContext.set(null);
     }

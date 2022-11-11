@@ -153,7 +153,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
     }
 
     protected CallTarget parseWithEnteredContext(final String text, final String langId, final URI uri) throws DiagnosticsNotification {
-        LanguageInfo languageInfo = findLanguageInfo(langId, envInternal.getTruffleFile(uri));
+        LanguageInfo languageInfo = findLanguageInfo(langId, envInternal.getTruffleFile(null, uri));
         TextDocumentSurrogate surrogate = getOrCreateSurrogate(uri, text, languageInfo);
         return parseWithEnteredContext(surrogate);
     }
@@ -234,7 +234,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
 
         Future<String> future = contextAwareExecutor.executeWithDefaultContext(() -> {
             try {
-                return Source.findLanguage(envInternal.getTruffleFile(uri));
+                return Source.findLanguage(envInternal.getTruffleFile(null, uri));
             } catch (IOException ex) {
                 return null;
             }

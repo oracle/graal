@@ -95,7 +95,7 @@ final class LibFFINFIBackend implements NFIBackend {
                         case "ISOLATED_NAMESPACE":
                             if (ctx.ISOLATED_NAMESPACE == 0) {
                                 // undefined
-                                throw new IllegalArgumentException("isolated namespace not supported");
+                                throw new NFIUnsupportedException("isolated namespace not supported");
                             }
                             flags |= ctx.ISOLATED_NAMESPACE;
                             break;

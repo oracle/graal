@@ -40,12 +40,12 @@ Images compiled with this option will not be able to be inspected by the tool.
 ## Software Bill of Materials (SBOM)
 
 GraalVM Enterprise Native Image can embed a Software Bill of Materials (SBOM) at build time to detect any libraries that may be susceptible to known security vulnerabilities.
-Native Image provides the `-H:IncludeSBOM` option to embed an SBOM into a native executable. 
+Native Image provides the `--enable-sbom` option to embed an SBOM into a native executable. 
 
 > Note: Embedding a Software Bill of Materials (SBOM) is available with GraalVM Enterprise Native Image. The feature is currently experimental.
 
-The CycloneDX format is supported and the option takes `cyclonedx` as an argument. 
-To embed a CycloneDX SBOM into a native executable, pass the `-H:IncludeSBOM=cyclonedx` option to the `native-image` command. 
+The CycloneDX format is supported and the default. 
+To embed a CycloneDX SBOM into a native executable, pass the `--enable-sbom` option to the `native-image` command. 
 
 The implementation constructs the SBOM by recovering all version information observable in external library manifests for classes included in a native executable. 
 The SBOM is also compressed in order to limit the SBOM's impact on the native executable size. 

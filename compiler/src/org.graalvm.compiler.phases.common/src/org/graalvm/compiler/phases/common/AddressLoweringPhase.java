@@ -60,10 +60,10 @@ public class AddressLoweringPhase extends BasePhase<CoreProviders> {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
-                        NotApplicable.canOnlyApplyOnce(this, StageFlag.ADDRESS_LOWERING, graphState),
-                        NotApplicable.mustRunAfter(this, StageFlag.LOW_TIER_LOWERING, graphState));
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        NotApplicable.ifApplied(this, StageFlag.ADDRESS_LOWERING, graphState),
+                        NotApplicable.unlessRunAfter(this, StageFlag.LOW_TIER_LOWERING, graphState));
     }
 
     @Override

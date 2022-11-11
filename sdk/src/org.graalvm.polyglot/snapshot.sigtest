@@ -156,6 +156,9 @@ meth public org.graalvm.polyglot.Context$Builder allowHostAccess(org.graalvm.pol
 meth public org.graalvm.polyglot.Context$Builder allowHostClassLoading(boolean)
 meth public org.graalvm.polyglot.Context$Builder allowHostClassLookup(java.util.function.Predicate<java.lang.String>)
 meth public org.graalvm.polyglot.Context$Builder allowIO(boolean)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="23.0")
+meth public org.graalvm.polyglot.Context$Builder allowIO(org.graalvm.polyglot.io.IOAccess)
+meth public org.graalvm.polyglot.Context$Builder allowInnerContextOptions(boolean)
 meth public org.graalvm.polyglot.Context$Builder allowNativeAccess(boolean)
 meth public org.graalvm.polyglot.Context$Builder allowPolyglotAccess(org.graalvm.polyglot.PolyglotAccess)
 meth public org.graalvm.polyglot.Context$Builder allowValueSharing(boolean)
@@ -166,6 +169,7 @@ meth public org.graalvm.polyglot.Context$Builder environment(java.lang.String,ja
 meth public org.graalvm.polyglot.Context$Builder environment(java.util.Map<java.lang.String,java.lang.String>)
 meth public org.graalvm.polyglot.Context$Builder err(java.io.OutputStream)
 meth public org.graalvm.polyglot.Context$Builder fileSystem(org.graalvm.polyglot.io.FileSystem)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="23.0")
 meth public org.graalvm.polyglot.Context$Builder hostClassFilter(java.util.function.Predicate<java.lang.String>)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="19.0")
 meth public org.graalvm.polyglot.Context$Builder hostClassLoader(java.lang.ClassLoader)
@@ -181,7 +185,7 @@ meth public org.graalvm.polyglot.Context$Builder serverTransport(org.graalvm.pol
 meth public org.graalvm.polyglot.Context$Builder timeZone(java.time.ZoneId)
 meth public org.graalvm.polyglot.Context$Builder useSystemExit(boolean)
 supr java.lang.Object
-hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowNativeAccess,allowValueSharing,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,hostClassLoader,in,messageTransport,options,out,permittedLanguages,polyglotAccess,processHandler,resourceLimits,sharedEngine,useSystemExit,zone
+hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowInnerContextOptions,allowNativeAccess,allowValueSharing,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,hostClassLoader,in,ioAccess,messageTransport,options,out,permittedLanguages,polyglotAccess,processHandler,resourceLimits,sharedEngine,useSystemExit,zone
 
 CLSS public final org.graalvm.polyglot.Engine
 innr public final Builder
@@ -222,7 +226,9 @@ hfds allowExperimentalOptions,boundEngine,customLogHandler,err,in,messageTranspo
 CLSS public final org.graalvm.polyglot.EnvironmentAccess
 fld public final static org.graalvm.polyglot.EnvironmentAccess INHERIT
 fld public final static org.graalvm.polyglot.EnvironmentAccess NONE
+meth public java.lang.String toString()
 supr java.lang.Object
+hfds name
 
 CLSS public final org.graalvm.polyglot.HostAccess
 fld public final static org.graalvm.polyglot.HostAccess ALL
@@ -629,6 +635,27 @@ meth public static org.graalvm.polyglot.io.FileSystem newDefaultFileSystem()
 meth public static org.graalvm.polyglot.io.FileSystem newReadOnlyFileSystem(org.graalvm.polyglot.io.FileSystem)
 meth public void createLink(java.nio.file.Path,java.nio.file.Path) throws java.io.IOException
 meth public void setCurrentWorkingDirectory(java.nio.file.Path)
+
+CLSS public final org.graalvm.polyglot.io.IOAccess
+fld public final static org.graalvm.polyglot.io.IOAccess ALL
+fld public final static org.graalvm.polyglot.io.IOAccess NONE
+innr public final static Builder
+meth public boolean equals(java.lang.Object)
+meth public int hashCode()
+meth public java.lang.String toString()
+meth public static org.graalvm.polyglot.io.IOAccess$Builder newBuilder()
+meth public static org.graalvm.polyglot.io.IOAccess$Builder newBuilder(org.graalvm.polyglot.io.IOAccess)
+supr java.lang.Object
+hfds allowHostFileAccess,allowHostSocketAccess,fileSystem,name
+
+CLSS public final static org.graalvm.polyglot.io.IOAccess$Builder
+ outer org.graalvm.polyglot.io.IOAccess
+meth public org.graalvm.polyglot.io.IOAccess build()
+meth public org.graalvm.polyglot.io.IOAccess$Builder allowHostFileAccess(boolean)
+meth public org.graalvm.polyglot.io.IOAccess$Builder allowHostSocketAccess(boolean)
+meth public org.graalvm.polyglot.io.IOAccess$Builder fileSystem(org.graalvm.polyglot.io.FileSystem)
+supr java.lang.Object
+hfds allowHostFileAccess,allowHostSocketAccess,customFileSystem,name
 
 CLSS public abstract interface org.graalvm.polyglot.io.MessageEndpoint
 meth public abstract void sendBinary(java.nio.ByteBuffer) throws java.io.IOException

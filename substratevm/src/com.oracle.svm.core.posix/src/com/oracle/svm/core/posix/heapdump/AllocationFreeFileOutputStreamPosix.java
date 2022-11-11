@@ -28,15 +28,13 @@ import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heapdump.HeapDumpWriterImpl.AllocationFreeFileOutputStream;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Unistd;
@@ -45,7 +43,11 @@ import com.oracle.svm.core.util.VMError;
 /**
  * Posix implementation of allocation-free output stream created from FileOutputStream.
  *
+ * The limitation to Linux and Darwin is necessary because the implementation currently uses
+ * posix-dependent low-level code. See GR-9725.
  */
+@AutomaticallyRegisteredImageSingleton(AllocationFreeFileOutputStream.class)
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class AllocationFreeFileOutputStreamPosix extends AllocationFreeFileOutputStream {
 
     /**
@@ -78,7 +80,7 @@ final class AllocationFreeFileOutputStreamPosix extends AllocationFreeFileOutput
 
     @Override
     public void write(int b) throws IOException {
-        final CCharPointer buffer = StackValue.get(CCharPointer.class);
+        final CCharPointer buffer = UnsafeStackValue.get(CCharPointer.class);
         buffer.write((byte) b);
         final boolean writeResult = PosixUtils.writeBytes(fileDescriptor, buffer, WordFactory.unsigned(1));
         if (!writeResult) {
@@ -98,7 +100,7 @@ final class AllocationFreeFileOutputStreamPosix extends AllocationFreeFileOutput
          * the byte array up in multiple chunks and write them separately.
          */
         final int chunkSize = 256;
-        final CCharPointer bytes = StackValue.get(chunkSize);
+        final CCharPointer bytes = UnsafeStackValue.get(chunkSize);
 
         int chunkOffset = off;
         int inputLength = len;
@@ -143,19 +145,5 @@ final class AllocationFreeFileOutputStreamPosix extends AllocationFreeFileOutput
     protected long position(long offset) {
         int fd = PosixUtils.getFD(fileDescriptor);
         return Unistd.lseek(fd, WordFactory.signed(offset), Unistd.SEEK_SET()).rawValue();
-    }
-}
-
-/*
- * The limitation to Linux and Darwin is necessary because the implementation currently uses
- * posix-dependent low-level code. See GR-9725.
- */
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-@AutomaticFeature
-class AllocationFreeFileOutputStreamFeature implements Feature {
-
-    @Override
-    public void afterRegistration(Feature.AfterRegistrationAccess access) {
-        ImageSingletons.add(AllocationFreeFileOutputStream.class, new AllocationFreeFileOutputStreamPosix());
     }
 }

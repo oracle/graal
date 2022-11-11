@@ -61,4 +61,15 @@ public class ArrayTypeEntry extends StructureTypeEntry {
     public TypeEntry getElementType() {
         return elementType;
     }
+
+    public String getLoaderId() {
+        TypeEntry type = elementType;
+        while (type.isArray()) {
+            type = ((ArrayTypeEntry) type).elementType;
+        }
+        if (type.isClass()) {
+            return ((ClassEntry) type).getLoaderId();
+        }
+        return "";
+    }
 }

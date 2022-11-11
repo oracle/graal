@@ -23,7 +23,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.svm.hosted.image.sources;
 
 import java.io.File;
@@ -40,11 +39,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import org.graalvm.nativeimage.hosted.Feature;
-
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -65,7 +63,11 @@ public class SourceCache {
      */
     protected static final List<Path> classPathEntries = new ArrayList<>();
     /**
-     * A list of all entries in the classpath used by the native image classloader.
+     * A list of all entries in the module path used by the native image classloader.
+     */
+    protected static final List<Path> modulePathEntries = new ArrayList<>();
+    /**
+     * A list of all entries in the source search path specified by the user on the command line.
      */
     protected static final List<String> sourcePathEntries = new ArrayList<>();
 
@@ -128,6 +130,8 @@ public class SourceCache {
     private void addGraalSources() {
         classPathEntries.stream()
                         .forEach(classPathEntry -> addGraalSourceRoot(classPathEntry, true));
+        modulePathEntries.stream()
+                        .forEach(modulePathEntry -> addGraalSourceRoot(modulePathEntry, true));
         sourcePathEntries.stream()
                         .forEach(sourcePathEntry -> addGraalSourceRoot(Paths.get(sourcePathEntry), false));
     }
@@ -181,6 +185,8 @@ public class SourceCache {
     private void addApplicationSources() {
         classPathEntries.stream()
                         .forEach(classPathEntry -> addApplicationSourceRoot(classPathEntry, true));
+        modulePathEntries.stream()
+                        .forEach(modulePathEntry -> addApplicationSourceRoot(modulePathEntry, true));
         sourcePathEntries.stream()
                         .forEach(sourcePathEntry -> addApplicationSourceRoot(Paths.get(sourcePathEntry), false));
     }
@@ -501,8 +507,17 @@ public class SourceCache {
      *
      * @param path The path to add.
      */
-    private static void addClassPathEntry(Path path) {
+    static void addClassPathEntry(Path path) {
         classPathEntries.add(path);
+    }
+
+    /**
+     * Add a path to the list of module path entries.
+     *
+     * @param path The path to add.
+     */
+    static void addModulePathEntry(Path path) {
+        modulePathEntries.add(path);
     }
 
     /**
@@ -510,29 +525,32 @@ public class SourceCache {
      *
      * @param path The path to add.
      */
-    private static void addSourcePathEntry(String path) {
+    static void addSourcePathEntry(String path) {
         sourcePathEntries.add(path);
     }
+}
 
-    /**
-     * An automatic feature class which acquires the image loader class path via the afterAnalysis
-     * callback.
-     */
-    @AutomaticFeature
-    @SuppressWarnings("unused")
-    public static class SourceCacheFeature implements Feature {
-        @Override
-        public void afterAnalysis(AfterAnalysisAccess access) {
-            FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
-            ImageClassLoader loader = accessImpl.getImageClassLoader();
-            for (Path entry : loader.classpath()) {
-                addClassPathEntry(entry);
-            }
-            // also add any necessary source path entries
-            if (SubstrateOptions.DebugInfoSourceSearchPath.getValue() != null) {
-                for (String searchPathEntry : OptionUtils.flatten(",", SubstrateOptions.DebugInfoSourceSearchPath.getValue())) {
-                    addSourcePathEntry(searchPathEntry);
-                }
+/**
+ * An automatic feature class which acquires the image loader class path via the afterAnalysis
+ * callback.
+ */
+@AutomaticallyRegisteredFeature
+@SuppressWarnings("unused")
+class SourceCacheFeature implements InternalFeature {
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
+        ImageClassLoader loader = accessImpl.getImageClassLoader();
+        for (Path entry : loader.classpath()) {
+            SourceCache.addClassPathEntry(entry);
+        }
+        for (Path entry : loader.modulepath()) {
+            SourceCache.addModulePathEntry(entry);
+        }
+        // also add any necessary source path entries
+        if (SubstrateOptions.DebugInfoSourceSearchPath.getValue() != null) {
+            for (String searchPathEntry : OptionUtils.flatten(",", SubstrateOptions.DebugInfoSourceSearchPath.getValue())) {
+                SourceCache.addSourcePathEntry(searchPathEntry);
             }
         }
     }
@@ -543,8 +561,7 @@ class SourceRoot {
     boolean isJDK;
 
     SourceRoot(Path path) {
-        this.path = path;
-        this.isJDK = false;
+        this(path, false);
     }
 
     SourceRoot(Path path, boolean isJDK) {

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.graal.isolated;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 
 /** An object in the compiler isolate that has an equivalent in the client isolate. */
 interface IsolatedMirroredObject<T> {

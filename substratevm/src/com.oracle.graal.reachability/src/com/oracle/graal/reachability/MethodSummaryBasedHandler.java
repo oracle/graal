@@ -87,7 +87,7 @@ public class MethodSummaryBasedHandler implements ReachabilityMethodProcessingHa
             bb.markTypeInstantiated(type);
         }
         for (AnalysisField field : summary.readFields) {
-            bb.markFieldRead(field);
+            bb.markFieldRead(field, method);
             bb.markTypeReachable(field.getType());
         }
         for (AnalysisField field : summary.writtenFields) {

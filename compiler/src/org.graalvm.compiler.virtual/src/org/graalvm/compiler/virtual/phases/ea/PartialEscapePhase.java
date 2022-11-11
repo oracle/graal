@@ -30,6 +30,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.EscapeAnalyzeOnly;
 import java.util.Optional;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
@@ -102,6 +103,12 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
         this.cleanupPhase = cleanupPhase;
     }
 
+    public PartialEscapePhase(int iterations, boolean readElimination, CanonicalizerPhase canonicalizer, BasePhase<CoreProviders> cleanupPhase) {
+        super(iterations, canonicalizer);
+        this.readElimination = readElimination;
+        this.cleanupPhase = cleanupPhase;
+    }
+
     public PartialEscapePhase(boolean iterative, boolean readElimination, CanonicalizerPhase canonicalizer, BasePhase<CoreProviders> cleanupPhase, OptionValues options,
                     SchedulePhase.SchedulingStrategy strategy) {
         super(iterative ? EscapeAnalysisIterations.getValue(options) : 1, canonicalizer, false, strategy);
@@ -118,18 +125,21 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
-                        super.canApply(graphState),
-                        NotApplicable.mustRunBefore(this, StageFlag.HIGH_TIER_LOWERING, graphState),
-                        cleanupPhase != null ? cleanupPhase.canApply(graphState) : ALWAYS_APPLICABLE);
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.HIGH_TIER_LOWERING, graphState),
+                        cleanupPhase != null ? cleanupPhase.notApplicableTo(graphState) : ALWAYS_APPLICABLE);
     }
 
     @Override
+    @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
         if (VirtualUtil.matches(graph, EscapeAnalyzeOnly.getValue(graph.getOptions()))) {
             if (readElimination || graph.hasVirtualizableAllocation()) {
-                runAnalysis(graph, context);
+                try (DebugCloseable ignored = graph.getOptimizationLog().enterPartialEscapeAnalysis()) {
+                    runAnalysis(graph, context);
+                }
             }
         }
     }

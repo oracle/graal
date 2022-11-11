@@ -50,6 +50,7 @@ import java.util.stream.Collectors;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -85,10 +86,8 @@ import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.option.HostedOptionProvider;
-import com.oracle.svm.util.GuardedAnnotationAccess;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.UnsafePartitionKind;
 
@@ -368,13 +367,13 @@ public class FeatureImpl {
             bb.markFieldAccessed(aField);
         }
 
-        public void registerAsRead(Field field) {
+        public void registerAsRead(Field field, Object reason) {
             getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
-            registerAsRead(getMetaAccess().lookupJavaField(field));
+            registerAsRead(getMetaAccess().lookupJavaField(field), reason);
         }
 
-        public void registerAsRead(AnalysisField aField) {
-            bb.markFieldRead(aField);
+        public void registerAsRead(AnalysisField aField, Object reason) {
+            bb.markFieldRead(aField, reason);
         }
 
         @Override
@@ -392,7 +391,7 @@ public class FeatureImpl {
         }
 
         public boolean registerAsUnsafeAccessed(AnalysisField aField, UnsafePartitionKind partitionKind) {
-            assert !GuardedAnnotationAccess.isAnnotationPresent(aField, Delete.class);
+            assert !AnnotationAccess.isAnnotationPresent(aField, Delete.class);
             return bb.registerAsUnsafeAccessed(aField, partitionKind);
         }
 
@@ -581,7 +580,7 @@ public class FeatureImpl {
                     }
                 } else {
                     JavaConstant constant = SubstrateObjectConstant.forObject(cur);
-                    for (HostedField field : ((HostedType) getMetaAccess().lookupJavaType(constant)).getInstanceFields(true)) {
+                    for (HostedField field : getMetaAccess().lookupJavaType(constant).getInstanceFields(true)) {
                         if (field.isAccessed() && field.getStorageKind() == JavaKind.Object) {
                             Object fieldValue = SubstrateObjectConstant.asObject(field.readValue(constant));
                             addToWorklist(fieldValue, includeObject, worklist, registeredObjects);

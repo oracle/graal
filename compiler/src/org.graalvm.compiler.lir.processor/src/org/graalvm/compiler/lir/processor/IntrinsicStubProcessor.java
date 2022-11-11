@@ -36,7 +36,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.annotation.processing.RoundEnvironment;
-import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -73,11 +72,6 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
     private TypeElement generateStub;
     private TypeElement generateStubs;
     private TypeMirror constantNodeParameter;
-
-    @Override
-    public SourceVersion getSupportedSourceVersion() {
-        return SourceVersion.latest();
-    }
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
@@ -296,7 +290,7 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
                     case substrate:
                         imports.addAll(List.of(
                                         "com.oracle.svm.core.SubstrateTargetDescription",
-                                        "com.oracle.svm.core.annotate.Uninterruptible",
+                                        "com.oracle.svm.core.Uninterruptible",
                                         "com.oracle.svm.core.snippets.SubstrateForeignCallTarget",
                                         "com.oracle.svm.core.cpufeature.Stubs",
                                         "com.oracle.svm.graal.RuntimeCPUFeatureRegion",

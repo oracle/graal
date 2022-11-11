@@ -52,7 +52,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
-import com.oracle.truffle.regex.tregex.nfa.PureNFAIndex;
 import com.oracle.truffle.regex.tregex.parser.RegexParserGlobals;
 import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
@@ -141,12 +140,10 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
 
     private final GroupBoundaries[] cachedGroupBoundaries;
     public final RegexParserGlobals parserGlobals;
-    public final PureNFAIndex emptyNFAIndex;
 
     public RegexLanguage() {
         this.cachedGroupBoundaries = GroupBoundaries.createCachedGroupBoundaries();
         this.parserGlobals = new RegexParserGlobals(this);
-        this.emptyNFAIndex = new PureNFAIndex(0);
     }
 
     public GroupBoundaries[] getCachedGroupBoundaries() {

@@ -33,7 +33,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -66,7 +65,6 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.code.CompilationInfo;
-import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.FactoryMethod;
 import com.oracle.svm.hosted.lambda.LambdaSubstitutionType;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
@@ -209,12 +207,13 @@ import jdk.vm.ci.meta.Signature;
  * Having a separate analysis universe and hosted universe complicates some things. For example,
  * {@link StructuredGraph graphs} parsed for static analysis need to be "transplanted" from the
  * analysis universe to the hosted universe (see code around
- * {@link CompileQueue#replaceAnalysisObjects}). But the separate universes make AOT compilation
- * more flexible because elements can be duplicated as necessary. For example, a method can be
- * compiled with different optimization levels or for different optimization contexts. One concrete
- * example are methods compiled as {@link HostedMethod#isDeoptTarget() deoptimization entry points}.
- * Therefore, no code must assume a 1:1 relationship between analysis and hosted elements, but a 1:n
- * relationship where there are multiple hosted elements for a single analysis element.
+ * {@code AnalysisToHostedGraphTransplanter#replaceAnalysisObjects}). But the separate universes
+ * make AOT compilation more flexible because elements can be duplicated as necessary. For example,
+ * a method can be compiled with different optimization levels or for different optimization
+ * contexts. One concrete example are methods compiled as {@link HostedMethod#isDeoptTarget()
+ * deoptimization entry points}. Therefore, no code must assume a 1:1 relationship between analysis
+ * and hosted elements, but a 1:n relationship where there are multiple hosted elements for a single
+ * analysis element.
  *
  * In theory, only analysis elements that are found reachable by the static analysis would need a
  * corresponding hosted element. But in practice, this optimization did not work: for example,
@@ -294,8 +293,6 @@ public class HostedUniverse implements Universe {
     protected List<HostedField> orderedFields;
     protected List<HostedMethod> orderedMethods;
 
-    Map<String, Integer> uniqueHostedMethodNames = new ConcurrentHashMap<>();
-
     public HostedUniverse(Inflation bb) {
         this.bb = bb;
     }
@@ -309,17 +306,6 @@ public class HostedUniverse implements Universe {
         HostedInstanceClass result = (HostedInstanceClass) kindToType.get(JavaKind.Object);
         assert result != null;
         return result;
-    }
-
-    public synchronized HostedMethod createDeoptTarget(HostedMethod deoptOrigin) {
-        assert !deoptOrigin.isDeoptTarget();
-        if (deoptOrigin.compilationInfo.getDeoptTargetMethod() == null) {
-            HostedMethod deoptTarget = HostedMethod.create(this, deoptOrigin.getWrapped(), deoptOrigin.getDeclaringClass(),
-                            deoptOrigin.getSignature(), deoptOrigin.getConstantPool(), deoptOrigin.getExceptionHandlers(), deoptOrigin);
-            assert deoptOrigin.staticAnalysisResults != null;
-            deoptTarget.staticAnalysisResults = deoptOrigin.staticAnalysisResults;
-        }
-        return deoptOrigin.compilationInfo.getDeoptTargetMethod();
     }
 
     public boolean contains(JavaType type) {
@@ -539,7 +525,7 @@ public class HostedUniverse implements Universe {
              * executed, and we do not want a deoptimization target as the first method (because
              * offset 0 means no deoptimization target available).
              */
-            int result = Boolean.compare(o1.compilationInfo.isDeoptTarget(), o2.compilationInfo.isDeoptTarget());
+            int result = Boolean.compare(o1.isDeoptTarget(), o2.isDeoptTarget());
             if (result != 0) {
                 return result;
             }

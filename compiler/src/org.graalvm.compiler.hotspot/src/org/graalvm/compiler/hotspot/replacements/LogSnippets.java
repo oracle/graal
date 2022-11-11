@@ -69,13 +69,18 @@ public class LogSnippets implements Snippets {
 
     public static class Templates extends AbstractTemplates {
 
-        private final SnippetInfo print = snippet(LogSnippets.class, "print");
-        private final SnippetInfo printf1 = snippet(LogSnippets.class, "printf1");
-        private final SnippetInfo printf2 = snippet(LogSnippets.class, "printf2");
-        private final SnippetInfo printf3 = snippet(LogSnippets.class, "printf3");
+        private final SnippetInfo print;
+        private final SnippetInfo printf1;
+        private final SnippetInfo printf2;
+        private final SnippetInfo printf3;
 
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
+
+            this.print = snippet(providers, LogSnippets.class, "print");
+            this.printf1 = snippet(providers, LogSnippets.class, "printf1");
+            this.printf2 = snippet(providers, LogSnippets.class, "printf2");
+            this.printf3 = snippet(providers, LogSnippets.class, "printf3");
         }
 
         public void lower(LogNode logNode, LoweringTool tool) {
@@ -99,7 +104,7 @@ public class LogSnippets implements Snippets {
             if (logNode.getL3() != null) {
                 args.add("l3", logNode.getL3());
             }
-            template(logNode, args).instantiate(providers.getMetaAccess(), logNode, DEFAULT_REPLACER, args);
+            template(tool, logNode, args).instantiate(tool.getMetaAccess(), logNode, DEFAULT_REPLACER, args);
         }
     }
 }

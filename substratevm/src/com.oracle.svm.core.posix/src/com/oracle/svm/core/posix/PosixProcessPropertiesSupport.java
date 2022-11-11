@@ -33,7 +33,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -42,6 +41,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.BaseProcessPropertiesSupport;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Signal;
@@ -144,7 +144,7 @@ public abstract class PosixProcessPropertiesSupport extends BaseProcessPropertie
     }
 
     static String getObjectPathDefiningAddress(PointerBase symbolAddress) {
-        Dlfcn.Dl_info info = StackValue.get(Dlfcn.Dl_info.class);
+        Dlfcn.Dl_info info = UnsafeStackValue.get(Dlfcn.Dl_info.class);
         if (Dlfcn.dladdr(symbolAddress, info) == 0) {
             return null;
         }

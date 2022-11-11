@@ -64,7 +64,6 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.core.target.Backend;
-import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
@@ -97,6 +96,7 @@ import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompilation;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.common.TruffleCompilerAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
@@ -203,10 +203,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     public static final MemUseTrackerKey PartialEvaluationMemUse = DebugContext.memUseTracker("TrufflePartialEvaluationMemUse");
     public static final MemUseTrackerKey CompilationMemUse = DebugContext.memUseTracker("TruffleCompilationMemUse");
     public static final MemUseTrackerKey CodeInstallationMemUse = DebugContext.memUseTracker("TruffleCodeInstallationMemUse");
-
-    public static final CounterKey EncodedGraphCacheRemovedEntries = DebugContext.counter("EncodedGraphCacheRemovedEntries").doc("# of entries removed from the cache due to bailouts.");
-    public static final CounterKey EncodedGraphCacheBailouts = DebugContext.counter("EncodedGraphCacheBailouts").doc(
-                    "# of (non-permanent) compilation bailouts caused by invalid dependencies (HotSpot assumptions).");
 
     /**
      * Creates a new {@link CompilationIdentifier} for {@code compilable}.
@@ -534,9 +530,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             // compilation time and memory usage reported by printer
             printer.finish(compilationResult);
         } catch (Throwable t) {
-            if (t instanceof BailoutException) {
-                handleBailout(debug, graph, (BailoutException) t, wrapper.options);
-            }
             // Note: If the compiler cancels the compilation with a bailout exception, then the
             // graph is null
             if (wrapper.listener != null) {
@@ -581,18 +574,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         for (AnyExtendNode node : graph.getNodes(AnyExtendNode.TYPE)) {
             node.replaceAndDelete(graph.addOrUnique(ZeroExtendNode.create(node.getValue(), 64, NodeView.DEFAULT)));
         }
-    }
-
-    /**
-     * Hook for processing bailout exceptions.
-     *
-     * @param graph graph producing the bailout, can be null
-     * @param bailout {@link BailoutException to process}
-     * @param options
-     */
-    @SuppressWarnings("unused")
-    protected void handleBailout(DebugContext debug, StructuredGraph graph, BailoutException bailout, org.graalvm.options.OptionValues options) {
-        // nop
     }
 
     /**
@@ -654,15 +635,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     }
 
     protected abstract InstalledCode createInstalledCode(CompilableTruffleAST compilable);
-
-    /**
-     * @see OptimizedAssumptionDependency#soleExecutionEntryPoint()
-     *
-     * @param installedCode
-     */
-    protected boolean soleExecutionEntryPoint(InstalledCode installedCode) {
-        return true;
-    }
 
     /**
      * Calls {@link System#exit(int)} in the runtime embedding the Graal compiler. This will be a
@@ -845,43 +817,19 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         @Override
         public void postProcess(CompilationResult compilationResult, InstalledCode installedCode) {
             afterCodeInstallation(compilationResult, installedCode);
+
             if (!optimizedAssumptions.isEmpty()) {
                 OptimizedAssumptionDependency dependency;
                 if (installedCode instanceof OptimizedAssumptionDependency) {
+                    /*
+                     * On SVM the installed code can be an assumption dependency. On HotSpot we
+                     * cannot subclass HotSpotNmethod therefore that is not an option.
+                     */
                     dependency = (OptimizedAssumptionDependency) installedCode;
-                } else if (installedCode instanceof OptimizedAssumptionDependency.Access) {
-                    dependency = ((OptimizedAssumptionDependency.Access) installedCode).getDependency();
                 } else {
                     CompilableTruffleAST compilable = getCompilable(compilationResult);
-                    if (compilable instanceof OptimizedAssumptionDependency) {
-                        dependency = (OptimizedAssumptionDependency) compilable;
-                    } else {
-                        // This handles the case where a normal Graal compilation
-                        // inlines a call to a compile-time constant Truffle node.
-                        dependency = new OptimizedAssumptionDependency() {
-                            @Override
-                            public void onAssumptionInvalidated(Object source, CharSequence reason) {
-                                installedCode.invalidate();
-                            }
-
-                            @Override
-                            public boolean isValid() {
-                                return installedCode.isValid();
-                            }
-
-                            @Override
-                            public boolean soleExecutionEntryPoint() {
-                                return TruffleCompilerImpl.this.soleExecutionEntryPoint(installedCode);
-                            }
-
-                            @Override
-                            public String toString() {
-                                return installedCode.toString();
-                            }
-                        };
-                    }
+                    dependency = new TruffleCompilerAssumptionDependency(compilable, installedCode);
                 }
-
                 notifyAssumptions(dependency);
             }
         }

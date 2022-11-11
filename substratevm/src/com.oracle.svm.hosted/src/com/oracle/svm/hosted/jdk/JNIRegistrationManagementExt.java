@@ -28,30 +28,32 @@ import java.lang.reflect.Method;
 
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.management.LibManagementExtSupport;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.util.ReflectionUtil;
 
-@AutomaticFeature
-public class JNIRegistrationManagementExt extends JNIRegistrationUtil implements Feature {
+@AutomaticallyRegisteredFeature
+public class JNIRegistrationManagementExt extends JNIRegistrationUtil implements InternalFeature {
+
+    private static final String OPERATING_SYSTEM_IMPL = "com.sun.management.internal.OperatingSystemImpl";
     private NativeLibraries nativeLibraries;
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         nativeLibraries = ((BeforeAnalysisAccessImpl) access).getNativeLibraries();
 
-        rerunClassInit(access, "com.sun.management.internal.OperatingSystemImpl");
+        rerunClassInit(access, OPERATING_SYSTEM_IMPL);
 
-        access.registerReachabilityHandler(this::linkManagementExt, clazz(access, "com.sun.management.internal.OperatingSystemImpl"));
+        access.registerReachabilityHandler(this::linkManagementExt, clazz(access, OPERATING_SYSTEM_IMPL));
         PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_management_internal_OperatingSystemImpl");
     }
 
@@ -77,7 +79,8 @@ public class JNIRegistrationManagementExt extends JNIRegistrationUtil implements
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        if (NativeLibrarySupport.singleton().isPreregisteredBuiltinLibrary("awt_headless")) {
+        boolean managementExtNeeded = access.isReachable(clazz(access, OPERATING_SYSTEM_IMPL));
+        if (managementExtNeeded && NativeLibrarySupport.singleton().isPreregisteredBuiltinLibrary("awt_headless")) {
             /*
              * Ensure that `management_ext` comes before `awt_headless` on the linker command line.
              * This is necessary to prevent linker errors such as JDK-8264047.

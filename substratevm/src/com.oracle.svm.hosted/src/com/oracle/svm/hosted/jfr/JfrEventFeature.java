@@ -25,20 +25,24 @@
 package com.oracle.svm.hosted.jfr;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.jfr.JfrFeature;
+import com.oracle.svm.core.jfr.JfrJavaEvents;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdMap;
 import com.oracle.svm.core.meta.SharedType;
@@ -48,14 +52,15 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.util.ModuleSupport;
 
 import jdk.jfr.Event;
+import jdk.jfr.internal.JVM;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * Support for Java-level JFR events. This feature is only present if the {@link JfrFeature} is used
  * as well but it needs functionality that is only available in com.oracle.svm.hosted.
  */
-@AutomaticFeature
-public class JfrEventFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class JfrEventFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return JfrFeature.isInConfiguration(false);
@@ -68,6 +73,7 @@ public class JfrEventFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrEventFeature.class, false, "jdk.jfr", "jdk.jfr.events");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrFeature.class, false, "jdk.jfr", "jdk.jfr.events");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrEventSubstitution.class, false, "jdk.internal.vm.ci", "jdk.vm.ci.hotspot");
     }
@@ -85,9 +91,11 @@ public class JfrEventFeature implements Feature {
 
     @Override
     public void beforeAnalysis(Feature.BeforeAnalysisAccess access) {
-        Class<?> eventClass = access.findClassByName("jdk.internal.event.Event");
-        if (eventClass != null) {
-            access.registerSubtypeReachabilityHandler(JfrEventFeature::eventSubtypeReachable, eventClass);
+        if (JavaVersionUtil.JAVA_SPEC < 19) {
+            Class<?> eventClass = access.findClassByName("jdk.internal.event.Event");
+            if (eventClass != null) {
+                access.registerSubtypeReachabilityHandler(JfrEventFeature::eventSubtypeReachable, eventClass);
+            }
         }
     }
 
@@ -106,6 +114,20 @@ public class JfrEventFeature implements Feature {
             Class<?> clazz = hub.getHostedJavaClass();
             // Off-set by one for error-catcher
             JfrTraceId.assign(clazz, hub.getTypeID() + 1);
+        }
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            try {
+                FeatureImpl.CompilationAccessImpl accessImpl = ((FeatureImpl.CompilationAccessImpl) a);
+                Method getConfiguration = JVM.class.getDeclaredMethod("getConfiguration", Class.class);
+                for (var newEventClass : JfrJavaEvents.getAllEventClasses()) {
+                    /* Store the event configuration in the companion. */
+                    Object ec = getConfiguration.invoke(JVM.getJVM(), newEventClass);
+                    DynamicHub dynamicHub = accessImpl.getMetaAccess().lookupJavaType(newEventClass).getHub();
+                    dynamicHub.setJrfEventConfiguration(ec);
+                }
+            } catch (ReflectiveOperationException ex) {
+                throw VMError.shouldNotReachHere(ex);
+            }
         }
     }
 

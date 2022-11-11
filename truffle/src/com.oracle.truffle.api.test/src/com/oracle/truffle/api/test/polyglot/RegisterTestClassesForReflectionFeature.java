@@ -64,7 +64,10 @@ public class RegisterTestClassesForReflectionFeature implements Feature {
                     LanguageSPIHostInteropTest.class,
                     HostAccessTest.class,
                     ExposeToGuestTest.class,
-                    ContextAPITest.class);
+                    ContextAPITest.class,
+                    GR40903Outer.class,
+                    GR40903Outer.Inner.class,
+                    HostObjectToStringTest.class);
 
     protected static void registerClass(Class<?> clazz) {
         RuntimeReflection.register(clazz);

@@ -337,6 +337,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public static final boolean NO_PROFILING_INFO = false;
 
+    private OptimizationLog optimizationLog;
+
     private StructuredGraph(String name,
                     ResolvedJavaMethod method,
                     int entryBCI,
@@ -365,8 +367,9 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.isSubstitution = isSubstitution;
         assert checkIsSubstitutionInvariants(method, isSubstitution);
         this.cancellable = cancellable;
-        this.inliningLog = GraalOptions.TraceInlining.getValue(options) ? new InliningLog(rootMethod) : null;
+        this.inliningLog = GraalOptions.TraceInlining.getValue(options) || OptimizationLog.isOptimizationLogEnabled(options) ? new InliningLog(rootMethod) : null;
         this.callerContext = context;
+        this.optimizationLog = OptimizationLog.getInstance(this);
     }
 
     private static boolean checkIsSubstitutionInvariants(ResolvedJavaMethod method, boolean isSubstitution) {
@@ -585,7 +588,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     public void logInliningTree() {
-        if (inliningLog != null) {
+        if (GraalOptions.TraceInlining.getValue(getOptions())) {
             String formattedTree = inliningLog.formatAsTree(true);
             if (formattedTree != null) {
                 TTY.println(formattedTree);
@@ -1143,5 +1146,9 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public NodeSourcePosition getCallerContext() {
         return callerContext;
+    }
+
+    public OptimizationLog getOptimizationLog() {
+        return optimizationLog;
     }
 }

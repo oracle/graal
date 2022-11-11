@@ -39,6 +39,8 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.options.EnumMultiOptionKey;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
@@ -242,7 +244,7 @@ public class CommonOptionParser {
                 return OptionParseResult.error("Missing value for option " + current);
             }
             try {
-                value = parseValue(optionType, current, valueString);
+                value = parseValue(optionType, optionKey, current, valueString);
                 if (value instanceof OptionParseResult) {
                     return (OptionParseResult) value;
                 }
@@ -300,7 +302,7 @@ public class CommonOptionParser {
     }
 
     @SuppressWarnings("unchecked")
-    static Object parseValue(Class<?> optionType, LocatableOption option, String valueString) throws NumberFormatException, UnsupportedOptionClassException {
+    static Object parseValue(Class<?> optionType, OptionKey<?> optionKey, LocatableOption option, String valueString) throws NumberFormatException, UnsupportedOptionClassException {
         Object value;
         if (optionType == Integer.class) {
             long longValue = parseLong(valueString);
@@ -324,6 +326,8 @@ public class CommonOptionParser {
             }
         } else if (optionType.isEnum()) {
             value = Enum.valueOf(optionType.asSubclass(Enum.class), valueString);
+        } else if (optionType == EconomicSet.class) {
+            value = ((EnumMultiOptionKey<?>) optionKey).valueOf(valueString);
         } else {
             throw new UnsupportedOptionClassException(option + " uses unsupported option value class: " + ClassUtil.getUnqualifiedName(optionType));
         }

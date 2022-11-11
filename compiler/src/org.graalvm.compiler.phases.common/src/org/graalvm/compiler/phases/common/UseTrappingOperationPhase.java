@@ -81,7 +81,7 @@ public abstract class UseTrappingOperationPhase extends BasePhase<LowTierContext
     public abstract void actionBeforeGuardRewrite(DeoptimizingFixedWithNextNode trappingVersionNode);
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return ALWAYS_APPLICABLE;
     }
 
@@ -215,7 +215,6 @@ public abstract class UseTrappingOperationPhase extends BasePhase<LowTierContext
 
     protected void replaceWithTrappingVersion(AbstractDeoptimizeNode deopt, IfNode ifNode, LogicNode condition, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation,
                     LowTierContext context) {
-        DebugContext debug = deopt.getDebug();
         StructuredGraph graph = deopt.graph();
         AbstractBeginNode nonTrappingContinuation = trueSuccessorIsDeopt() ? ifNode.falseSuccessor() : ifNode.trueSuccessor();
         AbstractBeginNode trappingContinuation = trueSuccessorIsDeopt() ? ifNode.trueSuccessor() : ifNode.falseSuccessor();
@@ -225,7 +224,7 @@ public abstract class UseTrappingOperationPhase extends BasePhase<LowTierContext
             // Need to add a null check node.
             trappingVersionNode = createImplicitNode(graph, condition, deoptReasonAndAction, deoptSpeculation);
             graph.replaceSplit(ifNode, trappingVersionNode, nonTrappingContinuation);
-            debug.log("Inserted NullCheckNode %s", trappingVersionNode);
+            graph.getOptimizationLog().report(getClass(), "NullCheckInsertion", ifNode);
         }
         trappingVersionNode.setStateBefore(deopt.stateBefore());
         actionBeforeGuardRewrite(trappingVersionNode);

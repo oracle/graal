@@ -31,6 +31,7 @@ import org.graalvm.compiler.nodes.java.LogicCompareAndSwapNode;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class UnsafeCompareAndSwapVirtualizationTest extends EATestBase {
 
@@ -43,9 +44,19 @@ public class UnsafeCompareAndSwapVirtualizationTest extends EATestBase {
         return a.compareAndSet(new Object(), new Object());
     }
 
+    private void executeAndTestEscapeAnalysis(String snippet, JavaConstant expectedConstantResult, boolean iterativeEscapeAnalysis) {
+
+        // Ensures that all VarHandles in the snippet are fully resolved.
+        // Works around outlining of methods in VarHandle resolution (JDK-8284579).
+        ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
+        executeExpected(method, null);
+
+        testEscapeAnalysis(snippet, expectedConstantResult, iterativeEscapeAnalysis);
+    }
+
     @Test
     public void bothVirtualNoMatchTest() {
-        testEscapeAnalysis("bothVirtualNoMatch", JavaConstant.INT_0, true);
+        executeAndTestEscapeAnalysis("bothVirtualNoMatch", JavaConstant.INT_0, true);
         assertTrue(graph.getNodes().filter(LogicCompareAndSwapNode.class).isEmpty());
     }
 
@@ -57,7 +68,7 @@ public class UnsafeCompareAndSwapVirtualizationTest extends EATestBase {
 
     @Test
     public void bothVirtualMatchTest() {
-        testEscapeAnalysis("bothVirtualMatch", JavaConstant.INT_1, true);
+        executeAndTestEscapeAnalysis("bothVirtualMatch", JavaConstant.INT_1, true);
         assertTrue(graph.getNodes().filter(LogicCompareAndSwapNode.class).isEmpty());
     }
 
@@ -69,7 +80,7 @@ public class UnsafeCompareAndSwapVirtualizationTest extends EATestBase {
 
     @Test
     public void expectedVirtualMatchTest() {
-        testEscapeAnalysis("expectedVirtualMatch", JavaConstant.INT_1, true);
+        executeAndTestEscapeAnalysis("expectedVirtualMatch", JavaConstant.INT_1, true);
         assertTrue(graph.getNodes().filter(LogicCompareAndSwapNode.class).isEmpty());
     }
 
@@ -81,7 +92,7 @@ public class UnsafeCompareAndSwapVirtualizationTest extends EATestBase {
 
     @Test
     public void expectedVirtualNoMatchTest() {
-        testEscapeAnalysis("expectedVirtualNoMatch", JavaConstant.INT_0, true);
+        executeAndTestEscapeAnalysis("expectedVirtualNoMatch", JavaConstant.INT_0, true);
         assertTrue(graph.getNodes().filter(LogicCompareAndSwapNode.class).isEmpty());
     }
 
@@ -92,7 +103,7 @@ public class UnsafeCompareAndSwapVirtualizationTest extends EATestBase {
 
     @Test
     public void bothNonVirtualNoMatchTest() {
-        testEscapeAnalysis("bothNonVirtualNoMatch", JavaConstant.INT_0, true);
+        executeAndTestEscapeAnalysis("bothNonVirtualNoMatch", JavaConstant.INT_0, true);
         assertTrue(graph.getNodes().filter(LogicCompareAndSwapNode.class).isEmpty());
     }
 
@@ -103,7 +114,7 @@ public class UnsafeCompareAndSwapVirtualizationTest extends EATestBase {
 
     @Test
     public void bothNonVirtualMatchTest() {
-        testEscapeAnalysis("bothNonVirtualMatch", JavaConstant.INT_1, true);
+        executeAndTestEscapeAnalysis("bothNonVirtualMatch", JavaConstant.INT_1, true);
         assertTrue(graph.getNodes().filter(LogicCompareAndSwapNode.class).isEmpty());
     }
 
@@ -114,7 +125,7 @@ public class UnsafeCompareAndSwapVirtualizationTest extends EATestBase {
 
     @Test
     public void onlyInitialValueVirtualNoMatchTest() {
-        testEscapeAnalysis("onlyInitialValueVirtualNoMatch", JavaConstant.INT_0, true);
+        executeAndTestEscapeAnalysis("onlyInitialValueVirtualNoMatch", JavaConstant.INT_0, true);
         assertTrue(graph.getNodes().filter(LogicCompareAndSwapNode.class).isEmpty());
     }
 
@@ -126,7 +137,7 @@ public class UnsafeCompareAndSwapVirtualizationTest extends EATestBase {
 
     @Test
     public void onlyInitialValueVirtualMatchTest() {
-        testEscapeAnalysis("onlyInitialValueVirtualMatch", JavaConstant.INT_1, true);
+        executeAndTestEscapeAnalysis("onlyInitialValueVirtualMatch", JavaConstant.INT_1, true);
         assertTrue(graph.getNodes().filter(LogicCompareAndSwapNode.class).isEmpty());
     }
 
@@ -137,7 +148,7 @@ public class UnsafeCompareAndSwapVirtualizationTest extends EATestBase {
 
     @Test
     public void bothVirtualNoMatchArrayTest() {
-        testEscapeAnalysis("bothVirtualNoMatchArray", JavaConstant.INT_0, true);
+        executeAndTestEscapeAnalysis("bothVirtualNoMatchArray", JavaConstant.INT_0, true);
         assertTrue(graph.getNodes().filter(LogicCompareAndSwapNode.class).isEmpty());
     }
 }

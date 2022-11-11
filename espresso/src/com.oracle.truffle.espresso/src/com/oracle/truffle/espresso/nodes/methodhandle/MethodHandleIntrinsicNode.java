@@ -49,7 +49,7 @@ public abstract class MethodHandleIntrinsicNode extends EspressoNode {
     }
 
     public boolean inliningEnabled() {
-        return getContext().InlineMethodHandle;
+        return getContext().getEspressoEnv().InlineMethodHandle;
     }
 
     public abstract Object call(Object[] args);

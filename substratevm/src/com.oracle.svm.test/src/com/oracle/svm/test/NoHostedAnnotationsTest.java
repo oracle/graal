@@ -30,7 +30,7 @@ import java.lang.annotation.Annotation;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 
 public class NoHostedAnnotationsTest {
 

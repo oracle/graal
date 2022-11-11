@@ -237,6 +237,7 @@ typedef uint64_t julong;
     V(JVM_LatestUserDefinedLoader) \
     V(JVM_Listen) \
     V(JVM_LoadClass0) \
+    V(JVM_LoadZipLibrary) \
     V(JVM_LoadLibrary) \
     V(JVM_Lseek) \
     V(JVM_MaxObjectInspectionAge) \
@@ -413,6 +414,8 @@ jlong (*JVM_FreeMemory)(void);
 jlong (*JVM_MaxMemory)(void);
 
 jint (*JVM_ActiveProcessorCount)(void);
+
+void * (*JVM_LoadZipLibrary)(void);
 
 void * (*JVM_LoadLibrary)(const char *name /*, jboolean throwException*/);
 
@@ -968,7 +971,7 @@ typedef struct LibJavaVM {
     Espresso_LeaveContext_fn_t Espresso_LeaveContext;       // leave
     Espresso_ReleaseContext_fn_t Espresso_ReleaseContext;   // release
     Espresso_CloseContext_fn_t Espresso_CloseContext;       // release + leave + close
-    Espresso_Exit_fn_t Espresso_Exit;                       // leave + close + exit
+    Espresso_Shutdown_fn_t Espresso_Shutdown;               // shutdown
 } LibJavaVM;
 
 typedef struct LibJavaVMIsolate {

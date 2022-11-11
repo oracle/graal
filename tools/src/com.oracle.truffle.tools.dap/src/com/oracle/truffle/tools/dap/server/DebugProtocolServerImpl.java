@@ -25,6 +25,7 @@
 package com.oracle.truffle.tools.dap.server;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugValue;
@@ -41,6 +42,8 @@ import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tools.dap.instrument.Enabler;
+import com.oracle.truffle.tools.dap.instrument.OutputConsumerInstrument;
 import com.oracle.truffle.tools.dap.types.AttachRequestArguments;
 import com.oracle.truffle.tools.dap.types.BreakpointLocationsArguments;
 import com.oracle.truffle.tools.dap.types.BreakpointLocationsResponse;
@@ -101,9 +104,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.Phaser;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 
 /**
@@ -117,6 +122,8 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
     private final ExecutionContext context;
     private volatile DebugProtocolClient client;
     private volatile DebuggerSession debuggerSession;
+    private final Enabler ioEnabler;
+    private volatile boolean launched;  // true when launched, false when attached
     private boolean disposed = false;
     private final List<Runnable> runOnDispose = new CopyOnWriteArrayList<>();
 
@@ -179,6 +186,14 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
                 execEnter.get().dispose();
             }
         }
+        InstrumentInfo instrumentInfo = context.getEnv().getInstruments().get(OutputConsumerInstrument.ID);
+        ioEnabler = context.getEnv().lookup(instrumentInfo, Enabler.class);
+        ioEnabler.enable();
+        OutputHandler oh = context.getEnv().lookup(instrumentInfo, OutputHandler.Provider.class).getOutputHandler();
+        ConsoleOutputListener outL = new ConsoleOutputListener("stdout");
+        ConsoleOutputListener errL = new ConsoleOutputListener("stderr");
+        oh.setOutListener(outL);
+        oh.setErrListener(errL);
     }
 
     public static DebugProtocolServerImpl create(ExecutionContext context, final boolean debugBreak, final boolean waitAttached, final boolean inspectInitialization) {
@@ -228,6 +243,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
                 client.output(OutputEvent.EventBody.create(sb.toString()));
             }
             client.output(OutputEvent.EventBody.create("Debugger attached.").setCategory("stderr"));
+            launched = true;
         });
     }
 
@@ -239,7 +255,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
     }
 
     @Override
-    public CompletableFuture<Void> disconnect(DisconnectArguments args) {
+    public CompletableFuture<Void> disconnect(DisconnectArguments args, Consumer<? super Void> responseConsumer) {
         return CompletableFuture.runAsync(() -> {
             DebuggerSession session;
             synchronized (DebugProtocolServerImpl.this) {
@@ -247,10 +263,19 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
                 session = debuggerSession;
                 debuggerSession = null;
             }
+            ioEnabler.disable();
             if (session != null) {
                 session.close();
             }
             context.dispose();
+            responseConsumer.accept(null);
+            if (launched) {
+                // Cancel all contexts to terminate the execution
+                AllContextsCancel cancel = new AllContextsCancel();
+                EventBinding<ContextsListener> binding = context.getEnv().getInstrumenter().attachContextsListener(cancel, true);
+                cancel.waitForAllCanceled();
+                binding.dispose();
+            }
         });
     }
 
@@ -278,7 +303,11 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
 
     @Override
     public CompletableFuture<SetBreakpointsResponse.ResponseBody> setBreakpoints(SetBreakpointsArguments args) {
-        return CompletableFuture.completedFuture(SetBreakpointsResponse.ResponseBody.create(context.getBreakpointsHandler().setBreakpoints(args)));
+        try {
+            return CompletableFuture.completedFuture(SetBreakpointsResponse.ResponseBody.create(context.getBreakpointsHandler().setBreakpoints(args)));
+        } catch (ExceptionWithMessage ex) {
+            return CompletableFuture.failedFuture(ex);
+        }
     }
 
     @Override
@@ -299,21 +328,24 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
     }
 
     @Override
-    public CompletableFuture<ContinueResponse.ResponseBody> doContinue(ContinueArguments args) {
+    public CompletableFuture<ContinueResponse.ResponseBody> doContinue(ContinueArguments args, Consumer<? super ContinueResponse.ResponseBody> responseConsumer) {
         CompletableFuture<ContinueResponse.ResponseBody> future = new CompletableFuture<>();
         context.getThreadsHandler().executeInSuspendedThread(args.getThreadId(), (info) -> {
             if (info == null) {
                 future.completeExceptionally(Errors.invalidThread(args.getThreadId()));
                 return false;
             }
-            future.complete(ContinueResponse.ResponseBody.create().setAllThreadsContinued(false));
+            info.getSuspendedEvent().prepareContinue();
+            ContinueResponse.ResponseBody response = ContinueResponse.ResponseBody.create().setAllThreadsContinued(false);
+            responseConsumer.accept(response);
+            future.complete(response);
             return true;
         });
         return future;
     }
 
     @Override
-    public CompletableFuture<Void> next(NextArguments args) {
+    public CompletableFuture<Void> next(NextArguments args, Consumer<? super Void> responseConsumer) {
         CompletableFuture<Void> future = new CompletableFuture<>();
         context.getThreadsHandler().executeInSuspendedThread(args.getThreadId(), (info) -> {
             if (info == null) {
@@ -321,6 +353,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
                 return false;
             }
             info.getSuspendedEvent().prepareStepOver(STEP_CONFIG);
+            responseConsumer.accept(null);
             future.complete(null);
             return true;
         });
@@ -328,7 +361,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
     }
 
     @Override
-    public CompletableFuture<Void> stepIn(StepInArguments args) {
+    public CompletableFuture<Void> stepIn(StepInArguments args, Consumer<? super Void> responseConsumer) {
         CompletableFuture<Void> future = new CompletableFuture<>();
         context.getThreadsHandler().executeInSuspendedThread(args.getThreadId(), (info) -> {
             if (info == null) {
@@ -336,6 +369,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
                 return false;
             }
             info.getSuspendedEvent().prepareStepInto(STEP_CONFIG);
+            responseConsumer.accept(null);
             future.complete(null);
             return true;
         });
@@ -343,7 +377,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
     }
 
     @Override
-    public CompletableFuture<Void> stepOut(StepOutArguments args) {
+    public CompletableFuture<Void> stepOut(StepOutArguments args, Consumer<? super Void> responseConsumer) {
         CompletableFuture<Void> future = new CompletableFuture<>();
         context.getThreadsHandler().executeInSuspendedThread(args.getThreadId(), (info) -> {
             if (info == null) {
@@ -351,6 +385,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
                 return false;
             }
             info.getSuspendedEvent().prepareStepOut(STEP_CONFIG);
+            responseConsumer.accept(null);
             future.complete(null);
             return true;
         });
@@ -659,6 +694,61 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
             }
             context.getLoadedSourcesHandler().assureLoaded(ss.getSource());
             context.getThreadsHandler().threadSuspended(Thread.currentThread(), event);
+        }
+    }
+
+    private class ConsoleOutputListener implements OutputHandler.Listener {
+
+        private final String category;
+
+        ConsoleOutputListener(String category) {
+            this.category = category;
+        }
+
+        @Override
+        public void outputText(String text) {
+            DebugProtocolClient debugClient = context.getClient();
+            if (client != null) {
+                OutputEvent.EventBody event = OutputEvent.EventBody.create(text);
+                event.setCategory(category);
+                debugClient.output(event);
+            }
+        }
+    }
+
+    private static class AllContextsCancel implements ContextsListener {
+
+        private final Phaser allClosed = new Phaser(1);
+
+        @Override
+        public void onContextCreated(TruffleContext context) {
+            allClosed.register();
+            context.closeCancelled(null, "Cancel on debugger disconnect.");
+        }
+
+        @Override
+        public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
+        }
+
+        @Override
+        public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
+        }
+
+        @Override
+        public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
+        }
+
+        @Override
+        public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
+        }
+
+        @Override
+        public void onContextClosed(TruffleContext context) {
+            allClosed.arriveAndDeregister();
+        }
+
+        void waitForAllCanceled() {
+            allClosed.arriveAndAwaitAdvance();
         }
     }
 }

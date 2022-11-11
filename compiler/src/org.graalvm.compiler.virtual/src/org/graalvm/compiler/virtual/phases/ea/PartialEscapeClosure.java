@@ -67,6 +67,7 @@ import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.ValueProxyNode;
 import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
@@ -74,6 +75,7 @@ import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
+import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
 import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
@@ -124,7 +126,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         for (Block block : cfg.getBlocks()) {
             GraphEffectList effects = blockEffects.get(block);
             if (effects != null) {
-                if (effects.getVirtualizationDelta() != 0) {
+                if (effects.getVirtualizationDelta() != 0 || effects.getAllocationDelta() != 0) {
                     return true;
                 }
             }
@@ -228,6 +230,10 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 return false;
             }
             if (tool.isDeleted()) {
+                // we only consider real allocation nodes here
+                if (node instanceof AbstractNewObjectNode || node instanceof CommitAllocationNode) {
+                    effects.addAllocationDelta(1);
+                }
                 VirtualUtil.trace(node.getOptions(), debug, "deleted virtualizable allocation %s", node);
                 return true;
             }
@@ -998,7 +1004,6 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         private boolean mergeObjectStates(int resultObject, int[] sourceObjects, PartialEscapeBlockState<?>[] states) {
             boolean compatible = true;
             boolean ensureVirtual = true;
-            boolean phiSelfReference = false;
             IntUnaryOperator getObject = index -> sourceObjects == null ? resultObject : sourceObjects[index];
 
             VirtualObjectNode virtual = virtualObjects.get(resultObject);
@@ -1013,10 +1018,6 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
             outer: for (int i = 0; i < states.length; i++) {
                 int object = getObject.applyAsInt(i);
-                if (object == -1) {
-                    phiSelfReference = true;
-                    continue;
-                }
                 ObjectState objectState = states[i].getObjectState(object);
                 ValueNode[] entries = objectState.getEntries();
                 int valueIndex = 0;
@@ -1097,10 +1098,6 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     }
                     valueIndex++;
                 }
-            }
-            if (compatible && phiSelfReference && (twoSlotKinds != null || virtualByteCount != null)) {
-                // avoid combination of complex cases
-                compatible = false;
             }
             if (compatible && twoSlotKinds != null) {
                 // if there are two-slot values then make sure the incoming states can be merged
@@ -1358,12 +1355,35 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
                         int[] virtualObjectIds = new int[states.length];
                         for (int i = 0; i < states.length; i++) {
-                            virtualObjectIds[i] = virtualObjs[i] == null ? -1 : virtualObjs[i].getObjectId();
+                            if (virtualObjs[i] == null) {
+                                // null appears in case of phi self-references
+                                if (states[i].getObjectStateOptional(virtual) != null) {
+                                    // we've already processed this loop with the new "virtual" phi
+                                    virtualObjectIds[i] = virtual.getObjectId();
+                                } else {
+                                    // first iteration with "virtual" phi: use forward edge phi
+                                    // (we will re-iterate anyway)
+                                    virtualObjectIds[i] = virtualObjs[0].getObjectId();
+                                }
+                            } else {
+                                virtualObjectIds[i] = virtualObjs[i].getObjectId();
+                            }
+                            /*
+                             * In a complex phi structure with multiple self-references, the phi
+                             * itself may already be materialized along some of the backedges. In
+                             * that case we can't merge virtual states after all.
+                             */
+                            if (!states[i].getObjectState(virtualObjectIds[i]).isVirtual()) {
+                                compatible = false;
+                                break;
+                            }
                         }
-                        boolean materialized = mergeObjectStates(virtual.getObjectId(), virtualObjectIds, states);
-                        addVirtualAlias(virtual, virtual);
-                        addVirtualAlias(virtual, phi);
-                        return materialized;
+                        if (compatible) {
+                            boolean materialized = mergeObjectStates(virtual.getObjectId(), virtualObjectIds, states);
+                            addVirtualAlias(virtual, virtual);
+                            addVirtualAlias(virtual, phi);
+                            return materialized;
+                        }
                     }
                 }
             }

@@ -523,6 +523,9 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Cache encoded graphs across Truffle compilations to speed up partial evaluation. (default: true).", usageSyntax = "true|false", category = OptionCategory.EXPERT) //
     public static final OptionKey<Boolean> EncodedGraphCache = new OptionKey<>(true);
 
+    @Option(help = "Allow assumptions during parsing of seed graphs for partial evaluation. Disables the persistent encoded graph cache 'engine.EncodedGraphCache'. (default: false).", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Boolean> ParsePEGraphsWithAssumptions = new OptionKey<>(false);
+
     @Option(help = "Delay, in milliseconds, after which the encoded graph cache is dropped when a Truffle compiler thread becomes idle (default: 10000).", //
                     usageSyntax = "<ms>", category = OptionCategory.EXPERT) //
     public static final OptionKey<Integer> EncodedGraphCachePurgeDelay = new OptionKey<>(10_000);
@@ -549,6 +552,12 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Reduce or increase the compilation threshold depending on the size of the compilation queue (default: true).", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> DynamicCompilationThresholds = new OptionKey<>(true);
+
+    @Option(help = "Enables hotness propagation to lexical parent to lexically parent single callers.", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Boolean> PropagateLoopCountToLexicalSingleCaller = new OptionKey<>(true);
+
+    @Option(help = "How high to propagate call and loop count (hotness proxy) up a single caller chain to lexical scope parent.", usageSyntax = "[0, inf)", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Integer> PropagateLoopCountToLexicalSingleCallerMaxDepth = new OptionKey<>(10);
 
     @Option(help = "The minimal scale the compilation thresholds can be reduced to (default: 0.1).", usageSyntax = "[0.0, inf)", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Double> DynamicCompilationThresholdsMinScale = new OptionKey<>(0.1);

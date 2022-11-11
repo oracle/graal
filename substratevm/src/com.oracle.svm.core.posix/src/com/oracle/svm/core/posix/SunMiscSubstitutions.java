@@ -28,23 +28,23 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
-import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.type.CIntPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
+import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
@@ -128,7 +128,7 @@ final class Util_jdk_internal_misc_Signal {
         }
         updateDispatcher(sig, newDispatcher);
         final Signal.SignalDispatcher oldDispatcher = PosixUtils.installSignalHandler(sig, newDispatcher);
-        CIntPointer sigset = StackValue.get(CIntPointer.class);
+        CIntPointer sigset = UnsafeStackValue.get(CIntPointer.class);
         sigset.write(1 << (sig - 1));
         Signal.sigprocmask(Signal.SIG_UNBLOCK(), (Signal.sigset_tPointer) sigset, WordFactory.nullPointer());
         return dispatcherToNativeH(oldDispatcher);
@@ -370,8 +370,8 @@ final class Util_jdk_internal_misc_Signal {
     }
 }
 
-@AutomaticFeature
-class IgnoreSIGPIPEFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class IgnoreSIGPIPEFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
@@ -424,7 +424,7 @@ final class Target_jdk_internal_misc_VM {
         final long maxDiffSecs = 0x0100000000L;
         final long minDiffSecs = -maxDiffSecs;
 
-        Time.timeval tv = StackValue.get(Time.timeval.class);
+        Time.timeval tv = UnsafeStackValue.get(Time.timeval.class);
         int status = Time.NoTransitions.gettimeofday(tv, WordFactory.nullPointer());
         assert status != -1 : "linux error";
         long seconds = tv.tv_sec();

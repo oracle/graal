@@ -25,6 +25,7 @@
 package org.graalvm.compiler.lir.processor;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.math.BigInteger;
@@ -40,7 +41,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.annotation.processing.RoundEnvironment;
-import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
@@ -56,7 +56,6 @@ import org.graalvm.compiler.processor.AbstractProcessor;
 public class StubPortProcessor extends AbstractProcessor {
 
     static final String JDK_LATEST = "https://raw.githubusercontent.com/openjdk/jdk/master/";
-    static final String JDK_LATEST_HUMAN = "https://github.com/openjdk/jdk/blob/master/";
     static final String JDK_LATEST_INFO = "https://api.github.com/repos/openjdk/jdk/git/matching-refs/heads/master";
     static final String JDK_COMMIT = "https://raw.githubusercontent.com/openjdk/jdk/";
 
@@ -66,11 +65,6 @@ public class StubPortProcessor extends AbstractProcessor {
     static final String HTTPS_PROXY_ENV_VAR = "HTTPS_PROXY";
 
     static final int SEARCH_RANGE = 100;
-
-    @Override
-    public SourceVersion getSupportedSourceVersion() {
-        return SourceVersion.latest();
-    }
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
@@ -84,41 +78,75 @@ public class StubPortProcessor extends AbstractProcessor {
         String commit = getAnnotationValue(annotationMirror, "commit", String.class);
         String sha1 = getAnnotationValue(annotationMirror, "sha1", String.class);
 
+        String urlHumanSuffix = path + "#L" + lineStart + "-L" + lineEnd;
         String url = JDK_LATEST + path;
+        String sha1Latest;
+        try {
+            sha1Latest = digest(proxy, md, url, lineStart, lineEnd);
+        } catch (FileNotFoundException e) {
+            env().getMessager().printMessage(Diagnostic.Kind.ERROR,
+                            String.format("Sha1 digest of https://github.com/openjdk/jdk/blob/%s/%s (ported by %s) does not match : " +
+                                            "File not found in the latest commit.",
+                                            commit,
+                                            urlHumanSuffix,
+                                            element.toString()));
+            return;
+        }
+
+        if (!sha1.equals(sha1Latest)) {
+            String urlOld = JDK_COMMIT + commit + '/' + path;
+            String sha1Old = digest(proxy, md, urlOld, lineStart, lineEnd);
+
+            String extraMessage = "";
+
+            if (sha1.equals(sha1Old)) {
+                int idx = find(proxy, urlOld, url, lineStart, lineEnd);
+                if (idx != -1) {
+                    extraMessage = String.format("It may be simply shifted. Try:\n@StubPort(path      = \"%s\",\n" +
+                                    "lineStart = %d,\n" +
+                                    "lineEnd   = %d,\n" +
+                                    "commit    = \"%s\",\n" +
+                                    "sha1      = \"%s\")\n",
+                                    path,
+                                    idx,
+                                    idx + (lineEnd - lineStart),
+                                    fetchLatestCommit(proxy),
+                                    sha1);
+                }
+            } else {
+                extraMessage = String.format("New StubPort? Then:\n@StubPort(path      = \"%s\",\n" +
+                                "lineStart = %d,\n" +
+                                "lineEnd   = %d,\n" +
+                                "commit    = \"%s\",\n" +
+                                "sha1      = \"%s\")\n",
+                                path,
+                                lineStart,
+                                lineEnd,
+                                fetchLatestCommit(proxy),
+                                sha1Latest);
+            }
+
+            env().getMessager().printMessage(Diagnostic.Kind.ERROR,
+                            String.format("Sha1 digest of https://github.com/openjdk/jdk/blob/%s/%s (ported by %s) does not match " +
+                                            "https://github.com/openjdk/jdk/blob/master/%s : expected %s but was %s. %s",
+                                            commit,
+                                            urlHumanSuffix,
+                                            element.toString(),
+                                            urlHumanSuffix,
+                                            sha1,
+                                            sha1Latest,
+                                            extraMessage));
+        }
+    }
+
+    private static String digest(Proxy proxy, MessageDigest md, String url, int lineStart, int lineEnd) throws IOException {
         URLConnection connection = new URL(url).openConnection(proxy);
         try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
             // Note that in.lines() discards the line separator and the digest
             // will be different from hashing the whole file.
             in.lines().skip(lineStart).limit(lineEnd - lineStart).map(String::getBytes).forEach(md::update);
         }
-        String sha1Latest = String.format("%040x", new BigInteger(1, md.digest()));
-        if (!sha1.equals(sha1Latest)) {
-            String urlHuman = JDK_LATEST_HUMAN + path + "#L" + lineStart + "-L" + lineEnd;
-            String oldUrl = JDK_COMMIT + commit + '/' + path;
-            int idx = find(proxy, oldUrl, url, lineStart, lineEnd);
-            env().getMessager().printMessage(Diagnostic.Kind.ERROR,
-                            String.format("Sha1 digest of %s[%d:%d] (ported by %s) does not match %s : expected %s but was %s. See diff of %s and %s. %s",
-                                            path,
-                                            lineStart,
-                                            lineEnd,
-                                            element.toString(),
-                                            urlHuman,
-                                            sha1,
-                                            sha1Latest,
-                                            oldUrl,
-                                            url,
-                                            idx == -1 ? ""
-                                                            : String.format("Or try:\n@StubPort(path      = \"%s\",\n" +
-                                                                            "lineStart = %d,\n" +
-                                                                            "lineEnd   = %d,\n" +
-                                                                            "commit    = \"%s\",\n" +
-                                                                            "sha1      = \"%s\")\n",
-                                                                            path,
-                                                                            idx,
-                                                                            idx + (lineEnd - lineStart),
-                                                                            fetchLatestCommit(proxy),
-                                                                            sha1)));
-        }
+        return String.format("%040x", new BigInteger(1, md.digest()));
     }
 
     private static int find(Proxy proxy, String oldUrl, String newUrl, int lineStart, int lineEnd) throws IOException {
@@ -130,7 +158,7 @@ public class StubPortProcessor extends AbstractProcessor {
             String oldSnippet = oldUrlIn.lines().skip(lineStart).limit(lineEnd - lineStart).collect(Collectors.joining("\n"));
             int newLineStart = Math.max(0, lineStart - SEARCH_RANGE);
             int newLineEnd = lineEnd + SEARCH_RANGE;
-            String newFullFile = newUrlIn.lines().skip(newLineStart).limit(newLineEnd - lineStart).collect(Collectors.joining("\n"));
+            String newFullFile = newUrlIn.lines().skip(newLineStart).limit(newLineEnd - newLineStart).collect(Collectors.joining("\n"));
             int idx = newFullFile.indexOf(oldSnippet);
             if (idx != -1) {
                 return newLineStart + newFullFile.substring(0, idx).split("\n").length;
@@ -164,11 +192,6 @@ public class StubPortProcessor extends AbstractProcessor {
 
                     Proxy proxy = Proxy.NO_PROXY;
                     String proxyEnv = System.getenv(HTTPS_PROXY_ENV_VAR);
-
-                    if (proxyEnv != null) {
-                        URI proxyURI = new URI(System.getenv(HTTPS_PROXY_ENV_VAR));
-                        proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyURI.getHost(), proxyURI.getPort()));
-                    }
 
                     if (proxyEnv != null) {
                         URI proxyURI = new URI(System.getenv(HTTPS_PROXY_ENV_VAR));

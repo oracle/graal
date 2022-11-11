@@ -132,19 +132,19 @@ public abstract class LLVMVaListLibrary extends Library {
 
         @Override
         public void initialize(Object vaList, Object[] arguments, int numberOfExplicitArguments, Frame frame) {
-            assert !isUncachedDelegate;
+            assert frame == null || !isUncachedDelegate;
             delegate.initialize(vaList, arguments, numberOfExplicitArguments, frame);
         }
 
         @Override
         public void cleanup(Object vaList, Frame frame) {
-            assert !isUncachedDelegate;
+            assert frame == null || !isUncachedDelegate;
             delegate.cleanup(vaList, frame);
         }
 
         @Override
         public void copy(Object srcVaList, Object destVaList, Frame frame) {
-            assert !isUncachedDelegate;
+            assert frame == null || !isUncachedDelegate;
             delegate.copy(srcVaList, destVaList, frame);
         }
 
@@ -155,7 +155,7 @@ public abstract class LLVMVaListLibrary extends Library {
 
         @Override
         public Object shift(Object vaList, Type type, Frame frame) {
-            assert !isUncachedDelegate;
+            assert frame == null || !isUncachedDelegate;
             return delegate.shift(vaList, type, frame);
         }
     }

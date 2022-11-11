@@ -94,7 +94,7 @@ public final class Target_sun_misc_Signal {
         if (StaticObject.isNull(signal)) {
             throw meta.throwNullPointerException();
         }
-        if (!meta.getContext().EnableSignals) {
+        if (!meta.getContext().getEspressoEnv().EnableSignals) {
             logger.fine(() -> "failed to setup handler for " + asHostSignal(signal, meta) + ": signal handling is disabled ");
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Signal API is disabled");
         }

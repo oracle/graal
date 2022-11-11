@@ -1,6 +1,6 @@
 local composable = (import "common-utils.libsonnet").composable;
 
-local mx_version = (import "graal-common.json").mx_version;
+local mx_version = (import "common.json").mx_version;
 local common_json = composable(import "common.json");
 local repo_config = import 'repo-configuration.libsonnet';
 local jdks = common_json.jdks;
@@ -32,7 +32,7 @@ local add_jdk_version(name) =
   local version = find_first_integer(jdk.version);
   // santity check that the parsed version is also included in the name
   assert std.length(std.findSubstr(std.toString(version), name)) == 1 : "Cannot find version %d in name %s" % [version, name];
-  { jdk_version:: version}
+  { jdk_version:: version }
 ;
 
 {
@@ -70,6 +70,14 @@ local add_jdk_version(name) =
   },
   monthly:: {
     targets+: ["monthly"],
+  },
+
+  # Add a guard to `build` that prevents it from running in the gate
+  # for a PR that only touches *.md files, the docs, are config files for GitHub
+  add_excludes_guard(build):: build + {
+    guard+: {
+      excludes+: ["**.md", "<graal>/**.md", "<graal>/docs/**", "<graal>/.devcontainer/**", "<graal>/.github/**"]
+    }
   },
 
   // Heap settings
@@ -115,8 +123,10 @@ local add_jdk_version(name) =
   labsjdk17::            self["labsjdk-" + repo_config.graalvm_edition + "-17"],
   labsjdk19::            self["labsjdk-" + repo_config.graalvm_edition + "-19"],
   labsjdk17Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-17Debug"],
+  labsjdk19Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-19Debug"],
   labsjdk11LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-11-llvm"],
   labsjdk17LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-17-llvm"],
+  labsjdk19LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-19-llvm"],
 
 
   // Hardware definitions

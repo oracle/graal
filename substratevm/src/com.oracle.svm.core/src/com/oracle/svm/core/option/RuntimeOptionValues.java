@@ -34,6 +34,7 @@ import java.util.Optional;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.options.EnumMultiOptionKey;
 import org.graalvm.compiler.options.ModifiableOptionValues;
 import org.graalvm.compiler.options.NestedBooleanOptionKey;
 import org.graalvm.compiler.options.OptionDescriptor;
@@ -41,15 +42,14 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.RuntimeOptions.OptionClass;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionType;
 
 import com.oracle.svm.core.annotate.AnnotateOriginal;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ClassUtil;
 
@@ -77,6 +77,7 @@ public class RuntimeOptionValues extends ModifiableOptionValues {
     }
 }
 
+@AutomaticallyRegisteredImageSingleton(RuntimeOptionsSupport.class)
 class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
 
     @Override
@@ -148,6 +149,10 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
             type = (OptionType<T>) ENUM_TYPE_CACHE.computeIfAbsent(clazz, c -> new OptionType<>(ClassUtil.getUnqualifiedName(c), s -> (T) Enum.valueOf((Class<? extends Enum>) c, s)));
         } else if (clazz == Long.class) {
             type = (OptionType<T>) LONG_OPTION_TYPE;
+        } else if (clazz == EconomicSet.class) {
+            EnumMultiOptionKey<?> multiOptionKey = (EnumMultiOptionKey<?>) descriptor.getOptionKey();
+            type = (OptionType<T>) ENUM_MULTI_TYPE_CACHE.computeIfAbsent(multiOptionKey.getEnumClass(),
+                            c -> new OptionType<>("Multi" + ClassUtil.getUnqualifiedName(multiOptionKey.getEnumClass()), s -> (T) multiOptionKey.valueOf(s)));
         } else {
             type = OptionType.defaultType(clazz);
             if (type == null) {
@@ -163,6 +168,9 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
     }
 
     private static final Map<Class<?>, OptionType<?>> ENUM_TYPE_CACHE = new HashMap<>();
+
+    private static final Map<Class<?>, OptionType<?>> ENUM_MULTI_TYPE_CACHE = new HashMap<>();
+
     private static final OptionType<Long> LONG_OPTION_TYPE = new OptionType<>("long", RuntimeOptionsSupportImpl::parseLong);
 
     private static long parseLong(String v) {
@@ -183,19 +191,11 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
             valueString = valueString.substring(0, valueString.length() - 1);
         }
 
-        return Long.parseLong(valueString) * scale;
-    }
-}
-
-/**
- * Sets option access.
- */
-@AutomaticFeature
-class OptionAccessFeature implements Feature {
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(RuntimeOptionsSupport.class, new RuntimeOptionsSupportImpl());
+        try {
+            return Long.parseLong(valueString) * scale;
+        } catch (NumberFormatException nfe) {
+            throw new IllegalArgumentException(String.format("Invalid value \"%s\". Allowed values are [1, inf)(|<k>|<m>|<g>|<t>).", v));
+        }
     }
 }
 

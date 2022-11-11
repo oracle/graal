@@ -66,7 +66,7 @@ public class HelloWorld {
 }
 ```
 
-Having saved the code in a file named _HelloWorld.java_, we ompile and run the application on the JVM:
+Having saved the code in a file named _HelloWorld.java_, we compile and run the application on the JVM:
 
 ```bash
 javac HelloWorld.java

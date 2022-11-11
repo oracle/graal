@@ -63,7 +63,7 @@ public interface CompilationResultBuilderFactory {
      */
     CompilationResultBuilder createBuilder(CodeGenProviders providers,
                     FrameMap frameMap,
-                    Assembler asm,
+                    Assembler<?> asm,
                     DataBuilder dataBuilder,
                     FrameContext frameContext,
                     OptionValues options,
@@ -96,7 +96,7 @@ public interface CompilationResultBuilderFactory {
         @Override
         public CompilationResultBuilder createBuilder(CodeGenProviders providers,
                         FrameMap frameMap,
-                        Assembler asm,
+                        Assembler<?> asm,
                         DataBuilder dataBuilder,
                         FrameContext frameContext,
                         OptionValues options,

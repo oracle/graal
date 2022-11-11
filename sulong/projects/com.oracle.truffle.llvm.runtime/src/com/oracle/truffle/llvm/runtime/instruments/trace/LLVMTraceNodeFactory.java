@@ -92,6 +92,7 @@ final class LLVMTraceNodeFactory implements ExecutionEventNodeFactory {
         }
 
         @TruffleBoundary
+        @SuppressWarnings("deprecation") // GR-41711: we still need Thread.getId() for JDK17 support
         static void trace(String message) {
             LLVMContext.traceIRLog(String.format("(Thread #%d) %s", Thread.currentThread().getId(), message));
         }

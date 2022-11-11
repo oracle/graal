@@ -185,9 +185,7 @@ public abstract class TypeState {
     public static TypeState forConstant(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType) {
         assert !constant.isNull();
         assert exactType.isArray() || (exactType.isInstanceClass() && !Modifier.isAbstract(exactType.getModifiers())) : exactType;
-
-        AnalysisObject constantObject = bb.analysisPolicy().createConstantObject(bb, constant, exactType);
-        return forNonNullObject(bb, constantObject);
+        return bb.analysisPolicy().constantTypeState(bb, constant, exactType);
     }
 
     public static SingleTypeState forExactType(PointsToAnalysis bb, AnalysisType exactType, boolean canBeNull) {

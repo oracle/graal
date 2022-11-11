@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.exception.Failure;
@@ -81,21 +80,21 @@ public abstract class SymbolTable {
 
     public static class FunctionType {
         private final byte[] paramTypes;
-        private final byte returnType;
+        private final byte[] resultTypes;
         private final int hashCode;
 
-        FunctionType(byte[] paramTypes, byte returnType) {
+        FunctionType(byte[] paramTypes, byte[] resultTypes) {
             this.paramTypes = paramTypes;
-            this.returnType = returnType;
-            this.hashCode = Arrays.hashCode(paramTypes) ^ Byte.hashCode(returnType);
+            this.resultTypes = resultTypes;
+            this.hashCode = Arrays.hashCode(paramTypes) ^ Arrays.hashCode(resultTypes);
         }
 
         public byte[] paramTypes() {
             return paramTypes;
         }
 
-        public byte[] returnTypes() {
-            return new byte[]{returnType};
+        public byte[] resultTypes() {
+            return resultTypes;
         }
 
         @Override
@@ -109,14 +108,19 @@ public abstract class SymbolTable {
                 return false;
             }
             FunctionType that = (FunctionType) object;
-            if (this.returnType != that.returnType) {
-                return false;
-            }
             if (this.paramTypes.length != that.paramTypes.length) {
                 return false;
             }
             for (int i = 0; i < this.paramTypes.length; i++) {
                 if (this.paramTypes[i] != that.paramTypes[i]) {
+                    return false;
+                }
+            }
+            if (this.resultTypes.length != that.resultTypes.length) {
+                return false;
+            }
+            for (int i = 0; i < this.resultTypes.length; i++) {
+                if (this.resultTypes[i] != that.resultTypes[i]) {
                     return false;
                 }
             }
@@ -130,7 +134,11 @@ public abstract class SymbolTable {
             for (int i = 0; i < paramTypes.length; i++) {
                 paramNames[i] = WasmType.toString(paramTypes[i]);
             }
-            return Arrays.toString(paramNames) + " -> " + WasmType.toString(returnType);
+            String[] resultNames = new String[resultTypes.length];
+            for (int i = 0; i < resultTypes.length; i++) {
+                resultNames[i] = WasmType.toString(resultTypes[i]);
+            }
+            return Arrays.toString(paramNames) + " -> " + Arrays.toString(resultNames);
         }
     }
 
@@ -175,7 +183,7 @@ public abstract class SymbolTable {
     }
 
     /**
-     * Encodes the arguments and return types of each function type.
+     * Encodes the parameter and result types of each function type.
      *
      * Given a function type index, the {@link #typeOffsets} array indicates where the encoding for
      * that function type begins in this array.
@@ -185,11 +193,11 @@ public abstract class SymbolTable {
      * <code>
      *   i     i+1   i+2+0        i+2+na-1  i+2+na+0        i+2+na+nr-1
      * +-----+-----+-------+-----+--------+----------+-----+-----------+
-     * | na  |  nr | arg 1 | ... | arg na | return 1 | ... | return nr |
+     * | na  |  nr | par 1 | ... | par na | result 1 | ... | result nr |
      * +-----+-----+-------+-----+--------+----------+-----+-----------+
      * </code>
      *
-     * where `na` is the number of arguments, and `nr` is the number of return values.
+     * where `na` is the number of parameters, and `nr` is the number of result values.
      *
      * This array is monotonically populated from left to right during parsing. Any code that uses
      * this array should only access the locations in the array that have already been populated.
@@ -411,32 +419,32 @@ public abstract class SymbolTable {
         }
     }
 
-    int allocateFunctionType(int numParameterTypes, int numReturnTypes) {
+    int allocateFunctionType(int paramCount, int resultCount, boolean isMultiValue) {
         checkNotParsed();
         ensureTypeCapacity(typeCount);
         int typeIdx = typeCount++;
         typeOffsets[typeIdx] = typeDataSize;
 
-        if (numReturnTypes != 0 && numReturnTypes != 1) {
+        if (!isMultiValue && resultCount != 0 && resultCount != 1) {
             throw WasmException.create(Failure.INVALID_RESULT_ARITY, "A function can return at most one result.");
         }
 
-        int size = 2 + numParameterTypes + numReturnTypes;
+        int size = 2 + paramCount + resultCount;
         ensureTypeDataCapacity(typeDataSize + size);
-        typeData[typeDataSize + 0] = numParameterTypes;
-        typeData[typeDataSize + 1] = numReturnTypes;
+        typeData[typeDataSize + 0] = paramCount;
+        typeData[typeDataSize + 1] = resultCount;
         typeDataSize += size;
         return typeIdx;
     }
 
-    public int allocateFunctionType(byte[] parameterTypes, byte[] returnTypes) {
+    public int allocateFunctionType(byte[] paramTypes, byte[] resultTypes, boolean isMultiValue) {
         checkNotParsed();
-        final int typeIdx = allocateFunctionType(parameterTypes.length, returnTypes.length);
-        for (int i = 0; i < parameterTypes.length; i++) {
-            registerFunctionTypeParameterType(typeIdx, i, parameterTypes[i]);
+        final int typeIdx = allocateFunctionType(paramTypes.length, resultTypes.length, isMultiValue);
+        for (int i = 0; i < paramTypes.length; i++) {
+            registerFunctionTypeParameterType(typeIdx, i, paramTypes[i]);
         }
-        for (int i = 0; i < returnTypes.length; i++) {
-            registerFunctionTypeReturnType(typeIdx, i, returnTypes[i]);
+        for (int i = 0; i < resultTypes.length; i++) {
+            registerFunctionTypeResultType(typeIdx, i, resultTypes[i]);
         }
         return typeIdx;
     }
@@ -447,9 +455,9 @@ public abstract class SymbolTable {
         typeData[idx] = type;
     }
 
-    void registerFunctionTypeReturnType(int funcTypeIdx, int returnIdx, byte type) {
+    void registerFunctionTypeResultType(int funcTypeIdx, int resultIdx, byte type) {
         checkNotParsed();
-        int idx = 2 + typeOffsets[funcTypeIdx] + typeData[typeOffsets[funcTypeIdx]] + returnIdx;
+        int idx = 2 + typeOffsets[funcTypeIdx] + typeData[typeOffsets[funcTypeIdx]] + resultIdx;
         typeData[idx] = type;
     }
 
@@ -502,11 +510,11 @@ public abstract class SymbolTable {
     void setStartFunction(int functionIndex) {
         checkNotParsed();
         WasmFunction start = function(functionIndex);
-        if (start.numArguments() != 0) {
-            throw WasmException.create(Failure.START_FUNCTION_ARGUMENTS, "Start function cannot take arguments.");
+        if (start.paramCount() != 0) {
+            throw WasmException.create(Failure.START_FUNCTION_PARAMS, "Start function cannot take parameters.");
         }
-        if (start.returnTypeLength() != 0) {
-            throw WasmException.create(Failure.START_FUNCTION_RETURN_VALUE, "Start function cannot return a value.");
+        if (start.resultCount() != 0) {
+            throw WasmException.create(Failure.START_FUNCTION_RESULT_VALUE, "Start function cannot return a value.");
         }
         this.startFunctionIndex = functionIndex;
     }
@@ -525,23 +533,14 @@ public abstract class SymbolTable {
         return function;
     }
 
-    public int functionTypeArgumentCount(int typeIndex) {
+    public int functionTypeParamCount(int typeIndex) {
         int typeOffset = typeOffsets[typeIndex];
-        int numArgs = typeData[typeOffset + 0];
-        return numArgs;
+        return typeData[typeOffset + 0];
     }
 
-    public byte functionTypeReturnType(int typeIndex) {
+    public int functionTypeResultCount(int typeIndex) {
         int typeOffset = typeOffsets[typeIndex];
-        int numArgTypes = typeData[typeOffset + 0];
-        int numReturnTypes = typeData[typeOffset + 1];
-        return numReturnTypes == 0 ? (byte) 0x40 : (byte) typeData[typeOffset + 2 + numArgTypes];
-    }
-
-    int functionTypeReturnTypeLength(int typeIndex) {
-        int typeOffset = typeOffsets[typeIndex];
-        int numReturnTypes = typeData[typeOffset + 1];
-        return numReturnTypes;
+        return typeData[typeOffset + 1];
     }
 
     public WasmFunction startFunction() {
@@ -553,33 +552,33 @@ public abstract class SymbolTable {
 
     protected abstract WasmModule module();
 
-    public byte functionTypeArgumentTypeAt(int typeIndex, int i) {
+    public byte functionTypeParamTypeAt(int typeIndex, int i) {
         int typeOffset = typeOffsets[typeIndex];
         return (byte) typeData[typeOffset + 2 + i];
     }
 
-    public byte functionTypeReturnTypeAt(int typeIndex, int i) {
+    public byte functionTypeResultTypeAt(int typeIndex, int resultIndex) {
         int typeOffset = typeOffsets[typeIndex];
-        int numArgs = typeData[typeOffset];
-        return (byte) typeData[typeOffset + 2 + numArgs + i];
+        int paramCount = typeData[typeOffset];
+        return (byte) typeData[typeOffset + 2 + paramCount + resultIndex];
     }
 
-    ByteArrayList functionTypeArgumentTypes(int typeIndex) {
-        ByteArrayList types = new ByteArrayList();
-        int argumentTypeCount = functionTypeArgumentCount(typeIndex);
-        for (int i = 0; i != argumentTypeCount; ++i) {
-            types.add(functionTypeArgumentTypeAt(typeIndex, i));
+    private byte[] functionTypeParamTypesAsArray(int typeIndex) {
+        int paramCount = functionTypeParamCount(typeIndex);
+        byte[] paramTypes = new byte[paramCount];
+        for (int i = 0; i < paramCount; ++i) {
+            paramTypes[i] = functionTypeParamTypeAt(typeIndex, i);
         }
-        return types;
+        return paramTypes;
     }
 
-    private byte[] functionTypeArgumentTypesAsArray(int typeIndex) {
-        int argumentTypeCount = functionTypeArgumentCount(typeIndex);
-        byte[] argumentTypes = new byte[argumentTypeCount];
-        for (int i = 0; i < argumentTypeCount; ++i) {
-            argumentTypes[i] = functionTypeArgumentTypeAt(typeIndex, i);
+    private byte[] functionTypeResultTypesAsArray(int typeIndex) {
+        int resultTypeCount = functionTypeResultCount(typeIndex);
+        byte[] resultTypes = new byte[resultTypeCount];
+        for (int i = 0; i < resultTypeCount; i++) {
+            resultTypes[i] = functionTypeResultTypeAt(typeIndex, i);
         }
-        return argumentTypes;
+        return resultTypes;
     }
 
     int typeCount() {
@@ -587,7 +586,7 @@ public abstract class SymbolTable {
     }
 
     public FunctionType typeAt(int index) {
-        return new FunctionType(functionTypeArgumentTypesAsArray(index), functionTypeReturnType(index));
+        return new FunctionType(functionTypeParamTypesAsArray(index), functionTypeResultTypesAsArray(index));
     }
 
     public void importSymbol(ImportDescriptor descriptor) {

@@ -58,6 +58,17 @@ public final class Types {
         return type;
     }
 
+    public Symbol<Type> getOrCreate(String name) {
+        return getOrCreate(ByteSequence.create(name));
+    }
+
+    public Symbol<Type> getOrCreate(ByteSequence name) {
+        if (!Validation.validTypeDescriptor(name, true)) {
+            return null;
+        }
+        return symbols.symbolify(name);
+    }
+
     public static String internalFromClassName(String className) {
         if (className.startsWith("[") || className.endsWith(";")) {
             return className.replace('.', '/');
@@ -378,5 +389,20 @@ public final class Types {
             return EMPTY;
         }
         return symbol.subSequence(1, lastSlash - 1);
+    }
+
+    /**
+     * Returns the number of stack slots used by the specified type.
+     */
+    public static int slotCount(Symbol<Type> type) {
+        switch (type.byteAt(0)) {
+            case 'V': // void
+                return 0;
+            case 'D': // double
+            case 'J': // long
+                return 2;
+            default: // ZBCSIF[L
+                return 1;
+        }
     }
 }

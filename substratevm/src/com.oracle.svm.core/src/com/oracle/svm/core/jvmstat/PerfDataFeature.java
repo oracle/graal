@@ -24,21 +24,20 @@
  */
 package com.oracle.svm.core.jvmstat;
 
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
 import java.util.zip.ZipFile;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.thread.VMOperationListenerFeature;
+import com.oracle.svm.core.jdk.RuntimeSupportFeature;
 import com.oracle.svm.core.thread.VMOperationListenerSupport;
+import com.oracle.svm.core.thread.VMOperationListenerSupportFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 /**
  * The performance data feature (hsperfdata) provides monitoring data that can be access by external
@@ -71,52 +70,34 @@ import com.oracle.svm.core.thread.VMOperationListenerSupport;
  *
  * Current limitations:
  * <ul>
- * <li>No support for creating performance data entries at runtime, e.g., via APIs such as
- * PerfCounter.</li>
  * <li>No support for existing JDK performance counters such as the ones that are used in
  * {@link ZipFile}</li>
  * </ul>
  */
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 public class PerfDataFeature implements InternalFeature {
     @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasJvmstatSupport();
-    }
-
-    @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(VMOperationListenerFeature.class);
+        return Arrays.asList(VMOperationListenerSupportFeature.class, RuntimeSupportFeature.class);
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(PerfMemory.class, new PerfMemory());
-        ImageSingletons.add(PerfDataSupport.class, new PerfDataSupportImpl());
+        if (VMInspectionOptions.hasJvmstatSupport()) {
+            ImageSingletons.add(PerfMemory.class, new PerfMemory());
+            ImageSingletons.add(PerfDataSupport.class, new PerfDataSupportImpl());
 
-        PerfManager manager = new PerfManager();
-        ImageSingletons.add(PerfManager.class, manager);
+            PerfManager manager = new PerfManager();
+            ImageSingletons.add(PerfManager.class, manager);
 
-        SystemCounters systemCounters = new SystemCounters(manager);
-        manager.register(systemCounters);
-        VMOperationListenerSupport.get().register(systemCounters);
-    }
+            SystemCounters systemCounters = new SystemCounters(manager);
+            manager.register(systemCounters);
+            VMOperationListenerSupport.get().register(systemCounters);
 
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        PerfManager manager = ImageSingletons.lookup(PerfManager.class);
-        RuntimeSupport runtime = RuntimeSupport.getRuntimeSupport();
-        runtime.addStartupHook(manager.startupHook());
-        runtime.addShutdownHook(manager.shutdownHook());
-    }
-}
-
-@AutomaticFeature
-class NoPerfDataFeature implements InternalFeature {
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        if (!ImageSingletons.contains(PerfDataSupport.class)) {
+            RuntimeSupport runtime = RuntimeSupport.getRuntimeSupport();
+            runtime.addInitializationHook(manager.initializationHook());
+            runtime.addTearDownHook(manager.teardownHook());
+        } else {
             ImageSingletons.add(PerfDataSupport.class, new NoPerfDataSupport());
         }
     }

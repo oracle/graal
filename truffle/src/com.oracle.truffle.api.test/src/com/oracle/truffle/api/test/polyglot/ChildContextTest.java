@@ -96,7 +96,7 @@ public class ChildContextTest extends AbstractPolyglotTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            TruffleContext tc = REFERENCE.get(null).env.newContextBuilder().build();
+            TruffleContext tc = REFERENCE.get(null).env.newInnerContextBuilder().build();
             tc.close();
             return RootNode.createConstantNode("foo").getCallTarget();
         }

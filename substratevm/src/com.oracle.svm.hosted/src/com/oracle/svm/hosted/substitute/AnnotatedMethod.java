@@ -51,6 +51,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.nativeimage.AnnotationAccess;
 
 public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, OriginalMethodProvider, AnnotationWrapper {
 
@@ -224,7 +225,7 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, Origi
 
     @Override
     public String toString() {
-        return "AnnotatedMethod<definition/implementation " + original.toString() + ", extra annotations " + Arrays.toString(getAnnotations()) + ">";
+        return "AnnotatedMethod<definition/implementation " + original.toString() + ", extra annotations " + Arrays.toString(AnnotationAccess.getAnnotationTypes(annotated)) + ">";
     }
 
     @Override

@@ -26,8 +26,6 @@ package com.oracle.svm.core;
 
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
@@ -53,7 +51,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.StringUtil;
@@ -275,29 +273,70 @@ public class SubstrateUtil {
     }
 
     /**
-     * Returns a short, reasonably descriptive, but still unique name for the provided method. The
-     * name includes a digest of the fully qualified method name, which ensures uniqueness.
+     * Convenience method that unwraps the method details and delegates to the currently registered
+     * UniqueShortNameProvider image singleton with the significant exception that it always passes
+     * null for the class loader.
+     * 
+     * @param m a method whose unique short name is required
+     * @return a unique short name for the method
      */
     public static String uniqueShortName(ResolvedJavaMethod m) {
-        return uniqueShortName("", m.getDeclaringClass(), m.getName(), m.getSignature(), m.isConstructor());
+        return UniqueShortNameProvider.singleton().uniqueShortName(null, m.getDeclaringClass(), m.getName(), m.getSignature(), m.isConstructor());
     }
 
-    public static String uniqueShortName(String loaderNameAndId, ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {
-        StringBuilder sb = new StringBuilder(loaderNameAndId);
-        sb.append(declaringClass.toClassName()).append(".").append(methodName).append("(");
-        for (int i = 0; i < methodSignature.getParameterCount(false); i++) {
-            sb.append(methodSignature.getParameterType(i, null).toClassName()).append(",");
-        }
-        sb.append(')');
-        if (!isConstructor) {
-            sb.append(methodSignature.getReturnType(null).toClassName());
-        }
-
-        return stripPackage(declaringClass.toJavaName()) + "_" +
-                        (isConstructor ? "constructor" : methodName) + "_" +
-                        SubstrateUtil.digest(sb.toString());
+    /**
+     * Delegate to the corresponding method of the currently registered UniqueShortNameProvider
+     * image singleton.
+     * 
+     * @param loader the class loader for the method's owning class
+     * @param declaringClass the method's declaring class
+     * @param methodName the method's name
+     * @param methodSignature the method's signature
+     * @param isConstructor true if the method is a constructor otherwise false
+     * @return a unique short name for the method
+     */
+    public static String uniqueShortName(ClassLoader loader, ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {
+        return UniqueShortNameProvider.singleton().uniqueShortName(loader, declaringClass, methodName, methodSignature, isConstructor);
     }
 
+    /**
+     * Delegate to the corresponding method of the currently registered UniqueShortNameProvider
+     * image singleton.
+     * 
+     * @param m a member whose unique short name is required
+     * @return a unique short name for the member
+     */
+    public static String uniqueShortName(Member m) {
+        return UniqueShortNameProvider.singleton().uniqueShortName(m);
+    }
+
+    /**
+     * Generate a unique short name to be used as the selector for a stub method which invokes the
+     * supplied target method. Note that the returned name must be derived using the name and class
+     * of the target method even though the stub method will be owned to another class. This ensures
+     * that any two stubs which target corresponding methods whose selector name is identical will
+     * end up with different stub names.
+     *
+     * @param m a stub target method for which a unique stub method selector name is required
+     * @return a unique stub name for the method
+     */
+    public static String uniqueStubName(ResolvedJavaMethod m) {
+        String shortName = UniqueShortNameProvider.singleton().uniqueShortName(null, m.getDeclaringClass(), m.getName(), m.getSignature(), m.isConstructor());
+        return stripPackage(m.getDeclaringClass().toJavaName()) + "_" +
+                        (m.isConstructor() ? "constructor" : m.getName()) + "_" +
+                        SubstrateUtil.digest(shortName);
+
+    }
+
+    /**
+     * Returns a unique identifier for a class loader that can be folded into the unique short name
+     * of methods where needed in order to disambiguate name collisions that can arise when the same
+     * class bytecode is loaded by more than one loader.
+     *
+     * @param loader The loader whose identifier is to be returned.
+     * @return A unique identifier for the classloader or the empty string when the loader is one of
+     *         the special set whose method names do not need qualification.
+     */
     public static String classLoaderNameAndId(ClassLoader loader) {
         if (loader == null) {
             return "";
@@ -309,41 +348,7 @@ public class SubstrateUtil {
         }
     }
 
-    private static final Field classLoaderNameAndId = ReflectionUtil.lookupField(ClassLoader.class, "nameAndId");
-
-    /**
-     * Returns a short, reasonably descriptive, but still unique name for the provided
-     * {@link Method}, {@link Constructor}, or {@link Field}. The name includes a digest of the
-     * fully qualified method name, which ensures uniqueness.
-     */
-    public static String uniqueShortName(Member m) {
-        StringBuilder fullName = new StringBuilder();
-        fullName.append(m.getDeclaringClass().getName()).append(".");
-        if (m instanceof Constructor) {
-            fullName.append("<init>");
-        } else {
-            fullName.append(m.getName());
-        }
-        if (m instanceof Executable) {
-            fullName.append("(");
-            for (Class<?> c : ((Executable) m).getParameterTypes()) {
-                fullName.append(c.getName()).append(",");
-            }
-            fullName.append(')');
-            if (m instanceof Method) {
-                fullName.append(((Method) m).getReturnType().getName());
-            }
-        }
-
-        return stripPackage(m.getDeclaringClass().getTypeName()) + "_" +
-                        (m instanceof Constructor ? "constructor" : m.getName()) + "_" +
-                        SubstrateUtil.digest(fullName.toString());
-    }
-
-    private static String stripPackage(String qualifiedClassName) {
-        /* Anonymous classes can contain a '/' which can lead to an invalid binary name. */
-        return qualifiedClassName.substring(qualifiedClassName.lastIndexOf(".") + 1).replace("/", "");
-    }
+    private static Field classLoaderNameAndId = ReflectionUtil.lookupField(ClassLoader.class, "nameAndId");
 
     /**
      * Mangle the given method name according to our image's (default) mangling convention. A rough
@@ -398,6 +403,14 @@ public class SubstrateUtil {
         return false;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isHiddenClass(DynamicHub hub) {
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            return hub.isHidden();
+        }
+        return false;
+    }
+
     public static int arrayTypeDimension(Class<?> clazz) {
         int dimension = 0;
         Class<?> componentType = clazz;
@@ -416,5 +429,10 @@ public class SubstrateUtil {
             dimension++;
         }
         return dimension;
+    }
+
+    public static String stripPackage(String qualifiedClassName) {
+        /* Anonymous classes can contain a '/' which can lead to an invalid binary name. */
+        return qualifiedClassName.substring(qualifiedClassName.lastIndexOf(".") + 1).replace("/", "");
     }
 }

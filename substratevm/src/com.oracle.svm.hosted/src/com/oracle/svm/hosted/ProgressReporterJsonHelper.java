@@ -43,7 +43,7 @@ class ProgressReporterJsonHelper {
     private static final String ANALYSIS_RESULTS_KEY = "analysis_results";
     private static final String GENERAL_INFO_KEY = "general_info";
     private static final String IMAGE_DETAILS_KEY = "image_details";
-    private static final String RESSOURCE_USAGE_KEY = "resource_usage";
+    private static final String RESOURCE_USAGE_KEY = "resource_usage";
 
     private final Map<String, Object> statsHolder = new HashMap<>();
     private final String jsonOutputFile;
@@ -79,25 +79,29 @@ class ProgressReporterJsonHelper {
     @SuppressWarnings("unchecked")
     public void putImageDetails(ImageDetailKey key, Object value) {
         Map<String, Object> imageDetailsMap = (Map<String, Object>) statsHolder.computeIfAbsent(IMAGE_DETAILS_KEY, id -> new HashMap<>());
-        if (!key.hasBucket() && !key.hasSubBucket()) {
-            imageDetailsMap.put(key.jsonKey(), value);
-        } else if (!key.hasSubBucket()) {
-            assert key.hasBucket();
-            Map<String, Object> bucketMap = (Map<String, Object>) imageDetailsMap.computeIfAbsent(key.bucket(), sb -> new HashMap<>());
-            bucketMap.put(key.jsonKey(), value);
+        if (key.bucket == null && key.subBucket == null) {
+            imageDetailsMap.put(key.jsonKey, value);
+        } else if (key.subBucket == null) {
+            assert key.bucket != null;
+            Map<String, Object> bucketMap = (Map<String, Object>) imageDetailsMap.computeIfAbsent(key.bucket, sb -> new HashMap<>());
+            bucketMap.put(key.jsonKey, value);
         } else {
-            assert key.hasSubBucket();
-            Map<String, Object> bucketMap = (Map<String, Object>) imageDetailsMap.computeIfAbsent(key.bucket(), sb -> new HashMap<>());
-            Map<String, Object> subbucketMap = (Map<String, Object>) bucketMap.computeIfAbsent(key.subBucket(), sb -> new HashMap<>());
-            subbucketMap.put(key.jsonKey(), value);
+            assert key.subBucket != null;
+            Map<String, Object> bucketMap = (Map<String, Object>) imageDetailsMap.computeIfAbsent(key.bucket, sb -> new HashMap<>());
+            Map<String, Object> subbucketMap = (Map<String, Object>) bucketMap.computeIfAbsent(key.subBucket, sb -> new HashMap<>());
+            subbucketMap.put(key.jsonKey, value);
         }
     }
 
     @SuppressWarnings("unchecked")
     public void putResourceUsage(ResourceUsageKey key, Object value) {
-        Map<String, Object> resUsageMap = (Map<String, Object>) statsHolder.computeIfAbsent(RESSOURCE_USAGE_KEY, ru -> new HashMap<>());
-        Map<String, Object> subMap = (Map<String, Object>) resUsageMap.computeIfAbsent(key.bucket, k -> new HashMap<>());
-        subMap.put(key.key, value);
+        Map<String, Object> resUsageMap = (Map<String, Object>) statsHolder.computeIfAbsent(RESOURCE_USAGE_KEY, ru -> new HashMap<>());
+        if (key.bucket != null) {
+            Map<String, Object> subMap = (Map<String, Object>) resUsageMap.computeIfAbsent(key.bucket, k -> new HashMap<>());
+            subMap.put(key.jsonKey, value);
+        } else {
+            resUsageMap.put(key.jsonKey, value);
+        }
     }
 
     public Path printToFile() {
@@ -160,6 +164,7 @@ class ProgressReporterJsonHelper {
         CODE_AREA_SIZE("code_area", null, "bytes"),
         NUM_COMP_UNITS("code_area", null, "compilation_units"),
         IMAGE_HEAP_SIZE("image_heap", null, "bytes"),
+        IMAGE_HEAP_OBJECT_COUNT("image_heap", "objects", "count"),
         DEBUG_INFO_SIZE("debug_info", null, "bytes"),
         IMAGE_HEAP_RESOURCE_COUNT("image_heap", "resources", "count"),
         RESOURCE_SIZE_BYTES("image_heap", "resources", "bytes"),
@@ -167,37 +172,13 @@ class ProgressReporterJsonHelper {
         GRAPH_ENCODING_SIZE("runtime_compiled_methods", null, "graph_encoding_bytes");
 
         private String bucket;
-        private String key;
+        private String jsonKey;
         private String subBucket;
 
         ImageDetailKey(String bucket, String subBucket, String key) {
             this.bucket = bucket;
-            this.key = key;
+            this.jsonKey = key;
             this.subBucket = subBucket;
-        }
-
-        /**
-         *
-         * @return true iff the json is represented via a sub object.
-         */
-        public boolean hasBucket() {
-            return bucket != null;
-        }
-
-        public boolean hasSubBucket() {
-            return subBucket != null;
-        }
-
-        public String bucket() {
-            return bucket;
-        }
-
-        public String subBucket() {
-            return subBucket;
-        }
-
-        public String jsonKey() {
-            return key;
         }
 
         @Override
@@ -212,28 +193,28 @@ class ProgressReporterJsonHelper {
         GC_COUNT("garbage_collection", "count"),
         GC_SECS("garbage_collection", "total_secs"),
         PEAK_RSS("memory", "peak_rss_bytes"),
-        MEMORY_TOTAL("memory", "system_total");
+        MEMORY_TOTAL("memory", "system_total"),
+        TOTAL_SECS(null, "total_secs");
 
         private String bucket;
-        private String key;
+        private String jsonKey;
 
         ResourceUsageKey(String bucket, String key) {
-            this.key = key;
             this.bucket = bucket;
+            this.jsonKey = key;
         }
 
         @Override
         public void record(ProgressReporterJsonHelper helper, Object value) {
             helper.putResourceUsage(this, value);
         }
-
     }
 
     enum AnalysisResults implements JsonMetric {
-        CLASS_TOTAL("classes", "total"),
-        CLASS_REACHABLE("classes", "reachable"),
-        CLASS_JNI("classes", "jni"),
-        CLASS_REFLECT("classes", "reflection"),
+        TYPES_TOTAL("types", "total"),
+        TYPES_REACHABLE("types", "reachable"),
+        TYPES_JNI("types", "jni"),
+        TYPES_REFLECT("types", "reflection"),
         METHOD_TOTAL("methods", "total"),
         METHOD_REACHABLE("methods", "reachable"),
         METHOD_JNI("methods", "jni"),
@@ -241,7 +222,13 @@ class ProgressReporterJsonHelper {
         FIELD_TOTAL("fields", "total"),
         FIELD_REACHABLE("fields", "reachable"),
         FIELD_JNI("fields", "jni"),
-        FIELD_REFLECT("fields", "reflection");
+        FIELD_REFLECT("fields", "reflection"),
+
+        // TODO GR-42148: remove deprecated entries in a future release
+        DEPRECATED_CLASS_TOTAL("classes", "total"),
+        DEPRECATED_CLASS_REACHABLE("classes", "reachable"),
+        DEPRECATED_CLASS_JNI("classes", "jni"),
+        DEPRECATED_CLASS_REFLECT("classes", "reflection");
 
         private String key;
         private String bucket;

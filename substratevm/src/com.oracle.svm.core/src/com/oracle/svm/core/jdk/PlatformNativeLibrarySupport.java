@@ -30,12 +30,12 @@ import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 
 public abstract class PlatformNativeLibrarySupport {
@@ -164,8 +164,8 @@ public abstract class PlatformNativeLibrarySupport {
     public abstract boolean initializeBuiltinLibraries();
 }
 
-@AutomaticFeature
-class PlatformNativeLibrarySupportFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class PlatformNativeLibrarySupportFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {

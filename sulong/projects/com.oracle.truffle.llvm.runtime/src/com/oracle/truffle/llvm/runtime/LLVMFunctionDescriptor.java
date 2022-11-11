@@ -37,9 +37,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -207,59 +204,6 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
             return LLVMLanguage.get(null).singleContextAssumption;
         }
 
-    }
-
-    @ExportMessage
-    boolean hasMembers() {
-        return true;
-    }
-
-    @ExportLibrary(InteropLibrary.class)
-    static final class FunctionMembers implements TruffleObject {
-
-        @ExportMessage
-        boolean hasArrayElements() {
-            return true;
-        }
-
-        @ExportMessage
-        long getArraySize() {
-            return 1;
-        }
-
-        @ExportMessage
-        boolean isArrayElementReadable(long index) {
-            return index == 0;
-        }
-
-        @ExportMessage
-        Object readArrayElement(long index) throws InvalidArrayIndexException {
-            if (index == 0) {
-                return "bind";
-            } else {
-                throw InvalidArrayIndexException.create(index);
-            }
-        }
-    }
-
-    @ExportMessage
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return new FunctionMembers();
-    }
-
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    boolean isMemberInvocable(String member) {
-        return "bind".equals(member);
-    }
-
-    @ExportMessage
-    Object invokeMember(String member, @SuppressWarnings("unused") Object[] args) throws UnknownIdentifierException {
-        if ("bind".equals(member)) {
-            return this;
-        } else {
-            throw UnknownIdentifierException.create(member);
-        }
     }
 
     @ExportMessage

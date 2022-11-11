@@ -60,7 +60,7 @@ import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
-import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.management.ExecutionEvent;
 import org.graalvm.polyglot.management.ExecutionListener;
@@ -150,15 +150,20 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
     }
 
     @Override
-    public Context createContext(Object oreceiver, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess, HostAccess hostAccess, PolyglotAccess polyglotAccess,
-                    boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
-                    Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess,
+    public Context createContext(Object oreceiver, OutputStream out, OutputStream err, InputStream in,
+                    boolean allowHostLookup,
+                    HostAccess hostAccess, PolyglotAccess polyglotAccess, boolean allowNativeAccess,
+                    boolean allowCreateThread, boolean allowHostClassLoading, boolean allowInnerContextOptions,
+                    boolean allowExperimentalOptions, Predicate<String> classFilter,
+                    Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, IOAccess ioAccess, Object logHandlerOrStream, boolean allowCreateProcess,
                     ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory,
                     ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
-        PolyglotContextImpl context = receiver.createContext(out, err, in, allowHostAccess, hostAccess, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostIO, allowHostClassLoading,
+        PolyglotContextImpl context = receiver.createContext(out, err, in, allowHostLookup, hostAccess, polyglotAccess,
+                        allowNativeAccess, allowCreateThread, allowHostClassLoading,
+                        allowInnerContextOptions,
                         allowExperimentalOptions,
-                        classFilter, options, arguments, onlyLanguages, fileSystem, logHandlerOrStream, allowCreateProcess, processHandler, environmentAccess, environment, zone, limitsImpl,
+                        classFilter, options, arguments, onlyLanguages, ioAccess, logHandlerOrStream, allowCreateProcess, processHandler, environmentAccess, environment, zone, limitsImpl,
                         currentWorkingDirectory, hostClassLoader, allowValueSharing, useSystemExit);
         return polyglot.getAPIAccess().newContext(polyglot.contextDispatch, context, context.engine.api);
     }

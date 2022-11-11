@@ -83,7 +83,7 @@ public class BaseInterop {
                     @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         object.checkNotForeign();
         if (isMetaObject(object)) {
-            return object.getKlass().getMeta().java_lang_Class_getTypeName.invokeDirect(object);
+            return object.getMirrorKlass().getTypeName();
         }
         error.enter();
         throw UnsupportedMessageException.create();

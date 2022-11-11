@@ -25,24 +25,30 @@
 package org.graalvm.compiler.replacements.nodes;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
-import jdk.vm.ci.meta.JavaKind;
-
 public class CryptoForeignCalls {
 
-    public static final ForeignCallDescriptor STUB_AES_ENCRYPT = foreignCallDescriptor("aesEncrypt", Pointer.class, Pointer.class, Pointer.class);
-    public static final ForeignCallDescriptor STUB_AES_DECRYPT = foreignCallDescriptor("aesDecrypt", Pointer.class, Pointer.class, Pointer.class);
+    public static final ForeignCallDescriptor STUB_AES_ENCRYPT = foreignCallDescriptor("aesEncrypt", AESNode.KILLED_LOCATIONS, Pointer.class, Pointer.class, Pointer.class);
+    public static final ForeignCallDescriptor STUB_AES_DECRYPT = foreignCallDescriptor("aesDecrypt", AESNode.KILLED_LOCATIONS, Pointer.class, Pointer.class, Pointer.class);
 
-    public static final LocationIdentity[] KILLED_LOCATIONS = {NamedLocationIdentity.getArrayLocation(JavaKind.Byte)};
+    public static final ForeignCallDescriptor STUB_GHASH_PROCESS_BLOCKS = foreignCallDescriptor("ghashProcessBlocks", GHASHProcessBlocksNode.KILLED_LOCATIONS,
+                    Pointer.class, Pointer.class, Pointer.class, int.class);
+    public static final ForeignCallDescriptor STUB_CTR_AES_CRYPT = foreignCallDescriptorWithReturnType("ctrAESCrypt", CounterModeAESNode.KILLED_LOCATIONS,
+                    int.class, Pointer.class, Pointer.class, Pointer.class, Pointer.class, int.class, Pointer.class, Pointer.class);
 
-    public static final ForeignCallDescriptor[] STUBS = {
+    public static final ForeignCallDescriptor[] AES_STUBS = {
                     STUB_AES_ENCRYPT,
-                    STUB_AES_DECRYPT};
+                    STUB_AES_DECRYPT,
+                    STUB_CTR_AES_CRYPT,
+    };
 
-    private static ForeignCallDescriptor foreignCallDescriptor(String name, Class<?>... argTypes) {
-        return new ForeignCallDescriptor(name, void.class, argTypes, false, KILLED_LOCATIONS, false, false);
+    private static ForeignCallDescriptor foreignCallDescriptor(String name, LocationIdentity[] killLocations, Class<?>... argTypes) {
+        return new ForeignCallDescriptor(name, void.class, argTypes, false, killLocations, false, false);
+    }
+
+    private static ForeignCallDescriptor foreignCallDescriptorWithReturnType(String name, LocationIdentity[] killLocations, Class<?> returnType, Class<?>... argTypes) {
+        return new ForeignCallDescriptor(name, returnType, argTypes, false, killLocations, false, false);
     }
 }

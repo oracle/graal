@@ -219,20 +219,20 @@ public class PhaseSuite<C> extends BasePhase<C> implements PhasePlan<BasePhase<?
     }
 
     /**
-     * Removes the phases that implement {@link Speculative}.
+     * Removes all phases in this suite that are assignable to {@code type}.
      */
     @SuppressWarnings("unchecked")
-    public boolean removeSpeculativePhases() {
+    public boolean removeSubTypePhases(Class<?> type) {
         boolean hasRemovedSpeculativePhase = false;
         ListIterator<BasePhase<? super C>> it = phases.listIterator();
         while (it.hasNext()) {
             BasePhase<? super C> phase = it.next();
-            if (phase instanceof Speculative) {
+            if (type.isAssignableFrom(phase.getClass())) {
                 it.remove();
                 hasRemovedSpeculativePhase = true;
             } else if (phase instanceof PhaseSuite) {
                 PhaseSuite<C> innerSuite = (PhaseSuite<C>) phase;
-                if (innerSuite.removeSpeculativePhases()) {
+                if (innerSuite.removeSubTypePhases(type)) {
                     if (innerSuite.phases.isEmpty()) {
                         it.remove();
                     }
@@ -330,18 +330,18 @@ public class PhaseSuite<C> extends BasePhase<C> implements PhasePlan<BasePhase<?
      * {@link BasePhase#updateGraphState(GraphState)}.
      */
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         Formatter cannotApplyBuf = new Formatter();
         GraphState simulationGraphState = graphState.copy();
         for (BasePhase<? super C> phase : getPhases()) {
-            Optional<NotApplicable> phaseCanApply = phase.canApply(simulationGraphState);
-            if (phaseCanApply.isPresent()) {
+            Optional<NotApplicable> phaseNotApplicable = phase.notApplicableTo(simulationGraphState);
+            if (phaseNotApplicable.isPresent()) {
                 String name = phase.getClass().getName();
                 if (name.contains(".svm.") || name.contains(".truffle.")) {
-                    // GR-39494: canApply(GraphState) not yet implemented by SVM or Truffle
+                    // GR-39494: notApplicableTo(GraphState) not yet implemented by SVM or Truffle
                     // phases.
                 } else {
-                    cannotApplyBuf.format("%s : %s%n", phase.getClass().getName(), phaseCanApply.get().toString());
+                    cannotApplyBuf.format("%s : %s%n", phase.getClass().getName(), phaseNotApplicable.get().toString());
                 }
             }
             try {

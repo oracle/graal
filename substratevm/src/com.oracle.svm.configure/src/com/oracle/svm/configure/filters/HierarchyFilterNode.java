@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.configure.filters;
 
+import static com.oracle.svm.core.configure.ConfigurationParser.asList;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -32,9 +34,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 
-import com.oracle.svm.configure.json.JsonWriter;
+import org.graalvm.collections.EconomicMap;
 
-import static com.oracle.svm.core.configure.ConfigurationParser.asList;
+import com.oracle.svm.configure.json.JsonWriter;
 
 /** Represents a rule that includes or excludes a set of Java classes. */
 public final class HierarchyFilterNode implements ConfigurationFilter {
@@ -222,7 +224,7 @@ public final class HierarchyFilterNode implements ConfigurationFilter {
     }
 
     @Override
-    public void parseFromJson(Map<String, Object> top) {
+    public void parseFromJson(EconomicMap<String, Object> top) {
         Object rulesObject = top.get("rules");
         if (rulesObject != null) {
             List<Object> rulesList = asList(rulesObject, "Attribute 'list' must be a list of rule objects");

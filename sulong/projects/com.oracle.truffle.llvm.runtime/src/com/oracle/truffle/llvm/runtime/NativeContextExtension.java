@@ -48,7 +48,8 @@ public abstract class NativeContextExtension implements ContextExtension {
 
         private static final long serialVersionUID = 1L;
 
-        private final Type type;
+        // transient to shut up JDK19 warnings (this should never be serialized anyway)
+        private final transient Type type;
 
         public UnsupportedNativeTypeException(Type type) {
             super("unsupported type " + type + " in native interop");

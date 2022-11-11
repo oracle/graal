@@ -28,8 +28,8 @@ import java.lang.reflect.InvocationTargetException;
 
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
-import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
-import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.util.VMError;
 
@@ -57,6 +57,19 @@ public final class ReflectionAccessorHolder {
         /** Must match the signature of {@link ReflectionAccessorHolder#invokePrototype}. */
         @InvokeJavaFunctionPointer
         Object invoke(Object obj, Object[] args, CFunctionPointer invokedMethod);
+    }
+
+    private static Object invokePrototypeForCallerSensitiveAdapter(Object obj, Object[] args, CFunctionPointer invokedMethod, Class<?> callerClass) {
+        throw VMError.shouldNotReachHere("Only used as a prototype for generated methods");
+    }
+
+    public interface MethodInvokeFunctionPointerForCallerSensitiveAdapter extends CFunctionPointer {
+        /**
+         * Must match the signature of
+         * {@link ReflectionAccessorHolder#invokePrototypeForCallerSensitiveAdapter}.
+         */
+        @InvokeJavaFunctionPointer
+        Object invoke(Object obj, Object[] args, CFunctionPointer invokedMethod, Class<?> callerClass);
     }
 
     /*

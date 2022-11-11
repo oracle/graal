@@ -550,6 +550,44 @@ public final class GraphState {
     }
 
     /**
+     * Determines if this graph state is configured in a way it only allows explicit exception edges
+     * and no floating guards which would be lowered to deoptimize nodes.
+     */
+    public boolean isExplicitExceptionsNoDeopt() {
+        return guardsStage == GuardsStage.FIXED_DEOPTS && isAfterStage(StageFlag.GUARD_LOWERING);
+    }
+
+    /**
+     * Configure the graph to only allow explicit exception edges without floating guard nodes. That
+     * is the graph:
+     *
+     * <ul>
+     * <li>has explicit exception edges on {@link WithExceptionNode#exceptionEdge} successors</li>
+     * <li>the graph does not support floating {@link GuardNode} as they lower to
+     * {@link DeoptimizeNode}</li>
+     * <li>{@link GuardNode} nodes are never lowered since they are not part of the graph. The graph
+     * is always {@link #isAfterStage(StageFlag)} {@link StageFlag#GUARD_LOWERING}</li>
+     * </ul>
+     *
+     * Note that this operation is only possible on empty graphs, i.e., it must be called at the
+     * beginning of a compilation when a graph is created since it influences how the parser and
+     * other components build the graph and meta data.
+     */
+    public void configureExplicitExceptionsNoDeopt() {
+        assert !isExplicitExceptionsNoDeopt();
+        assert stageFlags.isEmpty() : "Must not have set a stage flag before";
+        assert guardsStage == GuardsStage.FLOATING_GUARDS : "Default guards stage is floating guards";
+        setGuardsStage(GraphState.GuardsStage.FIXED_DEOPTS);
+        setAfterStage(StageFlag.GUARD_LOWERING);
+    }
+
+    public void configureExplicitExceptionsNoDeoptIfNecessary() {
+        if (!isExplicitExceptionsNoDeopt()) {
+            configureExplicitExceptionsNoDeopt();
+        }
+    }
+
+    /**
      * Indicates FSA has been applied to this graph. (See {@link #setGuardsStage(GuardsStage)} and
      * {@link #setAfterStage(StageFlag)})
      */

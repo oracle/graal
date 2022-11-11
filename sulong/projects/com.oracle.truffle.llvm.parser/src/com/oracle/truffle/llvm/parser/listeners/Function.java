@@ -43,6 +43,11 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.BinaryOperation
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.BranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CastInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.CatchPadInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.CatchRetInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.CatchSwitchInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.CleanupPadInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.CleanupRetInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareExchangeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
@@ -95,6 +100,7 @@ import java.util.List;
 
 public final class Function implements ParserListener {
 
+    // See https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/Bitcode/LLVMBitCodes.h
     private static final int INSTRUCTION_DECLAREBLOCKS = 1;
     private static final int INSTRUCTION_BINOP = 2;
     private static final int INSTRUCTION_CAST = 3;
@@ -386,15 +392,31 @@ public final class Function implements ParserListener {
                 break;
 
             case INSTRUCTION_OPERAND_BUNDLE:
-                /*
-                 * Ignore for now, but record it's presence. Currently we only support operand
-                 * bundles for llvm.assume, and we don't actually do anything for them.
-                 */
-                operandBundle = OperandBundle.PRESENT;
+                attachOperandBundle(buffer);
                 break;
 
             case INSTRUCTION_FREEZE:
                 createFreeze(buffer);
+                break;
+
+            case INSTRUCTION_CLEANUPPAD:
+                createCleanupPad(buffer);
+                break;
+
+            case INSTRUCTION_CLEANUPRET:
+                createCleanupRet(buffer);
+                break;
+
+            case INSTRUCTION_CATCHSWITCH:
+                createCatchSwitch(buffer);
+                break;
+
+            case INSTRUCTION_CATCHPAD:
+                createCatchPad(buffer);
+                break;
+
+            case INSTRUCTION_CATCHRET:
+                createCatchRet(buffer);
                 break;
 
             default:
@@ -403,11 +425,6 @@ public final class Function implements ParserListener {
                     case INSTRUCTION_SELECT:
                     case INSTRUCTION_CMP:
                     case INSTRUCTION_STOREATOMIC_OLD:
-                    case INSTRUCTION_CLEANUPRET:
-                    case INSTRUCTION_CATCHRET:
-                    case INSTRUCTION_CATCHPAD:
-                    case INSTRUCTION_CLEANUPPAD:
-                    case INSTRUCTION_CATCHSWITCH:
                     case INSTRUCTION_CALLBR:
                         throw new LLVMParserException("Unsupported opCode in function block: " + opCode);
                     default:
@@ -432,6 +449,26 @@ public final class Function implements ParserListener {
     }
 
     private static final int INVOKE_HASEXPLICITFUNCTIONTYPE_SHIFT = 13;
+
+    private void attachOperandBundle(RecordBuffer buffer) {
+        String tag = function.getOperandBundleTags().getTag(buffer.readInt());
+
+        int nargs = 0;
+        while (buffer.remaining() > 0) {
+            readIndexSkipType(buffer);
+            nargs++;
+        }
+        buffer.setIndex(2);
+
+        Type[] argTypes = new Type[nargs];
+        int[] argValues = new int[nargs];
+        for (int i = 0; i < nargs; i++) {
+            argValues[i] = readIndex(buffer);
+            argTypes[i] = readValueType(buffer, argValues[i]);
+        }
+
+        operandBundle = new OperandBundle(tag, argTypes, argValues);
+    }
 
     private void createInvoke(RecordBuffer buffer) {
         AttributesCodeEntry paramAttr = paramAttributes.getCodeEntry(buffer.read());
@@ -485,6 +522,64 @@ public final class Function implements ParserListener {
     private void createResume(RecordBuffer buffer) {
         int val = readIndexSkipType(buffer);
         emit(ResumeInstruction.fromSymbols(scope.getSymbols(), val));
+        isLastBlockTerminated = true;
+    }
+
+    private void createCleanupPad(RecordBuffer buffer) {
+        int index = readIndex(buffer);
+        int num = buffer.readInt();
+        Type[] argTypes = new Type[num];
+        int[] argValues = new int[num];
+        for (int i = 0; i < num; i++) {
+            argValues[i] = readIndex(buffer);
+            argTypes[i] = readValueType(buffer, argValues[i]);
+        }
+
+        emit(CleanupPadInstruction.generate(scope.getSymbols(), index, argTypes, argValues));
+    }
+
+    private void createCleanupRet(RecordBuffer buffer) {
+        int fromIndex = readIndex(buffer);
+        InstructionBlock unwindSuccessor = null;
+        if (buffer.size() > 1) {
+            unwindSuccessor = function.getBlock(buffer.read());
+        }
+        emit(CleanupRetInstruction.generate(scope.getSymbols(), fromIndex, unwindSuccessor));
+        isLastBlockTerminated = true;
+    }
+
+    private void createCatchSwitch(RecordBuffer buffer) {
+        int withinIndex = readIndex(buffer);
+        int num = buffer.readInt();
+        InstructionBlock[] cases = new InstructionBlock[num];
+        for (int i = 0; i < num; i++) {
+            cases[i] = function.getBlock(buffer.read());
+        }
+        InstructionBlock unwind = null;
+        if (buffer.remaining() > 0) {
+            assert buffer.remaining() == 1;
+            unwind = function.getBlock(buffer.read());
+        }
+        emit(CatchSwitchInstruction.generate(scope.getSymbols(), instructionBlock, withinIndex, cases, unwind));
+        isLastBlockTerminated = true;
+    }
+
+    private void createCatchPad(RecordBuffer buffer) {
+        int withinIndex = readIndex(buffer);
+        int num = buffer.readInt();
+        Type[] argTypes = new Type[num];
+        int[] argValues = new int[num];
+        for (int i = 0; i < num; i++) {
+            argValues[i] = readIndex(buffer);
+            argTypes[i] = readValueType(buffer, argValues[i]);
+        }
+        emit(CatchPadInstruction.generate(scope.getSymbols(), withinIndex, argTypes, argValues));
+    }
+
+    private void createCatchRet(RecordBuffer buffer) {
+        int fromIndex = readIndex(buffer);
+        InstructionBlock unwindSuccessor = function.getBlock(buffer.read());
+        emit(CatchRetInstruction.generate(scope.getSymbols(), fromIndex, unwindSuccessor));
         isLastBlockTerminated = true;
     }
 

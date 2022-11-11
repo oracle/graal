@@ -108,6 +108,12 @@ public class PerfDataSupportImpl implements PerfDataSupport {
         return perfManager.getLongPerfEntry(name);
     }
 
+    @Override
+    public boolean hasLong(String name) {
+        PerfManager perfManager = ImageSingletons.lookup(PerfManager.class);
+        return perfManager.hasLongPerfEntry(name);
+    }
+
     private static void waitForPerformanceDataInitialization() {
         ImageSingletons.lookup(PerfManager.class).waitForInitialization();
     }

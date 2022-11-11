@@ -86,7 +86,8 @@ public abstract class AddPathToBindingsNode extends Node {
 
     Method lookupMethod(LookupDeclaredMethod lookup, Klass k, String member, EspressoContext context) {
         try {
-            return lookup.execute(k, member, false, false, -1).getMethod();
+            // we know that there are no overloads for these methods
+            return lookup.execute(k, member, false, false, -1)[0];
         } catch (ArityException | NullPointerException e) {
             throw context.getMeta().throwException(context.getMeta().java_lang_IllegalArgumentException);
         }

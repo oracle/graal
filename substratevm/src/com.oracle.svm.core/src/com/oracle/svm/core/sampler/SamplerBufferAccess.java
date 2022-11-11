@@ -33,14 +33,14 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 /**
- * Used to access the raw memory of a {@link SamplerBufferAccess}.
+ * Used to access the raw memory of a {@link SamplerBuffer}.
  */
-final class SamplerBufferAccess {
+public final class SamplerBufferAccess {
 
     private SamplerBufferAccess() {
     }

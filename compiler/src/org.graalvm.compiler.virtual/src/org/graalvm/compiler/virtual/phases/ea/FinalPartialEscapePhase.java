@@ -45,11 +45,15 @@ public class FinalPartialEscapePhase extends PartialEscapePhase {
         super(iterative, Options.OptEarlyReadElimination.getValue(options), canonicalizer, cleanupPhase, options);
     }
 
+    public FinalPartialEscapePhase(int iterations, CanonicalizerPhase canonicalizer, BasePhase<CoreProviders> cleanupPhase, OptionValues options) {
+        super(iterations, Options.OptEarlyReadElimination.getValue(options), canonicalizer, cleanupPhase);
+    }
+
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
-                        super.canApply(graphState),
-                        NotApplicable.canOnlyApplyOnce(this, StageFlag.FINAL_PARTIAL_ESCAPE, graphState));
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        NotApplicable.ifApplied(this, StageFlag.FINAL_PARTIAL_ESCAPE, graphState));
     }
 
     @Override

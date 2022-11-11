@@ -28,11 +28,6 @@ import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.R
 
 import java.util.Arrays;
 
-import com.oracle.svm.core.code.CodeInfoAccess.DummyValueInfoAllocator;
-import com.oracle.svm.core.code.CodeInfoAccess.FrameInfoState;
-import com.oracle.svm.core.code.CodeInfoAccess.SingleShotFrameInfoQueryResultAllocator;
-import com.oracle.svm.core.code.FrameInfoQueryResult;
-import com.oracle.svm.core.code.ReusableTypeReader;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -47,7 +42,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
@@ -58,20 +52,25 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.code.CodeInfoAccess.DummyValueInfoAllocator;
+import com.oracle.svm.core.code.CodeInfoAccess.FrameInfoState;
+import com.oracle.svm.core.code.CodeInfoAccess.SingleShotFrameInfoQueryResultAllocator;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.RuntimeCodeInfoHistory;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
+import com.oracle.svm.core.code.UninterruptibleReusableTypeReader;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMLockSupport;
@@ -176,7 +175,7 @@ public class SubstrateDiagnostics {
      */
     public static void printInformation(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context registerContext, boolean frameHasCalleeSavedRegisters) {
         // Stack allocate an error context.
-        ErrorContext errorContext = StackValue.get(ErrorContext.class);
+        ErrorContext errorContext = UnsafeStackValue.get(ErrorContext.class);
         errorContext.setStackPointer(sp);
         errorContext.setInstructionPointer(ip);
         errorContext.setRegisterContext(registerContext);
@@ -958,7 +957,7 @@ public class SubstrateDiagnostics {
     }
 
     private static class ImageCodeLocationInfoPrinter {
-        private final ReusableTypeReader frameInfoReader = new ReusableTypeReader();
+        private final UninterruptibleReusableTypeReader frameInfoReader = new UninterruptibleReusableTypeReader();
         private final SingleShotFrameInfoQueryResultAllocator singleShotFrameInfoQueryResultAllocator = new SingleShotFrameInfoQueryResultAllocator();
         private final DummyValueInfoAllocator dummyValueInfoAllocator = new DummyValueInfoAllocator();
         private final FrameInfoState frameInfoState = new FrameInfoState();

@@ -287,7 +287,7 @@ public class NativeImageGeneratorRunner {
         try (StopTimer ignored = totalTimer.start()) {
             Timer classlistTimer = timerCollection.get(TimerCollection.Registry.CLASSLIST);
             try (StopTimer ignored1 = classlistTimer.start()) {
-                classLoader.initAllClasses();
+                classLoader.loadAllClasses();
             }
 
             DebugContext debug = new DebugContext.Builder(parsedHostedOptions, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
@@ -327,7 +327,7 @@ public class NativeImageGeneratorRunner {
                     Method mainEntryPoint;
                     Class<?> mainClass;
                     try {
-                        Object mainModule = null;
+                        Module mainModule = null;
                         if (!moduleName.isEmpty()) {
                             mainModule = classLoader.findModule(moduleName)
                                             .orElseThrow(() -> UserError.abort("Module " + moduleName + " for mainclass not found."));

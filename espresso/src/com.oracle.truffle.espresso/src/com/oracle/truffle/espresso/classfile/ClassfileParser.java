@@ -55,8 +55,6 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
-import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
-import com.oracle.truffle.espresso.verifier.MethodVerifier;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
@@ -86,6 +84,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ParserField;
 import com.oracle.truffle.espresso.impl.ParserKlass;
@@ -101,6 +100,7 @@ import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.verifier.MethodVerifier;
 
 @SuppressWarnings("try")
 public final class ClassfileParser {
@@ -176,22 +176,22 @@ public final class ClassfileParser {
     private int maxBootstrapMethodAttrIndex = -1;
     private Tag badConstantSeen;
 
-    StaticObject loader;
+    boolean verifiable;
 
     private ConstantPool pool;
 
-    private ClassfileParser(ClassLoadingEnv env, ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassType, ClassRegistry.ClassDefinitionInfo info) {
+    private ClassfileParser(ClassLoadingEnv env, ClassfileStream stream, boolean verifiable, Symbol<Type> requestedClassType, ClassRegistry.ClassDefinitionInfo info) {
         this.requestedClassType = requestedClassType;
         this.env = env;
         this.classfile = null;
         this.stream = Objects.requireNonNull(stream);
-        this.loader = loader;
+        this.verifiable = verifiable;
         this.classDefinitionInfo = info;
     }
 
     // Note: only used for reading the class name from class bytes
     private ClassfileParser(ClassLoadingEnv env, ClassfileStream stream) {
-        this(env, stream, null, null, ClassRegistry.ClassDefinitionInfo.EMPTY);
+        this(env, stream, false, null, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
     void handleBadConstant(Tag tag, ClassfileStream s) {
@@ -224,11 +224,16 @@ public final class ClassfileParser {
     }
 
     public static ParserKlass parse(ClassLoadingEnv env, ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassName) {
-        return parse(env, stream, loader, requestedClassName, ClassRegistry.ClassDefinitionInfo.EMPTY);
+        boolean verifiable = MethodVerifier.needsVerify(env.getLanguage(), loader);
+        return parse(env, stream, verifiable, requestedClassName, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
-    public static ParserKlass parse(ClassLoadingEnv env, ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassType, ClassRegistry.ClassDefinitionInfo info) {
-        return new ClassfileParser(env, stream, loader, requestedClassType, info).parseClass();
+    public static ParserKlass parse(ClassLoadingEnv env, ClassfileStream stream, boolean verifiable, Symbol<Type> requestedClassName) {
+        return parse(env, stream, verifiable, requestedClassName, ClassRegistry.ClassDefinitionInfo.EMPTY);
+    }
+
+    public static ParserKlass parse(ClassLoadingEnv env, ClassfileStream stream, boolean verifiable, Symbol<Type> requestedClassType, ClassRegistry.ClassDefinitionInfo info) {
+        return new ClassfileParser(env, stream, verifiable, requestedClassType, info).parseClass();
     }
 
     private ParserKlass parseClass() {
@@ -1307,7 +1312,7 @@ public final class ClassfileParser {
     }
 
     private StackMapTableAttribute parseStackMapTableAttribute(Symbol<Name> attributeName, int attributeSize) {
-        if (MethodVerifier.needsVerify(env.getLanguage(), loader)) {
+        if (verifiable) {
             return new StackMapTableAttribute(attributeName, stream.readByteArray(attributeSize));
         }
         stream.skip(attributeSize);

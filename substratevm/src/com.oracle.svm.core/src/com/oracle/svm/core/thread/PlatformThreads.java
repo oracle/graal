@@ -26,10 +26,12 @@ package com.oracle.svm.core.thread;
 
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.thread.JavaThreads.fromTarget;
+import static com.oracle.svm.core.thread.JavaThreads.isCurrentThreadVirtual;
 import static com.oracle.svm.core.thread.JavaThreads.isVirtual;
 import static com.oracle.svm.core.thread.JavaThreads.toTarget;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -60,20 +62,22 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
@@ -403,6 +407,7 @@ public abstract class PlatformThreads {
      * Returns true if the {@link Thread} object for the current thread exists. This method only
      * returns false in the very early initialization stages of a newly attached thread.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isCurrentAssigned() {
         return currentThread.get() != null;
     }
@@ -482,9 +487,9 @@ public abstract class PlatformThreads {
     }
 
     static void setCurrentThread(Thread carrier, Thread thread) {
-        Thread currentCarrierThread = currentThread.get();
-        assert currentCarrierThread == carrier;
-        toTarget(carrier).vthread = (thread != currentCarrierThread) ? thread : null;
+        assert carrier == currentThread.get();
+        assert thread == carrier || (VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(thread));
+        toTarget(carrier).vthread = (thread != carrier) ? thread : null;
     }
 
     @Uninterruptible(reason = "Called during isolate initialization")
@@ -520,6 +525,31 @@ public abstract class PlatformThreads {
                 nonDaemonThreads.decrementAndGet();
             }
         }
+    }
+
+    @SuppressWarnings("unused")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public OSThreadHandle startThreadUnmanaged(CFunctionPointer threadRoutine, PointerBase userData, int stackSize) {
+        throw VMError.shouldNotReachHere("Shouldn't call PlatformThreads.startThreadUnmanaged directly.");
+    }
+
+    @SuppressWarnings("unused")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean joinThreadUnmanaged(OSThreadHandle threadHandle, WordPointer threadExitStatus) {
+        throw VMError.shouldNotReachHere("Shouldn't call PlatformThreads.joinThreadUnmanaged directly.");
+    }
+
+    @SuppressWarnings("unused")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void closeOSThreadHandle(OSThreadHandle threadHandle) {
+        throw VMError.shouldNotReachHere("Shouldn't call PlatformThreads.closeOSThreadHandle directly.");
+    }
+
+    static final Method FORK_JOIN_POOL_TRY_TERMINATE_METHOD;
+
+    static {
+        VMError.guarantee(ImageInfo.inImageBuildtimeCode(), PlatformThreads.class.getSimpleName() + " must be initialized at build time.");
+        FORK_JOIN_POOL_TRY_TERMINATE_METHOD = ReflectionUtil.lookupMethod(ForkJoinPool.class, "tryTerminate", boolean.class, boolean.class);
     }
 
     /** Have each thread, except this one, tear itself down. */
@@ -584,13 +614,18 @@ public abstract class PlatformThreads {
 
         pools.removeAll(poolsWithNonDaemons);
         for (ExecutorService pool : pools) {
-            trace.string("  shutting down: ").object(pool);
+            trace.string("  initiating shutdown: ").object(pool);
             try {
-                pool.shutdownNow();
+                if (pool == ForkJoinPool.commonPool()) {
+                    FORK_JOIN_POOL_TRY_TERMINATE_METHOD.invoke(pool, true, true);
+                } else {
+                    pool.shutdownNow();
+                }
             } catch (Throwable t) {
                 trace.string(" threw (ignored): ").exception(t);
             }
             trace.newline().flush();
+            trace.string("  shutdown initiated: ").object(pool).newline().flush();
         }
 
         final boolean result = waitForTearDown();
@@ -882,7 +917,7 @@ public abstract class PlatformThreads {
 
     /** Sleep for the given number of nanoseconds, dealing with early wakeups and interruptions. */
     static void sleep(long millis) throws InterruptedException {
-        assert !isVirtual(Thread.currentThread());
+        assert !isCurrentThreadVirtual();
         if (millis < 0) {
             throw new IllegalArgumentException("timeout value is negative");
         }
@@ -1015,7 +1050,10 @@ public abstract class PlatformThreads {
         @Override
         protected void operate() {
             for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
-                result.add(PlatformThreads.fromVMThread(cur));
+                Thread thread = PlatformThreads.fromVMThread(cur);
+                if (thread != null) {
+                    result.add(thread);
+                }
             }
         }
     }
@@ -1117,7 +1155,7 @@ public abstract class PlatformThreads {
     }
 
     static void blockedOn(Target_sun_nio_ch_Interruptible b) {
-        assert !isVirtual(Thread.currentThread());
+        assert !isCurrentThreadVirtual();
         Target_java_lang_Thread me = toTarget(currentThread.get());
         if (JavaVersionUtil.JAVA_SPEC >= 19) {
             synchronized (me.interruptLock) {
@@ -1128,6 +1166,9 @@ public abstract class PlatformThreads {
                 me.blocker = b;
             }
         }
+    }
+
+    public interface OSThreadHandle extends PointerBase {
     }
 }
 

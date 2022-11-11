@@ -63,14 +63,12 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
     @Override
     public boolean forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
         PointsToAnalysis analysis = getAnalysis();
-        AnalysisType fieldType = analysis.getMetaAccess().lookupJavaType(analysis.getSnippetReflectionProvider().asObject(Object.class, fieldValue).getClass());
+        AnalysisType fieldType = analysis.getMetaAccess().lookupJavaType(fieldValue);
 
         /* Add the constant value object to the field's type flow. */
         FieldTypeFlow fieldTypeFlow = getFieldTypeFlow(field, receiver);
-        AnalysisObject constantObject = bb.analysisPolicy().createConstantObject(analysis, fieldValue, fieldType);
         /* Add the new constant to the field's flow state. */
-        TypeState constantTypeState = TypeState.forNonNullObject(analysis, constantObject);
-        return fieldTypeFlow.addState(analysis, constantTypeState);
+        return fieldTypeFlow.addState(analysis, bb.analysisPolicy().constantTypeState(analysis, fieldValue, fieldType));
     }
 
     /**
@@ -87,7 +85,7 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
              * constant object.
              */
             PointsToAnalysis analysis = getAnalysis();
-            AnalysisType receiverType = analysis.getMetaAccess().lookupJavaType(analysis.getSnippetReflectionProvider().asObject(Object.class, receiver).getClass());
+            AnalysisType receiverType = analysis.getMetaAccess().lookupJavaType(receiver);
             AnalysisObject constantReceiverObj = analysis.analysisPolicy().createConstantObject(analysis, receiver, receiverType);
             return constantReceiverObj.getInstanceFieldFlow(analysis, field, true);
         }
@@ -107,10 +105,8 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
     public boolean forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int elementIndex, ScanReason reason) {
         ArrayElementsTypeFlow arrayObjElementsFlow = getArrayElementsFlow(array, arrayType);
         PointsToAnalysis analysis = getAnalysis();
-        AnalysisObject constantObject = bb.analysisPolicy().createConstantObject(analysis, elementConstant, elementType);
         /* Add the constant element to the constant's array type flow. */
-        TypeState elementTypeState = TypeState.forNonNullObject(analysis, constantObject);
-        return arrayObjElementsFlow.addState(analysis, elementTypeState);
+        return arrayObjElementsFlow.addState(analysis, bb.analysisPolicy().constantTypeState(analysis, elementConstant, elementType));
     }
 
     /**

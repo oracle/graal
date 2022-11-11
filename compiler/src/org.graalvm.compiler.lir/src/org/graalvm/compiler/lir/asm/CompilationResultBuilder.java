@@ -127,7 +127,7 @@ public class CompilationResultBuilder {
         }
     }
 
-    public final Assembler asm;
+    public final Assembler<?> asm;
     public final DataBuilder dataBuilder;
     public final CompilationResult compilationResult;
     public final Register uncompressedNullRegister;
@@ -189,7 +189,7 @@ public class CompilationResultBuilder {
 
     public CompilationResultBuilder(CodeGenProviders providers,
                     FrameMap frameMap,
-                    Assembler asm,
+                    Assembler<?> asm,
                     DataBuilder dataBuilder,
                     FrameContext frameContext,
                     OptionValues options,
@@ -211,7 +211,7 @@ public class CompilationResultBuilder {
 
     public CompilationResultBuilder(CodeGenProviders providers,
                     FrameMap frameMap,
-                    Assembler asm,
+                    Assembler<?> asm,
                     DataBuilder dataBuilder,
                     FrameContext frameContext,
                     OptionValues options,
@@ -243,6 +243,13 @@ public class CompilationResultBuilder {
 
     public void setMaxInterpreterFrameSize(int maxInterpreterFrameSize) {
         compilationResult.setMaxInterpreterFrameSize(maxInterpreterFrameSize);
+    }
+
+    /**
+     * Sets the minimum alignment for an item in the {@linkplain DataSectionReference data section}.
+     */
+    public void setMinDataSectionItemAlignment(int alignment) {
+        compilationResult.setMinDataSectionItemAlignment(alignment);
     }
 
     /**
@@ -342,14 +349,30 @@ public class CompilationResultBuilder {
         return false;
     }
 
+    /**
+     * Helper to mark invalid deoptimization state as needed.
+     */
+    private void recordIfCallInvalidForDeoptimization(LIRFrameState info, Call call) {
+        if (info != null && !info.validForDeoptimization && info.hasDebugInfo()) {
+            DebugInfo debugInfo = info.debugInfo();
+            assert debugInfo != null;
+            if (debugInfo.hasFrame()) {
+                compilationResult.recordCallInvalidForDeoptimization(call);
+            }
+        }
+    }
+
     public Call recordDirectCall(int posBefore, int posAfter, InvokeTarget callTarget, LIRFrameState info) {
         DebugInfo debugInfo = info != null ? info.debugInfo() : null;
-        return compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, true);
+        Call call = compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, true);
+        recordIfCallInvalidForDeoptimization(info, call);
+        return call;
     }
 
     public void recordIndirectCall(int posBefore, int posAfter, InvokeTarget callTarget, LIRFrameState info) {
         DebugInfo debugInfo = info != null ? info.debugInfo() : null;
-        compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, false);
+        Call infopoint = compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, false);
+        recordIfCallInvalidForDeoptimization(info, infopoint);
     }
 
     public void recordInfopoint(int pos, LIRFrameState info, InfopointReason reason) {

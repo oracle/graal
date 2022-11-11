@@ -61,7 +61,7 @@ public abstract class SystemPropertiesSupport {
                      */
                     "line.separator", "path.separator", "file.separator",
                     /* For our convenience for now. */
-                    "file.encoding", "sun.jnu.encoding",
+                    "file.encoding", "sun.jnu.encoding", "native.encoding", "stdout.encoding", "stderr.encoding",
                     "java.class.version",
                     "java.specification.name",
                     "java.specification.vendor",
@@ -96,8 +96,10 @@ public abstract class SystemPropertiesSupport {
 
         for (String key : HOSTED_PROPERTIES) {
             String value = System.getProperty(key);
-            properties.put(key, value);
-            savedProperties.put(key, value);
+            if (value != null) {
+                properties.put(key, value);
+                savedProperties.put(key, value);
+            }
         }
 
         initializeProperty("java.vm.name", "Substrate VM");

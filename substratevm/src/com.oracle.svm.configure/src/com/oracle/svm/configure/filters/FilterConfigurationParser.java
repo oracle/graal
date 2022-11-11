@@ -26,12 +26,14 @@ package com.oracle.svm.configure.filters;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.Map;
 import java.util.function.BiConsumer;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
+import org.graalvm.util.json.JSONParserException;
 
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.util.json.JSONParserException;
 
 public class FilterConfigurationParser extends ConfigurationParser {
     private final ConfigurationFilter filter;
@@ -43,21 +45,22 @@ public class FilterConfigurationParser extends ConfigurationParser {
     }
 
     static void parseEntry(Object entryObject, BiConsumer<String, ConfigurationFilter.Inclusion> parsedEntryConsumer) {
-        Map<String, Object> entry = asMap(entryObject, "Filter entries must be objects");
+        EconomicMap<String, Object> entry = asMap(entryObject, "Filter entries must be objects");
         Object qualified = null;
         HierarchyFilterNode.Inclusion inclusion = null;
         String exactlyOneMessage = "Exactly one of attributes 'includeClasses' and 'excludeClasses' must be specified for a filter entry";
-        for (Map.Entry<String, Object> pair : entry.entrySet()) {
+        MapCursor<String, Object> cursor = entry.getEntries();
+        while (cursor.advance()) {
             if (qualified != null) {
                 throw new JSONParserException(exactlyOneMessage);
             }
-            qualified = pair.getValue();
-            if ("includeClasses".equals(pair.getKey())) {
+            qualified = cursor.getValue();
+            if ("includeClasses".equals(cursor.getKey())) {
                 inclusion = ConfigurationFilter.Inclusion.Include;
-            } else if ("excludeClasses".equals(pair.getKey())) {
+            } else if ("excludeClasses".equals(cursor.getKey())) {
                 inclusion = ConfigurationFilter.Inclusion.Exclude;
             } else {
-                throw new JSONParserException("Unknown attribute '" + pair.getKey() + "' (supported attributes: 'includeClasses', 'excludeClasses') in filter");
+                throw new JSONParserException("Unknown attribute '" + cursor.getKey() + "' (supported attributes: 'includeClasses', 'excludeClasses') in filter");
             }
         }
         if (qualified == null) {

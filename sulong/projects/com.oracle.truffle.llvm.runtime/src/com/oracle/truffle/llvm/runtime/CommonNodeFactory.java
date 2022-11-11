@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToAnyLLVMNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToDoubleNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.convert.ToFP80NodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToFloatNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToI16NodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToI1NodeGen;
@@ -826,6 +827,8 @@ public class CommonNodeFactory {
                 return ToFloatNodeGen.create();
             case DOUBLE:
                 return ToDoubleNodeGen.create();
+            case FP80:
+                return ToFP80NodeGen.create();
             case POINTER:
                 return ToPointer.create();
             default:
@@ -849,6 +852,8 @@ public class CommonNodeFactory {
                 return ToFloatNodeGen.create();
             case DOUBLE:
                 return ToDoubleNodeGen.create();
+            case FP80:
+                return ToFP80NodeGen.create();
             case POINTER:
                 return ToPointer.create(type.baseType);
             default:

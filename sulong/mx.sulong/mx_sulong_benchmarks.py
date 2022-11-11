@@ -163,6 +163,10 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                 return [re.compile(r'.*', re.MULTILINE)]
         return []
 
+    def flakySuccessPatterns(self):
+        # bzip2 is known to have a compiler error during OSR compilation, which would trigger failurePatterns
+        return [re.compile(r'bzip2')]  # GR-38646
+
     def rules(self, out, benchmarks, bmSuiteArgs):
         if self.use_polybench:
             return self.polybenchRules(out, benchmarks, bmSuiteArgs)
@@ -522,7 +526,7 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
     def launcher_args(self, args):
         launcher_args = [
             '--experimental-options',
-            '--engine.CompilationFailureAction=ExitVM',
+            '--engine.CompilationFailureAction=Diagnose',
             '--engine.TreatPerformanceWarningsAsErrors=call,instanceof,store',
         ]
         return launcher_args + args

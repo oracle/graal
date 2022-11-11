@@ -29,6 +29,9 @@ import java.util.Iterator;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * See https://github.com/oracle/graal/blob/master/truffle/docs/TraversingCompilationQueue.md .
+ */
 class TraversingBlockingQueue implements BlockingQueue<Runnable> {
 
     final BlockingQueue<Runnable> entries;

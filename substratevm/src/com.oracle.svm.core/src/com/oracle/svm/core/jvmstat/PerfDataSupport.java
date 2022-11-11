@@ -44,6 +44,8 @@ public interface PerfDataSupport {
     ByteBuffer createByteArray(String name, int variability, int units, byte[] value, int maxLength);
 
     CLongPointer getLong(String name);
+
+    boolean hasLong(String name);
 }
 
 class NoPerfDataSupport implements PerfDataSupport {
@@ -84,5 +86,10 @@ class NoPerfDataSupport implements PerfDataSupport {
     @Override
     public CLongPointer getLong(String name) {
         throw new IllegalArgumentException("Performance data is not supported.");
+    }
+
+    @Override
+    public boolean hasLong(String name) {
+        return false;
     }
 }

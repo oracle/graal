@@ -3,6 +3,7 @@ layout: docs
 toc_group: reference-manual
 link_title: Polyglot Programming
 permalink: /reference-manual/polyglot-programming/
+redirect_from: /$version/docs/polyglot-programming/
 ---
 
 # Polyglot Programming
@@ -124,7 +125,7 @@ tab5type="python" tab5id="python_to_llvm" tab5name="LLVM" tab5path="polyglot_ref
 Run:
 
 ```shell
-graalpython --polyglot --jvm polyglot.py
+graalpy --polyglot --jvm polyglot.py
 42
 ```
 

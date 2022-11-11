@@ -34,6 +34,7 @@ import java.util.regex.Pattern;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.After;
 import org.junit.Test;
 
@@ -310,7 +311,7 @@ public class SLInspectDebugTest {
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"10\"}}]," +
                                                  "\"this\":null," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
-                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":19,\"lineNumber\":2}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":20,\"lineNumber\":2}," +
                                                  "\"url\":\"" + slTestURI + "\"}]}}\n"
         ));
         tester.sendMessage("{\"id\":100,\"method\":\"Debugger.stepOut\"}");
@@ -537,7 +538,7 @@ public class SLInspectDebugTest {
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"24\"}}]," +
                                                  "\"this\":null," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
-                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":15,\"lineNumber\":4}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":16,\"lineNumber\":4}," +
                                                  "\"url\":\"" + srcURL + "\"}]}}\n"
         ));
         // Deactivate the breakpoints again:
@@ -903,7 +904,7 @@ public class SLInspectDebugTest {
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"6\"}}]," +
                                                  "\"this\":null," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
-                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":0,\"lineNumber\":10}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":1,\"lineNumber\":10}," +
                                                  "\"url\":\"" + publicSourceURI + "\"}]}}\n"));
         tester.sendMessage("{\"id\":51,\"method\":\"Debugger.stepOver\"}");
         // at public:1 again (main -> public)
@@ -995,7 +996,7 @@ public class SLInspectDebugTest {
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"22\"}}]," +
                                                  "\"this\":null," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
-                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":0,\"lineNumber\":10}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":1,\"lineNumber\":10}," +
                                                  "\"url\":\"" + publicSourceURI + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"public\"," +
                                                  "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"23\"}}," +
@@ -1015,7 +1016,7 @@ public class SLInspectDebugTest {
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"26\"}}]," +
                                                  "\"this\":null," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
-                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":26,\"lineNumber\":7}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":27,\"lineNumber\":7}," +
                                                  "\"url\":\"" + publicSourceURI + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"public\"," +
                                                  "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"27\"}}," +
@@ -1035,7 +1036,7 @@ public class SLInspectDebugTest {
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"30\"}}]," +
                                                  "\"this\":null," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
-                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":0,\"lineNumber\":10}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":1,\"lineNumber\":10}," +
                                                  "\"url\":\"" + publicSourceURI + "\"}]}}\n"));
         tester.sendMessage("{\"id\":13,\"method\":\"Debugger.stepInto\"}");
         // No more suspension (we're in internal sources)
@@ -1196,7 +1197,7 @@ public class SLInspectDebugTest {
         file.createNewFile();
         file.deleteOnExit();
 
-        Context context = Context.newBuilder().allowIO(true).build();
+        Context context = Context.newBuilder().allowIO(IOAccess.ALL).build();
         context.initialize("sl");
         context.enter();
         TruffleFile truffleFile = SLContext.get(null).getEnv().getPublicTruffleFile(file.toPath().toString());
@@ -1294,7 +1295,7 @@ public class SLInspectDebugTest {
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"10\"}}]," +
                                                  "\"this\":null," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
-                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":27,\"lineNumber\":8}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":28,\"lineNumber\":8}," +
                                                  "\"url\":\"" + srcURL + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"factorial\"," +
                                                  "\"scopeChain\":[{\"name\":\"factorial\",\"type\":\"local\",\"object\":{\"description\":\"factorial\",\"type\":\"object\",\"objectId\":\"11\"}}," +
@@ -1319,7 +1320,7 @@ public class SLInspectDebugTest {
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"16\"}}]," +
                                                  "\"this\":null," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
-                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":13,\"lineNumber\":2}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":14,\"lineNumber\":2}," +
                                                  "\"url\":\"" + srcURL + "\"}]}," +
                         "\"id\":5}\n"));
         tester.sendMessage("{\"id\":6,\"method\":\"Debugger.resume\"}");
@@ -1449,7 +1450,7 @@ public class SLInspectDebugTest {
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"14\"}}]," +
                                                  "\"this\":null," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":10}," +
-                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":0,\"lineNumber\":12}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":1,\"lineNumber\":12}," +
                                                  "\"url\":\"" + slTestURI + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"addThem\"," +
                                                  "\"scopeChain\":[{\"name\":\"addThem\",\"type\":\"local\",\"object\":{\"description\":\"addThem\",\"type\":\"object\",\"objectId\":\"15\"}}," +
@@ -1476,7 +1477,7 @@ public class SLInspectDebugTest {
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"20\"}}]," +
                                                  "\"this\":null," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
-                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":10,\"lineNumber\":5}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":11,\"lineNumber\":5}," +
                                                  "\"url\":\"" + slTestURI + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"21\"}}," +
@@ -1550,7 +1551,7 @@ public class SLInspectDebugTest {
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"34\"}}]," +
                                                  "\"this\":null," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
-                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":10,\"lineNumber\":6}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":11,\"lineNumber\":6}," +
                                                  "\"url\":\"" + slTestURI + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"35\"}}," +
@@ -1751,7 +1752,7 @@ public class SLInspectDebugTest {
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
                                                  "\"this\":null," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
-                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":11,\"lineNumber\":5}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":12,\"lineNumber\":5}," +
                                                  "\"url\":\"" + srcURL + "\"}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"3\"}}," +

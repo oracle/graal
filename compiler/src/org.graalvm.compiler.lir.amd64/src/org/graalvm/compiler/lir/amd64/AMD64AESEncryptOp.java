@@ -48,15 +48,17 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64.cpp",
-          lineStart = 3590,
-          lineEnd   = 3681,
-          commit    = "61e072d11c8e0cb5879bb733ed1fdd2144326bfd",
-          sha1      = "05aff5a50178ceef327feac219b55e354241a77b")
+@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp",
+          lineStart = 907,
+          lineEnd   = 999,
+          commit    = "9d76ac8a4453bc51d9dca2ad6c60259cfb2c4203",
+          sha1      = "6897adbbb852fe319f6425dda3aa1623920f8a30")
 // @formatter:on
 public final class AMD64AESEncryptOp extends AMD64LIRInstruction {
 
     public static final LIRInstructionClass<AMD64AESEncryptOp> TYPE = LIRInstructionClass.create(AMD64AESEncryptOp.class);
+
+    public static final int AES_BLOCK_SIZE = 16;
 
     private final int lengthOffset;
 
@@ -105,6 +107,10 @@ public final class AMD64AESEncryptOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        assert fromValue.getPlatformKind().equals(AMD64Kind.QWORD) : fromValue;
+        assert toValue.getPlatformKind().equals(AMD64Kind.QWORD) : toValue;
+        assert keyValue.getPlatformKind().equals(AMD64Kind.QWORD) : keyValue;
+
         Label labelDoLast = new Label();
 
         Register from = asRegister(fromValue); // source array address

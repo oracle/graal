@@ -198,6 +198,8 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         return piCastToSnippetReplaceeStamp(result);
     }
 
+    private final SnippetInfo doClone;
+
     @SuppressWarnings("unused")
     public static void registerLowerings(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         new SubstrateObjectCloneSnippets(options, providers, lowerings);
@@ -206,15 +208,16 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
     private SubstrateObjectCloneSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, providers);
 
+        this.doClone = snippet(providers, SubstrateObjectCloneSnippets.class, "cloneSnippet");
+
         ObjectCloneLowering objectCloneLowering = new ObjectCloneLowering();
         lowerings.put(SubstrateObjectCloneNode.class, objectCloneLowering);
         ObjectCloneWithExceptionLowering objectCloneWithExceptionLowering = new ObjectCloneWithExceptionLowering();
         lowerings.put(SubstrateObjectCloneWithExceptionNode.class, objectCloneWithExceptionLowering);
+
     }
 
     final class ObjectCloneLowering implements NodeLoweringProvider<SubstrateObjectCloneNode> {
-        private final SnippetInfo doClone = snippet(SubstrateObjectCloneSnippets.class, "cloneSnippet");
-
         @Override
         public void lower(SubstrateObjectCloneNode node, LoweringTool tool) {
             if (node.graph().getGuardsStage() != GraphState.GuardsStage.AFTER_FSA) {
@@ -224,7 +227,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
             Arguments args = new Arguments(doClone, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("thisObj", node.getObject());
 
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 

@@ -28,6 +28,7 @@ import java.util.Optional;
 
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
@@ -57,10 +58,11 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
-                        super.canApply(graphState),
-                        NotApplicable.canOnlyApplyOnce(this, StageFlag.EXPAND_LOGIC, graphState));
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        NotApplicable.ifApplied(this, StageFlag.EXPAND_LOGIC, graphState),
+                        NotApplicable.unlessRunAfter(this, StageFlag.LOW_TIER_LOWERING, graphState));
     }
 
     @Override
@@ -173,6 +175,7 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
         firstIf.setNodeSourcePosition(ifNode.getNodeSourcePosition());
         ifNode.replaceAtPredecessor(firstIf);
         ifNode.safeDelete();
+        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After processing if %s", ifNode);
     }
 
     private static boolean doubleEquals(double a, double b) {
@@ -197,6 +200,7 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
             ConditionalNode secondConditional = graph.unique(new ConditionalNode(y, yNegated ? falseTarget : trueTarget, yNegated ? trueTarget : falseTarget));
             ConditionalNode firstConditional = graph.unique(new ConditionalNode(x, xNegated ? secondConditional : trueTarget, xNegated ? trueTarget : secondConditional));
             conditional.replaceAndDelete(firstConditional);
+            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After processing conditional %s", conditional);
         }
     }
 

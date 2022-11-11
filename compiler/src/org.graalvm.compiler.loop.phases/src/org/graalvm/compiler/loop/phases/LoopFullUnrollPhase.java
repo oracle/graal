@@ -31,7 +31,6 @@ import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.GraphState;
@@ -112,7 +111,6 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
         return budget;
     }
 
-    private static final CounterKey FULLY_UNROLLED_LOOPS = DebugContext.counter("FullUnrolls");
     public static final Comparator<LoopEx> LOOP_COMPARATOR;
     static {
         ToDoubleFunction<LoopEx> loopFreq = e -> e.loop().getHeader().getFirstPredecessor().getRelativeFrequency();
@@ -125,11 +123,11 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
-                        super.canApply(graphState),
-                        NotApplicable.mustRunBefore(this, StageFlag.VALUE_PROXY_REMOVAL, graphState),
-                        NotApplicable.mustRunBefore(this, StageFlag.FSA, graphState));
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.VALUE_PROXY_REMOVAL, graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.FSA, graphState));
     }
 
     @Override
@@ -154,10 +152,7 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
                                 double budgetForSize = getBudget(graphSizeBefore, graph.getOptions());
                                 maxGraphSize = (int) (graphSizeBefore * budgetForSize);
                             }
-                            debug.log("FullUnroll %s", loop);
                             LoopTransformations.fullUnroll(loop, context, canonicalizer);
-                            FULLY_UNROLLED_LOOPS.increment(debug);
-                            debug.dump(DebugContext.DETAILED_LEVEL, graph, "FullUnroll %s", loop);
                             peeled = true;
                             break;
                         }

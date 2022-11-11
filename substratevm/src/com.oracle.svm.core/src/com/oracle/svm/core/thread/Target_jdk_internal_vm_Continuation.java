@@ -24,35 +24,37 @@
  */
 package com.oracle.svm.core.thread;
 
-import java.util.function.BooleanSupplier;
-
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
-import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
+import com.oracle.svm.core.jdk.NotLoomJDK;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.util.VMError;
 
-final class JDK19OrLaterWithoutLoom implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return JavaVersionUtil.JAVA_SPEC >= 19 && !LoomSupport.isEnabled();
-    }
-}
-
-@TargetClass(className = "Continuation", classNameProvider = Package_jdk_internal_vm_helper.class, onlyWith = JDK19OrLaterWithoutLoom.class)
+@TargetClass(className = "Continuation", classNameProvider = Package_jdk_internal_vm_helper.class, onlyWith = {JDK19OrLater.class, NotLoomJDK.class})
 @Substitute
 @SuppressWarnings("unused")
 final class Target_jdk_internal_vm_Continuation__WithoutLoom {
     @Substitute
     static boolean yield(Target_jdk_internal_vm_ContinuationScope scope) {
+        throw VMError.shouldNotReachHere();
+    }
+
+    @Substitute
+    static void pin() {
+        throw VMError.shouldNotReachHere();
+    }
+
+    @Substitute
+    static void unpin() {
         throw VMError.shouldNotReachHere();
     }
 }

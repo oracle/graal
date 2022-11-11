@@ -1009,6 +1009,9 @@ public class FloatStamp extends PrimitiveStamp {
                         }
                     },
 
+                    null, // UMax
+                    null, // UMin
+
                     new ReinterpretOp() {
 
                         @Override

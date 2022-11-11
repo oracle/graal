@@ -44,6 +44,7 @@ import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.replacements.SnippetSubstitutionNode;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AESCryptPlugin;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
@@ -86,14 +87,14 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testAESEncryptBlock() throws Exception {
-        Assume.assumeTrue(runtime().getVMConfig().useAESIntrinsics);
+        Assume.assumeTrue(AESCryptPlugin.isSupported(getArchitecture()));
         testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", "implEncryptBlock", "AES", 128, "AES/CBC/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", "implEncryptBlock", "AES", 128, "AES/CBC/PKCS5Padding");
     }
 
     @Test
     public void testAESDecryptBlock() throws Exception {
-        Assume.assumeTrue(runtime().getVMConfig().useAESIntrinsics);
+        Assume.assumeTrue(AESCryptPlugin.isSupported(getArchitecture()));
         testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", "implDecryptBlock", "AES", 128, "AES/CBC/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", "implDecryptBlock", "AES", 128, "AES/CBC/PKCS5Padding");
     }
@@ -118,7 +119,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testCounterModeEncrypt() throws Exception {
-        Assume.assumeTrue(runtime().getVMConfig().useAESCTRIntrinsics);
+        Assume.assumeTrue(AESCryptPlugin.isSupported(getArchitecture()));
         testEncryptDecrypt("com.sun.crypto.provider.CounterMode", "implCrypt", "AES", 128, "AES/CTR/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.CounterMode", "implCrypt", "AES", 128, "AES/CTR/PKCS5Padding");
         testEncryptDecrypt("com.sun.crypto.provider.CounterMode", "implCrypt", "DESede", 168, "DESede/CTR/NoPadding");

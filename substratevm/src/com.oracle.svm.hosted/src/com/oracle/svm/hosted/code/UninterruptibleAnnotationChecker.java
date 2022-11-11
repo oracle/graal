@@ -36,12 +36,9 @@ import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CFunction.Transition;
-import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -49,6 +46,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /** Checks that {@linkplain Uninterruptible} has been used consistently. */
+@AutomaticallyRegisteredImageSingleton
 public final class UninterruptibleAnnotationChecker {
 
     public static class Options {
@@ -76,7 +74,7 @@ public final class UninterruptibleAnnotationChecker {
 
         UninterruptibleAnnotationChecker c = singleton();
         for (HostedMethod method : methods) {
-            Uninterruptible annotation = method.getAnnotation(Uninterruptible.class);
+            Uninterruptible annotation = Uninterruptible.Utils.getAnnotation(method);
             CompilationGraph graph = method.compilationInfo.getCompilationGraph();
             c.checkSpecifiedOptions(method, annotation);
             c.checkOverrides(method, annotation);
@@ -135,16 +133,16 @@ public final class UninterruptibleAnnotationChecker {
             return;
         }
         for (HostedMethod impl : method.getImplementations()) {
-            Uninterruptible implAnnotation = impl.getAnnotation(Uninterruptible.class);
+            Uninterruptible implAnnotation = Uninterruptible.Utils.getAnnotation(impl);
             if (implAnnotation != null) {
                 if (methodAnnotation.callerMustBe() != implAnnotation.callerMustBe()) {
-                    violations.add("callerMustBe: " + method.format("%H.%n(%p)") + " != " + impl.format("%H.%n(%p)"));
+                    violations.add("callerMustBe: " + method.format("%H.%n(%p):%r") + " != " + impl.format("%H.%n(%p):%r"));
                 }
                 if (methodAnnotation.calleeMustBe() != implAnnotation.calleeMustBe()) {
-                    violations.add("calleeMustBe: " + method.format("%H.%n(%p)") + " != " + impl.format("%H.%n(%p)"));
+                    violations.add("calleeMustBe: " + method.format("%H.%n(%p):%r") + " != " + impl.format("%H.%n(%p):%r"));
                 }
             } else {
-                violations.add("method " + method.format("%H.%n(%p)") + " is annotated but " + impl.format("%H.%n(%p)" + " is not"));
+                violations.add("method " + method.format("%H.%n(%p):%r") + " is annotated but " + impl.format("%H.%n(%p):%r" + " is not"));
             }
         }
     }
@@ -167,12 +165,12 @@ public final class UninterruptibleAnnotationChecker {
                 printDotGraphEdge(caller, callee);
             }
 
-            Uninterruptible directCallerAnnotation = invoke.getDirectCaller().getAnnotation(Uninterruptible.class);
+            Uninterruptible directCallerAnnotation = Uninterruptible.Utils.getAnnotation(invoke.getDirectCaller());
             if (directCallerAnnotation == null) {
-                violations.add("Unannotated callee: " + invoke.getDirectCaller().format("%H.%n(%p)") + " inlined into annotated caller " + caller.format("%H.%n(%p)") +
+                violations.add("Unannotated callee: " + invoke.getDirectCaller().format("%H.%n(%p):%r") + " inlined into annotated caller " + caller.format("%H.%n(%p):%r") +
                                 System.lineSeparator() + invoke.getNodeSourcePosition());
-            } else if (directCallerAnnotation.calleeMustBe() && !isNotInterruptible(callee)) {
-                violations.add("Unannotated callee: " + callee.format("%H.%n(%p)") + " called by annotated caller " + caller.format("%H.%n(%p)") +
+            } else if (directCallerAnnotation.calleeMustBe() && !Uninterruptible.Utils.isUninterruptible(callee)) {
+                violations.add("Unannotated callee: " + callee.format("%H.%n(%p):%r") + " called by annotated caller " + caller.format("%H.%n(%p):%r") +
                                 System.lineSeparator() + invoke.getNodeSourcePosition());
             }
         }
@@ -199,8 +197,7 @@ public final class UninterruptibleAnnotationChecker {
      * allocations.
      */
     private void checkAllocations(ResolvedJavaMethod method, StructuredGraph graph) {
-        Uninterruptible methodAnnotation = method.getAnnotation(Uninterruptible.class);
-        if (methodAnnotation != null && graph != null) {
+        if (Uninterruptible.Utils.isUninterruptible(method) && graph != null) {
             for (Node node : graph.getNodes()) {
                 if (isAllocationNode(node)) {
                     violations.add("Annotated method: " + method.format("%H.%n(%p)") + " allocates.");
@@ -213,41 +210,26 @@ public final class UninterruptibleAnnotationChecker {
         return node instanceof CommitAllocationNode || node instanceof AbstractNewObjectNode || node instanceof NewMultiArrayNode;
     }
 
-    private static boolean isNotInterruptible(HostedMethod method) {
-        return (isUninterruptible(method) || isNoTransitionCFunction(method));
-    }
-
-    private static boolean isUninterruptible(HostedMethod method) {
-        return (method.getAnnotation(Uninterruptible.class) != null);
-    }
-
     private static boolean isCallerMustBe(HostedMethod method) {
-        final Uninterruptible uninterruptibleAnnotation = method.getAnnotation(Uninterruptible.class);
-        return ((uninterruptibleAnnotation != null) && uninterruptibleAnnotation.callerMustBe());
+        Uninterruptible uninterruptibleAnnotation = Uninterruptible.Utils.getAnnotation(method);
+        return uninterruptibleAnnotation != null && uninterruptibleAnnotation.callerMustBe();
     }
 
     private static boolean isCalleeMustBe(HostedMethod method) {
-        final Uninterruptible uninterruptibleAnnotation = method.getAnnotation(Uninterruptible.class);
-        return ((uninterruptibleAnnotation != null) && uninterruptibleAnnotation.calleeMustBe());
-    }
-
-    private static boolean isNoTransitionCFunction(HostedMethod method) {
-        final CFunction cfunctionAnnotation = method.getAnnotation(CFunction.class);
-        final InvokeCFunctionPointer invokeCFunctionPointerAnnotation = method.getAnnotation(InvokeCFunctionPointer.class);
-        return (cfunctionAnnotation != null && cfunctionAnnotation.transition() == Transition.NO_TRANSITION) ||
-                        (invokeCFunctionPointerAnnotation != null && invokeCFunctionPointerAnnotation.transition() == Transition.NO_TRANSITION);
+        Uninterruptible uninterruptibleAnnotation = Uninterruptible.Utils.getAnnotation(method);
+        return uninterruptibleAnnotation != null && uninterruptibleAnnotation.calleeMustBe();
     }
 
     private static void printDotGraphEdge(HostedMethod caller, HostedMethod callee) {
         String callerColor = " [color=black]";
         String calleeColor;
-        if (isUninterruptible(caller)) {
+        if (Uninterruptible.Utils.isUninterruptible(caller)) {
             callerColor = " [color=blue]";
             if (!isCalleeMustBe(caller)) {
                 callerColor = " [color=orange]";
             }
         }
-        if (isUninterruptible(callee)) {
+        if (Uninterruptible.Utils.isUninterruptible(callee)) {
             calleeColor = " [color=blue]";
             if (!isCalleeMustBe(callee)) {
                 calleeColor = " [color=purple]";
@@ -255,19 +237,8 @@ public final class UninterruptibleAnnotationChecker {
         } else {
             calleeColor = " [color=red]";
         }
-        if (isNoTransitionCFunction(callee)) {
-            calleeColor = " [color=green]";
-        }
         System.out.println("/* DOT */    " + caller.format("<%h.%n>") + callerColor);
         System.out.println("/* DOT */    " + callee.format("<%h.%n>") + calleeColor);
         System.out.println("/* DOT */    " + caller.format("<%h.%n>") + " -> " + callee.format("<%h.%n>") + calleeColor);
-    }
-}
-
-@AutomaticFeature
-final class UninterruptibleAnnotationCheckerFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(UninterruptibleAnnotationChecker.class, new UninterruptibleAnnotationChecker());
     }
 }

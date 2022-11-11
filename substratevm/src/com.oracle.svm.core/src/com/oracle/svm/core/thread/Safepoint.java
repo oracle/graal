@@ -42,20 +42,18 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
-import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.StubCallingConvention;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.SafepointBeginEvent;
@@ -80,6 +78,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -121,7 +120,7 @@ import com.oracle.svm.core.util.VMError;
  * not be created (or attached) during the safepoint.
  * <p>
  * A safepoint check is implemented as a check of {@link #safepointRequested} <= 0, which, if true,
- * triggers a call to {@link #slowPathSafepointCheck}. {@link ThreadingSupportFeature} implements an
+ * triggers a call to {@link #slowPathSafepointCheck}. {@link ThreadingSupportImpl} implements an
  * optional per-thread timer on top of the safepoint mechanism. If that timer feature is
  * {@linkplain ThreadingSupportImpl.Options#SupportRecurringCallback supported in the image}, each
  * safepoint check decrements {@link #safepointRequested} before the comparison, which will cause it
@@ -579,14 +578,11 @@ public final class Safepoint {
     }
 
     /** Methods for the thread that brings the system to a safepoint. */
+    @AutomaticallyRegisteredImageSingleton
     public static final class Master {
         @DuplicatedInNativeCode private static final int NOT_AT_SAFEPOINT = 0;
         @DuplicatedInNativeCode private static final int SYNCHRONIZING = 1;
         @DuplicatedInNativeCode private static final int AT_SAFEPOINT = 2;
-
-        static void initialize() {
-            ImageSingletons.add(Master.class, new Master());
-        }
 
         @Fold
         public static Master singleton() {
@@ -600,7 +596,7 @@ public final class Safepoint {
         private volatile IsolateThread requestingThread;
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        private Master() {
+        Master() {
             this.safepointState = NOT_AT_SAFEPOINT;
         }
 
@@ -1127,13 +1123,5 @@ public final class Safepoint {
             }
             return log;
         }
-    }
-}
-
-@AutomaticFeature
-class SafepointFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        Safepoint.Master.initialize();
     }
 }

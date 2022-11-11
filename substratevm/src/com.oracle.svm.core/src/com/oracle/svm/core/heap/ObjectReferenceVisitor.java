@@ -26,8 +26,7 @@ package com.oracle.svm.core.heap;
 
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.util.VMError;
 
 /** Visitor for object references. */

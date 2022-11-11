@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,6 +61,7 @@ public enum Failure {
     // GraalWasm-specific:
     DUPLICATED_SECTION(Type.MALFORMED, "duplicated section"),
     INVALID_SECTION_ORDER(Type.MALFORMED, "invalid section order"),
+    DISABLED_MULTI_VALUE(Type.MALFORMED, "multi-value is not enabled"),
 
     // TODO(mbovel): replace UNSPECIFIED_INVALID usages with appropriate errors.
     UNSPECIFIED_INVALID(Type.INVALID, "unspecified"),
@@ -76,8 +77,8 @@ public enum Failure {
     UNKNOWN_LABEL(Type.INVALID, "unknown label"),
     UNKNOWN_FUNCTION(Type.INVALID, "unknown function"),
     UNKNOWN_TYPE(Type.INVALID, "unknown type"),
-    START_FUNCTION_RETURN_VALUE(Type.INVALID, "start function"),
-    START_FUNCTION_ARGUMENTS(Type.INVALID, "start function"),
+    START_FUNCTION_RESULT_VALUE(Type.INVALID, "start function"),
+    START_FUNCTION_PARAMS(Type.INVALID, "start function"),
     LIMIT_MINIMUM_GREATER_THAN_MAXIMUM(Type.INVALID, "size minimum must not be greater than maximum"),
     DUPLICATE_EXPORT(Type.INVALID, "duplicate export name"),
     IMMUTABLE_GLOBAL_WRITE(Type.INVALID, "global is immutable"),
@@ -98,7 +99,7 @@ public enum Failure {
     ELEMENT_SEGMENT_COUNT_LIMIT_EXCEEDED(Type.INVALID, "element segment count exceeds limit"),
     FUNCTION_SIZE_LIMIT_EXCEEDED(Type.INVALID, "function size exceeds limit"),
     PARAMETERS_COUNT_LIMIT_EXCEEDED(Type.INVALID, "parameters count exceeds limit"),
-    RETURN_COUNT_LIMIT_EXCEEDED(Type.INVALID, "return values count exceeds limit"),
+    RESULT_COUNT_LIMIT_EXCEEDED(Type.INVALID, "result values count exceeds limit"),
 
     // TODO(mbovel): replace UNSPECIFIED_UNLINKABLE usages with appropriate errors.
     UNSPECIFIED_UNLINKABLE(Type.UNLINKABLE, "unspecified"),
@@ -119,9 +120,13 @@ public enum Failure {
     UNINITIALIZED_ELEMENT(Type.TRAP, "uninitialized element"),
     OUT_OF_BOUNDS_MEMORY_ACCESS(Type.TRAP, "out of bounds memory access"),
     INDIRECT_CALL_TYPE__MISMATCH(Type.TRAP, "indirect call type mismatch"),
+    INVALID_MULTI_VALUE_ARITY(Type.TRAP, "provided multi-value size does not match function type"),
+    INVALID_TYPE_IN_MULTI_VALUE(Type.TRAP, "type of value in multi-value does not match the function type"),
+
     // GraalWasm-specific:
     TABLE_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "table instance size exceeds limit"),
     MEMORY_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "memory instance size exceeds limit"),
+    UNSUPPORTED_MULTI_VALUE_TYPE(Type.TRAP, "multi-value has to be provided by an array type"),
 
     CALL_STACK_EXHAUSTED(Type.EXHAUSTION, "call stack exhausted"),
     MEMORY_ALLOCATION_FAILED(Type.EXHAUSTION, "could not allocate memory"),

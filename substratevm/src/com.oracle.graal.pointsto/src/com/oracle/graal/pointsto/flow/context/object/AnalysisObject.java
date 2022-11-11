@@ -60,6 +60,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
     protected enum AnalysisObjectKind {
         /** The types of runtime objects that the analysis models. */
         ContextInsensitive("!S"),
+        ConstantObject("C"),
         AllocationContextSensitive("AS"),
         ConstantContextSensitive("CS");
 
@@ -82,8 +83,19 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
     protected final AnalysisObjectKind kind;
 
     /**
-     * Is this a context sensitive object that was merged with a context insensitive object, or a
-     * context insensitive object that has merged some context sensitive objects?
+     * The merging of analysis objects is used to erase the identity of more concrete analysis
+     * objects (i.e., objects that wrap a constant, or retain information about their allocation
+     * location) and to replace them with the per-type context-insensitive analysis object.
+     * 
+     * This distinction between merged and un-merged objects is essential to correctly track field
+     * and array flows reads and writes. For example when a concrete analysis object is the receiver
+     * of a write operation then only the field flow associated with that receiver will get the
+     * state of the stored value, such that any read from the same receiver and field will return
+     * the written values, but no others. However, if there is a union between the concrete receiver
+     * and a context-insensitive object of the same type then the receiver needs to be marked as
+     * `merged` to signal that all reads from a field of this object must include all the state
+     * written to the corresponding field flow of the context-insensitive object and all writes must
+     * also flow in the corresponding field flow of the context-insensitive object.
      */
     protected volatile boolean merged;
 
@@ -171,8 +183,8 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         return this.kind == AnalysisObjectKind.ConstantContextSensitive;
     }
 
-    public final boolean isContextSensitiveObject() {
-        return this.isAllocationContextSensitiveObject() || this.isConstantContextSensitiveObject();
+    public final boolean isConstantObject() {
+        return this.kind == AnalysisObjectKind.ConstantObject;
     }
 
     public ArrayElementsTypeStore getArrayElementsTypeStore() {
@@ -203,6 +215,10 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         return fieldTypeStore.unsafeWriteSinkFlow(bb);
     }
 
+    public FieldTypeStore getInstanceFieldTypeStore(PointsToAnalysis bb, AnalysisField field) {
+        return getInstanceFieldTypeStore(bb, null, null, field);
+    }
+
     /** Returns the instance field flow corresponding to a filed of the object's type. */
     public FieldTypeFlow getInstanceFieldFlow(PointsToAnalysis bb, AnalysisField field, boolean isStore) {
         return getInstanceFieldFlow(bb, null, null, field, isStore);
@@ -231,7 +247,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
 
         FieldTypeStore fieldStore = instanceFieldsTypeStore.get(field.getPosition());
         if (fieldStore == null) {
-            fieldStore = bb.analysisPolicy().createFieldTypeStore(this, field, bb.getUniverse());
+            fieldStore = bb.analysisPolicy().createFieldTypeStore(bb, this, field, bb.getUniverse());
             boolean result = instanceFieldsTypeStore.compareAndSet(field.getPosition(), null, fieldStore);
             if (result) {
                 fieldStore.init(bb);
@@ -289,14 +305,8 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
      */
     public static boolean isEmptyObjectArrayConstant(PointsToAnalysis bb, JavaConstant constant) {
         assert constant.getJavaKind() == JavaKind.Object;
-        Object valueObj = bb.getProviders().getSnippetReflection().asObject(Object.class, constant);
-        if (valueObj instanceof Object[]) {
-            Object[] arrayValueObj = (Object[]) valueObj;
-            if (arrayValueObj.length == 0) {
-                return true;
-            }
-        }
-        return false;
+        Integer length = bb.getConstantReflectionProvider().readArrayLength(constant);
+        return length != null && length == 0;
     }
 
     @Override

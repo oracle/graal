@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,7 @@ __thread int errnoMirror;
 
 static TruffleContext *getTruffleContext(TruffleEnv *tenv) {
     struct __TruffleEnvInternal *env = (struct __TruffleEnvInternal *) tenv;
-    return (TruffleContext*) env->context;
+    return (TruffleContext *) env->context;
 }
 
 static TruffleObject newObjectRef(TruffleEnv *tenv, TruffleObject object) {
@@ -79,45 +79,35 @@ static void newClosureRef(TruffleEnv *tenv, void *closure) {
     struct __TruffleEnvInternal *ienv = (struct __TruffleEnvInternal *) tenv;
     struct __TruffleContextInternal *context = ienv->context;
     JNIEnv *env = ienv->jniEnv;
-    (*env)->CallVoidMethod(env, context->LibFFIContext, context->LibFFIContext_newClosureRef, (jlong)(intptr_t)closure);
+    (*env)->CallVoidMethod(env, context->LibFFIContext, context->LibFFIContext_newClosureRef, (jlong) (intptr_t) closure);
 }
 
 static void releaseClosureRef(TruffleEnv *tenv, void *closure) {
     struct __TruffleEnvInternal *ienv = (struct __TruffleEnvInternal *) tenv;
     struct __TruffleContextInternal *context = ienv->context;
     JNIEnv *env = ienv->jniEnv;
-    (*env)->CallVoidMethod(env, context->LibFFIContext, context->LibFFIContext_releaseClosureRef, (jlong)(intptr_t)closure);
+    (*env)->CallVoidMethod(env, context->LibFFIContext, context->LibFFIContext_releaseClosureRef, (jlong) (intptr_t) closure);
 }
 
 static TruffleObject getClosureObject(TruffleEnv *tenv, void *closure) {
     struct __TruffleEnvInternal *ienv = (struct __TruffleEnvInternal *) tenv;
     struct __TruffleContextInternal *context = ienv->context;
     JNIEnv *env = ienv->jniEnv;
-    jobject local = (*env)->CallObjectMethod(env, context->LibFFIContext, context->LibFFIContext_getClosureObject, (jlong)(intptr_t)closure);
+    jobject local = (*env)->CallObjectMethod(env, context->LibFFIContext, context->LibFFIContext_getClosureObject, (jlong) (intptr_t) closure);
     jobject global = (*env)->NewGlobalRef(env, local);
     (*env)->DeleteLocalRef(env, local);
     return (TruffleObject) global;
 }
 
-
-const struct __TruffleNativeAPI truffleNativeAPI = {
-    getTruffleContext,
-    newObjectRef,
-    releaseObjectRef,
-    releaseAndReturn,
-    isSameObject,
-    newClosureRef,
-    releaseClosureRef,
-    getClosureObject
-};
-
-
+const struct __TruffleNativeAPI truffleNativeAPI = { getTruffleContext, newObjectRef,  releaseObjectRef,  releaseAndReturn,
+                                                     isSameObject,      newClosureRef, releaseClosureRef, getClosureObject };
 
 static TruffleEnv *lookupTruffleEnvOrError(int status, JNIEnv *env, struct __TruffleContextInternal *ctx) {
     if (status == JNI_OK) {
-        struct __TruffleEnvInternal *ret = (struct __TruffleEnvInternal *)(intptr_t)(*env)->CallLongMethod(env, ctx->LibFFIContext, ctx->LibFFIContext_getNativeEnv);
+        struct __TruffleEnvInternal *ret =
+            (struct __TruffleEnvInternal *) (intptr_t) (*env)->CallLongMethod(env, ctx->LibFFIContext, ctx->LibFFIContext_getNativeEnv);
         ret->jniEnv = env;
-        return (TruffleEnv*) ret;
+        return (TruffleEnv *) ret;
     } else {
         return NULL;
     }
@@ -128,7 +118,7 @@ static TruffleEnv *getTruffleEnv(TruffleContext *context) {
     JavaVM *vm = ctx->javaVM;
 
     JNIEnv *env;
-    int ret = (*vm)->GetEnv(vm, (void**) &env, JNI_VERSION_1_6);
+    int ret = (*vm)->GetEnv(vm, (void **) &env, JNI_VERSION_1_6);
     return lookupTruffleEnvOrError(ret, env, ctx);
 }
 
@@ -138,9 +128,9 @@ static TruffleEnv *attachCurrentThread(TruffleContext *context) {
     jboolean attachSuccess;
 
     JNIEnv *env;
-    int ret = (*vm)->GetEnv(vm, (void**) &env, JNI_VERSION_1_6);
+    int ret = (*vm)->GetEnv(vm, (void **) &env, JNI_VERSION_1_6);
     if (ret == JNI_EDETACHED) {
-        ret = (*vm)->AttachCurrentThread(vm, (void**) &env, NULL);
+        ret = (*vm)->AttachCurrentThread(vm, (void **) &env, NULL);
         if (ret == JNI_OK) {
             attachSuccess = (*env)->CallBooleanMethod(env, ctx->LibFFIContext, ctx->LibFFIContext_attachThread);
             if (!attachSuccess) {
@@ -157,7 +147,7 @@ static void detachCurrentThread(TruffleContext *context) {
     JavaVM *vm = ctx->javaVM;
 
     JNIEnv *env;
-    int ret = (*vm)->GetEnv(vm, (void**) &env, JNI_VERSION_1_6);
+    int ret = (*vm)->GetEnv(vm, (void **) &env, JNI_VERSION_1_6);
     if (ret == JNI_OK) {
         (*env)->CallVoidMethod(env, ctx->LibFFIContext, ctx->LibFFIContext_detachThread);
     }
@@ -165,8 +155,4 @@ static void detachCurrentThread(TruffleContext *context) {
     (*vm)->DetachCurrentThread(vm);
 }
 
-const struct __TruffleThreadAPI truffleThreadAPI = {
-    getTruffleEnv,
-    attachCurrentThread,
-    detachCurrentThread
-};
+const struct __TruffleThreadAPI truffleThreadAPI = { getTruffleEnv, attachCurrentThread, detachCurrentThread };

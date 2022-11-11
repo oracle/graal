@@ -58,37 +58,41 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInli
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.truffle.compiler.phases.TruffleInjectImmutableFrameFieldsPhase;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.heap.Pod;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.graal.hosted.GraalObjectReplacer;
-import com.oracle.svm.graal.hosted.GraalProviderObjectReplacements;
-import com.oracle.svm.graal.hosted.RuntimeGraalSetup;
-import com.oracle.svm.graal.hosted.SubstrateRuntimeGraalSetup;
+import com.oracle.svm.graal.hosted.GraalGraphObjectReplacer;
+import com.oracle.svm.graal.hosted.SubstrateGraalCompilerSetup;
+import com.oracle.svm.graal.hosted.SubstrateProviders;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -96,7 +100,6 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
-import com.oracle.svm.util.DirectAnnotationAccess;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -130,7 +133,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * {@link TruffleFeature}'s dependency), then {@link TruffleRuntime} <b>must</b> be set to the
  * {@link DefaultTruffleRuntime}.
  */
-public final class TruffleBaseFeature implements com.oracle.svm.core.graal.InternalFeature {
+public final class TruffleBaseFeature implements InternalFeature {
 
     @Override
     public String getURL() {
@@ -172,7 +175,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
 
     private ClassLoader imageClassLoader;
     private AnalysisMetaAccess metaAccess;
-    private GraalObjectReplacer graalObjectReplacer;
+    private GraalGraphObjectReplacer graalGraphObjectReplacer;
     private final Set<Class<?>> registeredClasses = new HashSet<>();
     private final Map<Class<?>, PossibleReplaceCandidatesSubtypeHandler> subtypeChecks = new HashMap<>();
     private boolean profilingEnabled;
@@ -311,15 +314,15 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
         }
 
         ImageSingletons.add(NodeClassSupport.class, new NodeClassSupport());
-        if (!ImageSingletons.contains(RuntimeGraalSetup.class)) {
-            ImageSingletons.add(RuntimeGraalSetup.class, new SubstrateRuntimeGraalSetup());
+        if (!ImageSingletons.contains(SubstrateGraalCompilerSetup.class)) {
+            ImageSingletons.add(SubstrateGraalCompilerSetup.class, new SubstrateGraalCompilerSetup());
         }
 
         DuringSetupAccessImpl config = (DuringSetupAccessImpl) access;
         metaAccess = config.getMetaAccess();
-        GraalProviderObjectReplacements providerReplacements = ImageSingletons.lookup(RuntimeGraalSetup.class)
-                        .getProviderObjectReplacements(metaAccess);
-        graalObjectReplacer = new GraalObjectReplacer(config.getUniverse(), metaAccess, providerReplacements);
+        SubstrateProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class)
+                        .getSubstrateProviders(metaAccess);
+        graalGraphObjectReplacer = new GraalGraphObjectReplacer(config.getUniverse(), metaAccess, substrateProviders);
 
         layoutInfoMapField = config.findField("com.oracle.truffle.object.DefaultLayout$LayoutInfo", "LAYOUT_INFO_MAP");
         layoutMapField = config.findField("com.oracle.truffle.object.DefaultLayout", "LAYOUT_MAP");
@@ -344,7 +347,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
                         LibraryExport.class);
 
         if (needsAllEncodings) {
-            ImageSingletons.lookup(ResourcesRegistry.class).addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$");
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$");
         }
 
         access.registerFieldValueTransformer(ReflectionUtil.lookupField(ArrayBasedShapeGeneratorOffsetTransformer.SHAPE_GENERATOR, "byteArrayOffset"),
@@ -386,7 +389,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
 
             AnalysisType type = access.getMetaAccess().lookupJavaType(clazz);
             if (type.isInstantiated()) {
-                graalObjectReplacer.createType(type);
+                graalGraphObjectReplacer.createType(type);
             }
         }
 
@@ -403,11 +406,16 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
     }
 
     @Override
+    public void registerGraalPhases(Providers providers, SnippetReflectionProvider snippetReflection, Suites suites, boolean hosted) {
+        TruffleInjectImmutableFrameFieldsPhase.install(suites.getHighTier(), HostedOptionValues.singleton());
+    }
+
+    @Override
     public void afterCompilation(AfterCompilationAccess access) {
         FeatureImpl.AfterCompilationAccessImpl config = (FeatureImpl.AfterCompilationAccessImpl) access;
 
-        graalObjectReplacer.updateSubstrateDataAfterCompilation(config.getUniverse(), config.getProviders().getConstantFieldProvider());
-        graalObjectReplacer.registerImmutableObjects(access);
+        graalGraphObjectReplacer.updateSubstrateDataAfterCompilation(config.getUniverse(), config.getProviders().getConstantFieldProvider());
+        graalGraphObjectReplacer.registerImmutableObjects(access);
     }
 
     @SuppressWarnings("deprecation")
@@ -519,7 +527,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
              * Never replaceable classes do not count as candidates. They are checked to never be
              * used for replacing.
              */
-            if (DirectAnnotationAccess.getAnnotation(u, DenyReplace.class) != null) {
+            if (AnnotationAccess.getAnnotation(u, DenyReplace.class) != null) {
                 return;
             }
 

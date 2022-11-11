@@ -29,6 +29,7 @@ import static jdk.vm.ci.common.InitTimer.timer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
@@ -82,13 +83,28 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
     private final String name;
 
     /**
+     * A description of this configuration used for {@link ShowConfigurationLevel#info}.
+     */
+    private final String info;
+
+    /**
      * The priority of this factory. This must be unique across all factory instances and is used
      * when selecting a factory when {@link Options#CompilerConfiguration} is omitted
      */
     private final int autoSelectionPriority;
 
-    protected CompilerConfigurationFactory(String name, int autoSelectionPriority) {
+    /**
+     * Creates a compiler configuration factory.
+     *
+     * @param name the name by which users can explicitly select the configuration via the
+     *            {@link Options#CompilerConfiguration} option
+     * @param info a higher level description of the configuration used for
+     *            {@link ShowConfigurationLevel#info}
+     * @param autoSelectionPriority
+     */
+    protected CompilerConfigurationFactory(String name, String info, int autoSelectionPriority) {
         this.name = name;
+        this.info = info;
         this.autoSelectionPriority = autoSelectionPriority;
     }
 
@@ -204,7 +220,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
                 }
                 HotSpotGraalServices.exit(0, runtime);
             } else if (value != null) {
-                for (CompilerConfigurationFactory candidate : GraalServices.load(CompilerConfigurationFactory.class)) {
+                for (CompilerConfigurationFactory candidate : getAllCandidates()) {
                     if (candidate.name.equals(value)) {
                         factory = candidate;
                         break;
@@ -232,14 +248,14 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
                     break;
                 }
                 case verbose: {
-                    printConfigInfo(factory);
+                    printConfigVerbose(factory);
                     CompilerConfiguration config = factory.createCompilerConfiguration();
-                    printPlan("High tier:", config.createHighTier(options));
-                    printPlan("Mid tier:", config.createMidTier(options));
-                    printPlan("Low tier:", config.createLowTier(options, runtime.getHostJVMCIBackend().getTarget().arch));
-                    printPlan("Pre regalloc stage:", config.createPreAllocationOptimizationStage(options));
-                    printPlan("Regalloc stage:", config.createAllocationStage(options));
-                    printPlan("Post regalloc stage:", config.createPostAllocationOptimizationStage(options));
+                    printPlan("High tier:", () -> config.createHighTier(options));
+                    printPlan("Mid tier:", () -> config.createMidTier(options));
+                    printPlan("Low tier:", () -> config.createLowTier(options, runtime.getHostJVMCIBackend().getTarget().arch));
+                    printPlan("Pre regalloc stage:", () -> config.createPreAllocationOptimizationStage(options));
+                    printPlan("Regalloc stage:", () -> config.createAllocationStage(options));
+                    printPlan("Post regalloc stage:", () -> config.createPostAllocationOptimizationStage(options));
                     break;
                 }
             }
@@ -251,14 +267,14 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
      * Gets an object whose {@link #toString()} value describes where this configuration factory was
      * loaded from.
      */
-    private Object getLoadedFromLocation() {
+    private Object getLoadedFromLocation(boolean verbose) {
         if (Services.IS_IN_NATIVE_IMAGE) {
             if (nativeImageLocationQualifier != null) {
-                return nativeImageLocationQualifier + " JVMCI native library";
+                return "a " + nativeImageLocationQualifier + " Native Image shared library";
             }
-            return "JVMCI native library";
+            return "a Native Image shared library";
         }
-        return getClass().getResource(getClass().getSimpleName() + ".class");
+        return verbose ? getClass().getResource(getClass().getSimpleName() + ".class") : "class files";
     }
 
     private static String nativeImageLocationQualifier;
@@ -272,11 +288,20 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
     }
 
     private static void printConfigInfo(CompilerConfigurationFactory factory) {
-        Object location = factory.getLoadedFromLocation();
-        TTY.printf("Using compiler configuration '%s' provided by %s loaded from %s%n", factory.name, factory.getClass().getName(), location);
+        Object location = factory.getLoadedFromLocation(false);
+        TTY.printf("Using \"%s\" loaded from %s%n", factory.info, location);
     }
 
-    static <T> void printPlan(String label, PhasePlan<T> plan) {
-        TTY.printf("%s%n%s", label, new PhasePlan.Printer().toString(plan));
+    private static void printConfigVerbose(CompilerConfigurationFactory factory) {
+        Object location = factory.getLoadedFromLocation(true);
+        TTY.printf("Using compiler configuration '%s' (\"%s\") provided by %s loaded from %s%n", factory.name, factory.info, factory.getClass().getName(), location);
+    }
+
+    private static <T> void printPlan(String label, Supplier<PhasePlan<T>> plan) {
+        try {
+            TTY.printf("%s%n%s", label, new PhasePlan.Printer().toString(plan.get()));
+        } catch (Throwable t) {
+            t.printStackTrace(TTY.out);
+        }
     }
 }

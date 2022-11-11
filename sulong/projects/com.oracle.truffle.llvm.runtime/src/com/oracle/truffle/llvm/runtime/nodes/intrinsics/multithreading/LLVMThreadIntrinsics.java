@@ -54,6 +54,7 @@ public final class LLVMThreadIntrinsics {
 
         @Specialization
         @TruffleBoundary
+        @SuppressWarnings("deprecation") // GR-41711: we still need Thread.getId() for JDK17 support
         protected int doIntrinsic(LLVMPointer thread, LLVMPointer startRoutine, LLVMPointer arg,
                         @Cached LLVMI64StoreNode store) {
             LLVMContext context = getContext();
@@ -78,6 +79,7 @@ public final class LLVMThreadIntrinsics {
         }
 
         @TruffleBoundary
+        @SuppressWarnings("deprecation") // GR-41711: we still need Thread.getId() for JDK17 support
         private static void setThreadReturnValue(Object returnValue, LLVMContext context) {
             context.getpThreadContext().setThreadReturnValue(Thread.currentThread().getId(), returnValue);
         }
@@ -141,6 +143,7 @@ public final class LLVMThreadIntrinsics {
         }
 
         @TruffleBoundary
+        @SuppressWarnings("deprecation") // GR-41711: we still need Thread.getId() for JDK17 support
         private static long getThreadId() {
             return Thread.currentThread().getId();
         }

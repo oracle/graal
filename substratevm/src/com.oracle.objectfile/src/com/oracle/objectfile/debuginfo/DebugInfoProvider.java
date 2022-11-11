@@ -138,6 +138,8 @@ public interface DebugInfoProvider {
     public interface DebugInstanceTypeInfo extends DebugTypeInfo {
         int headerSize();
 
+        String loaderName();
+
         Stream<DebugFieldInfo> fieldInfoProvider();
 
         Stream<DebugMethodInfo> methodInfoProvider();
@@ -205,6 +207,11 @@ public interface DebugInfoProvider {
     }
 
     public interface DebugMethodInfo extends DebugMemberInfo {
+        /**
+         * @return the line number for the outer or inlined segment.
+         */
+        int line();
+
         /**
          * @return an array of DebugLocalInfo objects holding details of this method's parameters
          */
@@ -282,12 +289,6 @@ public interface DebugInfoProvider {
          *         reported at this line represented as an offset into the code segment.
          */
         int addressHi();
-
-        /**
-         * @return the line number for the outer or inlined segment.
-         */
-        int line();
-
     }
 
     /**

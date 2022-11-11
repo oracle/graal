@@ -49,20 +49,21 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedSnippets;
-import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 public class ClassInitializationFeature implements InternalFeature {
     private static final String NATIVE_IMAGE_CLASS_REASON = "Native Image classes are always initialized at build time";
 
@@ -221,7 +222,7 @@ public class ClassInitializationFeature implements InternalFeature {
     }
 
     private static void reportTrackedClassInitializationTraces(String path) {
-        Map<Class<?>, StackTraceElement[]> initializedClasses = ProvenSafeClassInitializationSupport.getInitializedClasses();
+        Map<Class<?>, StackTraceElement[]> initializedClasses = ClassInitializationTracking.initializedClasses;
         int size = initializedClasses.size();
         if (size > 0) {
             ReportUtils.report(size + " class initialization trace(s) of class(es) traced by " + SubstrateOptions.TraceClassInitialization.getName(), path, "traced_class_initialization", "txt",

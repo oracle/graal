@@ -47,7 +47,7 @@ For the demo, you will use a simple HelloWorld Java module gathered with Maven:
   
     ```bash
     git clone https://github.com/graalvm/graalvm-demos
-    cd native-hello-module
+    cd graalvm-demos/native-hello-module
     ```
 
 2. Compile and package the project with Maven:

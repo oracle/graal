@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -65,6 +65,9 @@ public final class CaptureNativeOutput implements CaptureOutput {
             stderrFile = File.createTempFile("stderr", ".log");
             stderrFile.deleteOnExit();
 
+            System.out.flush();
+            System.err.flush();
+
             oldStdout = startCapturing(STDOUT, stdoutFile.getAbsolutePath());
             oldStderr = startCapturing(STDERR, stderrFile.getAbsolutePath());
         } catch (IOException e) {
@@ -108,4 +111,6 @@ public final class CaptureNativeOutput implements CaptureOutput {
     private static native int startCapturing(int fd, String tempFilename) throws IOException;
 
     private static native void stopCapturing(int oldStdout, int oldStderr) throws IOException;
+
+    public static native void flushStdFiles();
 }

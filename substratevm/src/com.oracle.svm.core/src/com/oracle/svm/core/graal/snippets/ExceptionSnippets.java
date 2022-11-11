@@ -45,9 +45,14 @@ import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
@@ -73,15 +78,16 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
         new ExceptionSnippets(options, providers, lowerings);
     }
 
+    private final SnippetInfo unwind;
+
     private ExceptionSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, providers);
 
+        this.unwind = snippet(providers, ExceptionSnippets.class, "unwindSnippet");
         lowerings.put(UnwindNode.class, new UnwindLowering());
     }
 
     protected class UnwindLowering implements NodeLoweringProvider<UnwindNode> {
-
-        private final SnippetInfo unwind = snippet(ExceptionSnippets.class, "unwindSnippet");
 
         @Override
         public void lower(UnwindNode node, LoweringTool tool) {
@@ -95,7 +101,7 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
             Arguments args = new Arguments(unwind, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("exception", node.exception());
             args.addConst("fromMethodWithCalleeSavedRegisters", ((SharedMethod) node.graph().method()).hasCalleeSavedRegisters());
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
@@ -107,5 +113,16 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
             FixedWithNextNode readRegNode = graph.add(new ReadExceptionObjectNode(StampFactory.objectNonNull()));
             graph.replaceFixedWithFixed(node, readRegNode);
         }
+    }
+}
+
+@AutomaticallyRegisteredFeature
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
+final class ExceptionFeature implements InternalFeature {
+
+    @Override
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
+                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+        ExceptionSnippets.registerLowerings(options, providers, lowerings);
     }
 }

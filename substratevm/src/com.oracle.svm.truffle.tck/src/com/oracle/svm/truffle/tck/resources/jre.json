@@ -220,5 +220,14 @@
         "justification": "Only classes that were present during the image build (on the classpath or predefined classes) can be accessed."
       }
     ]
+  },
+  {
+    "name": "java.math.BigInteger",
+    "methods": [
+      {
+        "name": "multiply",
+        "justification": "JDK 19 introduced parallelMultiply(BI) that shares its implementation with multiply(BI), which causes a spurious privileged call being found in the latter, so we explicitly deny parallelMultiply(BI) and allow multiply(BI) to avoid this false positive."
+      }
+    ]
   }
 ]

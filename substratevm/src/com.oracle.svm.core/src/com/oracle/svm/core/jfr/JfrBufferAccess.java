@@ -33,7 +33,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.UnsignedUtils;
 
@@ -50,6 +50,12 @@ public final class JfrBufferAccess {
     @Fold
     public static UnsignedWord getHeaderSize() {
         return UnsignedUtils.roundUp(SizeOf.unsigned(JfrBuffer.class), WordFactory.unsigned(ConfigurationValues.getTarget().wordSize));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static JfrBuffer allocate(JfrBufferType bufferType) {
+        JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) SubstrateJVM.getThreadLocal();
+        return allocate(WordFactory.unsigned(jfrThreadLocal.getThreadLocalBufferSize()), bufferType);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

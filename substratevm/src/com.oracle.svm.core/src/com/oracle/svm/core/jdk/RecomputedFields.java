@@ -27,6 +27,7 @@ package com.oracle.svm.core.jdk;
 //Checkstyle: stop
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.AtomicFieldUpdaterOffset;
+import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FieldOffset;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
 
 import java.lang.ref.ReferenceQueue;
@@ -45,13 +46,11 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -59,6 +58,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -240,8 +241,8 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_LockedUpda
  * to know about all these fields, so we need to find the original field (the updater only stores
  * the field offset) and mark it as unsafe accessed.
  */
-@AutomaticFeature
-class AtomicFieldUpdaterFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class AtomicFieldUpdaterFeature implements InternalFeature {
 
     private final ConcurrentMap<Object, Boolean> processedUpdaters = new ConcurrentHashMap<>();
     private Consumer<Field> markAsUnsafeAccessed;
@@ -295,8 +296,8 @@ class AtomicFieldUpdaterFeature implements Feature {
     }
 }
 
-@AutomaticFeature
-class InnocuousForkJoinWorkerThreadFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class InnocuousForkJoinWorkerThreadFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.concurrent.ForkJoinWorkerThread$InnocuousForkJoinWorkerThread"),
@@ -337,6 +338,7 @@ final class Target_java_util_concurrent_ForkJoinPool {
     private static Unsafe U;
 
     @Alias @TargetElement(onlyWith = JDK19OrLater.class) //
+    @RecomputeFieldValue(kind = FieldOffset, name = "poolIds") //
     private static long POOLIDS;
 
     @Substitute
@@ -423,10 +425,6 @@ final class Target_java_util_concurrent_ForkJoinTask_JDK11OrEarlier {
 
 @TargetClass(value = java.util.concurrent.ForkJoinTask.class, innerClass = "ExceptionNode", onlyWith = JDK11OrEarlier.class)
 final class Target_java_util_concurrent_ForkJoinTask_ExceptionNode {
-}
-
-@TargetClass(value = java.util.concurrent.ForkJoinTask.class, onlyWith = JDK17OrLater.class)
-final class Target_java_util_concurrent_ForkJoinTask_JDK17OrLater {
 }
 
 /** Dummy class to have a class with the file's name. */

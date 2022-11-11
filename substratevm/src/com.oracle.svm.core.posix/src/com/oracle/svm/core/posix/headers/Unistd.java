@@ -130,5 +130,9 @@ public class Unistd {
 
         @CFunction(transition = Transition.NO_TRANSITION)
         public static native SignedWord lseek(int fd, SignedWord offset, int whence);
+
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native int getpagesize();
+
     }
 }

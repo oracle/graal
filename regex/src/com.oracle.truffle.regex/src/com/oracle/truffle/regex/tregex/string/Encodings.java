@@ -541,7 +541,7 @@ public final class Encodings {
 
             @Override
             public StringBufferLATIN1 createStringBuffer(int capacity) {
-                return new StringBufferLATIN1(capacity);
+                return new StringBufferLATIN1(capacity, this);
             }
 
             @Override

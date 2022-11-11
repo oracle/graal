@@ -102,8 +102,4 @@ public final class IsolatedCodeInstallBridge extends InstalledCode implements Op
         throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
     }
 
-    @Override
-    public boolean soleExecutionEntryPoint() {
-        throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
-    }
 }

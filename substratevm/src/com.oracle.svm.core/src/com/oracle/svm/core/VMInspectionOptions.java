@@ -41,7 +41,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.util.InterruptImageBuilding;
+import com.oracle.svm.core.util.UserError;
 
 public final class VMInspectionOptions {
     private static final String ENABLE_MONITORING_OPTION = "enable-monitoring";
@@ -49,9 +49,10 @@ public final class VMInspectionOptions {
     private static final String MONITORING_HEAPDUMP_NAME = "heapdump";
     private static final String MONITORING_JFR_NAME = "jfr";
     private static final String MONITORING_JVMSTAT_NAME = "jvmstat";
-    private static final String MONITORING_ALLOWED_VALUES = "'" + MONITORING_HEAPDUMP_NAME + "', '" + MONITORING_JFR_NAME + "', '" + MONITORING_JVMSTAT_NAME + "', or '" + MONITORING_ALL_NAME + "'";
+    private static final String MONITORING_ALLOWED_VALUES = "'" + MONITORING_HEAPDUMP_NAME + "', '" + MONITORING_JFR_NAME + "', '" + MONITORING_JVMSTAT_NAME + "', or '" + MONITORING_ALL_NAME +
+                    "' (defaults to '" + MONITORING_ALL_NAME + "' if no argument is provided)";
 
-    @APIOption(name = ENABLE_MONITORING_OPTION) //
+    @APIOption(name = ENABLE_MONITORING_OPTION, defaultValue = MONITORING_ALL_NAME) //
     @Option(help = "Enable monitoring features that allow the VM to be inspected at run time. Comma-separated list can contain " + MONITORING_ALLOWED_VALUES + ". " +
                     "For example: `--" + ENABLE_MONITORING_OPTION + "=" + MONITORING_HEAPDUMP_NAME + "," + MONITORING_JVMSTAT_NAME + "`.", type = OptionType.User) //
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableMonitoringFeatures = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings(),
@@ -61,8 +62,7 @@ public final class VMInspectionOptions {
         Set<String> enabledFeatures = getEnabledMonitoringFeatures();
         enabledFeatures.removeAll(List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME, MONITORING_JVMSTAT_NAME, MONITORING_ALL_NAME));
         if (!enabledFeatures.isEmpty()) {
-            throw new InterruptImageBuilding(
-                            "The option " + optionKey.getName() + " contains invalid value(s): " + String.join(", ", enabledFeatures) + ". It can only contain " + MONITORING_ALLOWED_VALUES + ".");
+            throw UserError.abort("The option %s contains invalid value(s): %s. It can only contain %s.", optionKey.getName(), String.join(", ", enabledFeatures), MONITORING_ALLOWED_VALUES);
         }
     }
 
@@ -86,7 +86,7 @@ public final class VMInspectionOptions {
     }
 
     @Fold
-    public static boolean hasJFRSupport() {
+    public static boolean hasJfrSupport() {
         return hasAllOrKeywordMonitoringSupport(MONITORING_JFR_NAME) && !Platform.includedIn(WINDOWS.class);
     }
 
@@ -96,10 +96,17 @@ public final class VMInspectionOptions {
     }
 
     @Option(help = "Dumps all runtime compiled methods on SIGUSR2.", type = OptionType.User) //
-    public static final HostedOptionKey<Boolean> DumpRuntimeCompilationOnSignal = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> DumpRuntimeCompilationOnSignal = new HostedOptionKey<>(false, VMInspectionOptions::validateOnSignalOption);
 
     @Option(help = "Dumps all thread stacktraces on SIGQUIT/SIGBREAK.", type = OptionType.User) //
-    public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false, VMInspectionOptions::validateOnSignalOption);
+
+    private static void validateOnSignalOption(HostedOptionKey<Boolean> optionKey) {
+        if (optionKey.getValue() && !SubstrateOptions.EnableSignalAPI.getValue()) {
+            throw UserError.abort("The option %s requires the Signal API, but the Signal API is disabled. Please enable with `-H:+%s`.",
+                            optionKey.getName(), SubstrateOptions.EnableSignalAPI.getName());
+        }
+    }
 
     static class DeprecatedOptions {
         @Option(help = "Enables features that allow the VM to be inspected during run time.", type = OptionType.User, //

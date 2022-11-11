@@ -32,21 +32,21 @@ import java.util.TimeZone;
 
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.VMRuntime;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
-@AutomaticFeature
-public class DumpHeapOnSignalFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class DumpHeapOnSignalFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasHeapDumpSupport();
+        return VMInspectionOptions.hasHeapDumpSupport() && SubstrateOptions.EnableSignalAPI.getValue();
     }
 
     @Override
@@ -75,9 +75,10 @@ class DumpHeapReport implements SignalHandler {
     public void handle(Signal arg0) {
         DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'");
         dateFormat.setTimeZone(UTC_TIMEZONE);
-        String heapDumpFileName = "svm-heapdump-" + ProcessProperties.getProcessID() + "-" + dateFormat.format(new Date()) + ".hprof";
+        String defaultHeapDumpFileName = "svm-heapdump-" + ProcessProperties.getProcessID() + "-" + dateFormat.format(new Date()) + ".hprof";
+        String heapDumpPath = SubstrateOptions.getHeapDumpPath(defaultHeapDumpFileName);
         try {
-            VMRuntime.dumpHeap(heapDumpFileName, true);
+            VMRuntime.dumpHeap(heapDumpPath, true);
         } catch (IOException e) {
             Log.log().string("IOException during dumpHeap: ").string(e.getMessage()).newline();
         }

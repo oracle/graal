@@ -32,6 +32,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -39,7 +40,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.cpufeature.Stubs;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
-import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -48,46 +49,50 @@ import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 
+@Platforms({Platform.AMD64.class, Platform.AARCH64.class})
 public class StubForeignCallsFeatureBase implements InternalFeature {
 
-    static final class StubDescriptor {
+    public static final class StubDescriptor {
 
         private final ForeignCallDescriptor[] foreignCallDescriptors;
-        private final boolean isReexecutable;
         private final EnumSet<?> minimumRequiredFeatures;
         private final EnumSet<?> runtimeCheckedCPUFeatures;
         private SnippetRuntime.SubstrateForeignCallDescriptor[] stubs;
 
-        StubDescriptor(ForeignCallDescriptor foreignCallDescriptors, boolean isReexecutable, EnumSet<?> minimumRequiredFeatures, EnumSet<?> runtimeCheckedCPUFeatures) {
-            this(new ForeignCallDescriptor[]{foreignCallDescriptors}, isReexecutable, minimumRequiredFeatures, runtimeCheckedCPUFeatures);
+        public StubDescriptor(ForeignCallDescriptor foreignCallDescriptors, EnumSet<?> minimumRequiredFeatures, EnumSet<?> runtimeCheckedCPUFeatures) {
+            this(new ForeignCallDescriptor[]{foreignCallDescriptors}, minimumRequiredFeatures, runtimeCheckedCPUFeatures);
         }
 
-        StubDescriptor(ForeignCallDescriptor[] foreignCallDescriptors, boolean isReexecutable, EnumSet<?> minimumRequiredFeatures, EnumSet<?> runtimeCheckedCPUFeatures) {
+        public StubDescriptor(ForeignCallDescriptor[] foreignCallDescriptors, EnumSet<?> minimumRequiredFeatures, EnumSet<?> runtimeCheckedCPUFeatures) {
             this.foreignCallDescriptors = foreignCallDescriptors;
-            this.isReexecutable = isReexecutable;
             this.minimumRequiredFeatures = minimumRequiredFeatures;
             this.runtimeCheckedCPUFeatures = runtimeCheckedCPUFeatures;
         }
 
-        private SnippetRuntime.SubstrateForeignCallDescriptor[] getStubs() {
+        private SnippetRuntime.SubstrateForeignCallDescriptor[] getStubs(Class<?> stubsHolder) {
             if (stubs == null) {
-                stubs = mapStubs();
+                stubs = mapStubs(stubsHolder);
             }
             return stubs;
         }
 
-        private SnippetRuntime.SubstrateForeignCallDescriptor[] mapStubs() {
+        private SnippetRuntime.SubstrateForeignCallDescriptor[] mapStubs(Class<?> stubsHolder) {
             EnumSet<?> buildtimeCPUFeatures = getBuildtimeFeatures();
-            boolean generateBaseline = buildtimeCPUFeatures.containsAll(minimumRequiredFeatures);
-            // Currently we only support AMD64, see CPUFeatureRegionEnterNode.generate
-            boolean generateRuntimeChecked = !buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) && DeoptimizationSupport.enabled() && Platform.includedIn(Platform.AMD64.class);
+            boolean isJITCompilationEnabled = DeoptimizationSupport.enabled();
+            // If JIT is enabled, we compile a variant with the intrinsic's minimal CPU feature set
+            // as well as a version with the preferred runtime checked features, even if both
+            // variants are not supported by the build time feature set. This way, intrinsics
+            // requiring e.g. SSE4.2 can still be used on a machine that just barely fulfils the
+            // minimum requirements and doesn't have the preferred AVX2 flag.
+            boolean generateBaseline = buildtimeCPUFeatures.containsAll(minimumRequiredFeatures) || isJITCompilationEnabled && !minimumRequiredFeatures.equals(runtimeCheckedCPUFeatures);
+            boolean generateRuntimeChecked = !buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) && isJITCompilationEnabled;
             ArrayList<SnippetRuntime.SubstrateForeignCallDescriptor> ret = new ArrayList<>();
             for (ForeignCallDescriptor call : foreignCallDescriptors) {
                 if (generateBaseline) {
-                    ret.add(SnippetRuntime.findForeignCall(SVMIntrinsicStubsGen.class, call.getName(), isReexecutable));
+                    ret.add(SnippetRuntime.findForeignCall(stubsHolder, call.getName(), call.isReexecutable()));
                 }
                 if (generateRuntimeChecked) {
-                    ret.add(SnippetRuntime.findForeignCall(SVMIntrinsicStubsGen.class, call.getName() + Stubs.RUNTIME_CHECKED_CPU_FEATURES_NAME_SUFFIX, isReexecutable));
+                    ret.add(SnippetRuntime.findForeignCall(stubsHolder, call.getName() + Stubs.RUNTIME_CHECKED_CPU_FEATURES_NAME_SUFFIX, call.isReexecutable()));
                 }
             }
             return ret.toArray(new SnippetRuntime.SubstrateForeignCallDescriptor[0]);
@@ -95,9 +100,11 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
 
     }
 
+    private final Class<?> stubsHolder;
     private final StubDescriptor[] stubDescriptors;
 
-    protected StubForeignCallsFeatureBase(StubDescriptor[] stubDescriptors) {
+    protected StubForeignCallsFeatureBase(Class<?> stubsHolder, StubDescriptor[] stubDescriptors) {
+        this.stubsHolder = stubsHolder;
         this.stubDescriptors = stubDescriptors;
     }
 
@@ -109,14 +116,14 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         for (StubDescriptor sd : stubDescriptors) {
-            registerStubRoots(access, sd.getStubs());
+            registerStubRoots(access, sd.getStubs(stubsHolder));
         }
     }
 
     @Override
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         for (StubDescriptor sd : this.stubDescriptors) {
-            foreignCalls.register(sd.getStubs());
+            foreignCalls.register(sd.getStubs(stubsHolder));
         }
     }
 

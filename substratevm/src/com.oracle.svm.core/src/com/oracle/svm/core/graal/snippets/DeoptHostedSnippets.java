@@ -60,7 +60,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 
 public final class DeoptHostedSnippets extends SubstrateTemplates implements Snippets {
 
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     protected static void deoptSnippet(@ConstantParameter DeoptimizationReason reason, @ConstantParameter Boolean mustNotAllocate, String message) {
         /*
          * The snippet cannot (yet) simplify a switch of an Enum, so we use an if-cascade here.
@@ -122,8 +122,12 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
         new DeoptHostedSnippets(options, providers, lowerings);
     }
 
+    private final SnippetInfo deopt;
+
     private DeoptHostedSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, providers);
+
+        this.deopt = snippet(providers, DeoptHostedSnippets.class, "deoptSnippet");
 
         lowerings.put(DeoptimizeNode.class, new DeoptimizeLowering());
     }
@@ -151,9 +155,6 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
     }
 
     protected class DeoptimizeLowering implements NodeLoweringProvider<DeoptimizeNode> {
-
-        private final SnippetInfo deopt = snippet(DeoptHostedSnippets.class, "deoptSnippet");
-
         @Override
         public void lower(DeoptimizeNode node, LoweringTool tool) {
             LoweringStage loweringStage = tool.getLoweringStage();
@@ -215,7 +216,7 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
             args.addConst("reason", node.getReason());
             args.addConst("mustNotAllocate", mustNotAllocate(graph.method()));
             args.add("message", message);
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 }

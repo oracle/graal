@@ -26,9 +26,12 @@ The following options are supported across both GraalVM Community and Enterprise
 * `--enable-all-security-services`: add all security service classes to a native executable
 * `--enable-http`: enable HTTP support in a native executable
 * `--enable-https`: enable HTTPS support in a native executable
+* `--enable-monitoring`: enable monitoring features that allow the VM to be inspected at run time. Comma-separated list can contain `heapdump`, `jfr`, `jvmstat`, or `all` (defaults to `all` if no argument is provided). For example: `--enable-monitoring=heapdump,jvmstat`.
+* `--enable-sbom`: specify the format for a Software Bill of Materials (SBOM) to be included in the image for passive inspection. Currently, only cyclonedx is supported and the default.
 * `--enable-preview`: allow classes to depend on preview features of this release
+* `--enable-monitoring`: enable monitoring features that allow the VM to be inspected at run time. Comma-separated list can contain 'heapdump', 'jfr', 'jvmstat', or 'all' (defaults to 'all' if no argument is provided). For example: `--enable-monitoring=heapdump,jvmstat`.
+* `--enable-sbom`: specify the format for a Software Bill of Materials (SBOM) to be included in the image for passive inspection. Currently, only `cyclonedx` is supported and the default.
 * `--enable-url-protocols`: list comma-separated URL protocols to enable
-* `--enable-monitoring`: enable monitoring features that allow the VM to be inspected at run time. Comma-separated list can contain 'heapdump', 'jfr', 'jvmstat', or 'all'. For example: `--enable-monitoring=heapdump,jvmstat`.
 * `--features`: a comma-separated list of fully qualified [Feature implementation classes](https://www.graalvm.org/sdk/javadoc/index.html?org/graalvm/nativeimage/hosted/Feature.html)
 * `--force-fallback`: force building of a fallback native executable
 * `--gc=<value>`: select Native Image garbage collector implementation. Allowed options for `<value>` are: `G1` for G1 garbage collector (**GraalVM Enterprise only**); `epsilon` for Epsilon garbage collector; `serial` for Serial garbage collector (default).

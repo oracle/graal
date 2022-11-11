@@ -36,9 +36,9 @@ import org.graalvm.compiler.replacements.SnippetIntegerHistogram;
 
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -73,7 +73,7 @@ final class DisableSnippetCountersPlugin implements NodePlugin {
  * Disables snippet counters because they need a {@link SnippetReflectionProvider} which is not
  * fully supported for cross-isolate compilations.
  */
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 final class DisableSnippetCountersFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {

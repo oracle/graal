@@ -41,6 +41,7 @@ public class PosixDirectives implements CContext.Directives {
                     "<limits.h>",
                     "<locale.h>",
                     "<pthread.h>",
+                    "<semaphore.h>",
                     "<pwd.h>",
                     "<signal.h>",
                     "<errno.h>",

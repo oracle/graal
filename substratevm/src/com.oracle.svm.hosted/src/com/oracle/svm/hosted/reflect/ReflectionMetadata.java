@@ -26,30 +26,12 @@ package com.oracle.svm.hosted.reflect;
 
 import static com.oracle.svm.core.meta.SharedField.LOC_UNINITIALIZED;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
-
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
-import com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl;
-import com.oracle.svm.core.reflect.target.ReflectionMetadataEncoding;
 import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.TypeAnnotationValue;
-import com.oracle.svm.hosted.image.NativeImageCodeCache.ReflectionMetadataEncoderFactory;
 import com.oracle.svm.hosted.meta.HostedType;
 
 import jdk.vm.ci.meta.JavaConstant;
-
-@AutomaticFeature
-class ReflectionMetadataFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(ReflectionMetadataEncoderFactory.class, new ReflectionMetadataEncoderImpl.Factory());
-        ImageSingletons.add(ReflectionMetadataDecoder.class, new ReflectionMetadataDecoderImpl());
-        ImageSingletons.add(ReflectionMetadataEncoding.class, new ReflectionMetadataEncoding());
-    }
-}
 
 public class ReflectionMetadata {
 
@@ -65,12 +47,12 @@ public class ReflectionMetadata {
 
     static class ClassMetadata extends AnnotatedElementMetadata {
         final HostedType[] classes;
-        final Object[] enclosingMethodInfo;
+        final Object enclosingMethodInfo;
         final RecordComponentMetadata[] recordComponents;
         final HostedType[] permittedSubclasses;
         final int classAccessFlags;
 
-        ClassMetadata(HostedType[] classes, Object[] enclosingMethodInfo, RecordComponentMetadata[] recordComponents, HostedType[] permittedSubclasses, int classAccessFlags,
+        ClassMetadata(HostedType[] classes, Object enclosingMethodInfo, RecordComponentMetadata[] recordComponents, HostedType[] permittedSubclasses, int classAccessFlags,
                         AnnotationValue[] annotations, TypeAnnotationValue[] typeAnnotations) {
             super(annotations, typeAnnotations);
             this.classes = classes;

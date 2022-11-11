@@ -30,12 +30,12 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 
 public final class ReferenceHandlerThread implements Runnable {
@@ -104,8 +104,8 @@ public final class ReferenceHandlerThread implements Runnable {
     }
 }
 
-@AutomaticFeature
-class ReferenceHandlerThreadFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class ReferenceHandlerThreadFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return ReferenceHandlerThread.isSupported();

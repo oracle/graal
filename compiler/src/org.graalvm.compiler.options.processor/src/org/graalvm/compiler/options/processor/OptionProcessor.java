@@ -54,7 +54,6 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
-import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 
 import org.graalvm.compiler.processor.AbstractProcessor;
@@ -73,11 +72,6 @@ public class OptionProcessor extends AbstractProcessor {
     private static final String OPTION_TYPE_CLASS_NAME = "org.graalvm.compiler.options.OptionType";
     private static final String OPTION_DESCRIPTOR_CLASS_NAME = "org.graalvm.compiler.options.OptionDescriptor";
     private static final String OPTION_DESCRIPTORS_CLASS_NAME = "org.graalvm.compiler.options.OptionDescriptors";
-
-    @Override
-    public SourceVersion getSupportedSourceVersion() {
-        return SourceVersion.latest();
-    }
 
     private final Set<Element> processed = new HashSet<>();
 
@@ -147,6 +141,9 @@ public class OptionProcessor extends AbstractProcessor {
         String optionType = declaredOptionKeyType.getTypeArguments().get(0).toString();
         if (optionType.startsWith("java.lang.")) {
             optionType = optionType.substring("java.lang.".length());
+        }
+        if (optionType.contains("<")) {
+            optionType = optionType.substring(0, optionType.indexOf("<"));
         }
 
         Element enclosing = element.getEnclosingElement();
@@ -322,23 +319,6 @@ public class OptionProcessor extends AbstractProcessor {
             out.println("        };");
             out.println("    }");
             out.println("}");
-        }
-    }
-
-    public static PrintWriter createSourceFile(String pkg, String relativeName, Filer filer, Element... originatingElements) {
-        try {
-            // Ensure Unix line endings to comply with code style guide checked by Checkstyle
-            String className = pkg + "." + relativeName;
-            JavaFileObject sourceFile = filer.createSourceFile(className, originatingElements);
-            return new PrintWriter(sourceFile.openWriter()) {
-
-                @Override
-                public void println() {
-                    print("\n");
-                }
-            };
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
     }
 

@@ -29,9 +29,10 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.annotate.UnknownPrimitiveField;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 
 public class DeoptimizationSupport {
 
@@ -46,10 +47,12 @@ public class DeoptimizationSupport {
      * cases, that happens when support for runtime compilation using Graal is used. However, we
      * also have a few low-level unit tests that test deoptimization in isolation, without Graal
      * compilation.
+     *
+     * This method can be called as early as during {@link Feature#afterRegistration}.
      */
     @Fold
     public static boolean enabled() {
-        return ImageSingletons.contains(DeoptimizationSupport.class);
+        return ImageSingletons.contains(DeoptimizationCanaryFeature.class);
     }
 
     @Fold
@@ -71,6 +74,8 @@ public class DeoptimizationSupport {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static CFunctionPointer getDeoptStubPointer() {
-        return get().deoptStubPointer;
+        CFunctionPointer ptr = get().deoptStubPointer;
+        assert ptr.rawValue() != 0;
+        return ptr;
     }
 }

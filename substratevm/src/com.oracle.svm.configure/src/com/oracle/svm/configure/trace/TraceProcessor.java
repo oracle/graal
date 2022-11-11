@@ -29,10 +29,11 @@ import java.io.PrintWriter;
 import java.io.Reader;
 import java.io.StringWriter;
 import java.util.List;
-import java.util.Map;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.util.json.JSONParser;
 
 import com.oracle.svm.configure.config.ConfigurationSet;
-import com.oracle.svm.core.util.json.JSONParser;
 
 public class TraceProcessor extends AbstractProcessor {
     private final AccessAdvisor advisor;
@@ -53,18 +54,18 @@ public class TraceProcessor extends AbstractProcessor {
     public void process(Reader reader, ConfigurationSet configurationSet) throws IOException {
         setInLivePhase(false);
         JSONParser parser = new JSONParser(reader);
-        List<Map<String, ?>> trace = (List<Map<String, ?>>) parser.parse();
+        List<EconomicMap<String, ?>> trace = (List<EconomicMap<String, ?>>) parser.parse();
         processTrace(trace, configurationSet);
     }
 
-    private void processTrace(List<Map<String, ?>> trace, ConfigurationSet configurationSet) {
-        for (Map<String, ?> entry : trace) {
+    private void processTrace(List<EconomicMap<String, ?>> trace, ConfigurationSet configurationSet) {
+        for (EconomicMap<String, ?> entry : trace) {
             processEntry(entry, configurationSet);
         }
     }
 
     @Override
-    public void processEntry(Map<String, ?> entry, ConfigurationSet configurationSet) {
+    public void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet) {
         try {
             String tracer = (String) entry.get("tracer");
             switch (tracer) {

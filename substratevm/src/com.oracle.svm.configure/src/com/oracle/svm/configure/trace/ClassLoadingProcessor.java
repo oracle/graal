@@ -26,14 +26,15 @@
 package com.oracle.svm.configure.trace;
 
 import java.util.List;
-import java.util.Map;
+
+import org.graalvm.collections.EconomicMap;
 
 import com.oracle.svm.configure.config.ConfigurationSet;
 
 public class ClassLoadingProcessor extends AbstractProcessor {
 
     @Override
-    void processEntry(Map<String, ?> entry, ConfigurationSet configurationSet) {
+    void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
         if (invalidResult) {
             return;

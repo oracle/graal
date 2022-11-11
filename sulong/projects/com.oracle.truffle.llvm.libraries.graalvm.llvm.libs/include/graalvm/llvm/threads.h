@@ -45,16 +45,16 @@ enum {
  * implemented as IDs.
  */
 
-typedef long __sulong_thread_t;
+typedef uint64_t __sulong_thread_t;
 typedef int __sulong_key_t;
 
 typedef void *(*__sulong_thread_start_t)(void *);
 
 int __sulong_thread_create(__sulong_thread_t *thread, __sulong_thread_start_t fn, void *arg);
-void *__sulong_thread_join(long thread);
+void *__sulong_thread_join(__sulong_thread_t thread);
 __sulong_thread_t __sulong_thread_self();
 int __sulong_thread_setname_np(__sulong_thread_t thread, const char *name);
-int __sulong_thread_getname_np(__sulong_thread_t thread, char *name, size_t len);
+int __sulong_thread_getname_np(__sulong_thread_t thread, char *name, uint64_t len);
 
 void __sulong_thread_yield();
 int __sulong_thread_sleep(int64_t millis, int32_t nanos);

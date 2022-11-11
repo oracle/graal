@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,10 +47,10 @@
  * Input/Output support for the GraalVM SDK polyglot API.
  * <p>
  * The {@link org.graalvm.polyglot.io.FileSystem} allows an embedder to virtualize Input/Output
- * operations done by the {@code TruffleLanguage}s. A custom
- * {@link org.graalvm.polyglot.io.FileSystem filesystem} is registered using the
- * {@link org.graalvm.polyglot.Context.Builder#fileSystem(org.graalvm.polyglot.io.FileSystem)}
- * method.
+ * operations done by the {@code TruffleLanguage}s. A custom filesystem is registered using an
+ * IOAccess configuration
+ * {@link org.graalvm.polyglot.io.IOAccess.Builder#fileSystem(org.graalvm.polyglot.io.FileSystem)
+ * builder}.
  *
  * @since 19.0
  */

@@ -24,19 +24,22 @@
  */
 package com.oracle.svm.hosted.ameta;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
+import java.util.function.ObjIntConsumer;
 
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.heap.ImageHeapArray;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.meta.UninitializedStaticFieldValueReader;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.InjectAccessors;
@@ -49,24 +52,22 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 
-import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public class AnalysisConstantReflectionProvider extends SharedConstantReflectionProvider {
     private final AnalysisUniverse universe;
-    private final MetaAccessProvider metaAccess;
+    private final UniverseMetaAccess metaAccess;
     private final ConstantReflectionProvider originalConstantReflection;
     private final ClassInitializationSupport classInitializationSupport;
 
-    public AnalysisConstantReflectionProvider(AnalysisUniverse universe, MetaAccessProvider metaAccess,
+    public AnalysisConstantReflectionProvider(AnalysisUniverse universe, UniverseMetaAccess metaAccess,
                     ConstantReflectionProvider originalConstantReflection, ClassInitializationSupport classInitializationSupport) {
         this.universe = universe;
         this.metaAccess = metaAccess;
@@ -80,12 +81,65 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     }
 
     @Override
+    public Integer readArrayLength(JavaConstant array) {
+        if (array.getJavaKind() != JavaKind.Object || array.isNull()) {
+            return null;
+        }
+        if (array instanceof ImageHeapConstant) {
+            if (array instanceof ImageHeapArray) {
+                return ((ImageHeapArray) array).getLength();
+            }
+            return null;
+        }
+        return super.readArrayLength(array);
+    }
+
+    @Override
+    public JavaConstant readArrayElement(JavaConstant array, int index) {
+        if (array.getJavaKind() != JavaKind.Object || array.isNull()) {
+            return null;
+        }
+        if (array instanceof ImageHeapConstant) {
+            if (array instanceof ImageHeapArray) {
+                ImageHeapArray heapArray = (ImageHeapArray) array;
+                if (index < 0 || index >= heapArray.getLength()) {
+                    return null;
+                }
+                return replaceObject(heapArray.getElement(index));
+            }
+            return null;
+        }
+        JavaConstant element = super.readArrayElement(array, index);
+        return element == null ? null : replaceObject(element);
+    }
+
+    @Override
+    public void forEachArrayElement(JavaConstant array, ObjIntConsumer<JavaConstant> consumer) {
+        if (array instanceof ImageHeapConstant) {
+            if (array instanceof ImageHeapArray) {
+                ImageHeapArray heapArray = (ImageHeapArray) array;
+                for (int index = 0; index < heapArray.getLength(); index++) {
+                    JavaConstant element = heapArray.getElement(index);
+                    consumer.accept(replaceObject(element), index);
+                }
+            }
+            return;
+        }
+        /* Intercept the original consumer and apply object replacement. */
+        super.forEachArrayElement(array, (element, index) -> consumer.accept(replaceObject(element), index));
+    }
+
+    @Override
     public final JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
         return readValue(metaAccess, (AnalysisField) field, receiver);
     }
 
-    public JavaConstant readValue(MetaAccessProvider suppliedMetaAccess, AnalysisField field, JavaConstant receiver) {
+    public JavaConstant readValue(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant receiver) {
         JavaConstant value;
+        if (receiver instanceof ImageHeapConstant) {
+            ImageHeapInstance heapObject = (ImageHeapInstance) receiver;
+            return interceptValue(suppliedMetaAccess, field, heapObject.readFieldValue(field));
+        }
         if (classInitializationSupport.shouldInitializeAtRuntime(field.getDeclaringClass())) {
             if (field.isStatic()) {
                 value = readUninitializedStaticValue(field);
@@ -102,7 +156,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             value = universe.lookup(ReadableJavaField.readFieldValue(suppliedMetaAccess, originalConstantReflection, field.wrapped, universe.toHosted(receiver)));
         }
 
-        return interceptValue(field, value);
+        return interceptValue(suppliedMetaAccess, field, value);
     }
 
     /** Read the field value and wrap it in a value supplier without performing any replacements. */
@@ -141,93 +195,18 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         return ValueSupplier.eagerValue(universe.lookup(originalConstantReflection.readFieldValue(field.wrapped, receiver)));
     }
 
-    /*
-     * Static fields of classes that are initialized at run time have the default (uninitialized)
-     * value in the image heap. But there is one important exception:
-     *
-     * Fields that are static final and either primitive or of type String are initialized using the
-     * ConstantValue attribute of the class file, not using a class initializer. While we have class
-     * initializers available at run time, we no longer have the class files. So we need to preserve
-     * the values from the ConstantValue attribute in a different form. The easiest way is to just
-     * have these values as the default value of the static field in the image heap.
-     *
-     * Unfortunately, JVMCI does not allow us to access the default value: since the class is still
-     * uninitialized in the image generator, the JVMCI methods to read the field do not return a
-     * value. But the Java HotSpot VM actually already has the fields initialized to the values
-     * defined in the ConstantValue attributes. So reading the field via Unsafe actually produces
-     * the correct value that we want.
-     *
-     * Another complication are classes that are re-initialized at run time, i.e., initialized both
-     * during image generation and at run time. We must not return a value for a field that is
-     * initialized by a class initializer (that could be an arbitrary and wrong value from the image
-     * generator). Fortunately, the ConstantValue attribute is only used for static final fields of
-     * primitive types or the String type. By limiting the Unsafe read to these narrow cases, it is
-     * pretty likely (although not guaranteed) that we are not returning an unintended value for a
-     * class that is re-initialized at run time.
-     */
     public JavaConstant readUninitializedStaticValue(AnalysisField field) {
         assert classInitializationSupport.shouldInitializeAtRuntime(field.getDeclaringClass());
-        JavaKind kind = field.getJavaKind();
-
-        boolean canHaveConstantValueAttribute = kind.isPrimitive() || field.getType().getName().equals("Ljava/lang/String;");
-        if (!canHaveConstantValueAttribute || !field.isFinal()) {
-            return JavaConstant.defaultForKind(kind);
-        }
-
-        assert Modifier.isStatic(field.getModifiers());
-
-        /* On HotSpot the base of a static field is the Class object. */
-        Object base = field.getDeclaringClass().getJavaClass();
-        long offset = field.wrapped.getOffset();
-
-        /*
-         * We cannot rely on the reflectionField because it can be null if there is some incomplete
-         * classpath issue or the field is either missing or hidden from reflection. However we can
-         * still use it to double check our assumptions.
-         */
-        Field reflectionField = field.getJavaField();
-        if (reflectionField != null) {
-            assert kind == JavaKind.fromJavaClass(reflectionField.getType());
-
-            Object reflectionFieldBase = Unsafe.getUnsafe().staticFieldBase(reflectionField);
-            long reflectionFieldOffset = Unsafe.getUnsafe().staticFieldOffset(reflectionField);
-
-            AnalysisError.guarantee(reflectionFieldBase == base && reflectionFieldOffset == offset);
-        }
-
-        switch (kind) {
-            case Boolean:
-                return JavaConstant.forBoolean(Unsafe.getUnsafe().getBoolean(base, offset));
-            case Byte:
-                return JavaConstant.forByte(Unsafe.getUnsafe().getByte(base, offset));
-            case Char:
-                return JavaConstant.forChar(Unsafe.getUnsafe().getChar(base, offset));
-            case Short:
-                return JavaConstant.forShort(Unsafe.getUnsafe().getShort(base, offset));
-            case Int:
-                return JavaConstant.forInt(Unsafe.getUnsafe().getInt(base, offset));
-            case Long:
-                return JavaConstant.forLong(Unsafe.getUnsafe().getLong(base, offset));
-            case Float:
-                return JavaConstant.forFloat(Unsafe.getUnsafe().getFloat(base, offset));
-            case Double:
-                return JavaConstant.forDouble(Unsafe.getUnsafe().getDouble(base, offset));
-            case Object:
-                Object value = Unsafe.getUnsafe().getObject(base, offset);
-                assert value == null || value instanceof String : "String is currently the only specified object type for the ConstantValue class file attribute";
-                return SubstrateObjectConstant.forObject(value);
-            default:
-                throw AnalysisError.shouldNotReachHere();
-        }
+        return UninitializedStaticFieldValueReader.readUninitializedStaticValue(field, val -> SubstrateObjectConstant.forObject(val));
     }
 
-    public JavaConstant interceptValue(AnalysisField field, JavaConstant value) {
+    public JavaConstant interceptValue(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant value) {
         JavaConstant result = value;
         if (result != null) {
             result = filterInjectedAccessor(field, result);
             result = replaceObject(result);
             result = interceptAssertionStatus(field, result);
-            result = interceptWordType(field, result);
+            result = interceptWordType(suppliedMetaAccess, field, result);
         }
         return result;
     }
@@ -251,6 +230,10 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     private JavaConstant replaceObject(JavaConstant value) {
         if (value == JavaConstant.NULL_POINTER) {
             return JavaConstant.NULL_POINTER;
+        }
+        if (value instanceof ImageHeapConstant) {
+            /* The value is replaced when the object is snapshotted. */
+            return value;
         }
         if (value.getJavaKind() == JavaKind.Object) {
             Object oldObject = universe.getSnippetReflection().asObject(Object.class, value);
@@ -282,10 +265,9 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
      * Intercept {@link Word} types. They are boxed objects in the hosted world, but primitive
      * values in the runtime world.
      */
-    private JavaConstant interceptWordType(AnalysisField field, JavaConstant value) {
+    private JavaConstant interceptWordType(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant value) {
         if (value.getJavaKind() == JavaKind.Object) {
-            Object originalObject = universe.getSnippetReflection().asObject(Object.class, value);
-            if (universe.hostVM().isRelocatedPointer(originalObject)) {
+            if (universe.hostVM().isRelocatedPointer(suppliedMetaAccess, value)) {
                 /*
                  * Such pointers are subject to relocation therefore we don't know their values yet.
                  * Therefore there should not be a relocated pointer constant in a function which is
@@ -293,9 +275,10 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
                  * of readValue is responsible of handling the returned value correctly.
                  */
                 return value;
-            } else if (originalObject instanceof WordBase) {
+            } else if (suppliedMetaAccess.isInstanceOf(value, WordBase.class)) {
+                Object originalObject = universe.getSnippetReflection().asObject(Object.class, value);
                 return JavaConstant.forIntegerKind(universe.getWordKind(), ((WordBase) originalObject).rawValue());
-            } else if (originalObject == null && field.getType().isWordType()) {
+            } else if (value.isNull() && field.getType().isWordType()) {
                 return JavaConstant.forIntegerKind(universe.getWordKind(), 0);
             }
         }
@@ -309,8 +292,12 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             if (obj instanceof DynamicHub) {
                 return getHostVM().lookupType((DynamicHub) obj);
             } else if (obj instanceof Class) {
-                // TODO do we need to make sure the hub is scanned?
-                return metaAccess.lookupJavaType((Class<?>) obj);
+                throw VMError.shouldNotReachHere("Must not have java.lang.Class object: " + obj);
+            }
+        }
+        if (constant instanceof ImageHeapConstant) {
+            if (metaAccess.isInstanceOf((JavaConstant) constant, Class.class)) {
+                throw VMError.shouldNotReachHere("ConstantReflectionProvider.asJavaType(Constant) not yet implemented for ImageHeapObject");
             }
         }
         return null;
@@ -318,10 +305,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
-        DynamicHub dynamicHub = getHostVM().dynamicHub(type);
-        registerAsReachable(getHostVM(), dynamicHub);
-        assert dynamicHub != null : type.toClassName() + " has a null dynamicHub.";
-        return SubstrateObjectConstant.forObject(dynamicHub);
+        return SubstrateObjectConstant.forObject(getHostVM().dynamicHub(type));
     }
 
     protected static void registerAsReachable(SVMHost hostVM, DynamicHub dynamicHub) {

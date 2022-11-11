@@ -40,7 +40,7 @@ import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsola
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsolateThread;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsolateThreadPointer;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CConst;
 import com.oracle.svm.core.c.CHeader;
 import com.oracle.svm.core.c.CTypedef;

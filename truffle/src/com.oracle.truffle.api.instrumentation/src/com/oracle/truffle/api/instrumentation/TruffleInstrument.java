@@ -756,13 +756,11 @@ public abstract class TruffleInstrument {
          * @param path the absolute or relative path to create {@link TruffleFile} for
          * @return {@link TruffleFile}
          * @since 19.0
+         * @deprecated since 23.0. Use {@link #getTruffleFile(TruffleContext, String)}.
          */
+        @Deprecated
         public TruffleFile getTruffleFile(String path) {
-            try {
-                return InstrumentAccessor.engineAccess().getTruffleFile(path);
-            } catch (Throwable t) {
-                throw engineToInstrumentException(t);
-            }
+            return getTruffleFile(null, path);
         }
 
         /**
@@ -772,10 +770,42 @@ public abstract class TruffleInstrument {
          * @param uri the {@link URI} to create {@link TruffleFile} for
          * @return {@link TruffleFile}
          * @since 19.0
+         * @deprecated since 23.0. Use {@link #getTruffleFile(TruffleContext, URI)}.
          */
+        @Deprecated
         public TruffleFile getTruffleFile(URI uri) {
+            return getTruffleFile(null, uri);
+        }
+
+        /**
+         * Returns a {@link TruffleFile} for given path and {@link TruffleContext context}.
+         *
+         * @param context the {@link TruffleContext}, or <code>null</code> to use a current entered
+         *            context.
+         * @param path the absolute or relative path to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 23.0
+         */
+        public TruffleFile getTruffleFile(TruffleContext context, String path) {
             try {
-                return InstrumentAccessor.engineAccess().getTruffleFile(uri);
+                return InstrumentAccessor.engineAccess().getTruffleFile(context, path);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
+        }
+
+        /**
+         * Returns a {@link TruffleFile} for given {@link URI} and {@link TruffleContext context}.
+         *
+         * @param context the {@link TruffleContext}, or <code>null</code> to use a current entered
+         *            context.
+         * @param uri the {@link URI} to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 23.0
+         */
+        public TruffleFile getTruffleFile(TruffleContext context, URI uri) {
+            try {
+                return InstrumentAccessor.engineAccess().getTruffleFile(context, uri);
             } catch (Throwable t) {
                 throw engineToInstrumentException(t);
             }

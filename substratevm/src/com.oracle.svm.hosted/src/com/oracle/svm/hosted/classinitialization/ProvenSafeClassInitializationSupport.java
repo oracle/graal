@@ -28,11 +28,13 @@ import static com.oracle.svm.core.SubstrateOptions.TraceClassInitialization;
 import static com.oracle.svm.hosted.classinitialization.InitKind.RUN_TIME;
 
 import java.lang.reflect.Field;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+
+import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -60,8 +62,8 @@ class ProvenSafeClassInitializationSupport extends ClassInitializationSupport {
     private static final Field dynamicHubClassInitializationInfoField = ReflectionUtil.lookupField(DynamicHub.class, "classInitializationInfo");
 
     private final EarlyClassInitializerAnalysis earlyClassInitializerAnalysis;
-    private Set<Class<?>> provenSafeEarly = Collections.synchronizedSet(new HashSet<>());
-    private Set<Class<?>> provenSafeLate = Collections.synchronizedSet(new HashSet<>());
+    private final Set<Class<?>> provenSafeEarly = ConcurrentHashMap.newKeySet();
+    private Set<Class<?>> provenSafeLate = ConcurrentHashMap.newKeySet();
 
     ProvenSafeClassInitializationSupport(MetaAccessProvider metaAccess, ImageClassLoader loader) {
         super(metaAccess, loader);
@@ -110,6 +112,7 @@ class ProvenSafeClassInitializationSupport extends ClassInitializationSupport {
     }
 
     private static String classInitializationErrorMessage(Class<?> clazz, String action) {
+        Map<Class<?>, StackTraceElement[]> initializedClasses = ClassInitializationTracking.initializedClasses;
         if (!isClassInitializationTracked(clazz)) {
             return "To see why " + clazz.getName() + " got initialized use " + SubstrateOptionsParser.commandArgument(TraceClassInitialization, clazz.getName());
         } else if (initializedClasses.containsKey(clazz)) {
@@ -121,10 +124,11 @@ class ProvenSafeClassInitializationSupport extends ClassInitializationSupport {
                     culprit = stackTraceElement.getClassName();
                 }
             }
+            String initializationTrace = getTraceString(initializedClasses.get(clazz));
             if (culprit != null) {
-                return culprit + " caused initialization of this class with the following trace: \n" + classInitializationTrace(clazz);
+                return culprit + " caused initialization of this class with the following trace: \n" + initializationTrace;
             } else {
-                return clazz.getTypeName() + " has been initialized through the following trace:\n" + classInitializationTrace(clazz);
+                return clazz.getTypeName() + " has been initialized through the following trace:\n" + initializationTrace;
             }
         } else {
             return clazz.getTypeName() + " has been initialized without the native-image initialization instrumentation and the stack trace can't be tracked. " + action;
@@ -146,14 +150,6 @@ class ProvenSafeClassInitializationSupport extends ClassInitializationSupport {
         } else {
             throw VMError.shouldNotReachHere("Must be either proven or specified");
         }
-    }
-
-    private static String classInitializationTrace(Class<?> clazz) {
-        return getTraceString(initializedClasses.get(clazz));
-    }
-
-    public static Map<Class<?>, StackTraceElement[]> getInitializedClasses() {
-        return initializedClasses;
     }
 
     @Override
@@ -269,9 +265,9 @@ class ProvenSafeClassInitializationSupport extends ClassInitializationSupport {
                 }
             });
 
-            if (!TraceClassInitialization.hasBeenSet()) {
-                String traceClassInitArguments = illegalyInitialized.stream().map(Class::getName).collect(Collectors.joining(","));
-                System.out.println("To see how the classes got initialized, use " + SubstrateOptionsParser.commandArgument(TraceClassInitialization, traceClassInitArguments));
+            String traceClassInitArguments = illegalyInitialized.stream().filter(c -> !isClassInitializationTracked(c)).map(Class::getName).collect(Collectors.joining(","));
+            if (!"".equals(traceClassInitArguments)) {
+                detailedMessage.append("To see how the classes got initialized, use ").append(SubstrateOptionsParser.commandArgument(TraceClassInitialization, traceClassInitArguments));
             }
 
             throw UserError.abort("%s", detailedMessage);
@@ -441,7 +437,7 @@ class ProvenSafeClassInitializationSupport extends ClassInitializationSupport {
         classesWithKind(RUN_TIME).stream()
                         .filter(t -> aMetaAccess.optionalLookupJavaType(t).isPresent())
                         .filter(t -> aMetaAccess.lookupJavaType(t).isReachable())
-                        .filter(t -> canBeProvenSafe(t))
+                        .filter(this::canBeProvenSafe)
                         .forEach(c -> {
                             AnalysisType type = aMetaAccess.lookupJavaType(c);
                             if (!initGraph.isUnsafe(type)) {

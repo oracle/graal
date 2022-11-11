@@ -24,49 +24,77 @@
  */
 package com.oracle.svm.core.jfr;
 
+import java.util.function.BooleanSupplier;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK17OrEarlier;
+import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * The event IDs depend on the metadata.xml and therefore vary between JDK versions.
  */
-public enum JfrEvent {
-    ThreadStart("jdk.ThreadStart"),
-    ThreadEnd("jdk.ThreadEnd"),
-    DataLoss("jdk.DataLoss"),
-    ClassLoadingStatistics("jdk.ClassLoadingStatistics"),
-    InitialEnvironmentVariable("jdk.InitialEnvironmentVariable"),
-    InitialSystemProperty("jdk.InitialSystemProperty"),
-    JavaThreadStatistics("jdk.JavaThreadStatistics"),
-    JVMInformation("jdk.JVMInformation"),
-    OSInformation("jdk.OSInformation"),
-    PhysicalMemory("jdk.PhysicalMemory"),
-    ExecutionSample("jdk.ExecutionSample"),
-    NativeMethodSample("jdk.NativeMethodSample"),
-    GarbageCollection("jdk.GarbageCollection"),
-    GCPhasePauseEvent("jdk.GCPhasePause"),
-    GCPhasePauseLevel1Event("jdk.GCPhasePauseLevel1"),
-    GCPhasePauseLevel2Event("jdk.GCPhasePauseLevel2"),
-    GCPhasePauseLevel3Event("jdk.GCPhasePauseLevel3"),
-    GCPhasePauseLevel4Event("jdk.GCPhasePauseLevel4"),
-    SafepointBegin("jdk.SafepointBegin"),
-    SafepointEnd("jdk.SafepointEnd"),
-    ExecuteVMOperation("jdk.ExecuteVMOperation"),
-    JavaMonitorEnter("jdk.JavaMonitorEnter"),
-    ThreadSleep("jdk.ThreadSleep"),
-    JavaMonitorWait("jdk.JavaMonitorWait");
+public final class JfrEvent {
+    public static final JfrEvent ThreadStart = create("jdk.ThreadStart");
+    public static final JfrEvent ThreadEnd = create("jdk.ThreadEnd");
+    public static final JfrEvent DataLoss = create("jdk.DataLoss");
+    public static final JfrEvent ClassLoadingStatistics = create("jdk.ClassLoadingStatistics");
+    public static final JfrEvent InitialEnvironmentVariable = create("jdk.InitialEnvironmentVariable");
+    public static final JfrEvent InitialSystemProperty = create("jdk.InitialSystemProperty");
+    public static final JfrEvent JavaThreadStatistics = create("jdk.JavaThreadStatistics");
+    public static final JfrEvent JVMInformation = create("jdk.JVMInformation");
+    public static final JfrEvent OSInformation = create("jdk.OSInformation");
+    public static final JfrEvent PhysicalMemory = create("jdk.PhysicalMemory");
+    public static final JfrEvent ExecutionSample = create("jdk.ExecutionSample");
+    public static final JfrEvent NativeMethodSample = create("jdk.NativeMethodSample");
+    public static final JfrEvent GarbageCollection = create("jdk.GarbageCollection");
+    public static final JfrEvent GCPhasePauseEvent = create("jdk.GCPhasePause");
+    public static final JfrEvent GCPhasePauseLevel1Event = create("jdk.GCPhasePauseLevel1");
+    public static final JfrEvent GCPhasePauseLevel2Event = create("jdk.GCPhasePauseLevel2");
+    public static final JfrEvent GCPhasePauseLevel3Event = create("jdk.GCPhasePauseLevel3");
+    public static final JfrEvent GCPhasePauseLevel4Event = create("jdk.GCPhasePauseLevel4");
+    public static final JfrEvent SafepointBegin = create("jdk.SafepointBegin");
+    public static final JfrEvent SafepointEnd = create("jdk.SafepointEnd");
+    public static final JfrEvent ExecuteVMOperation = create("jdk.ExecuteVMOperation");
+    public static final JfrEvent JavaMonitorEnter = create("jdk.JavaMonitorEnter");
+    public static final JfrEvent ThreadSleep = create("jdk.ThreadSleep", JDK17OrEarlier.class);
+    public static final JfrEvent ThreadPark = create("jdk.ThreadPark");
+    public static final JfrEvent JavaMonitorWait = create("jdk.JavaMonitorWait");
 
     private final long id;
+    private final String name;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    JfrEvent(String name) {
+    private static JfrEvent create(String name) {
+        return create(name, TargetClass.AlwaysIncluded.class);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static JfrEvent create(String name, Class<? extends BooleanSupplier> onlyWith) {
+        BooleanSupplier onlyWithProvider = ReflectionUtil.newInstance(onlyWith);
+        if (onlyWithProvider.getAsBoolean()) {
+            return new JfrEvent(name);
+        } else {
+            return null;
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private JfrEvent(String name) {
         this.id = JfrMetadataTypeLibrary.lookupPlatformEvent(name);
+        this.name = name;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getId() {
         return id;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public String getName() {
+        return name;
     }
 }

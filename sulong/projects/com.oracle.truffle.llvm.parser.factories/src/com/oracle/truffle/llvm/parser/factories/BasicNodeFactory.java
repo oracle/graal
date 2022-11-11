@@ -56,6 +56,7 @@ import com.oracle.truffle.llvm.runtime.config.CommonLanguageOptions;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
@@ -77,6 +78,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMBrUnconditionalNode;
+import com.oracle.truffle.llvm.runtime.nodes.control.LLVMCatchReturnNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMConditionalBranchNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMDispatchBasicBlockNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMDispatchBasicBlockNodeGen;
@@ -102,6 +104,7 @@ import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMVoid
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMSwitchNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMWritePhisNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMArgNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCatchSwitchNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInvokeNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMLandingpadNode;
@@ -145,6 +148,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMReturnAddressNo
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMStackRestoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMStackSaveNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMTrapNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.LLVMAArch64_NeonNodesFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmetic;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.GCCArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMArithmeticFactory.LLVMArithmeticWithOverflowAndCarryNodeGen;
@@ -183,6 +187,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorM
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorMaxNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorMaxsdNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorMinNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorMinsdNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorPackNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorSquareRootNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMMetaLiteralNode;
@@ -355,6 +360,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode.I64_SIZE_IN_BYTES;
+import static com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode.I8_SIZE_IN_BYTES;
 
 public class BasicNodeFactory implements NodeFactory {
 
@@ -1179,6 +1187,21 @@ public class BasicNodeFactory implements NodeFactory {
         return LLVMLandingpadNodeGen.create(getStack, allocateLandingPadValue, exceptionValueSlot, cleanup, landingpadEntries);
     }
 
+    @Override
+    public LLVMControlFlowNode createCatchSwitch(int exceptionSlot, int[] targetBlocks, LLVMExpressionNode getStack, LLVMStatementNode[] phiWrites) {
+        return LLVMCatchSwitchNode.create(exceptionSlot, targetBlocks, getStack, phiWrites);
+    }
+
+    @Override
+    public LLVMControlFlowNode createCatchSwitch(int exceptionSlot, int[] targetBlocks, int unwindBlock, LLVMExpressionNode getStack, LLVMStatementNode[] phiWrites) {
+        return LLVMCatchSwitchNode.create(exceptionSlot, targetBlocks, unwindBlock, getStack, phiWrites);
+    }
+
+    @Override
+    public LLVMControlFlowNode createCatchReturn(int unconditionalIndex, LLVMExpressionNode getStack, LLVMStatementNode phiWrites) {
+        return LLVMCatchReturnNode.create(unconditionalIndex, getStack, phiWrites);
+    }
+
     private static LLVMLandingpadNode.LandingpadEntryNode getLandingpadCatchEntry(LLVMExpressionNode exp) {
         return LLVMLandingpadNode.createCatchEntry(exp);
     }
@@ -1397,15 +1420,29 @@ public class BasicNodeFactory implements NodeFactory {
                     return createMemmoveIntrinsic(args);
                 case "llvm.pow.f32":
                 case "llvm.pow.f64":
-                case "llvm.pow.f80":
                 case "llvm.powi.f32":
                 case "llvm.powi.f64":
-                case "llvm.powi.f80":
                 case "llvm.powi.f32.i32":
                 case "llvm.powi.f64.i16":
                 case "llvm.powi.f64.i32":
-                case "llvm.powi.f80.i32":
                     return LLVMPowNodeGen.create(args[1], args[2]);
+                case "llvm.pow.f80":
+                case "llvm.powi.f80":
+                case "llvm.powi.f80.i32":
+                    return LLVM80BitFloat.createPowNode(args[1], args[2]);
+                case "llvm.sqrt.f80":
+                case "llvm.log.f80":
+                case "llvm.log2.f80":
+                case "llvm.log10.f80":
+                case "llvm.rint.f80":
+                case "llvm.ceil.f80":
+                case "llvm.floor.f80":
+                case "llvm.exp.f80":
+                case "llvm.exp2.f80":
+                case "llvm.sin.f80":
+                case "llvm.cos.f80":
+                    String[] split = intrinsicName.split("\\.");
+                    return LLVM80BitFloat.createUnary(split[1], args[1]);
                 case "llvm.round.f32":
                 case "llvm.round.f64":
                 case "llvm.round.f80":
@@ -1618,6 +1655,8 @@ public class BasicNodeFactory implements NodeFactory {
                     return LLVMX86_VectorMaxsdNodeGen.create(args[1], args[2]);
                 case "llvm.x86.sse2.min.pd":
                     return LLVMX86_VectorMinNodeGen.create(args[1], args[2]);
+                case "llvm.x86.sse2.min.sd":
+                    return LLVMX86_VectorMinsdNodeGen.create(args[1], args[2]);
                 case "llvm.x86.sse2.cmp.sd":
                     return LLVMX86_VectorCmpNodeGen.create(args[1], args[2], args[3]);
                 case "llvm.x86.sse2.packssdw.128":
@@ -1637,6 +1676,24 @@ public class BasicNodeFactory implements NodeFactory {
         LLVMExpressionNode vectorIntrinsic = matchVectorOp(intrinsicName, args);
         if (vectorIntrinsic != null) {
             return vectorIntrinsic;
+        }
+
+        if (intrinsicName.startsWith("llvm.aarch64.neon")) {
+            String op = intrinsicName.substring("llvm.aarch64.neon.".length());
+            switch (op) {
+                case "ld1x2.v16i8.p0i8":
+                    return LLVMAArch64_NeonNodesFactory.LLVMAArch64_Ld1x2NodeGen.create(2 * I64_SIZE_IN_BYTES, args[1], args[2]);
+                case "ld2.v16i8.p0v16i8":
+                    return LLVMAArch64_NeonNodesFactory.LLVMAArch64_Ld2NodeGen.create(2 * I64_SIZE_IN_BYTES, I8_SIZE_IN_BYTES, args[1], args[2]);
+                case "tbl1.v16i8":
+                    return LLVMAArch64_NeonNodesFactory.LLVMAArch64_Tbl1NodeGen.create(2 * I64_SIZE_IN_BYTES, args[1], args[2]);
+                case "tbl2.v16i8":
+                    return LLVMAArch64_NeonNodesFactory.LLVMAArch64_Tbl2NodeGen.create(2 * I64_SIZE_IN_BYTES, args[1], args[2], args[3]);
+                case "umaxv.i32.v16i8":
+                    return LLVMAArch64_NeonNodesFactory.LLVMAArch64_UmaxvNodeGen.create(2 * I64_SIZE_IN_BYTES, args[1]);
+                case "uqsub.v16i8":
+                    return LLVMAArch64_NeonNodesFactory.LLVMAArch64_UqsubNodeGen.create(2 * I64_SIZE_IN_BYTES, args[1], args[2]);
+            }
         }
 
         // strip the type suffix for intrinsics that are supported for more than one data type. If
@@ -1762,17 +1819,40 @@ public class BasicNodeFactory implements NodeFactory {
         String name = declaration.getName().substring(CONSTRAINED_PREFIX_LEN, typeIndex);
         Type retType = declaration.getType().getReturnType();
 
+        if (retType == PrimitiveType.X86_FP80) {
+            switch (name) {
+                case "pow":
+                case "powi":
+                    return LLVM80BitFloat.createPowNode(args[1], args[2]);
+                case "sqrt":
+                case "log":
+                case "log2":
+                case "log10":
+                case "rint":
+                case "ceil":
+                case "floor":
+                case "exp":
+                case "exp2":
+                case "sin":
+                case "cos":
+                    return LLVM80BitFloat.createUnary(name, args[1]);
+                case "fmuladd":
+                    LLVMExpressionNode mulNodeF80 = createArithmeticOp(ArithmeticOperation.MUL, PrimitiveType.X86_FP80, args[1], args[2]);
+                    return createArithmeticOp(ArithmeticOperation.ADD, PrimitiveType.X86_FP80, mulNodeF80, args[3]);
+            }
+        }
+
         switch (name) {
             case "fadd":
-                return createScalarArithmeticOp(ArithmeticOperation.ADD, retType, args[1], args[2]);
+                return createArithmeticOp(ArithmeticOperation.ADD, retType, args[1], args[2]);
             case "fsub":
-                return createScalarArithmeticOp(ArithmeticOperation.SUB, retType, args[1], args[2]);
+                return createArithmeticOp(ArithmeticOperation.SUB, retType, args[1], args[2]);
             case "fmul":
-                return createScalarArithmeticOp(ArithmeticOperation.MUL, retType, args[1], args[2]);
+                return createArithmeticOp(ArithmeticOperation.MUL, retType, args[1], args[2]);
             case "fdiv":
-                return createScalarArithmeticOp(ArithmeticOperation.DIV, retType, args[1], args[2]);
+                return createArithmeticOp(ArithmeticOperation.DIV, retType, args[1], args[2]);
             case "frem":
-                return createScalarArithmeticOp(ArithmeticOperation.REM, retType, args[1], args[2]);
+                return createArithmeticOp(ArithmeticOperation.REM, retType, args[1], args[2]);
             case "fptoui":
             case "uitofp":
                 return CommonNodeFactory.createUnsignedCast(args[1], retType);

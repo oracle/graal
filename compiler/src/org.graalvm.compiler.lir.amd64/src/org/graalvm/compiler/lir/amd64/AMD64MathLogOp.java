@@ -82,11 +82,11 @@ import jdk.vm.ci.amd64.AMD64;
  * </pre>
  */
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86_log.cpp",
-          lineStart = 0,
-          lineEnd   = 362,
-          commit    = "e58c12e61828485bfffbc9d1b865302b93a94158",
-          sha1      = "4fc26bdb838040042ba0a4f5c04d737705ad4a7a")
+@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_log.cpp",
+          lineStart = 32,
+          lineEnd   = 363,
+          commit    = "090cdfc7a2e280c620a0926512fb67f0ce7f3c21",
+          sha1      = "fd2dcad178f60306e830e0f7aeaeee376d47ea81")
 // @formatter:on
 public final class AMD64MathLogOp extends AMD64MathIntrinsicUnaryOp {
 

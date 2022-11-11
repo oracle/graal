@@ -31,7 +31,9 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jdk.JavaLangSubstitutions;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 
@@ -89,7 +91,7 @@ public class FrameInfoQueryResult {
          */
         VirtualObject(true);
 
-        protected final boolean hasData;
+        final boolean hasData;
 
         ValueType(boolean hasData) {
             this.hasData = hasData;
@@ -165,7 +167,7 @@ public class FrameInfoQueryResult {
     protected Class<?> sourceClass;
     protected String sourceMethodName;
     protected int sourceLineNumber;
-    protected int methodID;
+    protected int methodId;
 
     // Index of sourceClass in CodeInfoDecoder.frameInfoSourceClasses
     protected int sourceClassIndex;
@@ -238,6 +240,7 @@ public class FrameInfoQueryResult {
     /**
      * Returns the bytecode index.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getBci() {
         return FrameInfoDecoder.decodeBci(encodedBci);
     }
@@ -264,24 +267,24 @@ public class FrameInfoQueryResult {
     }
 
     /**
-     * Returns the number of locals variables. It can be larger than the length of
-     * {@link #getValueInfos()} because trailing illegal values are truncated there. It can be
-     * smaller than the length of {@link #getValueInfos()} when expression stack values and locked
-     * values are present.
+     * Returns the number of locals variables. See {@link #getValueInfos()} for description of array
+     * layout.
      */
     public int getNumLocals() {
         return numLocals;
     }
 
     /**
-     * Returns the number of locked values.
+     * Returns the number of locked values. See {@link #getValueInfos()} for description of array
+     * layout.
      */
     public int getNumLocks() {
         return numLocks;
     }
 
     /**
-     * Returns the number of stack values.
+     * Returns the number of stack values. See {@link #getValueInfos()} for description of array
+     * layout.
      */
     public int getNumStack() {
         return numStack;
@@ -295,7 +298,10 @@ public class FrameInfoQueryResult {
     }
 
     /**
-     * Returns the local variables and expression stack values.
+     * Returns array containing information about the local, stack, and lock values. The values are
+     * arranged in the order {locals, stack values, locks} and matches the order of
+     * {@code BytecodeFrame#values}. Trailing illegal values can be pruned, so the array size may
+     * not be equal to (numLocals + numStack + numLocks).
      */
     public ValueInfo[] getValueInfos() {
         return valueInfos;
@@ -309,6 +315,7 @@ public class FrameInfoQueryResult {
         return virtualObjects;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Class<?> getSourceClass() {
         return sourceClass;
     }
@@ -317,6 +324,7 @@ public class FrameInfoQueryResult {
         return sourceClass != null ? sourceClass.getName() : "";
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public String getSourceMethodName() {
         return sourceMethodName;
     }
@@ -324,14 +332,17 @@ public class FrameInfoQueryResult {
     /**
      * Returns the unique identification number for the method.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getMethodID() {
-        return methodID;
+        return methodId;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public String getSourceFileName() {
         return sourceClass != null ? DynamicHub.fromClass(sourceClass).getSourceFileName() : null;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getSourceLineNumber() {
         return sourceLineNumber;
     }
@@ -362,6 +373,15 @@ public class FrameInfoQueryResult {
 
     public boolean isNativeMethod() {
         return sourceLineNumber == -2;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int hashCode() {
+        int result = 31 * sourceClass.hashCode() + JavaLangSubstitutions.StringUtil.hashCode(sourceMethodName);
+        result = 31 * result + JavaLangSubstitutions.StringUtil.hashCode(getSourceFileName());
+        result = 31 * result + sourceLineNumber;
+        return result;
     }
 
     public Log log(Log log) {

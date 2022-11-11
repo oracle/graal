@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.jvmstat;
 
+import static com.oracle.svm.core.jvmstat.PerfManager.Options.PerfDataMemoryMappedFile;
 import static java.nio.file.LinkOption.NOFOLLOW_LINKS;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.READ;
@@ -58,12 +59,11 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jvmstat.PerfManager;
 import com.oracle.svm.core.jvmstat.PerfMemoryPrologue;
@@ -71,7 +71,13 @@ import com.oracle.svm.core.jvmstat.PerfMemoryProvider;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
+/**
+ * This class uses high-level JDK features at the moment. In the future, we will need to rewrite
+ * this code so that it can be executed during the isolate startup (i.e., in uninterruptible code),
+ * see GR-40601.
+ */
 class PosixPerfMemoryProvider implements PerfMemoryProvider {
     // Prefix of performance data file.
     private static final String PERFDATA_NAME = "hsperfdata";
@@ -144,18 +150,17 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
                 continue;
             }
 
-            // We now have a file name that converts to a valid integer
-            // that could represent a process id. If this process id
-            // matches the current process id or the process is not running,
-            // then remove the stale file resources.
-            //
-            // Process liveness is detected by sending signal number 0 to
-            // the process id (see kill(2)). If kill determines that the
-            // process does not exist, then the file resources are removed.
-            // If kill determines that that we don't have permission to
-            // signal the process, then the file resources are assumed to
-            // be stale and are removed because the resources for such a
-            // process should be in a different user specific directory.
+            /*
+             * We now have a file name that converts to a valid integer that could represent a
+             * process id. If this process id matches the current process id or the process is not
+             * running, then remove the stale file resources.
+             * 
+             * Process liveness is detected by sending signal number 0 to the process id (see
+             * kill(2)). If kill determines that the process does not exist, then the file resources
+             * are removed. If kill determines that we don't have permission to signal the process,
+             * then the file resources are assumed to be stale and are removed because the resources
+             * for such a process should be in a different user specific directory.
+             */
             if (name.equals(selfName)) {
                 f.delete();
             } else {
@@ -271,12 +276,12 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
     }
 }
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-class PosixPerfMemoryFeature implements Feature {
+class PosixPerfMemoryFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasJvmstatSupport();
+        return VMInspectionOptions.hasJvmstatSupport() && PerfDataMemoryMappedFile.getValue();
     }
 
     @Override

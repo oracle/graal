@@ -73,6 +73,9 @@ public class FrameStateAssignmentPhase extends Phase {
                     GraalError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
                     deopt.setStateBefore(currentState);
                 }
+                if (deopt.canDeoptimize() && deopt.validateDeoptFrameStates() && !deopt.stateBefore().isValidForDeoptimization()) {
+                    throw GraalError.shouldNotReachHere(String.format("Invalid framestate for %s: %s", deopt, deopt.stateBefore()));
+                }
             }
 
             if (node instanceof StateSplit) {
@@ -94,6 +97,9 @@ public class FrameStateAssignmentPhase extends Phase {
                     GraalError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
                     deopt.computeStateDuring(currentState);
                 }
+                if (deopt.canDeoptimize() && deopt.validateDeoptFrameStates() && !deopt.stateDuring().isValidForDeoptimization()) {
+                    throw GraalError.shouldNotReachHere(String.format("Invalid framestate for %s: %s", deopt, deopt.stateDuring()));
+                }
             }
 
             if (node instanceof DeoptimizingNode.DeoptAfter) {
@@ -101,6 +107,9 @@ public class FrameStateAssignmentPhase extends Phase {
                 if (deopt.canDeoptimize() && deopt.stateAfter() == null) {
                     GraalError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
                     deopt.setStateAfter(currentState);
+                }
+                if (deopt.canDeoptimize() && deopt.validateDeoptFrameStates() && !deopt.stateAfter().isValidForDeoptimization()) {
+                    throw GraalError.shouldNotReachHere(String.format("Invalid framestate for %s: %s", deopt, deopt.stateAfter()));
                 }
             }
 
@@ -125,11 +134,11 @@ public class FrameStateAssignmentPhase extends Phase {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
-                        NotApplicable.canOnlyApplyOnce(this, StageFlag.FSA, graphState),
-                        NotApplicable.notApplicableIf(graphState.getGuardsStage().allowsFloatingGuards(), Optional.of(new NotApplicable("Floating guards should not be allowed."))),
-                        NotApplicable.notApplicableIf(graphState.getGuardsStage().areFrameStatesAtDeopts(), Optional.of(new NotApplicable("This phase must run before FSA."))));
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        NotApplicable.ifApplied(this, StageFlag.FSA, graphState),
+                        NotApplicable.when(graphState.getGuardsStage().allowsFloatingGuards(), "Floating guards should not be allowed."),
+                        NotApplicable.when(graphState.getGuardsStage().areFrameStatesAtDeopts(), "This phase must run before FSA"));
     }
 
     @Override

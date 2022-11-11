@@ -95,7 +95,7 @@ public class InlineBeforeAnalysis {
 
             if (bb.strengthenGraalGraphs() && Options.InlineBeforeAnalysis.getValue(bb.getOptions())) {
                 InlineBeforeAnalysisGraphDecoder<?> decoder = new InlineBeforeAnalysisGraphDecoder<>(bb, bb.getHostVM().inlineBeforeAnalysisPolicy(), result);
-                decoder.decode(method, false, result.trackNodeSourcePosition());
+                decoder.decode(method);
             } else {
                 /*
                  * No inlining, so faithfully reconstruct the encoded graph without any
@@ -159,7 +159,7 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
                         bb.getProviders().getGraphBuilderPlugins().getInvocationPlugins(),
                         new InlineInvokePlugin[]{new InlineBeforeAnalysisInlineInvokePlugin(policy)},
                         null, null, null, null,
-                        new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true);
+                        new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true, false);
         this.bb = bb;
         this.policy = policy;
 
@@ -175,7 +175,7 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
     }
 
     @Override
-    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution, boolean trackNodeSourcePosition) {
+    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
         AnalysisMethod aMethod = (AnalysisMethod) method;
         return aMethod.ensureGraphParsed(bb).getEncodedGraph();
     }

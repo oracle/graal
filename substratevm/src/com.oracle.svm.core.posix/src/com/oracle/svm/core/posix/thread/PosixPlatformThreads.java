@@ -39,22 +39,26 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.PosixUtils;
@@ -74,6 +78,7 @@ import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
+@AutomaticallyRegisteredImageSingleton(PlatformThreads.class)
 public final class PosixPlatformThreads extends PlatformThreads {
 
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
@@ -87,7 +92,7 @@ public final class PosixPlatformThreads extends PlatformThreads {
 
     @Override
     protected boolean doStartThread(Thread thread, long stackSize) {
-        pthread_attr_t attributes = StackValue.get(pthread_attr_t.class);
+        pthread_attr_t attributes = UnsafeStackValue.get(pthread_attr_t.class);
         if (Pthread.pthread_attr_init(attributes) != 0) {
             return false;
         }
@@ -111,7 +116,7 @@ public final class PosixPlatformThreads extends PlatformThreads {
 
             ThreadStartData startData = prepareStart(thread, SizeOf.get(ThreadStartData.class));
 
-            Pthread.pthread_tPointer newThread = StackValue.get(Pthread.pthread_tPointer.class);
+            Pthread.pthread_tPointer newThread = UnsafeStackValue.get(Pthread.pthread_tPointer.class);
             if (Pthread.pthread_create(newThread, attributes, PosixPlatformThreads.pthreadStartRoutine.getFunctionPointer(), startData) != 0) {
                 undoPrepareStartOnError(thread, startData);
                 return false;
@@ -210,6 +215,64 @@ public final class PosixPlatformThreads extends PlatformThreads {
         setPthreadIdentifier(thread, Pthread.pthread_self());
         setNativeName(thread, thread.getName());
     }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public OSThreadHandle startThreadUnmanaged(CFunctionPointer threadRoutine, PointerBase userData, int stackSize) {
+        pthread_attr_t attributes = StackValue.get(pthread_attr_t.class);
+        int status = Pthread.pthread_attr_init_no_transition(attributes);
+        if (status != 0) {
+            return WordFactory.nullPointer();
+        }
+        try {
+            status = Pthread.pthread_attr_setdetachstate_no_transition(attributes, Pthread.PTHREAD_CREATE_JOINABLE());
+            if (status != 0) {
+                return WordFactory.nullPointer();
+            }
+
+            UnsignedWord threadStackSize = WordFactory.unsigned(stackSize);
+            /* If there is a chosen stack size, use it as the stack size. */
+            if (threadStackSize.notEqual(WordFactory.zero())) {
+                /* Make sure the chosen stack size is large enough. */
+                threadStackSize = UnsignedUtils.max(threadStackSize, Pthread.PTHREAD_STACK_MIN());
+                /* Make sure the chosen stack size is a multiple of the system page size. */
+                threadStackSize = UnsignedUtils.roundUp(threadStackSize, WordFactory.unsigned(Unistd.NoTransitions.getpagesize()));
+
+                status = Pthread.pthread_attr_setstacksize_no_transition(attributes, threadStackSize);
+                if (status != 0) {
+                    return WordFactory.nullPointer();
+                }
+            }
+
+            Pthread.pthread_tPointer newThread = StackValue.get(Pthread.pthread_tPointer.class);
+
+            status = Pthread.pthread_create_no_transition(newThread, attributes, threadRoutine, userData);
+            if (status != 0) {
+                return WordFactory.nullPointer();
+            }
+
+            return (OSThreadHandle) newThread.read();
+        } finally {
+            Pthread.pthread_attr_destroy_no_transition(attributes);
+        }
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean joinThreadUnmanaged(OSThreadHandle threadHandle, WordPointer threadExitStatus) {
+        int status = Pthread.pthread_join_no_transition((Pthread.pthread_t) threadHandle, threadExitStatus);
+        if (status != 0) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    @SuppressWarnings("unused")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void closeOSThreadHandle(OSThreadHandle threadHandle) {
+        // pthread_t doesn't need closing
+    }
 }
 
 @TargetClass(Thread.class)
@@ -226,10 +289,8 @@ final class Target_java_lang_Thread {
 
 class PosixParkEvent extends ParkEvent {
 
-    /** A mutex: from the operating system. */
-    private final Pthread.pthread_mutex_t mutex;
-    /** A condition variable: from the operating system. */
-    private final Pthread.pthread_cond_t cond;
+    private Pthread.pthread_mutex_t mutex;
+    private Pthread.pthread_cond_t cond;
 
     /**
      * The ticket: false implies unavailable, true implies available. Volatile so it can be safely
@@ -238,14 +299,14 @@ class PosixParkEvent extends ParkEvent {
     protected volatile boolean event;
 
     PosixParkEvent() {
-        /* Create a mutex. */
-        mutex = UnmanagedMemory.malloc(SizeOf.unsigned(Pthread.pthread_mutex_t.class));
-        /* The attributes for the mutex. Can be null. */
+        // Allocate mutex and condition in a single step so that they are adjacent in memory.
+        UnsignedWord mutexSize = SizeOf.unsigned(Pthread.pthread_mutex_t.class);
+        Pointer memory = UnmanagedMemory.malloc(mutexSize.add(SizeOf.unsigned(Pthread.pthread_cond_t.class)));
+        mutex = (Pthread.pthread_mutex_t) memory;
+        cond = (Pthread.pthread_cond_t) memory.add(mutexSize);
+
         final Pthread.pthread_mutexattr_t mutexAttr = WordFactory.nullPointer();
         PosixUtils.checkStatusIs0(Pthread.pthread_mutex_init(mutex, mutexAttr), "mutex initialization");
-
-        /* Create a condition variable. */
-        cond = UnmanagedMemory.malloc(SizeOf.unsigned(Pthread.pthread_cond_t.class));
         PosixUtils.checkStatusIs0(PthreadConditionUtils.initCondition(cond), "condition variable initialization");
     }
 
@@ -278,7 +339,7 @@ class PosixParkEvent extends ParkEvent {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
             /* Encode the delay as a deadline in a Time.timespec. */
-            Time.timespec deadlineTimespec = StackValue.get(Time.timespec.class);
+            Time.timespec deadlineTimespec = UnsafeStackValue.get(Time.timespec.class);
             PthreadConditionUtils.delayNanosToDeadlineTimespec(delayNanos, deadlineTimespec);
 
             PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "park(long): mutex lock");
@@ -323,20 +384,25 @@ class PosixParkEvent extends ParkEvent {
             StackOverflowCheck.singleton().protectYellowZone();
         }
     }
-}
 
-class PosixParkEventFactory implements ParkEventFactory {
     @Override
-    public ParkEvent create() {
-        return new PosixParkEvent();
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected void release() {
+        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(mutex);
+        mutex = WordFactory.nullPointer();
+        cond = WordFactory.nullPointer(); // allocated and freed together with mutex
     }
 }
 
-@AutomaticFeature
-class PosixThreadsFeature implements Feature {
+@AutomaticallyRegisteredImageSingleton(ParkEventFactory.class)
+class PosixParkEventFactory implements ParkEventFactory {
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(PlatformThreads.class, new PosixPlatformThreads());
-        ImageSingletons.add(ParkEventFactory.class, new PosixParkEventFactory());
+    public ParkEvent acquire() {
+        return new PosixParkEvent();
+    }
+
+    @Override
+    public boolean usesParkEventList() {
+        return false;
     }
 }

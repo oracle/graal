@@ -41,6 +41,7 @@ import org.graalvm.compiler.core.gen.NodeLIRBuilder;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
 import org.graalvm.compiler.debug.DebugDumpScope;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.PathUtilities;
 import org.graalvm.compiler.debug.TTY;
@@ -136,11 +137,27 @@ public class CFGPrinterObserver implements DebugDumpHandler {
     private IntervalDumper delayedIntervals = null;
 
     public void dumpSandboxed(DebugContext debug, Object object, boolean forced, String message) {
-        OptionValues options = debug.getOptions();
-        if (!PrintBackendCFG.getValue(options) && !forced) {
+        if (!shouldDump(debug, forced)) {
             return;
         }
         dumpSandboxed(debug, object, message);
+    }
+
+    boolean shouldDump(DebugContext debug, boolean forced) {
+        OptionValues options = debug.getOptions();
+        if (PrintBackendCFG.getValue(options) || forced) {
+            return true;
+        }
+        String dump = DebugOptions.Dump.getValue(options);
+        if (dump != null) {
+            // Do not require PrintBackendCFG if the user has explicitly
+            // requested code dumping with a Dump argument containing
+            // CodeGen or CodeInstall
+            if (dump.contains("CodeGen") || dump.contains("CodeInstall")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void dumpSandboxed(DebugContext debug, Object object, String message) {

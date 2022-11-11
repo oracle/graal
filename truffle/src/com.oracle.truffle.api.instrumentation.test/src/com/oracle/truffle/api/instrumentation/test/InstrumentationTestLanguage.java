@@ -61,6 +61,7 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import org.junit.Assert;
 
@@ -252,6 +253,13 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     }
 
     private CallTarget lastParsed;
+
+    private static FrameDescriptor getDefaultFrameDescriptor() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        builder.addSlot(FrameSlotKind.Static, null, null);
+        builder.addSlot(FrameSlotKind.Int, null, null);
+        return builder.build();
+    }
 
     public static CallTarget getLastParsedCalltarget() {
         return InstrumentationTestLanguage.get(null).lastParsed;
@@ -637,7 +645,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
 
         protected InstrumentationTestRootNode(InstrumentationTestLanguage lang, String name, SourceSection sourceSection, RootCallTarget afterTarget, BaseNode... expressions) {
-            super(lang);
+            super(lang, getDefaultFrameDescriptor());
             this.name = name;
             this.sourceSection = sourceSection;
             this.afterTarget = afterTarget;
@@ -1746,7 +1754,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @TruffleBoundary
         private static TruffleContext createInnerContext() {
-            return InstrumentContext.get(null).env.newContextBuilder().build();
+            return InstrumentContext.get(null).env.newInnerContextBuilder().inheritAllAccess(true).initializeCreatorContext(true).build();
         }
     }
 

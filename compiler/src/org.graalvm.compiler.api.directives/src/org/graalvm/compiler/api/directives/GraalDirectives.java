@@ -115,6 +115,13 @@ public final class GraalDirectives {
     }
 
     /**
+     * A call to this method will disable write sinking of fields in the enclosing loop in the
+     * compiler.
+     */
+    public static void neverWriteSink() {
+    }
+
+    /**
      * A call to this method will assume a stable dimension array if {@code t} is a constant array
      * and {@code i} a constant integer.
      */
@@ -155,7 +162,10 @@ public final class GraalDirectives {
 
     /**
      * Injects a probability for the given condition into the profiling information of a branch
-     * instruction. The probability must be a value between 0.0 and 1.0 (inclusive).
+     * instruction. The probability must be a value between 0.0 and 1.0 (inclusive). This directive
+     * should only be used for the condition of an if statement. The parameter condition should also
+     * only denote a simple condition and not a combined condition involving &amp;&amp; or ||
+     * operators.
      *
      * Example usage (it specifies that the likelihood for a to be greater than b is 90%):
      *

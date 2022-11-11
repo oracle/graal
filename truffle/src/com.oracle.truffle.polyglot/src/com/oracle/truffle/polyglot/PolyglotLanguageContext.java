@@ -113,8 +113,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             this.uncaughtExceptionHandler = new PolyglotUncaughtExceptionHandler();
             this.computeAccessPermissions(config);
             // file systems are patched after preinitialization internally using a delegate field
-            this.publicFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(PolyglotLanguageContext.this, config.fileSystem);
-            this.internalFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(PolyglotLanguageContext.this, config.internalFileSystem);
+            this.publicFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(PolyglotLanguageContext.this, config.fileSystemConfig.fileSystem);
+            this.internalFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(PolyglotLanguageContext.this, config.fileSystemConfig.internalFileSystem);
             this.operationLock = new ReentrantLock();
         }
 
@@ -564,7 +564,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         if (!created) {
             checkAccess(accessingLanguage);
 
-            Map<String, Object> creatorConfig = context.creator == language ? context.creatorArguments : Collections.emptyMap();
+            Map<String, Object> creatorConfig = context.creator == language ? context.config.creatorArguments : Collections.emptyMap();
             PolyglotContextConfig contextConfig = context.config;
 
             PolyglotLanguageInstance languageInstance;

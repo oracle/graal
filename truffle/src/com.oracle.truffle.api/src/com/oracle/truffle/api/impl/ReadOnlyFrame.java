@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -341,6 +341,30 @@ class ReadOnlyFrame implements Frame {
 
     @Override
     @TruffleBoundary
+    public void copyStatic(int srcSlot, int destSlot) {
+        delegate.copyStatic(srcSlot, destSlot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void swapPrimitiveStatic(int first, int second) {
+        delegate.swapPrimitiveStatic(first, second);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void swapObjectStatic(int first, int second) {
+        delegate.swapObjectStatic(first, second);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void swapStatic(int first, int second) {
+        delegate.swapStatic(first, second);
+    }
+
+    @Override
+    @TruffleBoundary
     public void clearPrimitiveStatic(int slot) {
         delegate.clearPrimitiveStatic(slot);
     }
@@ -349,5 +373,11 @@ class ReadOnlyFrame implements Frame {
     @TruffleBoundary
     public void clearObjectStatic(int slot) {
         delegate.clearObjectStatic(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void clearStatic(int slot) {
+        delegate.clearStatic(slot);
     }
 }

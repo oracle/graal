@@ -480,7 +480,7 @@ public class MonitorSnippets implements Snippets {
                 traceObject(trace, "+lock{stub:inflated:failed-cas}", object, true);
                 counters.inflatedFailedCas.inc();
             }
-        } else if (owner.equal(registerAsWord(threadRegister))) {
+        } else if (probability(NOT_LIKELY_PROBABILITY, owner.equal(registerAsWord(threadRegister)))) {
             int recursionsOffset = objectMonitorRecursionsOffset(INJECTED_VMCONFIG);
             Word recursions = monitor.readWord(recursionsOffset, OBJECT_MONITOR_RECURSION_LOCATION);
             monitor.writeWord(recursionsOffset, recursions.add(1), OBJECT_MONITOR_RECURSION_LOCATION);
@@ -787,19 +787,35 @@ public class MonitorSnippets implements Snippets {
 
     public static class Templates extends AbstractTemplates {
 
-        private final SnippetInfo monitorenter = snippet(MonitorSnippets.class, "monitorenter");
-        private final SnippetInfo monitorexit = snippet(MonitorSnippets.class, "monitorexit", DISPLACED_MARK_WORD_LOCATION, OBJECT_MONITOR_OWNER_LOCATION, OBJECT_MONITOR_CXQ_LOCATION,
-                        OBJECT_MONITOR_ENTRY_LIST_LOCATION, OBJECT_MONITOR_RECURSION_LOCATION, OBJECT_MONITOR_SUCC_LOCATION, MARK_WORD_LOCATION);
-        private final SnippetInfo monitorenterStub = snippet(MonitorSnippets.class, "monitorenterStub");
-        private final SnippetInfo monitorexitStub = snippet(MonitorSnippets.class, "monitorexitStub");
-        private final SnippetInfo initCounter = snippet(MonitorSnippets.class, "initCounter");
-        private final SnippetInfo checkCounter = snippet(MonitorSnippets.class, "checkCounter");
+        private final SnippetInfo monitorenter;
+        private final SnippetInfo monitorexit;
+        private final SnippetInfo monitorenterStub;
+        private final SnippetInfo monitorexitStub;
+        private final SnippetInfo initCounter;
+        private final SnippetInfo checkCounter;
 
         private final boolean useFastLocking;
         public final Counters counters;
 
         public Templates(OptionValues options, SnippetCounter.Group.Factory factory, HotSpotProviders providers, boolean useFastLocking) {
             super(options, providers);
+
+            this.monitorenter = snippet(providers, MonitorSnippets.class, "monitorenter");
+            this.monitorexit = snippet(providers,
+                            MonitorSnippets.class,
+                            "monitorexit",
+                            DISPLACED_MARK_WORD_LOCATION,
+                            OBJECT_MONITOR_OWNER_LOCATION,
+                            OBJECT_MONITOR_CXQ_LOCATION,
+                            OBJECT_MONITOR_ENTRY_LIST_LOCATION,
+                            OBJECT_MONITOR_RECURSION_LOCATION,
+                            OBJECT_MONITOR_SUCC_LOCATION,
+                            MARK_WORD_LOCATION);
+            this.monitorenterStub = snippet(providers, MonitorSnippets.class, "monitorenterStub");
+            this.monitorexitStub = snippet(providers, MonitorSnippets.class, "monitorexitStub");
+            this.initCounter = snippet(providers, MonitorSnippets.class, "initCounter");
+            this.checkCounter = snippet(providers, MonitorSnippets.class, "checkCounter");
+
             this.useFastLocking = useFastLocking;
 
             this.counters = new Counters(factory);
@@ -829,7 +845,7 @@ public class MonitorSnippets implements Snippets {
                 args.addConst("counters", counters);
             }
 
-            template(monitorenterNode, args).instantiate(providers.getMetaAccess(), monitorenterNode, DEFAULT_REPLACER, args);
+            template(tool, monitorenterNode, args).instantiate(tool.getMetaAccess(), monitorenterNode, DEFAULT_REPLACER, args);
         }
 
         public void lower(MonitorExitNode monitorexitNode, HotSpotRegistersProvider registers, LoweringTool tool) {
@@ -847,7 +863,7 @@ public class MonitorSnippets implements Snippets {
             args.addConst("trace", isTracingEnabledForType(monitorexitNode.object()) || isTracingEnabledForMethod(graph));
             args.addConst("counters", counters);
 
-            template(monitorexitNode, args).instantiate(providers.getMetaAccess(), monitorexitNode, DEFAULT_REPLACER, args);
+            template(tool, monitorexitNode, args).instantiate(tool.getMetaAccess(), monitorexitNode, DEFAULT_REPLACER, args);
         }
 
         public static boolean isTracingEnabledForType(ValueNode object) {
@@ -897,7 +913,7 @@ public class MonitorSnippets implements Snippets {
                     invoke.setStateAfter(graph.start().stateAfter());
                     graph.addAfterFixed(graph.start(), invoke);
 
-                    StructuredGraph inlineeGraph = providers.getReplacements().getSnippet(initCounter.getMethod(), null, null, null, invoke.graph().trackNodeSourcePosition(),
+                    StructuredGraph inlineeGraph = tool.getReplacements().getSnippet(initCounter.getMethod(), null, null, null, invoke.graph().trackNodeSourcePosition(),
                                     invoke.getNodeSourcePosition(), invoke.getOptions());
                     InliningUtil.inline(invoke, inlineeGraph, false, null);
 
@@ -905,7 +921,7 @@ public class MonitorSnippets implements Snippets {
                     for (ReturnNode ret : rets) {
                         returnType = checkCounter.getMethod().getSignature().getReturnType(checkCounter.getMethod().getDeclaringClass());
                         String msg = "unbalanced monitors in " + graph.method().format("%H.%n(%p)") + ", count = %d";
-                        ConstantNode errMsg = ConstantNode.forConstant(tool.getConstantReflection().forString(msg), providers.getMetaAccess(), graph);
+                        ConstantNode errMsg = ConstantNode.forConstant(tool.getConstantReflection().forString(msg), tool.getMetaAccess(), graph);
                         returnStamp = StampFactory.forDeclaredType(graph.getAssumptions(), returnType, false);
                         callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, checkCounter.getMethod(), new ValueNode[]{errMsg}, returnStamp, null));
                         invoke = graph.add(new InvokeNode(callTarget, 0));
@@ -917,7 +933,7 @@ public class MonitorSnippets implements Snippets {
 
                         Arguments args = new Arguments(checkCounter, graph.getGuardsStage(), tool.getLoweringStage());
                         args.addConst("errMsg", new CStringConstant(msg));
-                        inlineeGraph = template(invoke, args).copySpecializedGraph(graph.getDebug());
+                        inlineeGraph = template(tool, invoke, args).copySpecializedGraph(graph.getDebug());
                         InliningUtil.inline(invoke, inlineeGraph, false, null);
                     }
                 }

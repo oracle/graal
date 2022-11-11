@@ -1,6 +1,6 @@
 ## Native bridge annotation processor
 
-The native bridge annotation processor generates code to simplify making calls between code executing in two disjoint JVM runtimes (e.g. Native Image and HotSpot) by generating stubs for calling foreign methods using a JNI interface. The processor can bridge interfaces, classes, and classes with custom dispatch. A single stub can bridge either a single class or a single interface. The supported data types are Java primitive types, `String`, arrays of primitive types, and foreign reference types. Custom types are supported using marshallers registered in the `JNIConfig.Builder`. The processor processes the [@GenerateHotSpotToNativeBridge](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.nativebridge/src/org/graalvm/nativebridge/GenerateHotSpotToNativeBridge.java) and [@GenerateNativeToHotSpotBridge](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.nativebridge/src/org/graalvm/nativebridge/GenerateNativeToHotSpotBridge.java) annotations.
+The native bridge annotation processor generates code to simplify making calls between code executing in two disjoint JVM runtimes (e.g. Native Image and HotSpot) by generating stubs for calling foreign methods using a JNI interface. The processor can bridge interfaces, classes, and classes with custom dispatch. A single stub can bridge either a single class or a single interface. The supported data types are Java primitive types, `String`, foreign reference types, and arrays of primitive types or foreign reference types. Custom types are supported using marshallers registered in the `JNIConfig.Builder`. The processor processes the [@GenerateHotSpotToNativeBridge](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.nativebridge/src/org/graalvm/nativebridge/GenerateHotSpotToNativeBridge.java) and [@GenerateNativeToHotSpotBridge](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.nativebridge/src/org/graalvm/nativebridge/GenerateNativeToHotSpotBridge.java) annotations.
 
 ### Bridging an interface
 
@@ -25,7 +25,7 @@ abstract class NativeCalculator extends NativeObject implements Calculator {
 }
 ```
 
-The annotation processor generates class `NativeCalculatorGen` with a static factory method `createHotSpotToNative(NativeIsolate isolate, long handle)`. The method creates an instance of `NativeCalculator` that forwards `add` and `sub` methods from the HotSpot VM to an object in the native image heap. The `jniConfig` attribute will be explained in the [JNIConfig](#JNIConfig) section.
+The annotation processor generates class `NativeCalculatorGen` with a static factory method `createHSToNative(NativeIsolate isolate, long handle)`. The method creates an instance of `NativeCalculator` that forwards `add` and `sub` methods from the HotSpot VM to an object in the native image heap. The `jniConfig` attribute will be explained in the [JNIConfig](#JNIConfig) section.
 
 To use the generated stubs we need to first create an isolate and obtain a foreign object handle before we can call into the generated interface.
 
@@ -34,7 +34,7 @@ long isolateThreadId = ExampleJNIConfig.createIsolate();
 long isolateId = ExampleJNIConfig.getIsolateId(isolateThreadId);
 long calculatorHandle = ExampleJNIConfig.initializeCalculator(isolateThreadId);
 NativeIsolate isolate = NativeIsolate.forIsolateId(isolateId, ExampleJNIConfig.getInstance());
-NativeCalculator calculator = NativeCalculatorGen.createHotSpotToNative(isolate, calculatorHandle);
+NativeCalculator calculator = NativeCalculatorGen.createHSToNative(isolate, calculatorHandle);
 calculator.add(calculator.sub(41, 2), 1);
 ```
 
@@ -52,7 +52,7 @@ abstract class HSCalculator extends HSObject implements Calculator {
 }
 ```
 
-The annotation processor generates class `HSCalculatorGen` with a static factory method `createNativeToHotSpot(JNIEnv jniEnv, JObject handle)`. The method creates an instance of `HSCalculator` that forwards `add` and `sub` methods from a Native Image to an object in a HotSpot VM.
+The annotation processor generates class `HSCalculatorGen` with a static factory method `createNativeToHS(JNIEnv jniEnv, JObject handle)`. The method creates an instance of `HSCalculator` that forwards `add` and `sub` methods from a Native Image to an object in a HotSpot VM.
 
 ### Bridging a class
 
@@ -80,7 +80,7 @@ abstract class NativeCalculator extends Calculator {
 }
 ```
 
-The annotation processor generates class `NativeCalculatorGen` with a static `createHotSpotToNative(NativeIsolate isolate, long handle)` factory method creating a `NativeCalculator` instance forwarding `add` and `sub` methods from the HotSpot VM to an object in the native image heap. The `jniConfig` attribute will be explained in the [JNIConfig](#JNIConfig) section.
+The annotation processor generates class `NativeCalculatorGen` with a static `createHSToNative(NativeIsolate isolate, long handle)` factory method creating a `NativeCalculator` instance forwarding `add` and `sub` methods from the HotSpot VM to an object in the native image heap. The `jniConfig` attribute will be explained in the [JNIConfig](#JNIConfig) section.
 
 To use the generated stubs we need to first create an isolate and obtain a foreign object handle before we can call into the generated interface.
 
@@ -89,7 +89,7 @@ long isolateThreadId = ExampleJNIConfig.createIsolate();
 long isolateId = ExampleJNIConfig.getIsolateId(isolateThreadId);
 long calculatorHandle = ExampleJNIConfig.initializeCalculator(isolateThreadId);
 NativeIsolate isolate = NativeIsolate.forIsolateId(isolateId, ExampleJNIConfig.getInstance());
-NativeCalculator calculator = NativeCalculatorGen.createHotSpotToNative(new NativeObject(isolate, calculatorHandle));
+NativeCalculator calculator = NativeCalculatorGen.createHSToNative(new NativeObject(isolate, calculatorHandle));
 calculator.add(calculator.sub(41, 2), 1);
 ```
 
@@ -108,7 +108,7 @@ abstract class HSCalculator extends Calculator {
 }
 ```
 
-The annotation processor generates class `HSCalculatorGen` with a static `createNativeToHotSpot(HSObject delegate, JNIEnv jniEnv)` factory method creating an `HSCalculator` instance forwarding `add` and `sub` methods from a Native Image to an object in a HotSpot VM.
+The annotation processor generates class `HSCalculatorGen` with a static `createNativeToHS(HSObject delegate, JNIEnv jniEnv)` factory method creating an `HSCalculator` instance forwarding `add` and `sub` methods from a Native Image to an object in a HotSpot VM.
 
 ### Bridging a class with a custom dispatch
 
@@ -154,7 +154,7 @@ To generate a bridge from a HotSpot VM to a Native Image, create an abstract bas
 @GenerateHotSpotToNativeBridge(jniConfig = ExampleJNIConfig.class)
 abstract class NativeLanguageDispatch extends AbstractLanguageDispatch {
 
-    private static final NativeLanguageDispatch INSTANCE = NativeLanguageDispatchGen.createHotSpotToNative();
+    private static final NativeLanguageDispatch INSTANCE = NativeLanguageDispatchGen.createHSToNative();
 
     @CustomDispatchAccessor
     static AbstractLanguageDispatch getDispatch(Language language) {
@@ -173,7 +173,7 @@ abstract class NativeLanguageDispatch extends AbstractLanguageDispatch {
 }
 ```
 
-The annotation processor generates class `NativeLanguageDispatchGen` with a static `createHotSpotToNative()` factory method creating a `NativeLanguageDispatch` instance forwarding methods from the HotSpot VM to an object in the native image heap. The `jniConfig` attribute will be explained in the [JNIConfig](#JNIConfig) section.
+The annotation processor generates class `NativeLanguageDispatchGen` with a static `createHSToNative()` factory method creating a `NativeLanguageDispatch` instance forwarding methods from the HotSpot VM to an object in the native image heap. The `jniConfig` attribute will be explained in the [JNIConfig](#JNIConfig) section.
 
 To use the generated stubs we need to first create an isolate and obtain a foreign object handle before we can call into the generated interface.
 
@@ -307,7 +307,7 @@ More foreign reference examples can be found in the [bridge processor tests](htt
 
 ### Arrays
 
-Arrays of primitive types are directly supported by the annotation processor. The array method parameters are by default treated as `in` parameters, the content of the array is copied to the called method. Sometimes it's needed to change this behavior and treat the array parameter as an `out` parameter. This can be done using an `@Out` annotation. The following example bridges a `read` method with an `out` array parameter.
+Arrays of primitive types or foreign reference types are directly supported by the annotation processor. The array method parameters are by default treated as `in` parameters, the content of the array is copied to the called method. Sometimes it's needed to change this behavior and treat the array parameter as an `out` parameter. This can be done using an `@Out` annotation. The following example bridges a `read` method with an `out` array parameter.
 
 ```java
 interface Reader {
@@ -339,6 +339,38 @@ The `@Out` annotation can be combined with the `@In` annotation for `in-out` arr
 @Override
 public abstract int read(@In @Out byte[] b, int off, int len);
 ```
+
+To pass an array of foreign references, you must annotate the array using the `@ByReference` annotation. The following example bridges a `register` method taking an array of HotSpot object references.
+
+```java
+interface EventConsumer {
+    void consumeEvent(String event);
+}
+
+interface EventSource {
+    void register(EventConsumer[] consumers);
+}
+
+@GenerateNativeToHotSpotBridge(jniConfig = ExampleJNIConfig.class)
+abstract class HSEventConsumer extends HSObject implements EventConsumer {
+    HSEventConsumer(JNIEnv jniEnv,  JObject reference) {
+        super(jniEnv, reference);
+    }
+}
+
+@GenerateHotSpotToNativeBridge(jniConfig = ExampleJNIConfig.class)
+abstract class NativeEventSource extends NativeObject implements EventSource {
+
+    NativeEventSource(NativeIsolate isolate, long handle) {
+        super(isolate, handle);
+    }
+
+    @Override
+    public abstract void register(@ByReference(HSEventConsumer.class) EventConsumer[] consumers);
+}
+```
+
+More foreign references array examples can be found in the [bridge processor tests](https://github.com/oracle/graal/tree/master/compiler/src/org.graalvm.nativebridge.processor.test/src/org/graalvm/nativebridge/processor/test/references/).
 
 ### JNIConfig
 

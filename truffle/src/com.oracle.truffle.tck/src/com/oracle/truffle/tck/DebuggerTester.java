@@ -786,13 +786,9 @@ public final class DebuggerTester implements AutoCloseable {
     }
 
     private static void setAccessible(Field field, boolean flag) {
-        if (!Java8OrEarlier) {
-            openForReflectionTo(field.getDeclaringClass(), DebuggerTester.class);
-        }
+        openForReflectionTo(field.getDeclaringClass(), DebuggerTester.class);
         field.setAccessible(flag);
     }
-
-    private static final boolean Java8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
 
     /**
      * Opens {@code declaringClass}'s package to allow a method declared in {@code accessor} to call

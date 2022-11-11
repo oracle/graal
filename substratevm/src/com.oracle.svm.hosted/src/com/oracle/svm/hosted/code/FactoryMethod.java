@@ -39,7 +39,7 @@ import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.NeverInlineTrivial;
+import com.oracle.svm.core.NeverInlineTrivial;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.util.ReflectionUtil;
@@ -56,7 +56,7 @@ public final class FactoryMethod extends NonBytecodeStaticMethod {
     private final boolean throwAllocatedObject;
 
     FactoryMethod(ResolvedJavaMethod targetConstructor, ResolvedJavaType declaringClass, Signature signature, ConstantPool constantPool, boolean throwAllocatedObject) {
-        super(SubstrateUtil.uniqueShortName(targetConstructor), declaringClass, signature, constantPool);
+        super(SubstrateUtil.uniqueStubName(targetConstructor), declaringClass, signature, constantPool);
         this.targetConstructor = targetConstructor;
         this.throwAllocatedObject = throwAllocatedObject;
 

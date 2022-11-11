@@ -75,11 +75,11 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     }
 
     @Override
-    public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache(boolean persistentEncodedGraphCache) {
+    public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache() {
         if (!persistentEncodedGraphCache) {
             // The encoded graph cache is disabled across different compilations. The returned map
             // can still be used and propagated within the same compilation unit.
-            return super.getOrCreateEncodedGraphCache(persistentEncodedGraphCache);
+            return super.getOrCreateEncodedGraphCache();
         }
         EconomicMap<ResolvedJavaMethod, EncodedGraph> cache;
         do {
@@ -110,14 +110,23 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
         return oldValue;
     }
 
+    /**
+     * Used only in unit-tests. Called reflectively from EncodedGraphCacheTest.
+     */
+    public boolean persistentEncodedGraphCache(boolean value) {
+        boolean oldValue = persistentEncodedGraphCache;
+        persistentEncodedGraphCache = value;
+        return oldValue;
+    }
+
     @Override
-    protected Supplier<AutoCloseable> getCreateCachedGraphScope(boolean persistentEncodedGraphCache) {
+    protected Supplier<AutoCloseable> getCreateCachedGraphScope() {
         if (persistentEncodedGraphCache) {
             // The interpreter graphs may be cached across compilations, keep JavaConstants
             // references to the application heap alive in the libgraal global scope.
             return HotSpotGraalServices::enterGlobalCompilationContext;
         } else {
-            return super.getCreateCachedGraphScope(persistentEncodedGraphCache);
+            return super.getCreateCachedGraphScope();
         }
     }
 }

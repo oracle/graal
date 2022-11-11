@@ -31,6 +31,7 @@ import java.io.CharArrayWriter;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
+import java.nio.Buffer;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -50,8 +51,6 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.api.strings.AbstractTruffleString;
-import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
@@ -121,6 +120,8 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.AbstractTruffleString;
+import com.oracle.truffle.api.strings.TruffleString;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.stack.InspectedFrame;
@@ -142,7 +143,7 @@ import jdk.vm.ci.services.Services;
 
 public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleCompilerRuntime {
 
-    private static final int JAVA_SPECIFICATION_VERSION = getJavaSpecificationVersion();
+    private static final int JAVA_SPECIFICATION_VERSION = Runtime.version().feature();
 
     /**
      * Used only to reset state for native image compilation.
@@ -306,19 +307,16 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @Override
     public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
-        for (Annotation a : getAnnotations(field)) {
-            if (a.annotationType() == Child.class) {
-                return TruffleCompilerRuntime.ConstantFieldInfo.CHILD;
-            }
-            if (a.annotationType() == Children.class) {
-                return TruffleCompilerRuntime.ConstantFieldInfo.CHILDREN;
-            }
-            if (a.annotationType() == CompilationFinal.class) {
-                CompilationFinal cf = (CompilationFinal) a;
-                int dimensions = actualStableDimensions(field, cf.dimensions());
-                return TruffleCompilerRuntime.ConstantFieldInfo.forDimensions(dimensions);
-            }
-
+        if (field.isAnnotationPresent(Child.class)) {
+            return TruffleCompilerRuntime.ConstantFieldInfo.CHILD;
+        }
+        if (field.isAnnotationPresent(Children.class)) {
+            return TruffleCompilerRuntime.ConstantFieldInfo.CHILDREN;
+        }
+        CompilationFinal cf = field.getAnnotation(CompilationFinal.class);
+        if (cf != null) {
+            int dimensions = actualStableDimensions(field, cf.dimensions());
+            return TruffleCompilerRuntime.ConstantFieldInfo.forDimensions(dimensions);
         }
         return null;
     }
@@ -402,7 +400,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         TruffleSafepoint.class,
                         BaseOSRRootNode.class,
                         TruffleString.class,
-                        AbstractTruffleString.class
+                        AbstractTruffleString.class,
+                        Buffer.class,
         }) {
             m.put(c.getName(), c);
         }
@@ -416,6 +415,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
         if (JAVA_SPECIFICATION_VERSION >= 16 && JAVA_SPECIFICATION_VERSION < 19) {
             String className = "jdk.internal.access.foreign.MemorySegmentProxy";
+            try {
+                Class<?> c = Class.forName(className);
+                m.put(c.getName(), c);
+            } catch (ClassNotFoundException e) {
+                throw new NoClassDefFoundError(className);
+            }
+        } else if (JAVA_SPECIFICATION_VERSION >= 19) {
+            String className = "jdk.internal.foreign.Scoped";
             try {
                 Class<?> c = Class.forName(className);
                 m.put(c.getName(), c);
@@ -953,14 +960,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return caw.toString();
     }
 
-    private static int getJavaSpecificationVersion() {
-        String value = Services.getSavedProperties().get("java.specification.version");
-        if (value.startsWith("1.")) {
-            value = value.substring(2);
-        }
-        return Integer.parseInt(value);
-    }
-
     public final class KnownMethods {
         public final ResolvedJavaMethod callDirectMethod;
         public final ResolvedJavaMethod callInlinedMethod;
@@ -1161,14 +1160,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         "method or field in the same class. This can be resolved by modifying the relevant class path " +
                         "or module path such that it includes the missing type.",
                         attemptedAction);
-    }
-
-    private static Annotation[] getAnnotations(ResolvedJavaField element) {
-        try {
-            return element.getAnnotations();
-        } catch (NoClassDefFoundError e) {
-            throw handleAnnotationFailure(e, String.format("querying %s for annotations", element.format("%H.%n:%t")));
-        }
     }
 
     private static <T extends Annotation> T getAnnotation(Class<T> annotationClass, ResolvedJavaMethod method) {

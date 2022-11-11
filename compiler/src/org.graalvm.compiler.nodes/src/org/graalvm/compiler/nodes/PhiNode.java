@@ -229,7 +229,6 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
                     break;
                 }
             }
-
             if (onlySelfUsage) {
                 return null;
             }

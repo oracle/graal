@@ -26,7 +26,7 @@ package com.oracle.svm.core.util;
 
 import java.util.function.Supplier;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 
 /**
  * Keeps the last-n entries and allows to read the out on demand..

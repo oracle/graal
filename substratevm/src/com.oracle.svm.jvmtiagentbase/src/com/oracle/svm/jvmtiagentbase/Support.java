@@ -59,7 +59,7 @@ public final class Support {
 
     public static boolean isInitialized() {
         boolean initialized = jvmtiEnv.isNonNull();
-        assert initialized == jniFunctions.isNonNull();
+        assert initialized == jniFunctions.isNonNull() && initialized == (jvmtiVersion == 0);
         return initialized;
     }
 
@@ -70,14 +70,19 @@ public final class Support {
         check(jvmti.getFunctions().GetJNIFunctionTable().invoke(jvmti, functionsPtr));
         guarantee(functionsPtr.read() != nullPointer(), "Functions table must be initialized exactly once");
 
+        CIntPointer versionPtr = StackValue.get(CIntPointer.class);
+        check(jvmti.getFunctions().GetVersionNumber().invoke(jvmti, versionPtr));
+
         jvmtiEnv = jvmti;
         jniFunctions = functionsPtr.read();
+        jvmtiVersion = versionPtr.read();
     }
 
     public static void destroy() {
         jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), jniFunctions);
         jniFunctions = nullPointer();
         jvmtiEnv = nullPointer();
+        jvmtiVersion = 0;
     }
 
     public static String getSystemProperty(JvmtiEnv jvmti, String propertyName) {
@@ -114,6 +119,9 @@ public final class Support {
     /** The original unmodified JNI function table. */
     private static JNINativeInterface jniFunctions;
 
+    /** See JVMTI function {@code GetVersionNumber}. */
+    private static int jvmtiVersion;
+
     public static JvmtiEnv jvmtiEnv() {
         return jvmtiEnv;
     }
@@ -124,6 +132,10 @@ public final class Support {
 
     public static JNINativeInterface jniFunctions() {
         return jniFunctions;
+    }
+
+    public static int jvmtiVersion() {
+        return jvmtiVersion;
     }
 
     public static String fromCString(CCharPointer s) {
@@ -172,9 +184,10 @@ public final class Support {
         return nullPointer();
     }
 
-    public static JNIObjectHandle getObjectArgument(int slot) {
+    public static JNIObjectHandle getObjectArgument(JNIObjectHandle thread, int slot) {
+        assert thread.notEqual(nullHandle()) : "JDK-8292657: must not use NULL for the current thread because it does not apply to virtual threads on JDK 19";
         WordPointer handlePtr = StackValue.get(WordPointer.class);
-        if (jvmtiFunctions().GetLocalObject().invoke(jvmtiEnv(), nullHandle(), 0, slot, handlePtr) != JvmtiError.JVMTI_ERROR_NONE) {
+        if (jvmtiFunctions().GetLocalObject().invoke(jvmtiEnv(), thread, 0, slot, handlePtr) != JvmtiError.JVMTI_ERROR_NONE) {
             return nullHandle();
         }
         return handlePtr.read();
@@ -184,9 +197,10 @@ public final class Support {
      * This method might be slightly faster than {@link #getObjectArgument}, but can only be used
      * for instance methods, not static methods.
      */
-    public static JNIObjectHandle getReceiver() {
+    public static JNIObjectHandle getReceiver(JNIObjectHandle thread) {
+        assert thread.notEqual(nullHandle()) : "JDK-8292657: must not use NULL for the current thread because it does not apply to virtual threads on JDK 19";
         WordPointer handlePtr = StackValue.get(WordPointer.class);
-        JvmtiError result = jvmtiFunctions().GetLocalInstance().invoke(jvmtiEnv(), nullHandle(), 0, handlePtr);
+        JvmtiError result = jvmtiFunctions().GetLocalInstance().invoke(jvmtiEnv(), thread, 0, handlePtr);
         if (result != JvmtiError.JVMTI_ERROR_NONE) {
             assert result != JvmtiError.JVMTI_ERROR_INVALID_SLOT : "not an instance method";
             return nullHandle();

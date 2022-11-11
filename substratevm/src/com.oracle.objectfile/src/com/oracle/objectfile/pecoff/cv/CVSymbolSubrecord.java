@@ -88,7 +88,7 @@ abstract class CVSymbolSubrecord {
         private static String findObjectName(CVDebugInfo cvDebugInfo) {
             /* Infer object filename from first class definition. */
             String fn = null;
-            for (ClassEntry classEntry : cvDebugInfo.getPrimaryClasses()) {
+            for (ClassEntry classEntry : cvDebugInfo.getInstanceClasses()) {
                 if (classEntry.getFileName() != null) {
                     fn = classEntry.getFileEntry().getFileName();
                     if (fn.endsWith(".java")) {
@@ -214,7 +214,7 @@ abstract class CVSymbolSubrecord {
 
         private static String findFirstFile(CVDebugInfo cvDebugInfo) {
             String fn = null;
-            for (ClassEntry classEntry : cvDebugInfo.getPrimaryClasses()) {
+            for (ClassEntry classEntry : cvDebugInfo.getInstanceClasses()) {
                 if (classEntry.getFileName() != null) {
                     fn = classEntry.getFileEntry().getFileName();
                     break;

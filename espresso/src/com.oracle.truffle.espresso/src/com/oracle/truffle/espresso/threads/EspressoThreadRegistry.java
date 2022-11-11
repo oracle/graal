@@ -267,13 +267,14 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
 
             // register the new guest thread
             registerThread(hostThread, guestThread);
+            // Set runnable status before executing guest code.
+            meta.java_lang_Thread_threadStatus.setInt(guestThread, State.RUNNABLE.value);
 
             if (name == null) {
                 meta.java_lang_Thread_init_ThreadGroup_Runnable.invokeDirect(guestThread, mainThreadGroup, StaticObject.NULL);
             } else {
                 meta.java_lang_Thread_init_ThreadGroup_String.invokeDirect(guestThread, threadGroup, meta.toGuestString(name));
             }
-            meta.java_lang_Thread_threadStatus.setInt(guestThread, State.RUNNABLE.value);
 
             // now add to the main thread group
             meta.java_lang_ThreadGroup_add.invokeDirect(threadGroup, guestThread);

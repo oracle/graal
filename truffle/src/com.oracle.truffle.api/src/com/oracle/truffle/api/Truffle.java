@@ -42,7 +42,6 @@ package com.oracle.truffle.api;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ServiceConfigurationError;
@@ -109,7 +108,10 @@ public final class Truffle {
         return AccessController.doPrivileged(new PrivilegedAction<TruffleRuntime>() {
             public TruffleRuntime run() {
                 String runtimeClassName = System.getProperty("truffle.TruffleRuntime");
-                if (runtimeClassName != null && runtimeClassName.length() > 0) {
+                if (runtimeClassName != null && !runtimeClassName.isEmpty()) {
+                    if (runtimeClassName.equals(DefaultTruffleRuntime.class.getName())) {
+                        return new DefaultTruffleRuntime();
+                    }
                     try {
                         ClassLoader cl = Thread.currentThread().getContextClassLoader();
                         Class<?> runtimeClass = Class.forName(runtimeClassName, false, cl);
@@ -120,8 +122,17 @@ public final class Truffle {
                     }
                 }
 
-                List<Iterable<TruffleRuntimeAccess>> loaders = Collections.singletonList(ServiceLoader.load(TruffleRuntimeAccess.class));
-                TruffleRuntimeAccess access = selectTruffleRuntimeAccess(loaders);
+                Class<?> lookupClass = Truffle.class;
+                ModuleLayer moduleLayer = lookupClass.getModule().getLayer();
+                TruffleRuntimeAccess access;
+                if (moduleLayer != null) {
+                    access = selectTruffleRuntimeAccess(List.of(ServiceLoader.load(moduleLayer, TruffleRuntimeAccess.class)));
+                } else {
+                    access = selectTruffleRuntimeAccess(List.of(ServiceLoader.load(TruffleRuntimeAccess.class, lookupClass.getClassLoader())));
+                }
+                if (access == null) {
+                    access = selectTruffleRuntimeAccess(List.of(ServiceLoader.load(TruffleRuntimeAccess.class)));
+                }
 
                 if (access != null) {
                     exportTo(access.getClass());

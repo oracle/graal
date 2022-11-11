@@ -26,12 +26,19 @@ package org.graalvm.compiler.hotspot.stubs;
 
 import org.graalvm.compiler.lir.GeneratedStubsHolder;
 import org.graalvm.compiler.replacements.nodes.AESNode;
+import org.graalvm.compiler.replacements.StringLatin1InflateNode;
+import org.graalvm.compiler.replacements.StringUTF16CompressNode;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
+import org.graalvm.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
+import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
+import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
+import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
+import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
 import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
 
 @GeneratedStubsHolder(targetVM = "hotspot", sources = {
@@ -41,8 +48,15 @@ import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
                 ArrayCompareToNode.class,
                 ArrayRegionCompareToNode.class,
                 ArrayCopyWithConversionsNode.class,
+                StringUTF16CompressNode.class,
+                StringLatin1InflateNode.class,
+                HasNegativesNode.class,
+                EncodeArrayNode.class,
                 VectorizedMismatchNode.class,
                 AESNode.class,
+                CounterModeAESNode.class,
+                GHASHProcessBlocksNode.class,
+                BigIntegerMultiplyToLenNode.class,
 })
 public final class IntrinsicStubs {
 }

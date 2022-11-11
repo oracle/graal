@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.thread;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
@@ -169,11 +169,11 @@ public final class ThreadData extends UnacquiredThreadData {
     private void free() {
         assert isLocked();
         if (unsafeParkEvent != null) {
-            ParkEvent.release(unsafeParkEvent);
+            unsafeParkEvent.release();
             unsafeParkEvent = null;
         }
         if (sleepParkEvent != null) {
-            ParkEvent.release(sleepParkEvent);
+            sleepParkEvent.release();
             sleepParkEvent = null;
         }
     }
@@ -181,7 +181,7 @@ public final class ThreadData extends UnacquiredThreadData {
     private void initializeParkEvent(long offset, boolean isSleepEvent) {
         ParkEvent newEvent = ParkEvent.acquire(isSleepEvent);
         if (!tryToStoreParkEvent(offset, newEvent)) {
-            ParkEvent.release(newEvent);
+            newEvent.release();
         }
     }
 

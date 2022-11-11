@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "6.5.5",
+  "mxversion" : "6.11.2",
   "name" : "truffle",
-  "version" : "22.3.0",
+  "version" : "23.0.0",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
@@ -74,7 +74,7 @@ suite = {
     # ------------- Libraries -------------
 
     "JLINE" : {
-      "sha1" : "c3aeac59c022bdc497c8c48ed86fa50450e4896a",
+      "digest" : "sha512:27f6e2523e539383cede51d8eae7e97d49038c5a66cb4a94a9ce85165f16e7382b937a238cdb0c92e1136af56c5f57bcc6c04435a370c5d49f7e4bd32f0d9194",
       "maven" : {
         "groupId" : "jline",
         "artifactId" : "jline",
@@ -89,11 +89,11 @@ suite = {
         "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/libffi-{version}.tar.gz",
         "https://github.com/libffi/libffi/releases/download/v{version}/libffi-{version}.tar.gz",
       ],
-      "sha1" : "460882cfdb52a2bd13fc08edc540b242ae421033",
+      "digest" : "sha512:31bad35251bf5c0adb998c88ff065085ca6105cf22071b9bd4b5d5d69db4fadf16cadeec9baca944c4bb97b619b035bb8279de8794b922531fddeb0779eb7fb1",
     },
 
     "ANTLR4": {
-      "sha1" : "ece33ec76e002dfde574cf7b57451a91a99185c5",
+      "digest" : "sha512:362994710ffebe81c200ffd6031e1158f8128da7e7f568c6d46bb2412c41d859b5d5cb162bf594d49faa1e895de3aceee66fa5a79e91e01117a028d800eb497c",
       "maven" : {
         "groupId" : "org.antlr",
         "artifactId" : "antlr4-runtime",
@@ -104,11 +104,11 @@ suite = {
     "ANTLR4_COMPLETE": {
       # original: https://www.antlr.org/download/antlr-4.9.2-complete.jar
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/antlr-4.9.2-complete.jar"],
-      "sha1": "3ce2e9d96baa6e5de18eb370efc71cbb820021fb",
+      "digest": "sha512:a6040e66dc4b223228b83200149c41b66d7e9bee5d9580c36a3433437999487819c2fe85c2d5b72e1a9b24787f42a575603e23575fade8a5fb01f975c0bf76ea",
     },
 
     "TRUFFLE_JCODINGS": {
-      "sha1" : "61f6dfc53c3003e17b994c8f968e69d2544cf777",
+      "digest" : "sha512:49ab9ee3a2d2e7cdc4780252f6f796de1837e8b6dde3480b840faea711d16cbb9ea2c3d945e3cc8916b996a46164f866d3ed2cfdc6eeffb93087131b59e53ec0",
       "version" : "1.0.56.7",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/graalvm-shadowed-jcodings-{version}.jar"],
       "exports" : [],
@@ -116,14 +116,14 @@ suite = {
     },
 
     "TRUFFLE_ASM_9.1" : {
-      "sha1" : "956cc657b3f1aa2c08ebbb3bbe4092aea1daf54a",
+      "digest" : "sha512:5aa4dbb2886173e17b357c66bc926a75662df559091f007a64000e777fb2bf25f3ca08c40efb8b8120e1e8fd85ca542c76d777f80da6c530db19a3430e4a2cd1",
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/com.oracle.truffle.api.impl.asm-9.1.0.jar"],
     },
 
     "ICU4J" : {
       "moduleName" : "com.ibm.icu",
-      "sha1" : "9e7d3304c23f9ba5cb71915f7cce23231a57a445",
-      "sourceSha1" : "cc9684d401adeb1a90404a5d77fd38d348a41ec1",
+      "digest" : "sha512:0864e4785148fd5a7b9056056316f9ddec14b138fd6b64d15d09fcb7bde5a1240a084f38f1aa96ae6e0b09b1fd7f61f3812297aa8e4407a596e7db6d64036b68",
+      "sourceDigest" : "sha512:7e6096fe14ae9694d0e465e172e7c31b53547492249cd0f63f277c0555391473110ae52269f594d61f101c184d991a21e6479934f6d7757616bfef7dd7398b91",
       "maven" : {
         "groupId" : "com.ibm.icu",
         "artifactId" : "icu4j",
@@ -132,8 +132,8 @@ suite = {
     },
     "ICU4J-CHARSET" : {
       "moduleName" : "com.ibm.icu.charset",
-      "sha1" : "43a0c57f34daf0107810d5840a21f4e8a5ecfa5a",
-      "sourceSha1" : "9306ea1978df483a85d84f1fe61795f1e0786aec",
+      "digest" : "sha512:0309f5ac75b26ddaf402e88d674b91f7d0a4a285b3c3de665f0f7007e32532c6c9a100dbc03dce302a432ff01ce3f04ec9905a7210327753c61f275d315494af",
+      "sourceDigest" : "sha512:914593320b9d08d5cb63092b7913798466edc53a02fc257c0bd7a47d9be83e73fb283111eb9d002c445d075c3c8a449de6bf3a0c78e868fd8104b8c0c254b3cc",
       "maven" : {
         "groupId" : "com.ibm.icu",
         "artifactId" : "icu4j-charset",
@@ -143,19 +143,19 @@ suite = {
 
     "TruffleJSON" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20220320.jar"],
-      "sha1" : "bb27152e93770f4e0c993efd3e620133817e5edb",
+      "digest" : "sha512:b9f95acd4373acc5c86c2863e797313f7e97b39fa41566768a67f792f9cf3e642343fcbde2e6433069debc53babe766b09697eb775301f6f08773e75cfad9e83",
       "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20220320-src.jar"],
-      "sourceSha1" : "d085e808a3ef7549cdb72a20056e5f87469f8d56",
+      "sourceDigest" : "sha512:fe05059681fa01023a290a4a653e26007df0b76ecec81e2796828d34c7906986a502b0321f308578a15b695251b5a00b4b38cbc36a8165fbc3676cf4ac9b6ef9",
     },
 
     "VISUALVM-LIB-JFLUID-HEAP" : {
       "moduleName" : "org.graalvm.visualvm.lib.jfluid.heap",
-      "sha1" : "5aa80db98a1d040dc1917a063bf059326e2afad7",
-      "sourceSha1" : "40a51050dfe481a7542f9eb7b1d8fb484a1eb2c1",
+      "digest" : "sha512:6d93cde728f5db242d2ab55090e5b2952e873625e542043d16d859e1486433c91efcf3c713d7255697951ee745cd5f66276b78f38c62c422cd7b1000291612ad",
+      "sourceDigest" : "sha512:81377da5f52fae2e412ea084cb6e6e82d37beb96e8d624e47b6e7a2e70f61e237485239dd4b64934bf4758857d0582dc11acdeadc930bccb02a471df4b7e83b2",
       "maven" : {
         "groupId" : "org.graalvm.visualvm.modules",
         "artifactId" : "org-graalvm-visualvm-lib-jfluid-heap",
-        "version" : "2.1.3",
+        "version" : "2.1.4",
       },
     },
 
@@ -180,6 +180,20 @@ suite = {
       "forceJavac" : "true",
       "javaCompliance" : "11+",
       "checkstyleVersion" : "8.36.1",
+      "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.api.jdk19" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+      ],
+      "overlayTarget" : "com.oracle.truffle.api",
+      "checkPackagePrefix" : "false",
+      "multiReleaseJarVersion" : "19",
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "19+",
+      "javaPreviewNeeded": "19",
       "workingSets" : "API,Truffle",
     },
 
@@ -266,6 +280,23 @@ suite = {
       ],
       "checkstyle": "com.oracle.truffle.api",
       "javaCompliance" : "17+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "API,Truffle,Test",
+      "jacoco" : "exclude",
+      "testProject" : True,
+    },
+
+    "com.oracle.truffle.api.test.jdk19": {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.test",
+      ],
+      "overlayTarget" : "com.oracle.truffle.api.test",
+      "checkstyle": "com.oracle.truffle.api",
+      "javaCompliance" : "19+",
+      "javaPreviewNeeded": "19",
+      "multiReleaseJarVersion" : "19",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Test",
       "jacoco" : "exclude",
@@ -726,6 +757,7 @@ suite = {
       "sourceDirs" : ["src"],
       "jniHeaders" : True,
       "dependencies" : [
+        "com.oracle.truffle.nfi.api",
         "com.oracle.truffle.nfi.backend.spi",
       ],
       "requires" : [
@@ -823,8 +855,7 @@ suite = {
       "workingSets" : "Truffle",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "javaProperties" : {
-        "native.test.lib" : "<path:TRUFFLE_TEST_NATIVE>/<lib:nativetest>",
-        "native.isolation.test.lib" : "<path:TRUFFLE_TEST_NATIVE>/<lib:isolationtest>"
+        "native.test.path" : "<path:TRUFFLE_TEST_NATIVE>",
       },
       "testProject" : True,
       "jacoco" : "exclude",

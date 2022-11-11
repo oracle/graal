@@ -24,23 +24,25 @@
  */
 package com.oracle.graal.reachability;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.nodes.GraphEncoder;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.StructuredGraph;
+
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.util.AnalysisError;
+
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.nodes.GraphEncoder;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.StructuredGraph;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * Reachability specific extension of AnalysisMethod. Contains mainly information necessary to
@@ -83,18 +85,8 @@ public class ReachabilityAnalysisMethod extends AnalysisMethod {
     }
 
     @Override
-    public StackTraceElement[] getParsingContext() {
-        List<StackTraceElement> parsingContext = new ArrayList<>();
-        ReachabilityAnalysisMethod curr = this;
-
-        /* Defend against cycles in the parsing context. GR-35744 should fix this properly. */
-        int maxSize = 100;
-
-        while (curr != null && parsingContext.size() < maxSize) {
-            parsingContext.add(curr.asStackTraceElement(curr.reason.getBCI()));
-            curr = ((ReachabilityAnalysisMethod) curr.reason.getMethod());
-        }
-        return parsingContext.toArray(new StackTraceElement[parsingContext.size()]);
+    public BytecodePosition getParsingReason() {
+        return reason;
     }
 
     public void setReason(BytecodePosition reason) {

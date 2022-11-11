@@ -63,7 +63,7 @@ public abstract class ScheduledNodeIterator {
             if (node instanceof FixedWithNextNode) {
                 lastFixed = (FixedWithNextNode) node;
             }
-            processNode(node);
+            processNode(node, block, schedule, iterator);
         }
         if (reconnect != null) {
             assert block.getSuccessorCount() == 1;
@@ -85,5 +85,5 @@ public abstract class ScheduledNodeIterator {
         iterator.set(newNode);
     }
 
-    protected abstract void processNode(Node node);
+    protected abstract void processNode(Node node, Block block, ScheduleResult schedule, ListIterator<Node> iter);
 }

@@ -87,6 +87,7 @@ import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -150,7 +151,7 @@ import com.oracle.truffle.api.source.Source;
  * context} is configured by the {@link Registration#contextPolicy() context policy}. By default an
  * {@link ContextPolicy#EXCLUSIVE exclusive} {@link TruffleLanguage language} instance is created
  * for every {@link org.graalvm.polyglot.Context polyglot context} or
- * {@link TruffleLanguage.Env#newContextBuilder() inner context}. With policy
+ * {@link TruffleLanguage.Env#newInnerContextBuilder(String...) inner context}. With policy
  * {@link ContextPolicy#REUSE reuse}, language instances will be reused after a language context was
  * {@link TruffleLanguage#disposeContext(Object) disposed}. With policy {@link ContextPolicy#SHARED
  * shared}, a language will also be reused if active contexts are not yet disposed. Language
@@ -651,14 +652,14 @@ public abstract class TruffleLanguage<C> {
      * Thread termination as the polyglot thread may be cancelled before executing the executor
      * worker.
      * <p>
-     * During finalizeContext, all unclosed inner contexts {@link Env#newContextBuilder() created}
-     * by the language must be left on all threads where the contexts are still active. No active
-     * inner context is allowed after {@link #finalizeContext(Object)} returns, otherwise it is an
-     * internal error.
+     * During finalizeContext, all unclosed inner contexts
+     * {@link Env#newInnerContextBuilder(String...) created} by the language must be left on all
+     * threads where the contexts are still active. No active inner context is allowed after
+     * {@link #finalizeContext(Object)} returns, otherwise it is an internal error.
      * <p>
-     * Non-active inner contexts {@link Env#newContextBuilder() created} by the language that are
-     * still unclosed after {@link #finalizeContext(Object)} returns are automatically closed by
-     * Truffle.
+     * Non-active inner contexts {@link Env#newInnerContextBuilder(String...) created} by the
+     * language that are still unclosed after {@link #finalizeContext(Object)} returns are
+     * automatically closed by Truffle.
      * <p>
      * Typical implementation looks like:
      *
@@ -1732,7 +1733,7 @@ public abstract class TruffleLanguage<C> {
          * set to 0.
          *
          * @see #getContext()
-         * @see #newContextBuilder()
+         * @see #newInnerContextBuilder(String...)
          * @since 0.28
          */
         @TruffleBoundary
@@ -1746,7 +1747,7 @@ public abstract class TruffleLanguage<C> {
          * description of the parameters. The <code>stackSize</code> set to 0.
          *
          * @see #getContext()
-         * @see #newContextBuilder()
+         * @see #newInnerContextBuilder(String...)
          * @since 0.28
          */
         @TruffleBoundary
@@ -1776,8 +1777,9 @@ public abstract class TruffleLanguage<C> {
          * {@link TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext}
          * <p>
          * The {@link TruffleContext} can be either an inner context created by
-         * {@link #newContextBuilder()}.{@link TruffleContext.Builder#build() build()}, or the
-         * context associated with this environment obtained from {@link #getContext()}.
+         * {@link #newInnerContextBuilder(String...)}.{@link TruffleContext.Builder#build()
+         * build()}, or the context associated with this environment obtained from
+         * {@link #getContext()}.
          *
          * @param runnable the runnable to run on this thread.
          * @param context the context to enter and leave when the thread is started.
@@ -1787,7 +1789,7 @@ public abstract class TruffleLanguage<C> {
          * @throws IllegalStateException if thread creation is not {@link #isCreateThreadAllowed()
          *             allowed}.
          * @see #getContext()
-         * @see #newContextBuilder()
+         * @see #newInnerContextBuilder(String...)
          * @since 0.28
          */
         @TruffleBoundary
@@ -1854,9 +1856,39 @@ public abstract class TruffleLanguage<C> {
          *
          * @see TruffleContext for details on language inner contexts.
          * @since 0.27
+         *
+         * @deprecated use {@link #newInnerContextBuilder(String...)} instead. Note that the
+         *             replacement method configures the context differently by default. To restore
+         *             the old behavior: <code>newInnerContextBuilder()
+         *                   .initializeCreatorContext(true).inheritAllAccess(true).build() </code>
          */
+        @Deprecated
         public TruffleContext.Builder newContextBuilder() {
-            return TruffleContext.EMPTY.new Builder(this);
+            return newInnerContextBuilder().initializeCreatorContext(true).inheritAllAccess(true);
+        }
+
+        /**
+         * Returns a new context builder useful to create inner context instances.
+         * <p>
+         * By default the inner context inherits none of the access privileges. To inherit access
+         * set {@link TruffleContext.Builder#inheritAllAccess(boolean)} to <code>true</code>.
+         * <p>
+         * No language context will be initialized by default in the inner context. In order to
+         * initialize the creator context use
+         * {@link TruffleContext.Builder#initializeCreatorContext(boolean)}, initialize the language
+         * after context creation using {@link TruffleContext#initializePublic(Node, String)} or
+         * evaluate a source using {@link TruffleContext#evalPublic(Node, Source)}.
+         *
+         * @param permittedLanguages ids of languages permitted in the context. If no languages are
+         *            provided, then all languages permitted to the outer context will be permitted.
+         *            Languages are validated when the context is {@link Builder#build() built}. An
+         *            {@link IllegalArgumentException} will be thrown if an unknown or a language
+         *            denied by the engine was used.
+         * @see TruffleContext for details on language inner contexts.
+         * @since 22.3
+         */
+        public TruffleContext.Builder newInnerContextBuilder(String... permittedLanguages) {
+            return TruffleContext.EMPTY.new Builder(this).permittedLanguages(permittedLanguages);
         }
 
         /**
@@ -2190,6 +2222,65 @@ public abstract class TruffleLanguage<C> {
         public Object asHostSymbol(Class<?> symbolClass) {
             try {
                 return LanguageAccessor.engineAccess().asHostSymbol(polyglotLanguageContext, symbolClass);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
+        }
+
+        /**
+         * Returns <code>true</code> if context options are allowed to be modified for inner
+         * contexts, or <code>false</code> if not. This method only indicates whether the embedder
+         * granted wildcard all access for new privileges using
+         * {@link org.graalvm.polyglot.Context.Builder#allowInnerContextOptions(boolean)}.
+         * <p>
+         * This method is useful to find out whether it is possible to specify options for inner
+         * contexts using {@link TruffleContext.Builder#option(String, String)}, as options can only
+         * be specified with all access enabled.
+         *
+         * @see TruffleContext.Builder#option(String, String)
+         * @since 22.3
+         */
+        @TruffleBoundary
+        public boolean isInnerContextOptionsAllowed() {
+            try {
+                return LanguageAccessor.engineAccess().isInnerContextOptionsAllowed(polyglotLanguageContext, this);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
+        }
+
+        /**
+         * Returns {@code true} if access to files is allowed, else {@code false}.
+         *
+         * @since 22.3
+         * @deprecated since 23.0; replaced by {@link #isFileIOAllowed()}.
+         */
+        @Deprecated(since = "23.0")
+        public boolean isIOAllowed() {
+            return isFileIOAllowed();
+        }
+
+        /**
+         * Returns {@code true} if access to files is allowed, else {@code false}.
+         *
+         * @since 23.0
+         */
+        public boolean isFileIOAllowed() {
+            try {
+                return LanguageAccessor.engineAccess().isIOAllowed(polyglotLanguageContext, this);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
+        }
+
+        /**
+         * Returns {@code true} if access to network sockets is allowed, else {@code false}.
+         *
+         * @since 23.0
+         */
+        public boolean isSocketIOAllowed() {
+            try {
+                return LanguageAccessor.engineAccess().isSocketIOAllowed(polyglotLanguageContext);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2565,7 +2656,8 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Configuration arguments passed from an outer language context to an inner language
-         * context. Inner language contexts can be created using {@link #newContextBuilder()}.
+         * context. Inner language contexts can be created using
+         * {@link #newInnerContextBuilder(String...)}.
          *
          * @see TruffleContext to create inner contexts.
          * @see TruffleContext.Builder#config(String, Object) to pass configuration objects to the
@@ -2613,8 +2705,8 @@ public abstract class TruffleLanguage<C> {
         /**
          * Returns a {@link TruffleFile} for given path. The returned {@link TruffleFile} access
          * depends on the file system used by the context and can vary from all access in case of
-         * {@link Builder#allowIO(boolean) allowed IO} to no access in case of denied IO. When IO is
-         * not enabled by the {@code Context} the {@link TruffleFile} operations throw
+         * {@link IOAccess#ALL allowed IO} to no access in case of {@link IOAccess#NONE denied IO}.
+         * When IO is not enabled by the {@code Context} the {@link TruffleFile} operations throw
          * {@link SecurityException}. The {@code getPublicTruffleFile} method should be used to
          * access user files or to implement language IO builtins.
          *
@@ -2622,6 +2714,8 @@ public abstract class TruffleLanguage<C> {
          * @return {@link TruffleFile}
          * @throws UnsupportedOperationException when the {@link FileSystem} supports only
          *             {@link URI}
+         * @see IOAccess
+         * @see Builder#allowIO(IOAccess)
          * @since 19.3.0
          */
         @TruffleBoundary
@@ -3499,6 +3593,7 @@ public abstract class TruffleLanguage<C> {
         static <T extends RuntimeException> RuntimeException engineToLanguageException(Throwable t) {
             return LanguageAccessor.engineAccess().engineToLanguageException(t);
         }
+
     }
 
     /**
