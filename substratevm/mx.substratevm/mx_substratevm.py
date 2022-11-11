@@ -213,22 +213,14 @@ class Tags(set):
 
 GraalTags = Tags([
     'helloworld',
-    'helloworld_debug',
-    'helloworld_native',
-    'helloworld_quickbuild',
     'debuginfotest',
-    'debuginfotest_quickbuild',
-    'test',
-    'test_quickbuild',
-    'js',
-    'js_quickbuild',
+    'native_unittests',
     'build',
     'benchmarktest',
     "nativeimagehelp",
-    'muslcbuild',
     'hellomodule',
     'condconfig',
-    'checkstubs',
+    'truffle_unittests',
 ])
 
 def vm_native_image_path(config=None):
@@ -239,11 +231,6 @@ def vm_executable_path(executable, config=None):
     if mx.get_os() == 'windows':
         executable += '.cmd'  # links are `.cmd` on windows
     return join(_vm_home(config), 'bin', executable)
-
-
-def run_musl_basic_tests():
-    if is_musl_supported():
-        helloworld(['--output-path', svmbuild_dir(), '--static', '--libc=musl'])
 
 
 @contextmanager
@@ -321,7 +308,6 @@ native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
 _native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFeature,com.oracle.svm.test.ServiceLoaderTest$TestFeature,com.oracle.svm.test.SecurityServiceTest$TestFeature'
 
 IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases']
-DEVMODE_FLAGS = ['-Ob']
 
 
 def image_demo_task(extra_image_args=None, flightrecorder=True):
@@ -331,19 +317,21 @@ def image_demo_task(extra_image_args=None, flightrecorder=True):
     javac_image(image_args)
     javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir()))]
     helloworld(image_args + javac_command)
-    helloworld(image_args + ['--shared'])  # Build and run helloworld as shared library
+    if '--static' not in image_args:
+        helloworld(image_args + ['--shared'])  # Build and run helloworld as shared library
     if not mx.is_windows() and flightrecorder:
         helloworld(image_args + ['-J-XX:StartFlightRecording=dumponexit=true'])  # Build and run helloworld with FlightRecorder at image build time
-    cinterfacetutorial(extra_image_args)
-    clinittest([])
+    if '--static' not in image_args:
+        cinterfacetutorial(extra_image_args)
+    clinittest(extra_image_args)
 
 
-def truffle_unittest_task(quickbuild=False):
+def truffle_unittest_task(extra_image_args=None):
     truffle_build_args = ['--force-builder-on-cp', '--build-args', '--macro:truffle',
                                 '-H:MaxRuntimeCompileMethods=5000',
                                 '-H:+TruffleCheckBlackListedMethods']
-    if quickbuild:
-        truffle_build_args += DEVMODE_FLAGS
+    if extra_image_args:
+        truffle_build_args += extra_image_args
 
     truffle_args = truffle_build_args + ['--run-args', '--very-verbose', '--enable-timing']
     # ContextPreInitializationNativeImageTest can only run with its own image.
@@ -353,7 +341,7 @@ def truffle_unittest_task(quickbuild=False):
     # Regular Truffle tests that can run with isolated compilation
     truffle_tests = ['com.oracle.truffle.api.staticobject.test',
                      'com.oracle.truffle.api.test.polyglot.ContextPolicyTest']
-    if not quickbuild:
+    if not extra_image_args:
         truffle_tests.append('com.oracle.truffle.api.test.TruffleSafepointTest')
 
     native_unittest(truffle_tests + truffle_args)
@@ -368,78 +356,44 @@ def svm_gate_body(args, tasks):
     with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                image_demo_task()
-                helloworld(["-H:+RunMainInNewThread"])
-
-    with Task('image demos debuginfo', tasks, tags=[GraalTags.helloworld_debug]) as t:
-        if t:
-            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                image_demo_task(['-H:GenerateDebugInfo=1'], flightrecorder=False)
-
-    with Task('image demos native', tasks, tags=[GraalTags.helloworld_native]) as t:
-        if t:
-            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                image_demo_task(['-H:+NativeArchitecture'], flightrecorder=False)
-
-    with Task('image demos quickbuild', tasks, tags=[GraalTags.helloworld_quickbuild]) as t:
-        if t:
-            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                image_demo_task(DEVMODE_FLAGS, flightrecorder=False)
+                image_demo_task(args.extra_image_builder_arguments)
+                helloworld(["-H:+RunMainInNewThread"] + args.extra_image_builder_arguments)
 
     with Task('image debuginfotest', tasks, tags=[GraalTags.debuginfotest]) as t:
         if t:
-            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                debuginfotest(['--output-path', svmbuild_dir()])
+            if mx.is_windows():
+                mx.warn('debuginfotest does not work on Windows')
+            else:
+                with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                    debuginfotest(['--output-path', svmbuild_dir()] + args.extra_image_builder_arguments)
 
-    with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
+    with Task('native unittests', tasks, tags=[GraalTags.native_unittests]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                native_unittests_task()
+                native_unittests_task(args.extra_image_builder_arguments)
 
     with Task('conditional configuration tests', tasks, tags=[GraalTags.condconfig]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 conditional_config_task(native_image)
 
-    with Task('native unittests quickbuild', tasks, tags=[GraalTags.test_quickbuild]) as t:
+    with Task('Run Truffle unittests with SVM image', tasks, tags=[GraalTags.truffle_unittests]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                native_unittests_task(DEVMODE_FLAGS)
+                truffle_unittest_task(args.extra_image_builder_arguments)
 
-    with Task('Run Truffle unittests with SVM image', tasks, tags=["svmjunit"]) as t:
+    with Task('Run Truffle NFI unittests with SVM image', tasks, tags=[GraalTags.truffle_unittests]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                truffle_unittest_task()
-
-    with Task('Run Truffle unittests with SVM image with quickbuild', tasks, tags=["svmjunit_quickbuild"]) as t:
-        if t:
-            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                truffle_unittest_task(quickbuild=True)
-
-    with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
-        if t:
-            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                testlib = mx_subst.path_substitutions.substitute('-Dnative.test.path=<path:truffle:TRUFFLE_TEST_NATIVE>')
-                native_unittest_args = ['com.oracle.truffle.nfi.test', '--force-builder-on-cp', '--build-args', '--language:nfi',
-                                        '-H:MaxRuntimeCompileMethods=2000',
-                                        '-H:+TruffleCheckBlackListedMethods',
-                                        '--run-args', testlib, '--very-verbose', '--enable-timing']
-                native_unittest(native_unittest_args)
-
-    with Task('Run Truffle NFI unittests with SVM image with quickbuild', tasks, tags=["svmjunit_quickbuild"]) as t:
-        if t:
-            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                testlib = mx_subst.path_substitutions.substitute('-Dnative.test.path=<path:truffle:TRUFFLE_TEST_NATIVE>')
-                native_unittest_args = ['com.oracle.truffle.nfi.test', '--force-builder-on-cp', '--build-args', '--language:nfi',
-                                        '-H:MaxRuntimeCompileMethods=2000',
-                                        '-H:+TruffleCheckBlackListedMethods'] + DEVMODE_FLAGS + [
+                if '--static' in args.extra_image_builder_arguments:
+                    mx.warn('NFI unittests use dlopen and thus do not work with statically linked executables')
+                else:
+                    testlib = mx_subst.path_substitutions.substitute('-Dnative.test.path=<path:truffle:TRUFFLE_TEST_NATIVE>')
+                    native_unittest_args = ['com.oracle.truffle.nfi.test', '--force-builder-on-cp', '--build-args', '--language:nfi',
+                                            '-H:MaxRuntimeCompileMethods=2000',
+                                            '-H:+TruffleCheckBlackListedMethods'] + args.extra_image_builder_arguments + [
                                             '--run-args', testlib, '--very-verbose', '--enable-timing']
-                native_unittest(native_unittest_args)
-
-    with Task('Musl static hello world and JVMCI version check', tasks, tags=[GraalTags.muslcbuild]) as t:
-        if t:
-            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                run_musl_basic_tests()
+                    native_unittest(native_unittest_args)
 
     with Task('Check mx native-image --help', tasks, tags=[GraalTags.nativeimagehelp]) as t:
         if t:
@@ -457,27 +411,9 @@ def svm_gate_body(args, tasks):
 
             mx.log('mx native-image --help output check detected no errors.')
 
-    with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
-        if t:
-            config = GraalVMConfig.build(primary_suite_dir=join(suite.vc_dir, 'vm'), # Run from `vm` to clone the right revision of `graal-js` if needed
-                                         dynamicimports=['/' + svm_suite().name, '/graal-js'])
-            with native_image_context(IMAGE_ASSERTION_FLAGS, config=config) as native_image:
-                jslib = build_js_lib(native_image)
-                test_run([get_js_launcher(jslib), '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
-                test_js(jslib, [('octane-richards', 1000, 100, 300)])
-
-    with Task('JavaScript with quickbuild', tasks, tags=[GraalTags.js_quickbuild]) as t:
-        if t:
-            config = GraalVMConfig.build(primary_suite_dir=join(suite.vc_dir, 'vm'), # Run from `vm` to clone the right revision of `graal-js` if needed
-                                         dynamicimports=['/' + svm_suite().name, '/graal-js'])
-            with native_image_context(IMAGE_ASSERTION_FLAGS + DEVMODE_FLAGS, config=config) as native_image:
-                jslib = build_js_lib(native_image)
-                test_run([get_js_launcher(jslib), '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
-                test_js(jslib, [('octane-richards', 1000, 100, 300)])
-
     with Task('module build demo', tasks, tags=[GraalTags.hellomodule]) as t:
         if t:
-            hellomodule([])
+            hellomodule(args.extra_image_builder_arguments)
 
     with Task('Validate JSON build output', tasks, tags=[mx_gate.Tags.style]) as t:
         if t:
@@ -752,6 +688,7 @@ def test_run(cmds, expected_stdout, timeout=10, env=None):
     return (returncode, stdoutdata, stderrdata)
 
 mx_gate.add_gate_runner(suite, svm_gate_body)
+mx_gate.add_gate_argument('--extra-image-builder-arguments', action=mx_compiler.ShellEscapedStringAction, help='adds image builder arguments to gate tasks where applicable', default=[])
 
 
 def _cinterfacetutorial(native_image, args=None):
@@ -884,6 +821,8 @@ def _debuginfotest(native_image, path, build_only, args):
         native_image(build_args)
 
     # build with and without Isolates and check both work
+    if '--libc=musl' in args:
+        os.environ.update({'debuginfotest_musl' : 'yes'})
 
     build_debug_test(['-H:+SpawnIsolates'])
     if mx.get_os() == 'linux' and not build_only:
@@ -1338,14 +1277,15 @@ def hellomodule(args):
         mx.log('Running module-tests on JVM:')
         build_dir = join(svmbuild_dir(), 'hellomodule')
         mx.run([
-            vm_executable_path('java'),
+            # On Windows, java is always an .exe, never a .cmd symlink
+            join(_vm_home(None), 'bin', mx.exe_suffix('java')),
             ] + moduletest_run_args)
 
         # Build module into native image
         mx.log('Building image from java modules: ' + str(module_path))
         built_image = native_image([
             '--verbose', '-H:Path=' + build_dir,
-            ] + moduletest_run_args)
+            ] + args + moduletest_run_args)
         mx.log('Running image ' + built_image + ' built from module:')
         mx.run([built_image])
 
