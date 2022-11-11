@@ -193,7 +193,7 @@ suite = {
       "multiReleaseJarVersion" : "19",
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "19+",
-      "javaPreviewNeeded": "19",
+      "javaPreviewNeeded": "19+",
       "workingSets" : "API,Truffle",
     },
 
@@ -295,7 +295,7 @@ suite = {
       "overlayTarget" : "com.oracle.truffle.api.test",
       "checkstyle": "com.oracle.truffle.api",
       "javaCompliance" : "19+",
-      "javaPreviewNeeded": "19",
+      "javaPreviewNeeded": "19+",
       "multiReleaseJarVersion" : "19",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Test",

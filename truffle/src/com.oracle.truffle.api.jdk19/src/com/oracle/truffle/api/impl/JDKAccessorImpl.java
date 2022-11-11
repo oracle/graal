@@ -40,12 +40,13 @@
  */
 package com.oracle.truffle.api.impl;
 
-/*
+/**
  * Deferring this to an extra class allows us to detect whether preview features are enabled. If
- * preview features are disabled then the JDKAccessorImpl class will not link correctly as it uses preview
- * API. Regular ways of detecting whether preview is enabled e.g. using the
+ * preview features are disabled then the {@link JDKAccessorImpl} class will not link correctly as
+ * it uses preview API. Regular ways of detecting whether preview is enabled e.g. using the
  * jdk.internal.misc.PreviewFeatures are not always available to the JDKAccessor class. The separate
- * class also needs to be a top-level class otherwise they might get parsed to together with the enclosing class.
+ * class also needs to be a top-level class otherwise they might get parsed together with the
+ * enclosing class.
  */
 final class JDKAccessorImpl {
 

@@ -1676,7 +1676,7 @@ suite = {
       "multiReleaseJarVersion" : "19",
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "19+",
-      "javaPreviewNeeded": "19",
+      "javaPreviewNeeded": "19+",
       "checkPackagePrefix" : "false",
       "workingSets" : "Graal,HotSpot",
       "testProject" : True,
