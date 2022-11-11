@@ -553,7 +553,8 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
 
         protected RuntimeException wrapHostError(Throwable t) {
             assert !config.engine.host.isHostException(t);
-            throw config.engine.host.toHostException(null, t);
+            throw config.engine.host.toHostException(PolyglotFastThreadLocals.getLanguageContext(null,
+                            PolyglotFastThreadLocals.computeLanguageIndexFromStaticIndex(PolyglotEngineImpl.HOST_LANGUAGE_INDEX, PolyglotFastThreadLocals.LANGUAGE_CONTEXT_OFFSET)), t);
         }
 
         @TruffleBoundary(allowInlining = true)
