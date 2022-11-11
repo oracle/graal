@@ -22,23 +22,23 @@ suite = {
         "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/test-suite-3.2.src.tar.gz",
         "https://llvm.org/releases/3.2/test-suite-3.2.src.tar.gz",
       ],
-      "sha1" : "e370255ca2540bcd66f316fe5b96f459382f3e8a",
+      "digest" : "sha512:8cc9b4fc97d87a16a5f5b0bd91ebc8a4e7865a50dbfd98f1456f5830fa121860145b6b9aaabf624d9fd5eb5164e2a909e7ccb21375daf54dc24e990db7d716ba",
     },
     "GCC_SOURCE" : {
       "packedResource" : True,
       # original: https://mirrors-usa.go-parts.com/gcc/releases/gcc-5.2.0/gcc-5.2.0.tar.gz
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/gcc-5.2.0.tar.gz"],
-      "sha1" : "713211883406b3839bdba4a22e7111a0cff5d09b",
+      "digest" : "sha512:d2cf088c08754af0f06cd36cef83544a05bf75c2fa5d9486eec4babece8b32258449f04bcb6506bf3ea6681948574ba56812bc9881497ba0f5460f8358e8fce5",
     },
     "SHOOTOUT_SUITE" : {
       "packedResource" : True,
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/benchmarksgame-scm-latest.tar.gz"],
-      "sha1" : "9684ca5aaa38ff078811f9b42f15ee65cdd259fc",
+      "digest" : "sha512:1a94a02b1633320c2078f6adbe33b31052676fa1c07217f2fb3b3792bfb6a94410812ac6382295a9f4d8828cdb19dd31d1485f264535e01beb0230b79acc7068",
     },
     "NWCC_SUITE" : {
       "packedResource" : True,
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/nwcc_0.8.3.tar.gz"],
-      "sha1" : "2ab1825dc1f8bd5258204bab19e8fafad93fef26",
+      "digest" : "sha512:f6af50bd18e13070b512bfac6659f49d10d3ad65ea2c4c5ca3f199c8b87540ec145c7dbbe97272f48903ca1c8afaf58c146ec763c851da0b352d5980746f94f6",
     },
     # Support Libraries.
     # Projects depending on these will *not be built* if the 'optional' is 'True' for the given OS/architecture.
@@ -48,7 +48,7 @@ suite = {
         "linux" : {
           "amd64" : {
             "path": "tests/support.txt",
-            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
           "<others>": {
             "optional": True,
@@ -67,7 +67,7 @@ suite = {
         "linux" : {
           "amd64" : {
             "path": "tests/support.txt",
-            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
           "<others>": {
             "optional": True,
@@ -86,7 +86,7 @@ suite = {
         "linux" : {
           "amd64" : {
             "path": "tests/support.txt",
-            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
           "<others>": {
             "optional": True,
@@ -105,7 +105,7 @@ suite = {
         "linux" : {
           "amd64" : {
             "path": "tests/support.txt",
-            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
           "<others>": {
             "optional": True,
@@ -124,7 +124,7 @@ suite = {
         "<others>" : {
           "amd64" : {
             "path": "tests/support.txt",
-            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
           "<others>": {
             "optional": True,
@@ -138,7 +138,7 @@ suite = {
         "<others>" : {
           "aarch64" : {
             "path": "tests/support.txt",
-            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
           "<others>": {
             "optional": True,
@@ -152,7 +152,7 @@ suite = {
         "<others>" : {
           "<others>" : {
             "path": "tests/support.txt",
-            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
         },
         "windows" : {
@@ -168,7 +168,7 @@ suite = {
         "<others>" : {
           "<others>" : {
             "path": "tests/support.txt",
-            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
         },
         "windows" : {
@@ -184,7 +184,7 @@ suite = {
         "windows" : {
           "<others>" : {
             "path": "tests/support.txt",
-            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
         },
         "<others>" : {

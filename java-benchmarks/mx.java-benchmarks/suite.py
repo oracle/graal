@@ -9,37 +9,37 @@ suite = {
   "libraries" : {
     "TIKA_1.0.8": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/tika-1.0.8.zip"],
-      "sha1": "d58de29912461193e158e4bbe9dc369f335f05eb",
+      "digest": "sha512:2b7d147f27eba65a5a38385de9b08b5520d4960219acf09ceae5525e5b51fda118ea4b4b46d91594de0794a739eb8709850bf673f5fce49b2f27962cd5d8af3d",
       "packedResource": True,
     },
 
     "PETCLINIC_0.1.6": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/petclinic-jpa-0.1.6.zip"],
-      "sha1": "a27e41c3f4718b6d66ac0d39728f931dcfb2c613",
+      "digest": "sha512:d16f251e4b5727c8a0e2f653a7d1d2b41967414d960e6a490d8e9fa4715f752b7f7bfc73dd069a001053bc1a4f75583abb40577c79017fef4c8f5cc972c0ed25",
       "packedResource": True,
     },
 
     "SHOPCART_0.3.6": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.6.zip"],
-      "sha1": "b06f90af9e10e7484f024995127cde0e44d4f32e",
+      "digest": "sha512:0ea6402e2325e8cfad2c6592c0fa36faf0c6719125f4edefc2c13740c4bfe500e8cc2726e56404c6ac6abcefb2dbf73e6d9a479d49af7e373ba665c92a4ecffc",
       "packedResource": True,
     },
 
     "SPRING_HW_1.0.1": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/spring-hello-world-1.0.1.zip"],
-      "sha1": "6c3b2d41dc0df793bd39150270b50e36578c27e0",
+      "digest": "sha512:a7c48a7e9bebfe25c926888aec6d66b9a74c622413be5d0d1ece053f4ba2f8a353086b0652362bdc7b31055ceffba1ada9cff2ab7c838f6e9ec1d48755eb1fd7",
       "packedResource": True,
     },
 
     "QUARKUS_HW_1.0.3": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/quarkus-hello-world-1.0.3.zip"],
-      "sha1": "49492f4b5041b16858e2117a8002d1210559d353",
+      "digest": "sha512:dd9502099953f2ac977e2505fca07a74bd3ac012badfd762918172d121c567fb7ce6ca9420c5c45e64a3343d1796232eea2f74ccb2d5c30c86759c1f73b565c0",
       "packedResource": True,
     },
 
     "MICRONAUT_HW_1.0.3": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/micronaut-hello-world-1.0.3.zip"],
-      "sha1": "171ad0f847dea91505f3db77fe5c0291ffbc3785",
+      "digest": "sha512:3cb778bef4eb39c25e12c949377057c60db7b628c4b21cb78538d772e42d9984b4f61d970e73ae8e6a2beadf01ae9734c2c0c5b34270fe1ddf24f17e346d9e51",
       "packedResource": True,
     },
 

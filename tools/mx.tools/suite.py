@@ -331,27 +331,27 @@ suite = {
                 "linux" : {
                     "amd64" : {
                         "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1089-linux-amd64.tar.gz"],
-                        "sha1" : "b734a03e6323fb0d6ad7a9a3cbfbf183d46b2298",
+                        "digest" : "sha512:15f43b80ef82cdffeb08e6fce5305a49bc64c6ea4d303921a45d4b1fa5a4acd09dad69bf2323ea0861e189a43cfce4eaca41117e4e0a44c1fe2c4931acd0966d",
                     },
                     "aarch64" : {
                         "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1089-linux-aarch64.tar.gz"],
-                        "sha1" : "867ce04e40a963e3b83493e34660b6bcd66b0d10",
+                        "digest" : "sha512:8987f5c0f3922df71dbc33249a15c5840b3e2164a6ace1dd14730542e9536ab11dd332ceff41b6b16900f9bfca9bc779f83e06bec30ec28c1915d1b8830e00ea",
                     }
                 },
                 "darwin" : {
                     "amd64" : {
                         "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1089-macos.tar.gz"],
-                        "sha1" : "26770b3113d50be75733384f8e486f1ecbb63878",
+                        "digest" : "sha512:e56d669d88cc580c724ce57b3edec87ec8ead744642e85277da365541e2d2f7b595cbff8a87d2c5cf97e53a35e12a1c26d1c8496021e25bcacdb2b8d8ab845ae",
                     },
                     "aarch64" : {
                         "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1089-macos.tar.gz"],
-                        "sha1" : "26770b3113d50be75733384f8e486f1ecbb63878",
+                        "digest" : "sha512:e56d669d88cc580c724ce57b3edec87ec8ead744642e85277da365541e2d2f7b595cbff8a87d2c5cf97e53a35e12a1c26d1c8496021e25bcacdb2b8d8ab845ae",
                     }
                 },
                 "windows" : {
                     "amd64" : {
                         "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1089-windows-amd64.tar.gz"],
-                        "sha1" : "3b6739fe69a17e921a91eb6b9707a344f8ed067f",
+                        "digest" : "sha512:1c3169ea3dd1acad39aea2a99c49c756945d2714d1fa5f414af62de0d359767117579b8033b9a1365e8fcb71f906c0b75cb87d51697675829941b0564bfd58dc",
                     }
                 },
             }
