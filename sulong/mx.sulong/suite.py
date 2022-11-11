@@ -322,6 +322,7 @@ suite = {
       "subDir" : "tests",
       "native" : True,
       "vpath" : True,
+      "defaultBuild" : False,
       "results" : [
         "bin/"
       ],
@@ -969,6 +970,32 @@ suite = {
             "ninja_install_targets" : ["install-cxxabi", "install-cxx"],
             "results" : ["native"],
             "cmakeConfig" : {
+              # the only difference to darwin is CMAKE_INSTALL_RPATH
+              "CMAKE_INSTALL_RPATH" : "\\$ORIGIN",
+              "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
+              "LIBCXXABI_INCLUDE_TESTS": "NO",
+              "LIBCXXABI_ENABLE_STATIC" : "NO",
+              "LIBCXX_INCLUDE_BENCHMARKS": "NO",
+              "LIBCXX_INCLUDE_TESTS": "NO",
+              "LIBCXX_ENABLE_STATIC" : "NO",
+              "LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY" : "NO",
+              "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
+              "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang++>",
+              "CMAKE_INSTALL_PREFIX" : "native",
+              # workaround for build problem with cmake >=3.22
+              # see https://lists.llvm.org/pipermail/llvm-dev/2021-December/154144.html
+              "CMAKE_BUILD_WITH_INSTALL_RPATH" : "YES",
+            },
+          },
+        },
+        "darwin" : {
+          "<others>" : {
+            "ninja_targets" : ["cxxabi", "cxx"],
+            "ninja_install_targets" : ["install-cxxabi", "install-cxx"],
+            "results" : ["native"],
+            "cmakeConfig" : {
+              # the only difference to the other unixes is CMAKE_INSTALL_RPATH
+              "CMAKE_INSTALL_RPATH" : "@loader_path/",
               "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
               "LIBCXXABI_INCLUDE_TESTS": "NO",
               "LIBCXXABI_ENABLE_STATIC" : "NO",
@@ -1937,6 +1964,7 @@ suite = {
 
     "SULONG_TEST" : {
       "subDir" : "tests",
+      "defaultBuild" : False,
       "dependencies" : [
         "com.oracle.truffle.llvm.tests",
         "com.oracle.truffle.llvm.tests.types",
@@ -2182,6 +2210,7 @@ suite = {
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
+      "defaultBuild" : False,
       "layout" : {
         "./" : [
           "dependency:com.oracle.truffle.llvm.tests.tck.native/*",
