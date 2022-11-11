@@ -1694,18 +1694,31 @@ suite = {
       "vpath" : True,
       "variants" : ["executable-O0"],
       "buildRef" : True,
-      "cmakeConfig" : {
-        "CMAKE_C_FLAGS" : "-Wno-everything",
-        "CMAKE_CXX_FLAGS" : "-Wno-everything",
-      },
       "os_arch" : {
         "darwin": {
           "aarch64" : {
             "cmakeConfig" : {
+              "CMAKE_C_FLAGS" : "-Wno-everything",
+              "CMAKE_CXX_FLAGS" : "-Wno-everything",
               "CMAKE_EXE_LINKER_FLAGS" : "-L/opt/homebrew/lib -lm -lgmp",
             },
           },
           "amd64": {
+            "cmakeConfig" : {
+              "CMAKE_C_FLAGS" : "-Wno-everything",
+              "CMAKE_CXX_FLAGS" : "-Wno-everything",
+            },
+            "buildEnv" : {
+              "CMAKE_EXE_LINKER_FLAGS" : "-lm -lgmp",
+            },
+          },
+        },
+		"windows": {
+          "<others>": {
+            "cmakeConfig" : {
+              "CMAKE_C_FLAGS" : "-Wno-everything -include stdio.h",
+              "CMAKE_CXX_FLAGS" : "-Wno-everything -include stdio.h",
+            },
             "buildEnv" : {
               "CMAKE_EXE_LINKER_FLAGS" : "-lm -lgmp",
             },
@@ -1713,6 +1726,10 @@ suite = {
         },
 		"<others>": {
           "<others>": {
+            "cmakeConfig" : {
+              "CMAKE_C_FLAGS" : "-Wno-everything",
+              "CMAKE_CXX_FLAGS" : "-Wno-everything",
+            },
             "buildEnv" : {
               "CMAKE_EXE_LINKER_FLAGS" : "-lm -lgmp",
             },

@@ -28,7 +28,10 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 project(${SULONG_PROJECT_NAME} LANGUAGES NONE)
+
+set(CMAKE_SOURCE_DIR ${SULONG_TEST_SOURCE_DIR})
+set(SULONG_TEST_SOURCE_DIR "")
 
 include(SulongTestSuite)
