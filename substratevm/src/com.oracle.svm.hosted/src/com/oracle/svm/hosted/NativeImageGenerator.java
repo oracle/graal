@@ -436,6 +436,10 @@ public class NativeImageGenerator {
         return false;
     }
 
+    protected SubstrateTargetDescription createTarget() {
+        return createTarget(loader.platform);
+    }
+
     public static SubstrateTargetDescription createTarget(Platform platform) {
         if (includedIn(platform, Platform.AMD64.class)) {
             Architecture architecture;
@@ -558,13 +562,13 @@ public class NativeImageGenerator {
         }
     }
 
-    protected static void clearSystemPropertiesForImage() {
+    public static void clearSystemPropertiesForImage() {
         System.clearProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY);
         System.clearProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY);
     }
 
     @SuppressWarnings("try")
-    private void doRun(Map<Method, CEntryPointData> entryPoints,
+    protected void doRun(Map<Method, CEntryPointData> entryPoints,
                     JavaMainSupport javaMainSupport, String imageName, NativeImageKind k,
                     SubstitutionProcessor harnessSubstitutions,
                     ForkJoinPool compilationExecutor, ForkJoinPool analysisExecutor) {
@@ -672,18 +676,12 @@ public class NativeImageGenerator {
                     try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.IMAGE)) {
                         bb.getHeartbeatCallback().run();
 
-                        // Start building the model of the native image heap.
-                        heap.addInitialObjects();
-                        // Then build the model of the code cache, which can
-                        // add objects to the native image heap.
-                        codeCache.addConstantsToHeap();
-                        // Finish building the model of the native image heap.
-                        heap.addTrailingObjects();
+                        buildNativeImageHeap(heap, codeCache);
 
                         AfterHeapLayoutAccessImpl config = new AfterHeapLayoutAccessImpl(featureHandler, loader, heap, hMetaAccess, debug);
                         featureHandler.forEachFeature(feature -> feature.afterHeapLayout(config));
 
-                        this.image = AbstractImage.create(k, hUniverse, hMetaAccess, nativeLibraries, heap, codeCache, hostedEntryPoints, loader.getClassLoader());
+                        createAbstractImage(k, hostedEntryPoints, heap, hMetaAccess, codeCache);
                         image.build(imageName, debug);
                         if (NativeImageOptions.PrintUniverse.getValue()) {
                             /*
@@ -729,6 +727,20 @@ public class NativeImageGenerator {
             reporter.printCreationEnd(image.getImageFileSize(), heap.getObjectCount(), image.getImageHeapSize(), codeCache.getCodeAreaSize(),
                             numCompilations, image.getDebugInfoSize());
         }
+    }
+
+    protected void buildNativeImageHeap(NativeImageHeap heap, NativeImageCodeCache codeCache) {
+        // Start building the model of the native image heap.
+        heap.addInitialObjects();
+        // Then build the model of the code cache, which can
+        // add objects to the native image heap.
+        codeCache.addConstantsToHeap();
+        // Finish building the model of the native image heap.
+        heap.addTrailingObjects();
+    }
+
+    protected void createAbstractImage(NativeImageKind k, List<HostedMethod> hostedEntryPoints, NativeImageHeap heap, HostedMetaAccess hMetaAccess, NativeImageCodeCache codeCache) {
+        this.image = AbstractImage.create(k, hUniverse, hMetaAccess, nativeLibraries, heap, codeCache, hostedEntryPoints, loader.getClassLoader());
     }
 
     @SuppressWarnings("try")
@@ -814,12 +826,12 @@ public class NativeImageGenerator {
     }
 
     @SuppressWarnings("try")
-    private void setupNativeImage(OptionValues options, Map<Method, CEntryPointData> entryPoints, JavaMainSupport javaMainSupport,
+    protected void setupNativeImage(OptionValues options, Map<Method, CEntryPointData> entryPoints, JavaMainSupport javaMainSupport,
                     SubstitutionProcessor harnessSubstitutions,
                     ForkJoinPool analysisExecutor, SnippetReflectionProvider originalSnippetReflection, DebugContext debug) {
         try (Indent ignored = debug.logAndIndent("setup native-image builder")) {
             try (StopTimer ignored1 = TimerCollection.createTimerAndStart(TimerCollection.Registry.SETUP)) {
-                SubstrateTargetDescription target = createTarget(loader.platform);
+                SubstrateTargetDescription target = createTarget();
                 ImageSingletons.add(Platform.class, loader.platform);
                 ImageSingletons.add(SubstrateTargetDescription.class, target);
 
@@ -861,12 +873,7 @@ public class NativeImageGenerator {
                 }
                 registerEntryPoints(entryPoints);
 
-                /*
-                 * Check if any configuration factory class was registered. If not, register the
-                 * basic one.
-                 */
-                HostedConfiguration.setDefaultIfEmpty();
-                GraalConfiguration.setDefaultIfEmpty();
+                setDefaultConfiguration();
 
                 AnnotationSubstitutionProcessor annotationSubstitutions = createAnnotationSubstitutionProcessor(originalMetaAccess, loader, classInitializationSupport);
                 CEnumCallWrapperSubstitutionProcessor cEnumProcessor = new CEnumCallWrapperSubstitutionProcessor();
@@ -924,11 +931,23 @@ public class NativeImageGenerator {
 
                 initializeBigBang(bb, options, featureHandler, nativeLibraries, debug, aMetaAccess, aUniverse.getSubstitutions(), loader, true,
                                 new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()));
-                entryPoints.forEach((method, entryPointData) -> CEntryPointCallStubSupport.singleton().registerStubForMethod(method, () -> entryPointData));
+                registerEntryPointStubs(entryPoints);
             }
 
             ProgressReporter.singleton().printInitializeEnd();
         }
+    }
+
+    protected void registerEntryPointStubs(Map<Method, CEntryPointData> entryPoints) {
+        entryPoints.forEach((method, entryPointData) -> CEntryPointCallStubSupport.singleton().registerStubForMethod(method, () -> entryPointData));
+    }
+
+    protected void setDefaultConfiguration() {
+        /*
+         * Check if any configuration factory class was registered. If not, register the basic one.
+         */
+        HostedConfiguration.setDefaultIfEmpty();
+        GraalConfiguration.setDefaultIfEmpty();
     }
 
     protected SubstratePlatformConfigurationProvider getPlatformConfig(MetaAccessProvider aMetaAccess) {
@@ -1144,7 +1163,7 @@ public class NativeImageGenerator {
     }
 
     @SuppressWarnings("deprecation")
-    private void registerEntryPoints(Map<Method, CEntryPointData> entryPoints) {
+    protected void registerEntryPoints(Map<Method, CEntryPointData> entryPoints) {
         for (Method m : loader.findAnnotatedMethods(CEntryPoint.class)) {
             if (!Modifier.isStatic(m.getModifiers())) {
                 throw UserError.abort("Entry point method %s.%s is not static. Add a static modifier to the method.", m.getDeclaringClass().getName(), m.getName());
