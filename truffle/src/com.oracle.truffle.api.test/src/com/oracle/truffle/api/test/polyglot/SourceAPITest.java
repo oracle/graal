@@ -614,6 +614,7 @@ public class SourceAPITest {
         assertEquals("Source with different MIME type has the same URI", s1.getURI(), s2.getURI());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void unassignedMimeTypeForURL() throws IOException {
         File file = File.createTempFile("Hello", ".java");
@@ -724,6 +725,7 @@ public class SourceAPITest {
         assertEquals("File sources with different content have the same URI", source1.getURI(), source2.getURI());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void jarURLGetsAName() throws IOException {
         File sample = File.createTempFile("sample", ".jar");
@@ -746,6 +748,7 @@ public class SourceAPITest {
         sample.delete();
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testHttpURL() throws IOException, URISyntaxException {
         URL resource = new URL(HttpURLLanguage.RESOURCE);
@@ -768,6 +771,7 @@ public class SourceAPITest {
 
         static final String RESOURCE = "http://example.org/test/File.html";
 
+        @SuppressWarnings("deprecation")
         @Override
         protected void onParse(ParsingRequest request, Env env, Object[] contextArguments) {
             try {
@@ -994,6 +998,7 @@ public class SourceAPITest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void throwsErrorIfLangIsNull3() throws MalformedURLException {
         try {
@@ -1091,6 +1096,7 @@ public class SourceAPITest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testNonResolvableURL() throws IOException {
         Assume.assumeFalse("Query parameters are not supported by file URLConnection on Windows", OSUtils.isWindows());

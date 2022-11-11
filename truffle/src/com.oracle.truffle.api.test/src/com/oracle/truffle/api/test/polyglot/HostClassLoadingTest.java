@@ -342,6 +342,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testNoClassDefFoundError() throws IOException {
         Class<?> hostClass = HostClassLoadingTestClass1.class;
@@ -361,6 +362,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         });
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testClassFormatError() throws IOException {
         Class<?> hostClass = HostClassLoadingTestClass1.class;
