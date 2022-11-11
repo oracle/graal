@@ -238,7 +238,7 @@ public final class AMD64CipherBlockChainingAESDecryptOp extends AMD64LIRInstruct
                 loadKey(masm, xmm1, key, 0xc0, crb, keyShuffleMask);  // 0xc0;
                 masm.movdqu(new AMD64Address(rsp, 4 * wordSize), xmm1);
             }
-            masm.align(crb.target.wordSize * 2);
+            masm.align(preferredLoopAlignment(crb));
             masm.bind(labelMultiBlockLoopTop[k]);
             masm.cmpq(lenReg, PARALLEL_FACTOR * AES_BLOCK_SIZE); // see if at least 4 blocks left
             masm.jcc(ConditionFlag.Less, labelSingleBlockLoopTopHead[k]);
@@ -336,7 +336,7 @@ public final class AMD64CipherBlockChainingAESDecryptOp extends AMD64LIRInstruct
                 // 256-bit key goes up to 0xe0
                 loadKey(masm, xmmKey11, key, 0xb0, crb, keyShuffleMask); // 0xb0;
             }
-            masm.align(crb.target.wordSize * 2);
+            masm.align(preferredLoopAlignment(crb));
             masm.bind(labelSingleBlockLoopTop[k]);
             // get next 16 bytes of cipher input
             masm.movdqu(xmmResult, new AMD64Address(from, pos, Stride.S1, 0));

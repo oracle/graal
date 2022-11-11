@@ -391,7 +391,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
      */
     private void emitPTestLoop(CompilationResultBuilder crb, AMD64MacroAssembler asm, Register arr, Register len, Register vecArray, Register vecMask, Label labelBreak) {
         Label loopHead = new Label();
-        bindAligned(crb, asm, loopHead);
+        asm.align(preferredLoopAlignment(crb));
+        asm.bind(loopHead);
         asm.ptestU(vectorSize, vecMask, new AMD64Address(arr, len, stride), vecArray);
         asm.jccb(NotZero, labelBreak);
         asm.addqAndJcc(len, vectorLength, NotZero, loopHead, true);
@@ -700,7 +701,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         vectorLoopPrologue(asm, arr, len, lengthTail, tailLessThan32, !assumeValid ? tailLessThan32 : tailLessThan16, false);
 
         // ascii loop: check if all bytes are |<| 0x80 with PTEST
-        bindAligned(crb, asm, asciiLoop);
+        asm.align(preferredLoopAlignment(crb));
+        asm.bind(asciiLoop);
         asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, len, stride));
         asm.ptest(vectorSize, vecArray, vecMask);
         asm.jccb(NotZero, labelMultiByteEntry);
@@ -714,7 +716,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
 
         if (assumeValid) {
             // multibyte loop: at least one byte is not ascii, calculate the codepoint length
-            bindAligned(crb, asm, labelMultiByteLoop);
+            asm.align(preferredLoopAlignment(crb));
+            asm.bind(labelMultiByteLoop);
             asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, len, stride));
             asm.bind(labelMultiByteEntry);
             utf8SubtractContinuationBytes(asm, ret, vecArray, tmp, vecMask, vecMaskCB);
@@ -777,7 +780,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             Register vecTmp4 = asRegister(vectorTemp[9]);
 
             // multibyte loop: at least one byte is not ascii, calculate the codepoint length
-            bindAligned(crb, asm, labelMultiByteLoop);
+            asm.align(preferredLoopAlignment(crb));
+            asm.bind(labelMultiByteLoop);
             asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, len, stride));
             // fast path: check if current vector is ascii
             asm.bind(labelMultiByteTailLoopEntry);
@@ -901,7 +905,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         asm.negq(lengthTail);
 
         // scalar ascii loop
-        bindAligned(crb, asm, labelScalarAsciiLoop);
+        asm.align(preferredLoopAlignment(crb));
+        asm.bind(labelScalarAsciiLoop);
         asm.movzbl(tmp, new AMD64Address(arr, lengthTail, stride));
         asm.testlAndJcc(tmp, 0x80, NotZero, labelScalarMultiByteLoopEntry, true);
         asm.incqAndJcc(lengthTail, NotZero, labelScalarAsciiLoop, true);
@@ -910,7 +915,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         // scalar multibyte loop
         asm.bind(labelScalarMultiByteLoopEntry);
         if (assumeValid) {
-            bindAligned(crb, asm, labelScalarMultiByteLoop);
+            asm.align(preferredLoopAlignment(crb));
+            asm.bind(labelScalarMultiByteLoop);
             asm.movzbq(tmp, new AMD64Address(arr, lengthTail, stride));
             asm.andl(tmp, 0xc0);
             asm.cmplAndJcc(tmp, 0x80, NotEqual, labelScalarMultiByteLoopSkipDec, true);
@@ -925,7 +931,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             Register type = asRegister(temp[2]);
             asm.leaq(len, getMaskOnce(crb, UTF_8_STATE_MACHINE));
             asm.xorq(state, state);
-            bindAligned(crb, asm, labelScalarMultiByteLoop);
+            asm.align(preferredLoopAlignment(crb));
+            asm.bind(labelScalarMultiByteLoop);
             asm.movzbq(tmp, new AMD64Address(arr, lengthTail, stride));
             asm.movzbq(type, new AMD64Address(len, tmp, stride));
             asm.andl(tmp, 0xc0);
@@ -1076,7 +1083,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         emitPTestTail(asm, vectorSize, arr, lengthTail, vecArray, vecMaskLatin, latin1Tail, bmpTail, returnLatin1, false);
 
         // bmp loop: search for UTF-16 surrogate characters
-        bindAligned(crb, asm, bmpLoop);
+        asm.align(preferredLoopAlignment(crb));
+        asm.bind(bmpLoop);
         asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, len, stride));
         utf16FindSurrogatesAndTest(asm, vecArray, vecArray, vecMaskSurrogate);
         asm.jccb(NotZero, assumeValid ? labelSurrogateLoop : labelSurrogateEntry);
@@ -1093,7 +1101,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
 
             // surrogate loop: surrogates have been found, calculate the codepoint length
             // (assuming the string is encoded correctly)
-            bindAligned(crb, asm, labelSurrogateLoop);
+            asm.align(preferredLoopAlignment(crb));
+            asm.bind(labelSurrogateLoop);
             asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, len, stride));
             utf16MatchSurrogates(asm, vecArray, vecMaskSurrogate);
             utf16SubtractMatchedChars(asm, ret, vecArray, tmp);
@@ -1138,7 +1147,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             asm.testqAndJcc(len, len, Zero, labelSurrogateTail, true);
 
             // surrogate loop
-            bindAligned(crb, asm, labelSurrogateLoop);
+            asm.align(preferredLoopAlignment(crb));
+            asm.bind(labelSurrogateLoop);
             // load at current index
             asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, len, stride));
             // load at current index + 1
@@ -1358,7 +1368,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
 
         asm.bind(labelBMPEntry);
         // bmp loop: check if all codepoints are |<| 0x10000 with VPTEST mask 0xffff0000
-        bindAligned(crb, asm, labelBMPLoop);
+        asm.align(preferredLoopAlignment(crb));
+        asm.bind(labelBMPLoop);
         asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, len, stride));
         asm.ptest(vectorSize, vecArray, vecMaskBMP);
         asm.jccb(NotZero, labelAstralLoop);
@@ -1379,7 +1390,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
 
         // astral loop: check if any codepoints are in the forbidden UTF-16 surrogate range;
         // if so, break immediately and return BROKEN
-        bindAligned(crb, asm, labelAstralLoop);
+        asm.align(preferredLoopAlignment(crb));
+        asm.bind(labelAstralLoop);
         asm.movdqu(vectorSize, vecArray, new AMD64Address(arr, len, stride));
         utf32CheckInvalid(asm, vecArray, vecArray, vecArrayTmp, vecMaskSurrogate, vecMaskOutOfRange, returnBroken, true);
         asm.addqAndJcc(len, vectorLength, NotZero, labelAstralLoop, true);

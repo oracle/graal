@@ -283,7 +283,7 @@ public final class AMD64CounterModeAESCryptOp extends AMD64LIRInstruction {
         // k == 2 : generate code for key_256
         for (int k = 0; k < 3; k++) {
             // multi blocks starts here
-            masm.align(crb.target.wordSize * 2);
+            masm.align(preferredLoopAlignment(crb));
             masm.bind(labelMultiBlockLoopTop[k]);
             // see if at least PARALLEL_FACTOR blocks left
             masm.cmplAndJcc(lenReg, PARALLEL_FACTOR * AES_BLOCK_SIZE, ConditionFlag.LessEqual, labelSingleBlockLoopTop[k], false);
@@ -346,7 +346,7 @@ public final class AMD64CounterModeAESCryptOp extends AMD64LIRInstruction {
             masm.jmp(labelMultiBlockLoopTop[k]);
 
             // singleBlock starts here
-            masm.align(crb.target.wordSize * 2);
+            masm.align(preferredLoopAlignment(crb));
             masm.bind(labelSingleBlockLoopTop[k]);
             masm.cmplAndJcc(lenReg, 0, ConditionFlag.LessEqual, labelExit, false);
             loadKey(masm, xmmKeyTmp0, key, 0x00, xmmKeyShufMask);

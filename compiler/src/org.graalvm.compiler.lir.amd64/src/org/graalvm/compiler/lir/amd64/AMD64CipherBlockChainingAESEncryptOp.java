@@ -190,7 +190,7 @@ public final class AMD64CipherBlockChainingAESEncryptOp extends AMD64LIRInstruct
 
         // 128 bit code follows here
         masm.movq(pos, 0);
-        masm.align(crb.target.wordSize * 2);
+        masm.align(preferredLoopAlignment(crb));
 
         masm.bind(labelLoopTop128);
         // get next 16 bytes of input
@@ -216,7 +216,7 @@ public final class AMD64CipherBlockChainingAESEncryptOp extends AMD64LIRInstruct
 
         // 192-bit code follows here (could be changed to use more xmm registers)
         masm.movq(pos, 0);
-        masm.align(crb.target.wordSize * 2);
+        masm.align(preferredLoopAlignment(crb));
 
         masm.bind(labelLoopTop192);
         // get next 16 bytes of input
@@ -238,7 +238,7 @@ public final class AMD64CipherBlockChainingAESEncryptOp extends AMD64LIRInstruct
         // 256-bit code follows here (could be changed to use more xmm registers)
         loadKey(masm, xmmKey13, key, 0xd0, xmmKeyShufMask);
         masm.movq(pos, 0);
-        masm.align(crb.target.wordSize * 2);
+        masm.align(preferredLoopAlignment(crb));
 
         masm.bind(labelLoopTop256);
         // get next 16 bytes of input
