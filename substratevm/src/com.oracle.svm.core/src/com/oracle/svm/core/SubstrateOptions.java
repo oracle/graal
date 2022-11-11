@@ -414,6 +414,11 @@ public class SubstrateOptions {
     @Option(help = "Alignment of AOT and JIT compiled code in bytes.")//
     public static final HostedOptionKey<Integer> CodeAlignment = new HostedOptionKey<>(16);
 
+    public static final String BUILD_ARTIFACTS_FILE_NAME = "build-artifacts.json";
+    @Option(help = "Create a " + BUILD_ARTIFACTS_FILE_NAME + " file in the build directory. The output conforms to the JSON schema located at: " +
+                    "docs/reference-manual/native-image/assets/build-artifacts-schema-v0.9.0.json", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> GenerateBuildArtifactsFile = new HostedOptionKey<>(false);
+
     /*
      * Build output options.
      */
@@ -440,7 +445,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> BuildOutputGCWarnings = new HostedOptionKey<>(true);
 
     @Option(help = "Print build output statistics as JSON to the specified file. " +
-                    "The output is according to the JSON schema located at: " +
+                    "The output conforms to the JSON schema located at: " +
                     "docs/reference-manual/native-image/assets/build-output-schema-v0.9.1.json", type = OptionType.User)//
     public static final HostedOptionKey<String> BuildOutputJSONFile = new HostedOptionKey<>("");
 

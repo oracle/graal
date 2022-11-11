@@ -9,6 +9,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-41674) Class instanceOf and isAssignableFrom checks do need to make the checked type reachable.
 * (GR-41100) Add support for `-XX:HeapDumpPath` to control where heap dumps are created.
 * (GR-42148) Adjust build output to report types (primitives, classes, interfaces, and arrays) instead of classes and revise the output schema of `-H:BuildOutputJSONFile`.
+* (GR-42375) Add `-H:±GenerateBuildArtifactsFile` option, which generates a `build-artifacts.json` file with a list of all artifacts produced by Native Image. `.build_artifacts.txt` files are now deprecated, disabled (can be re-enabled with env setting `NATIVE_IMAGE_DEPRECATED_BUILD_ARTIFACTS_TXT=true`), and will be removed in a future release.
 
 ## Version 22.3.0
 * (GR-35721) Remove old build output style and the `-H:±BuildOutputUseNewStyle` option.

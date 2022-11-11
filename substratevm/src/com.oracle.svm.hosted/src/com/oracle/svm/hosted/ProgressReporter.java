@@ -598,10 +598,11 @@ public class ProgressReporter {
         double totalSeconds = Utils.millisToSeconds(getTimer(TimerCollection.Registry.TOTAL).getTotalTime());
         recordJsonMetric(ResourceUsageKey.TOTAL_SECS, totalSeconds);
 
+        createArtifacts(imageName, generator, parsedHostedOptions, wasSuccessfulBuild);
         Map<ArtifactType, List<Path>> artifacts = generator.getBuildArtifacts();
         if (!artifacts.isEmpty()) {
             l().printLineSeparator();
-            printArtifacts(imageName, generator, parsedHostedOptions, artifacts, wasSuccessfulBuild);
+            printArtifacts(artifacts);
         }
 
         l().printHeadlineSeparator();
@@ -617,7 +618,18 @@ public class ProgressReporter {
         executor.shutdown();
     }
 
-    private void printArtifacts(String imageName, NativeImageGenerator generator, OptionValues parsedHostedOptions, Map<ArtifactType, List<Path>> artifacts, boolean wasSuccessfulBuild) {
+    private void createArtifacts(String imageName, NativeImageGenerator generator, OptionValues parsedHostedOptions, boolean wasSuccessfulBuild) {
+        BuildArtifacts artifacts = BuildArtifacts.singleton();
+        if (jsonHelper != null && wasSuccessfulBuild) {
+            artifacts.add(ArtifactType.BUILD_INFO, jsonHelper.printToFile());
+        }
+        if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
+            artifacts.add(ArtifactType.BUILD_INFO, reportImageBuildStatistics(imageName, generator.getBigbang()));
+        }
+        BuildArtifactsExporter.run(imageName, artifacts, generator.getBuildArtifacts());
+    }
+
+    private void printArtifacts(Map<ArtifactType, List<Path>> artifacts) {
         l().yellowBold().a("Produced artifacts:").reset().println();
         // Use TreeMap to sort paths alphabetically.
         Map<Path, List<String>> pathToTypes = new TreeMap<>();
@@ -626,15 +638,6 @@ public class ProgressReporter {
                 pathToTypes.computeIfAbsent(path, p -> new ArrayList<>()).add(artifactType.name().toLowerCase());
             }
         });
-        if (jsonHelper != null && wasSuccessfulBuild) {
-            Path jsonMetric = jsonHelper.printToFile();
-            pathToTypes.computeIfAbsent(jsonMetric, p -> new ArrayList<>()).add("json");
-        }
-        if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
-            Path buildStatisticsPath = reportImageBuildStatistics(imageName, generator.getBigbang());
-            pathToTypes.computeIfAbsent(buildStatisticsPath, p -> new ArrayList<>()).add("raw");
-        }
-        pathToTypes.computeIfAbsent(reportBuildArtifacts(imageName, artifacts), p -> new ArrayList<>()).add("txt");
         pathToTypes.forEach((path, typeNames) -> {
             l().a(" ").link(path).dim().a(" (").a(String.join(", ", typeNames)).a(")").reset().println();
         });
@@ -651,22 +654,6 @@ public class ProgressReporter {
             String path = SubstrateOptions.Path.getValue() + File.separatorChar + "reports";
             return ReportUtils.report(description, path, name, "json", statsReporter, false);
         }
-    }
-
-    private static Path reportBuildArtifacts(String imageName, Map<ArtifactType, List<Path>> buildArtifacts) {
-        Path buildDir = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton());
-
-        Consumer<PrintWriter> writerConsumer = writer -> buildArtifacts.forEach((artifactType, paths) -> {
-            writer.println("[" + artifactType + "]");
-            if (artifactType == BuildArtifacts.ArtifactType.JDK_LIB_SHIM) {
-                writer.println("# Note that shim JDK libraries depend on this");
-                writer.println("# particular native image (including its name)");
-                writer.println("# and therefore cannot be used with others.");
-            }
-            paths.stream().map(Path::toAbsolutePath).map(buildDir::relativize).forEach(writer::println);
-            writer.println();
-        });
-        return ReportUtils.report("build artifacts", buildDir.resolve(imageName + ".build_artifacts.txt"), writerConsumer, false);
     }
 
     private void printResourceStatistics() {
