@@ -44,9 +44,9 @@ public class HP_field04 extends JTTTest {
 
         public int run(int count) {
             for (int x = 0; x <= count; x++) {
-                b += x;
-                c += x;
-                s += x;
+                b += (byte) x;
+                c += (char) x;
+                s += (short) x;
                 i += x;
                 l += x;
                 f += x;
