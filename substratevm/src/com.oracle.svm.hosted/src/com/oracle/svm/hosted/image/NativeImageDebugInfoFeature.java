@@ -92,7 +92,6 @@ class NativeImageDebugInfoFeature implements InternalFeature {
     public void beforeImageWrite(BeforeImageWriteAccess access) {
         Timer timer = TimerCollection.singleton().get(TimerCollection.Registry.DEBUG_INFO);
         try (Timer.StopTimer t = timer.start()) {
-            //ImageSingletons.add(SourceManager.class, new SourceManager());
             var accessImpl = (FeatureImpl.BeforeImageWriteAccessImpl) access;
             var image = accessImpl.getImage();
             var debugContext = new DebugContext.Builder(HostedOptionValues.singleton(), new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();

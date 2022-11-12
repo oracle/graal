@@ -797,10 +797,8 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
         gen.getDebugInfoPrinter().setValueName(llvmOperand, node);
         if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
-            if (llvmOperand.get() instanceof LLVMValueRef) {
                 LLVMValueRef instr = llvmOperand.get();
                 builder.buildDebugInfoForInstr(node, instr);
-            }
         }
         valueMap.put(node, llvmOperand);
         return operand;
