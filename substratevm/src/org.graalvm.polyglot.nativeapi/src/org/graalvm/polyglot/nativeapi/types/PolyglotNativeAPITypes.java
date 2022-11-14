@@ -234,4 +234,10 @@ public class PolyglotNativeAPITypes {
     @CStruct("poly_isolate_params")
     public interface PolyglotIsolateParameters extends CEntryPointCreateIsolateParameters {
     }
+
+    @CTypedef(name = "poly_output_handler")
+    public interface PolyglotOutputHandler extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        void invoke(CCharPointer bytes, UnsignedWord length);
+    }
 }
