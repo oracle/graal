@@ -227,6 +227,13 @@ public final class TruffleBaseFeature implements InternalFeature {
                         Collections.emptyList());
     }
 
+    private static void initializeHomeFinder() {
+        Set<String> languages = invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "collectLanguages", Collections.emptyList());
+        Set<String> tools = invokeStaticMethod("com.oracle.truffle.polyglot.InstrumentCache", "collectInstruments", Collections.emptyList());
+        invokeStaticMethod(DefaultHomeFinder.class.getName(), "setNativeImageLanguages", List.of(Set.class), languages);
+        invokeStaticMethod(DefaultHomeFinder.class.getName(), "setNativeImageTools", List.of(Set.class), tools);
+    }
+
     public static void removeTruffleLanguage(String mimeType) {
         invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "removeLanguageFromNativeImage",
                         Collections.singletonList(String.class), mimeType);
@@ -264,6 +271,7 @@ public final class TruffleBaseFeature implements InternalFeature {
             RuntimeClassInitialization.initializeAtBuildTime(provider.getClass());
         }
         initializeTruffleReflectively(imageClassLoader);
+        initializeHomeFinder();
         needsAllEncodings = invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "getNeedsAllEncodings",
                         Collections.emptyList());
 

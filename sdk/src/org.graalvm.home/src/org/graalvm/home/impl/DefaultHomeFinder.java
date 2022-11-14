@@ -45,6 +45,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -53,6 +54,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.Set;
 
 import org.graalvm.home.HomeFinder;
 import org.graalvm.nativeimage.ImageInfo;
@@ -68,6 +70,9 @@ public final class DefaultHomeFinder extends HomeFinder {
     static final Path FORCE_GRAAL_HOME;
     static final Path GRAAL_HOME_RELATIVE_PATH;
     static final Map<String, Path> LANGUAGE_RELATIVE_HOMES = new HashMap<>();
+
+    private static Set<String> nativeImageLanguages;
+    private static Set<String> nativeImageTools;
 
     static {
         final String forcedHome = System.getProperty("org.graalvm.launcher.home");
@@ -161,10 +166,6 @@ public final class DefaultHomeFinder extends HomeFinder {
                     return null;
                 }
             }
-
-            if (!Files.exists(home)) {
-                throw new AssertionError("GraalVM home is not reachable.");
-            }
             return home;
         } else {
             final String javaHomeProperty = System.getProperty("java.home");
@@ -233,8 +234,19 @@ public final class DefaultHomeFinder extends HomeFinder {
             Path home = getHomeFolder();
             if (home == null) {
                 res = Collections.unmodifiableMap(collectStandaloneHomes());
+            } else if (ImageInfo.inImageRuntimeCode() && nativeImageLanguages != null) {
+                res = new HashMap<>(nativeImageLanguages.size());
+                Path languagesFolder = home.resolve("languages");
+                for (String languageId : nativeImageLanguages) {
+                    String enforcedHome = System.getProperty("org.graalvm.language." + languageId + ".home");
+                    if (enforcedHome == null) {
+                        res.put(languageId, languagesFolder.resolve(languageId));
+                    } else {
+                        res.put(languageId, Path.of(enforcedHome));
+                    }
+                }
             } else {
-                res = collectHomes(home.resolve(Paths.get("languages")));
+                res = collectHomes(home.resolve("languages"));
                 for (Object property : System.getProperties().keySet()) {
                     if (property instanceof String) {
                         String name = ((String) property);
@@ -265,8 +277,14 @@ public final class DefaultHomeFinder extends HomeFinder {
             Path home = getHomeFolder();
             if (home == null) {
                 res = Collections.emptyMap();
+            } else if (ImageInfo.inImageRuntimeCode() && nativeImageTools != null) {
+                res = new HashMap<>(nativeImageTools.size());
+                Path toolsFolder = home.resolve("tools");
+                for (String toolId : nativeImageTools) {
+                    res.put(toolId, toolsFolder.resolve(toolId));
+                }
             } else {
-                res = Collections.unmodifiableMap(collectHomes(home.resolve(Paths.get("tools"))));
+                res = Collections.unmodifiableMap(collectHomes(home.resolve("tools")));
             }
             if (!ImageInfo.inImageBuildtimeCode()) {
                 toolHomes = res;
@@ -292,27 +310,24 @@ public final class DefaultHomeFinder extends HomeFinder {
 
     private static Map<String, Path> collectHomes(Path folder) {
         Map<String, Path> res = new HashMap<>();
-        if (Files.exists(folder)) {
-            try (DirectoryStream<Path> dirContent = Files.newDirectoryStream(folder, new DirectoryStream.Filter<Path>() {
-                @Override
-                public boolean accept(Path entry) throws IOException {
-                    Path fileName = entry.getFileName();
-                    if (fileName == null) {
-                        return false;
-                    } else {
-                        return !fileName.toString().startsWith(".");
-                    }
-                }
-            })) {
-                for (Path home : dirContent) {
-                    Path filename = home.getFileName();
-                    if (filename != null) {
-                        res.put(filename.toString(), home);
-                    }
-                }
-            } catch (IOException ioe) {
-                throw new RuntimeException(ioe);
+        try (DirectoryStream<Path> dirContent = Files.newDirectoryStream(folder, (entry) -> {
+            Path fileName = entry.getFileName();
+            if (fileName == null) {
+                return false;
+            } else {
+                return !fileName.toString().startsWith(".");
             }
+        })) {
+            for (Path home : dirContent) {
+                Path filename = home.getFileName();
+                if (filename != null) {
+                    res.put(filename.toString(), home);
+                }
+            }
+        } catch (NoSuchFileException noSuchFile) {
+            // folder does not exist, return empty res
+        } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
         }
         return res;
     }
@@ -342,27 +357,28 @@ public final class DefaultHomeFinder extends HomeFinder {
     }
 
     private Path getGraalVmHomeNative() {
-        final Path executable = getCurrentExecutablePath();
-        if (executable != null) {
-            Path result = getGraalVmHomeFromRelativeLauncherPath(executable);
-            if (result != null) {
-                verbose("GraalVM home found by executable as: ", result);
-                return result;
+        if (ImageInfo.isExecutable()) {
+            final Path executable = getCurrentExecutablePath();
+            if (executable != null) {
+                Path result = getGraalVmHomeFromRelativeLauncherPath(executable);
+                if (result != null) {
+                    verbose("GraalVM home found by executable as: ", result);
+                    return result;
+                }
+            }
+        } else {
+            final Path objectFile = getCurrentObjectFilePath();
+            if (objectFile != null) {
+                Path result = getGraalVmHomeFromRelativeLauncherPath(objectFile);
+                if (result == null) {
+                    result = getGraalVmHomeLibPolyglotFallBack(objectFile);
+                }
+                if (result != null) {
+                    verbose("GraalVM home found by object file as: ", result);
+                    return result;
+                }
             }
         }
-
-        final Path objectFile = getCurrentObjectFilePath();
-        if (objectFile != null) {
-            Path result = getGraalVmHomeFromRelativeLauncherPath(objectFile);
-            if (result == null) {
-                result = getGraalVmHomeLibPolyglotFallBack(objectFile);
-            }
-            if (result != null) {
-                verbose("GraalVM home found by object file as: ", result);
-                return result;
-            }
-        }
-
         return null;
     }
 
@@ -463,5 +479,25 @@ public final class DefaultHomeFinder extends HomeFinder {
             }
             System.err.println(builder.toString());
         }
+    }
+
+    /**
+     * Sets languages included in a native image.
+     *
+     * NOTE: this method is called reflectively by TruffleBaseFeature
+     */
+    @SuppressWarnings("unused")
+    private static void setNativeImageLanguages(Set<String> languages) {
+        nativeImageLanguages = languages;
+    }
+
+    /**
+     * Sets tools included in a native image.
+     *
+     * NOTE: this method is called reflectively by TruffleBaseFeature
+     */
+    @SuppressWarnings("unused")
+    private static void setNativeImageTools(Set<String> tools) {
+        nativeImageTools = tools;
     }
 }
