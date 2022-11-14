@@ -32,6 +32,8 @@ import java.util.List;
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.runtime.RuntimeProvider;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -69,6 +71,7 @@ public class BinaryMathStubTest extends GraalCompilerTest {
 
     @Test
     public void testStub() {
+        Assume.assumeTrue("GR-42441", JavaVersionUtil.JAVA_SPEC <= 19);
         for (double x : inputs) {
             for (double y : inputs) {
                 test(stub, x, y);

@@ -25,6 +25,8 @@
 package org.graalvm.compiler.jtt.lang;
 
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -88,6 +90,7 @@ public class Math_sin extends UnaryMath {
 
     @Test
     public void run5() {
+        Assume.assumeTrue("GR-42441", JavaVersionUtil.JAVA_SPEC <= 19);
         OptionValues options = getInitialOptions();
         ResolvedJavaMethod method = getResolvedJavaMethod("test");
         testManyValues(options, method);
