@@ -103,7 +103,7 @@ public abstract class SystemPropertiesSupport {
         }
 
         initializeProperty("java.vm.name", "Substrate VM");
-        initializeProperty("java.runtime.name", "Substrate VM");
+        initializeProperty("java.runtime.name", ImageSingletons.lookup(VM.class).runtimeName);
         initializeProperty("java.vm.vendor", ImageSingletons.lookup(VM.class).vendor);
         initializeProperty("java.vm.version", ImageSingletons.lookup(VM.class).version);
         initializeProperty("java.runtime.version", ImageSingletons.lookup(VM.class).version);

@@ -35,7 +35,6 @@ public final class JavaVersionUtil {
      * The value of calling {@link Version#feature()} on {@link Runtime#version()}.
      */
     public static final int JAVA_SPEC = Runtime.version().feature();
-    public static final String JAVA_VERSION = Runtime.version().toString();
 
     private JavaVersionUtil() {
     }
