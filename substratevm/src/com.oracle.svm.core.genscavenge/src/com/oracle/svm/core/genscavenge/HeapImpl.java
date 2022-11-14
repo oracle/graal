@@ -688,6 +688,11 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
+    public long getMillisSinceLastWholeHeapExamined() {
+        return getGCImpl().getMillisSinceLastWholeHeapExamined();
+    }
+
+    @Override
     @Uninterruptible(reason = "Ensure that no GC can move the object to another chunk.", callerMustBe = true)
     public long getIdentityHashSalt(Object obj) {
         if (!GraalDirectives.inIntrinsic()) {
