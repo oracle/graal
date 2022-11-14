@@ -300,8 +300,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             // we can still run limited guest code, even if the context is already invalid
             context.prepareDispose();
             context.cleanupNativeEnv();
+        } catch (Throwable t) {
+            context.getLogger().log(Level.FINER, "Exception while finalizing Espresso context", t);
+            throw t;
         } finally {
             sp.setAllowActions(prev);
+            context.setFinalized();
         }
         long elapsedTimeNanos = System.nanoTime() - context.getStartupClockNanos();
         long seconds = TimeUnit.NANOSECONDS.toSeconds(elapsedTimeNanos);
@@ -310,7 +314,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         } else {
             context.getLogger().log(Level.FINE, "Time spent in Espresso: {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedTimeNanos));
         }
-        context.setFinalized();
     }
 
     @Override
