@@ -83,6 +83,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     private static final String GET_METHOD_NAME = "getMethodNames";
     private static final String SUBSTITUTION_CLASS_NAMES = "substitutionClassNames";
     private static final String VERSION_FILTER_METHOD = "isValidFor";
+    private static final String INLINE_IN_BYTECODE_METHOD = "inlineInBytecode";
     private static final String JAVA_VERSION = "com.oracle.truffle.espresso.runtime.JavaVersion";
 
     private static final String INSTANCE = "INSTANCE";
@@ -637,9 +638,11 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     protected ClassBuilder generateAdditionalFactoryMethods(ClassBuilder factoryBuilder, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         super.generateAdditionalFactoryMethods(factoryBuilder, className, targetMethodName, parameterTypeName, helper);
         SubstitutorHelper h = (SubstitutorHelper) helper;
-        if (h.guardValue != null && !h.guardValue.equals("")) {
-            assert h.inlineInBytecode;
-            factoryBuilder.withMethod(generateGuard(h.guardValue, className));
+        if (h.inlineInBytecode) {
+            factoryBuilder.withMethod(generateInlinedInBytecode());
+            if (h.guardValue != null && !h.guardValue.equals("")) {
+                factoryBuilder.withMethod(generateGuard(h.guardValue, className));
+            }
         }
         return factoryBuilder;
     }
@@ -684,6 +687,18 @@ public final class SubstitutionProcessor extends EspressoProcessor {
                         .withModifiers(new ModifierBuilder().asPublic()) //
                         .withReturnType("Object") //
                         .addBodyLine("return ", targetClassName, ".", guardValue, ';');
+        return guardMethod;
+    }
+
+    /**
+     * Generates inlinedInBytecode method.
+     */
+    private static MethodBuilder generateInlinedInBytecode() {
+        MethodBuilder guardMethod = new MethodBuilder(INLINE_IN_BYTECODE_METHOD) //
+                        .withOverrideAnnotation() //
+                        .withModifiers(new ModifierBuilder().asPublic()) //
+                        .withReturnType("boolean") //
+                        .addBodyLine("return true;");
         return guardMethod;
     }
 
@@ -735,7 +750,8 @@ public final class SubstitutionProcessor extends EspressoProcessor {
                 case "boolean":
                 case "char":
                 case "short":
-                    doCast = true; // fall through
+                    doCast = true;
+                    // fall through
                 case "int":
                     popMethod = "popInt";
                     break;

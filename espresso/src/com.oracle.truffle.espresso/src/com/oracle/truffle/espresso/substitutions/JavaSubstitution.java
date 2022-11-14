@@ -75,6 +75,10 @@ public abstract class JavaSubstitution extends SubstitutionProfiler {
             return false;
         }
 
+        public boolean inlineInBytecode() {
+            return false;
+        }
+
         public Object guard() {
             return null;
         }

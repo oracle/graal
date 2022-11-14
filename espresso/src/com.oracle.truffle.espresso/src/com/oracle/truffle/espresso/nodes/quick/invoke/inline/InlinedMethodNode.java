@@ -104,7 +104,7 @@ public class InlinedMethodNode extends InvokeQuickNode implements InlinedFrameAc
         if (isUnconditionalInlineCandidate(resolutionSeed, opcode)) {
             // Try to inline trivial substitutions.
             JavaSubstitution.Factory factory = Substitutions.lookupSubstitution(resolutionSeed);
-            if (factory != null && factory.isTrivial()) {
+            if (factory != null && factory.inlineInBytecode()) {
                 return InlinedSubstitutionBodyNode.create(resolutionSeed, top, opcode, curBCI, statementIndex, factory);
             }
         }
