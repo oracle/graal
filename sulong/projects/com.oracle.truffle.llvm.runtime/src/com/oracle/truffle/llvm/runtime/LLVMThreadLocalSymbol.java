@@ -37,6 +37,8 @@ public class LLVMThreadLocalSymbol extends LLVMSymbol {
     private final String name;
     private final LLVMSourceSymbol sourceSymbol;
 
+    public static final LLVMThreadLocalSymbol[] EMPTY = {};
+
     public LLVMThreadLocalSymbol(String name, LLVMSourceSymbol sourceSymbol, IDGenerater.BitcodeID bitcodeID, int symbolIndex, boolean exported, boolean externalWeak) {
         super(name, bitcodeID, symbolIndex, exported, externalWeak);
         this.name = name;
