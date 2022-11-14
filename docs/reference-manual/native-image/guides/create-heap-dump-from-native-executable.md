@@ -14,7 +14,7 @@ To enable heap dump support, native executables must be built with the `--enable
 1. Create heap dumps with VisualVM.
 2. Dump the initial heap of a native executable using the `-XX:+DumpHeapAndExit` command-line option.
 3. Create heap dumps sending a `SIGUSR1` signal at run time.
-4. Create heap dumps programmatically using the [`org.graalvm.nativeimage.VMRuntime#dumpHeap`](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/VMInspection.java) API.
+4. Create heap dumps programmatically using the [`org.graalvm.nativeimage.VMRuntime#dumpHeap`](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/VMInspectionOptions.java) API.
 
 All approaches are described below.
 
