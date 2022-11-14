@@ -94,8 +94,12 @@ public class JfrThreadLocal implements ThreadListener {
     public JfrThreadLocal() {
     }
 
-    public synchronized void initialize(long bufferSize) {
+    public void initialize(long bufferSize) {
         this.threadLocalBufferSize = bufferSize;
+        initializeBufferLists();
+    }
+
+    public static synchronized void initializeBufferLists() {
         if (javaBufferList == null) {
             javaBufferList = new JfrBufferNodeLinkedList();
         }
