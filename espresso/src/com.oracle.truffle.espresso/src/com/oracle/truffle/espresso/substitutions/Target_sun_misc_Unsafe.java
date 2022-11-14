@@ -70,9 +70,12 @@ public final class Target_sun_misc_Unsafe {
 
     /** The value of {@code addressSize()}. */
     public static final int ADDRESS_SIZE;
+    private static final long PARK_BLOCKER_OFFSET;
+
     private static final int SAFETY_FIELD_OFFSET = 123456789;
     private static final int SAFETY_STATIC_FIELD_OFFSET = 3456789;
-    private static final long PARK_BLOCKER_OFFSET;
+    private static final int ALLOWED_HIDDEN_FIELDS = 0x1000;
+
     private static final String TARGET_JDK_INTERNAL_MISC_UNSAFE = "Target_jdk_internal_misc_Unsafe";
     private static final String TARGET_SUN_MISC_UNSAFE = "Target_sun_misc_Unsafe";
 
@@ -221,10 +224,10 @@ public final class Target_sun_misc_Unsafe {
 
     static int safetyOffsetToSlot(long safetyOffset) {
         int offset = Math.toIntExact(safetyOffset);
-        if (offset >= SAFETY_FIELD_OFFSET) {
+        if (offset >= (SAFETY_FIELD_OFFSET - ALLOWED_HIDDEN_FIELDS)) {
             return offset - SAFETY_FIELD_OFFSET;
         } else {
-            assert offset >= SAFETY_STATIC_FIELD_OFFSET : "offset: " + offset;
+            assert offset >= (SAFETY_STATIC_FIELD_OFFSET - ALLOWED_HIDDEN_FIELDS) : "offset: " + offset;
             return offset - SAFETY_STATIC_FIELD_OFFSET;
         }
     }
@@ -237,19 +240,19 @@ public final class Target_sun_misc_Unsafe {
         int slot;
         int safetyOffset = Math.toIntExact(offset);
         boolean isStatic = false;
-        if (safetyOffset >= SAFETY_FIELD_OFFSET) {
+        if (safetyOffset >= (SAFETY_FIELD_OFFSET - ALLOWED_HIDDEN_FIELDS)) {
             slot = safetyOffset - SAFETY_FIELD_OFFSET;
         } else {
-            assert safetyOffset >= SAFETY_STATIC_FIELD_OFFSET : "safetyOffset: " + safetyOffset;
+            assert safetyOffset >= (SAFETY_STATIC_FIELD_OFFSET - ALLOWED_HIDDEN_FIELDS) : "safetyOffset: " + safetyOffset;
             slot = safetyOffset - SAFETY_STATIC_FIELD_OFFSET;
             isStatic = true;
         }
 
         assert !StaticObject.isNull(holder);
 
-        if (slot >= 1 << 16) {
+        if (slot >= 1 << 16 || slot < (-ALLOWED_HIDDEN_FIELDS)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere("the field offset is not normalized");
+            throw EspressoError.shouldNotReachHere("the field offset is not normalized: slot=" + slot + ", safteyOffset=" + safetyOffset);
         }
         Field field = null;
         StaticObject resolvedHolder = holder;
