@@ -80,12 +80,12 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         GraalError.guarantee(!(!withMask && findTwoConsecutive) || nValues == 2, "findTwoConsecutive mode requires exactly 2 search values");
         GraalError.guarantee(!(withMask && findTwoConsecutive) || nValues == 4, "findTwoConsecutive mode with mask requires exactly 4 search values");
         GraalError.guarantee(!(withMask && !findTwoConsecutive) || nValues == 2, "with mask mode requires exactly 2 search values");
-        assert result.getPlatformKind() == AArch64Kind.DWORD;
-        assert arrayPtr.getPlatformKind() == AArch64Kind.QWORD;
-        assert arrayOffset.getPlatformKind() == AArch64Kind.QWORD;
-        assert arrayLength.getPlatformKind() == AArch64Kind.DWORD;
-        assert fromIndex.getPlatformKind() == AArch64Kind.DWORD;
-        assert Arrays.stream(searchValues).allMatch(sv -> sv.getPlatformKind() == AArch64Kind.DWORD);
+        GraalError.guarantee(result.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
+        GraalError.guarantee(arrayPtr.getPlatformKind() == AArch64Kind.QWORD, "pointer value expected");
+        GraalError.guarantee(arrayOffset.getPlatformKind() == AArch64Kind.QWORD, "long value expected");
+        GraalError.guarantee(arrayLength.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
+        GraalError.guarantee(fromIndex.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
+        GraalError.guarantee(Arrays.stream(searchValues).allMatch(sv -> sv.getPlatformKind() == AArch64Kind.DWORD), "int values expected");
 
         this.stride = stride;
         this.findTwoConsecutive = findTwoConsecutive;

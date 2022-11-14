@@ -39,6 +39,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ShiftType;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -68,10 +69,10 @@ public final class AArch64VectorizedMismatchOp extends AArch64ComplexVectorOp {
     public AArch64VectorizedMismatchOp(LIRGeneratorTool tool, Value result, Value arrayA, Value arrayB, Value length, Value stride) {
         super(TYPE);
 
-        assert result.getPlatformKind() == AArch64Kind.DWORD;
-        assert arrayA.getPlatformKind() == AArch64Kind.QWORD && arrayA.getPlatformKind() == arrayB.getPlatformKind();
-        assert length.getPlatformKind() == AArch64Kind.DWORD;
-        assert stride.getPlatformKind() == AArch64Kind.DWORD;
+        GraalError.guarantee(result.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
+        GraalError.guarantee(arrayA.getPlatformKind() == AArch64Kind.QWORD && arrayA.getPlatformKind() == arrayB.getPlatformKind(), "pointer value expected");
+        GraalError.guarantee(length.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
+        GraalError.guarantee(stride.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
 
         this.resultValue = result;
         this.arrayAValue = arrayA;

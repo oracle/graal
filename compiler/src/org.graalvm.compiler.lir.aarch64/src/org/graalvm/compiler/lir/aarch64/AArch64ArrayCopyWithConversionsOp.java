@@ -86,10 +86,10 @@ public final class AArch64ArrayCopyWithConversionsOp extends AArch64ComplexVecto
         this.argStrideSrc = strideSrc;
         this.argStrideDst = strideDst;
 
-        assert arrayDst.getPlatformKind() == AArch64Kind.QWORD && arrayDst.getPlatformKind() == arraySrc.getPlatformKind();
-        assert offsetDst == null || offsetDst.getPlatformKind() == AArch64Kind.QWORD;
-        assert offsetSrc == null || offsetSrc.getPlatformKind() == AArch64Kind.QWORD;
-        assert length.getPlatformKind() == AArch64Kind.DWORD;
+        GraalError.guarantee(arrayDst.getPlatformKind() == AArch64Kind.QWORD && arrayDst.getPlatformKind() == arraySrc.getPlatformKind(), "64 bit array pointers expected");
+        GraalError.guarantee(offsetDst == null || offsetDst.getPlatformKind() == AArch64Kind.QWORD, "long value expected");
+        GraalError.guarantee(offsetSrc == null || offsetSrc.getPlatformKind() == AArch64Kind.QWORD, "long value expected");
+        GraalError.guarantee(length.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
 
         this.arrayDstValue = arrayDst;
         this.offsetDstValue = offsetDst;

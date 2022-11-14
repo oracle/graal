@@ -34,6 +34,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.Stride;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -80,12 +81,12 @@ public final class AArch64ArrayCompareToOp extends AArch64ComplexVectorOp {
                     Value arrayA, Value lengthA, Value arrayB, Value lengthB) {
         super(TYPE);
 
-        assert arrayA.getPlatformKind() == AArch64Kind.QWORD && arrayA.getPlatformKind() == arrayB.getPlatformKind();
-        assert lengthA.getPlatformKind() == AArch64Kind.DWORD && lengthA.getPlatformKind() == lengthB.getPlatformKind();
-        assert result.getPlatformKind() == AArch64Kind.DWORD;
+        GraalError.guarantee(arrayA.getPlatformKind() == AArch64Kind.QWORD && arrayA.getPlatformKind() == arrayB.getPlatformKind(), "pointer value expected");
+        GraalError.guarantee(lengthA.getPlatformKind() == AArch64Kind.DWORD && lengthA.getPlatformKind() == lengthB.getPlatformKind(), "int value expected");
+        GraalError.guarantee(result.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
 
-        assert strideA == Stride.S1 || strideA == Stride.S2;
-        assert strideB == Stride.S1 || strideB == Stride.S2;
+        GraalError.guarantee(strideA == Stride.S1 || strideA == Stride.S2, "strideA must be S1 or S2");
+        GraalError.guarantee(strideB == Stride.S1 || strideB == Stride.S2, "strideB must be S1 or S2");
 
         this.isLL = (strideA == strideB && strideA == Stride.S1);
         this.isUU = (strideA == strideB && strideA == Stride.S2);

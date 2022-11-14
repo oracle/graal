@@ -95,11 +95,11 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                             "The only supported cases where strideMask is not equal to strideB are : S2 - S2 - S1 and S1 - S2 - S1");
         }
 
-        assert result.getPlatformKind() == AArch64Kind.DWORD;
-        assert arrayA.getPlatformKind() == AArch64Kind.QWORD && arrayA.getPlatformKind() == arrayB.getPlatformKind();
-        assert offsetA == null || offsetA.getPlatformKind() == AArch64Kind.QWORD;
-        assert offsetB == null || offsetB.getPlatformKind() == AArch64Kind.QWORD;
-        assert length.getPlatformKind() == AArch64Kind.DWORD;
+        GraalError.guarantee(result.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
+        GraalError.guarantee(arrayA.getPlatformKind() == AArch64Kind.QWORD && arrayA.getPlatformKind() == arrayB.getPlatformKind(), "pointer value expected");
+        GraalError.guarantee(offsetA == null || offsetA.getPlatformKind() == AArch64Kind.QWORD, "long value expected");
+        GraalError.guarantee(offsetB == null || offsetB.getPlatformKind() == AArch64Kind.QWORD, "long value expected");
+        GraalError.guarantee(length.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
 
         this.resultValue = result;
         this.arrayAValue = arrayA;
