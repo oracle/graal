@@ -167,11 +167,11 @@ public abstract class ImageHeapScanner {
         return data;
     }
 
-    void markTypeInstantiated(AnalysisType type) {
+    void markTypeInstantiated(AnalysisType type, ScanReason reason) {
         if (universe.sealed() && !type.isReachable()) {
             throw AnalysisError.shouldNotReachHere("Universe is sealed. New type reachable: " + type.toJavaName());
         }
-        universe.getBigbang().markTypeInHeap(type);
+        universe.getBigbang().registerTypeAsInHeap(type, reason);
     }
 
     JavaConstant markConstantReachable(JavaConstant constant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
@@ -249,11 +249,11 @@ public abstract class ImageHeapScanner {
                     onArrayElementReachable(array, type, elementValue, idx, arrayReason, onAnalysisModified);
                 }
             }
-            markTypeInstantiated(type);
+            markTypeInstantiated(type, reason);
         } else {
             ImageHeapInstance instance = (ImageHeapInstance) object;
             /* We are about to query the type's fields, the type must be marked as reachable. */
-            markTypeInstantiated(type);
+            markTypeInstantiated(type, reason);
             for (AnalysisField field : type.getInstanceFields(true)) {
                 if (field.isRead() && isValueAvailable(field)) {
                     final JavaConstant fieldValue = instance.readFieldValue(field);
@@ -351,7 +351,7 @@ public abstract class ImageHeapScanner {
                     array.setElement(idx, arrayElement);
                 }
             }
-            markTypeInstantiated(type);
+            markTypeInstantiated(type, reason);
         } else {
             /*
              * We need to have the new ImageHeapInstance early so that we can reference it in the
@@ -359,7 +359,7 @@ public abstract class ImageHeapScanner {
              * thread before all instanceFieldValues are filled in.
              */
             /* We are about to query the type's fields, the type must be marked as reachable. */
-            markTypeInstantiated(type);
+            markTypeInstantiated(type, reason);
             AnalysisField[] instanceFields = type.getInstanceFields(true);
             newImageHeapConstant = new ImageHeapInstance(type, constant, instanceFields.length);
             for (AnalysisField field : instanceFields) {
@@ -383,7 +383,7 @@ public abstract class ImageHeapScanner {
         /*
          * Following all the array elements and reachable field values can be done asynchronously.
          */
-        postTask(() -> onObjectReachable(newImageHeapConstant));
+        postTask(() -> onObjectReachable(newImageHeapConstant, reason));
         return newImageHeapConstant;
     }
 
@@ -510,11 +510,11 @@ public abstract class ImageHeapScanner {
         return analysisModified;
     }
 
-    protected void onObjectReachable(ImageHeapConstant imageHeapConstant) {
+    protected void onObjectReachable(ImageHeapConstant imageHeapConstant, ScanReason reason) {
         AnalysisType objectType = metaAccess.lookupJavaType(imageHeapConstant);
         imageHeap.add(objectType, imageHeapConstant);
 
-        markTypeInstantiated(objectType);
+        markTypeInstantiated(objectType, reason);
 
         if (imageHeapConstant instanceof ImageHeapInstance) {
             ImageHeapInstance imageHeapInstance = (ImageHeapInstance) imageHeapConstant;

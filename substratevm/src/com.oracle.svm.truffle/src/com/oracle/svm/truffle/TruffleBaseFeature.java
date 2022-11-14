@@ -370,11 +370,12 @@ public final class TruffleBaseFeature implements InternalFeature {
      *
      * @see #initializeTruffleLibrariesAtBuildTime
      */
-    private static void registerTruffleLibrariesAsInHeap(DuringAnalysisAccess access, Class<?> clazz) {
+    private static void registerTruffleLibrariesAsInHeap(DuringAnalysisAccess a, Class<?> clazz) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         assert access.isReachable(clazz) : clazz;
         assert LibraryFactory.class.isAssignableFrom(clazz) || LibraryExport.class.isAssignableFrom(clazz) : clazz;
         if (!Modifier.isAbstract(clazz.getModifiers())) {
-            access.registerAsInHeap(clazz);
+            access.registerAsInHeap(clazz, "Truffle library class registered by TruffleBaseFeature.");
         }
     }
 

@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto.util;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
@@ -34,6 +35,7 @@ import java.util.function.Supplier;
 public class AtomicUtils {
 
     public static <T, V> boolean atomicSet(T holder, V value, AtomicReferenceFieldUpdater<T, V> updater) {
+        Objects.requireNonNull(value, "The value parameter of AtomicUtils.atomicSet() should not be null.");
         return updater.compareAndSet(holder, null, value);
     }
 

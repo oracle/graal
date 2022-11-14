@@ -24,13 +24,15 @@
  */
 package com.oracle.graal.reachability;
 
+import org.graalvm.compiler.nodes.StructuredGraph;
+
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
+
 import jdk.vm.ci.meta.JavaConstant;
-import org.graalvm.compiler.nodes.StructuredGraph;
 
 /**
  * This handler analyzes methods using method summaries, which are obtained via an instance of
@@ -81,20 +83,20 @@ public class MethodSummaryBasedHandler implements ReachabilityMethodProcessingHa
             bb.markMethodImplementationInvoked((ReachabilityAnalysisMethod) invokedMethod);
         }
         for (AnalysisType type : summary.accessedTypes) {
-            bb.markTypeReachable(type);
+            bb.markTypeAsReachable(type);
         }
         for (AnalysisType type : summary.instantiatedTypes) {
-            bb.markTypeInstantiated(type);
+            bb.registerTypeAsAllocated(type, method);
         }
         for (AnalysisField field : summary.readFields) {
             bb.markFieldRead(field, method);
-            bb.markTypeReachable(field.getType());
+            bb.markTypeAsReachable(field.getType());
         }
         for (AnalysisField field : summary.writtenFields) {
             bb.markFieldWritten(field);
         }
         for (JavaConstant constant : summary.embeddedConstants) {
-            bb.handleEmbeddedConstant(method, constant);
+            bb.handleEmbeddedConstant(method, constant, method);
         }
         for (AnalysisMethod rootMethod : summary.foreignCallTargets) {
             bb.addRootMethod(rootMethod, false);

@@ -674,7 +674,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
              * Exception proxies are stored as-is in the image heap
              */
             if (ExceptionProxy.class.isAssignableFrom(type)) {
-                analysisType.registerAsInHeap();
+                analysisType.registerAsInHeap("Is used by annotation of element registered for reflection.");
             }
         }
     }
@@ -720,7 +720,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          */
         type.registerAsReachable();
         if (unsafeInstantiatedClasses.contains(clazz)) {
-            type.registerAsAllocated(null);
+            type.registerAsAllocated("Is registered for reflection.");
         }
 
         if (reflectionClasses.contains(clazz)) {
