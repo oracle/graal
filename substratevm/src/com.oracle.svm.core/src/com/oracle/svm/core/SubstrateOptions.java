@@ -366,6 +366,9 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = "At CEntryPoints check that the passed IsolateThread is valid.") //
+    public static final HostedOptionKey<Boolean> CheckIsolateThreadAtEntry = new HostedOptionKey<>(false);
+
     @Option(help = "Trace VMOperation execution.")//
     public static final HostedOptionKey<Boolean> TraceVMOperations = new HostedOptionKey<>(false);
 
