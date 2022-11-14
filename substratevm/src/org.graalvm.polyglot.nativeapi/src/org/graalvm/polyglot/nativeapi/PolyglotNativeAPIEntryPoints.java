@@ -73,7 +73,13 @@ public final class PolyglotNativeAPIEntryPoints {
     })
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = UnchangedNameTransformation.class)
     public static @CTypedef(name = "poly_status") int polySetIsolateParams(PolyglotIsolateParameters params, int argc, CCharPointerPointer argv) {
+        if (params.isNull()) {
+            return Poly.generic_failure();
+        }
         if (argc > 0) {
+            if (argv.isNull()) {
+                return Poly.generic_failure();
+            }
             CCharPointer arg = argv.read(0);
             if (arg.isNonNull()) {
                 return Poly.generic_failure();
