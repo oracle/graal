@@ -280,14 +280,17 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
                 int end = template.indexOf('}', i + 2);
                 if (end >= 0) {
                     String[] cmd = template.substring(i + 2, end).split(":", 2);
+                    Version v = Version.getCurrent();
                     switch (cmd[0]) {
                         case "graalvm-version":
-                            Version v = Version.getCurrent();
                             if (cmd.length == 1) {
                                 ret.append(v);
                             } else {
                                 ret.append(v.format(cmd[1]));
                             }
+                            break;
+                        case "graalvm-website-version":
+                            ret.append(v.format("%[R%d.%d]%[Sdev]"));
                             break;
                     }
                     i = end + 1;

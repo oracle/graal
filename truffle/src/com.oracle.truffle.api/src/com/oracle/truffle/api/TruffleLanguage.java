@@ -487,9 +487,15 @@ public abstract class TruffleLanguage<C> {
          * A link to a website with more information about the language. Will be shown in the help
          * text of GraalVM launchers.
          * <p>
-         * The link can contain the substitution {@code ${graalvm-version}}, which will be replaced
-         * by the current GraalVM version. Optionally, a format string can be provided for the
+         * The link can contain the following substitutions:
+         * <dl>
+         * <dt>{@code ${graalvm-version}}</dt>
+         * <dd>the current GraalVM version. Optionally, a format string can be provided for the
          * version using {@code ${graalvm-version:format}}. See {@link Version#format}.
+         * <dt>{@code ${graalvm-website-version}}</dt>
+         * <dd>the current GraalVM version in a format suitable for links to the GraalVM reference
+         * manual. The exact format may change without notice.</dd>
+         * </dl>
          *
          * @since 22.1.0
          * @return URL for language website.
