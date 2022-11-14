@@ -686,6 +686,11 @@ public final class HeapImpl extends Heap {
         }
     }
 
+    @Override
+    public long getMaxObjectInspectionAge() {
+        return (System.nanoTime() - getGCImpl().getLastWholeHeapExaminedTimeNs()) / 1000000;
+    }
+
     static Pointer getImageHeapStart() {
         int imageHeapOffsetInAddressSpace = Heap.getHeap().getImageHeapOffsetInAddressSpace();
         if (imageHeapOffsetInAddressSpace > 0) {

@@ -115,6 +115,7 @@ public final class GCImpl implements GC {
     private UnsignedWord sizeBefore = WordFactory.zero();
     private boolean collectionInProgress = false;
     private UnsignedWord collectionEpoch = WordFactory.zero();
+    private long lastWholeHeapExaminedTimeNs = -1;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     GCImpl() {
@@ -287,6 +288,9 @@ public final class GCImpl implements GC {
             }
             scavenge(!complete);
             verifyAfterGC();
+            if (complete) {
+                lastWholeHeapExaminedTimeNs = System.nanoTime();
+            }
         } finally {
             collectionTimer.close();
         }
@@ -1177,6 +1181,17 @@ public final class GCImpl implements GC {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getCollectionEpoch() {
         return collectionEpoch;
+    }
+
+    /**
+     * Returns the time in ns that the last full GC happened relative to when the program was
+     * started. If no full GC has yet been run, it returns the time since the first allocation.
+     */
+    public long getLastWholeHeapExaminedTimeNs() {
+        if (lastWholeHeapExaminedTimeNs < 0) {
+            return HeapImpl.getChunkProvider().getFirstAllocationTime();
+        }
+        return lastWholeHeapExaminedTimeNs;
     }
 
     public GCAccounting getAccounting() {
