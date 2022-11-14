@@ -686,6 +686,11 @@ public final class HeapImpl extends Heap {
         }
     }
 
+    @Override
+    public long getMillisSinceLastWholeHeapExamined() {
+        return getGCImpl().getMillisSinceLastWholeHeapExamined();
+    }
+
     static Pointer getImageHeapStart() {
         int imageHeapOffsetInAddressSpace = Heap.getHeap().getImageHeapOffsetInAddressSpace();
         if (imageHeapOffsetInAddressSpace > 0) {

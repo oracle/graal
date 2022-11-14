@@ -48,8 +48,10 @@ public final class VMInspectionOptions {
     private static final String MONITORING_HEAPDUMP_NAME = "heapdump";
     private static final String MONITORING_JFR_NAME = "jfr";
     private static final String MONITORING_JVMSTAT_NAME = "jvmstat";
-    private static final String MONITORING_ALLOWED_VALUES = "'" + MONITORING_HEAPDUMP_NAME + "', '" + MONITORING_JFR_NAME + "', '" + MONITORING_JVMSTAT_NAME + "', or '" + MONITORING_ALL_NAME +
-                    "' (defaults to '" + MONITORING_ALL_NAME + "' if no argument is provided)";
+    private static final String MONITORING_JMXCLIENT_NAME = "jmxclient";
+    private static final String MONITORING_JMXSERVER_NAME = "jmxserver";
+    private static final String MONITORING_ALLOWED_VALUES = "'" + MONITORING_HEAPDUMP_NAME + "', '" + MONITORING_JFR_NAME + "', '" + MONITORING_JVMSTAT_NAME + "', '" + MONITORING_JMXSERVER_NAME +
+                    "', '" + MONITORING_JMXCLIENT_NAME + "', or '" + MONITORING_ALL_NAME + "' (defaults to '" + MONITORING_ALL_NAME + "' if no argument is provided)";
 
     @APIOption(name = ENABLE_MONITORING_OPTION, defaultValue = MONITORING_ALL_NAME) //
     @Option(help = "Enable monitoring features that allow the VM to be inspected at run time. Comma-separated list can contain " + MONITORING_ALLOWED_VALUES + ". " +
@@ -59,7 +61,7 @@ public final class VMInspectionOptions {
 
     public static void validateEnableMonitoringFeatures(OptionKey<?> optionKey) {
         Set<String> enabledFeatures = getEnabledMonitoringFeatures();
-        enabledFeatures.removeAll(List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME, MONITORING_JVMSTAT_NAME, MONITORING_ALL_NAME));
+        enabledFeatures.removeAll(List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME, MONITORING_JVMSTAT_NAME, MONITORING_JMXCLIENT_NAME, MONITORING_JMXSERVER_NAME, MONITORING_ALL_NAME));
         if (!enabledFeatures.isEmpty()) {
             throw UserError.abort("The option %s contains invalid value(s): %s. It can only contain %s.", optionKey.getName(), String.join(", ", enabledFeatures), MONITORING_ALLOWED_VALUES);
         }
@@ -92,6 +94,16 @@ public final class VMInspectionOptions {
     @Fold
     public static boolean hasJvmstatSupport() {
         return hasAllOrKeywordMonitoringSupport(MONITORING_JVMSTAT_NAME) && !Platform.includedIn(WINDOWS.class);
+    }
+
+    @Fold
+    public static boolean hasJmxServerSupport() {
+        return hasAllOrKeywordMonitoringSupport(MONITORING_JMXSERVER_NAME) && !Platform.includedIn(WINDOWS.class);
+    }
+
+    @Fold
+    public static boolean hasJmxClientSupport() {
+        return hasAllOrKeywordMonitoringSupport(MONITORING_JMXCLIENT_NAME) && !Platform.includedIn(WINDOWS.class);
     }
 
     @Option(help = "Dumps all runtime compiled methods on SIGUSR2.", type = OptionType.User) //

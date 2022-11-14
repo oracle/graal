@@ -244,4 +244,10 @@ public abstract class Heap {
     /** Consider all references in the given object as needing remembered set entries. */
     @Uninterruptible(reason = "Ensure that no GC can occur between modification of the object and this call.", callerMustBe = true)
     public abstract void dirtyAllReferencesOf(Object obj);
+
+    /**
+     * Returns the longest time (in ms) that has elapsed since the last time that the whole heap has
+     * been examined by a garbage collection.
+     */
+    public abstract long getMillisSinceLastWholeHeapExamined();
 }
