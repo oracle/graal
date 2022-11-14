@@ -77,8 +77,8 @@ public class JfrThreadLocal implements ThreadListener {
     private static final FastThreadLocalLong parentThreadId = FastThreadLocalFactory.createLong("JfrThreadLocal.parentThreadId");
 
     private long threadLocalBufferSize;
-    private static JfrBufferNodeLinkedList javaBufferList;
-    private static JfrBufferNodeLinkedList nativeBufferList;
+    private static JfrBufferNodeLinkedList javaBufferList = null;
+    private static JfrBufferNodeLinkedList nativeBufferList = null;
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public static JfrBufferNodeLinkedList getNativeBufferList() {
@@ -94,10 +94,14 @@ public class JfrThreadLocal implements ThreadListener {
     public JfrThreadLocal() {
     }
 
-    public void initialize(long bufferSize) {
+    public synchronized void initialize(long bufferSize) {
         this.threadLocalBufferSize = bufferSize;
-        javaBufferList = new JfrBufferNodeLinkedList();
-        nativeBufferList = new JfrBufferNodeLinkedList();
+        if (javaBufferList == null) {
+            javaBufferList = new JfrBufferNodeLinkedList();
+        }
+        if (nativeBufferList == null) {
+            nativeBufferList = new JfrBufferNodeLinkedList();
+        }
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
