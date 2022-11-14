@@ -186,12 +186,16 @@ public class StaticObject implements TruffleObject, Cloneable {
         return getMirrorKlass(getKlass().getMeta());
     }
 
+    public final boolean isMirrorKlass() {
+        return getKlass().getType() == Type.java_lang_Class;
+    }
+
     /**
      * Same as {@link #getMirrorKlass()}, but passing a {@code meta} argument allows some constant
      * folding, even if {@code this} is not constant.
      */
     public final Klass getMirrorKlass(Meta meta) {
-        assert getKlass().getType() == Type.java_lang_Class;
+        assert isMirrorKlass();
         checkNotForeign();
         Klass result = (Klass) meta.HIDDEN_MIRROR_KLASS.getHiddenObject(this);
         assert result != null : "Uninitialized mirror class";
