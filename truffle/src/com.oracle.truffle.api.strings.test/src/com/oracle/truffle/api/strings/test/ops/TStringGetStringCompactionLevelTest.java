@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,50 +51,40 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.strings.MutableTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.test.TStringTestBase;
 
 @RunWith(Parameterized.class)
-public class TStringAsManagedTest extends TStringTestBase {
+public class TStringGetStringCompactionLevelTest extends TStringTestBase {
 
-    @Parameter public TruffleString.AsManagedNode node;
-    @Parameter(1) public MutableTruffleString.AsManagedNode nodeMutable;
+    @Parameter public TruffleString.GetStringCompactionLevelNode node;
 
-    @Parameters(name = "{0}, {1}")
-    public static Iterable<Object[]> data() {
-        return Arrays.asList(
-                        new Object[]{TruffleString.AsManagedNode.create(), MutableTruffleString.AsManagedNode.create()},
-                        new Object[]{TruffleString.AsManagedNode.getUncached(), MutableTruffleString.AsManagedNode.getUncached()});
+    @Parameters(name = "{0}")
+    public static Iterable<TruffleString.GetStringCompactionLevelNode> data() {
+        return Arrays.asList(TruffleString.GetStringCompactionLevelNode.create(), TruffleString.GetStringCompactionLevelNode.getUncached());
     }
 
     @Test
     public void testAll() throws Exception {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
-            TruffleString b = node.execute(a, encoding);
-            if (a.isImmutable()) {
-                if (a.isManaged()) {
-                    Assert.assertSame(a, b);
-                } else {
-                    Assert.assertNotSame(a, b);
-                    TruffleString cached = node.execute(a, encoding, true);
-                    assertBytesEqual(cached, encoding, array);
-                    TruffleString uncached = node.execute(a, encoding);
-                    assertBytesEqual(uncached, encoding, array);
-                    Assert.assertNotSame(cached, uncached);
-                    Assert.assertNotSame(b, cached);
-                    Assert.assertNotSame(b, uncached);
-                    Assert.assertSame(cached, node.execute(a, encoding, true));
+            TruffleString.CompactionLevel compactionLevel = node.execute(a, encoding);
+            int stride = compactionLevel.getBytes();
+            Assert.assertEquals(stride, 1 << compactionLevel.getLog2());
+            if (encoding == TruffleString.Encoding.UTF_32) {
+                Assert.assertTrue(stride == 1 || stride == 2 || stride == 4);
+                if (stride == 1) {
+                    Assert.assertTrue(a.getCodeRangeUncached(encoding).isSubsetOf(TruffleString.CodeRange.LATIN_1));
+                } else if (stride == 2) {
+                    Assert.assertEquals(TruffleString.CodeRange.BMP, a.getCodeRangeUncached(encoding));
                 }
+            } else if (encoding == TruffleString.Encoding.UTF_16) {
+                Assert.assertTrue(stride == 1 || stride == 2);
+                if (stride == 1) {
+                    Assert.assertTrue(a.getCodeRangeUncached(encoding).isSubsetOf(TruffleString.CodeRange.LATIN_1));
+                }
+            } else {
+                Assert.assertEquals(1, stride);
             }
-            MutableTruffleString bMutable = nodeMutable.execute(a, encoding);
-            assertBytesEqual(bMutable, encoding, array);
-            if (a instanceof MutableTruffleString) {
-                ((MutableTruffleString) a).writeByteUncached(0, (byte) 123, encoding);
-            }
-            assertBytesEqual(b, encoding, array);
-            Assert.assertFalse(b.isNative());
-            Assert.assertFalse(bMutable.isNative());
         });
     }
 

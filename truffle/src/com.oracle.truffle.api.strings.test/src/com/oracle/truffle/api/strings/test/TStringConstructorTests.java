@@ -115,9 +115,9 @@ public class TStringConstructorTests extends TStringTestBase {
                 Assert.assertEquals(0, emptyString.codePointLengthUncached(encoding));
                 if (isAsciiCompatible(encoding)) {
                     Assert.assertEquals(TruffleString.CodeRange.ASCII, emptyString.getCodeRangeUncached(encoding));
-                    byte[] ascii = new byte[128 << getStride(encoding)];
+                    byte[] ascii = new byte[128 << getNaturalStride(encoding)];
                     for (int i = 0; i < 128; i++) {
-                        TStringTestUtil.writeValue(ascii, getStride(encoding), i, i);
+                        TStringTestUtil.writeValue(ascii, getNaturalStride(encoding), i, i);
                     }
                     TruffleString s = fromByteArrayUncached(ascii, 0, ascii.length, encoding, copy);
                     int readByteOffset = 0;

@@ -823,7 +823,7 @@ public final class TruffleStringBuilder {
                 codeRange = codeRangeA;
                 codePointLength = length;
             } else if (calcAttrsProfile.profile(!(isBrokenMultiByteOrUnknown(sb.codeRange) || isBrokenFixedWidth(sb.codeRange)))) {
-                long attrs = calcAttributesNode.execute(a, arrayA, a.offset() + (fromIndex << a.stride()), length, a.stride(), sb.encoding, codeRangeA);
+                long attrs = calcAttributesNode.execute(a, arrayA, a.offset(), length, a.stride(), sb.encoding, fromIndex, codeRangeA);
                 codeRange = StringAttributes.getCodeRange(attrs);
                 codePointLength = StringAttributes.getCodePointLength(attrs);
             } else {
@@ -1014,7 +1014,7 @@ public final class TruffleStringBuilder {
             final int codeRange;
             final int codePointLength;
             if (calcAttributesProfile.profile(isBrokenMultiByteOrUnknown(sb.codeRange))) {
-                long attrs = calcAttributesNode.execute(null, sb.buf, 0, sb.length, sb.stride, sb.encoding, TSCodeRange.getUnknown());
+                long attrs = calcAttributesNode.execute(null, sb.buf, 0, sb.length, sb.stride, sb.encoding, 0, TSCodeRange.getUnknown());
                 codeRange = StringAttributes.getCodeRange(attrs);
                 codePointLength = StringAttributes.getCodePointLength(attrs);
             } else {
