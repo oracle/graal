@@ -742,6 +742,45 @@ public final class Target_sun_misc_Unsafe {
         return -1; // unobtainable
     }
 
+    // Java 11 new methods:
+
+    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
+    @SuppressWarnings("unused")
+    public static boolean isBigEndian0(@JavaType(Unsafe.class) StaticObject self) {
+        return ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN;
+    }
+
+    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
+    @SuppressWarnings("unused")
+    public static boolean unalignedAccess0(@JavaType(Unsafe.class) StaticObject self) {
+        // Be conservative, unobtainable (in java.nio.Bits, package-private class)
+        return false;
+    }
+
+    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
+    @SuppressWarnings("unused")
+    public static long objectFieldOffset1(@JavaType(Unsafe.class) StaticObject self, @JavaType(value = Class.class) StaticObject cl, @JavaType(value = String.class) StaticObject guestName,
+                    @Inject Meta meta) {
+        Klass k = cl.getMirrorKlass(meta);
+        String hostName = meta.toHostString(guestName);
+        if (k instanceof ObjectKlass) {
+            ObjectKlass kl = (ObjectKlass) k;
+            for (Field f : kl.getFieldTable()) {
+                if (!f.isRemoved() && f.getNameAsString().equals(hostName)) {
+                    return SAFETY_FIELD_OFFSET + f.getSlot();
+                }
+            }
+            for (Field f : kl.getStaticFieldTable()) {
+                if (!f.isRemoved() && f.getNameAsString().equals(hostName)) {
+                    return SAFETY_STATIC_FIELD_OFFSET + f.getSlot();
+                }
+            }
+        }
+        throw meta.throwException(meta.java_lang_InternalError);
+    }
+
+    // region UnsafeAccessors
+
     abstract static class GetFieldFromIndexNode extends EspressoNode {
         static final int LIMIT = 3;
 
@@ -1070,6 +1109,8 @@ public final class Target_sun_misc_Unsafe {
     // endregion put*(Object holder, long offset, * value)
 
     // region putOrdered*(Object holder, long offset, * value)
+
+    // TODO: Volatile access is stronger than needed.
 
     @Substitution(hasReceiver = true)
     @InlineInBytecode
@@ -1861,6 +1902,7 @@ public final class Target_sun_misc_Unsafe {
             f.setLong(resolveUnsafeAccessHolder(f, holder), value, true);
         }
     }
+
     // endregion put*Volatile(Object holder, long offset)
 
     // region compareAndSwap*
@@ -2129,42 +2171,7 @@ public final class Target_sun_misc_Unsafe {
 
     // endregion compareAndExchange*
 
-    // Java 11 new methods:
-
-    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
-    @SuppressWarnings("unused")
-    public static boolean isBigEndian0(@JavaType(Unsafe.class) StaticObject self) {
-        return ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN;
-    }
-
-    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
-    @SuppressWarnings("unused")
-    public static boolean unalignedAccess0(@JavaType(Unsafe.class) StaticObject self) {
-        // Be conservative, unobtainable (in java.nio.Bits, package-private class)
-        return false;
-    }
-
-    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
-    @SuppressWarnings("unused")
-    public static long objectFieldOffset1(@JavaType(Unsafe.class) StaticObject self, @JavaType(value = Class.class) StaticObject cl, @JavaType(value = String.class) StaticObject guestName,
-                    @Inject Meta meta) {
-        Klass k = cl.getMirrorKlass(meta);
-        String hostName = meta.toHostString(guestName);
-        if (k instanceof ObjectKlass) {
-            ObjectKlass kl = (ObjectKlass) k;
-            for (Field f : kl.getFieldTable()) {
-                if (!f.isRemoved() && f.getNameAsString().equals(hostName)) {
-                    return SAFETY_FIELD_OFFSET + f.getSlot();
-                }
-            }
-            for (Field f : kl.getStaticFieldTable()) {
-                if (!f.isRemoved() && f.getNameAsString().equals(hostName)) {
-                    return SAFETY_STATIC_FIELD_OFFSET + f.getSlot();
-                }
-            }
-        }
-        throw meta.throwException(meta.java_lang_InternalError);
-    }
+    // region CompareAndSet*
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
     @InlineInBytecode
@@ -2231,6 +2238,10 @@ public final class Target_sun_misc_Unsafe {
             return cas.execute(self, holder, offset, before, after);
         }
     }
+
+    // endregion CompareAndSet*
+
+    // endregion UnsafeAccessors
 
     public static class SharedUnsafe extends SubstitutionNamesProvider {
         private static String[] NAMES = new String[]{
