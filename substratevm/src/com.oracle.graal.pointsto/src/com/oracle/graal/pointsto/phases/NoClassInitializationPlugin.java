@@ -31,8 +31,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 
-import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
-
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -52,7 +50,7 @@ public class NoClassInitializationPlugin implements ClassInitializationPlugin {
         /* Do not trigger class initialization. */
         try {
             cp.loadReferencedType(cpi, bytecode, false);
-        } catch (UnresolvedElementException uee) {
+        } catch (Throwable ex) {
             /* Plugin should be non-intrusive. Therefore we ignore missing class-path failures. */
         }
     }
