@@ -308,6 +308,11 @@ public abstract class NativeImage extends AbstractImage {
         return rm1Line - rm2Line;
     }
 
+    private static boolean isUnsigned(AnnotatedType type) {
+        var legacyCUnsigned = com.oracle.svm.core.c.CUnsigned.class;
+        return type.isAnnotationPresent(CUnsigned.class) || type.isAnnotationPresent(legacyCUnsigned);
+    }
+
     private void writeMethodHeader(HostedMethod m, CSourceCodeWriter writer, boolean dynamic) {
         assert Modifier.isStatic(m.getModifiers()) : "Published methods that go into the header must be static.";
         CEntryPointData cEntryPointData = (CEntryPointData) m.getWrapped().getEntryPointData();
@@ -327,7 +332,7 @@ public abstract class NativeImage extends AbstractImage {
                         (ResolvedJavaType) m.getSignature().getReturnType(m.getDeclaringClass()),
                         Optional.ofNullable(annotatedReturnType.getAnnotation(CTypedef.class)).map(CTypedef::name),
                         false,
-                        annotatedReturnType.isAnnotationPresent(CUnsigned.class),
+                        isUnsigned(annotatedReturnType),
                         metaAccess, nativeLibs));
         writer.append(" ");
 
@@ -351,7 +356,7 @@ public abstract class NativeImage extends AbstractImage {
                             (ResolvedJavaType) m.getSignature().getParameterType(i, m.getDeclaringClass()),
                             Optional.ofNullable(annotatedParameterTypes[i].getAnnotation(CTypedef.class)).map(CTypedef::name),
                             annotatedParameterTypes[i].isAnnotationPresent(CConst.class),
-                            annotatedParameterTypes[i].isAnnotationPresent(CUnsigned.class),
+                            isUnsigned(annotatedParameterTypes[i]),
                             metaAccess, nativeLibs));
             if (parameters[i].isNamePresent()) {
                 writer.append(" ");
