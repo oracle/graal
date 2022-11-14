@@ -2204,7 +2204,7 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * Load multiple 2-element structures to two registers, with de-interleaving.<br>
+     * C7.2.165 Load multiple 2-element structures to two registers, with de-interleaving.<br>
      *
      * This instruction loads multiple 2-element structures from memory and writes the result to two
      * registers. Note the two registers must be consecutive (modulo the number of SIMD
@@ -2228,7 +2228,7 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * Load multiple 4-element structures to four registers, with de-interleaving.<br>
+     * C7.2.171 Load multiple 4-element structures to four registers, with de-interleaving.<br>
      *
      * This instruction loads multiple 4-element structures from memory and writes the result to
      * four registers. Note the four registers must be consecutive (modulo the number of SIMD
@@ -2854,7 +2854,7 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * Store multiple 2-element structures to memory, with interleaving.<br>
+     * C7.2.307 Store multiple 2-element structures to memory, with interleaving.<br>
      *
      * Note the registers must be consecutive (modulo the number of SIMD registers).<br>
      *
@@ -2876,7 +2876,7 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * Store multiple 4-element structures to memory, with interleaving.<br>
+     * C7.2.311 Store multiple 4-element structures to memory, with interleaving.<br>
      *
      * Note the registers must be consecutive (modulo the number of SIMD registers).<br>
      *
@@ -2943,7 +2943,7 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * Unsigned integer subtract vector Long.<br>
+     * C7.2.375 Unsigned integer subtract vector Long.<br>
      * The destination vector elements are twice as long as the source vector elements.<br>
      *
      * <code>for i in 0..(n/2)-1 do dst[i] = uint_sub(src1[i], src2[i])</code>
@@ -2962,7 +2962,7 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * Unsigned integer subtract vector Long upper half.<br>
+     * C7.2.375 Unsigned integer subtract vector Long upper half.<br>
      * The destination vector elements are twice as long as the source vector elements.<br>
      *
      * <code>for i in (n/2)..n-1 do dst[i] = uint_sub(src1[i], src2[i])</code>
@@ -2981,7 +2981,7 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * Integer subtract vector Long.<br>
+     * C7.2.303 Integer subtract vector Long.<br>
      * The destination vector elements are twice as long as the source vector elements.<br>
      *
      * <code>for i in 0..(n/2)-1 do dst[i] = int_sub(src1[i], src2[i])</code>
@@ -3000,7 +3000,7 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * Integer subtract vector Long upper half.<br>
+     * C7.2.303 Integer subtract vector Long upper half.<br>
      * The destination vector elements are twice as long as the source vector elements.<br>
      *
      * <code>for i in (n/2)..n-1 do dst[i] = int_sub(src1[i], src2[i])</code>
@@ -3450,7 +3450,7 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * Unsigned shift right (immediate) and accumulate vector.<br>
+     * C7.2.374 Unsigned shift right (immediate) and accumulate vector.<br>
      *
      * <code>for i in 0..n-1 do dst[i] += src[i] >>> imm</code>
      *
