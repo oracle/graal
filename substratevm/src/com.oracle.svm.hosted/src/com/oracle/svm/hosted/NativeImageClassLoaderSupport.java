@@ -106,7 +106,7 @@ public class NativeImageClassLoaderSupport {
     private final EconomicSet<String> emptySet;
     private final EconomicSet<URI> builderURILocations;
 
-    private final ClassPathClassLoader classPathClassLoader;
+    private final URLClassLoader classPathClassLoader;
     private final ClassLoader classLoader;
 
     public final ModuleFinder upgradeAndSystemModuleFinder;
@@ -115,12 +115,6 @@ public class NativeImageClassLoaderSupport {
 
     public final AnnotationExtractor annotationExtractor;
 
-    static final class ClassPathClassLoader extends URLClassLoader {
-        ClassPathClassLoader(URL[] urls, ClassLoader parent) {
-            super(urls, parent);
-        }
-    }
-
     protected NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
 
         classes = EconomicMap.create();
@@ -128,7 +122,7 @@ public class NativeImageClassLoaderSupport {
         emptySet = EconomicSet.create();
         builderURILocations = EconomicSet.create();
 
-        classPathClassLoader = new ClassPathClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
+        classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
 
         imagecp = Arrays.stream(classPathClassLoader.getURLs())
                         .map(Util::urlToPath)

@@ -58,7 +58,6 @@ import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.NativeImageClassLoaderSupport.ClassPathClassLoader;
 
 import jdk.internal.module.Modules;
 
@@ -67,27 +66,19 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     private final NativeImageClassLoaderSupport classLoaderSupport;
 
     private final ClassLoader imageClassLoader;
-    private final ClassPathClassLoader classPathClassLoader;
 
     private final Map<String, Set<Module>> packageToModules;
 
     public ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
-
         imageClassLoader = classLoaderSupport.getClassLoader();
-        ClassLoader parent = imageClassLoader.getParent();
-        classPathClassLoader = parent instanceof ClassPathClassLoader ? (ClassPathClassLoader) parent : null;
-
         packageToModules = new HashMap<>();
         buildPackageToModulesMap(classLoaderSupport);
     }
 
     @Override
     protected boolean isNativeImageClassLoaderImpl(ClassLoader loader) {
-        if (loader == imageClassLoader) {
-            return true;
-        }
-        if (classPathClassLoader != null && loader == classPathClassLoader) {
+        if (loader == imageClassLoader || loader == imageClassLoader.getParent()) {
             return true;
         }
         if (loader instanceof NativeImageSystemClassLoader) {

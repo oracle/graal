@@ -267,12 +267,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     private List<ClassLoader> getActiveClassLoaders() {
         ClassLoader activeClassLoader = nativeImageClassLoader;
         if (activeClassLoader != null) {
-            ClassLoader activeClassLoaderParent = activeClassLoader.getParent();
-            if (activeClassLoaderParent instanceof NativeImageClassLoaderSupport.ClassPathClassLoader) {
-                return List.of(activeClassLoader, activeClassLoaderParent);
-            } else {
-                return List.of(activeClassLoader);
-            }
+            return List.of(activeClassLoader, activeClassLoader.getParent());
         } else {
             return List.of(defaultSystemClassLoader);
         }
