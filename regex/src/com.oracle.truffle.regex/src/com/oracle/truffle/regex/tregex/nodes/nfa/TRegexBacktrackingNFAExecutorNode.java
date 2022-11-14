@@ -65,6 +65,7 @@ import com.oracle.truffle.regex.tregex.nfa.PureNFA;
 import com.oracle.truffle.regex.tregex.nfa.PureNFAState;
 import com.oracle.truffle.regex.tregex.nfa.PureNFATransition;
 import com.oracle.truffle.regex.tregex.nfa.QuantifierGuard;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorBaseNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfStringNode;
@@ -112,7 +113,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     @Child InputIndexOfStringNode indexOfNode;
     private final CharMatcher loopbackInitialStateMatcher;
 
-    public TRegexBacktrackingNFAExecutorNode(RegexAST ast, PureNFA nfa, int numberOfTransitions, TRegexBacktrackerSubExecutorNode[] subExecutors, boolean mustAdvance,
+    public TRegexBacktrackingNFAExecutorNode(RegexAST ast, PureNFA nfa, int numberOfTransitions, TRegexExecutorBaseNode[] subExecutors, boolean mustAdvance,
                     CompilationBuffer compilationBuffer) {
         super(ast, numberOfTransitions, subExecutors);
         RegexASTSubtreeRootNode subtree = nfa.getASTSubtree(ast);
@@ -659,16 +660,16 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         return isFlagSet(FLAG_RETURNS_FIRST_GROUP);
     }
 
-    private TRegexExecutorNode getSubExecutor(PureNFAState subMatcherState) {
+    private TRegexExecutorBaseNode getSubExecutor(PureNFAState subMatcherState) {
         return subExecutors[subMatcherState.getSubtreeId()];
     }
 
     protected boolean lookAroundExecutorIsLiteral(PureNFAState s) {
-        return getSubExecutor(s) instanceof TRegexLiteralLookAroundExecutorNode;
+        return getSubExecutor(s).unwrap() instanceof TRegexLiteralLookAroundExecutorNode;
     }
 
     private boolean subExecutorReturnsFirstGroup(PureNFAState s) {
-        TRegexExecutorNode executor = getSubExecutor(s);
+        TRegexExecutorNode executor = getSubExecutor(s).unwrap();
         if (executor instanceof TRegexBacktrackingNFAExecutorNode) {
             return ((TRegexBacktrackingNFAExecutorNode) executor).returnsFirstGroup();
         } else {
@@ -683,10 +684,9 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     private boolean checkSubMatcherInline(VirtualFrame frame, TRegexBacktrackingNFAExecutorLocals locals, TruffleString.CodeRange codeRange, boolean tString, PureNFATransition transition,
                     PureNFAState target) {
         if (lookAroundExecutorIsLiteral(target)) {
-            TRegexLiteralLookAroundExecutorNode literal = (TRegexLiteralLookAroundExecutorNode) getSubExecutor(target);
             int saveIndex = locals.getIndex();
             int saveNextIndex = locals.getNextIndex();
-            boolean result = (boolean) literal.execute(frame, locals, codeRange, tString);
+            boolean result = (boolean) getSubExecutor(target).execute(frame, locals, codeRange, tString);
             locals.setIndex(saveIndex);
             locals.setNextIndex(saveNextIndex);
             return result;
