@@ -439,7 +439,9 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     public void addLibrarySource(String path, Source source) {
-        librarySources.put(path, source);
+        if (!librarySources.containsKey(path)) {
+            librarySources.put(path, source);
+        }
     }
 
     public boolean containsLibrarySource(String path) {
