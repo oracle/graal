@@ -67,6 +67,7 @@ import java.util.List;
  * represented by the parent call range at level N.
  */
 public class Range {
+    private final static DebugLocalInfo[] EMPTY_LOCAL_INFOS = new DebugLocalInfo[0];
     private static final String CLASS_DELIMITER = ".";
     private final MethodEntry methodEntry;
     private final String fullMethodName;
@@ -330,7 +331,7 @@ public class Range {
     public void setLocalValueInfo(DebugLocalValueInfo[] localValueInfos) {
         int len = localValueInfos.length;
         this.localValueInfos = localValueInfos;
-        this.localInfos = new DebugLocalInfo[len];
+        this.localInfos = (len > 0 ? new DebugLocalInfo[len] : EMPTY_LOCAL_INFOS);
         // set up mapping from local values to local variables
         for (int i = 0; i < len; i++) {
             localInfos[i] = methodEntry.recordLocal(localValueInfos[i]);
