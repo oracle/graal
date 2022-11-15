@@ -46,6 +46,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
+import com.oracle.truffle.llvm.runtime.PlatformCapability.OS;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.tests.CommonTestUtils;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
@@ -73,15 +74,47 @@ public class InteropTestBase {
     }
 
     protected static final Path testBase = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "interop");
-    public static final String TEST_FILE_NAME = "toolchain-plain.so";
+    public static final String TEST_FILE_NAME = "toolchain-plain";
 
     protected static String getLibrary(String library) {
         runWithPolyglot.getPolyglotContext().initialize("llvm");
         return LLVMLanguage.get(null).getCapability(PlatformCapability.class).getLibrary(library);
     }
 
+    public static OS getOS(Context context) {
+        context.initialize("llvm");
+        PlatformCapability<?> platform = LLVMLanguage.get(null).getCapability(PlatformCapability.class);
+        return platform.getOS();
+    }
+
+    public static OS getOS() {
+        return getOS(runWithPolyglot.getPolyglotContext());
+    }
+
+    static String getLibrarySuffixName(Context context, String fileName) {
+        context.initialize("llvm");
+        PlatformCapability<?> platform = LLVMLanguage.get(null).getCapability(PlatformCapability.class);
+        // TODO: GR-41902 remove this platform dependent code
+        if (platform.getOS() == OS.Darwin) {
+            return fileName + ".so";
+        }
+        return fileName + "." + platform.getLibrarySuffix();
+    }
+
+    public static String getTestLibraryName(Context context) {
+        return getLibrarySuffixName(context, TEST_FILE_NAME);
+    }
+
+    public static String getTestLibraryName() {
+        return getTestLibraryName(runWithPolyglot.getPolyglotContext());
+    }
+
+    public static File getTestBitcodeFile(Context context, String name) {
+        return Paths.get(testBase.toString(), name + CommonTestUtils.TEST_DIR_EXT, getTestLibraryName(context)).toFile();
+    }
+
     protected static File getTestBitcodeFile(String name) {
-        return Paths.get(testBase.toString(), name + CommonTestUtils.TEST_DIR_EXT, TEST_FILE_NAME).toFile();
+        return getTestBitcodeFile(runWithPolyglot.getPolyglotContext(), name);
     }
 
     protected static Object loadTestBitcodeInternal(String name) {

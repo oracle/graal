@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,12 +43,13 @@ extern "C" {
 
 #include <stdbool.h>
 #include <stdlib.h>
+#include<stdint.h>
 
 #include <graalvm/llvm/handles.h>
 
 // Managed operations
 void *truffle_virtual_malloc(size_t size);
-void *truffle_managed_malloc(long size);
+void *truffle_managed_malloc(int64_t size);
 void *truffle_managed_memcpy(void *destination, const void *source, size_t count);
 void *truffle_assign_managed(void *dst, void *managed);
 

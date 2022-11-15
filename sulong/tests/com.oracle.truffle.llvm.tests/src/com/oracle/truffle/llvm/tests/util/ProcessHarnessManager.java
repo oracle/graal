@@ -149,7 +149,7 @@ public class ProcessHarnessManager {
         }
 
         private void runTask(Task task) throws IOException, InterruptedException, ExecutionException {
-            writer.write(String.format("RUN %s%s", task.task, System.lineSeparator()));
+            writer.write(String.format("RUN %s%n", task.task));
             writer.flush();
             ProcessResult result = processOutput(task.task);
             task.done(result);

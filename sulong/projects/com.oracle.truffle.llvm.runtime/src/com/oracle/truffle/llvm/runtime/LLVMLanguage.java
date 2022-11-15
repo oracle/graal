@@ -306,6 +306,10 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             return exceptionStack.remove(exceptionStack.size() - 1);
         }
 
+        public boolean hasException() {
+            return !exceptionStack.isEmpty();
+        }
+
         public void setLLVMStack(LLVMStack stack) {
             assert this.stack == null;
             this.stack = stack;

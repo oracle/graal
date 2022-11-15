@@ -271,6 +271,9 @@ suite = {
               "<lib:sulongtest>",
               "<staticlib:sulongtest>",
             ],
+            "cmakeConfig" : {
+              "CMAKE_BUILD_TYPE" : "RelWithDebInfo",
+            },
           },
         },
         "<others>" : {
@@ -781,6 +784,16 @@ suite = {
         "LIBCXX_SRC" : "<path:sdk:LLVM_ORG_SRC>",
         "MX_OS" : "<os>",
         "MX_ARCH" : "<arch>",
+      },
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "cmakeConfig" : {
+              "GRAALVM_PTHREAD_INCLUDE_DIR" : "<path:com.oracle.truffle.llvm.libraries.pthread>/include",
+            },
+          },
+        },
+        "<others>" : {"<others>" : {}},
       },
       "license" : "BSD-new",
     },
@@ -1462,6 +1475,7 @@ suite = {
         "default",
       ],
       "cmakeConfig" : {
+        "CMAKE_BUILD_TYPE" : "Sulong",
         "CMAKE_C_COMPILER": "<toolchainGetToolPath:native,CC>",
         "CMAKE_CXX_COMPILER": "<toolchainGetToolPath:native,CC>",
         "GRAALVM_LLVM_INCLUDE_DIR": "<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",

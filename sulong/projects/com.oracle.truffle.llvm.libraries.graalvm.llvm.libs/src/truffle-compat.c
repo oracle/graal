@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,7 @@
 
 #include "common.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 // backwards compatibility for deprecated truffle.h
 void truffle_load_library(const char *string) {
@@ -39,7 +40,7 @@ void *truffle_virtual_malloc(size_t size) {
     should_not_reach();
     return NULL;
 }
-void *truffle_managed_malloc(long size) {
+void *truffle_managed_malloc(int64_t size) {
     should_not_reach();
     return NULL;
 }
