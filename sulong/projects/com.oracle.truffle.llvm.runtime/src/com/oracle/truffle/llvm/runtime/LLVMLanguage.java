@@ -171,9 +171,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     private final EconomicMap<String, LibraryCacheEntry> libraryCache = EconomicMap.create();
     private final ReferenceQueue<CallTarget> libraryCacheQueue = new ReferenceQueue<>();
     private final Object libraryCacheLock = new Object();
-
     private final EconomicMap<String, Source> librarySources = EconomicMap.create();
-
     private final IDGenerater idGenerater = new IDGenerater();
     private final LLDBSupport lldbSupport = new LLDBSupport(this);
     private final Assumption noCommonHandleAssumption = Truffle.getRuntime().createAssumption("no common handle");
@@ -183,6 +181,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     private final ConcurrentHashMap<Class<?>, RootCallTarget> cachedCallTargets = new ConcurrentHashMap<>();
 
+    /**
+     * This cache ensures that the truffle cache maintains the default internal libraries, and that
+     * these default internal libraries are not parsed more than once.
+     */
+    private Source[] defaultInternalLibraryCache = null;
     private DataLayout defaultDataLayout;
     private TargetTriple defaultTargetTriple;
 
@@ -446,6 +449,14 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public boolean containsLibrarySource(String path) {
         return librarySources.containsKey(path);
+    }
+
+    public boolean isDefaultInternalLibraryCacheEmpty() {
+        return defaultInternalLibraryCache == null;
+    }
+
+    public void setDefaultInternalLibraryCache(Source[] libraries) {
+        defaultInternalLibraryCache = libraries;
     }
 
     @Override

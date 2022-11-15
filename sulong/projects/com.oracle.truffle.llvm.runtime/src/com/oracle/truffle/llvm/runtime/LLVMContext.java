@@ -316,14 +316,17 @@ public final class LLVMContext {
              * libraries.
              */
             String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
-            for (int i = sulongLibraryNames.length - 1; i >= 0; i--) {
-                TruffleFile file = InternalLibraryLocator.INSTANCE.locateLibrary(this, sulongLibraryNames[i], "<default bitcode library>");
-                if (!language.containsLibrarySource(file.getPath())) {
+            Source[] libraries = new Source[sulongLibraryNames.length];
+            if (language.isDefaultInternalLibraryCacheEmpty()) {
+                for (int i = sulongLibraryNames.length - 1; i >= 0; i--) {
+                    TruffleFile file = InternalLibraryLocator.INSTANCE.locateLibrary(this, sulongLibraryNames[i], "<default bitcode library>");
                     Source librarySource = Source.newBuilder("llvm", file).internal(isInternalLibraryFile(file)).build();
                     // use the source cache in the language.
                     language.addLibrarySource(file.getPath(), librarySource);
                     env.parseInternal(librarySource);
+                    libraries[i] = librarySource;
                 }
+                language.setDefaultInternalLibraryCache(libraries);
             }
             setLibsulongAuxFunction(SULONG_INIT_CONTEXT);
             setLibsulongAuxFunction(SULONG_DISPOSE_CONTEXT);
