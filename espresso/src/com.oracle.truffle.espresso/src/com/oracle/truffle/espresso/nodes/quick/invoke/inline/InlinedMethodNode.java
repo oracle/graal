@@ -170,6 +170,9 @@ public class InlinedMethodNode extends InvokeQuickNode implements InlinedFrameAc
     }
 
     public static boolean isInlineCandidate(Method resolutionSeed, int opcode) {
+        if (resolutionSeed.isSynchronized()) {
+            return false;
+        }
         if (opcode == Bytecodes.INVOKESTATIC || opcode == Bytecodes.INVOKESPECIAL) {
             return true;
         }
