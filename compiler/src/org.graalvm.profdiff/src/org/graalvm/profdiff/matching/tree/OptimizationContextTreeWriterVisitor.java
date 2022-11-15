@@ -49,6 +49,34 @@ public class OptimizationContextTreeWriterVisitor extends DeltaTreeWriterVisitor
     }
 
     @Override
+    public void visitDeletion(DeltaTreeNode<OptimizationContextTreeNode> node) {
+        if (node.getLeft().getOriginalInliningTreeNode() != null) {
+            inliningDeltaTreeWriterVisitor.visitDeletion(new DeltaTreeNode<>(node.getDepth(), node.isIdentity(), node.getLeft().getOriginalInliningTreeNode(), null));
+        } else {
+            super.visitDeletion(node);
+        }
+    }
+
+    @Override
+    public void visitInsertion(DeltaTreeNode<OptimizationContextTreeNode> node) {
+        if (node.getRight().getOriginalInliningTreeNode() != null) {
+            inliningDeltaTreeWriterVisitor.visitInsertion(new DeltaTreeNode<>(node.getDepth(), node.isIdentity(), null, node.getRight().getOriginalInliningTreeNode()));
+        } else {
+            super.visitInsertion(node);
+        }
+    }
+
+    @Override
+    public void visitIdentity(DeltaTreeNode<OptimizationContextTreeNode> node) {
+        if (node.getLeft().getOriginalInliningTreeNode() != null && node.getRight().getOriginalInliningTreeNode() != null) {
+            inliningDeltaTreeWriterVisitor.visitIdentity(new DeltaTreeNode<>(node.getDepth(), node.isIdentity(),
+                            node.getLeft().getOriginalInliningTreeNode(), node.getRight().getOriginalInliningTreeNode()));
+        } else {
+            super.visitIdentity(node);
+        }
+    }
+
+    @Override
     public void visitRelabeling(DeltaTreeNode<OptimizationContextTreeNode> node) {
         if (node.getLeft().getOriginalInliningTreeNode() != null && node.getRight().getOriginalInliningTreeNode() != null) {
             inliningDeltaTreeWriterVisitor.visitRelabeling(new DeltaTreeNode<>(node.getDepth(), node.isIdentity(),

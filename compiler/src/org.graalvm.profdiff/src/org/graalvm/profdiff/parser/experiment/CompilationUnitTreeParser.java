@@ -30,11 +30,13 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.nodes.OptimizationLogImpl;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
+import org.graalvm.profdiff.core.inlining.ProfilingInfo;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
@@ -84,7 +86,7 @@ public class CompilationUnitTreeParser implements CompilationUnit.TreeLoader {
                 reason.add(reasonItem.asString());
             }
         }
-        InliningTreeNode inliningTreeNode = new InliningTreeNode(methodName, bci, positive, reason);
+        InliningTreeNode inliningTreeNode = new InliningTreeNode(methodName, bci, positive, reason, parseProfilingInfo(map));
         ExperimentJSONParser.JSONLiteral invokes = map.property(OptimizationLogImpl.INVOKES_PROPERTY);
         if (invokes.isNull()) {
             return inliningTreeNode;
@@ -93,6 +95,24 @@ public class CompilationUnitTreeParser implements CompilationUnit.TreeLoader {
             inliningTreeNode.addChild(parseInliningTreeNode(invoke.asMap()));
         }
         return inliningTreeNode;
+    }
+
+    private static ProfilingInfo parseProfilingInfo(ExperimentJSONParser.JSONMap map) throws ExperimentParserTypeError {
+        ExperimentJSONParser.JSONLiteral profilingInfoObject = map.property(OptimizationLogImpl.PROFILING_INFO_PROPERTY);
+        if (profilingInfoObject.isNull()) {
+            return null;
+        }
+        ExperimentJSONParser.JSONMap profilingInfoMap = profilingInfoObject.asMap();
+        boolean isMature = profilingInfoMap.property(OptimizationLogImpl.IS_MATURE_PROPERTY).asBoolean();
+        List<ProfilingInfo.ProfiledType> profiledTypes = null;
+        ExperimentJSONParser.JSONLiteral typeProfilesLiteral = profilingInfoMap.property(OptimizationLogImpl.TYPE_PROFILE_PROPERTY);
+        if (!typeProfilesLiteral.isNull()) {
+            profiledTypes = new ArrayList<>();
+            for (Pair<String, ExperimentJSONParser.JSONLiteral> pair : typeProfilesLiteral.asMap().getEntries()) {
+                profiledTypes.add(new ProfilingInfo.ProfiledType(pair.getLeft(), pair.getRight().asDouble()));
+            }
+        }
+        return new ProfilingInfo(isMature, profiledTypes);
     }
 
     private OptimizationPhase parseOptimizationPhase(ExperimentJSONParser.JSONMap map) throws ExperimentParserTypeError {

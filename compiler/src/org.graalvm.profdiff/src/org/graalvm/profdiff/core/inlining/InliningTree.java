@@ -170,14 +170,15 @@ public class InliningTree {
         if (rootNode == null) {
             return new InliningTree(null);
         }
-        InliningTreeNode clonedNode = new InliningTreeNode(rootNode.getName(), -1, rootNode.isPositive(), null);
+        InliningTreeNode clonedNode = new InliningTreeNode(rootNode.getName(), -1, rootNode.isPositive(), null, rootNode.getProfilingInfo());
         cloneSubtreeInto(rootNode, clonedNode);
         return new InliningTree(clonedNode);
     }
 
     private static void cloneSubtreeInto(InliningTreeNode originalNode, InliningTreeNode clonedNode) {
         for (InliningTreeNode originalChild : originalNode.getChildren()) {
-            InliningTreeNode clonedChild = new InliningTreeNode(originalChild.getName(), originalChild.getBCI(), originalChild.isPositive(), originalChild.getReason());
+            InliningTreeNode clonedChild = new InliningTreeNode(originalChild.getName(), originalChild.getBCI(), originalChild.isPositive(), originalChild.getReason(),
+                            originalChild.getProfilingInfo());
             cloneSubtreeInto(originalChild, clonedChild);
             clonedNode.addChild(clonedChild);
         }

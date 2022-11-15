@@ -52,6 +52,31 @@ public class InliningDeltaTreeWriterVisitor extends DeltaTreeWriterVisitor<Inlin
     }
 
     @Override
+    public void visitDeletion(DeltaTreeNode<InliningTreeNode> node) {
+        adjustIndentLevel(node);
+        writer.write(EditScript.DELETE_PREFIX);
+        node.getLeft().writeHead(writer);
+        writeProfilingInfo(node.getLeft(), null);
+    }
+
+    @Override
+    public void visitInsertion(DeltaTreeNode<InliningTreeNode> node) {
+        adjustIndentLevel(node);
+        writer.write(EditScript.INSERT_PREFIX);
+        node.getRight().writeHead(writer);
+        writeProfilingInfo(node.getRight(), null);
+    }
+
+    @Override
+    public void visitIdentity(DeltaTreeNode<InliningTreeNode> node) {
+        adjustIndentLevel(node);
+        writer.write(EditScript.IDENTITY_PREFIX);
+        node.getLeft().writeHead(writer);
+        writeProfilingInfo(node.getLeft(), ExperimentId.ONE);
+        writeProfilingInfo(node.getRight(), ExperimentId.TWO);
+    }
+
+    @Override
     public void visitRelabeling(DeltaTreeNode<InliningTreeNode> node) {
         adjustIndentLevel(node);
         writer.write(EditScript.RELABEL_PREFIX);
@@ -83,6 +108,8 @@ public class InliningDeltaTreeWriterVisitor extends DeltaTreeWriterVisitor<Inlin
             writeReasoning(node.getLeft(), ExperimentId.ONE);
             writeReasoning(node.getRight(), ExperimentId.TWO);
         }
+        writeProfilingInfo(node.getLeft(), ExperimentId.ONE);
+        writeProfilingInfo(node.getRight(), ExperimentId.TWO);
     }
 
     private void writeReasoning(InliningTreeNode node, ExperimentId experimentId) {
@@ -92,6 +119,26 @@ public class InliningDeltaTreeWriterVisitor extends DeltaTreeWriterVisitor<Inlin
         for (String reason : node.getReason()) {
             writer.writeln(reason);
         }
+        writer.decreaseIndent(3);
+    }
+
+    private void writeProfilingInfo(InliningTreeNode node, ExperimentId experimentId) {
+        if (node.getProfilingInfo() == null || (node.getProfilingInfo().isMature() && node.getProfilingInfo().getProfiledTypes().isEmpty())) {
+            return;
+        }
+        writer.increaseIndent();
+        writer.write("|_");
+        if (!node.getProfilingInfo().isMature()) {
+            writer.write(" immature");
+        }
+        writer.write(" type profile");
+        if (experimentId == null) {
+            writer.writeln();
+        } else {
+            writer.writeln(" in experiment " + experimentId);
+        }
+        writer.increaseIndent(2);
+        node.getProfilingInfo().write(writer);
         writer.decreaseIndent(3);
     }
 }

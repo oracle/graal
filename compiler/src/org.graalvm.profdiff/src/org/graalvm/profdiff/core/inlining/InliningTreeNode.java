@@ -68,19 +68,23 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
      */
     private final List<String> reason;
 
+    private final ProfilingInfo profilingInfo;
+
     /**
      * Constructs an inlining tree node.
      *
      * @param targetMethodName the name of this inlined method
-     * @param bci the bci of the parent method's callsite of this inlinee
-     * @param positive {@code true} if the target method was inlined
-     * @param reason the reasoning for this inlining decision
+     * @param bci              the bci of the parent method's callsite of this inlinee
+     * @param positive         {@code true} if the target method was inlined
+     * @param reason           the reasoning for this inlining decision
+     * @param profilingInfo
      */
-    public InliningTreeNode(String targetMethodName, int bci, boolean positive, List<String> reason) {
+    public InliningTreeNode(String targetMethodName, int bci, boolean positive, List<String> reason, ProfilingInfo profilingInfo) {
         super(targetMethodName);
         this.bci = bci;
         this.positive = positive;
         this.reason = reason == null ? List.of() : reason;
+        this.profilingInfo = profilingInfo;
     }
 
     /**
@@ -156,5 +160,9 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
 
     public InliningPath.PathElement pathElement() {
         return new InliningPath.PathElement(getName(), getBCI());
+    }
+
+    public ProfilingInfo getProfilingInfo() {
+        return profilingInfo;
     }
 }

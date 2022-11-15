@@ -56,6 +56,8 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.util.json.JSONFormatter;
 
+import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -154,6 +156,22 @@ public class OptimizationLogImpl implements OptimizationLog {
      * The name of the directory holding optimization log files.
      */
     public static final String OPTIMIZATION_LOG_DIRECTORY = "optimization_log";
+
+    /**
+     * The name of the property holding profiling info of a callsite.
+     */
+    public static final String PROFILING_INFO_PROPERTY = "profilingInfo";
+
+    /**
+     * The key of the maturity flag in profiling info.
+     */
+    public static final String IS_MATURE_PROPERTY = "isMature";
+
+    /**
+     * The name of the property holding a map representing a {@link JavaTypeProfile}. The map holds
+     * probabilities mapped by type names.
+     */
+    public static final String TYPE_PROFILE_PROPERTY = "typeProfile";
 
     /**
      * The line separator, which separates compilation units in optimization log files. Profdiff
@@ -709,6 +727,10 @@ public class OptimizationLogImpl implements OptimizationLog {
         map.put(CALLSITE_BCI_PROPERTY, callsite.getBci());
         map.put(INLINED_PROPERTY, isInlined);
         map.put(REASON_PROPERTY, reason);
+        EconomicMap<String, Object> profilingInfoMap = profilingInfoAsJSONMap(callsite);
+        if (profilingInfoMap != null) {
+            map.put(PROFILING_INFO_PROPERTY, profilingInfoMap);
+        }
         if (!isInlined) {
             return map;
         }
@@ -732,5 +754,30 @@ public class OptimizationLogImpl implements OptimizationLog {
         }
         map.put(INVOKES_PROPERTY, invokes);
         return map;
+    }
+
+    /**
+     * Converts the profiling info of a callsite to a JSON map. Returns {@code null} if there is no
+     * profiling info available.
+     *
+     * @param callsite the callsite whose profiling info is returned
+     * @return the profiling info as a map or {@code null}
+     */
+    private EconomicMap<String, Object> profilingInfoAsJSONMap(InliningLog.Callsite callsite) {
+        if (callsite.parent == null || callsite.parent.target == null || callsite.parent.target.getProfilingInfo() == null) {
+            return null;
+        }
+        ProfilingInfo profilingInfo = callsite.parent.target.getProfilingInfo();
+        EconomicMap<String, Object> profilingInfoMap = EconomicMap.create();
+        profilingInfoMap.put(IS_MATURE_PROPERTY, profilingInfo.isMature());
+        JavaTypeProfile typeProfile = profilingInfo.getTypeProfile(callsite.getBci());
+        if (typeProfile != null) {
+            EconomicMap<String, Object> typeProfileMap = EconomicMap.create();
+            for (JavaTypeProfile.ProfiledType profiledType : typeProfile.getTypes()) {
+                typeProfileMap.put(profiledType.getType().getName(), profiledType.getProbability());
+            }
+            profilingInfoMap.put(TYPE_PROFILE_PROPERTY, typeProfileMap);
+        }
+        return profilingInfoMap;
     }
 }

@@ -138,7 +138,7 @@ public class JSONFormatter {
             appendTo(sb, (EconomicMap<?, ?>) value, indent, currentIndent);
         } else if (value instanceof List<?>) {
             appendTo(sb, (List<?>) value, indent, currentIndent);
-        } else if (value instanceof Integer || value instanceof Boolean || value == null) {
+        } else if (value instanceof Number || value instanceof Boolean || value == null) {
             sb.append(value);
         } else {
             sb.append(quote(String.valueOf(value)));
