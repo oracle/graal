@@ -32,12 +32,15 @@ import java.util.EnumMap;
 import java.util.Map;
 
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.CompilationWatchDog;
 import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.core.GraalCompiler;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -67,11 +70,20 @@ public class SubstrateGraalUtils {
 
     private static final Map<ExceptionAction, Integer> compilationProblemsPerAction = new EnumMap<>(ExceptionAction.class);
 
+    private static final CompilationWatchDog.EventHandler COMPILATION_WATCH_DOG_EVENT_HANDLER = new CompilationWatchDog.EventHandler() {
+        @Override
+        public void onStuckCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier compilation, StackTraceElement[] stackTrace, int stuckTime) {
+            CompilationWatchDog.EventHandler.super.onStuckCompilation(watchDog, watched, compilation, stackTrace, stuckTime);
+            TTY.println("Compilation %s on %s appears stuck - exiting VM", compilation, watched);
+            System.exit(STUCK_COMPILATION_EXIT_CODE);
+        }
+    };
+
     public static CompilationResult doCompile(DebugContext initialDebug, RuntimeConfiguration runtimeConfig, LIRSuites lirSuites, final SubstrateMethod method) {
         updateGraalArchitectureWithHostCPUFeatures(runtimeConfig.lookupBackend(method));
 
         String methodString = method.format("%H.%n(%p)");
-        SubstrateCompilationIdentifier compilationId = new SubstrateCompilationIdentifier();
+        SubstrateCompilationIdentifier compilationId = new SubstrateCompilationIdentifier(method);
 
         return new CompilationWrapper<CompilationResult>(GraalSupport.get().getDebugOutputDirectory(), compilationProblemsPerAction) {
             @SuppressWarnings({"unchecked", "unused"})
@@ -84,10 +96,13 @@ public class SubstrateGraalUtils {
                 throw silenceThrowable(RuntimeException.class, t);
             }
 
+            @SuppressWarnings("try")
             @Override
             protected CompilationResult performCompilation(DebugContext debug) {
-                StructuredGraph graph = GraalSupport.decodeGraph(debug, null, compilationId, method);
-                return compileGraph(runtimeConfig, GraalSupport.getMatchingSuitesForGraph(graph), lirSuites, method, graph);
+                try (CompilationWatchDog watchdog = CompilationWatchDog.watch(compilationId, debug.getOptions(), false, COMPILATION_WATCH_DOG_EVENT_HANDLER)) {
+                    StructuredGraph graph = GraalSupport.decodeGraph(debug, null, compilationId, method);
+                    return compileGraph(runtimeConfig, GraalSupport.getMatchingSuitesForGraph(graph), lirSuites, method, graph);
+                }
             }
 
             @Override
