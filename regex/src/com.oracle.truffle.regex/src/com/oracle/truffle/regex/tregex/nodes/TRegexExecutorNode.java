@@ -54,7 +54,6 @@ import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputReadNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.string.Encodings;
-import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding.UTF16;
 
 public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
@@ -86,6 +85,7 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
         this.numberOfTransitions = numberOfTransitions;
     }
 
+    @Override
     public RegexSource getSource() {
         return source;
     }
@@ -94,24 +94,9 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
         return numberOfCaptureGroups;
     }
 
+    @Override
     public final int getNumberOfTransitions() {
         return numberOfTransitions;
-    }
-
-    public Encoding getEncoding() {
-        return source.getEncoding();
-    }
-
-    public boolean isUTF8() {
-        return getEncoding() == Encodings.UTF_8;
-    }
-
-    public boolean isUTF16() {
-        return getEncoding() == Encodings.UTF_16;
-    }
-
-    public boolean isUTF32() {
-        return getEncoding() == Encodings.UTF_32;
     }
 
     public BranchProfile getBMPProfile() {
@@ -395,23 +380,4 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
         }
         return 0;
     }
-
-    public boolean isBooleanMatch() {
-        boolean booleanMatch = source.getOptions().isBooleanMatch();
-        CompilerAsserts.partialEvaluationConstant(booleanMatch);
-        return booleanMatch;
-    }
-
-    public abstract TRegexExecutorNode shallowCopy();
-
-    public abstract String getName();
-
-    public abstract boolean isForward();
-
-    /**
-     * Returns {@code true} if this executor may write any new capture group boundaries.
-     */
-    public abstract boolean writesCaptureGroups();
-
-    public abstract TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex);
 }

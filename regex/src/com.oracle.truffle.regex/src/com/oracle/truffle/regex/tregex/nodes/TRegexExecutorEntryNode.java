@@ -111,7 +111,7 @@ public abstract class TRegexExecutorEntryNode extends Node {
 
     private static final class TRegexExecutorRootNode extends RootNode {
 
-        @Child TRegexExecutorNode executor;
+        @Child TRegexExecutorBaseNode executor;
         private final TruffleString.CodeRange codeRange;
         private final boolean isTString;
 
@@ -155,8 +155,8 @@ public abstract class TRegexExecutorEntryNode extends Node {
         return TRegexExecutorEntryNodeGen.create(language, executor);
     }
 
-    public TRegexExecutorNode getExecutor() {
-        return (TRegexExecutorNode) (executor instanceof TRegexExecutorBaseNodeWrapper ? ((TRegexExecutorBaseNodeWrapper) executor).getDelegateNode() : executor);
+    public TRegexExecutorBaseNode getExecutor() {
+        return executor;
     }
 
     public abstract Object execute(VirtualFrame frame, Object input, int fromIndex, int index, int maxIndex);
@@ -186,7 +186,7 @@ public abstract class TRegexExecutorEntryNode extends Node {
                     @Cached @SuppressWarnings("unused") TruffleString.CodeRangeEqualsNode codeRangeEqualsNode,
                     @Cached("codeRangeNode.execute(input, getExecutor().getEncoding().getTStringEncoding())") TruffleString.CodeRange cachedCodeRange,
                     @Cached("createCallTarget(cachedCodeRange, true)") DirectCallNode callNode) {
-        materializeNode.execute(input, getExecutor().getEncoding().getTStringEncoding());
+        materializeNode.execute(input, executor.getEncoding().getTStringEncoding());
         return runExecutor(frame, input, fromIndex, index, maxIndex, callNode, cachedCodeRange, true);
     }
 
@@ -201,10 +201,10 @@ public abstract class TRegexExecutorEntryNode extends Node {
     }
 
     DirectCallNode createCallTarget(TruffleString.CodeRange codeRange, boolean isTString) {
-        if (getExecutor().getNumberOfTransitions() <= TRegexOptions.TRegexMaxTransitionsInTrivialExecutor) {
+        if (executor.getNumberOfTransitions() <= TRegexOptions.TRegexMaxTransitionsInTrivialExecutor) {
             return null;
         } else {
-            return DirectCallNode.create(new TRegexExecutorRootNode(language, getExecutor().shallowCopy(), codeRange, isTString).getCallTarget());
+            return DirectCallNode.create(new TRegexExecutorRootNode(language, executor.shallowCopy(), codeRange, isTString).getCallTarget());
         }
     }
 
@@ -213,7 +213,7 @@ public abstract class TRegexExecutorEntryNode extends Node {
         CompilerAsserts.partialEvaluationConstant(isTString);
         CompilerAsserts.partialEvaluationConstant(callNode);
         if (callNode == null) {
-            return executor.execute(frame, getExecutor().createLocals(input, fromIndex, index, maxIndex), cachedCodeRange, isTString);
+            return executor.execute(frame, executor.createLocals(input, fromIndex, index, maxIndex), cachedCodeRange, isTString);
         } else {
             return callNode.call(input, fromIndex, index, maxIndex);
         }

@@ -41,6 +41,7 @@
 
 package com.oracle.truffle.regex.tregex.nodes.nfa;
 
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorBaseNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 
@@ -51,11 +52,11 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
  */
 public abstract class TRegexBacktrackerSubExecutorNode extends TRegexExecutorNode {
 
-    public static final TRegexBacktrackerSubExecutorNode[] NO_SUB_EXECUTORS = {};
+    public static final TRegexExecutorBaseNode[] NO_SUB_EXECUTORS = {};
 
-    @Children protected final TRegexBacktrackerSubExecutorNode[] subExecutors;
+    @Children protected final TRegexExecutorBaseNode[] subExecutors;
 
-    TRegexBacktrackerSubExecutorNode(RegexAST ast, int numberOfTransitions, TRegexBacktrackerSubExecutorNode[] subExecutors) {
+    TRegexBacktrackerSubExecutorNode(RegexAST ast, int numberOfTransitions, TRegexExecutorBaseNode[] subExecutors) {
         super(ast, numberOfTransitions);
         this.subExecutors = subExecutors;
     }
@@ -65,7 +66,7 @@ public abstract class TRegexBacktrackerSubExecutorNode extends TRegexExecutorNod
         if (copy.subExecutors == null) {
             this.subExecutors = null;
         } else {
-            TRegexBacktrackerSubExecutorNode[] subExecutorsCopy = new TRegexBacktrackerSubExecutorNode[copy.subExecutors.length];
+            TRegexExecutorBaseNode[] subExecutorsCopy = new TRegexExecutorBaseNode[copy.subExecutors.length];
             for (int i = 0; i < copy.subExecutors.length; i++) {
                 subExecutorsCopy[i] = copy.subExecutors[i].shallowCopy();
             }

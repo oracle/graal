@@ -67,9 +67,9 @@ import com.oracle.truffle.regex.tregex.nfa.NFATraceFinderGenerator;
 import com.oracle.truffle.regex.tregex.nfa.PureNFA;
 import com.oracle.truffle.regex.tregex.nfa.PureNFAGenerator;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecNode;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorBaseNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorProperties;
-import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackerSubExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexLiteralLookAroundExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexNFAExecutorNode;
@@ -196,12 +196,12 @@ public final class TRegexCompilationRequest {
 
     private static final class StackEntry {
         private final PureNFA nfa;
-        private final TRegexBacktrackerSubExecutorNode[] subExecutors;
+        private final TRegexExecutorBaseNode[] subExecutors;
         private int i = 0;
 
         private StackEntry(PureNFA nfa) {
             this.nfa = nfa;
-            this.subExecutors = nfa.getSubtrees().length == 0 ? NO_SUB_EXECUTORS : new TRegexBacktrackerSubExecutorNode[nfa.getSubtrees().length];
+            this.subExecutors = nfa.getSubtrees().length == 0 ? NO_SUB_EXECUTORS : new TRegexExecutorBaseNode[nfa.getSubtrees().length];
         }
     }
 
