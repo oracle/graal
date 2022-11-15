@@ -67,7 +67,7 @@ import java.util.List;
  * represented by the parent call range at level N.
  */
 public class Range {
-    private final static DebugLocalInfo[] EMPTY_LOCAL_INFOS = new DebugLocalInfo[0];
+    private static final DebugLocalInfo[] EMPTY_LOCAL_INFOS = new DebugLocalInfo[0];
     private static final String CLASS_DELIMITER = ".";
     private final MethodEntry methodEntry;
     private final String fullMethodName;
