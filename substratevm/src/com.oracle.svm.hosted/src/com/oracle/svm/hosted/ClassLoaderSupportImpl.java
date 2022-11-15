@@ -33,6 +33,7 @@ import java.io.InputStream;
 import java.lang.module.ModuleReader;
 import java.lang.module.ModuleReference;
 import java.lang.module.ResolvedModule;
+import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
@@ -66,19 +67,24 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     private final NativeImageClassLoaderSupport classLoaderSupport;
 
     private final ClassLoader imageClassLoader;
+    private final URLClassLoader classPathClassLoader;
 
     private final Map<String, Set<Module>> packageToModules;
 
     public ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
         imageClassLoader = classLoaderSupport.getClassLoader();
+        classPathClassLoader = imageClassLoader instanceof URLClassLoader ? null : (URLClassLoader) imageClassLoader.getParent();
         packageToModules = new HashMap<>();
         buildPackageToModulesMap(classLoaderSupport);
     }
 
     @Override
     protected boolean isNativeImageClassLoaderImpl(ClassLoader loader) {
-        if (loader == imageClassLoader || loader == imageClassLoader.getParent()) {
+        if (loader == imageClassLoader) {
+            return true;
+        }
+        if (classPathClassLoader != null && loader == classPathClassLoader) {
             return true;
         }
         if (loader instanceof NativeImageSystemClassLoader) {
