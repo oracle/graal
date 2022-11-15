@@ -89,7 +89,7 @@ def _check_compiler_log(compiler_log_file, expectations, extra_check=None):
         mx.abort('No output written to ' + compiler_log_file)
     with open(compiler_log_file) as fp:
         compiler_log = fp.read()
-    if not isinstance(expectations, list):
+    if not isinstance(expectations, list) and not isinstance(expectations, tuple):
         expectations = [expectations]
     for pattern in expectations:
         if not re.search(pattern, compiler_log):
@@ -234,6 +234,77 @@ def _jdk_has_ForceTranslateFailure_jvmci_option(jdk):
         return False
     mx.abort(sink.data)
 
+def _test_libgraal_CompilationTimeout_JIT():
+    """
+    Tests timeout handling of CompileBroker compilations.
+    """
+
+    graalvm_home = mx_sdk_vm_impl.graalvm_home()
+    compiler_log_file = abspath('graal-compiler.log')
+    G = '-Dgraal.' #pylint: disable=invalid-name
+    for vm_can_exit in (False, True):
+        vm_exit_delay = 0 if not vm_can_exit else 2
+        vmargs = [f'{G}CompilationWatchDogStartDelay=1',  # set compilation timeout to 1 sec
+                  f'{G}InjectedCompilationDelay=4',       # inject a 4 sec compilation delay
+                  f'{G}CompilationWatchDogVMExitDelay={vm_exit_delay}',
+                  f'{G}CompilationFailureAction=Print',
+                  f'{G}PrintCompilation=false',
+                  f'{G}LogFile={compiler_log_file}',
+                   '-Ddebug.graal.CompilationWatchDog=true'] # helps debug failure
+
+        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + ['-jar', mx.library('DACAPO').get_path(True), 'avrora', '-n', '1']
+        exit_code = mx.run(cmd, nonZeroIsFatal=False)
+        expectations = ['detected long running compilation'] + (['a stuck compilation'] if vm_can_exit else [])
+        _check_compiler_log(compiler_log_file, expectations)
+        if vm_can_exit:
+            # org.graalvm.compiler.core.CompilationWatchDog.EventHandler.STUCK_COMPILATION_EXIT_CODE
+            if exit_code != 84:
+                mx.abort(f'expected process to exit with 84 (indicating a stuck compilation) instead of {exit_code}')
+        elif exit_code != 0:
+            mx.abort(f'process exit code was {exit_code}, not 0')
+
+def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
+    """
+    Tests timeout handling of Truffle PE compilations.
+    """
+    graalvm_home = mx_sdk_vm_impl.graalvm_home()
+    compiler_log_file = abspath('graal-compiler.log')
+    G = '-Dgraal.' #pylint: disable=invalid-name
+    P = '-Dpolyglot.engine.' #pylint: disable=invalid-name
+    for vm_can_exit in (False, True):
+        vm_exit_delay = 0 if not vm_can_exit else 2
+        vmargs = [f'{G}CompilationWatchDogStartDelay=1',  # set compilation timeout to 1 sec
+                  f'{G}InjectedCompilationDelay=4',       # inject a 4 sec compilation delay
+                  f'{G}CompilationWatchDogVMExitDelay={vm_exit_delay}',
+                  f'{G}CompilationFailureAction=Print',
+                  f'{G}ShowConfiguration=info',
+                  f'{G}MethodFilter=delay',
+                  f'{G}PrintCompilation=false',
+                  f'{G}LogFile={compiler_log_file}',
+                  f'{P}AllowExperimentalOptions=true',
+                  f'{P}TraceCompilation=false',
+                  f'{P}CompileImmediately=true',
+                  f'{P}BackgroundCompilation=false',
+                  f'-Dpolyglot.log.file={compiler_log_file}',
+                   '-Ddebug.graal.CompilationWatchDog=true', # helps debug failure
+                   '-Dgraalvm.locatorDisabled=true',
+                   '-XX:-UseJVMCICompiler',       # Stop compilation timeout being applied to JIT
+                   '-XX:+UseJVMCINativeLibrary']  # but ensure libgraal is still used by Truffle
+
+        delay = abspath(join(dirname(__file__), 'Delay.sl'))
+        cp = mx.classpath(["com.oracle.truffle.sl", "com.oracle.truffle.sl.launcher"])
+        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + ['-cp', cp, 'com.oracle.truffle.sl.launcher.SLMain', delay]
+        exit_code = mx.run(cmd, nonZeroIsFatal=False)
+
+        expectations = ['detected long running compilation'] + (['a stuck compilation'] if vm_can_exit else [])
+        _check_compiler_log(compiler_log_file, expectations)
+        if vm_can_exit:
+            # org.graalvm.compiler.core.CompilationWatchDog.EventHandler.STUCK_COMPILATION_EXIT_CODE
+            if exit_code != 84:
+                mx.abort(f'expected process to exit with 84 (indicating a stuck compilation) instead of {exit_code}')
+        elif exit_code != 0:
+            mx.abort(f'process exit code was {exit_code}, not 0')
+
 def _test_libgraal_ctw(extra_vm_arguments):
     import mx_compiler
 
@@ -242,10 +313,10 @@ def _test_libgraal_ctw(extra_vm_arguments):
         # This test is only possible if the jvmci.ForceTranslateFailure option exists.
         compiler_log_file = abspath('graal-compiler-ctw.log')
         fail_to_translate_value = 'nmethod/StackOverflowError:hotspot,method/String.hashCode:native,valueOf'
-        expectations = ['ForceTranslateFailure filter "{}"'.format(f) for f in fail_to_translate_value.split(',')]
+        expectations = [f'ForceTranslateFailure filter "{f}"' for f in fail_to_translate_value.split(',')]
         try:
             mx_compiler.ctw([
-                '-DCompileTheWorld.Config=Inline=false ' + ' '.join(mx_compiler._compiler_error_options(prefix='')),
+               f'-DCompileTheWorld.Config=Inline=false {" ".join(mx_compiler._compiler_error_options(prefix=""))}',
                 '-XX:+EnableJVMCI',
                 '-Dgraal.InlineDuringParsing=false',
                 '-Dgraal.TrackNodeSourcePosition=true',
@@ -328,6 +399,10 @@ def gate_body(args, tasks):
                     if t: _test_libgraal_basic(extra_vm_arguments)
                 with Task('LibGraal Compiler:FatalErrorHandling', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_fatal_error_handling()
+                with Task('LibGraal Compiler:CompilationTimeout:JIT', tasks, tags=[VmGateTasks.libgraal]) as t:
+                    if t: _test_libgraal_CompilationTimeout_JIT()
+                with Task('LibGraal Compiler:CompilationTimeout:Truffle', tasks, tags=[VmGateTasks.libgraal]) as t:
+                    if t: _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments)
 
                 with Task('LibGraal Compiler:CTW', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_ctw(extra_vm_arguments)
