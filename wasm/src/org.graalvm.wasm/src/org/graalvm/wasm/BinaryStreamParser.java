@@ -385,9 +385,7 @@ public abstract class BinaryStreamParser {
     }
 
     /**
-     *
-     * Manually unrolled version of {@link #peekLeb128Length(byte[], int)}
-     *
+     * Manually unrolled version of {@link #peekLeb128Length(byte[], int)}.
      */
     public static byte rawPeekLeb128IntLength(byte[] data, int initialOffset) {
         byte b = data[initialOffset];
