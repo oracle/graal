@@ -313,6 +313,7 @@ suite = {
       ],
       "buildDependencies" : [
         "NATIVE_MODE_SUPPORT",
+        "SULONG_TCK_NATIVE",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "11+",
