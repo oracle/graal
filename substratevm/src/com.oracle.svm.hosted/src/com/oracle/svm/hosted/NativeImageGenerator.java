@@ -335,14 +335,9 @@ public class NativeImageGenerator {
     protected final Map<ArtifactType, List<Path>> buildArtifacts = new EnumMap<>(ArtifactType.class);
 
     public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint, ProgressReporter reporter) {
-        this(loader, optionProvider, mainEntryPoint, reporter, new FeatureHandler());
-    }
-
-    protected NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint, ProgressReporter reporter,
-                    FeatureHandler featureHandler) {
         this.loader = loader;
         this.mainEntryPoint = mainEntryPoint;
-        this.featureHandler = featureHandler;
+        this.featureHandler = new FeatureHandler();
         this.optionProvider = optionProvider;
         this.reporter = reporter;
         /*
