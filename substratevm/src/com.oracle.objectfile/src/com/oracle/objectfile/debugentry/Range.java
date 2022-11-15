@@ -70,7 +70,6 @@ public class Range {
     private static final String CLASS_DELIMITER = ".";
     private final MethodEntry methodEntry;
     private final String fullMethodName;
-    private final String fullMethodNameWithParams;
     private final int lo;
     private int hi;
     private final int line;
@@ -153,7 +152,6 @@ public class Range {
         }
         this.methodEntry = methodEntry;
         this.fullMethodName = isTopLevel ? stringTable.uniqueDebugString(constructClassAndMethodName()) : stringTable.uniqueString(constructClassAndMethodName());
-        this.fullMethodNameWithParams = constructClassAndMethodNameWithParams();
         this.lo = lo;
         this.hi = hi;
         this.line = line;
@@ -227,7 +225,7 @@ public class Range {
     }
 
     public String getFullMethodNameWithParams() {
-        return fullMethodNameWithParams;
+        return constructClassAndMethodNameWithParams();
     }
 
     public boolean isDeoptTarget() {
