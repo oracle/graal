@@ -517,6 +517,11 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                                 stackPointer++;
                                 break;
                             }
+                            case WasmType.FUNCREF_TYPE:
+                            case WasmType.EXTERNREF_TYPE:
+                                pushReference(frame, stackPointer, result);
+                                stackPointer++;
+                                break;
                             default: {
                                 throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
                             }
@@ -1623,6 +1628,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final int tableIndex = rawPeekI32(bytecode, offset);
                             table_size(context, frame, stackPointer, tableIndex);
                             stackPointer++;
+                            offset += 4;
                             break;
                         }
                         case Bytecode.TABLE_FILL: {
@@ -1633,6 +1639,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final int i = popInt(frame, stackPointer - 3);
                             table_fill(context, n, val, i, tableIndex);
                             stackPointer -= 3;
+                            offset += 4;
                             break;
                         }
                         default:
