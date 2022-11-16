@@ -38,7 +38,7 @@ public final class OldGenerationMemoryPoolMXBean extends AbstractMemoryPoolMXBea
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public OldGenerationMemoryPoolMXBean() {
-        super("old generation");
+        super("old generation space", "complete scavenger");
     }
 
     @Override
@@ -60,7 +60,7 @@ public final class OldGenerationMemoryPoolMXBean extends AbstractMemoryPoolMXBea
 
     private MemoryUsage memoryUsage(long usedAndCommitted) {
         long maxHeap = GCImpl.getPolicy().getMaximumHeapSize().rawValue();
-        long maxYoung = GCImpl.getPolicy().getMaximumYoungGenerationSize().rawValue();///const?
+        long maxYoung = GCImpl.getPolicy().getMaximumYoungGenerationSize().rawValue();
         return new MemoryUsage(UNDEFINED_MEMORY_USAGE, usedAndCommitted, usedAndCommitted, maxHeap - maxYoung);
     }
 }

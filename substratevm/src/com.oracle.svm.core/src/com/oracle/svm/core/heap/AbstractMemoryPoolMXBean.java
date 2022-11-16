@@ -36,13 +36,13 @@ import sun.management.Util;
 public abstract class AbstractMemoryPoolMXBean extends MXBeanBase implements MemoryPoolMXBean {
 
     protected final String name;
-    protected final String managerName;
+    protected final String[] managerNames;
     protected final String objectName;
 
-    protected AbstractMemoryPoolMXBean(String managerName) {
-        this.managerName = managerName;
-        this.name = this.managerName + " space";
-        this.objectName = ManagementFactory.MEMORY_POOL_MXBEAN_DOMAIN_TYPE + ",name=" + this.name;
+    protected AbstractMemoryPoolMXBean(String name, String... managerNames) {
+        this.name = name;
+        this.managerNames = managerNames.clone();
+        this.objectName = ManagementFactory.MEMORY_POOL_MXBEAN_DOMAIN_TYPE + ",name=" + name;
     }
 
     @Override
@@ -52,7 +52,7 @@ public abstract class AbstractMemoryPoolMXBean extends MXBeanBase implements Mem
 
     @Override
     public String[] getMemoryManagerNames() {
-        return new String[] { managerName };
+        return managerNames.clone();
     }
 
     @Override
