@@ -973,6 +973,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
                 '--features=com.oracle.svm.agent.NativeImageAgent$RegistrationFeature',
                 '--enable-url-protocols=jar',
             ],
+            headers=False,
         ),
         mx_sdk_vm.LibraryConfig(
             use_modules='image',
@@ -985,6 +986,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             build_args=driver_build_args + [
                 '--features=com.oracle.svm.diagnosticsagent.NativeImageDiagnosticsAgent$RegistrationFeature',
             ],
+            headers=False,
         ),
     ],
     provided_executables=['bin/<cmd:rebuild-images>'],
@@ -1149,6 +1151,7 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
             jar_distributions=libgraal_jar_distributions,
             build_args=libgraal_build_args + ['--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature'],
             add_to_module='java.base',
+            headers=False,
         ),
     ],
     stability="supported",
