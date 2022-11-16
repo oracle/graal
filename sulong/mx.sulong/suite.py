@@ -1761,7 +1761,7 @@ suite = {
       "variants" : ["executable-O1"],
       "buildRef" : True,
       "cmakeConfig" : {
-        "CMAKE_C_FLAGS" : "-Wno-everything",
+        "CMAKE_C_FLAGS" : "-Wno-everything -include stdio.h",
         "CMAKE_EXE_LINKER_FLAGS" : "-lm -lgmp",
       },
       "dependencies" : [
