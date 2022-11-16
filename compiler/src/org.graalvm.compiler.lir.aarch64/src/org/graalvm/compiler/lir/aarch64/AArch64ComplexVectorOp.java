@@ -58,12 +58,12 @@ public abstract class AArch64ComplexVectorOp extends AArch64LIRInstruction {
         return allocateRegisters(tool, LIRKind.value(tool.target().arch.getLargestStorableKind(SIMD)), n);
     }
 
-    protected static AllocatableValue[] allocateRegisters(LIRGeneratorTool tool, LIRKind kind, int n) {
-        AllocatableValue[] vectors = new AllocatableValue[n];
-        for (int i = 0; i < vectors.length; i++) {
-            vectors[i] = tool.newVariable(kind);
+    private static AllocatableValue[] allocateRegisters(LIRGeneratorTool tool, LIRKind kind, int n) {
+        AllocatableValue[] values = new AllocatableValue[n];
+        for (int i = 0; i < values.length; i++) {
+            values[i] = tool.newVariable(kind);
         }
-        return vectors;
+        return values;
     }
 
     protected static Value[] allocateConsecutiveVectorRegisters(int n) {

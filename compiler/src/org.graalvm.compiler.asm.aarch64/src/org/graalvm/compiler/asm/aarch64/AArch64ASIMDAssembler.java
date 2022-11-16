@@ -523,18 +523,18 @@ public abstract class AArch64ASIMDAssembler {
     public enum ASIMDInstruction {
 
         /* Advanced SIMD load/store multiple structures (C4-296). */
+        ST4_MULTIPLE_4R(0b0000 << 12),
         ST1_MULTIPLE_4R(0b0010 << 12),
         ST1_MULTIPLE_3R(0b0110 << 12),
         ST1_MULTIPLE_1R(0b0111 << 12),
-        ST1_MULTIPLE_2R(0b1010 << 12),
         ST2_MULTIPLE_2R(0b1000 << 12),
-        ST4_MULTIPLE_4R(0b0000 << 12),
+        ST1_MULTIPLE_2R(0b1010 << 12),
+        LD4_MULTIPLE_4R(LoadFlag | 0b0000 << 12),
         LD1_MULTIPLE_4R(LoadFlag | 0b0010 << 12),
         LD1_MULTIPLE_3R(LoadFlag | 0b0110 << 12),
         LD1_MULTIPLE_1R(LoadFlag | 0b0111 << 12),
-        LD1_MULTIPLE_2R(LoadFlag | 0b1010 << 12),
         LD2_MULTIPLE_2R(LoadFlag | 0b1000 << 12),
-        LD4_MULTIPLE_4R(LoadFlag | 0b0000 << 12),
+        LD1_MULTIPLE_2R(LoadFlag | 0b1010 << 12),
 
         /* Advanced SIMD load/store single structure (C4-299). */
         LD1R(LoadFlag | 0b110 << 13),
@@ -611,11 +611,11 @@ public abstract class AArch64ASIMDAssembler {
         UMINV(UBit | 0b11010 << 12),
 
         /* Advanced SIMD three different (C4-365). */
+        SSUBL(0b0010 << 12),
         SMLAL(0b1000 << 12),
         SMLSL(0b1010 << 12),
-        USUBL(UBit | 0b0010 << 12),
-        SSUBL(0b0010 << 12),
         PMULL(0b1110 << 12),
+        USUBL(UBit | 0b0010 << 12),
         UMLAL(UBit | 0b1000 << 12),
         UMLSL(UBit | 0b1010 << 12),
 
@@ -2204,7 +2204,7 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * C7.2.165 Load multiple 2-element structures to two registers, with de-interleaving.<br>
+     * C7.2.180 Load multiple 2-element structures to two registers, with de-interleaving.<br>
      *
      * This instruction loads multiple 2-element structures from memory and writes the result to two
      * registers. Note the two registers must be consecutive (modulo the number of SIMD
@@ -2224,11 +2224,12 @@ public abstract class AArch64ASIMDAssembler {
      */
     public void ld2MultipleVV(ASIMDSize size, ElementSize eSize, Register dst1, Register dst2, AArch64Address addr) {
         assert assertConsecutiveSIMDRegisters(dst1, dst2);
+        assert usesMultipleLanes(size, eSize);
         loadStoreMultipleStructures(ASIMDInstruction.LD2_MULTIPLE_2R, size, eSize, dst1, addr);
     }
 
     /**
-     * C7.2.171 Load multiple 4-element structures to four registers, with de-interleaving.<br>
+     * C7.2.186 Load multiple 4-element structures to four registers, with de-interleaving.<br>
      *
      * This instruction loads multiple 4-element structures from memory and writes the result to
      * four registers. Note the four registers must be consecutive (modulo the number of SIMD
@@ -2252,6 +2253,7 @@ public abstract class AArch64ASIMDAssembler {
      */
     public void ld4MultipleVVVV(ASIMDSize size, ElementSize eSize, Register dst1, Register dst2, Register dst3, Register dst4, AArch64Address addr) {
         assert assertConsecutiveSIMDRegisters(dst1, dst2, dst3, dst4);
+        assert usesMultipleLanes(size, eSize);
         loadStoreMultipleStructures(ASIMDInstruction.LD4_MULTIPLE_4R, size, eSize, dst1, addr);
     }
 
@@ -2785,6 +2787,46 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.319 Integer subtract vector Long.<br>
+     * The destination vector elements are twice as long as the source vector elements.<br>
+     *
+     * <code>for i in 0..(n/2)-1 do dst[i] = int_sub(src1[i], src2[i])</code>
+     *
+     * @param srcESize source element size. Cannot be ElementSize.DoubleWord.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void ssublVVV(ElementSize srcESize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert srcESize != ElementSize.DoubleWord;
+
+        threeDifferentEncoding(ASIMDInstruction.SSUBL, false, elemSizeXX(srcESize), dst, src1, src2);
+    }
+
+    /**
+     * C7.2.319 Integer subtract vector Long upper half.<br>
+     * The destination vector elements are twice as long as the source vector elements.<br>
+     *
+     * <code>for i in (n/2)..n-1 do dst[i] = int_sub(src1[i], src2[i])</code>
+     *
+     * @param srcESize source element size. Cannot be ElementSize.DoubleWord.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void ssubl2VVV(ElementSize srcESize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert srcESize != ElementSize.DoubleWord;
+
+        threeDifferentEncoding(ASIMDInstruction.SSUBL, true, elemSizeXX(srcESize), dst, src1, src2);
+    }
+
+    /**
      * C7.2.321 Store multiple single-element structures from one register.<br>
      *
      * This instruction stores elements to memory from one register.
@@ -2854,7 +2896,7 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * C7.2.307 Store multiple 2-element structures to memory, with interleaving.<br>
+     * C7.2.323 Store multiple 2-element structures to memory, with interleaving.<br>
      *
      * Note the registers must be consecutive (modulo the number of SIMD registers).<br>
      *
@@ -2872,11 +2914,12 @@ public abstract class AArch64ASIMDAssembler {
      */
     public void st2MultipleVV(ASIMDSize size, ElementSize eSize, Register src1, Register src2, AArch64Address addr) {
         assert assertConsecutiveSIMDRegisters(src1, src2);
+        assert usesMultipleLanes(size, eSize);
         loadStoreMultipleStructures(ASIMDInstruction.ST2_MULTIPLE_2R, size, eSize, src1, addr);
     }
 
     /**
-     * C7.2.311 Store multiple 4-element structures to memory, with interleaving.<br>
+     * C7.2.327 Store multiple 4-element structures to memory, with interleaving.<br>
      *
      * Note the registers must be consecutive (modulo the number of SIMD registers).<br>
      *
@@ -2898,6 +2941,7 @@ public abstract class AArch64ASIMDAssembler {
      */
     public void st4MultipleVVVV(ASIMDSize size, ElementSize eSize, Register src1, Register src2, Register src3, Register src4, AArch64Address addr) {
         assert assertConsecutiveSIMDRegisters(src1, src2, src3, src4);
+        assert usesMultipleLanes(size, eSize);
         loadStoreMultipleStructures(ASIMDInstruction.ST4_MULTIPLE_4R, size, eSize, src1, addr);
     }
 
@@ -2940,82 +2984,6 @@ public abstract class AArch64ASIMDAssembler {
         assert src2.getRegisterCategory().equals(SIMD);
 
         threeSameEncoding(ASIMDInstruction.SUB, size, elemSizeXX(eSize), dst, src1, src2);
-    }
-
-    /**
-     * C7.2.375 Unsigned integer subtract vector Long.<br>
-     * The destination vector elements are twice as long as the source vector elements.<br>
-     *
-     * <code>for i in 0..(n/2)-1 do dst[i] = uint_sub(src1[i], src2[i])</code>
-     *
-     * @param eSize element size.
-     * @param dst SIMD register.
-     * @param src1 SIMD register.
-     * @param src2 SIMD register.
-     */
-    public void usublVVV(ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-
-        threeDifferentEncoding(ASIMDInstruction.USUBL, false, elemSizeXX(eSize), dst, src1, src2);
-    }
-
-    /**
-     * C7.2.375 Unsigned integer subtract vector Long upper half.<br>
-     * The destination vector elements are twice as long as the source vector elements.<br>
-     *
-     * <code>for i in (n/2)..n-1 do dst[i] = uint_sub(src1[i], src2[i])</code>
-     *
-     * @param eSize element size.
-     * @param dst SIMD register.
-     * @param src1 SIMD register.
-     * @param src2 SIMD register.
-     */
-    public void usubl2VVV(ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-
-        threeDifferentEncoding(ASIMDInstruction.USUBL, true, elemSizeXX(eSize), dst, src1, src2);
-    }
-
-    /**
-     * C7.2.303 Integer subtract vector Long.<br>
-     * The destination vector elements are twice as long as the source vector elements.<br>
-     *
-     * <code>for i in 0..(n/2)-1 do dst[i] = int_sub(src1[i], src2[i])</code>
-     *
-     * @param eSize element size.
-     * @param dst SIMD register.
-     * @param src1 SIMD register.
-     * @param src2 SIMD register.
-     */
-    public void ssublVVV(ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-
-        threeDifferentEncoding(ASIMDInstruction.SSUBL, false, elemSizeXX(eSize), dst, src1, src2);
-    }
-
-    /**
-     * C7.2.303 Integer subtract vector Long upper half.<br>
-     * The destination vector elements are twice as long as the source vector elements.<br>
-     *
-     * <code>for i in (n/2)..n-1 do dst[i] = int_sub(src1[i], src2[i])</code>
-     *
-     * @param eSize element size.
-     * @param dst SIMD register.
-     * @param src1 SIMD register.
-     * @param src2 SIMD register.
-     */
-    public void ssubl2VVV(ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert dst.getRegisterCategory().equals(SIMD);
-        assert src1.getRegisterCategory().equals(SIMD);
-        assert src2.getRegisterCategory().equals(SIMD);
-
-        threeDifferentEncoding(ASIMDInstruction.SSUBL, true, elemSizeXX(eSize), dst, src1, src2);
     }
 
     /**
@@ -3450,7 +3418,7 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
-     * C7.2.374 Unsigned shift right (immediate) and accumulate vector.<br>
+     * C7.2.395 Unsigned shift right (immediate) and accumulate vector.<br>
      *
      * <code>for i in 0..n-1 do dst[i] += src[i] >>> imm</code>
      *
@@ -3473,6 +3441,46 @@ public abstract class AArch64ASIMDAssembler {
         int imm7 = eSize.nbits * 2 - shiftAmt;
 
         shiftByImmEncoding(ASIMDInstruction.USRA, size, imm7, dst, src);
+    }
+
+    /**
+     * C7.2.396 Unsigned integer subtract vector Long.<br>
+     * The destination vector elements are twice as long as the source vector elements.<br>
+     *
+     * <code>for i in 0..(n/2)-1 do dst[i] = uint_sub(src1[i], src2[i])</code>
+     *
+     * @param srcESize source element size. Cannot be ElementSize.DoubleWord.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void usublVVV(ElementSize srcESize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert srcESize != ElementSize.DoubleWord;
+
+        threeDifferentEncoding(ASIMDInstruction.USUBL, false, elemSizeXX(srcESize), dst, src1, src2);
+    }
+
+    /**
+     * C7.2.396 Unsigned integer subtract vector Long upper half.<br>
+     * The destination vector elements are twice as long as the source vector elements.<br>
+     *
+     * <code>for i in (n/2)..n-1 do dst[i] = uint_sub(src1[i], src2[i])</code>
+     *
+     * @param srcESize source element size. Cannot be ElementSize.DoubleWord.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void usubl2VVV(ElementSize srcESize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert srcESize != ElementSize.DoubleWord;
+
+        threeDifferentEncoding(ASIMDInstruction.USUBL, true, elemSizeXX(srcESize), dst, src1, src2);
     }
 
     /**

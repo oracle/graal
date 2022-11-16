@@ -1600,8 +1600,6 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     /**
      * The prefetch operation is defined as {@code <type><target><policy>}.
      * <p>
-     * </p>
-     * <p>
      * {@code <type>} is one of:
      * <ul>
      * <li><b>PLD</b>: Prefetch for load.</li>
