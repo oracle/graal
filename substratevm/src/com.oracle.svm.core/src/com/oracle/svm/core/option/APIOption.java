@@ -74,6 +74,7 @@ public @interface APIOption {
     APIOptionKind kind() default APIOptionKind.Default;
 
     char WHITESPACE_SEPARATOR = ' ';
+    char NO_SEPARATOR = 0;
 
     /**
      * Provide a custom separator that should be used to separate the option name from its option
