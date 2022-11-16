@@ -62,6 +62,7 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.MessageTransport;
@@ -1908,10 +1909,11 @@ public final class Context implements AutoCloseable {
                 contextErr = err;
                 contextIn = in;
             }
+            LogHandler logHandler = customLogHandler != null ? Engine.getImpl().newLogHandler(customLogHandler) : null;
             ctx = engine.dispatch.createContext(engine.receiver, contextOut, contextErr, contextIn, hostClassLookupEnabled,
                             hostAccess, polyglotAccess, nativeAccess, createThread, hostClassLoading, innerContextOptions,
                             experimentalOptions, localHostLookupFilter, contextOptions, arguments == null ? Collections.emptyMap() : arguments,
-                            permittedLanguages, useIOAccess, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
+                            permittedLanguages, useIOAccess, logHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
                             localCurrentWorkingDirectory, hostClassLoader, allowValueSharing, useSystemExit);
             return ctx;
         }
