@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "6.9.9",
+  "mxversion" : "6.11.4",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -1833,6 +1833,7 @@ suite = {
     },
 
     "SULONG_NATIVE_HOME" : {
+      "fileListPurpose": 'native-image-resources',
       "native" : True,
       "relpath" : False,
       "platformDependent" : True,
@@ -1875,6 +1876,7 @@ suite = {
     },
 
     "SULONG_BITCODE_HOME" : {
+      "fileListPurpose": 'native-image-resources',
       "native": True,
       "relpath": False,
       "license": "BSD-new",
@@ -1887,6 +1889,7 @@ suite = {
     },
 
     "SULONG_CORE_HOME" : {
+      "fileListPurpose": 'native-image-resources',
       "native" : True,
       "relpath" : False,
       "platformDependent" : True,
