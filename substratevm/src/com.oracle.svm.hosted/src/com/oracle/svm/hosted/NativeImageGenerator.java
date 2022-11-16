@@ -1630,10 +1630,14 @@ public class NativeImageGenerator {
             }
         }
 
-        /*
-         * Entry points use a different calling convention (the native C ABI calling convention), so
-         * they must not be called from other Java methods.
-         */
+        checkForInvalidCallsToEntryPoints();
+    }
+
+    /**
+     * Entry points use a different calling convention (the native C ABI calling convention), so
+     * they must not be called from other Java methods.
+     */
+    protected void checkForInvalidCallsToEntryPoints() {
         for (AnalysisMethod method : aUniverse.getMethods()) {
             if (method.isEntryPoint()) {
                 Set<AnalysisMethod> invocations = method.getCallers();
