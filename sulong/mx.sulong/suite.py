@@ -92,6 +92,12 @@ suite = {
             "optional": True,
           }
         },
+        "windows": {
+          "<others>" : {
+            "path": "tests/support.txt",
+            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+          },
+        },
         "<others>": {
           "<others>": {
             "optional": True,
