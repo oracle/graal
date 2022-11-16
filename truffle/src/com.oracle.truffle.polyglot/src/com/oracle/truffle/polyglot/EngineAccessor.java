@@ -1964,11 +1964,6 @@ final class EngineAccessor extends Accessor {
             }
             return new LanguageSystemThread(languageContext, runnable, threadGroup);
         }
-
-        @Override
-        public String isSafeToPreinitialize(Path path) {
-            return FileSystems.isSafeToPreinitialize(path);
-        }
     }
 
     abstract static class AbstractClassLoaderSupplier implements Supplier<ClassLoader> {

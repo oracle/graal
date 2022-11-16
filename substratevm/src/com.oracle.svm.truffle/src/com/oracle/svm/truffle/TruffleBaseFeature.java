@@ -57,7 +57,6 @@ import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.stream.Stream;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.truffle.api.TruffleFile;
 import org.graalvm.collections.Pair;
@@ -666,29 +665,22 @@ public final class TruffleBaseFeature implements InternalFeature {
     }
 
     private static final class TruffleFileCheck implements Function<Object, Object> {
-
-        private final Method truffleFileIsSafeToPreinitialize;
         private final ClassInitializationSupport classInitializationSupport;
 
         TruffleFileCheck(ClassInitializationSupport classInitializationSupport) {
-            this.truffleFileIsSafeToPreinitialize = ReflectionUtil.lookupMethod(TruffleFile.class, "isSafeToPreinitialize");
             this.classInitializationSupport = classInitializationSupport;
         }
 
         @Override
         public Object apply(Object object) {
             if (object instanceof TruffleFile) {
-                try {
-                    String failedPath = (String) truffleFileIsSafeToPreinitialize.invoke(object);
-                    if (failedPath != null) {
-                        UserError.abort("Detected an absolute TruffleFile %s in the image heap. " +
-                                        "Files with an absolute path created during the context pre-initialization may not be valid at the image execution time. " +
-                                        "This check can be disabled using -H:-TruffleCheckPreinitializedFiles." +
-                                        classInitializationSupport.objectInstantiationTraceMessage(object, ""),
-                                        failedPath);
-                    }
-                } catch (ReflectiveOperationException re) {
-                    throw VMError.shouldNotReachHere(re);
+                TruffleFile file = (TruffleFile) object;
+                if (file.isAbsolute()) {
+                    UserError.abort("Detected an absolute TruffleFile %s in the image heap. " +
+                                    "Files with an absolute path created during the context pre-initialization may not be valid at the image execution time. " +
+                                    "This check can be disabled using -H:-TruffleCheckPreinitializedFiles." +
+                                    classInitializationSupport.objectInstantiationTraceMessage(object, ""),
+                                    file.getPath());
                 }
             }
             return object;

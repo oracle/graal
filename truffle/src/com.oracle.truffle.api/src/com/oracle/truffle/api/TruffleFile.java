@@ -2184,18 +2184,6 @@ public final class TruffleFile {
         throw wrapHostException(t, fileSystemContext.fileSystem);
     }
 
-    /**
-     * Checks if the TruffleFile is safe to be stored in the image heap. A path is considered safe
-     * if it is either relative or points to the language home. The method is used by a reflection
-     * from the {@code BaseTruffleFeature}.
-     *
-     * @return {@code null} if the TruffleFile can be safely stored in the image heap. Returns a
-     *         TruffleFile path when the TruffleFile cannot be safely stored in the image heap.
-     */
-    String isSafeToPreinitialize() {
-        return LanguageAccessor.ENGINE.isSafeToPreinitialize(normalizedPath);
-    }
-
     static <T extends Throwable> RuntimeException wrapHostException(T t, FileSystem fs) {
         if (LanguageAccessor.engineAccess().isInternal(fs)) {
             throw Env.engineToLanguageException(t);
