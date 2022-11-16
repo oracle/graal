@@ -616,6 +616,7 @@ local devkits = common_json.devkits;
 
   #
   # Deploy GraalVM Base and Installables
+  # NOTE: After adding or removing deploy jobs, please make sure you modify ce-release-artifacts.json accordingly.
   #
 
   # Linux/AMD64
