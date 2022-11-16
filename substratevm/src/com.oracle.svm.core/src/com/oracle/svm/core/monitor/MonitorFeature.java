@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,7 +44,11 @@ public class MonitorFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            ImageSingletons.add(MonitorSupport.class, new MultiThreadedMonitorSupport());
+            if (SubstrateOptions.ThinLock.getValue()) {
+                ImageSingletons.add(MonitorSupport.class, new ThinLockMonitorSupport());
+            } else {
+                ImageSingletons.add(MonitorSupport.class, new MultiThreadedMonitorSupport());
+            }
         } else {
             ImageSingletons.add(MonitorSupport.class, new SingleThreadedMonitorSupport());
         }

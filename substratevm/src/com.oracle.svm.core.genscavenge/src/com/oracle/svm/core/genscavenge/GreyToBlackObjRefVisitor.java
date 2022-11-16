@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,18 +24,19 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.UnsignedWord;
-
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
+import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
+
+import static com.oracle.svm.core.monitor.ThinLockMonitorSupport.isThinLockMonitor;
 
 /**
  * This visitor is handed <em>Pointers to Object references</em> and if necessary it promotes the
@@ -81,6 +82,10 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
 
         if (HeapImpl.getHeapImpl().isInImageHeap(p)) {
             counters.noteNonHeapReferent();
+            return true;
+        }
+
+        if (isThinLockMonitor(p)) {   // Ignore if it is thin lock mark
             return true;
         }
 

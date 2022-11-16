@@ -136,18 +136,18 @@ abstract class JavaMonitorQueuedSynchronizer {
     private transient volatile Node tail;
     private volatile int state;
     // see AbstractOwnableSynchronizer.exclusiveOwnerThread
-    private transient Thread exclusiveOwnerThread;
+    private transient long exclusiveOwnerThreadId;
 
     // see AbstractOwnableSynchronizer.setExclusiveOwnerThread(Thread)
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected final void setExclusiveOwnerThread(Thread thread) {
-        exclusiveOwnerThread = thread;
+    protected final void setExclusiveOwnerThreadId(long threadId) {
+        exclusiveOwnerThreadId = threadId;
     }
 
     // see AbstractOwnableSynchronizer.getExclusiveOwnerThread()
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected final Thread getExclusiveOwnerThread() {
-        return exclusiveOwnerThread;
+    protected final long getExclusiveOwnerThreadId() {
+        return exclusiveOwnerThreadId;
     }
 
     // see AbstractQueuedSynchronizer.getState()

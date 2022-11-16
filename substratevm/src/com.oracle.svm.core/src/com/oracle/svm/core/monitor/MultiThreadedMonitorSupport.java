@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -196,7 +196,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     @Uninterruptible(reason = "Avoid stack overflow error before yellow zone has been activated", calleeMustBe = false)
-    private static void slowPathMonitorEnter(Object obj) {
+    static void slowPathMonitorEnter(Object obj) {
         /*
          * A stack overflow error in the locking code would be reported as a fatal error, since
          * there must not be any exceptions flowing out of the monitor code. Enabling the yellow
@@ -245,7 +245,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     @Uninterruptible(reason = "Avoid stack overflow error before yellow zone has been activated", calleeMustBe = false)
-    private static void slowPathMonitorExit(Object obj) {
+    static void slowPathMonitorExit(Object obj) {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
             singleton().monitorExit(obj);

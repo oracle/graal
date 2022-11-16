@@ -76,12 +76,20 @@ import jdk.vm.ci.meta.SpeculationLog;
  */
 public class MonitorSnippets extends SubstrateTemplates implements Snippets {
 
-    protected static final SubstrateForeignCallDescriptor SLOW_PATH_MONITOR_ENTER = SnippetRuntime.findForeignCall(MultiThreadedMonitorSupport.class, "slowPathMonitorEnter", false,
-                    LocationIdentity.any());
-    protected static final SubstrateForeignCallDescriptor SLOW_PATH_MONITOR_EXIT = SnippetRuntime.findForeignCall(MultiThreadedMonitorSupport.class, "slowPathMonitorExit", false,
-                    LocationIdentity.any());
+    private static final SubstrateForeignCallDescriptor MONITOR_ENTER = initCallDescriptor("thinLockMonitorEnter", "slowPathMonitorEnter");
+    private static final SubstrateForeignCallDescriptor MONITOR_EXIT = initCallDescriptor("thinLockMonitorExit", "slowPathMonitorExit");
 
-    protected static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{SLOW_PATH_MONITOR_ENTER, SLOW_PATH_MONITOR_EXIT};
+    protected static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{MONITOR_ENTER, MONITOR_EXIT};
+
+    private static SubstrateForeignCallDescriptor initCallDescriptor(String thinLockMethodName, String slowPathMethodName) {
+        if (SubstrateOptions.ThinLock.getValue()) {
+            return SnippetRuntime.findForeignCall(ThinLockMonitorSupport.class, thinLockMethodName, false,
+                    LocationIdentity.any());
+        } else {
+            return SnippetRuntime.findForeignCall(MultiThreadedMonitorSupport.class, slowPathMethodName, false,
+                    LocationIdentity.any());
+        }
+    }
 
     @Snippet
     protected static void monitorEnterSnippet(Object obj) {
@@ -89,7 +97,7 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
         MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.any());
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            callSlowPath(SLOW_PATH_MONITOR_ENTER, obj);
+            callMonitorSupport(MONITOR_ENTER, obj);
         }
     }
 
@@ -99,12 +107,12 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
         MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.any());
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            callSlowPath(SLOW_PATH_MONITOR_EXIT, obj);
+            callMonitorSupport(MONITOR_EXIT, obj);
         }
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    protected static native void callSlowPath(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object obj);
+    protected static native void callMonitorSupport(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object obj);
 
     private final SnippetInfo monitorEnter;
     private final SnippetInfo monitorExit;
