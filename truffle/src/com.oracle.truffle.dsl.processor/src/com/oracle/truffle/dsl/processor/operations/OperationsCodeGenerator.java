@@ -331,6 +331,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     }
 
     CodeTypeElement createOperationNodeImpl() {
+        GeneratedTypeMirror typOperationNodes = new GeneratedTypeMirror("", OPERATION_NODES_IMPL_NAME);
+
         String simpleName = m.getTemplateType().getSimpleName().toString() + "Gen";
         CodeTypeElement typOperationNodeImpl = GeneratorUtils.createClass(m, null, MOD_PUBLIC_FINAL, simpleName, m.getTemplateType().asType());
         GeneratorUtils.addSuppressWarnings(context, typOperationNodeImpl, "unused", "cast", "unchecked", "hiding", "rawtypes", "static-method");
@@ -342,7 +344,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeTypeElement typExceptionHandler = typOperationNodeImpl.add(createExceptionHandler());
 
         CodeTypeElement typBytecodeBase = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_ABSTRACT, BYTECODE_BASE_NAME, null);
-        typOperationNodeImpl.add(createBytecodeBaseClass(typBytecodeBase, typOperationNodeImpl, typExceptionHandler));
+        typOperationNodeImpl.add(createBytecodeBaseClass(typBytecodeBase, typOperationNodeImpl, typOperationNodes, typExceptionHandler));
 
         CodeExecutableElement genCtor = typOperationNodeImpl.add(GeneratorUtils.createSuperConstructor(m.getTemplateType(), m.fdConstructor));
         genCtor.setSimpleName(CodeNames.of(simpleName));
@@ -373,7 +375,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         typOperationNodeImpl.add(new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, context.getDeclaredType("com.oracle.truffle.api.impl.UnsafeFrameAccess"), "UFA = UnsafeFrameAccess.lookup()"));
 
-        typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, new GeneratedTypeMirror("", OPERATION_NODES_IMPL_NAME), "nodes")));
+        typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, typOperationNodes, "nodes")));
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(short[].class), "_bc")));
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(Object[].class), "_consts")));
         typOperationNodeImpl.add(children(new CodeVariableElement(MOD_PRIVATE, arrayOf(types.Node), "_children")));
@@ -455,7 +457,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         CodeExecutableElement mDump = GeneratorUtils.overrideImplement(types.OperationIntrospection_Provider, "getIntrospectionData");
         typOperationNodeImpl.add(mDump);
-        mDump.createBuilder().startReturn().startCall("switchImpl.getIntrospectionData").string("_bc, _handlers, _consts").end(2);
+        mDump.createBuilder().startReturn().startCall("switchImpl.getIntrospectionData").string("_bc, _handlers, _consts, nodes, sourceInfo").end(2);
 
         CodeExecutableElement mGetLockAccessor = new CodeExecutableElement(MOD_PRIVATE, context.getType(Lock.class), "getLockAccessor");
         typOperationNodeImpl.add(mGetLockAccessor);
@@ -1810,7 +1812,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         return opDataImpl;
     }
 
-    private CodeTypeElement createBytecodeBaseClass(CodeTypeElement baseClass, CodeTypeElement opNodeImpl, CodeTypeElement typExceptionHandler) {
+    private CodeTypeElement createBytecodeBaseClass(CodeTypeElement baseClass, CodeTypeElement opNodeImpl, TypeMirror typOperationNodes, CodeTypeElement typExceptionHandler) {
 
         CodeExecutableElement loopMethod = new CodeExecutableElement(MOD_ABSTRACT, context.getType(int.class), "continueAt");
         loopMethod.addParameter(new CodeVariableElement(opNodeImpl.asType(), "$this"));
@@ -1837,6 +1839,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         dumpMethod.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(context.getType(short.class)), "$bc"));
         dumpMethod.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(typExceptionHandler.asType()), "$handlers"));
         dumpMethod.addParameter(new CodeVariableElement(context.getType(Object[].class), "$consts"));
+        dumpMethod.addParameter(new CodeVariableElement(typOperationNodes, "nodes"));
+        dumpMethod.addParameter(new CodeVariableElement(context.getType(int[].class), "sourceInfo"));
         baseClass.add(dumpMethod);
 
         if (m.isGenerateAOT()) {
@@ -2608,14 +2612,14 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.statement("break");
         b.end(); // case
 
-        b.end();// switch
+        b.end(); // switch
 
         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
 
         b.startStatement().startCall("setResultBoxedImpl").string("bc").string("bci - bciOffset").string("0").end(2);
         b.startThrow().startNew(types.UnexpectedResultException).string("frame.getValue(slot)").end(2);
 
-        b.end();// else
+        b.end(); // else
 
         return mExpectPrimitive;
     }
@@ -2747,6 +2751,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.statement("exceptionHandlers.clear()");
         b.statement("Arrays.fill(instructionHistory, -1)");
         b.statement("instructionHistoryIndex = 0");
+
+        b.startIf().string("sourceBuilder != null").end().startBlock();
+        b.statement("sourceBuilder.reset()");
+        b.end();
 
         if (m.enableYield) {
             b.statement("yieldCount = 0");

@@ -45,7 +45,6 @@ import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtil
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -219,22 +218,37 @@ public class OperationsBytecodeCodeGenerator {
 
         b.end();
 
-        // b.startIf().string("sourceInfo != null").end();
-        // b.startBlock();
-        // {
-        // b.statement("sb.append(\"Source info:\\n\")");
-        // b.startFor().string("int i = 0; i < sourceInfo[0].length; i++").end();
-        // b.startBlock();
-        //
-        // b.statement("sb.append(String.format(\" bci=%04x, offset=%d, length=%d\\n\",
-        // sourceInfo[0][i],
-        // sourceInfo[1][i], sourceInfo[2][i]))");
-        //
-        // b.end();
-        // }
-        // b.end();
+        b.declaration("Object[]", "si", "null");
 
-        b.startReturn().string("OperationIntrospection.Provider.create(new Object[]{0, target.toArray(), ehTarget.toArray()})").end();
+        // nodes.getSources() is null until we finish parsing everything
+        b.startIf().string("nodes != null && nodes.getSources() != null && sourceInfo != null").end().startBlock(); // {
+
+        b.declaration("ArrayList<Object[]>", "siTarget", "new ArrayList<>()");
+
+        b.startFor().string("int i = 0; i < sourceInfo.length; i += 3").end().startBlock(); // {
+
+        b.declaration("int", "startBci", "sourceInfo[i] & 0xffff");
+        b.declaration("int", "endBci", "i + 3 == sourceInfo.length ? $bc.length : sourceInfo[i + 3] & 0xffff");
+
+        b.startIf().string("startBci == endBci").end().startBlock().statement("continue").end();
+
+        b.declaration("int", "sourceIndex", "sourceInfo[i] >> 16");
+        b.declaration("int", "sourceStart", "sourceInfo[i + 1]");
+        b.declaration("int", "sourceLength", "sourceInfo[i + 2]");
+
+        b.startStatement().startCall("siTarget.add").startNewArray((ArrayType) context.getType(Object[].class), null);
+        b.string("startBci");
+        b.string("endBci");
+        b.string("sourceIndex < 0 || sourceStart < 0 ? null : nodes.getSources()[sourceIndex].createSection(sourceStart, sourceLength)");
+        b.end(3);
+
+        b.end(); // }
+
+        b.statement("si = siTarget.toArray()");
+
+        b.end(); // }
+
+        b.startReturn().string("OperationIntrospection.Provider.create(new Object[]{0, target.toArray(), ehTarget.toArray(), si})").end();
 
         vars.bci = null;
 

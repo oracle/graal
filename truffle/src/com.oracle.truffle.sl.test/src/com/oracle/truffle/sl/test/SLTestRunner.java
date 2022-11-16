@@ -82,7 +82,6 @@ import org.junit.runners.ParentRunner;
 import org.junit.runners.model.InitializationError;
 
 import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.api.operation.tracing.ExecutionTracer;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.test.SLTestRunner.TestCase;
@@ -303,12 +302,8 @@ public class SLTestRunner extends ParentRunner<TestCase> {
                 SLLanguage.installBuiltin(builtin);
             }
 
-            Context.Builder builder = Context.newBuilder() //
-                            .allowExperimentalOptions(true) //
-                            .allowHostClassLookup((s) -> true) //
-                            .allowHostAccess(HostAccess.ALL) //
-                            .in(new ByteArrayInputStream(testCase.testInput.getBytes("UTF-8"))) //
-                            .out(out);
+            Context.Builder builder = Context.newBuilder().allowExperimentalOptions(true).allowHostClassLookup((s) -> true).allowHostAccess(HostAccess.ALL).in(
+                            new ByteArrayInputStream(testCase.testInput.getBytes("UTF-8"))).out(out);
             for (Map.Entry<String, String> e : testCase.options.entrySet()) {
                 builder.option(e.getKey(), e.getValue());
             }

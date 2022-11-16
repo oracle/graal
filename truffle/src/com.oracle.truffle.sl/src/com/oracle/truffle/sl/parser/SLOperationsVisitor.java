@@ -47,9 +47,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
-import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.debug.DebuggerTags;
@@ -82,6 +83,7 @@ import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.Member_expres
 import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.NameAccessContext;
 import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.NumericLiteralContext;
 import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.Return_statementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.StatementContext;
 import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.StringLiteralContext;
 import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.TermContext;
 import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.While_statementContext;
@@ -97,7 +99,7 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
     private static final boolean FORCE_SERIALIZE = false;
 
     public static void parseSL(SLLanguage language, Source source, Map<TruffleString, RootCallTarget> functions) {
-        var nodes = SLOperationRootNodeGen.create(OperationConfig.DEFAULT, builder -> {
+        var nodes = SLOperationRootNodeGen.create(OperationConfig.WITH_SOURCE, builder -> {
             SLOperationsVisitor visitor = new SLOperationsVisitor(language, source, builder);
             parseSLImpl(source, visitor);
         });
@@ -115,6 +117,18 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
             TruffleString name = node.getMetadata(SLOperationRootNode.MethodName);
             RootCallTarget callTarget = node.getCallTarget();
             functions.put(name, callTarget);
+
+            if (DO_LOG_NODE_CREATION) {
+                try {
+                    System./**/out.println("----------------------------------------------");
+                    System./**/out.printf(" Node: %s%n", name);
+                    System./**/out.println(node.dump());
+                    System./**/out.println("----------------------------------------------");
+                } catch (Exception ex) {
+                    System./**/out.println("error while dumping: ");
+                    ex.printStackTrace(System.out);
+                }
+            }
         }
     }
 
@@ -138,8 +152,24 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
 
     @Override
     public Void visit(ParseTree tree) {
-        Interval sourceInterval = tree.getSourceInterval();
-        b.beginSourceSection(sourceInterval.a, sourceInterval.length());
+        int sourceStart;
+        int sourceEnd;
+
+        if (tree instanceof ParserRuleContext) {
+            ParserRuleContext ctx = (ParserRuleContext) tree;
+            sourceStart = ctx.getStart().getStartIndex();
+            sourceEnd = ctx.getStop().getStopIndex() + 1;
+        } else if (tree instanceof TerminalNode) {
+            TerminalNode node = (TerminalNode) tree;
+            sourceStart = node.getSymbol().getStartIndex();
+            sourceEnd = node.getSymbol().getStopIndex() + 1;
+        } else {
+            throw new AssertionError("unknown tree type: " + tree);
+        }
+
+        System./**/out.println(" visiting " + tree.toStringTree(new SimpleLanguageOperationsParser(null)));
+
+        b.beginSourceSection(sourceStart, sourceEnd - sourceStart);
         super.visit(tree);
         b.endSourceSection();
         return null;
@@ -184,18 +214,6 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
 
         OperationRootNode node = b.endRoot();
 
-        if (DO_LOG_NODE_CREATION) {
-            try {
-                System./**/out.println("----------------------------------------------");
-                System./**/out.printf(" Node: %s%n", name);
-                System./**/out.println(node.dump());
-                System./**/out.println("----------------------------------------------");
-            } catch (Exception ex) {
-                System./**/out.println("error while dumping: ");
-                ex.printStackTrace(System.out);
-            }
-        }
-
         return null;
     }
 
@@ -208,7 +226,9 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
             locals.add(b.createLocal());
         }
 
-        super.visitBlock(ctx);
+        for (StatementContext child : ctx.statement()) {
+            visit(child);
+        }
 
         exitBlock();
 

@@ -44,13 +44,12 @@ public final class OperationConfig {
 
     public static final OperationConfig DEFAULT = new OperationConfig(false, false);
     public static final OperationConfig WITH_SOURCE = new OperationConfig(true, false);
-
     public static final OperationConfig COMPLETE = new OperationConfig(true, true);
 
     private final boolean withSource;
     private final boolean withInstrumentation;
 
-    public OperationConfig(boolean withSource, boolean withInstrumentation) {
+    private OperationConfig(boolean withSource, boolean withInstrumentation) {
         this.withSource = withSource;
         this.withInstrumentation = withInstrumentation;
     }

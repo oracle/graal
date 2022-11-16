@@ -917,7 +917,8 @@ public class TestOperationsParserTest {
 
     @Test
     public void testTeeLocal() {
-        RootCallTarget root = parse(b -> { b.beginRoot(LANGUAGE);
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
 
             OperationLocal local = b.createLocal();
 

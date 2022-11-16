@@ -443,7 +443,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         }
 
         @Override
-        OperationIntrospection getIntrospectionData(short[] $bc, ExceptionHandler[] $handlers, Object[] $consts) {
+        OperationIntrospection getIntrospectionData(short[] $bc, ExceptionHandler[] $handlers, Object[] $consts, OperationNodesImpl nodes, int[] sourceInfo) {
             int $bci = 0;
             ArrayList<Object[]> target = new ArrayList<>();
             while ($bci < $bc.length) {
@@ -465,7 +465,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                     case INSTR_BRANCH :
                     {
                         Object[] dec = new Object[] {$bci, "branch", Arrays.copyOfRange($bc, $bci, $bci + BRANCH_LENGTH), new Object[] {
-                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) unsafeFromBytecode($bc, $bci + BRANCH_BRANCH_TARGET_OFFSET + 0)}}};
+                            new Object[] {ArgumentKind.BRANCH_OFFSET, (int) unsafeFromBytecode($bc, $bci + BRANCH_BRANCH_TARGET_OFFSET + 0)}}};
                         $bci = $bci + BRANCH_LENGTH;
                         target.add(dec);
                         break;
@@ -473,7 +473,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                     case INSTR_BRANCH_FALSE :
                     {
                         Object[] dec = new Object[] {$bci, "branch.false", Arrays.copyOfRange($bc, $bci, $bci + BRANCH_FALSE_LENGTH), new Object[] {
-                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_TARGET_OFFSET + 0)}}};
+                            new Object[] {ArgumentKind.BRANCH_OFFSET, (int) unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_TARGET_OFFSET + 0)}}};
                         $bci = $bci + BRANCH_FALSE_LENGTH;
                         target.add(dec);
                         break;
@@ -693,7 +693,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                         Object[] dec = new Object[] {$bci, "sc.SLAnd", Arrays.copyOfRange($bc, $bci, $bci + SC_SL_AND_LENGTH), new Object[] {
                             new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + SC_SL_AND_CONSTANT_OFFSET) + 0]},
                             new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + SC_SL_AND_POP_INDEXED_OFFSET + 0) & 0xff)},
-                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) unsafeFromBytecode($bc, $bci + SC_SL_AND_BRANCH_TARGET_OFFSET + 0)}}};
+                            new Object[] {ArgumentKind.BRANCH_OFFSET, (int) unsafeFromBytecode($bc, $bci + SC_SL_AND_BRANCH_TARGET_OFFSET + 0)}}};
                         $bci = $bci + SC_SL_AND_LENGTH;
                         target.add(dec);
                         break;
@@ -703,7 +703,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                         Object[] dec = new Object[] {$bci, "sc.SLOr", Arrays.copyOfRange($bc, $bci, $bci + SC_SL_OR_LENGTH), new Object[] {
                             new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + SC_SL_OR_CONSTANT_OFFSET) + 0]},
                             new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + SC_SL_OR_POP_INDEXED_OFFSET + 0) & 0xff)},
-                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) unsafeFromBytecode($bc, $bci + SC_SL_OR_BRANCH_TARGET_OFFSET + 0)}}};
+                            new Object[] {ArgumentKind.BRANCH_OFFSET, (int) unsafeFromBytecode($bc, $bci + SC_SL_OR_BRANCH_TARGET_OFFSET + 0)}}};
                         $bci = $bci + SC_SL_OR_LENGTH;
                         target.add(dec);
                         break;
@@ -2021,7 +2021,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                         $bci += C_SL_TO_BOOLEAN_LENGTH;
                         {
                             Object[] dec = new Object[] {$bci, "branch.false", Arrays.copyOfRange($bc, $bci, $bci + BRANCH_FALSE_LENGTH), new Object[] {
-                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_TARGET_OFFSET + 0)}}};
+                                new Object[] {ArgumentKind.BRANCH_OFFSET, (int) unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_TARGET_OFFSET + 0)}}};
                             ((Object[]) decSuper[4])[1] = dec;
                         }
                         $bci += BRANCH_FALSE_LENGTH;
@@ -2037,7 +2037,23 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             for (int i = 0; i < $handlers.length; i++) {
                 ehTarget.add(new Object[] {$handlers[i].startBci, $handlers[i].endBci, $handlers[i].handlerBci});
             }
-            return OperationIntrospection.Provider.create(new Object[]{0, target.toArray(), ehTarget.toArray()});
+            Object[] si = null;
+            if (nodes != null && nodes.getSources() != null && sourceInfo != null) {
+                ArrayList<Object[]> siTarget = new ArrayList<>();
+                for (int i = 0; i < sourceInfo.length; i += 3) {
+                    int startBci = sourceInfo[i] & 0xffff;
+                    int endBci = i + 3 == sourceInfo.length ? $bc.length : sourceInfo[i + 3] & 0xffff;
+                    if (startBci == endBci) {
+                        continue;
+                    }
+                    int sourceIndex = sourceInfo[i] >> 16;
+                    int sourceStart = sourceInfo[i + 1];
+                    int sourceLength = sourceInfo[i + 2];
+                    siTarget.add(new Object[] {startBci, endBci, sourceIndex < 0 || sourceStart < 0 ? null : nodes.getSources()[sourceIndex].createSection(sourceStart, sourceLength)});
+                }
+                si = siTarget.toArray();
+            }
+            return OperationIntrospection.Provider.create(new Object[]{0, target.toArray(), ehTarget.toArray(), si});
         }
 
         private static boolean SLAdd_fallbackGuard__(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value, Object $child1Value) {
@@ -6433,7 +6449,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         }
 
         @Override
-        OperationIntrospection getIntrospectionData(short[] $bc, ExceptionHandler[] $handlers, Object[] $consts) {
+        OperationIntrospection getIntrospectionData(short[] $bc, ExceptionHandler[] $handlers, Object[] $consts, OperationNodesImpl nodes, int[] sourceInfo) {
             int $bci = 0;
             ArrayList<Object[]> target = new ArrayList<>();
             while ($bci < $bc.length) {
@@ -6455,7 +6471,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                     case INSTR_BRANCH :
                     {
                         Object[] dec = new Object[] {$bci, "branch", Arrays.copyOfRange($bc, $bci, $bci + BRANCH_LENGTH), new Object[] {
-                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) unsafeFromBytecode($bc, $bci + BRANCH_BRANCH_TARGET_OFFSET + 0)}}};
+                            new Object[] {ArgumentKind.BRANCH_OFFSET, (int) unsafeFromBytecode($bc, $bci + BRANCH_BRANCH_TARGET_OFFSET + 0)}}};
                         $bci = $bci + BRANCH_LENGTH;
                         target.add(dec);
                         break;
@@ -6463,7 +6479,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                     case INSTR_BRANCH_FALSE :
                     {
                         Object[] dec = new Object[] {$bci, "branch.false", Arrays.copyOfRange($bc, $bci, $bci + BRANCH_FALSE_LENGTH), new Object[] {
-                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_TARGET_OFFSET + 0)}}};
+                            new Object[] {ArgumentKind.BRANCH_OFFSET, (int) unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_TARGET_OFFSET + 0)}}};
                         $bci = $bci + BRANCH_FALSE_LENGTH;
                         target.add(dec);
                         break;
@@ -6683,7 +6699,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                         Object[] dec = new Object[] {$bci, "sc.SLAnd", Arrays.copyOfRange($bc, $bci, $bci + SC_SL_AND_LENGTH), new Object[] {
                             new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + SC_SL_AND_CONSTANT_OFFSET) + 0]},
                             new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + SC_SL_AND_POP_INDEXED_OFFSET + 0) & 0xff)},
-                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) unsafeFromBytecode($bc, $bci + SC_SL_AND_BRANCH_TARGET_OFFSET + 0)}}};
+                            new Object[] {ArgumentKind.BRANCH_OFFSET, (int) unsafeFromBytecode($bc, $bci + SC_SL_AND_BRANCH_TARGET_OFFSET + 0)}}};
                         $bci = $bci + SC_SL_AND_LENGTH;
                         target.add(dec);
                         break;
@@ -6693,7 +6709,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                         Object[] dec = new Object[] {$bci, "sc.SLOr", Arrays.copyOfRange($bc, $bci, $bci + SC_SL_OR_LENGTH), new Object[] {
                             new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + SC_SL_OR_CONSTANT_OFFSET) + 0]},
                             new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + SC_SL_OR_POP_INDEXED_OFFSET + 0) & 0xff)},
-                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) unsafeFromBytecode($bc, $bci + SC_SL_OR_BRANCH_TARGET_OFFSET + 0)}}};
+                            new Object[] {ArgumentKind.BRANCH_OFFSET, (int) unsafeFromBytecode($bc, $bci + SC_SL_OR_BRANCH_TARGET_OFFSET + 0)}}};
                         $bci = $bci + SC_SL_OR_LENGTH;
                         target.add(dec);
                         break;
@@ -8011,7 +8027,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                         $bci += C_SL_TO_BOOLEAN_LENGTH;
                         {
                             Object[] dec = new Object[] {$bci, "branch.false", Arrays.copyOfRange($bc, $bci, $bci + BRANCH_FALSE_LENGTH), new Object[] {
-                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_TARGET_OFFSET + 0)}}};
+                                new Object[] {ArgumentKind.BRANCH_OFFSET, (int) unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_TARGET_OFFSET + 0)}}};
                             ((Object[]) decSuper[4])[1] = dec;
                         }
                         $bci += BRANCH_FALSE_LENGTH;
@@ -8027,7 +8043,23 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             for (int i = 0; i < $handlers.length; i++) {
                 ehTarget.add(new Object[] {$handlers[i].startBci, $handlers[i].endBci, $handlers[i].handlerBci});
             }
-            return OperationIntrospection.Provider.create(new Object[]{0, target.toArray(), ehTarget.toArray()});
+            Object[] si = null;
+            if (nodes != null && nodes.getSources() != null && sourceInfo != null) {
+                ArrayList<Object[]> siTarget = new ArrayList<>();
+                for (int i = 0; i < sourceInfo.length; i += 3) {
+                    int startBci = sourceInfo[i] & 0xffff;
+                    int endBci = i + 3 == sourceInfo.length ? $bc.length : sourceInfo[i + 3] & 0xffff;
+                    if (startBci == endBci) {
+                        continue;
+                    }
+                    int sourceIndex = sourceInfo[i] >> 16;
+                    int sourceStart = sourceInfo[i + 1];
+                    int sourceLength = sourceInfo[i + 2];
+                    siTarget.add(new Object[] {startBci, endBci, sourceIndex < 0 || sourceStart < 0 ? null : nodes.getSources()[sourceIndex].createSection(sourceStart, sourceLength)});
+                }
+                si = siTarget.toArray();
+            }
+            return OperationIntrospection.Provider.create(new Object[]{0, target.toArray(), ehTarget.toArray(), si});
         }
 
         private static Object SLAdd_executeUncached_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
@@ -9040,7 +9072,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
 
     @Override
     public OperationIntrospection getIntrospectionData() {
-        return switchImpl.getIntrospectionData(_bc, _handlers, _consts);
+        return switchImpl.getIntrospectionData(_bc, _handlers, _consts, nodes, sourceInfo);
     }
 
     private Lock getLockAccessor() {
@@ -15426,7 +15458,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
 
         abstract int continueAt(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, ExceptionHandler[] $handlers, int[] $conditionProfiles, int maxLocals);
 
-        abstract OperationIntrospection getIntrospectionData(short[] $bc, ExceptionHandler[] $handlers, Object[] $consts);
+        abstract OperationIntrospection getIntrospectionData(short[] $bc, ExceptionHandler[] $handlers, Object[] $consts, OperationNodesImpl nodes, int[] sourceInfo);
 
         abstract void prepareForAOT(SLOperationRootNodeGen $this, short[] $bc, Object[] $consts, Node[] $children, TruffleLanguage<?> language, RootNode root);
 
@@ -15667,6 +15699,9 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             exceptionHandlers.clear();
             Arrays.fill(instructionHistory, -1);
             instructionHistoryIndex = 0;
+            if (sourceBuilder != null) {
+                sourceBuilder.reset();
+            }
             metadata_MethodName = null;
         }
 

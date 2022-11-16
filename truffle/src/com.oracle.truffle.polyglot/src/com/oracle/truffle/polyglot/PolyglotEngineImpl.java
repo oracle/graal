@@ -1219,7 +1219,16 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             }
 
             if (operationStatistics != null) {
-                operationStatistics.write(engineOptionValues.get(PolyglotEngineOptions.OperationsDumpDecisions));
+                boolean dumpStatistics = engineOptionValues.get(PolyglotEngineOptions.OperationsDumpDecisions);
+
+                StringWriter stringDumpWriter = dumpStatistics ? new StringWriter() : null;
+                PrintWriter dumpWriter = dumpStatistics ? new PrintWriter(stringDumpWriter) : null;
+
+                operationStatistics.write(dumpWriter);
+
+                if (dumpStatistics) {
+                    getEngineLogger().log(Level.INFO, stringDumpWriter.toString());
+                }
             }
 
             // don't commit changes to contexts if still running

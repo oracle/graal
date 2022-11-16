@@ -71,13 +71,26 @@ public class SLException extends AbstractOperationsTruffleException {
         super(message, location, -1);
     }
 
+    @TruffleBoundary
+    public static SLException typeError(Node operation, int bci, Object... values) {
+        String operationName = null;
+        if (operation != null) {
+            NodeInfo nodeInfo = SLLanguage.lookupNodeInfo(operation.getClass());
+            if (nodeInfo != null) {
+                operationName = nodeInfo.shortName();
+            }
+        }
+
+        return typeError(operation, operationName, bci, values);
+    }
+
     /**
      * Provides a user-readable message for run-time type errors. SL is strongly typed, i.e., there
      * are no automatic type conversions of values.
      */
     @TruffleBoundary
     @SuppressWarnings("deprecation")
-    public static SLException typeError(Node operation, int bci, Object... values) {
+    public static SLException typeError(Node operation, String operationName, int bci, Object... values) {
         StringBuilder result = new StringBuilder();
         result.append("Type error");
 
@@ -88,17 +101,11 @@ public class SLException extends AbstractOperationsTruffleException {
             if (ss != null && ss.isAvailable()) {
                 result.append(" at ").append(ss.getSource().getName()).append(" line ").append(ss.getStartLine()).append(" col ").append(ss.getStartColumn());
             }
-            if (bci != -1) {
-                result.append(String.format(" @%04x", bci));
-            }
         }
 
         result.append(": operation");
         if (operation != null) {
-            NodeInfo nodeInfo = SLLanguage.lookupNodeInfo(operation.getClass());
-            if (nodeInfo != null) {
-                result.append(" \"").append(nodeInfo.shortName()).append("\"");
-            }
+            result.append(" \"").append(operationName).append("\"");
         }
 
         result.append(" not defined for");

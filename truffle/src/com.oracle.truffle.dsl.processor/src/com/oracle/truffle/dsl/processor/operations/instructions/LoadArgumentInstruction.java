@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
-import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;

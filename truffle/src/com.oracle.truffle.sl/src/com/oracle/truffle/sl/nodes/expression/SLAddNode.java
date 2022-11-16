@@ -134,6 +134,6 @@ public abstract class SLAddNode extends SLBinaryNode {
 
     @Fallback
     public static Object typeError(Object left, Object right, @Bind("this") Node node, @Bind("$bci") int bci) {
-        throw SLException.typeError(node, bci, left, right);
+        throw SLException.typeError(node, "+", bci, left, right);
     }
 }

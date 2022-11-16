@@ -45,7 +45,6 @@ import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtil
 import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createEmitInstruction;
 import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createEmitLabel;
 
-import java.util.Arrays;
 import java.util.List;
 
 import javax.lang.model.type.TypeKind;
@@ -266,7 +265,7 @@ public abstract class Operation {
             args.arguments = new CodeTree[1];
             args.arguments[0] = CodeTreeBuilder.singleString("((OperationLocalImpl)operationData.arguments[0]).id");
 
-            // TODO validate the local is nested properly
+            // todo: validate the local is nested properly
             // (not security critical since non-local accesses use safe API)
             return OperationGeneratorUtils.createEmitInstruction(vars, instr, args);
         }
@@ -297,7 +296,7 @@ public abstract class Operation {
             args.arguments = new CodeTree[1];
             args.arguments[0] = CodeTreeBuilder.singleString("((OperationLocalImpl)operationData.arguments[0]).id");
 
-            // TODO validate the local is nested properly
+            // todo: validate the local is nested properly
             // (not security critical since non-local accesses use safe API)
             return OperationGeneratorUtils.createEmitInstruction(vars, instr, args);
         }

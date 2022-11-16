@@ -41,7 +41,6 @@
 package com.oracle.truffle.dsl.processor.generator;
 
 import java.util.List;
-import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import javax.lang.model.element.ExecutableElement;
@@ -51,7 +50,6 @@ import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.BoxingSplit
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.MultiStateBitSet;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.ReportPolymorphismAction;
-import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.model.CacheExpression;

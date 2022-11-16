@@ -38,64 +38,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.operation;
+package com.oracle.truffle.api.operation.introspection;
 
-import java.util.List;
-import java.util.function.Function;
-
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.NodeInterface;
-import com.oracle.truffle.api.operation.introspection.ExceptionHandler;
-import com.oracle.truffle.api.operation.introspection.Instruction;
-import com.oracle.truffle.api.operation.introspection.OperationIntrospection;
-import com.oracle.truffle.api.operation.introspection.SourceInformation;
 import com.oracle.truffle.api.source.SourceSection;
 
-public interface OperationRootNode extends NodeInterface, OperationIntrospection.Provider {
-    default <T> T getMetadata(MetadataKey<T> key) {
-        return key.getValue(this);
+public final class SourceInformation {
+    private final Object[] data;
+
+    SourceInformation(Object[] data) {
+        this.data = data;
     }
 
-    static <T> void setMetadataAccessor(MetadataKey<T> key, Function<OperationRootNode, T> getter) {
-        key.setGetter(getter);
+    public int getStartBci() {
+        return (int) data[0];
     }
 
-    default String dump() {
-        StringBuilder sb = new StringBuilder();
-        OperationIntrospection id = getIntrospectionData();
+    public int getEndBci() {
+        return (int) data[1];
+    }
 
-        for (Instruction i : id.getInstructions()) {
-            sb.append(i.toString()).append('\n');
+    public SourceSection getSourceSection() {
+        return (SourceSection) data[2];
+    }
+
+    @Override
+    public String toString() {
+        Object sourceSection = getSourceSection();
+        if (sourceSection == null) {
+            sourceSection = "<none>";
         }
-
-        List<ExceptionHandler> handlers = id.getExceptionHandlers();
-        if (handlers.size() > 0) {
-            sb.append("Exception handlers:\n");
-            for (ExceptionHandler eh : handlers) {
-                sb.append("  ").append(eh.toString()).append('\n');
-            }
-        }
-
-        List<SourceInformation> sourceInfo = id.getSourceInformation();
-        if (sourceInfo != null) {
-            sb.append("Source Information:\n");
-            for (SourceInformation si : sourceInfo) {
-                sb.append("  ").append(si.toString()).append('\n');
-            }
-        }
-
-        return sb.toString();
-    }
-
-    Object execute(VirtualFrame frame);
-
-    SourceSection getSourceSectionAtBci(int bci);
-
-    @SuppressWarnings("unused")
-    default void executeProlog(VirtualFrame frame) {
-    }
-
-    @SuppressWarnings("unused")
-    default void executeEpilog(VirtualFrame frame, Object returnValue, Throwable throwable) {
+        return String.format("[%04x .. %04x] %s", getStartBci(), getEndBci(), sourceSection);
     }
 }

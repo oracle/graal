@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.dsl.processor.operations;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;

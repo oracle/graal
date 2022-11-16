@@ -53,7 +53,6 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
-import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
@@ -557,22 +556,21 @@ public abstract class Instruction {
 
         // superinstructions
 
-        final int MAX_HISTORY = 8;
+        final int maxHistory = 8;
 
-        b.startAssign("instructionHistory[++instructionHistoryIndex % " + MAX_HISTORY + "]").variable(opcodeIdField).end();
+        b.startAssign("instructionHistory[++instructionHistoryIndex % " + maxHistory + "]").variable(opcodeIdField).end();
 
         boolean elseIf = false;
         for (SuperInstruction si : ctx.getSuperInstructions()) {
             Instruction[] instrs = si.getInstructions();
 
             if (instrs[instrs.length - 1].id == id) {
-                String lengthOffset = "";
                 elseIf = b.startIf(elseIf);
                 for (int i = 1; i < instrs.length; i++) {
                     if (i != 1) {
                         b.string(" && ");
                     }
-                    b.string("instructionHistory[(instructionHistoryIndex - " + i + " + " + MAX_HISTORY + ") % 8] == ");
+                    b.string("instructionHistory[(instructionHistoryIndex - " + i + " + " + maxHistory + ") % 8] == ");
                     b.variable(instrs[instrs.length - 1 - i].opcodeIdField);
                 }
                 b.end().startBlock();
@@ -746,7 +744,7 @@ public abstract class Instruction {
 
         for (int i = 0; i < branchTargets.size(); i++) {
             int ci = i;
-            createAddArgument(b, "CHILD_OFFSET", () -> b.cast(context.getType(int.class)).tree(createBranchTargetIndex(vars, ci, false)));
+            createAddArgument(b, "BRANCH_OFFSET", () -> b.cast(context.getType(int.class)).tree(createBranchTargetIndex(vars, ci, false)));
         }
 
         b.end(3); // arg array, instr array, stmt
