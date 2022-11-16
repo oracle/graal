@@ -55,6 +55,7 @@ public final class JsConstants {
     private static final int EXPORT_COUNT_LIMIT = 100000;
     private static final int GLOBAL_COUNT_LIMIT = 1000000;
     private static final int DATA_SEGMENT_LIMIT = 100000;
+    private static final int TABLE_COUNT_LIMIT = 100000;
     private static final int ELEMENT_SEGMENT_LIMIT = 10000000;
     private static final int FUNCTION_SIZE_LIMIT = 7654321;
     private static final int PARAM_COUNT_LIMIT = 1000;
@@ -68,6 +69,7 @@ public final class JsConstants {
                     MODULE_SIZE_LIMIT,
                     TYPE_COUNT_LIMIT,
                     FUNCTION_COUNT_LIMIT,
+                    TABLE_COUNT_LIMIT,
                     IMPORT_COUNT_LIMIT,
                     EXPORT_COUNT_LIMIT,
                     GLOBAL_COUNT_LIMIT,
