@@ -74,6 +74,12 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     public ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
         imageClassLoader = classLoaderSupport.getClassLoader();
+        /*
+         * Only if imageClassLoader is not the URLClassLoader we need to also remember its parent as
+         * classPathClassLoader (for use in isNativeImageClassLoaderImpl). Otherwise, there is only
+         * the URLClassLoader (already stored in imageClassLoader, extra classPathClassLoader field
+         * can be set to null).
+         */
         classPathClassLoader = imageClassLoader instanceof URLClassLoader ? null : (URLClassLoader) imageClassLoader.getParent();
         packageToModules = new HashMap<>();
         buildPackageToModulesMap(classLoaderSupport);
