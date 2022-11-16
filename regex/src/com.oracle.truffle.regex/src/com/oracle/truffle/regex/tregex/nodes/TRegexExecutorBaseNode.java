@@ -40,12 +40,15 @@
  */
 package com.oracle.truffle.regex.tregex.nodes;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
 @GenerateWrapper
 public abstract class TRegexExecutorBaseNode extends Node implements InstrumentableNode {
@@ -58,7 +61,50 @@ public abstract class TRegexExecutorBaseNode extends Node implements Instrumenta
     }
 
     @Override
-    public WrapperNode createWrapper(ProbeNode probeNode) {
+    public final WrapperNode createWrapper(ProbeNode probeNode) {
         return new TRegexExecutorBaseNodeWrapper(this, probeNode);
     }
+
+    public final TRegexExecutorNode unwrap() {
+        return (TRegexExecutorNode) (this instanceof TRegexExecutorBaseNodeWrapper ? ((TRegexExecutorBaseNodeWrapper) this).getDelegateNode() : this);
+    }
+
+    public abstract TRegexExecutorNode shallowCopy();
+
+    public abstract RegexSource getSource();
+
+    public final Encodings.Encoding getEncoding() {
+        return getSource().getEncoding();
+    }
+
+    public final boolean isUTF8() {
+        return getEncoding() == Encodings.UTF_8;
+    }
+
+    public final boolean isUTF16() {
+        return getEncoding() == Encodings.UTF_16;
+    }
+
+    public final boolean isUTF32() {
+        return getEncoding() == Encodings.UTF_32;
+    }
+
+    public final boolean isBooleanMatch() {
+        boolean booleanMatch = getSource().getOptions().isBooleanMatch();
+        CompilerAsserts.partialEvaluationConstant(booleanMatch);
+        return booleanMatch;
+    }
+
+    public abstract int getNumberOfTransitions();
+
+    public abstract String getName();
+
+    public abstract boolean isForward();
+
+    /**
+     * Returns {@code true} if this executor may write any new capture group boundaries.
+     */
+    public abstract boolean writesCaptureGroups();
+
+    public abstract TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex);
 }

@@ -37,6 +37,11 @@ EXPORTS
   _Init_thread_epoch
   _Init_thread_footer
   _Init_thread_header
+  ; export the following _Init_thread functions because they are intrinsified
+  _Init_thread_lock
+  _Init_thread_notify
+  _Init_thread_unlock
+  _Init_thread_wait
   ; operators
   ??2@YAPEAX_K@Z                     ; operator new
   ??2@YAPEAX_KAEBUnothrow_t@std@@@Z  ; operator (std::nothrow) new

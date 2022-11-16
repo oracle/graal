@@ -96,7 +96,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         }
         if (this.regressionTestMode) {
             regressTestBacktrackingNode = new NFARegexSearchNode(
-                            createEntryNode(TRegexCompiler.compileBacktrackingExecutor(getRegexLanguage(), ((TRegexNFAExecutorNode) nfaNode.getExecutor()).getNFA())));
+                            createEntryNode(TRegexCompiler.compileBacktrackingExecutor(getRegexLanguage(), ((TRegexNFAExecutorNode) nfaNode.getExecutor().unwrap()).getNFA())));
         }
     }
 
@@ -294,7 +294,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
                 }
             }
         } else if (!backtrackingMode) {
-            TRegexNFAExecutorNode nfaExecutorNode = (TRegexNFAExecutorNode) ((NFARegexSearchNode) runnerNode).getExecutor();
+            TRegexNFAExecutorNode nfaExecutorNode = (TRegexNFAExecutorNode) ((NFARegexSearchNode) runnerNode).getExecutor().unwrap();
             nfaExecutorNode.notifyDfaGeneratorBailedOut();
         }
     }
@@ -310,7 +310,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
 
     private LazyCaptureGroupRegexSearchNode compileLazyDFA(boolean allowSimpleCG) {
         try {
-            return TRegexCompiler.compileLazyDFAExecutor(getRegexLanguage(), ((TRegexNFAExecutorNode) nfaNode.getExecutor()).getNFA(), this, allowSimpleCG);
+            return TRegexCompiler.compileLazyDFAExecutor(getRegexLanguage(), ((TRegexNFAExecutorNode) nfaNode.getExecutor().unwrap()).getNFA(), this, allowSimpleCG);
         } catch (UnsupportedRegexException e) {
             Loggers.LOG_BAILOUT_MESSAGES.fine(() -> e.getReason() + ": " + source);
             return LAZY_DFA_BAILED_OUT;
@@ -419,11 +419,11 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         }
 
         public TRegexDFAExecutorNode getForwardExecutor() {
-            return forwardEntryNode == null ? null : (TRegexDFAExecutorNode) forwardEntryNode.getExecutor();
+            return forwardEntryNode == null ? null : (TRegexDFAExecutorNode) forwardEntryNode.getExecutor().unwrap();
         }
 
         public TRegexDFAExecutorNode getBackwardExecutor() {
-            return backwardEntryNode == null ? null : (TRegexDFAExecutorNode) backwardEntryNode.getExecutor();
+            return backwardEntryNode == null ? null : (TRegexDFAExecutorNode) backwardEntryNode.getExecutor().unwrap();
         }
 
         public boolean isSimpleCG() {
@@ -518,7 +518,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             this.entryNode = entryNode;
         }
 
-        public TRegexExecutorNode getExecutor() {
+        public TRegexExecutorBaseNode getExecutor() {
             return entryNode.getExecutor();
         }
 
@@ -537,7 +537,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             this.entryNode = entryNode;
         }
 
-        public TRegexExecutorNode getExecutor() {
+        public TRegexExecutorBaseNode getExecutor() {
             return entryNode.getExecutor();
         }
 

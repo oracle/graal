@@ -973,6 +973,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
                 '--features=com.oracle.svm.agent.NativeImageAgent$RegistrationFeature',
                 '--enable-url-protocols=jar',
             ],
+            headers=False,
         ),
         mx_sdk_vm.LibraryConfig(
             use_modules='image',
@@ -985,6 +986,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             build_args=driver_build_args + [
                 '--features=com.oracle.svm.diagnosticsagent.NativeImageDiagnosticsAgent$RegistrationFeature',
             ],
+            headers=False,
         ),
     ],
     provided_executables=['bin/<cmd:rebuild-images>'],
@@ -1149,6 +1151,7 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
             jar_distributions=libgraal_jar_distributions,
             build_args=libgraal_build_args + ['--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature'],
             add_to_module='java.base',
+            headers=False,
         ),
     ],
     stability="supported",
@@ -1667,6 +1670,8 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
         # Currently JDK 19 and JDK 17 have the same flags
         graal_compiler_flags_map['19'] = graal_compiler_flags_map['17']
         graal_compiler_flags_map['19-ea'] = graal_compiler_flags_map['19']
+        # Currently JDK 20 and JDK 19 have the same flags
+        graal_compiler_flags_map['20'] = graal_compiler_flags_map['19']
         # DO NOT ADD ANY NEW ADD-OPENS OR ADD-EXPORTS HERE!
         #
         # Instead provide the correct requiresConcealed entries in the moduleInfo

@@ -416,6 +416,7 @@ final class SourceImpl extends Source {
             return (URI) uri;
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         @CompilerDirectives.TruffleBoundary
         URL getURL() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,8 +30,8 @@
 #include <graalvm/llvm/polyglot.h>
 
 int main() {
-    void *boxed_true = polyglot_import("boxed_true");
-    void *boxed_false = polyglot_import("boxed_false");
+    bool boxed_true = polyglot_as_boolean(polyglot_import("boxed_true"));
+    bool boxed_false = polyglot_as_boolean(polyglot_import("boxed_false"));
 
     if (boxed_true) {
         // correct
@@ -40,9 +40,9 @@ int main() {
     }
 
     if (boxed_false) {
-        // correct
-    } else {
         return 2;
+    } else {
+        // correct
     }
 
     return 0;

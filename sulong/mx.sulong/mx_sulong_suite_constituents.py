@@ -561,6 +561,7 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
         self._install_dir = mx.join(self.out_dir, "result")
         # self._ninja_targets = self.getResults()
         _config = self._cmake_config_raw
+        _config.setdefault('CMAKE_BUILD_TYPE', 'Sulong')
         _module_path = mx.Suite._pop_list(_config, 'CMAKE_MODULE_PATH', self)
         _module_path.append('<path:com.oracle.truffle.llvm.tests.cmake>')
         _config['CMAKE_MODULE_PATH'] = ';'.join(_module_path)
@@ -589,6 +590,7 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
         _config['LLVM_LINK'] = mx_sulong.findBundledLLVMProgram('llvm-link')
         _config['LLVM_CONFIG'] = mx_sulong.findBundledLLVMProgram('llvm-config')
         _config['LLVM_OBJCOPY'] = mx_sulong.findBundledLLVMProgram('llvm-objcopy')
+        _config['CMAKE_NM'] = mx_sulong.findBundledLLVMProgram('llvm-nm')
         if DragonEggSupport.haveDragonegg():
             _config['DRAGONEGG'] = DragonEggSupport.pluginPath()
             _config['DRAGONEGG_GCC'] = DragonEggSupport.findGCCProgram('gcc', optional=False)

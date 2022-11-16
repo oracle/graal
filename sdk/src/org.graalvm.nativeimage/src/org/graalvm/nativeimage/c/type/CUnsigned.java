@@ -38,27 +38,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.impl;
+package org.graalvm.nativeimage.c.type;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
- * Deferring this to an extra class allows us to detect whether preview features are enabled. If
- * preview features are disabled then the {@link JDKAccessorImpl} class will not link correctly as
- * it uses preview API. Regular ways of detecting whether preview is enabled e.g. using the
- * jdk.internal.misc.PreviewFeatures are not always available to the JDKAccessor class. The separate
- * class also needs to be a top-level class otherwise they might get parsed together with the
- * enclosing class.
+ * Qualifies a C integer type as unsigned in an entry-point method signature.
+ *
+ * Can be placed only on integer types.
+ *
+ * @since 23.0
  */
-final class JDKAccessorImpl {
-
-    static void ensureInitialized() {
-        /*
-         * Method is intended to be invoked to make sure the enclosing class is initialized.
-         */
-    }
-
-    @SuppressWarnings("preview")
-    static boolean isVirtualThread(Thread t) {
-        return t.isVirtual();
-    }
-
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.TYPE_USE})
+public @interface CUnsigned {
 }

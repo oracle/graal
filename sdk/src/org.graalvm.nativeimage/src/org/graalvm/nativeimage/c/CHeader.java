@@ -38,27 +38,67 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.impl;
+package org.graalvm.nativeimage.c;
+
+import java.io.PrintWriter;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.util.Collections;
+import java.util.List;
 
 /**
- * Deferring this to an extra class allows us to detect whether preview features are enabled. If
- * preview features are disabled then the {@link JDKAccessorImpl} class will not link correctly as
- * it uses preview API. Regular ways of detecting whether preview is enabled e.g. using the
- * jdk.internal.misc.PreviewFeatures are not always available to the JDKAccessor class. The separate
- * class also needs to be a top-level class otherwise they might get parsed together with the
- * enclosing class.
+ * Defines the C header file for entry points enclosed by the annotated class or method.
+ *
+ * The {@code CHeader} annotation can be placed on methods and types: When placed on a method, this
+ * method will be included into the defined header file. When placed on a class, all entry points in
+ * that class (as well as the enclosing classes) will be included to the defined header file.
+ *
+ * @since 23.0
  */
-final class JDKAccessorImpl {
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.METHOD, ElementType.TYPE})
+public @interface CHeader {
 
-    static void ensureInitialized() {
-        /*
-         * Method is intended to be invoked to make sure the enclosing class is initialized.
+    /**
+     * Class that defines the header file properties.
+     *
+     * @since 23.0
+     */
+    Class<? extends CHeader.Header> value();
+
+    /**
+     * Container for Header file properties.
+     *
+     * @since 23.0
+     */
+    interface Header {
+        /**
+         * Name of the header file.
+         *
+         * @since 23.0
          */
-    }
+        String name();
 
-    @SuppressWarnings("preview")
-    static boolean isVirtualThread(Thread t) {
-        return t.isVirtual();
+        /**
+         * List that contains the {@code Class<? extends CHeader.Header>} instances that declare
+         * dependencies of this header file.
+         *
+         * @since 23.0
+         */
+        default List<Class<? extends Header>> dependsOn() {
+            return Collections.emptyList();
+        }
+
+        /**
+         * Writes a preamble after the dependencies and before the list of included methods.
+         *
+         * @since 23.0
+         */
+        @SuppressWarnings("unused")
+        default void writePreamble(PrintWriter writer) {
+        }
     }
 
 }

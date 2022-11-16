@@ -497,6 +497,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         FP80Node createFP80Node() {
             return LLVM80BitFloat.createAddNode();
         }
+
+        @Override
+        public String toString() {
+            return "ADD";
+        }
     };
 
     abstract static class ManagedMulNode extends ManagedCommutativeArithmeticNode {
@@ -583,6 +588,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         FP80Node createFP80Node() {
             return LLVM80BitFloat.createMulNode();
         }
+
+        @Override
+        public String toString() {
+            return "MUL";
+        }
     };
 
     abstract static class ManagedSubNode extends ManagedArithmeticNode {
@@ -658,6 +668,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         FP80Node createFP80Node() {
             return LLVM80BitFloat.createSubNode();
         }
+
+        @Override
+        public String toString() {
+            return "SUB";
+        }
     };
 
     private static final LLVMFPArithmeticOp DIV = new LLVMFPArithmeticOp() {
@@ -701,6 +716,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         FP80Node createFP80Node() {
             return LLVM80BitFloat.createDivNode();
         }
+
+        @Override
+        public String toString() {
+            return "DIV";
+        }
     };
 
     private static final LLVMArithmeticOp UDIV = new LLVMArithmeticOp() {
@@ -728,6 +748,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Override
         LLVMIVarBit doVarBit(LLVMIVarBit left, LLVMIVarBit right) {
             return left.unsignedDiv(right);
+        }
+
+        @Override
+        public String toString() {
+            return "UDIV";
         }
     };
 
@@ -772,6 +797,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         FP80Node createFP80Node() {
             return LLVM80BitFloat.createRemNode();
         }
+
+        @Override
+        public String toString() {
+            return "REM";
+        }
     };
 
     private static final LLVMArithmeticOp UREM = new LLVMArithmeticOp() {
@@ -799,6 +829,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Override
         LLVMIVarBit doVarBit(LLVMIVarBit left, LLVMIVarBit right) {
             return left.unsignedRem(right);
+        }
+
+        @Override
+        public String toString() {
+            return "UREM";
         }
     };
 
@@ -877,6 +912,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         LLVMIVarBit doVarBit(LLVMIVarBit left, LLVMIVarBit right) {
             return left.and(right);
         }
+
+        @Override
+        public String toString() {
+            return "ADD";
+        }
     };
 
     private static final LLVMArithmeticOp OR = new LLVMArithmeticOp() {
@@ -909,6 +949,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Override
         LLVMIVarBit doVarBit(LLVMIVarBit left, LLVMIVarBit right) {
             return left.or(right);
+        }
+
+        @Override
+        public String toString() {
+            return "OR";
         }
     };
 
@@ -969,6 +1014,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         LLVMIVarBit doVarBit(LLVMIVarBit left, LLVMIVarBit right) {
             return left.xor(right);
         }
+
+        @Override
+        public String toString() {
+            return "XOR";
+        }
     };
 
     private static final LLVMArithmeticOp SHL = new LLVMArithmeticOp() {
@@ -1001,6 +1051,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Override
         LLVMIVarBit doVarBit(LLVMIVarBit left, LLVMIVarBit right) {
             return left.leftShift(right);
+        }
+
+        @Override
+        public String toString() {
+            return "SHL";
         }
     };
 
@@ -1035,6 +1090,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         LLVMIVarBit doVarBit(LLVMIVarBit left, LLVMIVarBit right) {
             return left.logicalRightShift(right);
         }
+
+        @Override
+        public String toString() {
+            return "LSHL";
+        }
     };
 
     private static final LLVMArithmeticOp ASHR = new LLVMArithmeticOp() {
@@ -1067,6 +1127,11 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Override
         LLVMIVarBit doVarBit(LLVMIVarBit left, LLVMIVarBit right) {
             return left.arithmeticRightShift(right);
+        }
+
+        @Override
+        public String toString() {
+            return "ASHR";
         }
     };
 }

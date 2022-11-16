@@ -77,7 +77,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         switch (a) {
             case 0:
                 for (int i = 0; i < 1000; i++) {
-                    sum += System.currentTimeMillis();
+                    sum += (int) System.currentTimeMillis();
                 }
                 break;
             case 1:
@@ -106,7 +106,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         for (int i = 0; GraalDirectives.injectIterationCount(1000, i < 1000); i++) {
             switch (a) {
                 case 0:
-                    sum += System.currentTimeMillis();
+                    sum += (int) System.currentTimeMillis();
                     break;
                 case 1:
                     sum += 1;
