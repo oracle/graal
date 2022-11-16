@@ -48,6 +48,7 @@ import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import com.oracle.truffle.api.Assumption;
 import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -398,13 +399,19 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     }
 
     private static final class MultiByteArrayBuffer {
+        private static final int MAX_CONSTANT_ATTEMPTS = 5;
         private static final long MAX_BUFFER_SIZE = Sizes.MAX_MEMORY_64_INSTANCE_BYTE_SIZE;
         private static final int SEGMENT_LENGTH = 0x3fff_ffff;
         private static final long SEGMENT_MASK = 0xffff_ffff_ffff_ffffL - SEGMENT_LENGTH;
         private static final long OFFSET_MASK = SEGMENT_LENGTH;
         private static final int SEGMENT_SHIFT = 32 - Integer.numberOfLeadingZeros(SEGMENT_LENGTH);
 
-        private byte[][] buffer;
+        @CompilerDirectives.CompilationFinal private Assumption constantMemoryBufferAssumption;
+
+        @CompilerDirectives.CompilationFinal(dimensions = 1) private byte[][] constantBuffer;
+        private byte[][] dynamicBuffer;
+
+        private int constantAttempts = 0;
 
         private long bufferByteSize;
         private int segmentCount;
@@ -418,8 +425,21 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
             assert byteSize <= MAX_BUFFER_SIZE;
             segmentCount = (int) ((byteSize & SEGMENT_MASK) >> SEGMENT_SHIFT) + 1;
             lastSegmentLength = (int) (byteSize & OFFSET_MASK);
+            constantBuffer = null;
+            dynamicBuffer = null;
+            if (constantAttempts < MAX_CONSTANT_ATTEMPTS) {
+                constantMemoryBufferAssumption = Assumption.create("ConstantMemoryBuffer");
+                constantAttempts++;
+            }
             try {
-                buffer = new byte[segmentCount][];
+                final byte[][] buffer;
+                if (constantMemoryBufferAssumption.isValid()) {
+                    constantBuffer = new byte[segmentCount][];
+                    buffer = constantBuffer;
+                } else {
+                    dynamicBuffer = new byte[segmentCount][];
+                    buffer = dynamicBuffer;
+                }
                 for (int i = 0; i < segmentCount - 1; i++) {
                     buffer[i] = new byte[SEGMENT_LENGTH];
                 }
@@ -430,9 +450,16 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
             bufferByteSize = byteSize;
         }
 
+        private byte[][] buffer() {
+            if (constantMemoryBufferAssumption.isValid()) {
+                return constantBuffer;
+            }
+            return dynamicBuffer;
+        }
+
         public byte[] segment(long address) {
             final int segmentIndex = (int) ((address & SEGMENT_MASK) >> SEGMENT_SHIFT);
-            return buffer[segmentIndex];
+            return buffer()[segmentIndex];
         }
 
         public long segmentOffsetAsLong(long address) {
@@ -454,27 +481,30 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
         public void grow(long targetSize) {
             final int currentSegmentCount = segmentCount;
             final int currentLastSegmentLength = lastSegmentLength;
-            final byte[][] currentBuffer = buffer;
+            final byte[][] currentBuffer = buffer();
+            constantMemoryBufferAssumption.invalidate("Memory grow");
             allocate(targetSize);
             for (int i = 0; i < currentSegmentCount - 1; i++) {
-                System.arraycopy(currentBuffer[i], 0, buffer[i], 0, SEGMENT_LENGTH);
+                System.arraycopy(currentBuffer[i], 0, buffer()[i], 0, SEGMENT_LENGTH);
             }
-            System.arraycopy(currentBuffer[currentSegmentCount - 1], 0, buffer[currentSegmentCount - 1], 0, currentLastSegmentLength);
+            System.arraycopy(currentBuffer[currentSegmentCount - 1], 0, buffer()[currentSegmentCount - 1], 0, currentLastSegmentLength);
         }
 
         public void reset(long byteSize) {
+            constantMemoryBufferAssumption.invalidate("Memory reset");
             allocate(byteSize);
         }
 
         public void close() {
-            buffer = null;
+            constantBuffer = null;
+            dynamicBuffer = null;
         }
 
         public void copyTo(MultiByteArrayBuffer other) {
             for (int i = 0; i < segmentCount - 1; i++) {
-                System.arraycopy(buffer[i], 0, other.segment((long) i * SEGMENT_LENGTH), 0, SEGMENT_LENGTH);
+                System.arraycopy(buffer()[i], 0, other.segment((long) i * SEGMENT_LENGTH), 0, SEGMENT_LENGTH);
             }
-            System.arraycopy(buffer[segmentCount - 1], 0, other.segment((long) segmentCount * SEGMENT_LENGTH), 0, lastSegmentLength);
+            System.arraycopy(buffer()[segmentCount - 1], 0, other.segment((long) segmentCount * SEGMENT_LENGTH), 0, lastSegmentLength);
         }
 
         public void copyFrom(MultiByteArrayBuffer other, long sourceAddress, long destinationAddress, long length) {

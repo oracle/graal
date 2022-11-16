@@ -57,7 +57,7 @@ public final class WasiModule extends BuiltinModule {
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
         WasmInstance instance = new WasmInstance(context, WasmModule.createBuiltin(name), NUMBER_OF_FUNCTIONS);
-        if(context.getContextOptions().supportMemory64()) {
+        if (context.getContextOptions().supportMemory64()) {
             importMemory(instance, "main", "memory", 0, MAX_MEMORY_64_DECLARATION_SIZE, true);
         } else {
             importMemory(instance, "main", "memory", 0, MAX_MEMORY_DECLARATION_SIZE, false);
