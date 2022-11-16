@@ -535,7 +535,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 }
                 case Bytecode.CALL_I32: {
                     final int callNodeIndex = rawPeekI32(bytecode, offset);
-                    final int functionIndex = rawPeekI32(bytecode, offset + 1);
+                    final int functionIndex = rawPeekI32(bytecode, offset + 4);
                     offset += 8;
 
                     WasmFunction function = instance.symbolTable().function(functionIndex);

@@ -2240,18 +2240,18 @@ public class BinaryParser extends BinaryStreamParser {
     public void readCodeEntryCallNodes() {
         final byte[] bytecode = module.bytecode();
         for (CodeEntry c : module.getCodeEntries()) {
-            int offset = c.getStartOffset();
+            int bytecodeOffset = c.getStartOffset();
             int endOffset = c.getEndOffset();
             ArrayList<CallNode> callNodes = new ArrayList<>();
-            while (offset < endOffset) {
-                int opcode = BinaryStreamParser.rawPeekU8(bytecode, offset);
-                offset++;
+            while (bytecodeOffset < endOffset) {
+                int opcode = BinaryStreamParser.rawPeekU8(bytecode, bytecodeOffset);
+                bytecodeOffset++;
                 switch (opcode) {
                     case Bytecode.SKIP_LABEL:
-                        offset += 2;
+                        bytecodeOffset += 2;
                         break;
                     case Bytecode.SKIP_LABEL_I8:
-                        offset += BinaryStreamParser.rawPeekU8(bytecode, offset);
+                        bytecodeOffset += BinaryStreamParser.rawPeekU8(bytecode, bytecodeOffset);
                         break;
                     case Bytecode.BR_I8:
                     case Bytecode.LOCAL_GET_I8:
@@ -2284,7 +2284,7 @@ public class BinaryParser extends BinaryStreamParser {
                     case Bytecode.I64_STORE_32_I8:
                     case Bytecode.I32_CONST_I8:
                     case Bytecode.I64_CONST_I8:
-                        offset++;
+                        bytecodeOffset++;
                         break;
                     case Bytecode.BR_I32:
                     case Bytecode.LOCAL_GET_I32:
@@ -2317,53 +2317,53 @@ public class BinaryParser extends BinaryStreamParser {
                     case Bytecode.I64_STORE_32_I32:
                     case Bytecode.I32_CONST_I32:
                     case Bytecode.F32_CONST:
-                        offset += 4;
+                        bytecodeOffset += 4;
                         break;
                     case Bytecode.BR_IF_I8:
-                        offset += 3;
+                        bytecodeOffset += 3;
                         break;
                     case Bytecode.BR_IF_I32:
-                        offset += 6;
+                        bytecodeOffset += 6;
                         break;
                     case Bytecode.BR_TABLE_I8: {
-                        final int size = BinaryStreamParser.rawPeekU8(bytecode, offset);
-                        offset += 3 + size * 6;
+                        final int size = BinaryStreamParser.rawPeekU8(bytecode, bytecodeOffset);
+                        bytecodeOffset += 3 + size * 6;
                         break;
                     }
                     case Bytecode.BR_TABLE_I32: {
-                        final int size = BinaryStreamParser.rawPeekI32(bytecode, offset);
-                        offset += 6 * size * 6;
+                        final int size = BinaryStreamParser.rawPeekI32(bytecode, bytecodeOffset);
+                        bytecodeOffset += 6 * size * 6;
                         break;
                     }
                     case Bytecode.CALL_I8: {
                         // skip node index
-                        offset++;
-                        final int functionIndex = BinaryStreamParser.rawPeekU8(bytecode, offset);
+                        bytecodeOffset++;
+                        final int functionIndex = BinaryStreamParser.rawPeekU8(bytecode, bytecodeOffset);
                         callNodes.add(new CallNode(functionIndex));
-                        offset++;
+                        bytecodeOffset++;
                         break;
                     }
                     case Bytecode.CALL_I32: {
                         // skip node index
-                        offset += 4;
-                        final int functionIndex = BinaryStreamParser.rawPeekI32(bytecode, offset);
+                        bytecodeOffset += 4;
+                        final int functionIndex = BinaryStreamParser.rawPeekI32(bytecode, bytecodeOffset);
                         callNodes.add(new CallNode(functionIndex));
-                        offset += 4;
+                        bytecodeOffset += 4;
                         break;
                     }
                     case Bytecode.CALL_INDIRECT_I8: {
                         callNodes.add(new CallNode());
-                        offset += 5;
+                        bytecodeOffset += 5;
                         break;
                     }
                     case Bytecode.CALL_INDIRECT_I32: {
                         callNodes.add(new CallNode());
-                        offset += 14;
+                        bytecodeOffset += 14;
                         break;
                     }
                     case Bytecode.I64_CONST_I64:
                     case Bytecode.F64_CONST:
-                        offset += 8;
+                        bytecodeOffset += 8;
                         break;
                 }
             }

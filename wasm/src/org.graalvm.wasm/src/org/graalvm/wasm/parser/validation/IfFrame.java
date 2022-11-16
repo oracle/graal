@@ -41,15 +41,12 @@
 
 package org.graalvm.wasm.parser.validation;
 
+import java.util.Arrays;
+
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.parser.bytecode.BytecodeList;
-import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
-import org.graalvm.wasm.parser.validation.collections.entries.BranchTarget;
-import org.graalvm.wasm.parser.validation.collections.entries.BranchTargetWithStackChange;
-
-import java.util.Arrays;
 
 /**
  * Representation of a wasm if and else block during module validation.

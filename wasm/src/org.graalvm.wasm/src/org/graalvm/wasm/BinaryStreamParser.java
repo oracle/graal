@@ -40,14 +40,14 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
+import static com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN;
+
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
-import static com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 public abstract class BinaryStreamParser {
     protected static final int SINGLE_RESULT_VALUE = 0;
@@ -228,10 +228,6 @@ public abstract class BinaryStreamParser {
         return ((data[offset] & 0xFF) | ((data[offset + 1] & 0xFF) << 8));
     }
 
-    public static int rawPeekI16(byte[] data, int offset) {
-        return rawPeekU16(data, offset) << 16 >> 16;
-    }
-
     public static void writeU16(byte[] data, int offset, int value) {
         final byte low = (byte) (value & 0xFF);
         final byte high = (byte) ((value >> 8) & 0xFF);
@@ -255,26 +251,6 @@ public abstract class BinaryStreamParser {
                         ((data[initialOffset + 5] & 0xFFL) << 40) |
                         ((data[initialOffset + 6] & 0xFFL) << 48) |
                         ((data[initialOffset + 7] & 0xFFL) << 56);
-    }
-
-    @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
-    public static int peek4(byte[] data, int initialOffset) {
-        int result = 0;
-        for (int i = 0; i != 4; ++i) {
-            int x = peek1(data, initialOffset + i) & 0xFF;
-            result |= x << 8 * i;
-        }
-        return result;
-    }
-
-    @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
-    public static long peek8(byte[] data, int initialOffset) {
-        long result = 0;
-        for (int i = 0; i != 8; ++i) {
-            long x = peek1(data, initialOffset + i) & 0xFF;
-            result |= x << 8 * i;
-        }
-        return result;
     }
 
     protected int read4() {
