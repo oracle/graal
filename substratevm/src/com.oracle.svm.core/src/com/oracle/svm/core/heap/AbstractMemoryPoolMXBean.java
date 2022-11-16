@@ -39,8 +39,6 @@ public abstract class AbstractMemoryPoolMXBean extends MXBeanBase implements Mem
     protected final String managerName;
     protected final String objectName;
 
-    protected MemoryUsage peakUsage = new MemoryUsage(0L, 0L, 0L, 0L);
-
     protected AbstractMemoryPoolMXBean(String managerName) {
         this.managerName = managerName;
         this.name = this.managerName + " space";
@@ -70,22 +68,6 @@ public abstract class AbstractMemoryPoolMXBean extends MXBeanBase implements Mem
     @Override
     public boolean isValid() {
         return true;
-    }
-
-    @Override
-    public MemoryUsage getPeakUsage() {
-        MemoryUsage curUsage = getUsage();
-        long peakInit = Math.max(peakUsage.getInit(), curUsage.getInit());
-        long peakUsed = Math.max(peakUsage.getUsed(), curUsage.getUsed());
-        long peakCommitted = Math.max(peakUsage.getCommitted(), curUsage.getCommitted());
-        long peakMax = Math.max(peakUsage.getMax(), curUsage.getMax());
-        peakUsage = new MemoryUsage(peakInit, peakUsed, peakCommitted, peakMax);
-        return peakUsage;
-    }
-
-    @Override
-    public void resetPeakUsage() {
-        peakUsage = getUsage();
     }
 
     @Override
