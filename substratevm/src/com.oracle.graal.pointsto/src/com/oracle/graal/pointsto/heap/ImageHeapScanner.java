@@ -378,6 +378,11 @@ public abstract class ImageHeapScanner {
                     return value;
                 }));
             }
+
+            AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(constant);
+            if (typeFromClassConstant != null) {
+                typeFromClassConstant.registerAsReachable();
+            }
         }
 
         /*
