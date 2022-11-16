@@ -61,6 +61,8 @@ import org.graalvm.compiler.lir.aarch64.AArch64BigIntegerMultiplyToLenOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ByteSwap;
 import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackOp;
 import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackPostSyncOp;
+import org.graalvm.compiler.lir.aarch64.AArch64CipherBlockChainingAESDecryptOp;
+import org.graalvm.compiler.lir.aarch64.AArch64CipherBlockChainingAESEncryptOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Compare;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.BranchOp;
@@ -594,6 +596,34 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
                         asAllocatable(len),
                         asAllocatable(encryptedCounterAddr),
                         asAllocatable(usedPtr),
+                        result,
+                        getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+        return result;
+    }
+
+    @Override
+    public Variable emitCBCAESEncrypt(Value inAddr, Value outAddr, Value kAddr, Value rAddr, Value len) {
+        Variable result = newVariable(len.getValueKind());
+        append(new AArch64CipherBlockChainingAESEncryptOp(this,
+                        asAllocatable(inAddr),
+                        asAllocatable(outAddr),
+                        asAllocatable(kAddr),
+                        asAllocatable(rAddr),
+                        asAllocatable(len),
+                        result,
+                        getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+        return result;
+    }
+
+    @Override
+    public Variable emitCBCAESDecrypt(Value inAddr, Value outAddr, Value kAddr, Value rAddr, Value len) {
+        Variable result = newVariable(len.getValueKind());
+        append(new AArch64CipherBlockChainingAESDecryptOp(this,
+                        asAllocatable(inAddr),
+                        asAllocatable(outAddr),
+                        asAllocatable(kAddr),
+                        asAllocatable(rAddr),
+                        asAllocatable(len),
                         result,
                         getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
         return result;

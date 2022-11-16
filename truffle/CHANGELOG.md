@@ -7,6 +7,10 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-41634 Added `TruffleLanguage.Env#isFileIOAllowed()`. The method returns true if access to files is allowed.
 * Deprecated `TruffleLanguage.Env#isIOAllowed()`. To migrate, use `TruffleLanguage.Env#isFileIOAllowed()`.
 
+* GR-41034 Added `TruffleInstrument.Env.getTruffleFile(TruffleContext, ...)` methods to allow reading a truffle file from a specific context without being entered. Deprecated `TruffleInstrument.Env.getTruffleFile(...)` methods that do not take the `TruffleContext`.
+
+* GR-40274 TruffleStrings: added AsNativeNode and GetStringCompactionLevelNode.
+
 ## Version 22.3.0
 
 * GR-40069 Added additional methods to the static frame API.

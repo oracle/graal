@@ -305,9 +305,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
-        DynamicHub dynamicHub = getHostVM().dynamicHub(type);
-        registerAsReachable(getHostVM(), dynamicHub);
-        return SubstrateObjectConstant.forObject(dynamicHub);
+        return SubstrateObjectConstant.forObject(getHostVM().dynamicHub(type));
     }
 
     protected static void registerAsReachable(SVMHost hostVM, DynamicHub dynamicHub) {

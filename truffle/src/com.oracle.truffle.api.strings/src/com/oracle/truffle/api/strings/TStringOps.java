@@ -911,8 +911,9 @@ final class TStringOps {
 
     private static int runIndexOfAnyByte(Node location, byte[] array, long offset, int length, boolean isNative, int fromIndex, byte... needle) {
         for (int i = fromIndex; i < length; i++) {
+            int value = readValue(array, offset, 0, i, isNative);
             for (int j = 0; j < needle.length; j++) {
-                if (readValue(array, offset, 0, i, isNative) == uInt(needle[j])) {
+                if (value == uInt(needle[j])) {
                     return i;
                 }
                 TStringConstants.truffleSafePointPoll(location, j + 1);
@@ -924,8 +925,9 @@ final class TStringOps {
 
     private static int runIndexOfAnyChar(Node location, byte[] array, long offset, int length, int stride, boolean isNative, int fromIndex, char... needle) {
         for (int i = fromIndex; i < length; i++) {
+            int value = readValue(array, offset, stride, i, isNative);
             for (int j = 0; j < needle.length; j++) {
-                if (readValue(array, offset, stride, i, isNative) == needle[j]) {
+                if (value == needle[j]) {
                     return i;
                 }
                 TStringConstants.truffleSafePointPoll(location, j + 1);
@@ -937,8 +939,9 @@ final class TStringOps {
 
     private static int runIndexOfAnyInt(Node location, byte[] array, long offset, int length, int stride, boolean isNative, int fromIndex, int... needle) {
         for (int i = fromIndex; i < length; i++) {
+            int value = readValue(array, offset, stride, i, isNative);
             for (int j = 0; j < needle.length; j++) {
-                if (readValue(array, offset, stride, i, isNative) == needle[j]) {
+                if (value == needle[j]) {
                     return i;
                 }
                 TStringConstants.truffleSafePointPoll(location, j + 1);
@@ -952,28 +955,55 @@ final class TStringOps {
      * Intrinsic candidate.
      */
     private static int runIndexOfAny1(Node location, byte[] array, long offset, int length, int stride, boolean isNative, int fromIndex, int v0) {
-        return runIndexOfAnyInt(location, array, offset, length, stride, isNative, fromIndex, v0);
+        for (int i = fromIndex; i < length; i++) {
+            if (readValue(array, offset, stride, i, isNative) == v0) {
+                return i;
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return -1;
     }
 
     /**
      * Intrinsic candidate.
      */
     private static int runIndexOfAny2(Node location, byte[] array, long offset, int length, int stride, boolean isNative, int fromIndex, int v0, int v1) {
-        return runIndexOfAnyInt(location, array, offset, length, stride, isNative, fromIndex, v0, v1);
+        for (int i = fromIndex; i < length; i++) {
+            int value = readValue(array, offset, stride, i, isNative);
+            if (value == v0 || value == v1) {
+                return i;
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return -1;
     }
 
     /**
      * Intrinsic candidate.
      */
     private static int runIndexOfAny3(Node location, byte[] array, long offset, int length, int stride, boolean isNative, int fromIndex, int v0, int v1, int v2) {
-        return runIndexOfAnyInt(location, array, offset, length, stride, isNative, fromIndex, v0, v1, v2);
+        for (int i = fromIndex; i < length; i++) {
+            int value = readValue(array, offset, stride, i, isNative);
+            if (value == v0 || value == v1 || value == v2) {
+                return i;
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return -1;
     }
 
     /**
      * Intrinsic candidate.
      */
     private static int runIndexOfAny4(Node location, byte[] array, long offset, int length, int stride, boolean isNative, int fromIndex, int v0, int v1, int v2, int v3) {
-        return runIndexOfAnyInt(location, array, offset, length, stride, isNative, fromIndex, v0, v1, v2, v3);
+        for (int i = fromIndex; i < length; i++) {
+            int value = readValue(array, offset, stride, i, isNative);
+            if (value == v0 || value == v1 || value == v2 || value == v3) {
+                return i;
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return -1;
     }
 
     /**

@@ -40,9 +40,15 @@
  */
 package org.graalvm.collections.test;
 
-import org.graalvm.collections.EconomicMapUtil;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicMapUtil;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -113,5 +119,30 @@ public class EconomicMapUtilTest {
         map2.put(0, "foo");
         Assert.assertFalse(EconomicMapUtil.equals(map1, map2));
         Assert.assertFalse(EconomicMapUtil.equals(map2, map1));
+    }
+
+    @Test
+    public void lexicographicalComparison() {
+        Comparator<UnmodifiableEconomicMap<String, Integer>> comparator = EconomicMapUtil.lexicographicalComparator(
+                        Comparator.nullsFirst(String::compareTo), Integer::compareTo);
+        List<EconomicMap<String, Integer>> expectedOrder = List.of(
+                        EconomicMap.emptyMap(),
+                        EconomicMap.of("a", 0, "b", 0),
+                        EconomicMap.of("a", 1),
+                        EconomicMap.of("a", 1, "b", 0),
+                        EconomicMap.of("a", 2),
+                        EconomicMap.of("a", 2, "b", 0),
+                        EconomicMap.of("a", 2, "b", 1),
+                        EconomicMap.of("b", 0));
+        List<EconomicMap<String, Integer>> sorted = Stream.of(
+                        expectedOrder.get(3),
+                        expectedOrder.get(6),
+                        expectedOrder.get(2),
+                        expectedOrder.get(5),
+                        expectedOrder.get(0),
+                        expectedOrder.get(4),
+                        expectedOrder.get(7),
+                        expectedOrder.get(1)).sorted(comparator).collect(Collectors.toList());
+        Assert.assertEquals(expectedOrder, sorted);
     }
 }

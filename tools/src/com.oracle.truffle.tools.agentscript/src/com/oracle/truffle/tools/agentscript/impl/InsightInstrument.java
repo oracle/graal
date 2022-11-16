@@ -101,7 +101,7 @@ public class InsightInstrument extends TruffleInstrument {
         if (path != null && path.length() > 0) {
             registerAgentScript(() -> {
                 try {
-                    TruffleFile file = env.getTruffleFile(path);
+                    TruffleFile file = env.getTruffleFile(null, path);
                     if (file == null || !file.exists()) {
                         throw InsightException.notFound(file);
                     }

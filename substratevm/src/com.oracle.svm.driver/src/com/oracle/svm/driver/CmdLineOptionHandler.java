@@ -32,6 +32,7 @@ import org.graalvm.compiler.options.OptionType;
 
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 
 class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
@@ -76,7 +77,7 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 nativeImage.showNewline();
                 nativeImage.optionRegistry.showOptions(null, true, nativeImage::showMessage);
                 nativeImage.showNewline();
-                System.exit(0);
+                System.exit(ExitStatus.OK.getValue());
                 return true;
             case "--version":
                 args.poll();
@@ -89,7 +90,7 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 }
                 message += " (Java Version " + javaRuntimeVersion + ")";
                 nativeImage.showMessage(message);
-                System.exit(0);
+                System.exit(ExitStatus.OK.getValue());
                 return true;
             case "--help-extra":
                 args.poll();
@@ -99,7 +100,7 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 nativeImage.showNewline();
                 nativeImage.optionRegistry.showOptions(OptionUtils.MacroOptionKind.Macro, true, nativeImage::showMessage);
                 nativeImage.showNewline();
-                System.exit(0);
+                System.exit(ExitStatus.OK.getValue());
                 return true;
             case "--configurations-path":
                 args.poll();
@@ -174,7 +175,7 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                  * All but the --server-session=... option used to exit(0). We want to simulate that
                  * behaviour for proper backward compatibility.
                  */
-                System.exit(0);
+                System.exit(ExitStatus.OK.getValue());
             }
             return true;
         }

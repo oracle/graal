@@ -282,7 +282,6 @@ final class ObjectSizeCalculator {
                         !(obj instanceof TruffleLanguage.Provider) &&
                         !(obj instanceof ExecutionEventListener) &&
                         !(obj instanceof ClassValue) &&
-                        !(obj instanceof ClassLoader) &&
                         !(obj instanceof PolyglotWrapper) &&
                         !(obj instanceof Value) &&
                         !(obj instanceof Context) &&
@@ -296,6 +295,7 @@ final class ObjectSizeCalculator {
                         EngineAccessor.HOST.isHostBoundaryValue(obj) ||
 
                         (obj instanceof Class) ||
+                        (obj instanceof ClassLoader) ||
                         (obj instanceof OptionValues) ||
 
                         (obj instanceof TruffleLanguage.ContextReference) ||
@@ -330,7 +330,6 @@ final class ObjectSizeCalculator {
                         (obj instanceof TruffleLanguage.Provider) ||
                         (obj instanceof ExecutionEventListener) ||
                         (obj instanceof ClassValue) ||
-                        (obj instanceof ClassLoader) ||
                         (obj instanceof PolyglotWrapper) ||
                         (obj instanceof Value) ||
                         (obj instanceof Context) ||

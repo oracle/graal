@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.URL;
+import java.net.URLClassLoader;
 import java.security.SecureClassLoader;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -267,11 +268,10 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     private List<ClassLoader> getActiveClassLoaders() {
         ClassLoader activeClassLoader = nativeImageClassLoader;
         if (activeClassLoader != null) {
-            ClassLoader activeClassLoaderParent = activeClassLoader.getParent();
-            if (activeClassLoaderParent instanceof NativeImageClassLoaderSupport.ClassPathClassLoader) {
-                return List.of(activeClassLoader, activeClassLoaderParent);
-            } else {
+            if (activeClassLoader instanceof URLClassLoader) {
                 return List.of(activeClassLoader);
+            } else {
+                return List.of(activeClassLoader, activeClassLoader.getParent());
             }
         } else {
             return List.of(defaultSystemClassLoader);

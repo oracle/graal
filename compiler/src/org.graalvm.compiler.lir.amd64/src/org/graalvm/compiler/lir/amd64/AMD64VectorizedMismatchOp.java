@@ -169,7 +169,7 @@ public final class AMD64VectorizedMismatchOp extends AMD64ComplexVectorOp {
 
         if (supports(CPUFeature.AVX)) {
             // main loop
-            asm.align(crb.target.wordSize * 2);
+            asm.align(preferredLoopAlignment(crb));
             asm.bind(vectorLoop);
             // check vector regions for equality
             asm.movdqu(vectorSize, vector1, new AMD64Address(arrayA, result, stride));
@@ -191,7 +191,7 @@ public final class AMD64VectorizedMismatchOp extends AMD64ComplexVectorOp {
             asm.ptest(vectorSize, vector3);
             asm.jcc(ConditionFlag.Zero, returnEqualLabel);
 
-            asm.align(crb.target.wordSize * 2);
+            asm.align(preferredBranchTargetAlignment(crb));
             asm.bind(diffFound);
             AMD64Assembler.VexRVMOp.VPCMPEQB.emit(asm, vectorSize, vector3, vector1, vector2);
             asm.pmovmsk(vectorSize, tmp, vector3);
@@ -206,7 +206,7 @@ public final class AMD64VectorizedMismatchOp extends AMD64ComplexVectorOp {
             // PTEST requires SSE4.1, avoid using it here for maximum compatibility
 
             // main loop
-            asm.align(crb.target.wordSize * 2);
+            asm.align(preferredLoopAlignment(crb));
             asm.bind(vectorLoop);
             asm.movdqu(vectorSize, vector1, new AMD64Address(arrayA, result, stride));
             asm.movdqu(vectorSize, vector2, new AMD64Address(arrayB, result, stride));
@@ -227,7 +227,7 @@ public final class AMD64VectorizedMismatchOp extends AMD64ComplexVectorOp {
             asm.pmovmsk(vectorSize, tmp, vector1);
             asm.xorlAndJcc(tmp, vectorSize == XMM ? ONES_16 : ONES_32, ConditionFlag.Zero, returnEqualLabel, false);
 
-            asm.align(crb.target.wordSize * 2);
+            asm.align(preferredBranchTargetAlignment(crb));
             asm.bind(diffFound);
             // different elements found in the current region, find the byte index of the first
             // non-equal elements
@@ -237,7 +237,7 @@ public final class AMD64VectorizedMismatchOp extends AMD64ComplexVectorOp {
             asm.jmp(returnLabel);
         }
 
-        asm.align(crb.target.wordSize * 2);
+        asm.align(preferredBranchTargetAlignment(crb));
         asm.bind(tail);
 
         if (supportsAVX2AndYMM()) {
@@ -315,11 +315,11 @@ public final class AMD64VectorizedMismatchOp extends AMD64ComplexVectorOp {
         asm.incl(result);
         asm.decqAndJcc(tailLength, ConditionFlag.NotZero, scalarLoop, true);
 
-        asm.align(crb.target.wordSize * 2);
+        asm.align(preferredBranchTargetAlignment(crb));
         asm.bind(returnEqualLabel);
         // all elements are equal, return -1
         asm.movq(result, -1);
-        asm.align(crb.target.wordSize * 2);
+        asm.align(preferredBranchTargetAlignment(crb));
         asm.bind(returnLabel);
         // scale byte-based result back to stride
         asm.sarq(result);

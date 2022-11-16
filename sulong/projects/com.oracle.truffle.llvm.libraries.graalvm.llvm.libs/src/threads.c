@@ -28,14 +28,14 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sulong-threads.h>
+#include <graalvm/llvm/threads.h>
 
 int __sulong_thread_create(__sulong_thread_t *thread, void *(*start_routine)(void *), void *arg) {
     return sulong_thread_error;
 }
 
-void *__sulong_thread_join(long thread) {
-    return nullptr;
+void *__sulong_thread_join(__sulong_thread_t thread) {
+    return 0;
 }
 
 __sulong_thread_t __sulong_thread_self() {
@@ -46,7 +46,7 @@ int __sulong_thread_setname_np(__sulong_thread_t thread, const char *name) {
     return sulong_thread_error;
 }
 
-int __sulong_thread_getname_np(__sulong_thread_t thread, char *name, size_t len) {
+int __sulong_thread_getname_np(__sulong_thread_t thread, char *name, uint64_t len) {
     return sulong_thread_error;
 }
 
@@ -61,7 +61,7 @@ void __sulong_thread_key_delete(__sulong_key_t key) {
 }
 
 void *__sulong_thread_getspecific(__sulong_key_t key) {
-    return nullptr;
+    return 0;
 }
 
 void __sulong_thread_setspecific(__sulong_key_t key, const void *value) {

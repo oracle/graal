@@ -147,6 +147,7 @@ class NativeImageVM(GraalVm):
             self.pgo_iteration_num = bm_suite.pgo_iteration_num(self.benchmark_name, args)
             self.params = ['extra-image-build-argument', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
                            'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions']
+
             self.profile_file_extension = '.iprof'
             self.stages = bm_suite.stages(args)
             if vm.jdk_profiles_collect:  # forbid image build/run in the profile collection execution mode
@@ -818,7 +819,11 @@ class NativeImageVM(GraalVm):
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
-        instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
+        # GR-40154 --pgo-sampling does not work with G1
+        if self.gc == 'G1':
+            instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
+        else:
+            instrument_args = ['--pgo-instrument', '--pgo-sampling'] + ([] if i == 0 else pgo_args)
         if self.jdk_profiles_collect:
             instrument_args += ['-H:+ProfilingEnabled', '-H:+AOTPriorityInline', '-H:ProfilingPackagePrefixes={}'.format(self.generate_profiling_package_prefixes())]
 
@@ -830,6 +835,19 @@ class NativeImageVM(GraalVm):
                 image_size = os.stat(image_path).st_size
                 out('Instrumented image size: ' + str(image_size) + ' B')
 
+    def _ensureSamplesAreInProfile(self, profile_path):
+        # GR-40154 --pgo-sampling does not work with G1
+        if self.pgo_aot_inline and self.gc != 'G1':
+            with open(profile_path) as profile_file:
+                parsed = json.load(profile_file)
+                samples = parsed["samplingProfiles"]
+                assert len(samples) != 0, "No sampling profiles in iprof file " + profile_path
+                for sample in samples:
+                    assert "<" in sample["ctx"], "Sampling profiles seem malformed in file " + profile_path
+                    assert ":" in sample["ctx"], "Sampling profiles seem malformed in file " + profile_path
+                    assert len(sample["records"]) == 1, "Sampling profiles seem to be missing records in file " + profile_path
+                    assert sample["records"][0] > 0, "Sampling profiles seem to have a 0 in records in file " + profile_path
+
     def run_stage_instrument_run(self, config, stages, image_path, profile_path):
         image_run_cmd = [image_path, '-XX:ProfilesDumpFile=' + profile_path]
         image_run_cmd += config.extra_profile_run_args
@@ -837,6 +855,7 @@ class NativeImageVM(GraalVm):
             s.execute_command()
             if s.exit_code == 0:
                 mx.copyfile(profile_path, config.latest_profile_path)
+            self._ensureSamplesAreInProfile(profile_path)
 
     def run_stage_image(self, config, stages):
         executable_name_args = ['-H:Name=' + config.final_image_name]

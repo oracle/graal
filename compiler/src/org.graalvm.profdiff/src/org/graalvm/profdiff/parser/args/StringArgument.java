@@ -32,6 +32,10 @@ public class StringArgument extends ValuedArgument<String> {
         super(name, help);
     }
 
+    StringArgument(String name, String defaultValue, String help) {
+        super(name, defaultValue, help);
+    }
+
     @Override
     protected String parseValue(String s) {
         return s;

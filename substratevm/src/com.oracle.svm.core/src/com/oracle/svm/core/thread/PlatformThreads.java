@@ -31,6 +31,7 @@ import static com.oracle.svm.core.thread.JavaThreads.isVirtual;
 import static com.oracle.svm.core.thread.JavaThreads.toTarget;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -544,6 +545,13 @@ public abstract class PlatformThreads {
         throw VMError.shouldNotReachHere("Shouldn't call PlatformThreads.closeOSThreadHandle directly.");
     }
 
+    static final Method FORK_JOIN_POOL_TRY_TERMINATE_METHOD;
+
+    static {
+        VMError.guarantee(ImageInfo.inImageBuildtimeCode(), PlatformThreads.class.getSimpleName() + " must be initialized at build time.");
+        FORK_JOIN_POOL_TRY_TERMINATE_METHOD = ReflectionUtil.lookupMethod(ForkJoinPool.class, "tryTerminate", boolean.class, boolean.class);
+    }
+
     /** Have each thread, except this one, tear itself down. */
     private static boolean tearDownPlatformThreads() {
         final Log trace = Log.noopLog().string("[PlatformThreads.tearDownPlatformThreads:").newline().flush();
@@ -606,13 +614,18 @@ public abstract class PlatformThreads {
 
         pools.removeAll(poolsWithNonDaemons);
         for (ExecutorService pool : pools) {
-            trace.string("  shutting down: ").object(pool);
+            trace.string("  initiating shutdown: ").object(pool);
             try {
-                pool.shutdownNow();
+                if (pool == ForkJoinPool.commonPool()) {
+                    FORK_JOIN_POOL_TRY_TERMINATE_METHOD.invoke(pool, true, true);
+                } else {
+                    pool.shutdownNow();
+                }
             } catch (Throwable t) {
                 trace.string(" threw (ignored): ").exception(t);
             }
             trace.newline().flush();
+            trace.string("  shutdown initiated: ").object(pool).newline().flush();
         }
 
         final boolean result = waitForTearDown();

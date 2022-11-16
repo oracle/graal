@@ -555,9 +555,9 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         @Override
         public void dumpOffsets(LLVMTextSectionInfo textSectionInfo) {
             dump("\nOffsets\n=======\n");
-            textSectionInfo.forEachOffsetRange((startOffset, endOffset) -> {
-                CompilationResult compilationResult = compilationsByStart.get(startOffset);
-                assert startOffset + compilationResult.getTargetCodeSize() == endOffset : compilationResult.getName();
+            compilationsByStart.forEach((method, compilationResult) -> {
+                int startOffset = method.getCodeAddressOffset();
+                assert startOffset + compilationResult.getTargetCodeSize() == textSectionInfo.getNextOffset(startOffset) : compilationResult.getName();
 
                 String methodName = textSectionInfo.getSymbol(startOffset);
                 dump("[" + startOffset + "] " + methodName + " (" + compilationResult.getTargetCodeSize() + ")\n");

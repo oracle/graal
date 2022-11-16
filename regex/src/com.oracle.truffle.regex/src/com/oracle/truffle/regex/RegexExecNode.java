@@ -62,7 +62,7 @@ public abstract class RegexExecNode extends RegexBodyNode {
     public final RegexResult execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         assert args.length == 2;
-        return adjustIndexAndRun(args[0], (int) args[1]);
+        return adjustIndexAndRun(frame, args[0], (int) args[1]);
     }
 
     private int adjustFromIndex(int fromIndex, Object input) {
@@ -91,17 +91,17 @@ public abstract class RegexExecNode extends RegexBodyNode {
         return charAtNode.execute(input, i, getEncoding());
     }
 
-    private RegexResult adjustIndexAndRun(Object input, int fromIndex) {
+    private RegexResult adjustIndexAndRun(VirtualFrame frame, Object input, int fromIndex) {
         if (fromIndex < 0 || fromIndex > inputLength(input)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException(String.format("got illegal fromIndex value: %d. fromIndex must be >= 0 and <= input length (%d)", fromIndex, inputLength(input)));
         }
-        return execute(input, adjustFromIndex(fromIndex, input));
+        return execute(frame, input, adjustFromIndex(fromIndex, input));
     }
 
     public boolean isBacktracking() {
         return false;
     }
 
-    protected abstract RegexResult execute(Object input, int fromIndex);
+    protected abstract RegexResult execute(VirtualFrame frame, Object input, int fromIndex);
 }

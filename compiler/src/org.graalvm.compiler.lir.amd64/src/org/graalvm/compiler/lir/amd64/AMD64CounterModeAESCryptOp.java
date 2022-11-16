@@ -65,6 +65,7 @@ import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.Stride;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
@@ -144,7 +145,7 @@ public final class AMD64CounterModeAESCryptOp extends AMD64LIRInstruction {
         };
     }
 
-    private static Label[] newLabels(int len) {
+    static Label[] newLabels(int len) {
         Label[] labels = new Label[len];
         for (int i = 0; i < len; i++) {
             labels[i] = new Label();
@@ -179,14 +180,14 @@ public final class AMD64CounterModeAESCryptOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        assert inValue.getPlatformKind().equals(AMD64Kind.QWORD) : inValue;
-        assert outValue.getPlatformKind().equals(AMD64Kind.QWORD) : outValue;
-        assert keyValue.getPlatformKind().equals(AMD64Kind.QWORD) : keyValue;
-        assert counterValue.getPlatformKind().equals(AMD64Kind.QWORD) : counterValue;
-        assert lenValue.getPlatformKind().equals(AMD64Kind.DWORD) : lenValue;
-        assert encryptedCounterValue.getPlatformKind().equals(AMD64Kind.QWORD) : encryptedCounterValue;
-        assert usedPtrValue.getPlatformKind().equals(AMD64Kind.QWORD) : usedPtrValue;
-        assert resultValue.getPlatformKind().equals(AMD64Kind.DWORD) : resultValue;
+        GraalError.guarantee(inValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid inValue kind: %s", inValue);
+        GraalError.guarantee(outValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid outValue kind: %s", outValue);
+        GraalError.guarantee(keyValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid keyValue kind: %s", keyValue);
+        GraalError.guarantee(counterValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid counterValue kind: %s", counterValue);
+        GraalError.guarantee(lenValue.getPlatformKind().equals(AMD64Kind.DWORD), "Invalid lenValue kind: %s", lenValue);
+        GraalError.guarantee(encryptedCounterValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid encryptedCounterValue kind: %s", encryptedCounterValue);
+        GraalError.guarantee(usedPtrValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid usedPtrValue kind: %s", usedPtrValue);
+        GraalError.guarantee(resultValue.getPlatformKind().equals(AMD64Kind.DWORD), "Invalid resultValue kind: %s", resultValue);
 
         Register from = asRegister(inValue);
         Register to = asRegister(outValue);
@@ -282,7 +283,7 @@ public final class AMD64CounterModeAESCryptOp extends AMD64LIRInstruction {
         // k == 2 : generate code for key_256
         for (int k = 0; k < 3; k++) {
             // multi blocks starts here
-            masm.align(crb.target.wordSize * 2);
+            masm.align(preferredLoopAlignment(crb));
             masm.bind(labelMultiBlockLoopTop[k]);
             // see if at least PARALLEL_FACTOR blocks left
             masm.cmplAndJcc(lenReg, PARALLEL_FACTOR * AES_BLOCK_SIZE, ConditionFlag.LessEqual, labelSingleBlockLoopTop[k], false);
@@ -345,7 +346,7 @@ public final class AMD64CounterModeAESCryptOp extends AMD64LIRInstruction {
             masm.jmp(labelMultiBlockLoopTop[k]);
 
             // singleBlock starts here
-            masm.align(crb.target.wordSize * 2);
+            masm.align(preferredLoopAlignment(crb));
             masm.bind(labelSingleBlockLoopTop[k]);
             masm.cmplAndJcc(lenReg, 0, ConditionFlag.LessEqual, labelExit, false);
             loadKey(masm, xmmKeyTmp0, key, 0x00, xmmKeyShufMask);

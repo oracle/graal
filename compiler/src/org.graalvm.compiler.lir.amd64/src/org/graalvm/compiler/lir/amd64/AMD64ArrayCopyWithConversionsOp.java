@@ -266,13 +266,13 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
 
             // use the 1-byte-1-byte stride variant for the 2-2 and 4-4 cases by simply shifting the
             // length
-            asm.align(crb.target.wordSize * 2);
+            asm.align(preferredBranchTargetAlignment(crb));
             asm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(Stride.S4, Stride.S4)]);
             asm.shll(len, 1);
-            asm.align(crb.target.wordSize * 2);
+            asm.align(preferredBranchTargetAlignment(crb));
             asm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(Stride.S2, Stride.S2)]);
             asm.shll(len, 1);
-            asm.align(crb.target.wordSize * 2);
+            asm.align(preferredBranchTargetAlignment(crb));
             asm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(Stride.S1, Stride.S1)]);
             emitOp(crb, asm, Stride.S1, Stride.S1, src, sro, dst, len);
             asm.jmp(end);
@@ -282,7 +282,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
                     if (strideSrc == strideDst) {
                         continue;
                     }
-                    asm.align(crb.target.wordSize * 2);
+                    asm.align(preferredBranchTargetAlignment(crb));
                     asm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(strideSrc, strideDst)]);
                     emitOp(crb, asm, strideSrc, strideDst, src, sro, dst, len);
                     asm.jmp(end);
@@ -351,7 +351,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
             asm.negq(len);
 
             // vectorized loop
-            asm.align(crb.target.wordSize * 2);
+            asm.align(preferredLoopAlignment(crb));
             asm.bind(labelPackVectorLoop);
             packVector(asm, vectorSize, op, strideSrc, strideDst, src, dst, len, 0, false);
             asm.addqAndJcc(len, vectorLength, ConditionFlag.NotZero, labelPackVectorLoop, true);
@@ -507,7 +507,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
             asm.negq(len);
 
             // vectorized loop
-            asm.align(crb.target.wordSize * 2);
+            asm.align(preferredLoopAlignment(crb));
             asm.bind(labelMainLoop);
             asm.pmovSZx(vectorSize, extendMode, vec, strideDst, new AMD64Address(src, len, strideSrc), strideSrc);
             asm.movdqu(vectorSize, new AMD64Address(dst, len, strideDst), vec);
@@ -610,7 +610,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
 
         if (supportsAVX2AndYMM()) {
             // vectorized loop
-            masm.align(crb.target.wordSize * 2);
+            masm.align(preferredLoopAlignment(crb));
             masm.bind(labelYMMLoop);
             masm.vmovdqu(vec, new AMD64Address(src, len, strideSrc));
             masm.vmovdqu(new AMD64Address(dst, len, strideDst), vec);
@@ -634,7 +634,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
 
         } else {
             // xmm vectorized loop
-            masm.align(crb.target.wordSize * 2);
+            masm.align(preferredLoopAlignment(crb));
             masm.bind(labelXMMLoop);
             masm.movdqu(vec, new AMD64Address(src, len, strideSrc));
             masm.movdqu(new AMD64Address(dst, len, strideDst), vec);

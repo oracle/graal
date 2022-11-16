@@ -1280,7 +1280,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                             case RET: {
                                 // Use final local variables to pass in lambdas.
                                 final int retOpBci = curBCI;
-                                final int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex1(curBCI));
+                                final int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex2(curBCI));
                                 livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
 
                                 // Safely obtain the known targets mappings.

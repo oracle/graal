@@ -157,8 +157,6 @@ public abstract class SubstrateObjectConstant implements JavaConstant, TypedCons
         return getIdentityHashCode();
     }
 
-    public abstract int getIdentityHashCode();
-
     public static int computeIdentityHashCode(Object object) {
         if (SubstrateUtil.HOSTED && object instanceof DynamicHub) {
             /*

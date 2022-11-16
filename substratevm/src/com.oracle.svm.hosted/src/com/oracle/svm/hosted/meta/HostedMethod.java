@@ -143,7 +143,6 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
 
     private static HostedMethod create0(AnalysisMethod wrapped, HostedType holder, Signature signature,
                     ConstantPool constantPool, ExceptionHandler[] handlers, MultiMethodKey key, Map<MultiMethodKey, MultiMethod> multiMethodMap, LocalVariableTable localVariableTable) {
-        assert key == ORIGINAL_METHOD || key == DEOPT_TARGET_METHOD;
         assert !(multiMethodMap == null && key != ORIGINAL_METHOD);
 
         Function<Integer, Pair<String, String>> nameGenerator = (collisionCount) -> {
@@ -534,6 +533,8 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
         return (HostedMethod) multiMethodMap.computeIfAbsent(key, (k) -> {
             HostedMethod newMultiMethod = create0(wrapped, holder, signature, constantPool, handlers, k, multiMethodMap, localVariableTable);
             newMultiMethod.staticAnalysisResults = staticAnalysisResults;
+            newMultiMethod.implementations = implementations;
+            newMultiMethod.vtableIndex = vtableIndex;
             return newMultiMethod;
         });
     }

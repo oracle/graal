@@ -231,17 +231,6 @@ public class LLVMObjectFileReader {
             return sortedMethodOffsets.get(sortedMethodOffsets.indexOf(offset) + 1);
         }
 
-        @FunctionalInterface
-        public interface OffsetRangeConsumer {
-            void apply(int start, int end);
-        }
-
-        public void forEachOffsetRange(OffsetRangeConsumer consumer) {
-            for (int i = 0; i < sortedMethodOffsets.size() - 1; ++i) {
-                consumer.apply(sortedMethodOffsets.get(i), sortedMethodOffsets.get(i + 1));
-            }
-        }
-
         private List<Integer> computeSortedMethodOffsets() {
             List<Integer> sortedOffsets = offsetToSymbol.keySet().stream().distinct().sorted().collect(Collectors.toList());
 

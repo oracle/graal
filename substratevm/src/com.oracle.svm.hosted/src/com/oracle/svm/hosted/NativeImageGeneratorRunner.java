@@ -65,6 +65,7 @@ import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
@@ -107,10 +108,10 @@ public class NativeImageGeneratorRunner {
                         if (cmdlineHashCode == 0) {
                             cmdlineHashCode = currentCmdlineHashCode;
                         } else if (currentCmdlineHashCode != cmdlineHashCode) {
-                            System.exit(1);
+                            System.exit(ExitStatus.WATCHDOG_EXIT.getValue());
                         }
                     } catch (IOException e) {
-                        System.exit(1);
+                        System.exit(ExitStatus.WATCHDOG_EXIT.getValue());
                     }
                 }
             };
@@ -128,20 +129,19 @@ public class NativeImageGeneratorRunner {
             exitStatus = new NativeImageGeneratorRunner().build(imageClassLoader);
         } catch (UserException e) {
             reportUserError(e.getMessage());
-            exitStatus = 1;
+            exitStatus = ExitStatus.BUILDER_ERROR.getValue();
         } catch (InterruptImageBuilding e) {
             if (e.getReason().isPresent()) {
                 if (!e.getReason().get().isEmpty()) {
                     NativeImageGeneratorRunner.info(e.getReason().get());
                 }
-                exitStatus = 0;
+                exitStatus = ExitStatus.OK.getValue();
             } else {
-                /* InterruptImageBuilding without explicit reason is exit code 3 */
-                exitStatus = 3;
+                exitStatus = ExitStatus.BUILDER_INTERRUPT_WITHOUT_REASON.getValue();
             }
         } catch (Throwable err) {
             reportFatalError(err);
-            exitStatus = 1;
+            exitStatus = ExitStatus.BUILDER_ERROR.getValue();
         } finally {
             uninstallNativeImageClassLoader();
             Thread.currentThread().setContextClassLoader(applicationClassLoader);
@@ -264,7 +264,7 @@ public class NativeImageGeneratorRunner {
     @SuppressWarnings("try")
     private int buildImage(ImageClassLoader classLoader) {
         if (!verifyValidJavaVersionAndPlatform()) {
-            return 1;
+            return ExitStatus.BUILDER_ERROR.getValue();
         }
 
         HostedOptionParser optionParser = classLoader.classLoaderSupport.getHostedOptionParser();
@@ -276,7 +276,7 @@ public class NativeImageGeneratorRunner {
 
         if (NativeImageOptions.ListCPUFeatures.getValue(parsedHostedOptions)) {
             printCPUFeatures(classLoader.platform);
-            return 0;
+            return ExitStatus.OK.getValue();
         }
 
         ForkJoinPool analysisExecutor = null;
@@ -419,16 +419,16 @@ public class NativeImageGeneratorRunner {
         } catch (FallbackFeature.FallbackImageRequest e) {
             if (FallbackExecutor.class.getName().equals(SubstrateOptions.Class.getValue())) {
                 NativeImageGeneratorRunner.reportFatalError(e, "FallbackImageRequest while building fallback image.");
-                return 1;
+                return ExitStatus.BUILDER_ERROR.getValue();
             }
             reportUserException(e, parsedHostedOptions, NativeImageGeneratorRunner::warn);
-            return 2;
+            return ExitStatus.FALLBACK_IMAGE.getValue();
         } catch (ParsingError e) {
             NativeImageGeneratorRunner.reportFatalError(e);
-            return 1;
+            return ExitStatus.BUILDER_ERROR.getValue();
         } catch (UserException | AnalysisError e) {
             reportUserError(e, parsedHostedOptions);
-            return 1;
+            return ExitStatus.BUILDER_ERROR.getValue();
         } catch (ParallelExecutionException pee) {
             boolean hasUserError = false;
             for (Throwable exception : pee.getExceptions()) {
@@ -444,7 +444,7 @@ public class NativeImageGeneratorRunner {
                 }
             }
             if (hasUserError) {
-                return 1;
+                return ExitStatus.BUILDER_ERROR.getValue();
             }
 
             if (pee.getExceptions().size() > 1) {
@@ -453,10 +453,10 @@ public class NativeImageGeneratorRunner {
             for (Throwable exception : pee.getExceptions()) {
                 NativeImageGeneratorRunner.reportFatalError(exception);
             }
-            return 1;
+            return ExitStatus.BUILDER_ERROR.getValue();
         } catch (Throwable e) {
             NativeImageGeneratorRunner.reportFatalError(e);
-            return 1;
+            return ExitStatus.BUILDER_ERROR.getValue();
         } finally {
             if (imageName != null && generator != null) {
                 reporter.printEpilog(imageName, generator, wasSuccessfulBuild, parsedHostedOptions);
@@ -464,7 +464,7 @@ public class NativeImageGeneratorRunner {
             NativeImageGenerator.clearSystemPropertiesForImage();
             ImageSingletonsSupportImpl.HostedManagement.clear();
         }
-        return 0;
+        return ExitStatus.OK.getValue();
     }
 
     public static boolean verifyValidJavaVersionAndPlatform() {

@@ -44,6 +44,7 @@ import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.type.CompressibleConstant;
+import org.graalvm.compiler.core.common.type.TypedConstant;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.UnsignedWord;
@@ -341,17 +342,7 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     private static int computeIdentityHashCode(JavaConstant constant) {
-        if (constant instanceof ImageHeapConstant) {
-            /*
-             * For ImageHeapConstant we use the identity hash code of the constant object itself as
-             * there is no hosted object. The compressed flag changes the identity o an
-             * ImageHeapConstant, but at this point we shouldn't encounter any compressed constants.
-             */
-            VMError.guarantee(!((ImageHeapConstant) constant).isCompressed(), constant + "");
-            return System.identityHashCode(constant);
-        } else {
-            return SubstrateObjectConstant.computeIdentityHashCode(SubstrateObjectConstant.asObject(constant));
-        }
+        return ((TypedConstant) constant).getIdentityHashCode();
     }
 
     @Override

@@ -25,6 +25,7 @@
 package org.graalvm.compiler.nodes;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,14 +60,107 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Unifies counting, logging and dumping in optimization phases. If enabled, collects info about
- * optimizations performed in a single compilation and dumps them to the standard output, a JSON
- * file and/or IGV.
+ * optimizations performed in a single compilation and dumps them to the standard output, JSON
+ * files, and/or IGV.
  *
  * This is the "slow" implementation of the interface that performs the actual logging. If none of
  * the logging features is enabled, the dummy implementation should be used to reduce runtime
  * overhead.
  */
 public class OptimizationLogImpl implements OptimizationLog {
+
+    /**
+     * The key of the method name property.
+     */
+    public static final String METHOD_NAME_PROPERTY = "methodName";
+
+    /**
+     * The key of the optimization name property. The optimization name is obtained from the name of
+     * the phase that performed an optimization.
+     */
+    public static final String OPTIMIZATION_NAME_PROPERTY = "optimizationName";
+
+    /**
+     * The key of the event name property. The event name describes an optimization in more detail
+     * than the {@link #OPTIMIZATION_NAME_PROPERTY}. Event names are in {@code PascalCase} by
+     * convention.
+     */
+    public static final String EVENT_NAME_PROPERTY = "eventName";
+
+    /**
+     * The key of the position property. The property holds a path in an inlining tree, which
+     * represents the position of an optimization in a compilation unit.
+     */
+    public static final String POSITION_PROPERTY = "position";
+
+    /**
+     * The key of the phase name property.
+     */
+    public static final String PHASE_NAME_PROPERTY = "phaseName";
+
+    /**
+     * The key of the optimizations property. The property holds a list of optimizations and
+     * subphases triggered in an optimization phase.
+     */
+    public static final String OPTIMIZATIONS_PROPERTY = "optimizations";
+
+    /**
+     * The key of the callsite bci property. The property holds the bci of the callsite of an
+     * inlining candidate method.
+     */
+    public static final String CALLSITE_BCI_PROPERTY = "callsiteBci";
+
+    /**
+     * The key of the inlined property. The value is {@code true} iff an inlining candidate was
+     * inlined.
+     */
+    public static final String INLINED_PROPERTY = "inlined";
+
+    /**
+     * The key of the reason property. The property holds a list of reasons for inlining decisions
+     * in their original order.
+     */
+    public static final String REASON_PROPERTY = "reason";
+
+    /**
+     * The key of the invokes property. The property holds the methods invoked (and considered for
+     * inlining) in an inlined method.
+     */
+    public static final String INVOKES_PROPERTY = "invokes";
+
+    /**
+     * The name of the artificial root phase, which holds all root phases.
+     */
+    public static final String ROOT_PHASE_NAME = "RootPhase";
+
+    /**
+     * The key of the compilation ID property.
+     */
+    public static final String COMPILATION_ID_PROPERTY = "compilationId";
+
+    /**
+     * The key of the inlining property. The property holds the inlining tree, starting with the
+     * root-compiled method.
+     */
+    public static final String INLINING_TREE_PROPERTY = "inliningTree";
+
+    /**
+     * The key of the optimization tree property. The property holds the optimization tree starting
+     * with the root phase.
+     */
+    public static final String OPTIMIZATION_TREE_PROPERTY = "optimizationTree";
+
+    /**
+     * The name of the directory holding optimization log files.
+     */
+    public static final String OPTIMIZATION_LOG_DIRECTORY = "optimization_log";
+
+    /**
+     * The line separator, which separates compilation units in optimization log files. Profdiff
+     * makes strong assumptions about the structure of the files to speed up parsing. Therefore, a
+     * common line separator for all platform simplifies the logic.
+     */
+    public static final char LINE_SEPARATOR = '\n';
 
     /**
      * Represents an optimization phase, which can trigger its own subphases and/or individual
@@ -137,17 +231,17 @@ public class OptimizationLogImpl implements OptimizationLog {
         }
 
         @Override
-        public EconomicMap<String, Object> asJsonMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {
+        public EconomicMap<String, Object> asJSONMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {
             EconomicMap<String, Object> map = EconomicMap.create();
-            map.put("phaseName", phaseName);
+            map.put(PHASE_NAME_PROPERTY, phaseName);
             List<EconomicMap<String, Object>> optimizations = null;
             if (children != null) {
                 optimizations = new ArrayList<>();
                 for (OptimizationLogImpl.OptimizationTreeNode entry : children) {
-                    optimizations.add(entry.asJsonMap(methodNameFormatter));
+                    optimizations.add(entry.asJSONMap(methodNameFormatter));
                 }
             }
-            map.put("optimizations", optimizations);
+            map.put(OPTIMIZATIONS_PROPERTY, optimizations);
             return map;
         }
 
@@ -170,12 +264,6 @@ public class OptimizationLogImpl implements OptimizationLog {
     @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED, shortName = "Optimization", nameTemplate = "{p#event}")
     public static class OptimizationEntryImpl extends OptimizationTreeNode implements OptimizationEntry {
         public static final NodeClass<OptimizationEntryImpl> TYPE = NodeClass.create(OptimizationEntryImpl.class);
-
-        public static final String OPTIMIZATION_NAME_PROPERTY = "optimizationName";
-
-        public static final String EVENT_NAME_PROPERTY = "eventName";
-
-        public static final String POSITION_PROPERTY = "position";
 
         /**
          * A map of additional named properties or {@code null} if no properties were set.
@@ -245,7 +333,7 @@ public class OptimizationLogImpl implements OptimizationLog {
         }
 
         @Override
-        public EconomicMap<String, Object> asJsonMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {
+        public EconomicMap<String, Object> asJSONMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {
             EconomicMap<String, Object> jsonMap = EconomicMap.create();
             jsonMap.put(OPTIMIZATION_NAME_PROPERTY, optimizationName);
             jsonMap.put(EVENT_NAME_PROPERTY, event);
@@ -390,8 +478,8 @@ public class OptimizationLogImpl implements OptimizationLog {
         this.graph = graph;
         optimizationLogEnabled = OptimizationLog.isOptimizationLogEnabled(graph.getOptions());
         if (optimizationLogEnabled) {
-            compilationId = parseCompilationId();
-            currentPhase = new OptimizationPhaseScopeImpl(this, "RootPhase");
+            compilationId = parseCompilationID();
+            currentPhase = new OptimizationPhaseScopeImpl(this, ROOT_PHASE_NAME);
             optimizationTree = new Graph("OptimizationTree", graph.getOptions(), graph.getDebug(), false);
             optimizationTree.add(currentPhase);
             verifyOptions(graph.getOptions());
@@ -493,7 +581,7 @@ public class OptimizationLogImpl implements OptimizationLog {
         return () -> {
             graph.getDebug().setCompilationListener(null);
             try {
-                printOptimizationTree(methodNameFormatter);
+                printCompilationUnit(methodNameFormatter);
             } catch (IOException exception) {
                 throw new GraalError("Failed to print the optimization tree: %s", exception.getMessage());
             }
@@ -518,16 +606,27 @@ public class OptimizationLogImpl implements OptimizationLog {
 
     /**
      * Depending on the {@link DebugOptions#OptimizationLog OptimizationLog} option, prints the
-     * optimization tree to the standard output, a JSON file and/or dumps it. If the optimization
-     * tree is printed to a file, the directory is either specified by the
+     * compilation unit to the standard output, JSON files and/or dumps it. If the optimization tree
+     * is printed to a file, the directory is either specified by the
      * {@link DebugOptions#OptimizationLogPath OptimizationLogPath} option or it is printed to
      * {@link DebugOptions#DumpPath DumpPath}/optimization_log (the former having precedence).
      * Directories are created if they do not exist.
      *
+     * When the logs are printed to files, the filename is set to the current thread ID. The
+     * optimization log in the form of a single-line JSON is appended to the file. This way, the
+     * number of files is reduced, which significantly speeds up parsing later. It is also not
+     * necessary to coordinate with other compilation threads, because they write to a different
+     * file.
+     *
+     * Profdiff makes strong assumptions about the format of the optimization log files in order to
+     * speed up parsing. In particular, it expects one compilation per line with {@code '\n'} line
+     * separators. The JSON must start with the method name and compilation ID properties. There
+     * must be no extra whitespace other than what is generated by {@link JSONFormatter}.
+     *
      * @param methodNameFormatter a function that formats method names
      * @throws IOException failed to create a directory or the file
      */
-    private void printOptimizationTree(Function<ResolvedJavaMethod, String> methodNameFormatter) throws IOException {
+    private void printCompilationUnit(Function<ResolvedJavaMethod, String> methodNameFormatter) throws IOException {
         EconomicSet<DebugOptions.OptimizationLogTarget> targets = DebugOptions.OptimizationLog.getValue(graph.getOptions());
         if (targets == null || targets.isEmpty()) {
             return;
@@ -535,34 +634,40 @@ public class OptimizationLogImpl implements OptimizationLog {
         if (targets.contains(DebugOptions.OptimizationLogTarget.Dump)) {
             graph.getDebug().dump(DebugContext.ENABLED_LEVEL, optimizationTree, "Optimization tree");
         }
-        List<PrintStream> streams = new ArrayList<>();
-        if (targets.contains(DebugOptions.OptimizationLogTarget.Stdout)) {
-            streams.add(TTY.out);
+        boolean printToStdout = targets.contains(DebugOptions.OptimizationLogTarget.Stdout);
+        boolean printToFile = targets.contains(DebugOptions.OptimizationLogTarget.Directory);
+        if (!printToStdout && !printToFile) {
+            return;
         }
-        if (targets.contains(DebugOptions.OptimizationLogTarget.Directory)) {
+        String json = JSONFormatter.formatJSON(asJSONMap(methodNameFormatter));
+        if (printToStdout) {
+            TTY.out().println(json);
+        }
+        if (printToFile) {
             String pathOptionValue = DebugOptions.OptimizationLogPath.getValue(graph.getOptions());
             if (pathOptionValue == null) {
-                pathOptionValue = PathUtilities.getPath(DebugOptions.getDumpDirectory(graph.getOptions()), "optimization_log");
+                pathOptionValue = PathUtilities.getPath(DebugOptions.getDumpDirectory(graph.getOptions()), OPTIMIZATION_LOG_DIRECTORY);
             }
             PathUtilities.createDirectories(pathOptionValue);
-            String filePath = PathUtilities.getPath(pathOptionValue, compilationId + ".json");
-            streams.add(new PrintStream(PathUtilities.openOutputStream(filePath)));
-        }
-        if (!streams.isEmpty()) {
-            String json = JSONFormatter.formatJSON(asJsonMap(methodNameFormatter));
-            for (PrintStream stream : streams) {
-                stream.println(json);
-                stream.close();
+            @SuppressWarnings("deprecation")
+            String fileName = String.valueOf(Thread.currentThread().getId());
+            String filePath = PathUtilities.getPath(pathOptionValue, fileName);
+            try (OutputStream outputStream = PathUtilities.openOutputStream(filePath, true);
+                            PrintStream printStream = new PrintStream(outputStream)) {
+                printStream.print(json);
+                printStream.print(LINE_SEPARATOR);
+                printStream.flush();
             }
         }
     }
 
-    private EconomicMap<String, Object> asJsonMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {
+    private EconomicMap<String, Object> asJSONMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {
         EconomicMap<String, Object> map = EconomicMap.create();
         String compilationMethodName = methodNameFormatter.apply(graph.method());
-        map.put("compilationMethodName", compilationMethodName);
-        map.put("compilationId", compilationId);
-        map.put("rootPhase", currentPhase.asJsonMap(methodNameFormatter));
+        map.put(METHOD_NAME_PROPERTY, compilationMethodName);
+        map.put(COMPILATION_ID_PROPERTY, compilationId);
+        map.put(INLINING_TREE_PROPERTY, inliningTreeAsJSONMap(methodNameFormatter));
+        map.put(OPTIMIZATION_TREE_PROPERTY, currentPhase.asJSONMap(methodNameFormatter));
         return map;
     }
 
@@ -572,12 +677,60 @@ public class OptimizationLogImpl implements OptimizationLog {
      *
      * @return a unique compilation identifier
      */
-    private String parseCompilationId() {
+    private String parseCompilationID() {
         String fullCompilationId = graph.compilationId().toString(CompilationIdentifier.Verbosity.ID);
         int dash = fullCompilationId.indexOf('-');
         if (dash == -1) {
             return fullCompilationId;
         }
         return fullCompilationId.substring(dash + 1);
+    }
+
+    private EconomicMap<String, Object> inliningTreeAsJSONMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {
+        if (graph.getInliningLog() == null) {
+            return null;
+        }
+        return callsiteAsJSONMap(graph.getInliningLog().getRootCallsite(), true, null, methodNameFormatter);
+    }
+
+    /**
+     * Converts an inlining subtree to a JSON map starting from a callsite.
+     *
+     * @param callsite the root of the inlining subtree
+     * @param isInlined {@code true} if the callsite was inlined
+     * @param reason the list of reasons for the inlining decisions made about the callsite
+     * @param methodNameFormatter a function that formats method names
+     * @return inlining subtree as a JSON map
+     */
+    private EconomicMap<String, Object> callsiteAsJSONMap(InliningLog.Callsite callsite, boolean isInlined, List<String> reason,
+                    Function<ResolvedJavaMethod, String> methodNameFormatter) {
+        EconomicMap<String, Object> map = EconomicMap.create();
+        map.put(METHOD_NAME_PROPERTY, callsite.target == null ? null : methodNameFormatter.apply(callsite.target));
+        map.put(CALLSITE_BCI_PROPERTY, callsite.getBci());
+        map.put(INLINED_PROPERTY, isInlined);
+        map.put(REASON_PROPERTY, reason);
+        if (!isInlined) {
+            return map;
+        }
+        List<Object> invokes = null;
+        for (InliningLog.Callsite child : callsite.children) {
+            boolean childIsInlined = false;
+            List<String> childReason = null;
+            for (InliningLog.Decision childDecision : child.decisions) {
+                childIsInlined = childIsInlined || childDecision.isPositive();
+                if (childDecision.getReason() != null) {
+                    if (childReason == null) {
+                        childReason = new ArrayList<>();
+                    }
+                    childReason.add(childDecision.getReason());
+                }
+            }
+            if (invokes == null) {
+                invokes = new ArrayList<>();
+            }
+            invokes.add(callsiteAsJSONMap(child, childIsInlined, childReason, methodNameFormatter));
+        }
+        map.put(INVOKES_PROPERTY, invokes);
+        return map;
     }
 }

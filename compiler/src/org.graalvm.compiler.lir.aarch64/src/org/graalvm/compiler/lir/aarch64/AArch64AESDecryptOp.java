@@ -44,6 +44,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -56,9 +57,9 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp",
-          lineStart = 2594,
-          lineEnd   = 2625,
-          commit    = "61e072d11c8e0cb5879bb733ed1fdd2144326bfd",
+          lineStart = 2603,
+          lineEnd   = 2634,
+          commit    = "4a300818fe7a47932c5b762ccd3b948815a31974",
           sha1      = "e2f617436bf0437ef9838d8a599d8833b592b8e7")
 @StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64_aes.cpp",
           lineStart = 34,
@@ -96,9 +97,9 @@ public final class AArch64AESDecryptOp extends AArch64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        assert fromValue.getPlatformKind().equals(AArch64Kind.QWORD) : fromValue;
-        assert toValue.getPlatformKind().equals(AArch64Kind.QWORD) : toValue;
-        assert keyValue.getPlatformKind().equals(AArch64Kind.QWORD) : keyValue;
+        GraalError.guarantee(fromValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid fromValue kind: %s", fromValue);
+        GraalError.guarantee(toValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid toValue kind: %s", toValue);
+        GraalError.guarantee(keyValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid keyValue kind: %s", keyValue);
 
         Register from = asRegister(fromValue); // source array address
         Register to = asRegister(toValue);     // destination array address

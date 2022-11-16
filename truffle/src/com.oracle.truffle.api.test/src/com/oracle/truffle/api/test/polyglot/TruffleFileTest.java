@@ -52,6 +52,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.InvocationTargetException;
@@ -703,6 +704,14 @@ public class TruffleFileTest extends AbstractPolyglotTest {
             assertEquals(4, fs.openFileCount);
             context.close();
             assertEquals(0, fs.openFileCount);
+            // The compiler can release channel and stream references before the Context#close is
+            // called because these references are no longer in use. In this case, objects
+            // referenced by these references can be gc-ed because registered closeables are weakly
+            // referenced. We need reachability fences to keep these references alive.
+            Reference.reachabilityFence(readByteChannel2);
+            Reference.reachabilityFence(inputStream2);
+            Reference.reachabilityFence(writeByteChannel2);
+            Reference.reachabilityFence(outputStream2);
         } finally {
             delete(p);
         }
@@ -727,6 +736,11 @@ public class TruffleFileTest extends AbstractPolyglotTest {
             dirStream1.close();
             assertEquals(1, fs.openDirCount);
             context.close();
+            // The compiler can release the dirStream2 reference before the Context#close is called
+            // because the dirStream2 is no longer in use. In this case, object referenced by the
+            // dirStream2 can be gc-ed because registered closeables are weakly referenced. We need
+            // a reachability fence to keep the dirStream2 reference alive.
+            Reference.reachabilityFence(dirStream2);
             assertEquals(0, fs.openDirCount);
         } finally {
             delete(p);
@@ -745,6 +759,11 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         };
         languageEnv.registerOnDispose(closeable);
         context.close();
+        // The compiler can release the closeable reference before the Context#close is called
+        // because the closeable is no longer in use. In this case, object referenced by the
+        // closeable can be gc-ed because registered closeables are weakly referenced. We need a
+        // reachability fence to keep the closeable reference alive.
+        Reference.reachabilityFence(closeable);
         Optional<LogRecord> record = handler.findRecordByMessage("Failed to close.*");
         assertTrue(record.isPresent());
         assertEquals(Level.WARNING, record.map(LogRecord::getLevel).get());
@@ -767,6 +786,11 @@ public class TruffleFileTest extends AbstractPolyglotTest {
                 assertTrue(pe.isInternalError());
             });
         } finally {
+            // The compiler can release the closeable reference before the Context#close is called
+            // because the closeable is no longer in use. In this case, object referenced by the
+            // closeable can be gc-ed because registered closeables are weakly referenced. We need a
+            // reachability fence to keep the closeable reference alive.
+            Reference.reachabilityFence(closeable);
             context = null;
         }
         Optional<LogRecord> record = handler.findRecordByMessage("Failed to close.*");

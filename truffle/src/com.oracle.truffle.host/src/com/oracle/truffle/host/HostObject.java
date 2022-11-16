@@ -62,6 +62,7 @@ import java.util.Objects;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 import org.graalvm.polyglot.proxy.Proxy;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -76,6 +77,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
@@ -1385,6 +1387,10 @@ final class HostObject implements TruffleObject {
         return c == Byte.class || c == Short.class || c == Integer.class || c == Long.class || c == Float.class || c == Double.class;
     }
 
+    private static boolean isJavaPrimitiveNumber(Object value) {
+        return value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long || value instanceof Float || value instanceof Double;
+    }
+
     @ExportMessage
     boolean fitsInByte(@CachedLibrary("this") InteropLibrary thisLibrary,
                     @Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
@@ -1769,27 +1775,57 @@ final class HostObject implements TruffleObject {
     }
 
     @TruffleBoundary
-    static String toStringImpl(HostContext context, Object javaObject, int level, boolean allowSideEffects) {
+    private static String toStringImpl(HostContext context, Object javaObject, int level, boolean allowSideEffects) {
         try {
             if (javaObject == null) {
                 return "null";
             } else if (javaObject.getClass().isArray()) {
                 return arrayToString(context, javaObject, level, allowSideEffects);
             } else if (javaObject instanceof Class) {
-                return ((Class<?>) javaObject).getTypeName();
+                return getTypeNameSafe((Class<?>) javaObject);
             } else {
-                if (allowSideEffects) {
-                    return Objects.toString(javaObject);
-                } else {
-                    return javaObject.getClass().getTypeName() + "@" + Integer.toHexString(System.identityHashCode(javaObject));
+                if (allowSideEffects && context != null) {
+                    Object hostObject = HostObject.forObject(javaObject, context);
+                    try {
+                        InteropLibrary thisLib = InteropLibrary.getUncached(hostObject);
+                        if (thisLib.isBoolean(hostObject)) {
+                            return Boolean.toString(thisLib.asBoolean(hostObject));
+                        } else if (thisLib.isString(hostObject)) {
+                            return thisLib.asString(hostObject);
+                        } else if (thisLib.isNumber(hostObject)) {
+                            assert isJavaPrimitiveNumber(javaObject) : javaObject;
+                            return javaObject.toString();
+                        } else if (thisLib.isMemberInvocable(hostObject, "toString")) {
+                            Object result = thisLib.invokeMember(hostObject, "toString");
+                            return InteropLibrary.getUncached().asString(result);
+                        }
+                    } catch (InteropException e) {
+                        // ignore exception and fall back to the !allowSideEffects version
+                    }
                 }
+                return getTypeNameSafe(javaObject.getClass());
             }
         } catch (Throwable t) {
             throw context.hostToGuestException(t);
         }
     }
 
+    /**
+     * Safe version of {@link Class#getTypeName()} that strips any hidden class suffix from the
+     * class name.
+     */
+    @TruffleBoundary
+    private static String getTypeNameSafe(Class<?> type) {
+        String typeName = type.getTypeName();
+        int slash = typeName.indexOf('/');
+        if (slash != -1) {
+            return typeName.substring(0, slash);
+        }
+        return typeName;
+    }
+
     private static String arrayToString(HostContext context, Object array, int level, boolean allowSideEffects) {
+        CompilerAsserts.neverPartOfCompilation();
         if (array == null) {
             return "null";
         }

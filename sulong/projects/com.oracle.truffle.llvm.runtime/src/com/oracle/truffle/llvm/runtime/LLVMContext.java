@@ -49,6 +49,7 @@ import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.LLVMThreadLocalValue;
+import com.oracle.truffle.llvm.runtime.PlatformCapability.OS;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
@@ -178,6 +179,8 @@ public final class LLVMContext {
     // pThread state
     private final LLVMPThreadContext pThreadContext;
 
+    private final LLVMContextWindows windowsContext;
+
     // globals block function
     @CompilationFinal Object freeGlobalsBlockFunction;
     @CompilationFinal Object allocateGlobalsBlockFunction;
@@ -234,6 +237,8 @@ public final class LLVMContext {
         this.dynamicLinkChainForScopes = new DynamicLinkChain();
 
         this.mainArguments = getMainArguments(env);
+
+        this.windowsContext = language.getCapability(PlatformCapability.class).getOS().equals(OS.Windows) ? new LLVMContextWindows() : null;
 
         addLibraryPaths(SulongEngineOption.getPolyglotOptionSearchPaths(env));
 
@@ -329,6 +334,11 @@ public final class LLVMContext {
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    public LLVMContextWindows getWindowsContext() {
+        assert windowsContext != null;
+        return windowsContext;
     }
 
     public boolean isAOTCacheStore() {

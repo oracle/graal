@@ -77,7 +77,7 @@ public class Isolates {
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")
-    public static int checkSanity(Isolate isolate) {
+    public static int checkIsolate(Isolate isolate) {
         if (SubstrateOptions.SpawnIsolates.getValue()) {
             return isolate.isNull() ? CEntryPointErrors.NULL_ARGUMENT : CEntryPointErrors.NO_ERROR;
         } else {
@@ -92,7 +92,7 @@ public class Isolates {
             return result;
         }
 
-        result = checkSanity(isolatePointer.read());
+        result = checkIsolate(isolatePointer.read());
         if (result != CEntryPointErrors.NO_ERROR) {
             isolatePointer.write(WordFactory.nullPointer());
             return result;

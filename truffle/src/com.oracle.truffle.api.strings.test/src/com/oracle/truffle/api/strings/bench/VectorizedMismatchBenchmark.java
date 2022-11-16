@@ -57,7 +57,7 @@ public class VectorizedMismatchBenchmark extends TStringBenchmarkBase {
     @State(Scope.Benchmark)
     public static class BenchState {
 
-        @Param({"0", "1", "2", "3", "4", "7", "8", "15", "16", "31", "32", "63", "64", "127", "128", "255", "256", "511", "512"}) int length;
+        @Param({"64"}) int length;
         // Checkstyle: stop
         String str = "NoahLiamJacobMasonWilliamEthanMichaelAlexanderJaydenDanielElijahAidenJamesBenjaminMatthewJacksonLoganDavidAnthonyJosephJoshuaAndrewLucasGabrielSamuelChristopherJohnDylanIsaacRyanNathanCarterCalebLukeChristianHunterHenryOwenLandonJackWyattJonathanEliIsaiahSebastianJaxonBraydenGavinLeviAaronOliverJordanNicholasEvanConnorCharlesJeremiahCameronAdrianThomasRobertTylerColtonAustinJaceAngelDominicJosiahBrandonAydenKevinZacharyParkerBlakeJoseChaseGraysonJasonIanBentleyAdamXavierCooperJustinNolanHudsonEastonJaseCarsonNathanielJaxsonKaydenBrodyLincolnLuisTristanJulianDamianCamdenJuan";
         // Checkstyle: resume

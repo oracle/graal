@@ -1,6 +1,6 @@
 Enable the structured optimization log and specify where it is printed.
 The accepted values are:
-  Directory - Print the structured optimization log to JSON files (<compile-id>.json) in a directory.
+  Directory - Format the structured optimization log as JSON and print it to files in a directory.
               The directory is specified by OptimizationLogPath. If OptimizationLogPath is not set,
               the target directory is DumpPath/optimization_log.
      Stdout - Print the structured optimization log to the standard output.

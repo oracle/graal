@@ -48,7 +48,6 @@ class JLine3FeatureModuleAccessFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        System.out.println("org.graalvm.launcher.PolyglotLauncherFeature.afterRegistration");
         if (!JLine3FeatureModuleAccessFeature.class.getModule().isNamed()) {
             ModuleLayer.boot().findModule("org.graalvm.nativeimage.base").ifPresent(base -> {
                 Modules.addExportsToAllUnnamed(base, "com.oracle.svm.util");

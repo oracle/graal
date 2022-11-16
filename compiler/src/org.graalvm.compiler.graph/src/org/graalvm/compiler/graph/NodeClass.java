@@ -583,7 +583,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                         number += intValue;
                     } else if (type == Long.TYPE) {
                         long longValue = data.getLong(n, i);
-                        number += longValue ^ (longValue >>> 32);
+                        number += (int) (longValue ^ (longValue >>> 32));
                     } else if (type == Boolean.TYPE) {
                         boolean booleanValue = data.getBoolean(n, i);
                         if (booleanValue) {
@@ -595,7 +595,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                     } else if (type == Double.TYPE) {
                         double doubleValue = data.getDouble(n, i);
                         long longValue = Double.doubleToRawLongBits(doubleValue);
-                        number += longValue ^ (longValue >>> 32);
+                        number += (int) (longValue ^ (longValue >>> 32));
                     } else if (type == Short.TYPE) {
                         short shortValue = data.getShort(n, i);
                         number += shortValue;

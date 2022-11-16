@@ -97,7 +97,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     private Group wrappedRoot;
     private Group[] captureGroups;
     private final List<QuantifiableTerm> zeroWidthQuantifiables = new ArrayList<>();
-    private final SubTreeIndex subtrees = new SubTreeIndex();
+    private final GlobalSubTreeIndex subtrees = new GlobalSubTreeIndex();
     private final List<PositionAssertion> reachableCarets = new ArrayList<>();
     private final List<PositionAssertion> reachableDollars = new ArrayList<>();
     private StateSet<RegexAST, PositionAssertion> nfaAnchoredInitialStates;
@@ -204,7 +204,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     public boolean isLiteralString() {
         Group r = getRoot();
         RegexProperties p = getProperties();
-        return !((r.hasBackReferences() || p.hasAlternations() || p.hasLookAroundAssertions() || r.hasLoops()) || ((r.startsWithCaret() || r.endsWithDollar()) && getFlags().isMultiline())) &&
+        return !((p.hasBackReferences() || p.hasAlternations() || p.hasLookAroundAssertions() || r.hasLoops()) || ((r.startsWithCaret() || r.endsWithDollar()) && getFlags().isMultiline())) &&
                         (!p.hasCharClasses() || p.charClassesCanBeMatchedWithMask());
     }
 
@@ -251,7 +251,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return wrappedRoot;
     }
 
-    public SubTreeIndex getSubtrees() {
+    public GlobalSubTreeIndex getSubtrees() {
         return subtrees;
     }
 
@@ -620,7 +620,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         boolean couldCalculateLastGroup = !getOptions().getFlavor().usesLastGroupResultField() || !getProperties().hasCaptureGroupsInLookAroundAssertions();
         return getNumberOfNodes() <= TRegexOptions.TRegexMaxParseTreeSizeForDFA &&
                         getNumberOfCaptureGroups() <= TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA &&
-                        !(getRoot().hasBackReferences() ||
+                        !(getProperties().hasBackReferences() ||
                                         getProperties().hasLargeCountedRepetitions() ||
                                         getProperties().hasNegativeLookAheadAssertions() ||
                                         getProperties().hasNonLiteralLookBehindAssertions() ||
@@ -639,7 +639,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         if (getNumberOfCaptureGroups() > TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA) {
             sb.add(String.format("regex has too many capture groups: %d (threshold: %d)", getNumberOfCaptureGroups(), TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA));
         }
-        if (getRoot().hasBackReferences()) {
+        if (getProperties().hasBackReferences()) {
             sb.add("regex has back-references");
         }
         if (getProperties().hasLargeCountedRepetitions()) {

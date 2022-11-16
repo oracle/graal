@@ -97,7 +97,6 @@ local utils = import '../../../common-utils.libsonnet';
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
     for jdk in [
-      "11",
       "17",
       "19"
     ]

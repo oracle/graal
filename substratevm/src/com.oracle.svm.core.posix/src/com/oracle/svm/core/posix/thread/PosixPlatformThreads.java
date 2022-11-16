@@ -25,6 +25,7 @@
 package com.oracle.svm.core.posix.thread;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
@@ -39,6 +40,8 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
@@ -286,10 +289,8 @@ final class Target_java_lang_Thread {
 
 class PosixParkEvent extends ParkEvent {
 
-    /** A mutex: from the operating system. */
-    private final Pthread.pthread_mutex_t mutex;
-    /** A condition variable: from the operating system. */
-    private final Pthread.pthread_cond_t cond;
+    private Pthread.pthread_mutex_t mutex;
+    private Pthread.pthread_cond_t cond;
 
     /**
      * The ticket: false implies unavailable, true implies available. Volatile so it can be safely
@@ -298,14 +299,14 @@ class PosixParkEvent extends ParkEvent {
     protected volatile boolean event;
 
     PosixParkEvent() {
-        /* Create a mutex. */
-        mutex = UnmanagedMemory.malloc(SizeOf.unsigned(Pthread.pthread_mutex_t.class));
-        /* The attributes for the mutex. Can be null. */
+        // Allocate mutex and condition in a single step so that they are adjacent in memory.
+        UnsignedWord mutexSize = SizeOf.unsigned(Pthread.pthread_mutex_t.class);
+        Pointer memory = UnmanagedMemory.malloc(mutexSize.add(SizeOf.unsigned(Pthread.pthread_cond_t.class)));
+        mutex = (Pthread.pthread_mutex_t) memory;
+        cond = (Pthread.pthread_cond_t) memory.add(mutexSize);
+
         final Pthread.pthread_mutexattr_t mutexAttr = WordFactory.nullPointer();
         PosixUtils.checkStatusIs0(Pthread.pthread_mutex_init(mutex, mutexAttr), "mutex initialization");
-
-        /* Create a condition variable. */
-        cond = UnmanagedMemory.malloc(SizeOf.unsigned(Pthread.pthread_cond_t.class));
         PosixUtils.checkStatusIs0(PthreadConditionUtils.initCondition(cond), "condition variable initialization");
     }
 
@@ -383,12 +384,25 @@ class PosixParkEvent extends ParkEvent {
             StackOverflowCheck.singleton().protectYellowZone();
         }
     }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected void release() {
+        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(mutex);
+        mutex = WordFactory.nullPointer();
+        cond = WordFactory.nullPointer(); // allocated and freed together with mutex
+    }
 }
 
 @AutomaticallyRegisteredImageSingleton(ParkEventFactory.class)
 class PosixParkEventFactory implements ParkEventFactory {
     @Override
-    public ParkEvent create() {
+    public ParkEvent acquire() {
         return new PosixParkEvent();
+    }
+
+    @Override
+    public boolean usesParkEventList() {
+        return false;
     }
 }

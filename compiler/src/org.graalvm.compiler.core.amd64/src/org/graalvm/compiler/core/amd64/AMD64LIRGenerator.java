@@ -85,6 +85,8 @@ import org.graalvm.compiler.lir.amd64.AMD64CacheWritebackOp;
 import org.graalvm.compiler.lir.amd64.AMD64CacheWritebackPostSyncOp;
 import org.graalvm.compiler.lir.amd64.AMD64CalcStringAttributesOp;
 import org.graalvm.compiler.lir.amd64.AMD64Call;
+import org.graalvm.compiler.lir.amd64.AMD64CipherBlockChainingAESDecryptOp;
+import org.graalvm.compiler.lir.amd64.AMD64CipherBlockChainingAESEncryptOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.BranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.CmpBranchOp;
@@ -776,6 +778,32 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                         asAllocatable(len),
                         asAllocatable(encryptedCounterAddr),
                         asAllocatable(usedPtr),
+                        result,
+                        getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+        return result;
+    }
+
+    @Override
+    public Variable emitCBCAESEncrypt(Value inAddr, Value outAddr, Value kAddr, Value rAddr, Value len) {
+        Variable result = newVariable(len.getValueKind());
+        append(new AMD64CipherBlockChainingAESEncryptOp(asAllocatable(inAddr),
+                        asAllocatable(outAddr),
+                        asAllocatable(kAddr),
+                        asAllocatable(rAddr),
+                        asAllocatable(len),
+                        result,
+                        getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+        return result;
+    }
+
+    @Override
+    public Variable emitCBCAESDecrypt(Value inAddr, Value outAddr, Value kAddr, Value rAddr, Value len) {
+        Variable result = newVariable(len.getValueKind());
+        append(new AMD64CipherBlockChainingAESDecryptOp(asAllocatable(inAddr),
+                        asAllocatable(outAddr),
+                        asAllocatable(kAddr),
+                        asAllocatable(rAddr),
+                        asAllocatable(len),
                         result,
                         getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
         return result;

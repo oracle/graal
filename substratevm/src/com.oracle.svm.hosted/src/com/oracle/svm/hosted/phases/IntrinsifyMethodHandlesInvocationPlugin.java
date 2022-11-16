@@ -29,6 +29,7 @@ import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.Inl
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
+import java.lang.invoke.WrongMethodTypeException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -550,24 +551,28 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         r.register(new RequiredInvocationPlugin("asType", Receiver.class, MethodType.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode newTypeNode) {
-                ValueNode methodHandleNode = receiver.get();
+                ValueNode methodHandleNode = receiver.get(false);
                 if (methodHandleNode.isJavaConstant() && newTypeNode.isJavaConstant()) {
-                    try {
-                        /*
-                         * If both, the MethodHandle and the MethodType are constant, we can
-                         * evaluate asType eagerly and embed the result as a constant in the graph.
-                         */
-                        SnippetReflectionProvider snippetReflection = aUniverse.getOriginalSnippetReflection();
-                        MethodHandle mh = snippetReflection.asObject(MethodHandle.class, methodHandleNode.asJavaConstant());
-                        MethodType mt = snippetReflection.asObject(MethodType.class, newTypeNode.asJavaConstant());
-                        MethodHandle asType = mh.asType(mt);
-                        JavaConstant asTypeConstant = snippetReflection.forObject(asType);
-                        ConstantNode asTypeNode = ConstantNode.forConstant(asTypeConstant, b.getMetaAccess(), b.getGraph());
-                        b.push(JavaKind.Object, asTypeNode);
-                        return true;
-                    } catch (Throwable t) {
-                        /* ignore */
+                    /*
+                     * If both, the MethodHandle and the MethodType are constant, we can evaluate
+                     * asType eagerly and embed the result as a constant in the graph.
+                     */
+                    SnippetReflectionProvider snippetReflection = aUniverse.getOriginalSnippetReflection();
+                    MethodHandle mh = snippetReflection.asObject(MethodHandle.class, methodHandleNode.asJavaConstant());
+                    MethodType mt = snippetReflection.asObject(MethodType.class, newTypeNode.asJavaConstant());
+                    if (mh == null || mt == null) {
+                        return false;
                     }
+                    final MethodHandle asType;
+                    try {
+                        asType = mh.asType(mt);
+                    } catch (WrongMethodTypeException t) {
+                        return false;
+                    }
+                    JavaConstant asTypeConstant = snippetReflection.forObject(asType);
+                    ConstantNode asTypeNode = ConstantNode.forConstant(asTypeConstant, b.getMetaAccess(), b.getGraph());
+                    b.push(JavaKind.Object, asTypeNode);
+                    return true;
                 }
                 return false;
             }

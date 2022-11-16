@@ -68,6 +68,13 @@ class ReflectionProcessor extends AbstractProcessor {
         switch (function) {
             // These are called via java.lang.Class or via the class loader hierarchy, so we would
             // always filter based on the caller class.
+            case "findResource":
+            case "findResourceAsStream":
+                expectSize(args, 2);
+                String module = (String) args.get(0);
+                String resource = (String) args.get(1);
+                resourceConfiguration.addResourcePattern(condition, (module == null ? "" : module + ":") + Pattern.quote(resource));
+                return;
             case "getResource":
             case "getResourceAsStream":
             case "getSystemResource":

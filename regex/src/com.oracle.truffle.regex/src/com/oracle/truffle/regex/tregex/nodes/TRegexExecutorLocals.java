@@ -42,6 +42,7 @@
 package com.oracle.truffle.regex.tregex.nodes;
 
 import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.regex.RegexExecNode;
 
 /**
  * Base class for local variables used by an executor node called by a {@link TRegexExecNode}.
@@ -63,18 +64,22 @@ public abstract class TRegexExecutorLocals {
     }
 
     /**
-     * The {@code input} argument given to {@link TRegexExecNode#execute(Object, int)}.
+     * The {@code input} argument given to
+     * {@link RegexExecNode#execute(com.oracle.truffle.api.frame.VirtualFrame)}.
      *
-     * @return the {@code input} argument given to {@link TRegexExecNode#execute(Object, int)}.
+     * @return the {@code input} argument given to
+     *         {@link RegexExecNode#execute(com.oracle.truffle.api.frame.VirtualFrame)}.
      */
     public final Object getInput() {
         return input;
     }
 
     /**
-     * The {@code fromIndex} argument given to {@link TRegexExecNode#execute(Object, int)}.
+     * The {@code fromIndex} argument given to
+     * {@link RegexExecNode#execute(com.oracle.truffle.api.frame.VirtualFrame)}.
      *
-     * @return the {@code fromIndex} argument given to {@link TRegexExecNode#execute(Object, int)}.
+     * @return the {@code fromIndex} argument given to
+     *         {@link RegexExecNode#execute(com.oracle.truffle.api.frame.VirtualFrame)}.
      */
     public final int getFromIndex() {
         return fromIndex;

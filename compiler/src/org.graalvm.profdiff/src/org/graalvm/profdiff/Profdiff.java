@@ -24,142 +24,114 @@
  */
 package org.graalvm.profdiff;
 
-import java.io.IOException;
-
-import org.graalvm.profdiff.core.Experiment;
-import org.graalvm.profdiff.core.ExperimentId;
+import org.graalvm.profdiff.command.HelpCommand;
+import org.graalvm.profdiff.command.JITAOTCommand;
+import org.graalvm.profdiff.command.JITJITCommand;
+import org.graalvm.profdiff.command.ReportCommand;
 import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
 import org.graalvm.profdiff.core.VerbosityLevel;
-import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
-import org.graalvm.profdiff.matching.method.GreedyMethodMatcher;
-import org.graalvm.profdiff.matching.method.MatchedCompilationUnit;
-import org.graalvm.profdiff.matching.method.MatchedMethod;
-import org.graalvm.profdiff.matching.method.MethodMatching;
-import org.graalvm.profdiff.matching.tree.OptimizationTreeEditPolicy;
-import org.graalvm.profdiff.matching.tree.SelkowTreeMatcher;
-import org.graalvm.profdiff.matching.tree.TreeMatcher;
-import org.graalvm.profdiff.matching.tree.TreeMatching;
-import org.graalvm.profdiff.parser.args.ArgumentParser;
+import org.graalvm.profdiff.parser.args.CommandGroup;
 import org.graalvm.profdiff.parser.args.DoubleArgument;
 import org.graalvm.profdiff.parser.args.EnumArgument;
 import org.graalvm.profdiff.parser.args.IntegerArgument;
 import org.graalvm.profdiff.parser.args.InvalidArgumentException;
 import org.graalvm.profdiff.parser.args.MissingArgumentException;
-import org.graalvm.profdiff.parser.args.StringArgument;
+import org.graalvm.profdiff.parser.args.ProgramArgumentParser;
 import org.graalvm.profdiff.parser.args.UnknownArgumentException;
-import org.graalvm.profdiff.parser.experiment.ExperimentFiles;
-import org.graalvm.profdiff.parser.experiment.ExperimentFilesImpl;
-import org.graalvm.profdiff.parser.experiment.ExperimentParser;
-import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
 import org.graalvm.profdiff.util.StdoutWriter;
-import org.graalvm.profdiff.util.Writer;
 
 public class Profdiff {
-    public static void main(String[] args) {
-        ArgumentParser argumentParser = new ArgumentParser(
-                        "mx profdiff",
-                        "Compares the optimization log of hot compilation units of two experiments.");
-        IntegerArgument hotMinArgument = argumentParser.addIntegerArgument(
-                        "--hot-min-limit", 1,
-                        "the minimum number of compilation units to mark as hot");
-        IntegerArgument hotMaxArgument = argumentParser.addIntegerArgument(
-                        "--hot-max-limit", 10,
-                        "the maximum number of compilation units to mark as hot");
-        DoubleArgument percentileArgument = argumentParser.addDoubleArgument(
-                        "--hot-percentile", 0.9,
-                        "the percentile of the execution period that is spent executing hot compilation units");
-        EnumArgument<VerbosityLevel> verbosityLevelArgument = argumentParser.addEnumArgument(
-                        "--verbosity", VerbosityLevel.DEFAULT,
-                        "the verbosity level of the diff");
-        StringArgument proftoolArgument1 = argumentParser.addStringArgument(
-                        "proftool_output_1", "proftool output of the first experiment in JSON.");
-        StringArgument optimizationLogArgument1 = argumentParser.addStringArgument(
-                        "optimization_log_1", "directory with optimization logs for each compilation unit in the first experiment.");
-        StringArgument proftoolArgument2 = argumentParser.addStringArgument(
-                        "proftool_output_2", "proftool output of the second experiment in JSON.");
-        StringArgument optimizationLogArgument2 = argumentParser.addStringArgument(
-                        "optimization_log_2", "directory with optimization logs for each compilation unit in the second experiment.");
-        try {
-            argumentParser.parse(args);
-        } catch (InvalidArgumentException | MissingArgumentException | UnknownArgumentException e) {
-            System.err.println(e.getMessage());
-            System.err.println(argumentParser.createUsage());
-            System.exit(1);
+    private static class ProgramArguments {
+        private final ProgramArgumentParser argumentParser;
+
+        private final IntegerArgument hotMinArgument;
+
+        private final IntegerArgument hotMaxArgument;
+
+        private final DoubleArgument percentileArgument;
+
+        private final EnumArgument<VerbosityLevel> verbosityLevelArgument;
+
+        private final CommandGroup commandGroup;
+
+        ProgramArguments() {
+            argumentParser = new ProgramArgumentParser(
+                            "mx profdiff",
+                            "compares the optimization log of hot compilation units of two experiments");
+            hotMinArgument = argumentParser.addIntegerArgument(
+                            "--hot-min-limit", 1,
+                            "the minimum number of compilation units to mark as hot");
+            hotMaxArgument = argumentParser.addIntegerArgument(
+                            "--hot-max-limit", 10,
+                            "the maximum number of compilation units to mark as hot");
+            percentileArgument = argumentParser.addDoubleArgument(
+                            "--hot-percentile", 0.9,
+                            "the percentile of the execution period that is spent executing hot compilation units");
+            verbosityLevelArgument = argumentParser.addEnumArgument(
+                            "--verbosity", VerbosityLevel.DEFAULT,
+                            "the verbosity level of the diff");
+            commandGroup = argumentParser.addCommandGroup("command", "the action to invoke");
         }
 
-        if (percentileArgument.getValue() > 1 || percentileArgument.getValue() < 0) {
-            System.err.println("The hot method percentile must be in the range [0;1].");
-            System.exit(1);
-        }
-
-        if (hotMinArgument.getValue() < 0 || hotMinArgument.getValue() > hotMaxArgument.getValue()) {
-            System.err.printf("The condition 0 <= %s <= %s must be satisfied.", hotMinArgument.getName(), hotMaxArgument.getName());
-            System.exit(1);
-        }
-
-        VerbosityLevel verbosityLevel = verbosityLevelArgument.getValue();
-        Writer writer = new StdoutWriter(verbosityLevel);
-
-        HotCompilationUnitPolicy hotCompilationUnitPolicy = new HotCompilationUnitPolicy();
-        hotCompilationUnitPolicy.setHotMinLimit(hotMinArgument.getValue());
-        hotCompilationUnitPolicy.setHotMaxLimit(hotMaxArgument.getValue());
-        hotCompilationUnitPolicy.setHotPercentile(percentileArgument.getValue());
-
-        ExperimentFiles experimentFiles1 = new ExperimentFilesImpl(
-                        ExperimentId.ONE, proftoolArgument1.getValue(), optimizationLogArgument1.getValue());
-        ExperimentParser parser1 = new ExperimentParser(experimentFiles1);
-        Experiment experiment1 = parseOrExit(parser1);
-        hotCompilationUnitPolicy.markHotCompilationUnits(experiment1);
-        experiment1.writeExperimentSummary(writer);
-        writer.writeln();
-
-        ExperimentFiles experimentFiles2 = new ExperimentFilesImpl(
-                        ExperimentId.TWO, proftoolArgument2.getValue(), optimizationLogArgument2.getValue());
-        ExperimentParser parser2 = new ExperimentParser(experimentFiles2);
-        Experiment experiment2 = parseOrExit(parser2);
-        hotCompilationUnitPolicy.markHotCompilationUnits(experiment2);
-        experiment2.writeExperimentSummary(writer);
-
-        GreedyMethodMatcher matcher = new GreedyMethodMatcher();
-        MethodMatching matching = matcher.match(experiment1, experiment2);
-        TreeMatcher<OptimizationTreeNode> optimizationTreeMatcher = new SelkowTreeMatcher<>(new OptimizationTreeEditPolicy());
-
-        for (MatchedMethod matchedMethod : matching.getMatchedMethods()) {
-            writer.writeln();
-            matchedMethod.writeHeaderAndCompilationUnits(writer, experiment1, experiment2);
-            writer.increaseIndent();
-            if (verbosityLevel.shouldPrintOptimizationTree()) {
-                matchedMethod.getFirstHotCompilationUnits().forEach(compilationUnit -> compilationUnit.write(writer));
-                matchedMethod.getSecondHotCompilationUnits().forEach(compilationUnit -> compilationUnit.write(writer));
+        public void parseOrExit(String[] args) {
+            try {
+                argumentParser.parse(args);
+            } catch (InvalidArgumentException | MissingArgumentException | UnknownArgumentException e) {
+                System.err.println(e.getMessage());
+                System.err.println(argumentParser.formatHelp());
+                System.exit(1);
             }
-            if (verbosityLevel.shouldDiffCompilations()) {
-                for (MatchedCompilationUnit matchedCompilationUnit : matchedMethod.getMatchedCompilationUnits()) {
-                    matchedCompilationUnit.writeHeader(writer);
-                    TreeMatching optimizationTreeMatching = optimizationTreeMatcher.match(
-                                    matchedCompilationUnit.getFirstCompilationUnit().getRootPhase(),
-                                    matchedCompilationUnit.getSecondCompilationUnit().getRootPhase());
-                    optimizationTreeMatching.write(writer);
-                }
-                matchedMethod.getUnmatchedCompilationUnits().forEach(compilationUnit -> compilationUnit.write(writer));
+
+            if (percentileArgument.getValue() > 1 || percentileArgument.getValue() < 0) {
+                System.err.println("The hot method percentile must be in the range [0;1].");
+                System.exit(1);
             }
-            writer.decreaseIndent();
+
+            if (hotMinArgument.getValue() < 0 || hotMinArgument.getValue() > hotMaxArgument.getValue()) {
+                System.err.printf("The condition 0 <= %s <= %s must be satisfied.", hotMinArgument.getName(), hotMaxArgument.getName());
+                System.exit(1);
+            }
         }
-        matching.getUnmatchedMethods().forEach(unmatchedMethod -> {
-            writer.writeln();
-            unmatchedMethod.write(writer, experiment1, experiment2);
-        });
+
+        public CommandGroup getCommandGroup() {
+            return commandGroup;
+        }
+
+        public VerbosityLevel getVerbosityLevel() {
+            return verbosityLevelArgument.getValue();
+        }
+
+        public ProgramArgumentParser getArgumentParser() {
+            return argumentParser;
+        }
+
+        public HotCompilationUnitPolicy getHotCompilationUnitPolicy() {
+            HotCompilationUnitPolicy hotCompilationUnitPolicy = new HotCompilationUnitPolicy();
+            hotCompilationUnitPolicy.setHotMinLimit(hotMinArgument.getValue());
+            hotCompilationUnitPolicy.setHotMaxLimit(hotMaxArgument.getValue());
+            hotCompilationUnitPolicy.setHotPercentile(percentileArgument.getValue());
+            return hotCompilationUnitPolicy;
+        }
     }
 
-    private static Experiment parseOrExit(ExperimentParser parser) {
+    public static void main(String[] args) {
+        ProgramArguments programArguments = new ProgramArguments();
+        CommandGroup commandGroup = programArguments.getCommandGroup();
+        commandGroup.addCommand(new ReportCommand());
+        commandGroup.addCommand(new JITJITCommand());
+        commandGroup.addCommand(new JITAOTCommand());
+        commandGroup.addCommand(new HelpCommand(programArguments.getArgumentParser()));
+
+        programArguments.parseOrExit(args);
+
+        commandGroup.getSelectedCommand().setHotCompilationUnitPolicy(programArguments.getHotCompilationUnitPolicy());
+        VerbosityLevel verbosityLevel = programArguments.getVerbosityLevel();
+        StdoutWriter writer = new StdoutWriter(verbosityLevel);
         try {
-            return parser.parse();
-        } catch (IOException e) {
-            System.err.println("Could not read the files of the experiment " + parser.getExperimentFiles().getExperimentId() + ": " + e.getMessage());
-            System.exit(1);
-        } catch (ExperimentParserError e) {
-            System.err.println(e.getMessage());
+            commandGroup.getSelectedCommand().invoke(writer);
+        } catch (Exception exception) {
+            System.err.println(exception.getMessage());
             System.exit(1);
         }
-        return null;
     }
 }
