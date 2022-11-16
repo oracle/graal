@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -30,8 +30,5 @@
 
 cmake_minimum_required(VERSION 3.15)
 project(${SULONG_PROJECT_NAME} LANGUAGES NONE)
-
-set(CMAKE_SOURCE_DIR ${SULONG_TEST_SOURCE_DIR})
-set(SULONG_TEST_SOURCE_DIR "")
 
 include(SulongTestSuite)
