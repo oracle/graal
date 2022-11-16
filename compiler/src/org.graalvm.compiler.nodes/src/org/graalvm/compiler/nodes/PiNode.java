@@ -164,10 +164,10 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         return true;
     }
 
-    public static boolean intrinsify(GraphBuilderContext b, ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
+    public static boolean intrinsify(GraphBuilderContext b, ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull, ValueNode guard) {
         Stamp stamp = StampFactory.object(exactType ? TypeReference.createExactTrusted(toType) : TypeReference.createWithoutAssumptions(toType),
                         nonNull || StampTool.isPointerNonNull(object.stamp(NodeView.DEFAULT)));
-        ValueNode value = canonical(object, stamp, null, null);
+        ValueNode value = canonical(object, stamp, (GuardingNode) guard, null);
         if (value == null) {
             value = new PiNode(object, stamp);
         }
@@ -302,23 +302,6 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     }
 
     /**
-     * Casts an object to have an exact, non-null stamp representing {@link Class}.
-     */
-    public static Class<?> asNonNullClass(Object object) {
-        return asNonNullClassIntrinsic(object, Class.class, true, true);
-    }
-
-    /**
-     * Casts an object to have an exact, non-null stamp representing {@link Class}.
-     */
-    public static Class<?> asNonNullObject(Object object) {
-        return asNonNullClassIntrinsic(object, Object.class, false, true);
-    }
-
-    @NodeIntrinsic(PiNode.class)
-    private static native Class<?> asNonNullClassIntrinsic(Object object, @ConstantNodeParameter Class<?> toType, @ConstantNodeParameter boolean exactType, @ConstantNodeParameter boolean nonNull);
-
-    /**
      * Changes the stamp of an object inside a snippet to be the stamp of the node replaced by the
      * snippet.
      */
@@ -375,16 +358,13 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     @NodeIntrinsic
     private static native Class<?> intrinsified(Class<?> object, GuardingNode guard, @ConstantNodeParameter IntrinsifyOp intrinsifyOp);
 
-    /**
-     * Changes the stamp of an object to represent a given type and to indicate that the object is
-     * not null.
-     */
-    public static Object piCastNonNull(Object object, @ConstantNodeParameter ResolvedJavaType toType) {
-        return piCast(object, toType, false, true);
-    }
+    @NodeIntrinsic
+    public static native Object piCast(Object object, @ConstantNodeParameter ResolvedJavaType toType,
+                    @ConstantNodeParameter boolean exactType, @ConstantNodeParameter boolean nonNull, GuardingNode guard);
 
     @NodeIntrinsic
-    public static native Object piCast(Object object, @ConstantNodeParameter ResolvedJavaType toType, @ConstantNodeParameter boolean exactType, @ConstantNodeParameter boolean nonNull);
+    public static native Object piCast(Object object, @ConstantNodeParameter Class<?> toType,
+                    @ConstantNodeParameter boolean exactType, @ConstantNodeParameter boolean nonNull, GuardingNode guard);
 
     /**
      * A placeholder node in a snippet that will be replaced with a {@link PiNode} when the snippet
