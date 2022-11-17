@@ -132,16 +132,16 @@ public abstract class Instruction {
     private static final String LENGTH_SUFFIX = "_LENGTH";
 
     private int addInstructionArgument(List<Object> holder, Object marker) {
-        if (frozen) {
-            throw new AssertionError();
-        }
-
         int index = -1;
         if (marker != null) {
             index = holder.indexOf(marker);
         }
 
         if (index == -1) {
+            if (frozen) {
+                throw new AssertionError();
+            }
+
             index = holder.size();
             holder.add(marker);
         }

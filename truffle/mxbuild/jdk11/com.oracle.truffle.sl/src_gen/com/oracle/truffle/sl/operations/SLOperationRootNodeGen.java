@@ -113,6 +113,59 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 try {
                     assert $sp >= maxLocals : "stack underflow @ " + $bci;
                     switch (curOpcode) {
+                        // branch
+                        //   Pushed Values: 0
+                        //   Branch Targets:
+                        //     [ 0] target
+                        case ((INSTR_BRANCH << 3) | 0) :
+                        {
+                            int targetBci = unsafeFromBytecode($bc, $bci + BRANCH_BRANCH_TARGET_OFFSET + 0);
+                            if (targetBci <= $bci) {
+                                if (CompilerDirectives.hasNextTier() && ++loopCounter.count >= 256) {
+                                    TruffleSafepoint.poll($this);
+                                    LoopNode.reportLoopCount($this, 256);
+                                    loopCounter.count = 0;
+                                    if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge($this)) {
+                                        Object osrResult = BytecodeOSRNode.tryOSR($this, ($sp << 16) | targetBci, $frame, null, $frame);
+                                        if (osrResult != null) {
+                                            $frame.setObject(0, osrResult);
+                                            return 0x0000ffff;
+                                        }
+                                    }
+                                }
+                            }
+                            $bci = targetBci;
+                            continue loop;
+                        }
+                        // branch.false
+                        //   Simple Pops:
+                        //     [ 0] condition
+                        //   Pushed Values: 0
+                        //   Branch Targets:
+                        //     [ 0] target
+                        //   Branch Profiles:
+                        //     [ 0] profile
+                        case ((INSTR_BRANCH_FALSE << 3) | 0) :
+                        {
+                            boolean cond = UFA.unsafeGetObject($frame, $sp - 1) == Boolean.TRUE;
+                            $sp = $sp - 1;
+                            if (do_profileCondition($this, cond, $conditionProfiles, unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_PROFILE_OFFSET + 0))) {
+                                $bci = $bci + BRANCH_FALSE_LENGTH;
+                                continue loop;
+                            } else {
+                                $bci = unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_TARGET_OFFSET + 0);
+                                continue loop;
+                            }
+                        }
+                        // throw
+                        //   Locals:
+                        //     [ 0] exception
+                        //   Pushed Values: 0
+                        case ((INSTR_THROW << 3) | 0) :
+                        {
+                            int slot = unsafeFromBytecode($bc, $bci + THROW_LOCALS_OFFSET + 0);
+                            throw (AbstractTruffleException) UFA.unsafeUncheckedGetObject($frame, slot);
+                        }
                         // return
                         //   Simple Pops:
                         //     [ 0] value
@@ -121,11 +174,294 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                         {
                             return (($sp - 1) << 16) | 0xffff;
                         }
-                        default :
-                            int _enc = __helper0($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-                            $bci = _enc & 0xffff;
-                            $sp = (_enc >> 16) & 0xffff;
+                        // sc.SLAnd
+                        //   Constants:
+                        //     [ 0] CacheExpression [sourceParameter = bci]
+                        //   Children:
+                        //     [ 0] CacheExpression [sourceParameter = node]
+                        //   Indexed Pops:
+                        //     [ 0] value
+                        //   Split on Boxing Elimination
+                        //   Pushed Values: 0
+                        //   Branch Targets:
+                        //     [ 0] end
+                        //   State Bitsets:
+                        //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
+                        case ((INSTR_SC_SL_AND << 3) | 0 /* OBJECT */) :
+                        {
+                            if (BytecodeNode.SLAnd_execute_($frame, $this, $bc, $bci, $sp, $consts, $children)) {
+                                $sp = $sp - 1;
+                                $bci = $bci + SC_SL_AND_LENGTH;
+                                continue loop;
+                            } else {
+                                $bci = unsafeFromBytecode($bc, $bci + SC_SL_AND_BRANCH_TARGET_OFFSET + 0);
+                                continue loop;
+                            }
+                        }
+                        case ((INSTR_SC_SL_AND << 3) | 5 /* BOOLEAN */) :
+                        {
+                            if (BytecodeNode.SLAnd_execute_($frame, $this, $bc, $bci, $sp, $consts, $children)) {
+                                $sp = $sp - 1;
+                                $bci = $bci + SC_SL_AND_LENGTH;
+                                continue loop;
+                            } else {
+                                $bci = unsafeFromBytecode($bc, $bci + SC_SL_AND_BRANCH_TARGET_OFFSET + 0);
+                                continue loop;
+                            }
+                        }
+                        // sc.SLOr
+                        //   Constants:
+                        //     [ 0] CacheExpression [sourceParameter = bci]
+                        //   Children:
+                        //     [ 0] CacheExpression [sourceParameter = node]
+                        //   Indexed Pops:
+                        //     [ 0] value
+                        //   Split on Boxing Elimination
+                        //   Pushed Values: 0
+                        //   Branch Targets:
+                        //     [ 0] end
+                        //   State Bitsets:
+                        //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
+                        case ((INSTR_SC_SL_OR << 3) | 0 /* OBJECT */) :
+                        {
+                            if (!BytecodeNode.SLOr_execute_($frame, $this, $bc, $bci, $sp, $consts, $children)) {
+                                $sp = $sp - 1;
+                                $bci = $bci + SC_SL_OR_LENGTH;
+                                continue loop;
+                            } else {
+                                $bci = unsafeFromBytecode($bc, $bci + SC_SL_OR_BRANCH_TARGET_OFFSET + 0);
+                                continue loop;
+                            }
+                        }
+                        case ((INSTR_SC_SL_OR << 3) | 5 /* BOOLEAN */) :
+                        {
+                            if (!BytecodeNode.SLOr_execute_($frame, $this, $bc, $bci, $sp, $consts, $children)) {
+                                $sp = $sp - 1;
+                                $bci = $bci + SC_SL_OR_LENGTH;
+                                continue loop;
+                            } else {
+                                $bci = unsafeFromBytecode($bc, $bci + SC_SL_OR_BRANCH_TARGET_OFFSET + 0);
+                                continue loop;
+                            }
+                        }
+                        // si.c.SLToBoolean.branch.false
+                        //   Pushed Values: 0
+                        case ((INSTR_SI_C_SL_TO_BOOLEAN_BRANCH_FALSE << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_C_SL_TO_BOOLEAN_BRANCH_FALSE << 3) | 5 /* BOOLEAN */) :
+                        {
+                            short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                            switch (unsafeFromBytecode($bc, $bci) & 7) {
+                                case 0 /* OBJECT */ :
+                                {
+                                    SLToBoolean_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                                    break;
+                                }
+                                case 5 /* BOOLEAN */ :
+                                {
+                                    SLToBoolean_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                                    break;
+                                }
+                            }
+                            $bci = $bci + C_SL_TO_BOOLEAN_LENGTH;
+                            boolean cond = UFA.unsafeGetObject($frame, $sp - 1) == Boolean.TRUE;
+                            $sp = $sp - 1;
+                            if (do_profileCondition($this, cond, $conditionProfiles, unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_PROFILE_OFFSET + 0))) {
+                                $bci = $bci + BRANCH_FALSE_LENGTH;
+                                continue loop;
+                            } else {
+                                $bci = unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_TARGET_OFFSET + 0);
+                                continue loop;
+                            }
+                        }
+                        // length group 1
+                        case ((INSTR_POP << 3) | 0) :
+                            $sp = instructionGroup_1($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 1;
                             continue loop;
+                        // length group 2
+                        case ((INSTR_LOAD_CONSTANT << 3) | 0) :
+                        case ((INSTR_LOAD_ARGUMENT << 3) | 0) :
+                        case ((INSTR_LOAD_LOCAL << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_LOAD_LOCAL << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_LOAD_LOCAL << 3) | 1 /* LONG */) :
+                        case ((INSTR_LOAD_LOCAL_BOXED << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_LOAD_LOCAL_BOXED << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_LOAD_LOCAL_BOXED << 3) | 1 /* LONG */) :
+                        case ((INSTR_LOAD_LOCAL_MAT << 3) | 0) :
+                        case ((INSTR_STORE_LOCAL_MAT << 3) | 0) :
+                            $sp = instructionGroup_2($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 2;
+                            continue loop;
+                        // length group 3
+                        case ((INSTR_STORE_LOCAL << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_STORE_LOCAL << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_STORE_LOCAL << 3) | 1 /* LONG */) :
+                        case ((INSTR_STORE_LOCAL << 3) | 7) :
+                            $sp = instructionGroup_3($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 3;
+                            continue loop;
+                        // length group 5
+                        case ((INSTR_C_SL_EQUAL << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_EQUAL << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_C_SL_LESS_OR_EQUAL << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_LESS_OR_EQUAL << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_C_SL_LESS_THAN << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_LESS_THAN << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_C_SL_LOGICAL_NOT << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_LOGICAL_NOT << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                        case ((INSTR_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_C_SL_FUNCTION_LITERAL << 3) | 0) :
+                        case ((INSTR_C_SL_TO_BOOLEAN << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_TO_BOOLEAN << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_LONG << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_LONG << 3) | 1 /* LONG */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_LONG << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER << 3) | 1 /* LONG */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG << 3) | 1 /* LONG */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN << 3) | 1 /* LONG */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN << 3) | 5 /* BOOLEAN */) :
+                            $sp = instructionGroup_5($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 5;
+                            continue loop;
+                        // length group 6
+                        case ((INSTR_C_SL_ADD << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_ADD << 3) | 1 /* LONG */) :
+                        case ((INSTR_C_SL_DIV << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_DIV << 3) | 1 /* LONG */) :
+                        case ((INSTR_C_SL_MUL << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_MUL << 3) | 1 /* LONG */) :
+                        case ((INSTR_C_SL_READ_PROPERTY << 3) | 0) :
+                        case ((INSTR_C_SL_SUB << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_SUB << 3) | 1 /* LONG */) :
+                        case ((INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0 << 3) | 0) :
+                        case ((INSTR_C_SL_ADD_Q_ADD_LONG << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_ADD_Q_ADD_LONG << 3) | 1 /* LONG */) :
+                            $sp = instructionGroup_6($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 6;
+                            continue loop;
+                        // length group 7
+                        case ((INSTR_C_SL_WRITE_PROPERTY << 3) | 0) :
+                        case ((INSTR_C_SL_INVOKE << 3) | 0) :
+                        case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                            $sp = instructionGroup_7($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 7;
+                            continue loop;
+                        // length group 14
+                        case ((INSTR_SI_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX << 3) | 0) :
+                            $sp = instructionGroup_14($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 14;
+                            continue loop;
+                        // length group 15
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                        case ((INSTR_SI_POP_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX << 3) | 0) :
+                            $sp = instructionGroup_15($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 15;
+                            continue loop;
+                        // length group 19
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                            $sp = instructionGroup_19($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 19;
+                            continue loop;
+                        // length group 22
+                        case ((INSTR_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                        case ((INSTR_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_POP_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT << 3) | 0) :
+                            $sp = instructionGroup_22($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 22;
+                            continue loop;
+                        // length group 23
+                        case ((INSTR_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                        case ((INSTR_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT << 3) | 1 /* LONG */) :
+                            $sp = instructionGroup_23($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 23;
+                            continue loop;
+                        // length group 24
+                        case ((INSTR_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX << 3) | 0) :
+                        case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                            $sp = instructionGroup_24($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 24;
+                            continue loop;
+                        // length group 25
+                        case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                            $sp = instructionGroup_25($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 25;
+                            continue loop;
+                        // length group 26
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                        case ((INSTR_SI_POP_LOAD_LOCAL_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0) :
+                            $sp = instructionGroup_26($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 26;
+                            continue loop;
+                        // length group 27
+                        case ((INSTR_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY << 3) | 0) :
+                            $sp = instructionGroup_27($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 27;
+                            continue loop;
+                        // length group 28
+                        case ((INSTR_SI_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD << 3) | 0) :
+                            $sp = instructionGroup_28($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 28;
+                            continue loop;
+                        // length group 30
+                        case ((INSTR_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0) :
+                        case ((INSTR_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD << 3) | 0) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                            $sp = instructionGroup_30($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 30;
+                            continue loop;
+                        // length group 32
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                            $sp = instructionGroup_32($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 32;
+                            continue loop;
+                        // length group 33
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                            $sp = instructionGroup_33($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 33;
+                            continue loop;
+                        // length group 34
+                        case ((INSTR_SI_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD << 3) | 0) :
+                            $sp = instructionGroup_34($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 34;
+                            continue loop;
+                        // length group 37
+                        case ((INSTR_SI_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0) :
+                            $sp = instructionGroup_37($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 37;
+                            continue loop;
+                        default :
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            throw CompilerDirectives.shouldNotReachHere("unknown opcode encountered: " + curOpcode + " @ " + $bci + "");
                     }
                 } catch (AbstractTruffleException ex) {
                     CompilerAsserts.partialEvaluationConstant($bci);
@@ -5882,6 +6218,3195 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        private static int instructionGroup_1(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // pop
+                //   Simple Pops:
+                //     [ 0] value
+                //   Pushed Values: 0
+                case ((INSTR_POP << 3) | 0) :
+                {
+                    $sp = $sp - 1;
+                    $frame.clear($sp);
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_2(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // load.constant
+                //   Constants:
+                //     [ 0] constant
+                //   Always Boxed
+                //   Pushed Values: 1
+                case ((INSTR_LOAD_CONSTANT << 3) | 0) :
+                {
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    return $sp;
+                }
+                // load.argument
+                //   Always Boxed
+                //   Pushed Values: 1
+                case ((INSTR_LOAD_ARGUMENT << 3) | 0) :
+                {
+                    UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
+                    $sp = $sp + 1;
+                    return $sp;
+                }
+                // load.local
+                //   Locals:
+                //     [ 0] local
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                case ((INSTR_LOAD_LOCAL << 3) | 0 /* OBJECT */) :
+                {
+                    int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                    do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                    $sp++;
+                    return $sp;
+                }
+                case ((INSTR_LOAD_LOCAL << 3) | 5 /* BOOLEAN */) :
+                {
+                    int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                    do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                    $sp++;
+                    return $sp;
+                }
+                case ((INSTR_LOAD_LOCAL << 3) | 1 /* LONG */) :
+                {
+                    int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                    do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                    $sp++;
+                    return $sp;
+                }
+                // load.local.boxed
+                //   Locals:
+                //     [ 0] local
+                //   Always Boxed
+                //   Pushed Values: 1
+                case ((INSTR_LOAD_LOCAL_BOXED << 3) | 0 /* OBJECT */) :
+                {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    unsafeWriteBytecode($bc, $bci, (short) ((INSTR_LOAD_LOCAL << 3) | 0));
+                    int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                    do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                    $sp++;
+                    return $sp;
+                }
+                case ((INSTR_LOAD_LOCAL_BOXED << 3) | 5 /* BOOLEAN */) :
+                {
+                    int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                    do_loadLocalBoxed_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                    $sp++;
+                    return $sp;
+                }
+                case ((INSTR_LOAD_LOCAL_BOXED << 3) | 1 /* LONG */) :
+                {
+                    int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                    do_loadLocalBoxed_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                    $sp++;
+                    return $sp;
+                }
+                // load.local.mat
+                //   Simple Pops:
+                //     [ 0] frame
+                //   Always Boxed
+                //   Pushed Values: 1
+                case ((INSTR_LOAD_LOCAL_MAT << 3) | 0) :
+                {
+                    Frame outerFrame;
+                    outerFrame = (Frame) UFA.unsafeGetObject($frame, $sp - 1);
+                    UFA.unsafeSetObject($frame, $sp - 1, outerFrame.getObject(unsafeFromBytecode($bc, $bci + LOAD_LOCAL_MAT_ARGUMENT_OFFSET + 0)));
+                    return $sp;
+                }
+                // store.local.mat
+                //   Simple Pops:
+                //     [ 0] frame
+                //     [ 1] value
+                //   Pushed Values: 0
+                case ((INSTR_STORE_LOCAL_MAT << 3) | 0) :
+                {
+                    Frame outerFrame;
+                    outerFrame = (Frame) UFA.unsafeGetObject($frame, $sp - 2);
+                    outerFrame.setObject(unsafeFromBytecode($bc, $bci + STORE_LOCAL_MAT_ARGUMENT_OFFSET + 0), UFA.unsafeGetObject($frame, $sp - 1));
+                    $sp -= 2;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_3(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // store.local
+                //   Locals:
+                //     [ 0] target
+                //   Indexed Pops:
+                //     [ 0] value
+                //   Split on Boxing Elimination
+                //   Pushed Values: 0
+                case ((INSTR_STORE_LOCAL << 3) | 0 /* OBJECT */) :
+                {
+                    int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                    do_storeLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                    $sp--;
+                    return $sp;
+                }
+                case ((INSTR_STORE_LOCAL << 3) | 5 /* BOOLEAN */) :
+                {
+                    int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                    do_storeLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                    $sp--;
+                    return $sp;
+                }
+                case ((INSTR_STORE_LOCAL << 3) | 1 /* LONG */) :
+                {
+                    int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                    do_storeLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                    $sp--;
+                    return $sp;
+                }
+                case ((INSTR_STORE_LOCAL << 3) | 7) :
+                {
+                    int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                    do_storeLocal_null($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                    $sp--;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_5(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // c.SLEqual
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = equalNode]
+                //     [ 1] SpecializationData [id = Generic0]
+                //     [ 2] CacheExpression [sourceParameter = leftInterop]
+                //     [ 3] CacheExpression [sourceParameter = rightInterop]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = Long], SpecializationData [id = BigNumber], SpecializationData [id = Boolean], SpecializationData [id = String], SpecializationData [id = TruffleString], SpecializationData [id = Null], SpecializationData [id = Function], SpecializationData [id = Generic0], SpecializationData [id = Generic1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = Long], SpecializationData [id = BigNumber], SpecializationData [id = Boolean], SpecializationData [id = String], SpecializationData [id = TruffleString], SpecializationData [id = Null], SpecializationData [id = Function], SpecializationData [id = Generic0], SpecializationData [id = Generic1]]
+                case ((INSTR_C_SL_EQUAL << 3) | 0 /* OBJECT */) :
+                {
+                    SLEqual_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                case ((INSTR_C_SL_EQUAL << 3) | 5 /* BOOLEAN */) :
+                {
+                    SLEqual_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLLessOrEqual
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = LessOrEqual0], SpecializationData [id = LessOrEqual1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                case ((INSTR_C_SL_LESS_OR_EQUAL << 3) | 0 /* OBJECT */) :
+                {
+                    SLLessOrEqual_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                case ((INSTR_C_SL_LESS_OR_EQUAL << 3) | 5 /* BOOLEAN */) :
+                {
+                    SLLessOrEqual_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLLessThan
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = LessThan0], SpecializationData [id = LessThan1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                case ((INSTR_C_SL_LESS_THAN << 3) | 0 /* OBJECT */) :
+                {
+                    SLLessThan_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                case ((INSTR_C_SL_LESS_THAN << 3) | 5 /* BOOLEAN */) :
+                {
+                    SLLessThan_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLLogicalNot
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
+                case ((INSTR_C_SL_LOGICAL_NOT << 3) | 0 /* OBJECT */) :
+                {
+                    SLLogicalNot_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_LOGICAL_NOT << 3) | 5 /* BOOLEAN */) :
+                {
+                    SLLogicalNot_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                // c.SLUnbox
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
+                //     [ 1] SpecializationData [id = FromForeign0]
+                //     [ 2] CacheExpression [sourceParameter = interop]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1]]
+                case ((INSTR_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                {
+                    SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                {
+                    SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                // c.SLFunctionLiteral
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = result]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Always Boxed
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = Perform]]
+                case ((INSTR_C_SL_FUNCTION_LITERAL << 3) | 0) :
+                {
+                    SLFunctionLiteral_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                // c.SLToBoolean
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
+                case ((INSTR_C_SL_TO_BOOLEAN << 3) | 0 /* OBJECT */) :
+                {
+                    SLToBoolean_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_TO_BOOLEAN << 3) | 5 /* BOOLEAN */) :
+                {
+                    SLToBoolean_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                // c.SLUnbox.q.FromLong
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
+                //     [ 1] SpecializationData [id = FromForeign0]
+                //     [ 2] CacheExpression [sourceParameter = interop]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1]]
+                case ((INSTR_C_SL_UNBOX_Q_FROM_LONG << 3) | 0 /* OBJECT */) :
+                {
+                    SLUnbox_q_FromLong_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX_Q_FROM_LONG << 3) | 1 /* LONG */) :
+                {
+                    SLUnbox_q_FromLong_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX_Q_FROM_LONG << 3) | 5 /* BOOLEAN */) :
+                {
+                    SLUnbox_q_FromLong_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                // c.SLUnbox.q.FromBigNumber
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
+                //     [ 1] SpecializationData [id = FromForeign0]
+                //     [ 2] CacheExpression [sourceParameter = interop]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1]]
+                case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER << 3) | 0 /* OBJECT */) :
+                {
+                    SLUnbox_q_FromBigNumber_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER << 3) | 1 /* LONG */) :
+                {
+                    SLUnbox_q_FromBigNumber_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER << 3) | 5 /* BOOLEAN */) :
+                {
+                    SLUnbox_q_FromBigNumber_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                // c.SLUnbox.q.FromBigNumber.FromLong
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
+                //     [ 1] SpecializationData [id = FromForeign0]
+                //     [ 2] CacheExpression [sourceParameter = interop]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1]]
+                case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG << 3) | 0 /* OBJECT */) :
+                {
+                    SLUnbox_q_FromBigNumber_FromLong_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG << 3) | 1 /* LONG */) :
+                {
+                    SLUnbox_q_FromBigNumber_FromLong_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG << 3) | 5 /* BOOLEAN */) :
+                {
+                    SLUnbox_q_FromBigNumber_FromLong_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                // c.SLUnbox.q.FromBoolean
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
+                //     [ 1] SpecializationData [id = FromForeign0]
+                //     [ 2] CacheExpression [sourceParameter = interop]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1]]
+                case ((INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN << 3) | 0 /* OBJECT */) :
+                {
+                    SLUnbox_q_FromBoolean_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN << 3) | 1 /* LONG */) :
+                {
+                    SLUnbox_q_FromBoolean_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN << 3) | 5 /* BOOLEAN */) :
+                {
+                    SLUnbox_q_FromBoolean_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_6(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // c.SLAdd
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] SpecializationData [id = Add1]
+                //     [ 1] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback]]
+                case ((INSTR_C_SL_ADD << 3) | 0 /* OBJECT */) :
+                {
+                    SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                case ((INSTR_C_SL_ADD << 3) | 1 /* LONG */) :
+                {
+                    SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLDiv
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = DivLong], SpecializationData [id = Div], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = DivLong], SpecializationData [id = Div], SpecializationData [id = Fallback]]
+                case ((INSTR_C_SL_DIV << 3) | 0 /* OBJECT */) :
+                {
+                    SLDiv_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                case ((INSTR_C_SL_DIV << 3) | 1 /* LONG */) :
+                {
+                    SLDiv_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLMul
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = MulLong], SpecializationData [id = Mul], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = MulLong], SpecializationData [id = Mul], SpecializationData [id = Fallback]]
+                case ((INSTR_C_SL_MUL << 3) | 0 /* OBJECT */) :
+                {
+                    SLMul_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                case ((INSTR_C_SL_MUL << 3) | 1 /* LONG */) :
+                {
+                    SLMul_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLReadProperty
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //     [ 1] CacheExpression [sourceParameter = bci]
+                //     [ 2] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] SpecializationData [id = ReadArray0]
+                //     [ 1] CacheExpression [sourceParameter = node]
+                //     [ 2] CacheExpression [sourceParameter = arrays]
+                //     [ 3] CacheExpression [sourceParameter = numbers]
+                //     [ 4] SpecializationData [id = ReadSLObject0]
+                //     [ 5] CacheExpression [sourceParameter = node]
+                //     [ 6] CacheExpression [sourceParameter = objectLibrary]
+                //     [ 7] CacheExpression [sourceParameter = toTruffleStringNode]
+                //     [ 8] SpecializationData [id = ReadObject0]
+                //     [ 9] CacheExpression [sourceParameter = node]
+                //     [10] CacheExpression [sourceParameter = objects]
+                //     [11] CacheExpression [sourceParameter = asMember]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Always Boxed
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
+                case ((INSTR_C_SL_READ_PROPERTY << 3) | 0) :
+                {
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLSub
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = SubLong], SpecializationData [id = Sub], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = SubLong], SpecializationData [id = Sub], SpecializationData [id = Fallback]]
+                case ((INSTR_C_SL_SUB << 3) | 0 /* OBJECT */) :
+                {
+                    SLSub_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                case ((INSTR_C_SL_SUB << 3) | 1 /* LONG */) :
+                {
+                    SLSub_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLReadProperty.q.ReadSLObject0
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //     [ 1] CacheExpression [sourceParameter = bci]
+                //     [ 2] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] SpecializationData [id = ReadArray0]
+                //     [ 1] CacheExpression [sourceParameter = node]
+                //     [ 2] CacheExpression [sourceParameter = arrays]
+                //     [ 3] CacheExpression [sourceParameter = numbers]
+                //     [ 4] SpecializationData [id = ReadSLObject0]
+                //     [ 5] CacheExpression [sourceParameter = node]
+                //     [ 6] CacheExpression [sourceParameter = objectLibrary]
+                //     [ 7] CacheExpression [sourceParameter = toTruffleStringNode]
+                //     [ 8] SpecializationData [id = ReadObject0]
+                //     [ 9] CacheExpression [sourceParameter = node]
+                //     [10] CacheExpression [sourceParameter = objects]
+                //     [11] CacheExpression [sourceParameter = asMember]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Always Boxed
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
+                case ((INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0 << 3) | 0) :
+                {
+                    SLReadProperty_q_ReadSLObject0_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLAdd.q.AddLong
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] SpecializationData [id = Add1]
+                //     [ 1] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback]]
+                case ((INSTR_C_SL_ADD_Q_ADD_LONG << 3) | 0 /* OBJECT */) :
+                {
+                    SLAdd_q_AddLong_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                case ((INSTR_C_SL_ADD_Q_ADD_LONG << 3) | 1 /* LONG */) :
+                {
+                    SLAdd_q_AddLong_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_7(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // c.SLWriteProperty
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //     [ 1] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] SpecializationData [id = WriteArray0]
+                //     [ 1] CacheExpression [sourceParameter = node]
+                //     [ 2] CacheExpression [sourceParameter = arrays]
+                //     [ 3] CacheExpression [sourceParameter = numbers]
+                //     [ 4] SpecializationData [id = WriteSLObject0]
+                //     [ 5] CacheExpression [sourceParameter = objectLibrary]
+                //     [ 6] CacheExpression [sourceParameter = toTruffleStringNode]
+                //     [ 7] SpecializationData [id = WriteObject0]
+                //     [ 8] CacheExpression [sourceParameter = node]
+                //     [ 9] CacheExpression [sourceParameter = objectLibrary]
+                //     [10] CacheExpression [sourceParameter = asMember]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //     [ 2] arg2
+                //   Always Boxed
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = WriteArray0], SpecializationData [id = WriteArray1], SpecializationData [id = WriteSLObject0], SpecializationData [id = WriteSLObject1], SpecializationData [id = WriteObject0], SpecializationData [id = WriteObject1]]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = WriteArray0], SpecializationData [id = WriteArray1], SpecializationData [id = WriteSLObject0], SpecializationData [id = WriteSLObject1], SpecializationData [id = WriteObject0], SpecializationData [id = WriteObject1]]
+                case ((INSTR_C_SL_WRITE_PROPERTY << 3) | 0) :
+                {
+                    SLWriteProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -2;
+                    return $sp;
+                }
+                // c.SLInvoke
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] SpecializationData [id = Direct]
+                //     [ 1] CacheExpression [sourceParameter = callNode]
+                //     [ 2] CacheExpression [sourceParameter = library]
+                //     [ 3] CacheExpression [sourceParameter = node]
+                //     [ 4] NodeExecutionData[child=NodeFieldData[name=$variadicChild, kind=ONE, node=NodeData[C]], name=$variadicChild, index=1]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Variadic
+                //   Always Boxed
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = Direct], SpecializationData [id = Indirect], SpecializationData [id = Interop]]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = Direct], SpecializationData [id = Indirect], SpecializationData [id = Interop]]
+                case ((INSTR_C_SL_INVOKE << 3) | 0) :
+                {
+                    int numVariadics = unsafeFromBytecode($bc, $bci + C_SL_INVOKE_VARIADIC_OFFSET + 0);
+                    SLInvoke_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children, numVariadics);
+                    $sp +=  - numVariadics;
+                    return $sp;
+                }
+                // si.load.local.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_14(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.constant.c.SLFunctionLiteral.load.local.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX << 3) | 0) :
+                {
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLFunctionLiteral_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $bci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_15(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                // si.pop.load.constant.c.SLFunctionLiteral.load.local.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_POP_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX << 3) | 0) :
+                {
+                    $sp = $sp - 1;
+                    $frame.clear($sp);
+                    $bci = $bci + POP_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLFunctionLiteral_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $bci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_19(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_22(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                case ((INSTR_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            unsafeWriteBytecode($bc, $bci, (short) ((INSTR_LOAD_LOCAL << 3) | 0));
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                            do_loadLocalBoxed_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                            do_loadLocalBoxed_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_BOXED_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLLessOrEqual_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLLessOrEqual_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                // si.pop.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant
+                //   Pushed Values: 0
+                case ((INSTR_SI_POP_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT << 3) | 0) :
+                {
+                    $sp = $sp - 1;
+                    $frame.clear($sp);
+                    $bci = $bci + POP_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_23(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                case ((INSTR_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_ADD_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                // si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_24(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.argument.store.local.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX << 3) | 0) :
+                {
+                    UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_ARGUMENT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 7 /* generic */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_null($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                    }
+                    $bci = $bci + STORE_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_ARGUMENT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 7 /* generic */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_null($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                    }
+                    $bci = $bci + STORE_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                // si.load.local.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            unsafeWriteBytecode($bc, $bci, (short) ((INSTR_LOAD_LOCAL << 3) | 0));
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                            do_loadLocalBoxed_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                            do_loadLocalBoxed_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_BOXED_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLLessOrEqual_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLLessOrEqual_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_25(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_ADD_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_26(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                // si.pop.load.local.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_POP_LOAD_LOCAL_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0) :
+                {
+                    $sp = $sp - 1;
+                    $frame.clear($sp);
+                    $bci = $bci + POP_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_ADD_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_27(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY << 3) | 0) :
+                {
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_28(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.store.local.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd
+                //   Pushed Values: 0
+                case ((INSTR_SI_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD << 3) | 0) :
+                {
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 7 /* generic */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_null($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                    }
+                    $bci = $bci + STORE_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_ARGUMENT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 7 /* generic */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_null($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                    }
+                    $bci = $bci + STORE_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_ADD_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_30(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0) :
+                {
+                    UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_ARGUMENT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 7 /* generic */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_null($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                    }
+                    $bci = $bci + STORE_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_ADD_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                // si.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD << 3) | 0) :
+                {
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_ADD_LENGTH;
+                    return $sp;
+                }
+                // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_32(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            unsafeWriteBytecode($bc, $bci, (short) ((INSTR_LOAD_LOCAL << 3) | 0));
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                            do_loadLocalBoxed_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                            do_loadLocalBoxed_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_BOXED_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLLessOrEqual_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLLessOrEqual_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_33(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_ADD_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_34(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox.c.SLAdd
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD << 3) | 0) :
+                {
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_ADD_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_37(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox.c.SLAdd.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0) :
+                {
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_ADD_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
         private static boolean isAdoptable() {
             return true;
         }
@@ -6113,6 +9638,64 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 try {
                     assert $sp >= maxLocals : "stack underflow @ " + $bci;
                     switch (curOpcode) {
+                        // branch
+                        //   Pushed Values: 0
+                        //   Branch Targets:
+                        //     [ 0] target
+                        case INSTR_BRANCH :
+                        {
+                            int targetBci = unsafeFromBytecode($bc, $bci + BRANCH_BRANCH_TARGET_OFFSET + 0);
+                            if (targetBci <= $bci) {
+                                if (CompilerDirectives.hasNextTier() && ++loopCounter.count >= 256) {
+                                    TruffleSafepoint.poll($this);
+                                    LoopNode.reportLoopCount($this, 256);
+                                    loopCounter.count = 0;
+                                    if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge($this)) {
+                                        Object osrResult = BytecodeOSRNode.tryOSR($this, ($sp << 16) | targetBci, $frame, null, $frame);
+                                        if (osrResult != null) {
+                                            $frame.setObject(0, osrResult);
+                                            return 0x0000ffff;
+                                        }
+                                    }
+                                }
+                                uncachedExecuteCount.count--;
+                                if (uncachedExecuteCount.count <= 0) {
+                                    $this.changeInterpreters(COMMON_EXECUTE);
+                                    return ($sp << 16) | targetBci;
+                                }
+                            }
+                            $bci = targetBci;
+                            continue loop;
+                        }
+                        // branch.false
+                        //   Simple Pops:
+                        //     [ 0] condition
+                        //   Pushed Values: 0
+                        //   Branch Targets:
+                        //     [ 0] target
+                        //   Branch Profiles:
+                        //     [ 0] profile
+                        case INSTR_BRANCH_FALSE :
+                        {
+                            boolean cond = UFA.unsafeGetObject($frame, $sp - 1) == Boolean.TRUE;
+                            $sp = $sp - 1;
+                            if (do_profileCondition($this, cond, $conditionProfiles, unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_PROFILE_OFFSET + 0))) {
+                                $bci = $bci + BRANCH_FALSE_LENGTH;
+                                continue loop;
+                            } else {
+                                $bci = unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_TARGET_OFFSET + 0);
+                                continue loop;
+                            }
+                        }
+                        // throw
+                        //   Locals:
+                        //     [ 0] exception
+                        //   Pushed Values: 0
+                        case INSTR_THROW :
+                        {
+                            int slot = unsafeFromBytecode($bc, $bci + THROW_LOCALS_OFFSET + 0);
+                            throw (AbstractTruffleException) UFA.unsafeUncheckedGetObject($frame, slot);
+                        }
                         // return
                         //   Simple Pops:
                         //     [ 0] value
@@ -6127,11 +9710,206 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                             }
                             return (($sp - 1) << 16) | 0xffff;
                         }
-                        default :
-                            int _enc = __helper1($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-                            $bci = _enc & 0xffff;
-                            $sp = (_enc >> 16) & 0xffff;
+                        // sc.SLAnd
+                        //   Constants:
+                        //     [ 0] CacheExpression [sourceParameter = bci]
+                        //   Children:
+                        //     [ 0] CacheExpression [sourceParameter = node]
+                        //   Indexed Pops:
+                        //     [ 0] value
+                        //   Split on Boxing Elimination
+                        //   Pushed Values: 0
+                        //   Branch Targets:
+                        //     [ 0] end
+                        //   State Bitsets:
+                        //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
+                        case INSTR_SC_SL_AND :
+                        {
+                            if (BytecodeNode.SLAnd_execute_($frame, $this, $bc, $bci, $sp, $consts, $children)) {
+                                $sp = $sp - 1;
+                                $bci = $bci + SC_SL_AND_LENGTH;
+                                continue loop;
+                            } else {
+                                $bci = unsafeFromBytecode($bc, $bci + SC_SL_AND_BRANCH_TARGET_OFFSET + 0);
+                                continue loop;
+                            }
+                        }
+                        // sc.SLOr
+                        //   Constants:
+                        //     [ 0] CacheExpression [sourceParameter = bci]
+                        //   Children:
+                        //     [ 0] CacheExpression [sourceParameter = node]
+                        //   Indexed Pops:
+                        //     [ 0] value
+                        //   Split on Boxing Elimination
+                        //   Pushed Values: 0
+                        //   Branch Targets:
+                        //     [ 0] end
+                        //   State Bitsets:
+                        //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
+                        case INSTR_SC_SL_OR :
+                        {
+                            if (!BytecodeNode.SLOr_execute_($frame, $this, $bc, $bci, $sp, $consts, $children)) {
+                                $sp = $sp - 1;
+                                $bci = $bci + SC_SL_OR_LENGTH;
+                                continue loop;
+                            } else {
+                                $bci = unsafeFromBytecode($bc, $bci + SC_SL_OR_BRANCH_TARGET_OFFSET + 0);
+                                continue loop;
+                            }
+                        }
+                        // si.c.SLToBoolean.branch.false
+                        //   Pushed Values: 0
+                        case INSTR_SI_C_SL_TO_BOOLEAN_BRANCH_FALSE :
+                        {
+                            {
+                                SLToBoolean_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                                $bci = $bci + C_SL_TO_BOOLEAN_LENGTH;
+                            }
+                            {
+                                boolean cond = UFA.unsafeGetObject($frame, $sp - 1) == Boolean.TRUE;
+                                $sp = $sp - 1;
+                                if (do_profileCondition($this, cond, $conditionProfiles, unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_PROFILE_OFFSET + 0))) {
+                                    $bci = $bci + BRANCH_FALSE_LENGTH;
+                                    continue loop;
+                                } else {
+                                    $bci = unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_TARGET_OFFSET + 0);
+                                    continue loop;
+                                }
+                            }
+                        }
+                        // length group 1
+                        case INSTR_POP :
+                            $sp = instructionGroup_1($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 1;
                             continue loop;
+                        // length group 2
+                        case INSTR_LOAD_CONSTANT :
+                        case INSTR_LOAD_ARGUMENT :
+                        case INSTR_LOAD_LOCAL :
+                        case INSTR_LOAD_LOCAL_BOXED :
+                        case INSTR_LOAD_LOCAL_MAT :
+                        case INSTR_STORE_LOCAL_MAT :
+                            $sp = instructionGroup_2($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 2;
+                            continue loop;
+                        // length group 3
+                        case INSTR_STORE_LOCAL :
+                            $sp = instructionGroup_3($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 3;
+                            continue loop;
+                        // length group 5
+                        case INSTR_C_SL_EQUAL :
+                        case INSTR_C_SL_LESS_OR_EQUAL :
+                        case INSTR_C_SL_LESS_THAN :
+                        case INSTR_C_SL_LOGICAL_NOT :
+                        case INSTR_C_SL_UNBOX :
+                        case INSTR_C_SL_FUNCTION_LITERAL :
+                        case INSTR_C_SL_TO_BOOLEAN :
+                            $sp = instructionGroup_5($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 5;
+                            continue loop;
+                        // length group 6
+                        case INSTR_C_SL_ADD :
+                        case INSTR_C_SL_DIV :
+                        case INSTR_C_SL_MUL :
+                        case INSTR_C_SL_READ_PROPERTY :
+                        case INSTR_C_SL_SUB :
+                            $sp = instructionGroup_6($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 6;
+                            continue loop;
+                        // length group 7
+                        case INSTR_C_SL_WRITE_PROPERTY :
+                        case INSTR_C_SL_INVOKE :
+                        case INSTR_SI_LOAD_LOCAL_C_SL_UNBOX :
+                            $sp = instructionGroup_7($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 7;
+                            continue loop;
+                        // length group 14
+                        case INSTR_SI_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX :
+                            $sp = instructionGroup_14($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 14;
+                            continue loop;
+                        // length group 15
+                        case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX :
+                        case INSTR_SI_POP_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX :
+                            $sp = instructionGroup_15($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 15;
+                            continue loop;
+                        // length group 19
+                        case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX :
+                            $sp = instructionGroup_19($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 19;
+                            continue loop;
+                        // length group 22
+                        case INSTR_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX :
+                        case INSTR_SI_POP_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT :
+                            $sp = instructionGroup_22($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 22;
+                            continue loop;
+                        // length group 23
+                        case INSTR_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                        case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT :
+                            $sp = instructionGroup_23($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 23;
+                            continue loop;
+                        // length group 24
+                        case INSTR_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX :
+                        case INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX :
+                            $sp = instructionGroup_24($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 24;
+                            continue loop;
+                        // length group 25
+                        case INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                            $sp = instructionGroup_25($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 25;
+                            continue loop;
+                        // length group 26
+                        case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX :
+                        case INSTR_SI_POP_LOAD_LOCAL_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                            $sp = instructionGroup_26($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 26;
+                            continue loop;
+                        // length group 27
+                        case INSTR_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY :
+                            $sp = instructionGroup_27($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 27;
+                            continue loop;
+                        // length group 28
+                        case INSTR_SI_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD :
+                            $sp = instructionGroup_28($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 28;
+                            continue loop;
+                        // length group 30
+                        case INSTR_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                        case INSTR_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD :
+                        case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX :
+                            $sp = instructionGroup_30($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 30;
+                            continue loop;
+                        // length group 32
+                        case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX :
+                            $sp = instructionGroup_32($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 32;
+                            continue loop;
+                        // length group 33
+                        case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                            $sp = instructionGroup_33($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 33;
+                            continue loop;
+                        // length group 34
+                        case INSTR_SI_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD :
+                            $sp = instructionGroup_34($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 34;
+                            continue loop;
+                        // length group 37
+                        case INSTR_SI_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                            $sp = instructionGroup_37($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 37;
+                            continue loop;
+                        default :
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            throw CompilerDirectives.shouldNotReachHere("unknown opcode encountered: " + curOpcode + " @ " + $bci + "");
                     }
                 } catch (AbstractTruffleException ex) {
                     CompilerAsserts.partialEvaluationConstant($bci);
@@ -8525,6 +12303,1451 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             return SLAddNode.typeError($child0Value, $child1Value, ($this), ($bci));
         }
 
+        private static int instructionGroup_1(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // pop
+                //   Simple Pops:
+                //     [ 0] value
+                //   Pushed Values: 0
+                case INSTR_POP :
+                {
+                    $sp = $sp - 1;
+                    $frame.clear($sp);
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_2(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // load.constant
+                //   Constants:
+                //     [ 0] constant
+                //   Always Boxed
+                //   Pushed Values: 1
+                case INSTR_LOAD_CONSTANT :
+                {
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    return $sp;
+                }
+                // load.argument
+                //   Always Boxed
+                //   Pushed Values: 1
+                case INSTR_LOAD_ARGUMENT :
+                {
+                    UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
+                    $sp = $sp + 1;
+                    return $sp;
+                }
+                // load.local
+                //   Locals:
+                //     [ 0] local
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                case INSTR_LOAD_LOCAL :
+                {
+                    int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                    UFA.unsafeCopyObject($frame, localIdx, $sp);
+                    $sp += 1;
+                    return $sp;
+                }
+                // load.local.boxed
+                //   Locals:
+                //     [ 0] local
+                //   Always Boxed
+                //   Pushed Values: 1
+                case INSTR_LOAD_LOCAL_BOXED :
+                {
+                    int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                    UFA.unsafeCopyObject($frame, localIdx, $sp);
+                    $sp += 1;
+                    return $sp;
+                }
+                // load.local.mat
+                //   Simple Pops:
+                //     [ 0] frame
+                //   Always Boxed
+                //   Pushed Values: 1
+                case INSTR_LOAD_LOCAL_MAT :
+                {
+                    Frame outerFrame;
+                    outerFrame = (Frame) UFA.unsafeGetObject($frame, $sp - 1);
+                    UFA.unsafeSetObject($frame, $sp - 1, outerFrame.getObject(unsafeFromBytecode($bc, $bci + LOAD_LOCAL_MAT_ARGUMENT_OFFSET + 0)));
+                    return $sp;
+                }
+                // store.local.mat
+                //   Simple Pops:
+                //     [ 0] frame
+                //     [ 1] value
+                //   Pushed Values: 0
+                case INSTR_STORE_LOCAL_MAT :
+                {
+                    Frame outerFrame;
+                    outerFrame = (Frame) UFA.unsafeGetObject($frame, $sp - 2);
+                    outerFrame.setObject(unsafeFromBytecode($bc, $bci + STORE_LOCAL_MAT_ARGUMENT_OFFSET + 0), UFA.unsafeGetObject($frame, $sp - 1));
+                    $sp -= 2;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_3(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // store.local
+                //   Locals:
+                //     [ 0] target
+                //   Indexed Pops:
+                //     [ 0] value
+                //   Split on Boxing Elimination
+                //   Pushed Values: 0
+                case INSTR_STORE_LOCAL :
+                {
+                    int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                    UFA.unsafeCopyObject($frame, $sp - 1, localIdx);
+                    $sp -= 1;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_5(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // c.SLEqual
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = equalNode]
+                //     [ 1] SpecializationData [id = Generic0]
+                //     [ 2] CacheExpression [sourceParameter = leftInterop]
+                //     [ 3] CacheExpression [sourceParameter = rightInterop]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = Long], SpecializationData [id = BigNumber], SpecializationData [id = Boolean], SpecializationData [id = String], SpecializationData [id = TruffleString], SpecializationData [id = Null], SpecializationData [id = Function], SpecializationData [id = Generic0], SpecializationData [id = Generic1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = Long], SpecializationData [id = BigNumber], SpecializationData [id = Boolean], SpecializationData [id = String], SpecializationData [id = TruffleString], SpecializationData [id = Null], SpecializationData [id = Function], SpecializationData [id = Generic0], SpecializationData [id = Generic1]]
+                case INSTR_C_SL_EQUAL :
+                {
+                    SLEqual_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLLessOrEqual
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = LessOrEqual0], SpecializationData [id = LessOrEqual1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                case INSTR_C_SL_LESS_OR_EQUAL :
+                {
+                    SLLessOrEqual_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLLessThan
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = LessThan0], SpecializationData [id = LessThan1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                case INSTR_C_SL_LESS_THAN :
+                {
+                    SLLessThan_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLLogicalNot
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
+                case INSTR_C_SL_LOGICAL_NOT :
+                {
+                    SLLogicalNot_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                // c.SLUnbox
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
+                //     [ 1] SpecializationData [id = FromForeign0]
+                //     [ 2] CacheExpression [sourceParameter = interop]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1]]
+                case INSTR_C_SL_UNBOX :
+                {
+                    SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                // c.SLFunctionLiteral
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = result]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Always Boxed
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = Perform]]
+                case INSTR_C_SL_FUNCTION_LITERAL :
+                {
+                    SLFunctionLiteral_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                // c.SLToBoolean
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
+                case INSTR_C_SL_TO_BOOLEAN :
+                {
+                    SLToBoolean_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_6(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // c.SLAdd
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] SpecializationData [id = Add1]
+                //     [ 1] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback]]
+                case INSTR_C_SL_ADD :
+                {
+                    SLAdd_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLDiv
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = DivLong], SpecializationData [id = Div], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = DivLong], SpecializationData [id = Div], SpecializationData [id = Fallback]]
+                case INSTR_C_SL_DIV :
+                {
+                    SLDiv_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLMul
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = MulLong], SpecializationData [id = Mul], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = MulLong], SpecializationData [id = Mul], SpecializationData [id = Fallback]]
+                case INSTR_C_SL_MUL :
+                {
+                    SLMul_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLReadProperty
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //     [ 1] CacheExpression [sourceParameter = bci]
+                //     [ 2] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] SpecializationData [id = ReadArray0]
+                //     [ 1] CacheExpression [sourceParameter = node]
+                //     [ 2] CacheExpression [sourceParameter = arrays]
+                //     [ 3] CacheExpression [sourceParameter = numbers]
+                //     [ 4] SpecializationData [id = ReadSLObject0]
+                //     [ 5] CacheExpression [sourceParameter = node]
+                //     [ 6] CacheExpression [sourceParameter = objectLibrary]
+                //     [ 7] CacheExpression [sourceParameter = toTruffleStringNode]
+                //     [ 8] SpecializationData [id = ReadObject0]
+                //     [ 9] CacheExpression [sourceParameter = node]
+                //     [10] CacheExpression [sourceParameter = objects]
+                //     [11] CacheExpression [sourceParameter = asMember]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Always Boxed
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
+                case INSTR_C_SL_READ_PROPERTY :
+                {
+                    SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLSub
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = SubLong], SpecializationData [id = Sub], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = SubLong], SpecializationData [id = Sub], SpecializationData [id = Fallback]]
+                case INSTR_C_SL_SUB :
+                {
+                    SLSub_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_7(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // c.SLWriteProperty
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //     [ 1] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] SpecializationData [id = WriteArray0]
+                //     [ 1] CacheExpression [sourceParameter = node]
+                //     [ 2] CacheExpression [sourceParameter = arrays]
+                //     [ 3] CacheExpression [sourceParameter = numbers]
+                //     [ 4] SpecializationData [id = WriteSLObject0]
+                //     [ 5] CacheExpression [sourceParameter = objectLibrary]
+                //     [ 6] CacheExpression [sourceParameter = toTruffleStringNode]
+                //     [ 7] SpecializationData [id = WriteObject0]
+                //     [ 8] CacheExpression [sourceParameter = node]
+                //     [ 9] CacheExpression [sourceParameter = objectLibrary]
+                //     [10] CacheExpression [sourceParameter = asMember]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //     [ 2] arg2
+                //   Always Boxed
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = WriteArray0], SpecializationData [id = WriteArray1], SpecializationData [id = WriteSLObject0], SpecializationData [id = WriteSLObject1], SpecializationData [id = WriteObject0], SpecializationData [id = WriteObject1]]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = WriteArray0], SpecializationData [id = WriteArray1], SpecializationData [id = WriteSLObject0], SpecializationData [id = WriteSLObject1], SpecializationData [id = WriteObject0], SpecializationData [id = WriteObject1]]
+                case INSTR_C_SL_WRITE_PROPERTY :
+                {
+                    SLWriteProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -2;
+                    return $sp;
+                }
+                // c.SLInvoke
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] SpecializationData [id = Direct]
+                //     [ 1] CacheExpression [sourceParameter = callNode]
+                //     [ 2] CacheExpression [sourceParameter = library]
+                //     [ 3] CacheExpression [sourceParameter = node]
+                //     [ 4] NodeExecutionData[child=NodeFieldData[name=$variadicChild, kind=ONE, node=NodeData[C]], name=$variadicChild, index=1]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Variadic
+                //   Always Boxed
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = Direct], SpecializationData [id = Indirect], SpecializationData [id = Interop]]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = Direct], SpecializationData [id = Indirect], SpecializationData [id = Interop]]
+                case INSTR_C_SL_INVOKE :
+                {
+                    int numVariadics = unsafeFromBytecode($bc, $bci + C_SL_INVOKE_VARIADIC_OFFSET + 0);
+                    SLInvoke_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children, numVariadics);
+                    $sp +=  - numVariadics;
+                    return $sp;
+                }
+                // si.load.local.c.SLUnbox
+                //   Pushed Values: 0
+                case INSTR_SI_LOAD_LOCAL_C_SL_UNBOX :
+                {
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_14(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.constant.c.SLFunctionLiteral.load.local.c.SLUnbox
+                //   Pushed Values: 0
+                case INSTR_SI_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX :
+                {
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLFunctionLiteral_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_15(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox
+                //   Pushed Values: 0
+                case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX :
+                {
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    return $sp;
+                }
+                // si.pop.load.constant.c.SLFunctionLiteral.load.local.c.SLUnbox
+                //   Pushed Values: 0
+                case INSTR_SI_POP_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX :
+                {
+                    {
+                        $sp = $sp - 1;
+                        $frame.clear($sp);
+                        $bci = $bci + POP_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLFunctionLiteral_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_19(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox
+                //   Pushed Values: 0
+                case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX :
+                {
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_22(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox
+                //   Pushed Values: 0
+                case INSTR_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX :
+                {
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_BOXED_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        SLLessOrEqual_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    return $sp;
+                }
+                // si.pop.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant
+                //   Pushed Values: 0
+                case INSTR_SI_POP_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT :
+                {
+                    {
+                        $sp = $sp - 1;
+                        $frame.clear($sp);
+                        $bci = $bci + POP_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_23(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox
+                //   Pushed Values: 0
+                case INSTR_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                {
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        SLAdd_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_ADD_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    return $sp;
+                }
+                // si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant
+                //   Pushed Values: 0
+                case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT :
+                {
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_24(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.argument.store.local.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox
+                //   Pushed Values: 0
+                case INSTR_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX :
+                {
+                    {
+                        UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_ARGUMENT_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, $sp - 1, localIdx);
+                        $sp -= 1;
+                        $bci = $bci + STORE_LOCAL_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_ARGUMENT_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, $sp - 1, localIdx);
+                        $sp -= 1;
+                        $bci = $bci + STORE_LOCAL_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    return $sp;
+                }
+                // si.load.local.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox
+                //   Pushed Values: 0
+                case INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX :
+                {
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_BOXED_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        SLLessOrEqual_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_25(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd.c.SLUnbox
+                //   Pushed Values: 0
+                case INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                {
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        SLAdd_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_ADD_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_26(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox
+                //   Pushed Values: 0
+                case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX :
+                {
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    return $sp;
+                }
+                // si.pop.load.local.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox
+                //   Pushed Values: 0
+                case INSTR_SI_POP_LOAD_LOCAL_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                {
+                    {
+                        $sp = $sp - 1;
+                        $frame.clear($sp);
+                        $bci = $bci + POP_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        SLAdd_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_ADD_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_27(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty
+                //   Pushed Values: 0
+                case INSTR_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY :
+                {
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    }
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_28(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.store.local.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd
+                //   Pushed Values: 0
+                case INSTR_SI_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD :
+                {
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, $sp - 1, localIdx);
+                        $sp -= 1;
+                        $bci = $bci + STORE_LOCAL_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_ARGUMENT_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, $sp - 1, localIdx);
+                        $sp -= 1;
+                        $bci = $bci + STORE_LOCAL_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        SLAdd_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_ADD_LENGTH;
+                    }
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_30(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd.c.SLUnbox
+                //   Pushed Values: 0
+                case INSTR_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                {
+                    {
+                        UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_ARGUMENT_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, $sp - 1, localIdx);
+                        $sp -= 1;
+                        $bci = $bci + STORE_LOCAL_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        SLAdd_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_ADD_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    return $sp;
+                }
+                // si.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd
+                //   Pushed Values: 0
+                case INSTR_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD :
+                {
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        SLAdd_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_ADD_LENGTH;
+                    }
+                    return $sp;
+                }
+                // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox
+                //   Pushed Values: 0
+                case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX :
+                {
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_32(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox
+                //   Pushed Values: 0
+                case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX :
+                {
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_BOXED_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        SLLessOrEqual_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_33(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox
+                //   Pushed Values: 0
+                case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                {
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        SLAdd_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_ADD_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_34(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox.c.SLAdd
+                //   Pushed Values: 0
+                case INSTR_SI_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD :
+                {
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        SLAdd_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_ADD_LENGTH;
+                    }
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_37(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox.c.SLAdd.c.SLUnbox
+                //   Pushed Values: 0
+                case INSTR_SI_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                {
+                    {
+                        SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                        UFA.unsafeCopyObject($frame, localIdx, $sp);
+                        $sp += 1;
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                    }
+                    {
+                        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                        $sp = $sp + 1;
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    }
+                    {
+                        SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    {
+                        SLAdd_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $sp += -1;
+                        $bci = $bci + C_SL_ADD_LENGTH;
+                    }
+                    {
+                        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                    }
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
         private static boolean isAdoptable() {
             return true;
         }
@@ -9132,80 +14355,16 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         this.switchImpl = impl;
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_POP(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        $sp = $sp - 1;
-        $frame.clear($sp);
-        $bci = $bci + POP_LENGTH;
-        return ($sp << 16) | $bci;
+    private static void SLToBoolean_entryPoint_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 1;
+        UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLToBoolean_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+        return;
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_BRANCH(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        int targetBci = unsafeFromBytecode($bc, $bci + BRANCH_BRANCH_TARGET_OFFSET + 0);
-        if (targetBci <= $bci) {
-            if (CompilerDirectives.hasNextTier() && ++loopCounter.count >= 256) {
-                TruffleSafepoint.poll($this);
-                LoopNode.reportLoopCount($this, 256);
-                loopCounter.count = 0;
-                if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge($this)) {
-                    Object osrResult = BytecodeOSRNode.tryOSR($this, ($sp << 16) | targetBci, $frame, null, $frame);
-                    if (osrResult != null) {
-                        $frame.setObject(0, osrResult);
-                        return 0x0000ffff;
-                    }
-                }
-            }
-        }
-        $bci = targetBci;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_BRANCH_FALSE(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        boolean cond = UFA.unsafeGetObject($frame, $sp - 1) == Boolean.TRUE;
-        $sp = $sp - 1;
-        if (do_profileCondition($this, cond, $conditionProfiles, unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_PROFILE_OFFSET + 0))) {
-            $bci = $bci + BRANCH_FALSE_LENGTH;
-            return ($sp << 16) | $bci;
-        } else {
-            $bci = unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_TARGET_OFFSET + 0);
-            return ($sp << 16) | $bci;
-        }
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_THROW(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        int slot = unsafeFromBytecode($bc, $bci + THROW_LOCALS_OFFSET + 0);
-        throw (AbstractTruffleException) UFA.unsafeUncheckedGetObject($frame, slot);
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_LOAD_CONSTANT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_LOAD_ARGUMENT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_ARGUMENT_LENGTH;
-        return ($sp << 16) | $bci;
+    private static void SLToBoolean_entryPoint_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 1;
+        UFA.unsafeSetBoolean($frame, destSlot, BytecodeNode.SLToBoolean_executeBoolean_($frame, $this, $bc, $bci, $sp, $consts, $children));
+        return;
     }
 
     private static void do_loadLocal_OBJECT(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $sp, byte[] localTags, int localIdx) {
@@ -9225,17 +14384,6 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         }
         UFA.unsafeSetObject($frame, $sp, value);
         return;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_LOAD_LOCAL_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-        do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-        $sp++;
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        return ($sp << 16) | $bci;
     }
 
     private static void do_loadLocal_BOOLEAN(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $sp, byte[] localTags, int localIdx) {
@@ -9262,17 +14410,6 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         UFA.unsafeSetObject($frame, $sp, result);
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_LOAD_LOCAL_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-        do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-        $sp++;
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
     private static void do_loadLocal_LONG(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $sp, byte[] localTags, int localIdx) {
         try {
             UFA.unsafeSetLong($frame, $sp, UFA.unsafeGetLong($frame, localIdx));
@@ -9295,28 +14432,6 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         UFA.unsafeByteArrayWrite(localTags, localIdx, (byte) 7);
         UFA.unsafeSetObject($frame, localIdx, result);
         UFA.unsafeSetObject($frame, $sp, result);
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_LOAD_LOCAL_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-        do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-        $sp++;
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_LOAD_LOCAL_BOXED_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        unsafeWriteBytecode($bc, $bci, (short) ((INSTR_LOAD_LOCAL << 3) | 0));
-        $bci -= LOAD_LOCAL_BOXED_LENGTH;
-        $bci = $bci + LOAD_LOCAL_BOXED_LENGTH;
-        return ($sp << 16) | $bci;
     }
 
     private static void do_loadLocalBoxed_BOOLEAN(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $sp, byte[] localTags, int localIdx) {
@@ -9343,17 +14458,6 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         UFA.unsafeSetObject($frame, $sp, result);
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_LOAD_LOCAL_BOXED_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
-        do_loadLocalBoxed_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-        $sp++;
-        $bci = $bci + LOAD_LOCAL_BOXED_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
     private static void do_loadLocalBoxed_LONG(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $sp, byte[] localTags, int localIdx) {
         try {
             UFA.unsafeSetLong($frame, $sp, (long) UFA.unsafeGetObject($frame, localIdx));
@@ -9376,17 +14480,6 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         UFA.unsafeByteArrayWrite(localTags, localIdx, (byte) 7);
         UFA.unsafeSetObject($frame, localIdx, result);
         UFA.unsafeSetObject($frame, $sp, result);
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_LOAD_LOCAL_BOXED_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
-        do_loadLocalBoxed_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-        $sp++;
-        $bci = $bci + LOAD_LOCAL_BOXED_LENGTH;
-        return ($sp << 16) | $bci;
     }
 
     private static void do_storeLocalSpecialize(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $sp, byte[] localTags, int primitiveTag, int localIdx, int sourceSlot) {
@@ -9428,17 +14521,6 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         do_storeLocalSpecialize($this, $frame, $bc, $bci, $sp, localTags, 0 /* OBJECT */, localIdx, sourceSlot);
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_STORE_LOCAL_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-        do_storeLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-        $sp--;
-        $bci = $bci + STORE_LOCAL_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
     private static void do_storeLocal_BOOLEAN(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $sp, byte[] localTags, int localIdx) {
         int sourceSlot = $sp - 1;
         byte curKind = UFA.unsafeByteArrayRead(localTags, localIdx);
@@ -9451,17 +14533,6 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
         do_storeLocalSpecialize($this, $frame, $bc, $bci, $sp, localTags, 5 /* BOOLEAN */, localIdx, sourceSlot);
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_STORE_LOCAL_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-        do_storeLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-        $sp--;
-        $bci = $bci + STORE_LOCAL_LENGTH;
-        return ($sp << 16) | $bci;
     }
 
     private static void do_storeLocal_LONG(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $sp, byte[] localTags, int localIdx) {
@@ -9478,17 +14549,6 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         do_storeLocalSpecialize($this, $frame, $bc, $bci, $sp, localTags, 1 /* LONG */, localIdx, sourceSlot);
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_STORE_LOCAL_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-        do_storeLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-        $sp--;
-        $bci = $bci + STORE_LOCAL_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
     private static void do_storeLocal_null(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $sp, byte[] localTags, int localIdx) {
         int sourceSlot = $sp - 1;
         byte curKind = UFA.unsafeByteArrayRead(localTags, localIdx);
@@ -9500,126 +14560,10 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         }
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_STORE_LOCAL_GENERIC(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-        do_storeLocal_null($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-        $sp--;
-        $bci = $bci + STORE_LOCAL_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_LOAD_LOCAL_MAT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        Frame outerFrame;
-        outerFrame = (Frame) UFA.unsafeGetObject($frame, $sp - 1);
-        UFA.unsafeSetObject($frame, $sp - 1, outerFrame.getObject(unsafeFromBytecode($bc, $bci + LOAD_LOCAL_MAT_ARGUMENT_OFFSET + 0)));
-        $bci = $bci + LOAD_LOCAL_MAT_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_STORE_LOCAL_MAT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        Frame outerFrame;
-        outerFrame = (Frame) UFA.unsafeGetObject($frame, $sp - 2);
-        outerFrame.setObject(unsafeFromBytecode($bc, $bci + STORE_LOCAL_MAT_ARGUMENT_OFFSET + 0), UFA.unsafeGetObject($frame, $sp - 1));
-        $sp -= 2;
-        $bci = $bci + STORE_LOCAL_MAT_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLAdd_entryPoint_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 2;
-        UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLAdd_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
-        return;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_ADD_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_ADD_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLAdd_entryPoint_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 2;
-        try {
-            UFA.unsafeSetLong($frame, destSlot, BytecodeNode.SLAdd_executeLong_($frame, $this, $bc, $bci, $sp, $consts, $children));
-            return;
-        } catch (UnexpectedResultException ex) {
-            UFA.unsafeSetObject($frame, destSlot, ex.getResult());
-        }
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_ADD_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_ADD_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLDiv_entryPoint_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 2;
-        UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLDiv_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
-        return;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_DIV_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLDiv_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_DIV_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLDiv_entryPoint_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 2;
-        try {
-            UFA.unsafeSetLong($frame, destSlot, BytecodeNode.SLDiv_executeLong_($frame, $this, $bc, $bci, $sp, $consts, $children));
-            return;
-        } catch (UnexpectedResultException ex) {
-            UFA.unsafeSetObject($frame, destSlot, ex.getResult());
-        }
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_DIV_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLDiv_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_DIV_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
     private static void SLEqual_entryPoint_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
         int destSlot = $sp - 2;
         UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLEqual_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
         return;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_EQUAL_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLEqual_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_EQUAL_LENGTH;
-        return ($sp << 16) | $bci;
     }
 
     private static void SLEqual_entryPoint_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
@@ -9628,30 +14572,10 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         return;
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_EQUAL_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLEqual_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_EQUAL_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
     private static void SLLessOrEqual_entryPoint_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
         int destSlot = $sp - 2;
         UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLLessOrEqual_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
         return;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_LESS_OR_EQUAL_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLLessOrEqual_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
-        return ($sp << 16) | $bci;
     }
 
     private static void SLLessOrEqual_entryPoint_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
@@ -9664,30 +14588,10 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         }
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_LESS_OR_EQUAL_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLLessOrEqual_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
     private static void SLLessThan_entryPoint_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
         int destSlot = $sp - 2;
         UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLLessThan_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
         return;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_LESS_THAN_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLLessThan_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_LESS_THAN_LENGTH;
-        return ($sp << 16) | $bci;
     }
 
     private static void SLLessThan_entryPoint_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
@@ -9700,29 +14604,10 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         }
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_LESS_THAN_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLLessThan_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_LESS_THAN_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
     private static void SLLogicalNot_entryPoint_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
         int destSlot = $sp - 1;
         UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLLogicalNot_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
         return;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_LOGICAL_NOT_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLLogicalNot_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_LOGICAL_NOT_LENGTH;
-        return ($sp << 16) | $bci;
     }
 
     private static void SLLogicalNot_entryPoint_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
@@ -9735,130 +14620,10 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         }
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_LOGICAL_NOT_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLLogicalNot_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_LOGICAL_NOT_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLMul_entryPoint_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 2;
-        UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLMul_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
-        return;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_MUL_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLMul_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_MUL_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLMul_entryPoint_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 2;
-        try {
-            UFA.unsafeSetLong($frame, destSlot, BytecodeNode.SLMul_executeLong_($frame, $this, $bc, $bci, $sp, $consts, $children));
-            return;
-        } catch (UnexpectedResultException ex) {
-            UFA.unsafeSetObject($frame, destSlot, ex.getResult());
-        }
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_MUL_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLMul_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_MUL_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLReadProperty_entryPoint_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 2;
-        UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLReadProperty_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_READ_PROPERTY(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLSub_entryPoint_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 2;
-        UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLSub_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
-        return;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_SUB_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLSub_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_SUB_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLSub_entryPoint_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 2;
-        try {
-            UFA.unsafeSetLong($frame, destSlot, BytecodeNode.SLSub_executeLong_($frame, $this, $bc, $bci, $sp, $consts, $children));
-            return;
-        } catch (UnexpectedResultException ex) {
-            UFA.unsafeSetObject($frame, destSlot, ex.getResult());
-        }
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_SUB_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLSub_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_SUB_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLWriteProperty_entryPoint_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 3;
-        UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLWriteProperty_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_WRITE_PROPERTY(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLWriteProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -2;
-        $bci = $bci + C_SL_WRITE_PROPERTY_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
     private static void SLUnbox_entryPoint_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
         int destSlot = $sp - 1;
         UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLUnbox_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
         return;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_UNBOX_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        return ($sp << 16) | $bci;
     }
 
     private static void SLUnbox_entryPoint_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
@@ -9871,15 +14636,6 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         }
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_UNBOX_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
     private static void SLUnbox_entryPoint_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
         int destSlot = $sp - 1;
         try {
@@ -9890,144 +14646,15 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         }
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_UNBOX_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
     private static void SLFunctionLiteral_entryPoint_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
         int destSlot = $sp - 1;
         UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLFunctionLiteral_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_FUNCTION_LITERAL(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLFunctionLiteral_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLToBoolean_entryPoint_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 1;
-        UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLToBoolean_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
-        return;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_TO_BOOLEAN_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLToBoolean_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_TO_BOOLEAN_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLToBoolean_entryPoint_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 1;
-        UFA.unsafeSetBoolean($frame, destSlot, BytecodeNode.SLToBoolean_executeBoolean_($frame, $this, $bc, $bci, $sp, $consts, $children));
-        return;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_TO_BOOLEAN_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLToBoolean_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_TO_BOOLEAN_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLInvoke_entryPoint_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, int $numVariadics) {
-        int destSlot = $sp - 1 - $numVariadics;
-        UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLInvoke_execute_($frame, $this, $bc, $bci, $sp, $consts, $children, $numVariadics));
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_INVOKE(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        int numVariadics = unsafeFromBytecode($bc, $bci + C_SL_INVOKE_VARIADIC_OFFSET + 0);
-        SLInvoke_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children, numVariadics);
-        $sp +=  - numVariadics;
-        $bci = $bci + C_SL_INVOKE_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SC_SL_AND_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        if (BytecodeNode.SLAnd_execute_($frame, $this, $bc, $bci, $sp, $consts, $children)) {
-            $sp = $sp - 1;
-            $bci = $bci + SC_SL_AND_LENGTH;
-            return ($sp << 16) | $bci;
-        } else {
-            $bci = unsafeFromBytecode($bc, $bci + SC_SL_AND_BRANCH_TARGET_OFFSET + 0);
-            return ($sp << 16) | $bci;
-        }
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SC_SL_AND_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        if (BytecodeNode.SLAnd_execute_($frame, $this, $bc, $bci, $sp, $consts, $children)) {
-            $sp = $sp - 1;
-            $bci = $bci + SC_SL_AND_LENGTH;
-            return ($sp << 16) | $bci;
-        } else {
-            $bci = unsafeFromBytecode($bc, $bci + SC_SL_AND_BRANCH_TARGET_OFFSET + 0);
-            return ($sp << 16) | $bci;
-        }
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SC_SL_OR_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        if (!BytecodeNode.SLOr_execute_($frame, $this, $bc, $bci, $sp, $consts, $children)) {
-            $sp = $sp - 1;
-            $bci = $bci + SC_SL_OR_LENGTH;
-            return ($sp << 16) | $bci;
-        } else {
-            $bci = unsafeFromBytecode($bc, $bci + SC_SL_OR_BRANCH_TARGET_OFFSET + 0);
-            return ($sp << 16) | $bci;
-        }
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SC_SL_OR_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        if (!BytecodeNode.SLOr_execute_($frame, $this, $bc, $bci, $sp, $consts, $children)) {
-            $sp = $sp - 1;
-            $bci = $bci + SC_SL_OR_LENGTH;
-            return ($sp << 16) | $bci;
-        } else {
-            $bci = unsafeFromBytecode($bc, $bci + SC_SL_OR_BRANCH_TARGET_OFFSET + 0);
-            return ($sp << 16) | $bci;
-        }
     }
 
     private static void SLUnbox_q_FromLong_entryPoint_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
         int destSlot = $sp - 1;
         UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLUnbox_q_FromLong_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
         return;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_UNBOX_Q_FROM_LONG_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLUnbox_q_FromLong_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_UNBOX_Q_FROM_LONG_LENGTH;
-        return ($sp << 16) | $bci;
     }
 
     private static void SLUnbox_q_FromLong_entryPoint_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
@@ -10040,15 +14667,6 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         }
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_UNBOX_Q_FROM_LONG_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLUnbox_q_FromLong_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_UNBOX_Q_FROM_LONG_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
     private static void SLUnbox_q_FromLong_entryPoint_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
         int destSlot = $sp - 1;
         try {
@@ -10059,28 +14677,10 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         }
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_UNBOX_Q_FROM_LONG_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLUnbox_q_FromLong_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_UNBOX_Q_FROM_LONG_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
     private static void SLUnbox_q_FromBigNumber_entryPoint_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
         int destSlot = $sp - 1;
         UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLUnbox_q_FromBigNumber_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
         return;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_UNBOX_Q_FROM_BIG_NUMBER_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLUnbox_q_FromBigNumber_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_LENGTH;
-        return ($sp << 16) | $bci;
     }
 
     private static void SLUnbox_q_FromBigNumber_entryPoint_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
@@ -10093,15 +14693,6 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         }
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_UNBOX_Q_FROM_BIG_NUMBER_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLUnbox_q_FromBigNumber_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
     private static void SLUnbox_q_FromBigNumber_entryPoint_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
         int destSlot = $sp - 1;
         try {
@@ -10112,28 +14703,10 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         }
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_UNBOX_Q_FROM_BIG_NUMBER_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLUnbox_q_FromBigNumber_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
     private static void SLUnbox_q_FromBigNumber_FromLong_entryPoint_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
         int destSlot = $sp - 1;
         UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLUnbox_q_FromBigNumber_FromLong_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
         return;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLUnbox_q_FromBigNumber_FromLong_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_LENGTH;
-        return ($sp << 16) | $bci;
     }
 
     private static void SLUnbox_q_FromBigNumber_FromLong_entryPoint_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
@@ -10146,15 +14719,6 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         }
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLUnbox_q_FromBigNumber_FromLong_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
     private static void SLUnbox_q_FromBigNumber_FromLong_entryPoint_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
         int destSlot = $sp - 1;
         try {
@@ -10165,28 +14729,10 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         }
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLUnbox_q_FromBigNumber_FromLong_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
     private static void SLUnbox_q_FromBoolean_entryPoint_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
         int destSlot = $sp - 1;
         UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLUnbox_q_FromBoolean_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
         return;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_UNBOX_Q_FROM_BOOLEAN_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLUnbox_q_FromBoolean_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_UNBOX_Q_FROM_BOOLEAN_LENGTH;
-        return ($sp << 16) | $bci;
     }
 
     private static void SLUnbox_q_FromBoolean_entryPoint_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
@@ -10199,15 +14745,6 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         }
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_UNBOX_Q_FROM_BOOLEAN_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLUnbox_q_FromBoolean_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_UNBOX_Q_FROM_BOOLEAN_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
     private static void SLUnbox_q_FromBoolean_entryPoint_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
         int destSlot = $sp - 1;
         try {
@@ -10218,13 +14755,73 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         }
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_UNBOX_Q_FROM_BOOLEAN_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLUnbox_q_FromBoolean_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_UNBOX_Q_FROM_BOOLEAN_LENGTH;
-        return ($sp << 16) | $bci;
+    private static void SLAdd_entryPoint_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 2;
+        UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLAdd_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+        return;
+    }
+
+    private static void SLAdd_entryPoint_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 2;
+        try {
+            UFA.unsafeSetLong($frame, destSlot, BytecodeNode.SLAdd_executeLong_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            return;
+        } catch (UnexpectedResultException ex) {
+            UFA.unsafeSetObject($frame, destSlot, ex.getResult());
+        }
+    }
+
+    private static void SLDiv_entryPoint_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 2;
+        UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLDiv_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+        return;
+    }
+
+    private static void SLDiv_entryPoint_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 2;
+        try {
+            UFA.unsafeSetLong($frame, destSlot, BytecodeNode.SLDiv_executeLong_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            return;
+        } catch (UnexpectedResultException ex) {
+            UFA.unsafeSetObject($frame, destSlot, ex.getResult());
+        }
+    }
+
+    private static void SLMul_entryPoint_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 2;
+        UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLMul_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+        return;
+    }
+
+    private static void SLMul_entryPoint_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 2;
+        try {
+            UFA.unsafeSetLong($frame, destSlot, BytecodeNode.SLMul_executeLong_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            return;
+        } catch (UnexpectedResultException ex) {
+            UFA.unsafeSetObject($frame, destSlot, ex.getResult());
+        }
+    }
+
+    private static void SLReadProperty_entryPoint_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 2;
+        UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLReadProperty_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+    }
+
+    private static void SLSub_entryPoint_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 2;
+        UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLSub_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+        return;
+    }
+
+    private static void SLSub_entryPoint_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 2;
+        try {
+            UFA.unsafeSetLong($frame, destSlot, BytecodeNode.SLSub_executeLong_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            return;
+        } catch (UnexpectedResultException ex) {
+            UFA.unsafeSetObject($frame, destSlot, ex.getResult());
+        }
     }
 
     private static void SLReadProperty_q_ReadSLObject0_entryPoint_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
@@ -10232,30 +14829,10 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLReadProperty_q_ReadSLObject0_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLReadProperty_q_ReadSLObject0_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
     private static void SLAdd_q_AddLong_entryPoint_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
         int destSlot = $sp - 2;
         UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLAdd_q_AddLong_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
         return;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_ADD_Q_ADD_LONG_OBJECT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLAdd_q_AddLong_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_ADD_Q_ADD_LONG_LENGTH;
-        return ($sp << 16) | $bci;
     }
 
     private static void SLAdd_q_AddLong_entryPoint_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
@@ -10268,3515 +14845,14 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         }
     }
 
-    @BytecodeInterpreterSwitch
-    private static int execute_C_SL_ADD_Q_ADD_LONG_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLAdd_q_AddLong_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_ADD_Q_ADD_LONG_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_LOAD_LOCAL_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-        }
-        $bci = $bci + C_SL_ADD_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_ARGUMENT_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-                do_storeLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp--;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-                do_storeLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp--;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-                do_storeLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp--;
-                break;
-            }
-            case 7 /* generic */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-                do_storeLocal_null($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp--;
-                break;
-            }
-        }
-        $bci = $bci + STORE_LOCAL_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_ARGUMENT_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-                do_storeLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp--;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-                do_storeLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp--;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-                do_storeLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp--;
-                break;
-            }
-            case 7 /* generic */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-                do_storeLocal_null($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp--;
-                break;
-            }
-        }
-        $bci = $bci + STORE_LOCAL_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_ARGUMENT_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-                do_storeLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp--;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-                do_storeLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp--;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-                do_storeLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp--;
-                break;
-            }
-            case 7 /* generic */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-                do_storeLocal_null($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp--;
-                break;
-            }
-        }
-        $bci = $bci + STORE_LOCAL_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-        }
-        $bci = $bci + C_SL_ADD_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-                do_storeLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp--;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-                do_storeLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp--;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-                do_storeLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp--;
-                break;
-            }
-            case 7 /* generic */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-                do_storeLocal_null($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp--;
-                break;
-            }
-        }
-        $bci = $bci + STORE_LOCAL_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_ARGUMENT_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-                do_storeLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp--;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-                do_storeLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp--;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-                do_storeLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp--;
-                break;
-            }
-            case 7 /* generic */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-                do_storeLocal_null($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp--;
-                break;
-            }
-        }
-        $bci = $bci + STORE_LOCAL_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-        }
-        $bci = $bci + C_SL_ADD_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                unsafeWriteBytecode($bc, $bci, (short) ((INSTR_LOAD_LOCAL << 3) | 0));
-                $bci -= LOAD_LOCAL_BOXED_LENGTH;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
-                do_loadLocalBoxed_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
-                do_loadLocalBoxed_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_BOXED_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLLessOrEqual_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLLessOrEqual_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-        }
-        $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-        }
-        $bci = $bci + C_SL_ADD_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                unsafeWriteBytecode($bc, $bci, (short) ((INSTR_LOAD_LOCAL << 3) | 0));
-                $bci -= LOAD_LOCAL_BOXED_LENGTH;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
-                do_loadLocalBoxed_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
-                do_loadLocalBoxed_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_BOXED_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLLessOrEqual_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLLessOrEqual_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-        }
-        $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-        }
-        $bci = $bci + C_SL_ADD_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-        }
-        $bci = $bci + C_SL_ADD_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-        }
-        $bci = $bci + C_SL_ADD_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_POP_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        $sp = $sp - 1;
-        $frame.clear($sp);
-        $bci = $bci + POP_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-        }
-        $bci = $bci + C_SL_ADD_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        SLFunctionLiteral_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                unsafeWriteBytecode($bc, $bci, (short) ((INSTR_LOAD_LOCAL << 3) | 0));
-                $bci -= LOAD_LOCAL_BOXED_LENGTH;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
-                do_loadLocalBoxed_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
-                do_loadLocalBoxed_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_BOXED_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLLessOrEqual_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLLessOrEqual_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-        }
-        $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_POP_LOAD_LOCAL_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        $sp = $sp - 1;
-        $frame.clear($sp);
-        $bci = $bci + POP_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                $sp += -1;
-                break;
-            }
-        }
-        $bci = $bci + C_SL_ADD_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_POP_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        $sp = $sp - 1;
-        $frame.clear($sp);
-        $bci = $bci + POP_LENGTH;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        SLFunctionLiteral_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-                do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
-                $sp++;
-                break;
-            }
-        }
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 1 /* LONG */ :
-            {
-                SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int execute_SI_C_SL_TO_BOOLEAN_BRANCH_FALSE(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        switch (unsafeFromBytecode($bc, $bci) & 7) {
-            case 0 /* OBJECT */ :
-            {
-                SLToBoolean_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-            case 5 /* BOOLEAN */ :
-            {
-                SLToBoolean_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                break;
-            }
-        }
-        $bci = $bci + C_SL_TO_BOOLEAN_LENGTH;
-        boolean cond = UFA.unsafeGetObject($frame, $sp - 1) == Boolean.TRUE;
-        $sp = $sp - 1;
-        if (do_profileCondition($this, cond, $conditionProfiles, unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_PROFILE_OFFSET + 0))) {
-            $bci = $bci + BRANCH_FALSE_LENGTH;
-            return ($sp << 16) | $bci;
-        } else {
-            $bci = unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_TARGET_OFFSET + 0);
-            return ($sp << 16) | $bci;
-        }
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int __helper0(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        switch (curOpcode) {
-            // pop
-            //   Simple Pops:
-            //     [ 0] value
-            //   Pushed Values: 0
-            case ((INSTR_POP << 3) | 0) :
-            {
-                return execute_POP($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // branch
-            //   Pushed Values: 0
-            //   Branch Targets:
-            //     [ 0] target
-            case ((INSTR_BRANCH << 3) | 0) :
-            {
-                return execute_BRANCH($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // branch.false
-            //   Simple Pops:
-            //     [ 0] condition
-            //   Pushed Values: 0
-            //   Branch Targets:
-            //     [ 0] target
-            //   Branch Profiles:
-            //     [ 0] profile
-            case ((INSTR_BRANCH_FALSE << 3) | 0) :
-            {
-                return execute_BRANCH_FALSE($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // throw
-            //   Locals:
-            //     [ 0] exception
-            //   Pushed Values: 0
-            case ((INSTR_THROW << 3) | 0) :
-            {
-                return execute_THROW($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // load.constant
-            //   Constants:
-            //     [ 0] constant
-            //   Always Boxed
-            //   Pushed Values: 1
-            case ((INSTR_LOAD_CONSTANT << 3) | 0) :
-            {
-                return execute_LOAD_CONSTANT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // load.argument
-            //   Always Boxed
-            //   Pushed Values: 1
-            case ((INSTR_LOAD_ARGUMENT << 3) | 0) :
-            {
-                return execute_LOAD_ARGUMENT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // load.local
-            //   Locals:
-            //     [ 0] local
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            case ((INSTR_LOAD_LOCAL << 3) | 0 /* OBJECT */) :
-            {
-                return execute_LOAD_LOCAL_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_LOAD_LOCAL << 3) | 5 /* BOOLEAN */) :
-            {
-                return execute_LOAD_LOCAL_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_LOAD_LOCAL << 3) | 1 /* LONG */) :
-            {
-                return execute_LOAD_LOCAL_LONG($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // load.local.boxed
-            //   Locals:
-            //     [ 0] local
-            //   Always Boxed
-            //   Pushed Values: 1
-            case ((INSTR_LOAD_LOCAL_BOXED << 3) | 0 /* OBJECT */) :
-            {
-                return execute_LOAD_LOCAL_BOXED_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_LOAD_LOCAL_BOXED << 3) | 5 /* BOOLEAN */) :
-            {
-                return execute_LOAD_LOCAL_BOXED_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_LOAD_LOCAL_BOXED << 3) | 1 /* LONG */) :
-            {
-                return execute_LOAD_LOCAL_BOXED_LONG($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // store.local
-            //   Locals:
-            //     [ 0] target
-            //   Indexed Pops:
-            //     [ 0] value
-            //   Split on Boxing Elimination
-            //   Pushed Values: 0
-            case ((INSTR_STORE_LOCAL << 3) | 0 /* OBJECT */) :
-            {
-                return execute_STORE_LOCAL_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_STORE_LOCAL << 3) | 5 /* BOOLEAN */) :
-            {
-                return execute_STORE_LOCAL_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_STORE_LOCAL << 3) | 1 /* LONG */) :
-            {
-                return execute_STORE_LOCAL_LONG($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_STORE_LOCAL << 3) | 7) :
-            {
-                return execute_STORE_LOCAL_GENERIC($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // load.local.mat
-            //   Simple Pops:
-            //     [ 0] frame
-            //   Always Boxed
-            //   Pushed Values: 1
-            case ((INSTR_LOAD_LOCAL_MAT << 3) | 0) :
-            {
-                return execute_LOAD_LOCAL_MAT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // store.local.mat
-            //   Simple Pops:
-            //     [ 0] frame
-            //     [ 1] value
-            //   Pushed Values: 0
-            case ((INSTR_STORE_LOCAL_MAT << 3) | 0) :
-            {
-                return execute_STORE_LOCAL_MAT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // c.SLAdd
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] SpecializationData [id = Add1]
-            //     [ 1] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //     [ 1] arg1
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback]]
-            case ((INSTR_C_SL_ADD << 3) | 0 /* OBJECT */) :
-            {
-                return execute_C_SL_ADD_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_C_SL_ADD << 3) | 1 /* LONG */) :
-            {
-                return execute_C_SL_ADD_LONG($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // c.SLDiv
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //     [ 1] arg1
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = DivLong], SpecializationData [id = Div], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = DivLong], SpecializationData [id = Div], SpecializationData [id = Fallback]]
-            case ((INSTR_C_SL_DIV << 3) | 0 /* OBJECT */) :
-            {
-                return execute_C_SL_DIV_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_C_SL_DIV << 3) | 1 /* LONG */) :
-            {
-                return execute_C_SL_DIV_LONG($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // c.SLEqual
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = equalNode]
-            //     [ 1] SpecializationData [id = Generic0]
-            //     [ 2] CacheExpression [sourceParameter = leftInterop]
-            //     [ 3] CacheExpression [sourceParameter = rightInterop]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //     [ 1] arg1
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = Long], SpecializationData [id = BigNumber], SpecializationData [id = Boolean], SpecializationData [id = String], SpecializationData [id = TruffleString], SpecializationData [id = Null], SpecializationData [id = Function], SpecializationData [id = Generic0], SpecializationData [id = Generic1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = Long], SpecializationData [id = BigNumber], SpecializationData [id = Boolean], SpecializationData [id = String], SpecializationData [id = TruffleString], SpecializationData [id = Null], SpecializationData [id = Function], SpecializationData [id = Generic0], SpecializationData [id = Generic1]]
-            case ((INSTR_C_SL_EQUAL << 3) | 0 /* OBJECT */) :
-            {
-                return execute_C_SL_EQUAL_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_C_SL_EQUAL << 3) | 5 /* BOOLEAN */) :
-            {
-                return execute_C_SL_EQUAL_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // c.SLLessOrEqual
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //     [ 1] arg1
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = LessOrEqual0], SpecializationData [id = LessOrEqual1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
-            case ((INSTR_C_SL_LESS_OR_EQUAL << 3) | 0 /* OBJECT */) :
-            {
-                return execute_C_SL_LESS_OR_EQUAL_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_C_SL_LESS_OR_EQUAL << 3) | 5 /* BOOLEAN */) :
-            {
-                return execute_C_SL_LESS_OR_EQUAL_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // c.SLLessThan
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //     [ 1] arg1
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = LessThan0], SpecializationData [id = LessThan1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
-            case ((INSTR_C_SL_LESS_THAN << 3) | 0 /* OBJECT */) :
-            {
-                return execute_C_SL_LESS_THAN_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_C_SL_LESS_THAN << 3) | 5 /* BOOLEAN */) :
-            {
-                return execute_C_SL_LESS_THAN_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // c.SLLogicalNot
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
-            case ((INSTR_C_SL_LOGICAL_NOT << 3) | 0 /* OBJECT */) :
-            {
-                return execute_C_SL_LOGICAL_NOT_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_C_SL_LOGICAL_NOT << 3) | 5 /* BOOLEAN */) :
-            {
-                return execute_C_SL_LOGICAL_NOT_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // c.SLMul
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //     [ 1] arg1
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = MulLong], SpecializationData [id = Mul], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = MulLong], SpecializationData [id = Mul], SpecializationData [id = Fallback]]
-            case ((INSTR_C_SL_MUL << 3) | 0 /* OBJECT */) :
-            {
-                return execute_C_SL_MUL_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_C_SL_MUL << 3) | 1 /* LONG */) :
-            {
-                return execute_C_SL_MUL_LONG($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // c.SLReadProperty
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //     [ 1] CacheExpression [sourceParameter = bci]
-            //     [ 2] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] SpecializationData [id = ReadArray0]
-            //     [ 1] CacheExpression [sourceParameter = node]
-            //     [ 2] CacheExpression [sourceParameter = arrays]
-            //     [ 3] CacheExpression [sourceParameter = numbers]
-            //     [ 4] SpecializationData [id = ReadSLObject0]
-            //     [ 5] CacheExpression [sourceParameter = node]
-            //     [ 6] CacheExpression [sourceParameter = objectLibrary]
-            //     [ 7] CacheExpression [sourceParameter = toTruffleStringNode]
-            //     [ 8] SpecializationData [id = ReadObject0]
-            //     [ 9] CacheExpression [sourceParameter = node]
-            //     [10] CacheExpression [sourceParameter = objects]
-            //     [11] CacheExpression [sourceParameter = asMember]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //     [ 1] arg1
-            //   Always Boxed
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
-            case ((INSTR_C_SL_READ_PROPERTY << 3) | 0) :
-            {
-                return execute_C_SL_READ_PROPERTY($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // c.SLSub
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //     [ 1] arg1
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = SubLong], SpecializationData [id = Sub], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = SubLong], SpecializationData [id = Sub], SpecializationData [id = Fallback]]
-            case ((INSTR_C_SL_SUB << 3) | 0 /* OBJECT */) :
-            {
-                return execute_C_SL_SUB_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_C_SL_SUB << 3) | 1 /* LONG */) :
-            {
-                return execute_C_SL_SUB_LONG($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // c.SLWriteProperty
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //     [ 1] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] SpecializationData [id = WriteArray0]
-            //     [ 1] CacheExpression [sourceParameter = node]
-            //     [ 2] CacheExpression [sourceParameter = arrays]
-            //     [ 3] CacheExpression [sourceParameter = numbers]
-            //     [ 4] SpecializationData [id = WriteSLObject0]
-            //     [ 5] CacheExpression [sourceParameter = objectLibrary]
-            //     [ 6] CacheExpression [sourceParameter = toTruffleStringNode]
-            //     [ 7] SpecializationData [id = WriteObject0]
-            //     [ 8] CacheExpression [sourceParameter = node]
-            //     [ 9] CacheExpression [sourceParameter = objectLibrary]
-            //     [10] CacheExpression [sourceParameter = asMember]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //     [ 1] arg1
-            //     [ 2] arg2
-            //   Always Boxed
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = WriteArray0], SpecializationData [id = WriteArray1], SpecializationData [id = WriteSLObject0], SpecializationData [id = WriteSLObject1], SpecializationData [id = WriteObject0], SpecializationData [id = WriteObject1]]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = WriteArray0], SpecializationData [id = WriteArray1], SpecializationData [id = WriteSLObject0], SpecializationData [id = WriteSLObject1], SpecializationData [id = WriteObject0], SpecializationData [id = WriteObject1]]
-            case ((INSTR_C_SL_WRITE_PROPERTY << 3) | 0) :
-            {
-                return execute_C_SL_WRITE_PROPERTY($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // c.SLUnbox
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
-            //     [ 1] SpecializationData [id = FromForeign0]
-            //     [ 2] CacheExpression [sourceParameter = interop]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1]]
-            case ((INSTR_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
-            {
-                return execute_C_SL_UNBOX_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_C_SL_UNBOX << 3) | 1 /* LONG */) :
-            {
-                return execute_C_SL_UNBOX_LONG($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
-            {
-                return execute_C_SL_UNBOX_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // c.SLFunctionLiteral
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = result]
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //   Always Boxed
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = Perform]]
-            case ((INSTR_C_SL_FUNCTION_LITERAL << 3) | 0) :
-            {
-                return execute_C_SL_FUNCTION_LITERAL($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // c.SLToBoolean
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
-            case ((INSTR_C_SL_TO_BOOLEAN << 3) | 0 /* OBJECT */) :
-            {
-                return execute_C_SL_TO_BOOLEAN_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_C_SL_TO_BOOLEAN << 3) | 5 /* BOOLEAN */) :
-            {
-                return execute_C_SL_TO_BOOLEAN_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // c.SLInvoke
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] SpecializationData [id = Direct]
-            //     [ 1] CacheExpression [sourceParameter = callNode]
-            //     [ 2] CacheExpression [sourceParameter = library]
-            //     [ 3] CacheExpression [sourceParameter = node]
-            //     [ 4] NodeExecutionData[child=NodeFieldData[name=$variadicChild, kind=ONE, node=NodeData[C]], name=$variadicChild, index=1]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //   Variadic
-            //   Always Boxed
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = Direct], SpecializationData [id = Indirect], SpecializationData [id = Interop]]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = Direct], SpecializationData [id = Indirect], SpecializationData [id = Interop]]
-            case ((INSTR_C_SL_INVOKE << 3) | 0) :
-            {
-                return execute_C_SL_INVOKE($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // sc.SLAnd
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] value
-            //   Split on Boxing Elimination
-            //   Pushed Values: 0
-            //   Branch Targets:
-            //     [ 0] end
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
-            case ((INSTR_SC_SL_AND << 3) | 0 /* OBJECT */) :
-            {
-                return execute_SC_SL_AND_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_SC_SL_AND << 3) | 5 /* BOOLEAN */) :
-            {
-                return execute_SC_SL_AND_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // sc.SLOr
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] value
-            //   Split on Boxing Elimination
-            //   Pushed Values: 0
-            //   Branch Targets:
-            //     [ 0] end
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
-            case ((INSTR_SC_SL_OR << 3) | 0 /* OBJECT */) :
-            {
-                return execute_SC_SL_OR_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_SC_SL_OR << 3) | 5 /* BOOLEAN */) :
-            {
-                return execute_SC_SL_OR_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // c.SLUnbox.q.FromLong
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
-            //     [ 1] SpecializationData [id = FromForeign0]
-            //     [ 2] CacheExpression [sourceParameter = interop]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1]]
-            case ((INSTR_C_SL_UNBOX_Q_FROM_LONG << 3) | 0 /* OBJECT */) :
-            {
-                return execute_C_SL_UNBOX_Q_FROM_LONG_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_C_SL_UNBOX_Q_FROM_LONG << 3) | 1 /* LONG */) :
-            {
-                return execute_C_SL_UNBOX_Q_FROM_LONG_LONG($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_C_SL_UNBOX_Q_FROM_LONG << 3) | 5 /* BOOLEAN */) :
-            {
-                return execute_C_SL_UNBOX_Q_FROM_LONG_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // c.SLUnbox.q.FromBigNumber
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
-            //     [ 1] SpecializationData [id = FromForeign0]
-            //     [ 2] CacheExpression [sourceParameter = interop]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1]]
-            case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER << 3) | 0 /* OBJECT */) :
-            {
-                return execute_C_SL_UNBOX_Q_FROM_BIG_NUMBER_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER << 3) | 1 /* LONG */) :
-            {
-                return execute_C_SL_UNBOX_Q_FROM_BIG_NUMBER_LONG($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER << 3) | 5 /* BOOLEAN */) :
-            {
-                return execute_C_SL_UNBOX_Q_FROM_BIG_NUMBER_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // c.SLUnbox.q.FromBigNumber.FromLong
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
-            //     [ 1] SpecializationData [id = FromForeign0]
-            //     [ 2] CacheExpression [sourceParameter = interop]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1]]
-            case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG << 3) | 0 /* OBJECT */) :
-            {
-                return execute_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG << 3) | 1 /* LONG */) :
-            {
-                return execute_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_LONG($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG << 3) | 5 /* BOOLEAN */) :
-            {
-                return execute_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // c.SLUnbox.q.FromBoolean
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
-            //     [ 1] SpecializationData [id = FromForeign0]
-            //     [ 2] CacheExpression [sourceParameter = interop]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1]]
-            case ((INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN << 3) | 0 /* OBJECT */) :
-            {
-                return execute_C_SL_UNBOX_Q_FROM_BOOLEAN_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN << 3) | 1 /* LONG */) :
-            {
-                return execute_C_SL_UNBOX_Q_FROM_BOOLEAN_LONG($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN << 3) | 5 /* BOOLEAN */) :
-            {
-                return execute_C_SL_UNBOX_Q_FROM_BOOLEAN_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // c.SLReadProperty.q.ReadSLObject0
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //     [ 1] CacheExpression [sourceParameter = bci]
-            //     [ 2] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] SpecializationData [id = ReadArray0]
-            //     [ 1] CacheExpression [sourceParameter = node]
-            //     [ 2] CacheExpression [sourceParameter = arrays]
-            //     [ 3] CacheExpression [sourceParameter = numbers]
-            //     [ 4] SpecializationData [id = ReadSLObject0]
-            //     [ 5] CacheExpression [sourceParameter = node]
-            //     [ 6] CacheExpression [sourceParameter = objectLibrary]
-            //     [ 7] CacheExpression [sourceParameter = toTruffleStringNode]
-            //     [ 8] SpecializationData [id = ReadObject0]
-            //     [ 9] CacheExpression [sourceParameter = node]
-            //     [10] CacheExpression [sourceParameter = objects]
-            //     [11] CacheExpression [sourceParameter = asMember]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //     [ 1] arg1
-            //   Always Boxed
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
-            case ((INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0 << 3) | 0) :
-            {
-                return execute_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // c.SLAdd.q.AddLong
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] SpecializationData [id = Add1]
-            //     [ 1] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //     [ 1] arg1
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback]]
-            case ((INSTR_C_SL_ADD_Q_ADD_LONG << 3) | 0 /* OBJECT */) :
-            {
-                return execute_C_SL_ADD_Q_ADD_LONG_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            case ((INSTR_C_SL_ADD_Q_ADD_LONG << 3) | 1 /* LONG */) :
-            {
-                return execute_C_SL_ADD_Q_ADD_LONG_LONG($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.load.local.c.SLUnbox
-            //   Pushed Values: 0
-            case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
-            case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
-            case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX << 3) | 1 /* LONG */) :
-            {
-                short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
-                return execute_SI_LOAD_LOCAL_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd.c.SLUnbox
-            //   Pushed Values: 0
-            case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
-            case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
-            case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 1 /* LONG */) :
-            {
-                short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
-                return execute_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.load.argument.store.local.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox
-            //   Pushed Values: 0
-            case ((INSTR_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX << 3) | 0) :
-            {
-                return execute_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd.c.SLUnbox
-            //   Pushed Values: 0
-            case ((INSTR_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0) :
-            {
-                return execute_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.store.local.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd
-            //   Pushed Values: 0
-            case ((INSTR_SI_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD << 3) | 0) :
-            {
-                return execute_SI_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox
-            //   Pushed Values: 0
-            case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
-            case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
-            case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 1 /* LONG */) :
-            {
-                short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
-                return execute_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox
-            //   Pushed Values: 0
-            case ((INSTR_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
-            case ((INSTR_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 1 /* LONG */) :
-            case ((INSTR_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
-            {
-                short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
-                return execute_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox
-            //   Pushed Values: 0
-            case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
-            case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
-            case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 1 /* LONG */) :
-            {
-                short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
-                return execute_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox
-            //   Pushed Values: 0
-            case ((INSTR_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
-            case ((INSTR_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 1 /* LONG */) :
-            case ((INSTR_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
-            {
-                short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
-                return execute_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.load.local.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox
-            //   Pushed Values: 0
-            case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
-            case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
-            case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 1 /* LONG */) :
-            {
-                short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
-                return execute_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox
-            //   Pushed Values: 0
-            case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
-            case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
-            case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX << 3) | 1 /* LONG */) :
-            {
-                short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
-                return execute_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox
-            //   Pushed Values: 0
-            case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
-            case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
-            case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 1 /* LONG */) :
-            {
-                short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
-                return execute_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd
-            //   Pushed Values: 0
-            case ((INSTR_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD << 3) | 0) :
-            {
-                return execute_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox
-            //   Pushed Values: 0
-            case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
-            case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
-            case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 1 /* LONG */) :
-            {
-                short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
-                return execute_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty
-            //   Pushed Values: 0
-            case ((INSTR_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY << 3) | 0) :
-            {
-                return execute_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox.c.SLAdd
-            //   Pushed Values: 0
-            case ((INSTR_SI_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD << 3) | 0) :
-            {
-                return execute_SI_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant
-            //   Pushed Values: 0
-            case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT << 3) | 0 /* OBJECT */) :
-            case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT << 3) | 5 /* BOOLEAN */) :
-            case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT << 3) | 1 /* LONG */) :
-            {
-                short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
-                return execute_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.pop.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant
-            //   Pushed Values: 0
-            case ((INSTR_SI_POP_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT << 3) | 0) :
-            {
-                return execute_SI_POP_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox.c.SLAdd.c.SLUnbox
-            //   Pushed Values: 0
-            case ((INSTR_SI_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0) :
-            {
-                return execute_SI_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.load.constant.c.SLFunctionLiteral.load.local.c.SLUnbox
-            //   Pushed Values: 0
-            case ((INSTR_SI_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX << 3) | 0) :
-            {
-                return execute_SI_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox
-            //   Pushed Values: 0
-            case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
-            case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
-            case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 1 /* LONG */) :
-            {
-                short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
-                return execute_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.pop.load.local.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox
-            //   Pushed Values: 0
-            case ((INSTR_SI_POP_LOAD_LOCAL_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0) :
-            {
-                return execute_SI_POP_LOAD_LOCAL_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.pop.load.constant.c.SLFunctionLiteral.load.local.c.SLUnbox
-            //   Pushed Values: 0
-            case ((INSTR_SI_POP_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX << 3) | 0) :
-            {
-                return execute_SI_POP_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            // si.c.SLToBoolean.branch.false
-            //   Pushed Values: 0
-            case ((INSTR_SI_C_SL_TO_BOOLEAN_BRANCH_FALSE << 3) | 0 /* OBJECT */) :
-            case ((INSTR_SI_C_SL_TO_BOOLEAN_BRANCH_FALSE << 3) | 5 /* BOOLEAN */) :
-            {
-                short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
-                return execute_SI_C_SL_TO_BOOLEAN_BRANCH_FALSE($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags);
-            }
-            default :
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw CompilerDirectives.shouldNotReachHere("unknown opcode encountered: " + curOpcode + " @ " + $bci + "");
-        }
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_POP(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        $sp = $sp - 1;
-        $frame.clear($sp);
-        $bci = $bci + POP_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_BRANCH(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        int targetBci = unsafeFromBytecode($bc, $bci + BRANCH_BRANCH_TARGET_OFFSET + 0);
-        if (targetBci <= $bci) {
-            if (CompilerDirectives.hasNextTier() && ++loopCounter.count >= 256) {
-                TruffleSafepoint.poll($this);
-                LoopNode.reportLoopCount($this, 256);
-                loopCounter.count = 0;
-                if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge($this)) {
-                    Object osrResult = BytecodeOSRNode.tryOSR($this, ($sp << 16) | targetBci, $frame, null, $frame);
-                    if (osrResult != null) {
-                        $frame.setObject(0, osrResult);
-                        return 0x0000ffff;
-                    }
-                }
-            }
-            uncachedExecuteCount.count--;
-            if (uncachedExecuteCount.count <= 0) {
-                $this.changeInterpreters(COMMON_EXECUTE);
-                return ($sp << 16) | targetBci;
-            }
-        }
-        $bci = targetBci;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_BRANCH_FALSE(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        boolean cond = UFA.unsafeGetObject($frame, $sp - 1) == Boolean.TRUE;
-        $sp = $sp - 1;
-        if (do_profileCondition($this, cond, $conditionProfiles, unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_PROFILE_OFFSET + 0))) {
-            $bci = $bci + BRANCH_FALSE_LENGTH;
-            return ($sp << 16) | $bci;
-        } else {
-            $bci = unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_TARGET_OFFSET + 0);
-            return ($sp << 16) | $bci;
-        }
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_THROW(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        int slot = unsafeFromBytecode($bc, $bci + THROW_LOCALS_OFFSET + 0);
-        throw (AbstractTruffleException) UFA.unsafeUncheckedGetObject($frame, slot);
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_LOAD_CONSTANT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_CONSTANT_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_LOAD_ARGUMENT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
-        $sp = $sp + 1;
-        $bci = $bci + LOAD_ARGUMENT_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_LOAD_LOCAL(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-        UFA.unsafeCopyObject($frame, localIdx, $sp);
-        $sp += 1;
-        $bci = $bci + LOAD_LOCAL_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_LOAD_LOCAL_BOXED(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
-        UFA.unsafeCopyObject($frame, localIdx, $sp);
-        $sp += 1;
-        $bci = $bci + LOAD_LOCAL_BOXED_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_STORE_LOCAL(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-        UFA.unsafeCopyObject($frame, $sp - 1, localIdx);
-        $sp -= 1;
-        $bci = $bci + STORE_LOCAL_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_LOAD_LOCAL_MAT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        Frame outerFrame;
-        outerFrame = (Frame) UFA.unsafeGetObject($frame, $sp - 1);
-        UFA.unsafeSetObject($frame, $sp - 1, outerFrame.getObject(unsafeFromBytecode($bc, $bci + LOAD_LOCAL_MAT_ARGUMENT_OFFSET + 0)));
-        $bci = $bci + LOAD_LOCAL_MAT_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_STORE_LOCAL_MAT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        Frame outerFrame;
-        outerFrame = (Frame) UFA.unsafeGetObject($frame, $sp - 2);
-        outerFrame.setObject(unsafeFromBytecode($bc, $bci + STORE_LOCAL_MAT_ARGUMENT_OFFSET + 0), UFA.unsafeGetObject($frame, $sp - 1));
-        $sp -= 2;
-        $bci = $bci + STORE_LOCAL_MAT_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLAdd_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 2;
-        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLAdd_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 2), UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_C_SL_ADD(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLAdd_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_ADD_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLDiv_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 2;
-        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLDiv_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 2), UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_C_SL_DIV(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLDiv_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_DIV_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLEqual_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 2;
-        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLEqual_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 2), UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_C_SL_EQUAL(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLEqual_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_EQUAL_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLLessOrEqual_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 2;
-        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLLessOrEqual_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 2), UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_C_SL_LESS_OR_EQUAL(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLLessOrEqual_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLLessThan_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 2;
-        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLLessThan_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 2), UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_C_SL_LESS_THAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLLessThan_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_LESS_THAN_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLLogicalNot_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 1;
-        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLLogicalNot_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_C_SL_LOGICAL_NOT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLLogicalNot_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_LOGICAL_NOT_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLMul_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 2;
-        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLMul_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 2), UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_C_SL_MUL(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLMul_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_MUL_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLReadProperty_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 2;
-        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLReadProperty_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 2), UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_C_SL_READ_PROPERTY(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLSub_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 2;
-        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLSub_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 2), UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_C_SL_SUB(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLSub_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -1;
-        $bci = $bci + C_SL_SUB_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLWriteProperty_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+    private static void SLWriteProperty_entryPoint_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
         int destSlot = $sp - 3;
-        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLWriteProperty_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 3), UFA.unsafeUncheckedGetObject($frame, $sp - 2), UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
+        UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLWriteProperty_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
     }
 
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_C_SL_WRITE_PROPERTY(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLWriteProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $sp += -2;
-        $bci = $bci + C_SL_WRITE_PROPERTY_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLUnbox_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 1;
-        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLUnbox_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_UNBOX_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    private static void SLFunctionLiteral_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
-        int destSlot = $sp - 1;
-        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLFunctionLiteral_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_C_SL_FUNCTION_LITERAL(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLFunctionLiteral_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
-        return ($sp << 16) | $bci;
+    private static void SLInvoke_entryPoint_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, int $numVariadics) {
+        int destSlot = $sp - 1 - $numVariadics;
+        UFA.unsafeSetObject($frame, destSlot, BytecodeNode.SLInvoke_execute_($frame, $this, $bc, $bci, $sp, $consts, $children, $numVariadics));
     }
 
     private static void SLToBoolean_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
@@ -13784,1548 +14860,69 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLToBoolean_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
     }
 
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_C_SL_TO_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        SLToBoolean_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-        $bci = $bci + C_SL_TO_BOOLEAN_LENGTH;
-        return ($sp << 16) | $bci;
+    private static void SLEqual_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 2;
+        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLEqual_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 2), UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
+    }
+
+    private static void SLLessOrEqual_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 2;
+        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLLessOrEqual_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 2), UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
+    }
+
+    private static void SLLessThan_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 2;
+        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLLessThan_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 2), UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
+    }
+
+    private static void SLLogicalNot_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 1;
+        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLLogicalNot_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
+    }
+
+    private static void SLUnbox_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 1;
+        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLUnbox_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
+    }
+
+    private static void SLFunctionLiteral_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 1;
+        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLFunctionLiteral_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
+    }
+
+    private static void SLAdd_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 2;
+        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLAdd_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 2), UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
+    }
+
+    private static void SLDiv_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 2;
+        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLDiv_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 2), UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
+    }
+
+    private static void SLMul_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 2;
+        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLMul_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 2), UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
+    }
+
+    private static void SLReadProperty_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 2;
+        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLReadProperty_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 2), UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
+    }
+
+    private static void SLSub_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 2;
+        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLSub_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 2), UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
+    }
+
+    private static void SLWriteProperty_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+        int destSlot = $sp - 3;
+        UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLWriteProperty_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, UFA.unsafeUncheckedGetObject($frame, $sp - 3), UFA.unsafeUncheckedGetObject($frame, $sp - 2), UFA.unsafeUncheckedGetObject($frame, $sp - 1)));
     }
 
     private static void SLInvoke_entryPoint_uncached(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, int $numVariadics) {
         int destSlot = $sp - 1 - $numVariadics;
         UFA.unsafeSetObject($frame, destSlot, UncachedBytecodeNode.SLInvoke_executeUncached_($frame, $this, $bc, $bci, $sp, $consts, $children, $numVariadics, UFA.unsafeUncheckedGetObject($frame, $sp - 1 - $numVariadics), do_loadVariadicArguments($frame, $sp, $numVariadics)));
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_C_SL_INVOKE(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        int numVariadics = unsafeFromBytecode($bc, $bci + C_SL_INVOKE_VARIADIC_OFFSET + 0);
-        SLInvoke_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children, numVariadics);
-        $sp +=  - numVariadics;
-        $bci = $bci + C_SL_INVOKE_LENGTH;
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SC_SL_AND(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        if (BytecodeNode.SLAnd_execute_($frame, $this, $bc, $bci, $sp, $consts, $children)) {
-            $sp = $sp - 1;
-            $bci = $bci + SC_SL_AND_LENGTH;
-            return ($sp << 16) | $bci;
-        } else {
-            $bci = unsafeFromBytecode($bc, $bci + SC_SL_AND_BRANCH_TARGET_OFFSET + 0);
-            return ($sp << 16) | $bci;
-        }
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SC_SL_OR(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        if (!BytecodeNode.SLOr_execute_($frame, $this, $bc, $bci, $sp, $consts, $children)) {
-            $sp = $sp - 1;
-            $bci = $bci + SC_SL_OR_LENGTH;
-            return ($sp << 16) | $bci;
-        } else {
-            $bci = unsafeFromBytecode($bc, $bci + SC_SL_OR_BRANCH_TARGET_OFFSET + 0);
-            return ($sp << 16) | $bci;
-        }
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_LOAD_LOCAL_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            SLAdd_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_ADD_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_ARGUMENT_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, $sp - 1, localIdx);
-            $sp -= 1;
-            $bci = $bci + STORE_LOCAL_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_ARGUMENT_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, $sp - 1, localIdx);
-            $sp -= 1;
-            $bci = $bci + STORE_LOCAL_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_ARGUMENT_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, $sp - 1, localIdx);
-            $sp -= 1;
-            $bci = $bci + STORE_LOCAL_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            SLAdd_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_ADD_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, $sp - 1, localIdx);
-            $sp -= 1;
-            $bci = $bci + STORE_LOCAL_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_ARGUMENT_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, $sp - 1, localIdx);
-            $sp -= 1;
-            $bci = $bci + STORE_LOCAL_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            SLAdd_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_ADD_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_BOXED_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            SLLessOrEqual_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            SLAdd_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_ADD_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_BOXED_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            SLLessOrEqual_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            SLAdd_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_ADD_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            SLAdd_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_ADD_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            SLAdd_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_ADD_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_POP_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            $sp = $sp - 1;
-            $frame.clear($sp);
-            $bci = $bci + POP_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            SLAdd_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_ADD_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLFunctionLiteral_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLReadProperty_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_BOXED_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            SLLessOrEqual_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_POP_LOAD_LOCAL_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            $sp = $sp - 1;
-            $frame.clear($sp);
-            $bci = $bci + POP_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        {
-            SLAdd_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $sp += -1;
-            $bci = $bci + C_SL_ADD_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_POP_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            $sp = $sp - 1;
-            $frame.clear($sp);
-            $bci = $bci + POP_LENGTH;
-        }
-        {
-            UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
-            $sp = $sp + 1;
-            $bci = $bci + LOAD_CONSTANT_LENGTH;
-        }
-        {
-            SLFunctionLiteral_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
-        }
-        {
-            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
-            UFA.unsafeCopyObject($frame, localIdx, $sp);
-            $sp += 1;
-            $bci = $bci + LOAD_LOCAL_LENGTH;
-        }
-        {
-            SLUnbox_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_UNBOX_LENGTH;
-        }
-        return ($sp << 16) | $bci;
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int executeUncached_SI_C_SL_TO_BOOLEAN_BRANCH_FALSE(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        {
-            SLToBoolean_entryPoint_uncached($frame, $this, $bc, $bci, $sp, $consts, $children);
-            $bci = $bci + C_SL_TO_BOOLEAN_LENGTH;
-        }
-        {
-            boolean cond = UFA.unsafeGetObject($frame, $sp - 1) == Boolean.TRUE;
-            $sp = $sp - 1;
-            if (do_profileCondition($this, cond, $conditionProfiles, unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_PROFILE_OFFSET + 0))) {
-                $bci = $bci + BRANCH_FALSE_LENGTH;
-                return ($sp << 16) | $bci;
-            } else {
-                $bci = unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_TARGET_OFFSET + 0);
-                return ($sp << 16) | $bci;
-            }
-        }
-    }
-
-    @BytecodeInterpreterSwitch
-    private static int __helper1(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, int[] $conditionProfiles, Counter loopCounter, int curOpcode, byte[] $localTags, Counter uncachedExecuteCount) {
-        int $bci = $startBci;
-        int $sp = $startSp;
-        switch (curOpcode) {
-            // pop
-            //   Simple Pops:
-            //     [ 0] value
-            //   Pushed Values: 0
-            case INSTR_POP :
-            {
-                return executeUncached_POP($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // branch
-            //   Pushed Values: 0
-            //   Branch Targets:
-            //     [ 0] target
-            case INSTR_BRANCH :
-            {
-                return executeUncached_BRANCH($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // branch.false
-            //   Simple Pops:
-            //     [ 0] condition
-            //   Pushed Values: 0
-            //   Branch Targets:
-            //     [ 0] target
-            //   Branch Profiles:
-            //     [ 0] profile
-            case INSTR_BRANCH_FALSE :
-            {
-                return executeUncached_BRANCH_FALSE($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // throw
-            //   Locals:
-            //     [ 0] exception
-            //   Pushed Values: 0
-            case INSTR_THROW :
-            {
-                return executeUncached_THROW($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // load.constant
-            //   Constants:
-            //     [ 0] constant
-            //   Always Boxed
-            //   Pushed Values: 1
-            case INSTR_LOAD_CONSTANT :
-            {
-                return executeUncached_LOAD_CONSTANT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // load.argument
-            //   Always Boxed
-            //   Pushed Values: 1
-            case INSTR_LOAD_ARGUMENT :
-            {
-                return executeUncached_LOAD_ARGUMENT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // load.local
-            //   Locals:
-            //     [ 0] local
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            case INSTR_LOAD_LOCAL :
-            {
-                return executeUncached_LOAD_LOCAL($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // load.local.boxed
-            //   Locals:
-            //     [ 0] local
-            //   Always Boxed
-            //   Pushed Values: 1
-            case INSTR_LOAD_LOCAL_BOXED :
-            {
-                return executeUncached_LOAD_LOCAL_BOXED($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // store.local
-            //   Locals:
-            //     [ 0] target
-            //   Indexed Pops:
-            //     [ 0] value
-            //   Split on Boxing Elimination
-            //   Pushed Values: 0
-            case INSTR_STORE_LOCAL :
-            {
-                return executeUncached_STORE_LOCAL($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // load.local.mat
-            //   Simple Pops:
-            //     [ 0] frame
-            //   Always Boxed
-            //   Pushed Values: 1
-            case INSTR_LOAD_LOCAL_MAT :
-            {
-                return executeUncached_LOAD_LOCAL_MAT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // store.local.mat
-            //   Simple Pops:
-            //     [ 0] frame
-            //     [ 1] value
-            //   Pushed Values: 0
-            case INSTR_STORE_LOCAL_MAT :
-            {
-                return executeUncached_STORE_LOCAL_MAT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // c.SLAdd
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] SpecializationData [id = Add1]
-            //     [ 1] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //     [ 1] arg1
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback]]
-            case INSTR_C_SL_ADD :
-            {
-                return executeUncached_C_SL_ADD($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // c.SLDiv
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //     [ 1] arg1
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = DivLong], SpecializationData [id = Div], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = DivLong], SpecializationData [id = Div], SpecializationData [id = Fallback]]
-            case INSTR_C_SL_DIV :
-            {
-                return executeUncached_C_SL_DIV($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // c.SLEqual
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = equalNode]
-            //     [ 1] SpecializationData [id = Generic0]
-            //     [ 2] CacheExpression [sourceParameter = leftInterop]
-            //     [ 3] CacheExpression [sourceParameter = rightInterop]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //     [ 1] arg1
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = Long], SpecializationData [id = BigNumber], SpecializationData [id = Boolean], SpecializationData [id = String], SpecializationData [id = TruffleString], SpecializationData [id = Null], SpecializationData [id = Function], SpecializationData [id = Generic0], SpecializationData [id = Generic1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = Long], SpecializationData [id = BigNumber], SpecializationData [id = Boolean], SpecializationData [id = String], SpecializationData [id = TruffleString], SpecializationData [id = Null], SpecializationData [id = Function], SpecializationData [id = Generic0], SpecializationData [id = Generic1]]
-            case INSTR_C_SL_EQUAL :
-            {
-                return executeUncached_C_SL_EQUAL($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // c.SLLessOrEqual
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //     [ 1] arg1
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = LessOrEqual0], SpecializationData [id = LessOrEqual1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
-            case INSTR_C_SL_LESS_OR_EQUAL :
-            {
-                return executeUncached_C_SL_LESS_OR_EQUAL($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // c.SLLessThan
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //     [ 1] arg1
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = LessThan0], SpecializationData [id = LessThan1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
-            case INSTR_C_SL_LESS_THAN :
-            {
-                return executeUncached_C_SL_LESS_THAN($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // c.SLLogicalNot
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
-            case INSTR_C_SL_LOGICAL_NOT :
-            {
-                return executeUncached_C_SL_LOGICAL_NOT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // c.SLMul
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //     [ 1] arg1
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = MulLong], SpecializationData [id = Mul], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = MulLong], SpecializationData [id = Mul], SpecializationData [id = Fallback]]
-            case INSTR_C_SL_MUL :
-            {
-                return executeUncached_C_SL_MUL($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // c.SLReadProperty
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //     [ 1] CacheExpression [sourceParameter = bci]
-            //     [ 2] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] SpecializationData [id = ReadArray0]
-            //     [ 1] CacheExpression [sourceParameter = node]
-            //     [ 2] CacheExpression [sourceParameter = arrays]
-            //     [ 3] CacheExpression [sourceParameter = numbers]
-            //     [ 4] SpecializationData [id = ReadSLObject0]
-            //     [ 5] CacheExpression [sourceParameter = node]
-            //     [ 6] CacheExpression [sourceParameter = objectLibrary]
-            //     [ 7] CacheExpression [sourceParameter = toTruffleStringNode]
-            //     [ 8] SpecializationData [id = ReadObject0]
-            //     [ 9] CacheExpression [sourceParameter = node]
-            //     [10] CacheExpression [sourceParameter = objects]
-            //     [11] CacheExpression [sourceParameter = asMember]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //     [ 1] arg1
-            //   Always Boxed
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
-            case INSTR_C_SL_READ_PROPERTY :
-            {
-                return executeUncached_C_SL_READ_PROPERTY($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // c.SLSub
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //     [ 1] arg1
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = SubLong], SpecializationData [id = Sub], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = SubLong], SpecializationData [id = Sub], SpecializationData [id = Fallback]]
-            case INSTR_C_SL_SUB :
-            {
-                return executeUncached_C_SL_SUB($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // c.SLWriteProperty
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //     [ 1] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] SpecializationData [id = WriteArray0]
-            //     [ 1] CacheExpression [sourceParameter = node]
-            //     [ 2] CacheExpression [sourceParameter = arrays]
-            //     [ 3] CacheExpression [sourceParameter = numbers]
-            //     [ 4] SpecializationData [id = WriteSLObject0]
-            //     [ 5] CacheExpression [sourceParameter = objectLibrary]
-            //     [ 6] CacheExpression [sourceParameter = toTruffleStringNode]
-            //     [ 7] SpecializationData [id = WriteObject0]
-            //     [ 8] CacheExpression [sourceParameter = node]
-            //     [ 9] CacheExpression [sourceParameter = objectLibrary]
-            //     [10] CacheExpression [sourceParameter = asMember]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //     [ 1] arg1
-            //     [ 2] arg2
-            //   Always Boxed
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = WriteArray0], SpecializationData [id = WriteArray1], SpecializationData [id = WriteSLObject0], SpecializationData [id = WriteSLObject1], SpecializationData [id = WriteObject0], SpecializationData [id = WriteObject1]]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = WriteArray0], SpecializationData [id = WriteArray1], SpecializationData [id = WriteSLObject0], SpecializationData [id = WriteSLObject1], SpecializationData [id = WriteObject0], SpecializationData [id = WriteObject1]]
-            case INSTR_C_SL_WRITE_PROPERTY :
-            {
-                return executeUncached_C_SL_WRITE_PROPERTY($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // c.SLUnbox
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
-            //     [ 1] SpecializationData [id = FromForeign0]
-            //     [ 2] CacheExpression [sourceParameter = interop]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1]]
-            case INSTR_C_SL_UNBOX :
-            {
-                return executeUncached_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // c.SLFunctionLiteral
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = result]
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //   Always Boxed
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = Perform]]
-            case INSTR_C_SL_FUNCTION_LITERAL :
-            {
-                return executeUncached_C_SL_FUNCTION_LITERAL($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // c.SLToBoolean
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //   Split on Boxing Elimination
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
-            case INSTR_C_SL_TO_BOOLEAN :
-            {
-                return executeUncached_C_SL_TO_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // c.SLInvoke
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] SpecializationData [id = Direct]
-            //     [ 1] CacheExpression [sourceParameter = callNode]
-            //     [ 2] CacheExpression [sourceParameter = library]
-            //     [ 3] CacheExpression [sourceParameter = node]
-            //     [ 4] NodeExecutionData[child=NodeFieldData[name=$variadicChild, kind=ONE, node=NodeData[C]], name=$variadicChild, index=1]
-            //   Indexed Pops:
-            //     [ 0] arg0
-            //   Variadic
-            //   Always Boxed
-            //   Pushed Values: 1
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = Direct], SpecializationData [id = Indirect], SpecializationData [id = Interop]]
-            //     [ 1] ExcludeBitSet exclude [SpecializationData [id = Direct], SpecializationData [id = Indirect], SpecializationData [id = Interop]]
-            case INSTR_C_SL_INVOKE :
-            {
-                return executeUncached_C_SL_INVOKE($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // sc.SLAnd
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] value
-            //   Split on Boxing Elimination
-            //   Pushed Values: 0
-            //   Branch Targets:
-            //     [ 0] end
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
-            case INSTR_SC_SL_AND :
-            {
-                return executeUncached_SC_SL_AND($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // sc.SLOr
-            //   Constants:
-            //     [ 0] CacheExpression [sourceParameter = bci]
-            //   Children:
-            //     [ 0] CacheExpression [sourceParameter = node]
-            //   Indexed Pops:
-            //     [ 0] value
-            //   Split on Boxing Elimination
-            //   Pushed Values: 0
-            //   Branch Targets:
-            //     [ 0] end
-            //   State Bitsets:
-            //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
-            case INSTR_SC_SL_OR :
-            {
-                return executeUncached_SC_SL_OR($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.load.local.c.SLUnbox
-            //   Pushed Values: 0
-            case INSTR_SI_LOAD_LOCAL_C_SL_UNBOX :
-            {
-                return executeUncached_SI_LOAD_LOCAL_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd.c.SLUnbox
-            //   Pushed Values: 0
-            case INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
-            {
-                return executeUncached_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.load.argument.store.local.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox
-            //   Pushed Values: 0
-            case INSTR_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX :
-            {
-                return executeUncached_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd.c.SLUnbox
-            //   Pushed Values: 0
-            case INSTR_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
-            {
-                return executeUncached_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.store.local.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd
-            //   Pushed Values: 0
-            case INSTR_SI_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD :
-            {
-                return executeUncached_SI_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox
-            //   Pushed Values: 0
-            case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX :
-            {
-                return executeUncached_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox
-            //   Pushed Values: 0
-            case INSTR_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX :
-            {
-                return executeUncached_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox
-            //   Pushed Values: 0
-            case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX :
-            {
-                return executeUncached_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox
-            //   Pushed Values: 0
-            case INSTR_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
-            {
-                return executeUncached_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.load.local.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox
-            //   Pushed Values: 0
-            case INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX :
-            {
-                return executeUncached_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox
-            //   Pushed Values: 0
-            case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX :
-            {
-                return executeUncached_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox
-            //   Pushed Values: 0
-            case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
-            {
-                return executeUncached_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd
-            //   Pushed Values: 0
-            case INSTR_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD :
-            {
-                return executeUncached_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox
-            //   Pushed Values: 0
-            case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX :
-            {
-                return executeUncached_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty
-            //   Pushed Values: 0
-            case INSTR_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY :
-            {
-                return executeUncached_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox.c.SLAdd
-            //   Pushed Values: 0
-            case INSTR_SI_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD :
-            {
-                return executeUncached_SI_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant
-            //   Pushed Values: 0
-            case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT :
-            {
-                return executeUncached_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.pop.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant
-            //   Pushed Values: 0
-            case INSTR_SI_POP_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT :
-            {
-                return executeUncached_SI_POP_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox.c.SLAdd.c.SLUnbox
-            //   Pushed Values: 0
-            case INSTR_SI_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
-            {
-                return executeUncached_SI_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.load.constant.c.SLFunctionLiteral.load.local.c.SLUnbox
-            //   Pushed Values: 0
-            case INSTR_SI_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX :
-            {
-                return executeUncached_SI_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox
-            //   Pushed Values: 0
-            case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX :
-            {
-                return executeUncached_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.pop.load.local.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox
-            //   Pushed Values: 0
-            case INSTR_SI_POP_LOAD_LOCAL_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
-            {
-                return executeUncached_SI_POP_LOAD_LOCAL_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.pop.load.constant.c.SLFunctionLiteral.load.local.c.SLUnbox
-            //   Pushed Values: 0
-            case INSTR_SI_POP_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX :
-            {
-                return executeUncached_SI_POP_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            // si.c.SLToBoolean.branch.false
-            //   Pushed Values: 0
-            case INSTR_SI_C_SL_TO_BOOLEAN_BRANCH_FALSE :
-            {
-                return executeUncached_SI_C_SL_TO_BOOLEAN_BRANCH_FALSE($frame, $this, $bc, $bci, $sp, $consts, $children, $conditionProfiles, loopCounter, curOpcode, $localTags, uncachedExecuteCount);
-            }
-            default :
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw CompilerDirectives.shouldNotReachHere("unknown opcode encountered: " + curOpcode + " @ " + $bci + "");
-        }
     }
 
     private static void doSetResultBoxed(short[] bc, int startBci, int bciOffset, int targetType) {

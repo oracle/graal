@@ -379,7 +379,7 @@ public class OperationsBytecodeCodeGenerator {
             generateExecuteCase(ctx, vars, b, varTracer, op, true);
         }
 
-        for (Map.Entry<Integer, List<Instruction>> lenGroup : wrappedInstructions.entrySet()) {
+        for (Map.Entry<Integer, List<Instruction>> lenGroup : wrappedInstructions.entrySet().stream().sorted((x, y) -> Integer.compare(x.getKey(), y.getKey())).collect(Collectors.toList())) {
             int instructionLength = lenGroup.getKey();
 
             b.lineComment("length group " + instructionLength);

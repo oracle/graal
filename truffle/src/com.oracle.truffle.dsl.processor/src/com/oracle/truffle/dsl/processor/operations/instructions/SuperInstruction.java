@@ -114,10 +114,6 @@ public class SuperInstruction extends Instruction {
             }
         }
 
-        if (!instructions[instructions.length - 1].isExplicitFlowControl()) {
-            b.statement("continue loop");
-        }
-
         return b.build();
     }
 
@@ -132,16 +128,18 @@ public class SuperInstruction extends Instruction {
             }
             b.end();
         }
-        if (!instructions[instructions.length - 1].isExplicitFlowControl()) {
-            b.statement("continue loop");
-        }
 
         return b.build();
     }
 
     @Override
     public boolean isExplicitFlowControl() {
-        return true;
+        for (Instruction i : instructions) {
+            if (i.isExplicitFlowControl()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
