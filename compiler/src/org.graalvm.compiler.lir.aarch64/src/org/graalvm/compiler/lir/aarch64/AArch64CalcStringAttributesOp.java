@@ -186,6 +186,9 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         }
     }
 
+    /**
+     * Implements the operation described in {@link CalcStringAttributesEncoding#LATIN1}.
+     */
     static void emitLatin1(AArch64MacroAssembler asm, Register arr, Register len, Register tmp, Register ret, Label end, Register vecArray1, Register vecArray2, Register vecMask) {
         Label tailLessThan32 = new Label();
         Label tailLessThan16 = new Label();
@@ -196,10 +199,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         Label tailLoaded = new Label();
         Label vectorLoop = new Label();
 
-        // set vecMask to all ones
-        asm.neon.cmeqVVV(FullReg, DoubleWord, vecMask, vecMask, vecMask);
-        // fill with 0x80
-        asm.neon.shlVVI(FullReg, ElementSize.Byte, vecMask, vecMask, 7);
+        asm.neon.moveVI(FullReg, ElementSize.Byte, vecMask, (byte) 0x80);
 
         // subtract 32 from len. if the result is negative, jump to branch for less than 32 bytes
         asm.subs(64, len, len, 32);
@@ -293,6 +293,9 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.jmp(done);
     }
 
+    /**
+     * Implements the operation described in {@link CalcStringAttributesEncoding#BMP}.
+     */
     private void emitBMP(AArch64MacroAssembler asm, Register arr, Register len, Register tmp, Register ret, Label end) {
         assert stride.log2 == 1;
         Label tailLessThan32 = new Label();
@@ -315,10 +318,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         // convert length to byte length
         asm.lsl(64, len, len, 1);
 
-        // set vecMask to all ones
-        asm.neon.cmeqVVV(FullReg, DoubleWord, vecMask, vecMask, vecMask);
-        // fill with 0xff80
-        asm.neon.shlVVI(FullReg, ElementSize.HalfWord, vecMask, vecMask, 7);
+        asm.neon.moveVI(FullReg, ElementSize.HalfWord, vecMask, (short) 0xff80);
 
         // subtract 32 from len. if the result is negative, jump to branch for less than 32 bytes
         asm.subs(64, len, len, 32);
@@ -521,6 +521,8 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
     };
 
     /**
+     * Implements the operation described in {@link CalcStringAttributesEncoding#UTF_8}.
+     * <p>
      * Based on the paper <a href="https://arxiv.org/abs/2010.03090">Validating UTF-8 In Less Than
      * One Instruction Per Byte</a> by John Keiser and Daniel Lemire, and the author's
      * implementation in <a href=
@@ -562,12 +564,8 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
         asm.mov(32, ret, len);
 
-        // set vecMask to all ones
-        asm.neon.cmeqVVV(FullReg, DoubleWord, vecMask, vecMask, vecMask);
-        // fill with 0xc0
-        asm.neon.shlVVI(FullReg, ElementSize.Byte, vecMaskCB, vecMask, 6);
-        // fill with 0x80
-        asm.neon.shlVVI(FullReg, ElementSize.Byte, vecMask, vecMask, 7);
+        asm.neon.moveVI(FullReg, ElementSize.Byte, vecMaskCB, (byte) 0xc0);
+        asm.neon.moveVI(FullReg, ElementSize.Byte, vecMask, (byte) 0x80);
 
         // subtract 32 from len. if the result is negative, jump to branch for less than 32 bytes
         asm.subs(64, len, len, 32);
@@ -1037,6 +1035,9 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         }
     }
 
+    /**
+     * Implements the operation described in {@link CalcStringAttributesEncoding#UTF_16}.
+     */
     private void emitUTF16(CompilationResultBuilder crb, AArch64MacroAssembler asm, Register arr, Register len, Register tmp, Register ret, Label end) {
         assert stride.log2 == 1;
         Label tailLessThan32 = new Label();
@@ -1077,12 +1078,8 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         // convert length to byte length
         asm.lsl(64, len, len, 1);
 
-        // set vecMask to all ones
-        asm.neon.cmeqVVV(FullReg, DoubleWord, vecMask, vecMask, vecMask);
-        // fill with 0xff80
-        asm.neon.shlVVI(FullReg, HalfWord, vecMask, vecMask, 7);
-        asm.mov(tmp, assumeValid ? 0x36 : 0x1b);
-        asm.neon.dupVG(FullReg, ElementSize.Byte, vecMaskSurrogates, tmp);
+        asm.neon.moveVI(FullReg, ElementSize.HalfWord, vecMask, (short) 0xff80);
+        asm.neon.moveVI(FullReg, ElementSize.Byte, vecMaskSurrogates, assumeValid ? 0x36 : 0x1b);
 
         // subtract 32 from len. if the result is negative, jump to branch for less than 32 bytes
         asm.subs(64, len, len, 32);
@@ -1442,6 +1439,9 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         vectorCheckZero(asm, ElementSize.Byte, vecTmp2, vecTmp1);
     }
 
+    /**
+     * Implements the operation described in {@link CalcStringAttributesEncoding#UTF_32}.
+     */
     private void emitUTF32(AArch64MacroAssembler asm, Register arr, Register len, Register tmp, Register ret, Label end) {
         assert stride.log2 == 2;
         Label tailLessThan64 = new Label();
@@ -1483,14 +1483,9 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         // convert length to byte length
         asm.lsl(64, len, len, 2);
 
-        // set vecMask to all ones
-        asm.neon.cmeqVVV(FullReg, DoubleWord, vecMask, vecMask, vecMask);
-        // fill with 0xffffff80
-        asm.neon.shlVVI(FullReg, Word, vecMask, vecMask, 7);
-        asm.mov(tmp, 0x1b);
-        asm.neon.dupVG(FullReg, Word, vecMaskBroken, tmp);
-        asm.mov(tmp, 0x10ffff);
-        asm.neon.dupVG(FullReg, Word, vecMaskOutOfRange, tmp);
+        asm.neon.moveVI(FullReg, Word, vecMask, 0xffffff80);
+        asm.neon.moveVI(FullReg, Word, vecMaskBroken, 0x1b);
+        asm.neon.moveVI(FullReg, Word, vecMaskOutOfRange, 0x10ffff);
 
         // subtract 64 from len. if the result is negative, jump to branch for less than 64 bytes
         asm.subs(64, len, len, 64);
