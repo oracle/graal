@@ -47,7 +47,6 @@ import javax.lang.model.type.ArrayType;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
-import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class SuperInstruction extends Instruction {
@@ -110,13 +109,13 @@ public class SuperInstruction extends Instruction {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         for (Instruction instr : instructions) {
             createExecute(b, vars, instr, instr::createExecuteCode);
-            if (!instr.isBranchInstruction()) {
+            if (!instr.isExplicitFlowControl()) {
                 b.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(instr.createLength()).end();
             }
         }
 
-        if (!instructions[instructions.length - 1].isBranchInstruction()) {
-            b.tree(OperationGeneratorUtils.encodeExecuteReturn());
+        if (!instructions[instructions.length - 1].isExplicitFlowControl()) {
+            b.statement("continue loop");
         }
 
         return b.build();
@@ -128,25 +127,25 @@ public class SuperInstruction extends Instruction {
         for (Instruction instr : instructions) {
             b.startBlock();
             b.tree(instr.createExecuteUncachedCode(vars));
-            if (!instr.isBranchInstruction()) {
+            if (!instr.isExplicitFlowControl()) {
                 b.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(instr.createLength()).end();
             }
             b.end();
         }
-        if (!instructions[instructions.length - 1].isBranchInstruction()) {
-            b.tree(OperationGeneratorUtils.encodeExecuteReturn());
+        if (!instructions[instructions.length - 1].isExplicitFlowControl()) {
+            b.statement("continue loop");
         }
 
         return b.build();
     }
 
     @Override
-    public boolean isBranchInstruction() {
+    public boolean isExplicitFlowControl() {
         return true;
     }
 
     @Override
-    protected int length() {
+    public int length() {
         int len = 0;
         for (Instruction i : instructions) {
             len += i.length();

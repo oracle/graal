@@ -169,6 +169,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     private final boolean substituteThisToParent;
 
     private final List<TypeMirror> cachedAnnotations;
+    private TypeElement operationType;
 
     private NodeParser(ParseMode mode, TypeMirror exportLibraryType, TypeElement exportDeclarationType, boolean substituteThisToParent) {
         this.mode = mode;
@@ -194,8 +195,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return new NodeParser(ParseMode.DEFAULT, null, null, false);
     }
 
-    public static NodeParser createOperationParser() {
-        return new NodeParser(ParseMode.OPERATION, null, null, true);
+    public static NodeParser createOperationParser(TypeElement operationType) {
+        NodeParser nodeParser = new NodeParser(ParseMode.OPERATION, null, null, true);
+        nodeParser.operationType = operationType;
+        return nodeParser;
     }
 
     @Override
@@ -1807,7 +1810,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 child.addError("Node type '%s' is invalid or not a subclass of Node.", getQualifiedName(nodeType));
             } else {
                 if (child.isImplicit() || child.isAllowUncached()) {
-                    DSLExpressionResolver resolver = new DSLExpressionResolver(context, node.getTemplateType(), Collections.emptyList(), mode);
+                    DSLExpressionResolver resolver = new DSLExpressionResolver(context, node.getTemplateType(), Collections.emptyList(), mode,
+                                    operationType == null ? types.Node : operationType.asType());
                     resolver = importStatics(resolver, node.getNodeType());
                     if (NodeCodeGenerator.isSpecializedNode(nodeType)) {
                         List<CodeExecutableElement> executables = parseNodeFactoryMethods(nodeType);
@@ -2189,7 +2193,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         if (mode == ParseMode.OPERATION) {
             globalMembers.add(new CodeVariableElement(context.getType(int.class), "$bci"));
         }
-        DSLExpressionResolver originalResolver = new DSLExpressionResolver(context, node.getTemplateType(), globalMembers, mode);
+        DSLExpressionResolver originalResolver = new DSLExpressionResolver(context, node.getTemplateType(), globalMembers, mode, operationType == null ? types.Node : operationType.asType());
 
         // the number of specializations might grow while expressions are initialized.
         List<SpecializationData> specializations = node.getSpecializations();

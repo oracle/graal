@@ -291,7 +291,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             }
         }
 
-        NodeData nodeData = NodeParser.createOperationParser().parse(clonedType, false);
+        NodeData nodeData = NodeParser.createOperationParser(parentData.getTemplateType()).parse(clonedType, false);
 
         if (nodeData == null) {
             data.addError("Could not parse invalid node: " + te.getSimpleName() + ". Fix errors in the node first.");

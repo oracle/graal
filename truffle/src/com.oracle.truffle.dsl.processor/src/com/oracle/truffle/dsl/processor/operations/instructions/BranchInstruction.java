@@ -47,7 +47,6 @@ import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
-import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 @SuppressWarnings("unused")
@@ -151,8 +150,7 @@ public class BranchInstruction extends Instruction {
         }
 
         b.startAssign(vars.bci).string("targetBci").end();
-
-        b.tree(OperationGeneratorUtils.encodeExecuteReturn());
+        b.statement("continue loop");
 
         return b.build();
     }
@@ -170,7 +168,7 @@ public class BranchInstruction extends Instruction {
     }
 
     @Override
-    public boolean isBranchInstruction() {
+    public boolean isExplicitFlowControl() {
         return true;
     }
 

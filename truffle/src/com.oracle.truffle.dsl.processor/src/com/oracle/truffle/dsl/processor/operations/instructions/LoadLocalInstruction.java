@@ -98,18 +98,9 @@ public class LoadLocalInstruction extends Instruction {
     @Override
     public CodeTree createExecuteCode(ExecutionVariables vars) {
 
-        if (boxed && vars.specializedKind == FrameKind.OBJECT) {
-            // load boxed object == load object
-            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        boolean useBoxed = vars.specializedKind != FrameKind.OBJECT && boxed;
 
-            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-            b.tree(createWriteOpcode(vars.bc, vars.bci, combineBoxingBits(ctx, ctx.loadLocalUnboxed, 0)));
-            b.statement("$bci -= LOAD_LOCAL_BOXED_LENGTH");
-
-            return b.build();
-        }
-
-        String helperName = "do_loadLocal" + (boxed ? "Boxed" : "") + "_" + (ctx.hasBoxingElimination() ? vars.specializedKind : "");
+        String helperName = "do_loadLocal" + (useBoxed ? "Boxed" : "") + "_" + (ctx.hasBoxingElimination() ? vars.specializedKind : "");
         OperationGeneratorUtils.createHelperMethod(ctx.outerType, helperName, () -> {
             CodeExecutableElement res = new CodeExecutableElement(Set.of(Modifier.STATIC, Modifier.PRIVATE), context.getType(void.class), helperName);
 
@@ -267,6 +258,11 @@ public class LoadLocalInstruction extends Instruction {
         });
 
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+        if (boxed && vars.specializedKind == FrameKind.OBJECT) {
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+            b.tree(createWriteOpcode(vars.bc, vars.bci, combineBoxingBits(ctx, ctx.loadLocalUnboxed, 0)));
+        }
 
         b.startAssign("int localIdx");
         b.tree(createLocalIndex(vars, 0, false));

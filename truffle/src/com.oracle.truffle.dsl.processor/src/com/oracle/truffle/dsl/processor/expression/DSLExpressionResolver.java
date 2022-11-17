@@ -87,17 +87,19 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
     private final List<? extends Element> unprocessedElements;
     private boolean processed;
     private final ParseMode parseMode;
+    TypeMirror thisType;
 
-    private DSLExpressionResolver(ProcessorContext context, TypeElement accessType, DSLExpressionResolver parent, List<? extends Element> lookupElements, ParseMode parseMode) {
+    private DSLExpressionResolver(ProcessorContext context, TypeElement accessType, DSLExpressionResolver parent, List<? extends Element> lookupElements, ParseMode parseMode, TypeMirror thisType) {
         this.context = context;
         this.parent = parent;
         this.accessType = accessType;
         this.unprocessedElements = new ArrayList<>(lookupElements);
         this.parseMode = parseMode;
+        this.thisType = thisType;
     }
 
-    public DSLExpressionResolver(ProcessorContext context, TypeElement accessType, List<? extends Element> lookupElements, ParseMode parseMode) {
-        this(context, accessType, null, lookupElements, parseMode);
+    public DSLExpressionResolver(ProcessorContext context, TypeElement accessType, List<? extends Element> lookupElements, ParseMode parseMode, TypeMirror thisType) {
+        this(context, accessType, null, lookupElements, parseMode, thisType);
     }
 
     public TypeElement getAccessType() {
@@ -135,7 +137,7 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
     }
 
     public DSLExpressionResolver copy(List<? extends Element> prefixElements) {
-        return new DSLExpressionResolver(context, accessType, this, prefixElements, parseMode);
+        return new DSLExpressionResolver(context, accessType, this, prefixElements, parseMode, thisType);
     }
 
     private static String getMethodName(ExecutableElement method) {
@@ -233,7 +235,7 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
         final String name = variable.getName();
 
         if (parseMode == ParseMode.OPERATION && "this".equals(name)) {
-            return new CodeVariableElement(ProcessorContext.getInstance().getTypes().Node, "$this");
+            return new CodeVariableElement(thisType, "$this");
         }
 
         switch (name) {
@@ -286,7 +288,7 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
                     }
                 }
             }
-            resolver = new DSLExpressionResolver(context, this.accessType, elements, parseMode);
+            resolver = new DSLExpressionResolver(context, this.accessType, elements, parseMode, thisType);
         }
 
         ExecutableElement resolvedMethod = resolver.resolveCall(call);
@@ -330,7 +332,7 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
             } else if (type.getKind() == TypeKind.ARRAY) {
                 elements.add(new CodeVariableElement(context.getType(int.class), "length"));
             }
-            resolver = new DSLExpressionResolver(context, this.accessType, elements, parseMode);
+            resolver = new DSLExpressionResolver(context, this.accessType, elements, parseMode, thisType);
         }
 
         VariableElement var = resolver.resolveVariable(variable);

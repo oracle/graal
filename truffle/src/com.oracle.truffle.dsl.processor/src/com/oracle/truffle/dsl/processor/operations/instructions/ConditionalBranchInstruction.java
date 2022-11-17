@@ -45,7 +45,6 @@ import javax.lang.model.type.DeclaredType;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
-import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class ConditionalBranchInstruction extends Instruction {
@@ -61,7 +60,7 @@ public class ConditionalBranchInstruction extends Instruction {
     }
 
     @Override
-    public boolean isBranchInstruction() {
+    public boolean isExplicitFlowControl() {
         return true;
     }
 
@@ -84,10 +83,12 @@ public class ConditionalBranchInstruction extends Instruction {
         b.end(2).startBlock();
 
         b.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(createLength()).end();
-        b.tree(OperationGeneratorUtils.encodeExecuteReturn());
+        b.statement("continue loop");
+
         b.end().startElseBlock();
+
         b.startAssign(vars.bci).tree(createBranchTargetIndex(vars, 0, false)).end();
-        b.tree(OperationGeneratorUtils.encodeExecuteReturn());
+        b.statement("continue loop");
 
         b.end();
 

@@ -697,7 +697,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             String transitionLimit = ElementUtils.getAnnotationValue(String.class, annotationMirror, "transitionLimit", false);
             if (transitionLimit != null) {
                 DSLExpressionResolver resolver = new DSLExpressionResolver(context, model.getTemplateType(),
-                                NodeParser.importVisibleStaticMembers(model.getTemplateType(), model.getTemplateType(), false), ParseMode.EXPORTED_MESSAGE);
+                                NodeParser.importVisibleStaticMembers(model.getTemplateType(), model.getTemplateType(), false), ParseMode.EXPORTED_MESSAGE, types.Node);
                 try {
                     DSLExpression expression = DSLExpression.parse(transitionLimit);
                     expression.accept(resolver);

@@ -117,6 +117,7 @@ public abstract class Instruction {
     private List<Object> instruments = new ArrayList<>();
 
     public boolean isCommon;
+    private boolean frozen;
 
     private static final String CONSTANT_OFFSET_SUFFIX = "_CONSTANT_OFFSET";
     private static final String CHILDREN_OFFSET_SUFFIX = "_CHILDREN_OFFSET";
@@ -130,7 +131,11 @@ public abstract class Instruction {
     private static final String STATE_BITS_OFFSET_SUFFIX = "_STATE_BITS_OFFSET";
     private static final String LENGTH_SUFFIX = "_LENGTH";
 
-    private static int addInstructionArgument(List<Object> holder, Object marker) {
+    private int addInstructionArgument(List<Object> holder, Object marker) {
+        if (frozen) {
+            throw new AssertionError();
+        }
+
         int index = -1;
         if (marker != null) {
             index = holder.indexOf(marker);
@@ -253,7 +258,8 @@ public abstract class Instruction {
         return getStateBitsOffset() + stateBits.size();
     }
 
-    protected int length() {
+    public int length() {
+        frozen = true;
         return getInstrumentsOffset() + instruments.size();
     }
 
@@ -652,7 +658,7 @@ public abstract class Instruction {
 
     public abstract CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root);
 
-    public boolean isBranchInstruction() {
+    public boolean isExplicitFlowControl() {
         return false;
     }
 
@@ -803,9 +809,5 @@ public abstract class Instruction {
 
     public boolean isVariadic() {
         return isVariadic;
-    }
-
-    public boolean neverWrapInMethod() {
-        return false;
     }
 }

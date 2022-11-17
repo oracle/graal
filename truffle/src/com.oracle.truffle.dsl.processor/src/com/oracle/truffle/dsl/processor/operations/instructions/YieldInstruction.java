@@ -69,7 +69,7 @@ public class YieldInstruction extends Instruction {
     @Override
     protected CodeTree createConstantInitCode(BuilderVariables vars, EmitArguments args, Object marker, int index) {
         if (!CONTINUATION_POINT.equals(marker) && index != 0) {
-            throw new AssertionError("what constant?");
+            throw new AssertionError();
         }
 
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
@@ -90,16 +90,13 @@ public class YieldInstruction extends Instruction {
         b.statement("$stackFrame.copyTo($this._maxLocals, $localFrame, $this._maxLocals, ($sp - 1 - $this._maxLocals))");
         b.statement("$stackFrame.setObject($sp - 1, cont.createResult($localFrame, $stackFrame.getObject($sp - 1)))");
 
-        // b.statement("System.err.printf(\" yielding: %s %s %d%n\", $stackFrame, $localFrame,
-        // $sp)");
-
         b.startReturn().string("(($sp - 1) << 16) | 0xffff").end();
 
         return b.build();
     }
 
     @Override
-    public boolean isBranchInstruction() {
+    public boolean isExplicitFlowControl() {
         return true;
     }
 
@@ -110,11 +107,6 @@ public class YieldInstruction extends Instruction {
 
     @Override
     public boolean alwaysBoxed() {
-        return true;
-    }
-
-    @Override
-    public boolean neverWrapInMethod() {
         return true;
     }
 }

@@ -43,8 +43,10 @@ package com.oracle.truffle.dsl.processor.operations;
 import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.combineBoxingBits;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -128,7 +130,7 @@ public class OperationsBytecodeCodeGenerator {
         builderBytecodeNodeType.setHighPriority(true);
         initializeInstructions(builderBytecodeNodeType);
 
-        builderBytecodeNodeType.add(createBytecodeLoop(baseClass));
+        builderBytecodeNodeType.add(createBytecodeLoop(builderBytecodeNodeType, baseClass));
 
         if (m.isGenerateAOT()) {
             builderBytecodeNodeType.add(createPrepareAot(baseClass));
@@ -268,7 +270,7 @@ public class OperationsBytecodeCodeGenerator {
         vars.children = new CodeVariableElement(new ArrayCodeTypeMirror(types.Node), "$children");
     }
 
-    private CodeExecutableElement createBytecodeLoop(CodeTypeElement baseType) {
+    private CodeExecutableElement createBytecodeLoop(CodeTypeElement bytecodeType, CodeTypeElement baseType) {
         CodeExecutableElement mContinueAt = GeneratorUtils.overrideImplement(baseType, "continueAt");
         createExplodeLoop(mContinueAt);
 
@@ -351,7 +353,7 @@ public class OperationsBytecodeCodeGenerator {
         b.startBlock();
 
         List<Instruction> outerInstructions = new ArrayList<>();
-        List<Instruction> innerInstructions = new ArrayList<>();
+        Map<Integer, List<Instruction>> wrappedInstructions = new HashMap<>();
 
         for (Instruction op : m.getInstructions()) {
             if (op.isInstrumentationOnly() && !withInstrumentation) {
@@ -366,42 +368,102 @@ public class OperationsBytecodeCodeGenerator {
                 continue;
             }
 
-            if (op.neverWrapInMethod()) {
+            if (op.isExplicitFlowControl()) {
                 outerInstructions.add(op);
             } else {
-                innerInstructions.add(op);
+                wrappedInstructions.computeIfAbsent(op.length(), l -> new ArrayList<>()).add(op);
             }
         }
 
         for (Instruction op : outerInstructions) {
-            generateExecuteCase(ctx, vars, b, varTracer, op);
+            generateExecuteCase(ctx, vars, b, varTracer, op, true);
+        }
+
+        for (Map.Entry<Integer, List<Instruction>> lenGroup : wrappedInstructions.entrySet()) {
+            int instructionLength = lenGroup.getKey();
+
+            b.lineComment("length group " + instructionLength);
+
+            for (Instruction instr : lenGroup.getValue()) {
+                generateAllCasesForInstruction(ctx, b, instr);
+            }
+
+            b.startCaseBlock();
+
+            String groupMethodName = "instructionGroup_" + instructionLength;
+            OperationGeneratorUtils.createHelperMethod(bytecodeType, groupMethodName, () -> {
+                CodeExecutableElement met = new CodeExecutableElement(MOD_PRIVATE_STATIC, context.getType(int.class), groupMethodName);
+                met.addParameter(mContinueAt.getParameters().get(0)); // $this
+                met.addParameter(vars.stackFrame);
+                if (m.enableYield) {
+                    met.addParameter(vars.localFrame);
+                }
+                met.addParameter(vars.bc);
+                met.addParameter(vars.bci);
+                met.addParameter(new CodeVariableElement(context.getType(int.class), "$startSp"));
+                met.addParameter(vars.consts);
+                met.addParameter(vars.children);
+                if (ctx.hasBoxingElimination()) {
+                    met.addParameter(new CodeVariableElement(context.getType(byte[].class), "$localTags"));
+                }
+                met.addParameter(new CodeVariableElement(context.getType(int[].class), "$conditionProfiles"));
+                met.addParameter(new CodeVariableElement(context.getType(int.class), "curOpcode"));
+
+                CodeTreeBuilder b2 = met.createBuilder();
+
+                b2.statement("int $sp = $startSp");
+
+                b2.startSwitch().string("curOpcode").end().startBlock();
+
+                for (Instruction instr : lenGroup.getValue()) {
+                    generateExecuteCase(ctx, vars, b2, varTracer, instr, false);
+                }
+
+                b2.caseDefault().startCaseBlock();
+                b2.tree(GeneratorUtils.createShouldNotReachHere());
+                b2.end();
+
+                b2.end();
+
+                return met;
+            });
+
+            b.startAssign(vars.sp).startCall(groupMethodName);
+
+            b.string("$this");
+            b.variable(vars.stackFrame);
+            if (m.enableYield) {
+                b.variable(vars.localFrame);
+            }
+            b.variable(vars.bc);
+            b.variable(vars.bci);
+            b.variable(vars.sp);
+            b.variable(vars.consts);
+            b.variable(vars.children);
+            if (ctx.hasBoxingElimination()) {
+                b.string("$localTags");
+            }
+            b.string("$conditionProfiles");
+            b.string("curOpcode");
+
+            b.end(2); // assign, call
+
+            b.startAssign(vars.bci).variable(vars.bci).string(" + " + instructionLength).end();
+
+            b.statement("continue loop");
+
+            b.end();
+
         }
 
         b.caseDefault().startCaseBlock();
-        b.tree(OperationGeneratorUtils.wrapExecuteInMethod(ctx, vars, context.makeName(), isUncached, bInner -> {
-
-            bInner.startSwitch();
-            bInner.string("curOpcode");
-            bInner.end();
-            bInner.startBlock();
-
-            for (Instruction op : innerInstructions) {
-                generateExecuteCase(ctx, vars, bInner, varTracer, op);
-            }
-
-            bInner.caseDefault().startCaseBlock();
-            bInner.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-            if (isCommonOnly) {
-                bInner.statement("$this.changeInterpreters(UNCOMMON_EXECUTE)");
-                bInner.startReturn().string("($sp << 16) | $bci").end();
-            } else {
-                bInner.tree(GeneratorUtils.createShouldNotReachHere("unknown opcode encountered: \" + curOpcode + \" @ \" + $bci + \""));
-            }
-            bInner.end();
-
-            bInner.end(); // switch block
-        }));
-        b.statement("continue loop");
+        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+        if (isCommonOnly) {
+            b.statement("$this.changeInterpreters(UNCOMMON_EXECUTE)");
+            b.startReturn().string("($sp << 16) | $bci").end();
+        } else {
+            b.tree(GeneratorUtils.createShouldNotReachHere("unknown opcode encountered: \" + curOpcode + \" @ \" + $bci + \""));
+        }
         b.end();
 
         b.end(); // switch block
@@ -453,7 +515,7 @@ public class OperationsBytecodeCodeGenerator {
         return mContinueAt;
     }
 
-    private void generateExecuteCase(OperationsContext ctx, ExecutionVariables vars, CodeTreeBuilder b, CodeVariableElement varTracer, Instruction op) {
+    private void generateExecuteCase(OperationsContext ctx, ExecutionVariables vars, CodeTreeBuilder b, CodeVariableElement varTracer, Instruction op, boolean outer) {
         for (String line : op.dumpInfo().split("\n")) {
             b.lineComment(line);
         }
@@ -463,31 +525,23 @@ public class OperationsBytecodeCodeGenerator {
                 b.startStatement().startCall(varTracer, "traceInstruction");
                 b.variable(vars.bci);
                 b.variable(op.opcodeIdField);
-                b.string(op.isBranchInstruction() ? "1" : "0");
+                b.string(op.isExplicitFlowControl() ? "1" : "0");
                 b.string(op.isVariadic() ? "1" : "0");
                 b.end(2);
             }
 
-            Consumer<CodeTreeBuilder> createBodyInner = b2 -> {
-                if (isUncached) {
-                    b2.tree(op.createExecuteUncachedCode(vars));
-                } else {
-                    b2.tree(op.createExecuteCode(vars));
-                }
-
-            };
-
-            if (op.neverWrapInMethod()) {
-                createBodyInner.accept(b);
+            if (isUncached) {
+                b.tree(op.createExecuteUncachedCode(vars));
             } else {
-                b.startReturn().tree(OperationGeneratorUtils.wrapExecuteInMethod(ctx, vars, "execute" + (isUncached ? "Uncached" : "") + "_" + op.internalName + name, isUncached, b2 -> {
-                    createBodyInner.accept(b2);
+                b.tree(op.createExecuteCode(vars));
+            }
 
-                    if (!op.isBranchInstruction()) {
-                        b2.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(op.createLength()).end();
-                        b2.tree(OperationGeneratorUtils.encodeExecuteReturn());
-                    }
-                }, false)).end();
+            if (outer != op.isExplicitFlowControl()) {
+                throw new AssertionError();
+            }
+
+            if (!op.isExplicitFlowControl()) {
+                b.statement("return $sp");
             }
 
         };
@@ -539,6 +593,31 @@ public class OperationsBytecodeCodeGenerator {
         }
         vars.inputs = null;
         vars.results = null;
+    }
+
+    private void generateAllCasesForInstruction(OperationsContext ctx, CodeTreeBuilder b, Instruction op) {
+        if (ctx.hasBoxingElimination() && !isUncached) {
+            if (op.splitOnBoxingElimination()) {
+                for (FrameKind kind : op.getBoxingEliminationSplits()) {
+                    b.startCase().tree(combineBoxingBits(ctx, op, kind)).end();
+                }
+                if (op.hasGeneric()) {
+                    b.startCase().tree(combineBoxingBits(ctx, op, 7)).end();
+                }
+            } else if (op.alwaysBoxed()) {
+                b.startCase().tree(combineBoxingBits(ctx, op, 0)).end();
+            } else {
+                for (FrameKind kind : op.getBoxingEliminationSplits()) {
+                    b.startCase().tree(combineBoxingBits(ctx, op, kind)).end();
+                }
+            }
+        } else {
+            if (isUncached) {
+                b.startCase().variable(op.opcodeIdField).end();
+            } else {
+                b.startCase().tree(combineBoxingBits(ctx, op, 0)).end();
+            }
+        }
     }
 
     private void createExplodeLoop(CodeExecutableElement mContinueAt) {

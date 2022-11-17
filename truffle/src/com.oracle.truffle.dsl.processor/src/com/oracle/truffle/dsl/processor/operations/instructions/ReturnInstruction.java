@@ -53,7 +53,7 @@ public class ReturnInstruction extends Instruction {
     }
 
     @Override
-    public boolean isBranchInstruction() {
+    public boolean isExplicitFlowControl() {
         return true;
     }
 
@@ -98,10 +98,5 @@ public class ReturnInstruction extends Instruction {
     @Override
     public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
         return null;
-    }
-
-    @Override
-    public boolean neverWrapInMethod() {
-        return true;
     }
 }

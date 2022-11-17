@@ -70,7 +70,7 @@ public class ThrowInstruction extends Instruction {
     }
 
     @Override
-    public boolean isBranchInstruction() {
+    public boolean isExplicitFlowControl() {
         return true;
     }
 
