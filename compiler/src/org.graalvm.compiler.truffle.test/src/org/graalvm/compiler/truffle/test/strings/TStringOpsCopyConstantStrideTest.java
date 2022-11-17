@@ -76,7 +76,7 @@ public class TStringOpsCopyConstantStrideTest extends TStringOpsCopyTest {
         ArgSupplier arrayB = () -> new byte[128 + offsetB + (lengthCPY << strideB) + 128];
         constantArgs[3] = strideA;
         constantArgs[7] = strideB;
-        test(getArrayCopyWithStride(), null, DUMMY_LOCATION, arrayA, offsetA, strideA, 0, arrayB, offsetB, strideB, 0, lengthCPY);
+        testWithNativeExcept(getArrayCopyWithStride(), null, 1 << 5, DUMMY_LOCATION, arrayA, offsetA, strideA, 0, arrayB, offsetB, strideB, 0, lengthCPY);
     }
 
     @Override

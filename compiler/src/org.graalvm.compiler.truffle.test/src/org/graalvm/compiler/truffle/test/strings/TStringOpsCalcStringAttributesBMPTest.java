@@ -97,6 +97,6 @@ public class TStringOpsCalcStringAttributesBMPTest extends TStringOpsTest<CalcSt
 
     @Test
     public void testBMP() {
-        test(getTStringOpsMethod("calcStringAttributesBMP", Object.class, int.class, int.class), null, DUMMY_LOCATION, array, offset, length);
+        testWithNative(getTStringOpsMethod("calcStringAttributesBMP", Object.class, int.class, int.class), null, DUMMY_LOCATION, array, offset, length);
     }
 }

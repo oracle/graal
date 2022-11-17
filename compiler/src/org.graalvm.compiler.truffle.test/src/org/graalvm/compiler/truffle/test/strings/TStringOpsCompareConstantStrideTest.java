@@ -74,7 +74,7 @@ public class TStringOpsCompareConstantStrideTest extends TStringOpsCompareTest {
     public void testMemCmp() {
         constantArgs[3] = strideA;
         constantArgs[6] = strideB;
-        test(getMemcmpWithStrideIntl(), null, DUMMY_LOCATION,
+        testWithNative(getMemcmpWithStrideIntl(), null, DUMMY_LOCATION,
                         arrayA, offsetA, strideA,
                         arrayB, offsetB, strideB, lengthCMP);
     }

@@ -138,7 +138,7 @@ public class TStringOpsCalcStringAttributesUTF8Test extends TStringOpsTest<CalcS
     @Test
     public void testUtf8() {
         ResolvedJavaMethod method = getTStringOpsMethod("calcStringAttributesUTF8", Object.class, int.class, int.class, boolean.class, boolean.class, ConditionProfile.class);
-        test(method, null, DUMMY_LOCATION, array, offset, length, true, false, ConditionProfile.getUncached());
-        test(method, null, DUMMY_LOCATION, array, offset, length, false, false, ConditionProfile.getUncached());
+        testWithNative(method, null, DUMMY_LOCATION, array, offset, length, true, false, ConditionProfile.getUncached());
+        testWithNative(method, null, DUMMY_LOCATION, array, offset, length, false, false, ConditionProfile.getUncached());
     }
 }

@@ -104,7 +104,7 @@ public class TStringOpsCalcStringAttributesUTF32Test extends TStringOpsTest<Calc
 
     @Test
     public void testUTF32() {
-        test(getTStringOpsMethod("calcStringAttributesUTF32", Object.class, int.class, int.class), null, DUMMY_LOCATION, array, offset, length);
+        testWithNative(getTStringOpsMethod("calcStringAttributesUTF32", Object.class, int.class, int.class), null, DUMMY_LOCATION, array, offset, length);
     }
 
     @Test
