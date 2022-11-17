@@ -23,7 +23,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.core.genscavenge;
 
 import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
@@ -31,6 +31,7 @@ import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryType;
 import java.lang.management.MemoryUsage;
 
+import com.oracle.svm.core.heap.MXBeanBase;
 import sun.management.Util;
 
 public abstract class AbstractMemoryPoolMXBean extends MXBeanBase implements MemoryPoolMXBean {
@@ -38,11 +39,13 @@ public abstract class AbstractMemoryPoolMXBean extends MXBeanBase implements Mem
     protected final String name;
     protected final String[] managerNames;
     protected final String objectName;
+    protected final GCAccounting gcAccounting;
 
     protected AbstractMemoryPoolMXBean(String name, String... managerNames) {
         this.name = name;
         this.managerNames = managerNames.clone();
         this.objectName = ManagementFactory.MEMORY_POOL_MXBEAN_DOMAIN_TYPE + ",name=" + name;
+        this.gcAccounting = GCImpl.getGCImpl().getAccounting();
     }
 
     @Override

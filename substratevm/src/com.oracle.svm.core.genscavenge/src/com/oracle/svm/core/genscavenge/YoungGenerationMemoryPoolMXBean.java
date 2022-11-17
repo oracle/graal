@@ -27,7 +27,6 @@ package com.oracle.svm.core.genscavenge;
 
 import java.lang.management.MemoryUsage;
 
-import com.oracle.svm.core.heap.AbstractMemoryPoolMXBean;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -49,13 +48,19 @@ public final class YoungGenerationMemoryPoolMXBean extends AbstractMemoryPoolMXB
     @Override
     public MemoryUsage getPeakUsage() {
         long current = getCurrentUsage();
-        long peak = GCImpl.getGCImpl().getAccounting().getPeakYoungChunkBytes().rawValue();
+        long peak = gcAccounting.getPeakYoungChunkBytes().rawValue();
         return memoryUsage(Math.max(current, peak));
     }
 
     @Override
     public void resetPeakUsage() {
-        GCImpl.getGCImpl().getAccounting().resetPeakYoungChunkBytes();
+        gcAccounting.resetPeakYoungChunkBytes();
+    }
+
+    @Override
+    public MemoryUsage getCollectionUsage() {
+        long used = gcAccounting.getYoungChunkBytesAfter().rawValue();
+        return memoryUsage(used);
     }
 
     private long getCurrentUsage() {
@@ -64,6 +69,6 @@ public final class YoungGenerationMemoryPoolMXBean extends AbstractMemoryPoolMXB
 
     private MemoryUsage memoryUsage(long usedAndCommitted) {
         long max = GCImpl.getPolicy().getMaximumYoungGenerationSize().rawValue();
-        return new MemoryUsage(UNDEFINED_MEMORY_USAGE, usedAndCommitted, usedAndCommitted, max);
+        return new MemoryUsage(0L, usedAndCommitted, usedAndCommitted, max);
     }
 }

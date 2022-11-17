@@ -27,7 +27,6 @@ package com.oracle.svm.core.genscavenge;
 
 import java.lang.management.MemoryUsage;
 
-import com.oracle.svm.core.heap.AbstractMemoryPoolMXBean;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -49,18 +48,25 @@ public final class OldGenerationMemoryPoolMXBean extends AbstractMemoryPoolMXBea
 
     @Override
     public MemoryUsage getPeakUsage() {
-        long peak = GCImpl.getGCImpl().getAccounting().getPeakOldChunkBytes().rawValue();
+        long peak = gcAccounting.getPeakOldChunkBytes().rawValue();
         return memoryUsage(peak);
     }
 
     @Override
     public void resetPeakUsage() {
-        GCImpl.getGCImpl().getAccounting().resetPeakOldChunkBytes();
+        gcAccounting.resetPeakOldChunkBytes();
+    }
+
+    @Override
+    public MemoryUsage getCollectionUsage() {
+        long used = gcAccounting.getOldGenerationAfterChunkBytes().rawValue();
+        return memoryUsage(used);
     }
 
     private MemoryUsage memoryUsage(long usedAndCommitted) {
-        long maxHeap = GCImpl.getPolicy().getMaximumHeapSize().rawValue();
-        long maxYoung = GCImpl.getPolicy().getMaximumYoungGenerationSize().rawValue();
-        return new MemoryUsage(UNDEFINED_MEMORY_USAGE, usedAndCommitted, usedAndCommitted, maxHeap - maxYoung);
+        CollectionPolicy policy = GCImpl.getPolicy();
+        long maxHeap = policy.getMaximumHeapSize().rawValue();
+        long maxYoung = policy.getMaximumYoungGenerationSize().rawValue();
+        return new MemoryUsage(0L, usedAndCommitted, usedAndCommitted, maxHeap - maxYoung);
     }
 }
