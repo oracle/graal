@@ -121,7 +121,6 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         switch (encoding) {
             case LATIN1:
             case BMP:
-            case UTF_32:
                 return 1;
             case UTF_16:
                 return 2;
@@ -154,7 +153,6 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         try (AArch64MacroAssembler.ScratchRegister sc1 = asm.getScratchRegister(); AArch64MacroAssembler.ScratchRegister sc2 = asm.getScratchRegister()) {
             Register arr = sc1.getRegister();
             Register len = sc2.getRegister();
-            Register tmp = asRegister(temp[0]);
             Register ret = asRegister(result);
             Label end = new Label();
 
@@ -164,19 +162,19 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
             switch (encoding) {
                 case LATIN1:
-                    emitLatin1(asm, arr, len, tmp, ret, end, asRegister(vectorTemp[0]), asRegister(vectorTemp[1]), asRegister(vectorTemp[2]));
+                    emitLatin1(asm, arr, len, asRegister(temp[0]), ret, end, asRegister(vectorTemp[0]), asRegister(vectorTemp[1]), asRegister(vectorTemp[2]));
                     break;
                 case BMP:
-                    emitBMP(asm, arr, len, tmp, ret, end);
+                    emitBMP(asm, arr, len, asRegister(temp[0]), ret, end);
                     break;
                 case UTF_8:
-                    emitUTF8(crb, asm, arr, len, tmp, ret, end);
+                    emitUTF8(crb, asm, arr, len, asRegister(temp[0]), ret, end);
                     break;
                 case UTF_16:
-                    emitUTF16(crb, asm, arr, len, tmp, ret, end);
+                    emitUTF16(crb, asm, arr, len, asRegister(temp[0]), ret, end);
                     break;
                 case UTF_32:
-                    emitUTF32(asm, arr, len, tmp, ret, end);
+                    emitUTF32(asm, arr, len, ret, end);
                     break;
                 default:
                     throw GraalError.shouldNotReachHere();
@@ -622,7 +620,8 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
             asm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
             asm.bind(multibyteFound);
-            asm.add(64, tmp2, arr, 254 * 16);
+            asm.adds(64, tmp2, arr, 254 * 16);
+            asm.csel(64, tmp2, refAddress, tmp2, ConditionFlag.VS);
             asm.cmp(64, tmp2, refAddress);
             asm.csel(64, tmp2, tmp2, refAddress, ConditionFlag.LO);
             asm.neon.eorVVV(FullReg, vecNCB, vecNCB, vecNCB);
@@ -638,7 +637,8 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             Label multibyteOuterLoop = new Label();
             asm.align(PREFERRED_LOOP_ALIGNMENT);
             asm.bind(multibyteOuterLoop);
-            asm.add(64, tmp2, arr, 254 * 16);
+            asm.adds(64, tmp2, arr, 254 * 16);
+            asm.csel(64, tmp2, refAddress, tmp2, ConditionFlag.VS);
             asm.cmp(64, tmp2, refAddress);
             asm.csel(64, tmp2, tmp2, refAddress, ConditionFlag.LO);
 
@@ -753,7 +753,8 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             asm.neon.eorVVV(FullReg, vecResult, vecResult, vecResult);
             asm.neon.eorVVV(FullReg, vecNCB, vecNCB, vecNCB);
 
-            asm.add(64, tmp2, arr, 254 * 16);
+            asm.adds(64, tmp2, arr, 254 * 16);
+            asm.csel(64, tmp2, refAddress, tmp2, ConditionFlag.VS);
             asm.cmp(64, tmp2, refAddress);
             asm.csel(64, tmp2, tmp2, refAddress, ConditionFlag.LO);
             asm.jmp(multibyteContinue);
@@ -764,7 +765,8 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             Label multibyteOuterLoop = new Label();
             asm.align(PREFERRED_LOOP_ALIGNMENT);
             asm.bind(multibyteOuterLoop);
-            asm.add(64, tmp2, arr, 254 * 16);
+            asm.adds(64, tmp2, arr, 254 * 16);
+            asm.csel(64, tmp2, refAddress, tmp2, ConditionFlag.VS);
             asm.cmp(64, tmp2, refAddress);
             asm.csel(64, tmp2, tmp2, refAddress, ConditionFlag.LO);
 
@@ -1165,7 +1167,8 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
             asm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
             asm.bind(surrogateFound);
-            asm.add(64, tmp2, arr, 254 * 32);
+            asm.adds(64, tmp2, arr, 4096);
+            asm.csel(64, tmp2, refAddress, tmp2, ConditionFlag.VS);
             asm.cmp(64, tmp2, refAddress);
             asm.csel(64, tmp2, tmp2, refAddress, ConditionFlag.LO);
             asm.neon.eorVVV(FullReg, vecNSurrogates, vecNSurrogates, vecNSurrogates);
@@ -1176,7 +1179,8 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             Label surrogateOuterLoop = new Label();
             asm.align(PREFERRED_LOOP_ALIGNMENT);
             asm.bind(surrogateOuterLoop);
-            asm.add(64, tmp2, arr, 254 * 32);
+            asm.adds(64, tmp2, arr, 4096);
+            asm.csel(64, tmp2, refAddress, tmp2, ConditionFlag.VS);
             asm.cmp(64, tmp2, refAddress);
             asm.csel(64, tmp2, tmp2, refAddress, ConditionFlag.LO);
 
@@ -1253,7 +1257,8 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             asm.neon.eorVVV(FullReg, vecPrev, vecPrev, vecPrev);
             asm.neon.eorVVV(FullReg, vecResult, vecResult, vecResult);
             asm.neon.eorVVV(FullReg, vecNSurrogates, vecNSurrogates, vecNSurrogates);
-            asm.add(64, tmp2, arr, 254 * 32);
+            asm.adds(64, tmp2, arr, 4096);
+            asm.csel(64, tmp2, refAddress, tmp2, ConditionFlag.VS);
             asm.cmp(64, tmp2, refAddress);
             asm.csel(64, tmp2, tmp2, refAddress, ConditionFlag.LO);
             asm.jmp(surrogateContinue);
@@ -1264,7 +1269,8 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             Label surrogateOuterLoop = new Label();
             asm.align(PREFERRED_LOOP_ALIGNMENT);
             asm.bind(surrogateOuterLoop);
-            asm.add(64, tmp2, arr, 254 * 32);
+            asm.adds(64, tmp2, arr, 4096);
+            asm.csel(64, tmp2, refAddress, tmp2, ConditionFlag.VS);
             asm.cmp(64, tmp2, refAddress);
             asm.csel(64, tmp2, tmp2, refAddress, ConditionFlag.LO);
 
@@ -1442,7 +1448,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
     /**
      * Implements the operation described in {@link CalcStringAttributesEncoding#UTF_32}.
      */
-    private void emitUTF32(AArch64MacroAssembler asm, Register arr, Register len, Register tmp, Register ret, Label end) {
+    private void emitUTF32(AArch64MacroAssembler asm, Register arr, Register len, Register ret, Label end) {
         assert stride.log2 == 2;
         Label tailLessThan64 = new Label();
         Label tailLessThan32 = new Label();
