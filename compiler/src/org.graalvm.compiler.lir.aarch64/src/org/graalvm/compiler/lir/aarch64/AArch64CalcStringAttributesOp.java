@@ -1237,8 +1237,8 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             Register vecResult = vecTmp3;
 
             asm.bind(surrogateFoundTail);
-            asm.mov(64, arr, asRegister(array));
-            asm.sub(64, refAddress, asRegister(array), 32);
+            asm.add(64, arr, asRegister(array), asRegister(offset));
+            asm.sub(64, refAddress, arr, 32);
 
             // surrogate loop: surrogates have been found, check encoding validity and calculate the
             // codepoint length
