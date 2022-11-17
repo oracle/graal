@@ -25,6 +25,7 @@
 
 package com.oracle.svm.core.sampler;
 
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
@@ -38,10 +39,11 @@ import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
-import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrStackTraceRepository;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
+import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -54,43 +56,51 @@ public final class SamplerBuffersAccess {
     }
 
     @Uninterruptible(reason = "All code that accesses a sampler buffer must be uninterruptible.")
-    public static void processSamplerBuffers() {
-        if (!HasJfrSupport.get()) {
-            /*
-             * This method will become reachable on WINDOWS during the building of JFR tests via
-             * com.oracle.svm.core.jfr.JfrChunkWriter.closeFile, and it will fail during
-             * InvocationPlugin call if we do not have this check.
-             * 
-             * Note that although we are building the JFR tests for Windows as well, they will not
-             * be executed because of guard in com.oracle.svm.test.jfr.JfrTest.checkForJFR.
-             *
-             * Once we have support for Windows, this check will become obsolete.
-             */
-            return;
-        }
+    public static void processActiveBuffers() {
+        VMOperation.guaranteeInProgressAtSafepoint("Needed for iterating the threads");
 
         SubstrateSigprofHandler.singleton().setSignalHandlerGloballyDisabled(true);
-        while (true) {
-            /* Pop top buffer from stack of full buffers. */
-            SamplerBuffer buffer = SubstrateSigprofHandler.singleton().fullBuffers().popBuffer();
-            if (buffer.isNull()) {
-                /* No buffers to process. */
-                SubstrateSigprofHandler.singleton().setSignalHandlerGloballyDisabled(false);
-                return;
+        try {
+            for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
+                SamplerBuffer buffer = SamplerThreadLocal.getThreadLocalBuffer(thread);
+                if (buffer.isNonNull()) {
+                    processSamplerBuffer(buffer);
+                }
             }
+        } finally {
+            SubstrateSigprofHandler.singleton().setSignalHandlerGloballyDisabled(false);
+        }
+    }
 
-            /* Process the buffer. */
-            processSamplerBuffer(buffer);
-            if (buffer.getFreeable()) {
-                SamplerBufferAccess.free(buffer);
-            } else {
-                SubstrateSigprofHandler.singleton().availableBuffers().pushBuffer(buffer);
+    @Uninterruptible(reason = "All code that accesses a sampler buffer must be uninterruptible.")
+    public static void processFullBuffers() {
+        SubstrateSigprofHandler.singleton().setSignalHandlerGloballyDisabled(true);
+        try {
+            while (true) {
+                /* Pop top buffer from stack of full buffers. */
+                SamplerBuffer buffer = SubstrateSigprofHandler.singleton().fullBuffers().popBuffer();
+                if (buffer.isNull()) {
+                    /* No remaining buffers. */
+                    break;
+                }
+
+                /* Process the buffer. */
+                processSamplerBuffer(buffer);
+                if (buffer.getFreeable()) {
+                    SamplerBufferAccess.free(buffer);
+                } else {
+                    SubstrateSigprofHandler.singleton().availableBuffers().pushBuffer(buffer);
+                }
             }
+        } finally {
+            SubstrateSigprofHandler.singleton().setSignalHandlerGloballyDisabled(false);
         }
     }
 
     @Uninterruptible(reason = "All code that accesses a sampler buffer must be uninterruptible.")
     public static void processSamplerBuffer(SamplerBuffer buffer) {
+        assert buffer.isNonNull();
+
         Pointer end = buffer.getPos();
         Pointer current = SamplerBufferAccess.getDataStart(buffer);
         while (current.belowThan(end)) {

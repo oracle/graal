@@ -292,7 +292,9 @@ public class SubstrateJVM {
 
     /** See {@link JVM#beginRecording}. */
     public void beginRecording() {
-        assert !recording;
+        if (recording) {
+            return;
+        }
 
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {
@@ -309,7 +311,10 @@ public class SubstrateJVM {
 
     /** See {@link JVM#endRecording}. */
     public void endRecording() {
-        assert recording;
+        if (!recording) {
+            return;
+        }
+
         JfrEndRecordingOperation vmOp = new JfrEndRecordingOperation();
         vmOp.enqueue();
     }

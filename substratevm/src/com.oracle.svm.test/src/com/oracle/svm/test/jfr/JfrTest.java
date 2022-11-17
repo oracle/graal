@@ -163,15 +163,5 @@ class JfrTestFeature implements Feature {
          * com.oracle.svm.test.jfr.utils.poolparsers.ClassConstantPoolParser.parse
          */
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrTestFeature.class, false, "jdk.internal.vm.compiler", "org.graalvm.compiler.serviceprovider");
-
-        /*
-         * Use of com.oracle.svm.core.sampler.SamplerBuffer,
-         * com.oracle.svm.core.sampler.SamplerBufferAccess.allocate,
-         * com.oracle.svm.core.sampler.SamplerBufferAccess.free,
-         * com.oracle.svm.core.sampler.SamplerBuffersAccess.processSamplerBuffer and
-         * com.oracle.svm.core.sampler.SamplerThreadLocal.setThreadLocalBuffer in
-         * com.oracle.svm.test.jfr.TestStackTraceEvent.test.
-         */
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrTestFeature.class, false, "org.graalvm.nativeimage.builder", "com.oracle.svm.core.sampler");
     }
 }

@@ -27,7 +27,6 @@ package com.oracle.svm.test.jfr;
 
 import org.junit.Test;
 
-import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.test.jfr.events.StackTraceEvent;
 
 /**
@@ -43,22 +42,6 @@ public class TestStackTraceEvent extends JfrTest {
 
     @Test
     public void test() throws Exception {
-        if (!HasJfrSupport.get()) {
-            /*
-             * The static analysis will find reachable the com.oracle.svm.core.jfr.SubstrateJVM via
-             * processSamplerBuffer call. Since we are not supporting JFR on Windows yet, JfrFeature
-             * will not add the SubstrateJVM to the list of all image singletons and therefore
-             * InvocationPlugin will throw an exception while folding the SubstrateJVM (see
-             * SubstrateJVM.get).
-             *
-             * Note that although we are building this JFR test for Windows as well, it will not be
-             * executed because of guard in com.oracle.svm.test.jfr.JfrTest.checkForJFR.
-             *
-             * Once we have support for Windows, this check will become obsolete.
-             */
-            return;
-        }
-
         /*
          * Create and commit an event. This will trigger
          * com.oracle.svm.core.jfr.JfrStackTraceRepository.getStackTraceId(int) call and stack walk.

@@ -107,7 +107,7 @@ public class JfrStackTraceRepository implements JfrConstantPool {
         /* Initialize stack walk. */
         SamplerSampleWriterData data = StackValue.get(SamplerSampleWriterData.class);
         SamplerThreadLocal.setSignalHandlerLocallyDisabled(true);
-        if (SamplerSampleWriterDataAccess.initialize(data, skipCount, maxDepth)) {
+        if (SamplerSampleWriterDataAccess.initialize(data, skipCount, maxDepth, true)) {
             SamplerSampleWriter.begin(data);
             /* Walk the stack. */
             Pointer sp = KnownIntrinsics.readCallerStackPointer();

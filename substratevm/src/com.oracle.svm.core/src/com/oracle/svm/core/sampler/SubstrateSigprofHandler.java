@@ -334,7 +334,7 @@ public abstract class SubstrateSigprofHandler {
         /* Initialize stack walk. */
         SamplerSampleWriterData data = StackValue.get(SamplerSampleWriterData.class);
         /* Buffer size constrains stack walk size. */
-        if (SamplerSampleWriterDataAccess.initialize(data, 0, Integer.MAX_VALUE)) {
+        if (SamplerSampleWriterDataAccess.initialize(data, 0, Integer.MAX_VALUE, false)) {
             SamplerSampleWriter.begin(data);
             /*
              * Walk the stack.
@@ -399,7 +399,7 @@ public abstract class SubstrateSigprofHandler {
         @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
         private void initialize() {
             /*
-             * Iterate all over all thread and initialize the thread-local storage of each thread.
+             * Iterate over all threads and initialize the thread-local storage of each thread.
              */
             for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
                 SamplerThreadLocal.initialize(thread);

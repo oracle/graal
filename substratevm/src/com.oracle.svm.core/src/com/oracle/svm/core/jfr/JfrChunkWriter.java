@@ -385,7 +385,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
         private void changeEpoch() {
             /* Process all unprocessed sampler buffers before changing the epoch. */
-            SamplerBuffersAccess.processSamplerBuffers();
+            SamplerBuffersAccess.processActiveBuffers();
+            SamplerBuffersAccess.processFullBuffers();
 
             // Write unflushed data from the thread local buffers but do *not* reinitialize them
             // The thread local code will handle space reclamation on their own time

@@ -60,14 +60,14 @@ import jdk.vm.ci.meta.Signature;
 @Platforms(Platform.HOSTED_ONLY.class)
 public class JfrEventSubstitution extends SubstitutionProcessor {
 
-    private final ResolvedJavaType eventType;
+    private final ResolvedJavaType baseEventType;
     private final ConcurrentHashMap<ResolvedJavaType, Boolean> typeSubstitution;
     private final ConcurrentHashMap<ResolvedJavaMethod, ResolvedJavaMethod> methodSubstitutions;
     private final ConcurrentHashMap<ResolvedJavaField, ResolvedJavaField> fieldSubstitutions;
     private final EconomicMap<String, Class<? extends jdk.jfr.Event>> mirrorEventMapping;
 
     JfrEventSubstitution(MetaAccessProvider metaAccess) {
-        eventType = metaAccess.lookupJavaType(jdk.internal.event.Event.class);
+        baseEventType = metaAccess.lookupJavaType(jdk.internal.event.Event.class);
         ResolvedJavaType jdkJfrEventWriter = metaAccess.lookupJavaType(JfrEventWriterAccess.getEventWriterClass());
         changeWriterResetMethod(jdkJfrEventWriter);
         typeSubstitution = new ConcurrentHashMap<>();
@@ -145,7 +145,6 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
         throw VMError.shouldNotReachHere("Could not re-resolve method: " + oldMethod);
     }
 
-    @SuppressWarnings("unchecked")
     private Boolean initEventClass(ResolvedJavaType eventType) throws RuntimeException {
         try {
             Class<? extends jdk.internal.event.Event> newEventClass = OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), eventType)
@@ -171,7 +170,7 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
     }
 
     private boolean needsClassRedefinition(ResolvedJavaType type) {
-        return !type.isAbstract() && eventType.isAssignableFrom(type) && !eventType.equals(type);
+        return !type.isAbstract() && baseEventType.isAssignableFrom(type) && !baseEventType.equals(type);
     }
 
     /**

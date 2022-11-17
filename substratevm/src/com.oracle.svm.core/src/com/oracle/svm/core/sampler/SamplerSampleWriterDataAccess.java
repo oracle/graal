@@ -40,15 +40,21 @@ public final class SamplerSampleWriterDataAccess {
      * native buffer.
      */
     @Uninterruptible(reason = "Accesses a sampler buffer", callerMustBe = true)
-    public static boolean initialize(SamplerSampleWriterData data, int skipCount, int maxDepth) {
+    public static boolean initialize(SamplerSampleWriterData data, int skipCount, int maxDepth, boolean allowBufferAllocation) {
         SamplerBuffer buffer = SamplerThreadLocal.getThreadLocalBuffer();
         if (buffer.isNull()) {
             /* Pop first free buffer from the pool. */
             buffer = SubstrateSigprofHandler.singleton().availableBuffers().popBuffer();
             if (buffer.isNull()) {
-                /* No available buffers on the pool. Fallback! */
-                SamplerThreadLocal.increaseMissedSamples();
-                return false;
+                if (allowBufferAllocation) {
+                    buffer = SamplerBufferPool.tryAllocateBuffer();
+                }
+
+                if (buffer.isNull()) {
+                    /* No available buffers on the pool. Fallback! */
+                    SamplerThreadLocal.increaseMissedSamples();
+                    return false;
+                }
             }
             SamplerThreadLocal.setThreadLocalBuffer(buffer);
         }

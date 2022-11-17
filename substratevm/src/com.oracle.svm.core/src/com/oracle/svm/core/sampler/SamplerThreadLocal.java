@@ -25,6 +25,7 @@
 
 package com.oracle.svm.core.sampler;
 
+import com.oracle.svm.core.thread.VMOperation;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.UnsignedWord;
@@ -102,7 +103,13 @@ public class SamplerThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static SamplerBuffer getThreadLocalBuffer() {
-        return localBuffer.get();
+        return getThreadLocalBuffer(CurrentIsolate.getCurrentThread());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static SamplerBuffer getThreadLocalBuffer(IsolateThread thread) {
+        assert CurrentIsolate.getCurrentThread() == thread || VMOperation.isInProgressAtSafepoint();
+        return localBuffer.get(thread);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

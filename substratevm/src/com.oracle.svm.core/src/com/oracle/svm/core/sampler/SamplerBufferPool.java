@@ -42,17 +42,27 @@ class SamplerBufferPool {
     private static final VMMutex mutex = new VMMutex("SamplerBufferPool");
     private static long bufferCount;
 
-    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void releaseBufferAndAdjustCount(SamplerBuffer threadLocalBuffer) {
         adjustBufferCount0(threadLocalBuffer);
     }
 
-    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void adjustBufferCount() {
         adjustBufferCount0(WordFactory.nullPointer());
     }
 
-    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
+    public static SamplerBuffer tryAllocateBuffer() {
+        mutex.lockNoTransition();
+        try {
+            return tryAllocateBuffer0();
+        } finally {
+            mutex.unlock();
+        }
+    }
+
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     private static void adjustBufferCount0(SamplerBuffer threadLocalBuffer) {
         mutex.lockNoTransition();
         try {
@@ -76,7 +86,7 @@ class SamplerBufferPool {
         }
     }
 
-    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void releaseThreadLocalBuffer(SamplerBuffer buffer) {
         /*
          * buffer is null if the thread is not running yet, or we did not perform the stack walk for
@@ -99,15 +109,22 @@ class SamplerBufferPool {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean allocateAndPush() {
         VMError.guarantee(bufferCount >= 0);
-        JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) SubstrateJVM.getThreadLocal();
-        SamplerBuffer buffer = SamplerBufferAccess.allocate(WordFactory.unsigned(jfrThreadLocal.getThreadLocalBufferSize()));
+        SamplerBuffer buffer = tryAllocateBuffer0();
         if (buffer.isNonNull()) {
             SubstrateSigprofHandler.singleton().availableBuffers().pushBuffer(buffer);
-            bufferCount++;
             return true;
-        } else {
-            return false;
         }
+        return false;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static SamplerBuffer tryAllocateBuffer0() {
+        JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) SubstrateJVM.getThreadLocal();
+        SamplerBuffer result = SamplerBufferAccess.allocate(WordFactory.unsigned(jfrThreadLocal.getThreadLocalBufferSize()));
+        if (result.isNonNull()) {
+            bufferCount++;
+        }
+        return result;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -118,9 +135,8 @@ class SamplerBufferPool {
             SamplerBufferAccess.free(buffer);
             bufferCount--;
             return true;
-        } else {
-            return false;
         }
+        return false;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
