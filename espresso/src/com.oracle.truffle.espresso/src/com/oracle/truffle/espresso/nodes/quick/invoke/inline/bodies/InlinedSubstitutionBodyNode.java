@@ -34,21 +34,23 @@ import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 public final class InlinedSubstitutionBodyNode extends InlinedMethodNode.BodyNode {
     @Child JavaSubstitution substitution;
 
-    InlinedSubstitutionBodyNode(JavaSubstitution substitution) {
+    InlinedSubstitutionBodyNode(Method.MethodVersion m, JavaSubstitution substitution) {
+        super(m);
         this.substitution = insert(substitution);
     }
 
     public static InlinedMethodNode create(Method inlinedMethod, int top, int opcode, int callerBCI, int statementIndex, JavaSubstitution.Factory factory) {
-        InlinedSubstitutionBodyNode bodyNode = new InlinedSubstitutionBodyNode(factory.create());
+        Method.MethodVersion methodVersion = inlinedMethod.getMethodVersion();
+        InlinedSubstitutionBodyNode bodyNode = new InlinedSubstitutionBodyNode(methodVersion, factory.create());
         if (factory.guard() != null) {
-            return new GuardedInlinedMethodNode(inlinedMethod, top, opcode, callerBCI, statementIndex, bodyNode, (InlinedMethodPredicate) factory.guard());
+            return new GuardedInlinedMethodNode(methodVersion, top, opcode, callerBCI, statementIndex, bodyNode, (InlinedMethodPredicate) factory.guard());
         } else {
-            return new InlinedMethodNode(inlinedMethod, top, opcode, callerBCI, statementIndex, bodyNode);
+            return new InlinedMethodNode(methodVersion, top, opcode, callerBCI, statementIndex, bodyNode);
         }
     }
 
     @Override
     public void execute(VirtualFrame frame, InlinedFrameAccess frameAccess) {
-        frameAccess.pushResult(frame, substitution.invokeInlined(frame, frameAccess.top()));
+        substitution.invokeInlined(frame, frameAccess.top(), frameAccess);
     }
 }

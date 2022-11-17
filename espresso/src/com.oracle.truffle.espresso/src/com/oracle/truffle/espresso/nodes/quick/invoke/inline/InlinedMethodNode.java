@@ -27,16 +27,11 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.ProbeNode;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.quick.BaseQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeQuickNode;
@@ -80,14 +75,37 @@ import com.oracle.truffle.espresso.substitutions.Substitutions;
 public class InlinedMethodNode extends InvokeQuickNode implements InlinedFrameAccess {
 
     public abstract static class BodyNode extends EspressoNode {
+        protected final Method.MethodVersion m;
+        private volatile SourceSection sourceSection;
+
+        public BodyNode(Method.MethodVersion m) {
+            this.m = m;
+        }
+
         public abstract void execute(VirtualFrame frame, InlinedFrameAccess frameAccess);
+
+        @Override
+        public SourceSection getSourceSection() {
+            if (m.getSource() == null) {
+                return null;
+            }
+            if (sourceSection == null) {
+                if (sourceSection == null) {
+                    SourceSection localSourceSection = m.getWholeMethodSourceSection();
+                    synchronized (this) {
+                        if (sourceSection == null) {
+                            sourceSection = localSourceSection;
+                        }
+                    }
+                }
+            }
+            return sourceSection;
+        }
     }
 
     // Data needed to revert to the generic case.
     protected final int opcode;
     protected final int statementIndex;
-
-    protected @Child DummyInstrumentation dummy;
 
     @Child BodyNode body;
 
@@ -120,7 +138,6 @@ public class InlinedMethodNode extends InvokeQuickNode implements InlinedFrameAc
         this.opcode = opcode;
         this.statementIndex = statementIndex;
         this.body = insert(body);
-        this.dummy = insert(new DummyInstrumentation());
     }
 
     @Override
@@ -130,7 +147,7 @@ public class InlinedMethodNode extends InvokeQuickNode implements InlinedFrameAc
         } else {
             nullCheck(peekReceiver(frame));
         }
-        dummy.execute(frame);
+        body.execute(frame, this);
         return stackEffect;
     }
 
@@ -199,95 +216,5 @@ public class InlinedMethodNode extends InvokeQuickNode implements InlinedFrameAc
             }
         }
         return false;
-    }
-
-    class DummyInstrumentation extends Node implements InstrumentableNode {
-        private volatile SourceSection sourceSection;
-
-        @Override
-        public boolean isInstrumentable() {
-            return true;
-        }
-
-        public Object execute(VirtualFrame frame) {
-            body.execute(frame, InlinedMethodNode.this);
-            return null;
-        }
-
-        @Override
-        public SourceSection getSourceSection() {
-            if (method.getSource() == null) {
-                return null;
-            }
-            if (sourceSection == null) {
-                if (sourceSection == null) {
-                    SourceSection localSourceSection = method.getWholeMethodSourceSection();
-                    synchronized (this) {
-                        if (sourceSection == null) {
-                            sourceSection = localSourceSection;
-                        }
-                    }
-                }
-            }
-            return sourceSection;
-        }
-
-        @Override
-        public WrapperNode createWrapper(ProbeNode probe) {
-            return new DummyInstrumentationWrapper(this, probe);
-        }
-    }
-
-    final class DummyInstrumentationWrapper extends DummyInstrumentation implements WrapperNode {
-
-        @Child private DummyInstrumentation delegateNode;
-        @Child private ProbeNode probeNode;
-
-        DummyInstrumentationWrapper(DummyInstrumentation delegateNode, ProbeNode probeNode) {
-            this.delegateNode = insert(delegateNode);
-            this.probeNode = insert(probeNode);
-        }
-
-        @Override
-        public DummyInstrumentation getDelegateNode() {
-            return delegateNode;
-        }
-
-        @Override
-        public ProbeNode getProbeNode() {
-            return probeNode;
-        }
-
-        @Override
-        public NodeCost getCost() {
-            return NodeCost.NONE;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            Object returnValue;
-            for (;;) {
-                boolean wasOnReturnExecuted = false;
-                try {
-                    probeNode.onEnter(frame);
-                    delegateNode.execute(frame);
-                    returnValue = EspressoFrame.peekKind(frame, resultAt, method.getMethod().getReturnKind());
-                    wasOnReturnExecuted = true;
-                    probeNode.onReturnValue(frame, returnValue);
-                    break;
-                } catch (Throwable t) {
-                    Object result = probeNode.onReturnExceptionalOrUnwind(frame, t, wasOnReturnExecuted);
-                    if (result == ProbeNode.UNWIND_ACTION_REENTER) {
-                        continue;
-                    } else if (result != null) {
-                        returnValue = result;
-                        break;
-                    }
-                    throw t;
-                }
-            }
-            return returnValue;
-        }
-
     }
 }

@@ -89,6 +89,7 @@ public abstract class InlinedFieldAccessNode extends InlinedMethodNode.BodyNode 
     protected final Field field;
 
     protected InlinedFieldAccessNode(Method.MethodVersion method, char fieldCpi) {
+        super(method);
         assert isResolutionSuccessAt(method, fieldCpi);
         this.field = getInlinedField(method, fieldCpi);
     }
