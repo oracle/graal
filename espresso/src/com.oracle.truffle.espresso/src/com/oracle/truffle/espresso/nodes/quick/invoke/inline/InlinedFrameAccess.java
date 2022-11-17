@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.nodes.quick.invoke.inline;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public interface InlinedFrameAccess {
     int top();
@@ -37,6 +38,16 @@ public interface InlinedFrameAccess {
     BytecodeNode getBytecodeNode();
 
     Method.MethodVersion inlinedMethod();
+
+    int pushResult(VirtualFrame frame, int result);
+
+    int pushResult(VirtualFrame frame, long result);
+
+    int pushResult(VirtualFrame frame, float result);
+
+    int pushResult(VirtualFrame frame, double result);
+
+    int pushResult(VirtualFrame frame, StaticObject result);
 
     int pushResult(VirtualFrame frame, Object result);
 }

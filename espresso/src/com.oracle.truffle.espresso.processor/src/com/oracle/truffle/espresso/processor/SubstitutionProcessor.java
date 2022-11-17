@@ -91,6 +91,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     private static final String VIRTUAL_FRAME_IMPORT = "com.oracle.truffle.api.frame.VirtualFrame";
     private static final String ESPRESSO_FRAME = "EspressoFrame";
     private static final String ESPRESSO_FRAME_IMPORT = "com.oracle.truffle.espresso.nodes.EspressoFrame";
+    private static final String INLINED_FRAME_ACCESS_IMPORT = "com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedFrameAccess";
 
     public SubstitutionProcessor() {
         super(SUBSTITUTION_PACKAGE, SUBSTITUTOR);
@@ -139,7 +140,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             str.append(ARG_NAME).append(i);
         }
         first = appendInvocationMetaInformation(str, first, helper);
-        str.append(");\n");
+        str.append(")");
         return str.toString();
     }
 
@@ -594,6 +595,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         expectedImports.add(substitutorPackage + "." + SUBSTITUTOR);
         if (h.inlineInBytecode) {
             expectedImports.add(VIRTUAL_FRAME_IMPORT);
+            expectedImports.add(INLINED_FRAME_ACCESS_IMPORT);
             if (!parameterTypeName.isEmpty()) {
                 expectedImports.add(ESPRESSO_FRAME_IMPORT);
             }
@@ -717,10 +719,10 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         }
         setEspressoContextVar(invoke, helper);
         if (h.returnType.equals("V")) {
-            invoke.addBodyLine(extractInvocation(className, argIndex, helper).trim());
+            invoke.addBodyLine(extractInvocation(className, argIndex, helper).trim(), ";\n");
             invoke.addBodyLine("return StaticObject.NULL;");
         } else {
-            invoke.addBodyLine("return ", extractInvocation(className, argIndex, helper).trim());
+            invoke.addBodyLine("return ", extractInvocation(className, argIndex, helper).trim(), ";\n");
         }
         classBuilder.withMethod(invoke);
         if (h.inlineInBytecode) {
@@ -734,8 +736,8 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         MethodBuilder invoke = new MethodBuilder("invokeInlined") //
                         .withOverrideAnnotation() //
                         .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
-                        .withParams("VirtualFrame frame", "int top") //
-                        .withReturnType("Object");
+                        .withParams("VirtualFrame frame", "int top", "InlinedFrameAccess frameAccess") //
+                        .withReturnType("void");
         int delta = 1;
         int argCount = parameterTypeName.size();
         for (int argIndex = argCount - 1; argIndex >= 0; argIndex--) {
@@ -771,21 +773,39 @@ public final class SubstitutionProcessor extends EspressoProcessor {
                     break;
             }
 
-            String cast = doCast ? "(" + argType + ") " : "";
             if (argType.equals("boolean")) {
                 invoke.addBodyLine(argType, " ", ARG_NAME, argIndex, " = ", ESPRESSO_FRAME + "." + popMethod + "(frame, top - " + delta + ") != 0", ";");
             } else {
+                String cast = doCast ? "(" + argType + ") " : "";
                 invoke.addBodyLine(argType, " ", ARG_NAME, argIndex, " = ", cast, ESPRESSO_FRAME + "." + popMethod + "(frame, top - " + delta + ")", ";");
             }
             delta += slotCount;
         }
         setEspressoContextVar(invoke, helper);
         if (h.returnType.equals("V")) {
-            invoke.addBodyLine(extractInvocation(className, argCount, helper).trim());
-            invoke.addBodyLine("return StaticObject.NULL;");
+            invoke.addBodyLine(extractInvocation(className, argCount, helper).trim(), ";");
         } else {
-            invoke.addBodyLine("return ", extractInvocation(className, argCount, helper).trim());
+            invoke.addBodyLine("frameAccess.pushResult(frame, ", extractResultToPush(extractInvocation(className, argCount, helper).trim(), h), ");");
         }
         return classBuilder.withMethod(invoke);
+    }
+
+    private String extractResultToPush(String invocation, SubstitutorHelper h) {
+        if (h.returnType.equals("Z")) {
+            return "(" + invocation + ") ? 1 : 0";
+        } else {
+            String cast;
+            switch (h.returnType) {
+                case "B":
+                case "C":
+                case "S":
+                    cast = "(int) ";
+                    break;
+                default:
+                    cast = "";
+                    break;
+            }
+            return cast + invocation;
+        }
     }
 }
