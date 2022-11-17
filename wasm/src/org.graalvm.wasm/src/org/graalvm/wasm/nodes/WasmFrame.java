@@ -49,15 +49,31 @@ public abstract class WasmFrame {
         // no instances
     }
 
-    public static void drop(VirtualFrame frame, int slot) {
+    public static void dropPrimitive(VirtualFrame frame, int slot) {
         if (CompilerDirectives.inCompiledCode()) {
             // Needed to avoid keeping track of popped slots in FrameStates.
             frame.clearPrimitiveStatic(slot);
         }
     }
 
-    public static void copy(VirtualFrame frame, int sourceSlot, int targetSlot) {
+    public static void dropReference(VirtualFrame frame, int slot) {
+        frame.clearObjectStatic(slot);
+    }
+
+    public static void drop(VirtualFrame frame, int slot) {
+        frame.clearStatic(slot);
+    }
+
+    public static void copyPrimitive(VirtualFrame frame, int sourceSlot, int targetSlot) {
         frame.copyPrimitiveStatic(sourceSlot, targetSlot);
+    }
+
+    public static void copyReference(VirtualFrame frame, int sourceSlot, int targetSlot) {
+        frame.copyObjectStatic(sourceSlot, targetSlot);
+    }
+
+    public static void copy(VirtualFrame frame, int sourceSlot, int targetSlot) {
+        frame.copyStatic(sourceSlot, targetSlot);
     }
 
     public static boolean popBoolean(VirtualFrame frame, int slot) {
@@ -119,5 +135,15 @@ public abstract class WasmFrame {
 
     public static void pushDouble(VirtualFrame frame, int slot, double value) {
         frame.setDoubleStatic(slot, value);
+    }
+
+    public static Object popReference(VirtualFrame frame, int slot) {
+        Object result = frame.getObjectStatic(slot);
+        frame.clearObjectStatic(slot);
+        return result;
+    }
+
+    public static void pushReference(VirtualFrame frame, int slot, Object value) {
+        frame.setObjectStatic(slot, value);
     }
 }

@@ -46,18 +46,22 @@ import org.graalvm.wasm.util.ExtraDataUtil;
 
 /**
  * Represents an else entry in the extra data list.
- *
+ * <p>
  * Compact format:
- * 
- * <code>
- *     | compactFormatIndicator (1-bit) | extraDataDisplacement (signed 15-bit) | byteCodeDisplacement (signed 16-bit) |
- * </code>
- * 
+ * <p>
+ * <ul>
+ * <li>compactFormatIndicator (1-bit)
+ * <li>extraDataDisplacement (signed 15-bit)
+ * <li>byteCodeDisplacement (signed 16-bit)
+ * </ul>
+ * <p>
  * Extended format:
- * 
- * <code>
- *     | extendedFormatIndicator (1-bit) | extraDataDisplacement (signed 31-bit) | byteCodeDisplacement (signed 32-bit) |
- * </code>
+ * <p>
+ * <ul>
+ * <li>extendedFormatIndicator (1-bit)
+ * <li>extraDataDisplacement (signed 31-bit)
+ * <li>byteCodeDisplacement (signed 32-bit)
+ * </ul>
  */
 public class ElseEntry extends BranchTarget {
     public ElseEntry(ExtraDataFormatHelper formatHelper, int byteCodeOffset, int extraDataOffset, int extraDataIndex) {

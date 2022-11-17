@@ -46,18 +46,21 @@ import org.graalvm.wasm.util.ExtraDataUtil;
 
 /**
  * Represents a call entry in the extra data list.
- * 
+ * <p>
  * Compact format:
- * 
- * <code>
- *      | compactFormatIndicator (1-bit) | nodeIndex (unsigned 15-bit) | unused (16-bit) |
- * </code>
- * 
+ * <p>
+ * <ul>
+ * <li>compactFormatIndicator (1-bit)
+ * <li>nodeIndex (unsigned 15-bit)
+ * <li>unused (16-bit)
+ * </ul>
+ * <p>
  * Extended format:
- * 
- * <code>
- *     | extendedFormatIndicator (1-bit) | nodeIndex (unsigned 31-bit) |
- * </code>
+ * <p>
+ * <ul>
+ * <li>extendedFormatIndicator (1-bit)
+ * <li>nodeIndex (unsigned 31-bit)
+ * </ul>
  */
 public class CallEntry extends CallTarget {
     public CallEntry(int nodeIndex, ExtraDataFormatHelper formatHelper) {

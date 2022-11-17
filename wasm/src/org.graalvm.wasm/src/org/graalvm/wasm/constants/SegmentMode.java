@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,49 +38,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
+package org.graalvm.wasm.constants;
 
-@ExportLibrary(InteropLibrary.class)
-@SuppressWarnings({"static-method", "unused"})
-public final class WasmVoidResult implements TruffleObject {
-    private static final WasmVoidResult instance = new WasmVoidResult();
-
-    private WasmVoidResult() {
-    }
-
-    public static WasmVoidResult getInstance() {
-        return instance;
-    }
-
-    @ExportMessage
-    boolean hasLanguage() {
-        return true;
-    }
-
-    @ExportMessage
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return WasmLanguage.class;
-    }
-
-    @ExportMessage
-    boolean hasMetaObject() {
-        return true;
-    }
-
-    @ExportMessage
-    Object getMetaObject() {
-        return WasmType.VOID;
-    }
-
-    @ExportMessage(name = "toDisplayString")
-    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return "wasm-void-result";
-    }
-
+public class SegmentMode {
+    public static final byte ACTIVE = 0;
+    public static final byte PASSIVE = 1;
+    public static final byte DECLARATIVE = 2;
 }

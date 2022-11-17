@@ -43,6 +43,7 @@ package org.graalvm.wasm.parser.validation;
 
 import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
 import org.graalvm.wasm.parser.validation.collections.entries.BranchTargetWithStackChange;
+import org.graalvm.wasm.util.ExtraDataUtil;
 
 import java.util.ArrayList;
 
@@ -111,6 +112,10 @@ public abstract class ControlFrame {
 
     protected int labelTypeLength() {
         return labelTypes().length;
+    }
+
+    protected int labelUnwindType() {
+        return ExtraDataUtil.extractUnwindType(labelTypes());
     }
 
     int initialStackSize() {

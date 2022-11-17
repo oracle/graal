@@ -399,6 +399,11 @@ class GraalVmTruffleComponent(GraalVmComponent):
 
 
 class GraalVmLanguage(GraalVmTruffleComponent):
+    """
+    :param support_distributions: distributions the contents of which is added to the language's home directory.
+    The contents of support distributions setting the `fileListPurpose` attribute to `native-image-resources` will end up as file list in the `native-image-resources.filelist` file in this language's home directory.
+    As a part of a native image build that includes this language, the files in the merged file list will be copied as resources to a directory named `resources` next to the produced image.
+    """
     pass
 
 

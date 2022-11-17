@@ -65,9 +65,9 @@ public final class DefaultHomeFinder extends HomeFinder {
 
     private static final boolean STATIC_VERBOSE = Boolean.getBoolean("com.oracle.graalvm.locator.verbose");
 
-    private static final Path FORCE_GRAAL_HOME;
-    private static final Path GRAAL_HOME_RELATIVE_PATH;
-    private static final Map<String, Path> LANGUAGE_RELATIVE_HOMES = new HashMap<>();
+    static final Path FORCE_GRAAL_HOME;
+    static final Path GRAAL_HOME_RELATIVE_PATH;
+    static final Map<String, Path> LANGUAGE_RELATIVE_HOMES = new HashMap<>();
 
     static {
         final String forcedHome = System.getProperty("org.graalvm.launcher.home");
@@ -273,6 +273,21 @@ public final class DefaultHomeFinder extends HomeFinder {
             }
         }
         return res;
+    }
+
+    /*
+     * Sets a relative path to a language home if it wasn't already set by system properties that
+     * are read in the static initializer of this class.
+     *
+     * NOTE: this method is called reflectively by TruffleBaseFeature
+     */
+    @SuppressWarnings("unused")
+    private static boolean setRelativeLanguageHomeIfNotAlreadySet(String languageId, Path homePath) {
+        if (FORCE_GRAAL_HOME == null && GRAAL_HOME_RELATIVE_PATH == null && LANGUAGE_RELATIVE_HOMES.get(languageId) == null) {
+            LANGUAGE_RELATIVE_HOMES.put(languageId, homePath);
+            return true;
+        }
+        return false;
     }
 
     private static Map<String, Path> collectHomes(Path folder) {

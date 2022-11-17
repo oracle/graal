@@ -50,8 +50,8 @@ public class WasmContextOptions {
     @CompilationFinal private boolean signExtensionOps;
     @CompilationFinal private boolean keepDataSections;
     @CompilationFinal private boolean multiValue;
-
-    @CompilationFinal private OptionValues optionValues;
+    @CompilationFinal private boolean bulkMemoryAndRefTypes;
+    private final OptionValues optionValues;
 
     WasmContextOptions(OptionValues optionValues) {
         this.optionValues = optionValues;
@@ -67,17 +67,18 @@ public class WasmContextOptions {
         this.signExtensionOps = readBooleanOption(WasmOptions.SignExtensionOps);
         this.keepDataSections = readBooleanOption(WasmOptions.KeepDataSections);
         this.multiValue = readBooleanOption(WasmOptions.MultiValue);
+        this.bulkMemoryAndRefTypes = readBooleanOption(WasmOptions.BulkMemoryAndRefTypes);
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key) {
         return key.getValue(optionValues);
     }
 
-    public boolean isSaturatingFloatToInt() {
+    public boolean supportSaturatingFloatToInt() {
         return saturatingFloatToInt;
     }
 
-    public boolean isSignExtensionOps() {
+    public boolean supportSignExtensionOps() {
         return signExtensionOps;
     }
 
@@ -85,8 +86,12 @@ public class WasmContextOptions {
         return keepDataSections;
     }
 
-    public boolean isMultiValue() {
+    public boolean supportMultiValue() {
         return multiValue;
+    }
+
+    public boolean supportBulkMemoryAndRefTypes() {
+        return bulkMemoryAndRefTypes;
     }
 
     @Override
@@ -96,6 +101,7 @@ public class WasmContextOptions {
         hash = 53 * hash + (this.signExtensionOps ? 1 : 0);
         hash = 53 * hash + (this.keepDataSections ? 1 : 0);
         hash = 53 * hash + (this.multiValue ? 1 : 0);
+        hash = 53 * hash + (this.bulkMemoryAndRefTypes ? 1 : 0);
         return hash;
     }
 
@@ -121,6 +127,9 @@ public class WasmContextOptions {
             return false;
         }
         if (this.multiValue != other.multiValue) {
+            return false;
+        }
+        if (this.bulkMemoryAndRefTypes != other.bulkMemoryAndRefTypes) {
             return false;
         }
         return true;

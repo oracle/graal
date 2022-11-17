@@ -314,12 +314,9 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
             } else if (n instanceof ClassIsAssignableFromNode) {
                 ClassIsAssignableFromNode node = (ClassIsAssignableFromNode) n;
-                ValueNode thisClass = node.getThisClass();
-                if (thisClass.isConstant()) {
-                    AnalysisType thisType = (AnalysisType) tool.getConstantReflection().asJavaType(thisClass.asConstant());
-                    if (!thisType.isReachable()) {
-                        node.replaceAndDelete(LogicConstantNode.contradiction(graph));
-                    }
+                AnalysisType nonReachableType = asConstantNonReachableType(node.getThisClass(), tool);
+                if (nonReachableType != null) {
+                    node.replaceAndDelete(LogicConstantNode.contradiction(graph));
                 }
 
             } else if (n instanceof BytecodeExceptionNode) {
@@ -330,14 +327,23 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                  */
                 BytecodeExceptionNode node = (BytecodeExceptionNode) n;
                 if (node.getExceptionKind() == BytecodeExceptionNode.BytecodeExceptionKind.CLASS_CAST) {
-                    ValueNode expectedClass = node.getArguments().get(1);
-                    if (expectedClass.isConstant()) {
-                        AnalysisType expectedType = (AnalysisType) tool.getConstantReflection().asJavaType(expectedClass.asConstant());
-                        if (expectedType != null && !expectedType.isReachable()) {
-                            String expectedName = getTypeName(expectedType);
-                            ConstantNode expectedConstant = ConstantNode.forConstant(tool.getConstantReflection().forString(expectedName), tool.getMetaAccess(), graph);
-                            node.getArguments().set(1, expectedConstant);
-                        }
+                    AnalysisType nonReachableType = asConstantNonReachableType(node.getArguments().get(1), tool);
+                    if (nonReachableType != null) {
+                        node.getArguments().set(1, ConstantNode.forConstant(tool.getConstantReflection().forString(getTypeName(nonReachableType)), tool.getMetaAccess(), graph));
+                    }
+                }
+
+            } else if (n instanceof FrameState) {
+                /*
+                 * We do not want a type to be reachable only to be used for debugging purposes in a
+                 * FrameState. We could just null out the frame slot, but to leave as much
+                 * information as possible we replace the java.lang.Class with the type name.
+                 */
+                FrameState node = (FrameState) n;
+                for (int i = 0; i < node.values().size(); i++) {
+                    AnalysisType nonReachableType = asConstantNonReachableType(node.values().get(i), tool);
+                    if (nonReachableType != null) {
+                        node.values().set(i, ConstantNode.forConstant(tool.getConstantReflection().forString(getTypeName(nonReachableType)), tool.getMetaAccess(), graph));
                     }
                 }
 
@@ -350,6 +356,16 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                     tool.addToWorkList(node);
                 }
             }
+        }
+
+        private AnalysisType asConstantNonReachableType(ValueNode value, CoreProviders providers) {
+            if (value != null && value.isConstant()) {
+                AnalysisType expectedType = (AnalysisType) providers.getConstantReflection().asJavaType(value.asConstant());
+                if (expectedType != null && !expectedType.isReachable()) {
+                    return expectedType;
+                }
+            }
+            return null;
         }
 
         private void handleInvoke(Invoke invoke, SimplifierTool tool) {

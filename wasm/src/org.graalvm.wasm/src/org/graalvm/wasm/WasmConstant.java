@@ -38,16 +38,57 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 package org.graalvm.wasm;
 
-/**
- * Result value for functions with multiple result values. The actual values are passed on the
- * multi-value stack of the context.
- */
-public final class WasmMultiValueResult {
-    public static final WasmMultiValueResult INSTANCE = new WasmMultiValueResult();
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-    private WasmMultiValueResult() {
+@ExportLibrary(InteropLibrary.class)
+@SuppressWarnings({"static-method", "unused"})
+public class WasmConstant implements TruffleObject {
+    public static final WasmConstant VOID = new WasmConstant("wasm-void-result", WasmType.VOID, false);
+    public static final WasmConstant NULL = new WasmConstant("wasm-ref-null", WasmType.NULL, true);
+    public static final WasmConstant MULTI_VALUE = new WasmConstant("wasm-multi-value-result", WasmType.MULTI_VALUE, false);
+    private final String name;
+    private final Object metaObject;
+    private final boolean isNull;
+
+    protected WasmConstant(String name, Object metaObject, boolean isNull) {
+        this.name = name;
+        this.metaObject = metaObject;
+        this.isNull = isNull;
+    }
+
+    @ExportMessage
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return WasmLanguage.class;
+    }
+
+    @ExportMessage
+    boolean hasMetaObject() {
+        return true;
+    }
+
+    @ExportMessage
+    Object getMetaObject() {
+        return metaObject;
+    }
+
+    @ExportMessage(name = "toDisplayString")
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return name;
+    }
+
+    @ExportMessage
+    boolean isNull() {
+        return isNull;
     }
 }

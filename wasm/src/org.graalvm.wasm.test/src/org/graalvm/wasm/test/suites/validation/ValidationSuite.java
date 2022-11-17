@@ -41,6 +41,13 @@
 
 package org.graalvm.wasm.test.suites.validation;
 
+import static org.graalvm.wasm.test.WasmTestUtils.hexStringToByteArray;
+import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -54,13 +61,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collection;
-
-import static org.graalvm.wasm.test.WasmTestUtils.hexStringToByteArray;
-import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
-
+/**
+ * Checks validation behavior of
+ * <a href="https://webassembly.github.io/JS-BigInt-integration/core/index.html">Webassembly
+ * MVP</a>.
+ */
 @RunWith(Parameterized.class)
 public class ValidationSuite extends WasmFileSuite {
     @Parameterized.Parameters(name = "{0}")
@@ -90,7 +95,7 @@ public class ValidationSuite extends WasmFileSuite {
 
                         binaryCase(
                                         "Duplicated sections",
-                                        "Duplicated section 6",
+                                        "unexpected content after last section",
                                         // (global (export "g1") i32 (i32.const 1))
                                         // (global (export "g2") i64 (i64.const 0)) but with each
                                         // export/global using its own export/global section
@@ -123,19 +128,13 @@ public class ValidationSuite extends WasmFileSuite {
                         // # Validation
 
                         // ## Types
-                        // https://webassembly.github.io/spec/core/valid/types.html
+                        // types are universally valid.
 
                         // ### Limits
-                        // https://webassembly.github.io/spec/core/valid/types.html#limits
-
-                        // See 3.2.3 and 3.2.4
+                        // checked individually on memories and tables
 
                         // ### Function Types
-                        // https://webassembly.github.io/spec/core/valid/types.html#function-types
-
-                        // The arity `m` must not be larger than 1 (limitiation of MVP).
-                        // Validated in: SymbolTable#allocateFunctionType
-                        // Only when multi-value is disabled.
+                        // Return arity
                         binaryCase(
                                         "Function - cannot return more than one value",
                                         "A function can return at most one result.",
@@ -144,31 +143,35 @@ public class ValidationSuite extends WasmFileSuite {
                                         Failure.Type.INVALID),
 
                         // ### Table types
-                        // https://webassembly.github.io/spec/core/valid/types.html#table-types
-
-                        // The limits `limits` must be valid within range `2^32`.
-                        // Validated in: BinaryParser#readTableLimits
-                        // Note: values are silently clamped if bigger than GraalWasm's `2^31 - 1`
-                        // limit.
-                        /*
-                         * stringCase( "Table - initial size out of bounds",
-                         * "size minimum must not be greater than maximum: 2147483648 should be <= 2147483647."
-                         * , "(table $table1 2147483648888 funcref)", Failure.Type.INVALID),
-                         * stringCase( "Table - initial size out of bounds",
-                         * "size minimum must not be greater than maximum: 2147483648 should be <= 2147483647."
-                         * , "(table $table1 1 2147483648 funcref)", Failure.Type.INVALID),
-                         */
+                        // Limits
+                        // Limitation only applies to GraalWasm (max array length)
+                        stringCase(
+                                        "Table - initial size out of bounds",
+                                        "table instance size exceeds limit: 2147483648 should be <= 2147483647",
+                                        "(table $table1 2147483648 funcref)",
+                                        Failure.Type.TRAP),
                         stringCase(
                                         "Table - max size lower than initial size",
                                         "size minimum must not be greater than maximum: 2 should be <= 1",
                                         "(table $table1 2 1 funcref)",
                                         Failure.Type.INVALID),
+                        // Only allowed elemtype is funcref
+                        binaryCase(
+                                        "Table - initialize with invalid elemtype",
+                                        "Unexpected reference type",
+                                        // (table 1 1 externref)
+                                        "00 61 73 6D 01 00 00 00 04 04 01 67 01 01",
+                                        Failure.Type.MALFORMED),
+                        binaryCase(
+                                        "Table - import with invalid elemtype",
+                                        "Invalid element type for table import: 0x6F should = 0x70",
+                                        // (import "a" "b" (table 0 1 externref))
+                                        "00 61 73 6D 01 00 00 00 02 09 01 01 61 01 62 01 6F 00 01",
+                                        Failure.Type.MALFORMED),
 
                         // ### Memory types
-                        // https://webassembly.github.io/spec/core/valid/types.html#memory-types
 
                         // The limits `limits` must be valid within range `2^16`.
-                        // Validated in: BinaryParser#readMemoryLimits
                         stringCase(
                                         "Memory - initial size out of bounds",
                                         "memory size must be at most 65536 pages (4GiB): 2147483648 should be <= 65536",
@@ -186,18 +189,32 @@ public class ValidationSuite extends WasmFileSuite {
                                         Failure.Type.INVALID),
 
                         // ### Global types
-                        // https://webassembly.github.io/spec/core/valFid/types.html#global-types
-
-                        // (No constraints)
-
+                        // Invalid value type
+                        binaryCase(
+                                        "Global - invalid value type funcref",
+                                        "malformed value type",
+                                        "00 61 73 6D 01 00 00 00 06 06 01 70 00 41 00 0B",
+                                        Failure.Type.MALFORMED),
+                        binaryCase(
+                                        "Global - invalid value type externref",
+                                        "malformed value type",
+                                        "00 61 73 6D 01 00 00 00 06 06 01 6F 00 41 00 0B",
+                                        Failure.Type.MALFORMED),
+                        binaryCase(
+                                        "Global - invalid modified",
+                                        "Invalid mutability flag: 2",
+                                        "00 61 73 6D 01 00 00 00 06 06 01 7F 02 41 00 0B",
+                                        Failure.Type.MALFORMED),
+                        binaryCase(
+                                        "Global - type mismatch",
+                                        "type mismatch: 0x7F should = 0x7E",
+                                        "00 61 73 6D 01 00 00 00 06 06 01 7F 00 42 00 0B",
+                                        Failure.Type.INVALID),
                         // ## Modules
-                        // https://webassembly.github.io/spec/core/valid/modules.html
 
                         // ### Functions
-                        // https://webassembly.github.io/spec/core/valid/modules.html#functions
 
                         // The type `C.types[x]` must be defined in the context.
-                        // Validated in: SymbolTable#allocateFunction
                         stringCase(
                                         "Function - invalid type index",
                                         "unknown type: 1 should be < 1",
@@ -247,7 +264,7 @@ public class ValidationSuite extends WasmFileSuite {
                         // Validated in: BinaryParser#readElementSection
                         binaryCase(
                                         "Element segment - invalid table index",
-                                        "unknown table: 2 should = 0",
+                                        "unknown table",
                                         // (table 1 funcref) (elem 5 (i32.const 0) $f1) (func $f1
                                         // (result i32) i32.const 42)
                                         "00 61 73 6d 01 00 00 00 01 05 01 60 00 01 7f 03" +
@@ -259,7 +276,7 @@ public class ValidationSuite extends WasmFileSuite {
                         // The element type `elemtype` must be `funcref`.
                         // Validated in: BinaryParser#readTableSection and
                         // BinaryParser#readImportSection
-                        // TODO(mbovel)
+                        // see "Table types" above.
 
                         // The expression `expr` must be valid with result type `[i32]`.
                         // Checked in OfficialTestSuite:
@@ -824,6 +841,17 @@ public class ValidationSuite extends WasmFileSuite {
                                         "00 61 73 6D 01 00 00 00 01 05 01 60 00 01 7D 03 02 01 00 0A 07 01 05 00 41 00 0F 0B",
                                         Failure.Type.INVALID),
 
+                        // Return with reference type
+                        binaryCase(
+                                        "Return - invalid reference type",
+                                        "malformed value type",
+                                        // (module
+                                        // (func (result funcref)
+                                        // return)
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 05 01 60 00 01 6F 03 02 01 00 0A 03 01 00 0B",
+                                        Failure.Type.MALFORMED),
+
                         // Correct return
                         binaryCase("Return - correct",
                                         "",
@@ -892,7 +920,7 @@ public class ValidationSuite extends WasmFileSuite {
 
                         // Indirect call with missing table
                         binaryCase("Call_indirect - missing table",
-                                        "Missing table.",
+                                        "unknown table",
                                         // (module
                                         // (type (func))
                                         // (func
@@ -956,6 +984,12 @@ public class ValidationSuite extends WasmFileSuite {
                                         // )
                                         // )
                                         "00 61 73 6D 01 00 00 00 01 05 01 60 00 01 20 03 02 01 00 0A 06 01 04 00 41 00 0B",
+                                        Failure.Type.MALFORMED),
+                        // Data count section not supported
+                        binaryCase(
+                                        "Data Count Section - not supported",
+                                        "invalid section ID: 12",
+                                        "00 61 73 6D 01 00 00 00 0C 00",
                                         Failure.Type.MALFORMED));
     }
 
@@ -972,6 +1006,7 @@ public class ValidationSuite extends WasmFileSuite {
 
     protected void addContextOptions(Context.Builder contextBuilder) {
         contextBuilder.option("wasm.MultiValue", "false");
+        contextBuilder.option("wasm.BulkMemoryAndRefTypes", "false");
     }
 
     @Override
@@ -979,8 +1014,8 @@ public class ValidationSuite extends WasmFileSuite {
     public void test() throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         addContextOptions(contextBuilder);
-        final Context context = contextBuilder.build();
         final Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(bytecode), "dummy_main").build();
+        final Context context = contextBuilder.build();
         try {
             context.eval(source).getMember("_main").execute();
         } catch (final PolyglotException e) {
@@ -997,6 +1032,8 @@ public class ValidationSuite extends WasmFileSuite {
             final String failureType = actualFailureObject.getMember("failureType").asString();
             Assert.assertEquals("unexpected failure type", expectedFailureType.name, failureType);
             return;
+        } finally {
+            context.close();
         }
         if (expectedFailureType != null) {
             throw new AssertionError("expected to be invalid");
