@@ -102,15 +102,11 @@ public abstract class SectionName {
     }
 
     private static String getFormatPrefix(ObjectFile.Format f) {
-        switch (f) {
-            case ELF:
-            case PECOFF:
-                return ".";
-            case MACH_O:
-                return "__";
-            default:
-                throw new IllegalStateException("Unsupported format: " + f);
-        }
+        return switch (f) {
+            case LLVM -> getFormatPrefix(ObjectFile.getNativeFormat());
+            case ELF, PECOFF -> ".";
+            case MACH_O -> "__";
+        };
     }
 
     /**
