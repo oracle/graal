@@ -101,6 +101,7 @@ public class GHASHProcessBlocksNode extends MemoryKillStubIntrinsicNode {
         return EnumSet.of(AArch64.CPUFeature.PMULL);
     }
 
+    @SuppressWarnings("unlikely-arg-type")
     public static boolean isSupported(Architecture arch) {
         if (arch instanceof AMD64) {
             return ((AMD64) arch).getFeatures().containsAll(minFeaturesAMD64());

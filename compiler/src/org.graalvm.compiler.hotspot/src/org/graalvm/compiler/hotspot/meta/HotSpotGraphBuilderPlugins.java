@@ -229,7 +229,7 @@ public class HotSpotGraphBuilderPlugins {
                 StandardGraphBuilderPlugins.registerInvocationPlugins(snippetReflection, invocationPlugins, replacements, true, false, true, graalRuntime.getHostProviders().getLowerer());
                 registerArrayPlugins(invocationPlugins, replacements, config);
                 registerStringPlugins(invocationPlugins, replacements, wordTypes, foreignCalls, config);
-                registerArraysSupportPlugins(invocationPlugins, config, replacements);
+                registerArraysSupportPlugins(invocationPlugins, replacements);
                 registerReferencePlugins(invocationPlugins, replacements);
                 registerTrufflePlugins(invocationPlugins, wordTypes, config);
                 registerInstrumentationImplPlugins(invocationPlugins, config, replacements);
@@ -983,7 +983,7 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
-    private static void registerArraysSupportPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+    private static void registerArraysSupportPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, "jdk.internal.util.ArraysSupport", replacements);
         r.register(new InvocationPlugin("vectorizedMismatch", Object.class, long.class, Object.class, long.class, int.class, int.class) {
             @Override
