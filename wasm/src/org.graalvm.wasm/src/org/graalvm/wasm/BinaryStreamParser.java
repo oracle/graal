@@ -216,43 +216,6 @@ public abstract class BinaryStreamParser {
         return data[initialOffset];
     }
 
-    public static int rawPeekU8(byte[] data, int offset) {
-        return data[offset] & 0xFF;
-    }
-
-    public static byte rawPeekI8(byte[] data, int offset) {
-        return data[offset];
-    }
-
-    public static int rawPeekU16(byte[] data, int offset) {
-        return ((data[offset] & 0xFF) | ((data[offset + 1] & 0xFF) << 8));
-    }
-
-    public static void writeU16(byte[] data, int offset, int value) {
-        final byte low = (byte) (value & 0xFF);
-        final byte high = (byte) ((value >> 8) & 0xFF);
-        data[offset] = low;
-        data[offset + 1] = high;
-    }
-
-    public static int rawPeekI32(byte[] data, int initialOffset) {
-        return (data[initialOffset] & 0xFF) |
-                        ((data[initialOffset + 1] & 0xFF) << 8) |
-                        ((data[initialOffset + 2] & 0xFF) << 16) |
-                        ((data[initialOffset + 3] & 0xFF) << 24);
-    }
-
-    public static long rawPeekI64(byte[] data, int initialOffset) {
-        return (data[initialOffset] & 0xFFL) |
-                        ((data[initialOffset + 1] & 0xFFL) << 8) |
-                        ((data[initialOffset + 2] & 0xFFL) << 16) |
-                        ((data[initialOffset + 3] & 0xFFL) << 24) |
-                        ((data[initialOffset + 4] & 0xFFL) << 32) |
-                        ((data[initialOffset + 5] & 0xFFL) << 40) |
-                        ((data[initialOffset + 6] & 0xFFL) << 48) |
-                        ((data[initialOffset + 7] & 0xFFL) << 56);
-    }
-
     protected int read4() {
         int result = 0;
         for (int i = 0; i != 4; ++i) {
@@ -347,4 +310,87 @@ public abstract class BinaryStreamParser {
         }
         return length;
     }
+
+    // region bytecode
+
+    /**
+     * Reads the unsigned byte value at the given bytecode offset.
+     * 
+     * @param bytecode The bytecode
+     * @param offset The offset in the bytecode
+     * @return the unsigned byte value at the given bytecode offset.
+     */
+    public static int rawPeekU8(byte[] bytecode, int offset) {
+        return bytecode[offset] & 0xFF;
+    }
+
+    /**
+     * Reads the signed byte value at the given bytecode offset.
+     * 
+     * @param bytecode The bytecode
+     * @param offset The offset in the bytecode
+     * @return The signed byte value at the given bytecode offset.
+     */
+    public static byte rawPeekI8(byte[] bytecode, int offset) {
+        return bytecode[offset];
+    }
+
+    /**
+     * Reads the unsigned short value at the given bytecode offset.
+     * 
+     * @param bytecode The bytecode
+     * @param offset The offset in the bytecode
+     * @return The unsigned short value at the given bytecode offset.
+     */
+    public static int rawPeekU16(byte[] bytecode, int offset) {
+        return ((bytecode[offset] & 0xFF) | ((bytecode[offset + 1] & 0xFF) << 8));
+    }
+
+    /**
+     * Writes the unsigned short value to the given bytecode offset.
+     * 
+     * @param bytecode The bytecode
+     * @param offset The offset in the bytecode
+     * @param value The value that should be written
+     */
+    public static void writeU16(byte[] bytecode, int offset, int value) {
+        final byte low = (byte) (value & 0xFF);
+        final byte high = (byte) ((value >> 8) & 0xFF);
+        bytecode[offset] = low;
+        bytecode[offset + 1] = high;
+    }
+
+    /**
+     * Reads the signed integer value at the given bytecode offset.
+     * 
+     * @param bytecode The bytecode
+     * @param offset The offset in the bytecode.
+     * @return The signed integer value at the given bytecode offset.
+     */
+    public static int rawPeekI32(byte[] bytecode, int offset) {
+        return (bytecode[offset] & 0xFF) |
+                        ((bytecode[offset + 1] & 0xFF) << 8) |
+                        ((bytecode[offset + 2] & 0xFF) << 16) |
+                        ((bytecode[offset + 3] & 0xFF) << 24);
+    }
+
+    /**
+     * Reads the signed long value at the given bytecode offset.
+     * 
+     * @param bytecode The bytecode
+     * @param offset The offset in the bytecode.
+     * @return The signed long value at the given bytecode offset.
+     */
+    public static long rawPeekI64(byte[] bytecode, int offset) {
+        return (bytecode[offset] & 0xFFL) |
+                        ((bytecode[offset + 1] & 0xFFL) << 8) |
+                        ((bytecode[offset + 2] & 0xFFL) << 16) |
+                        ((bytecode[offset + 3] & 0xFFL) << 24) |
+                        ((bytecode[offset + 4] & 0xFFL) << 32) |
+                        ((bytecode[offset + 5] & 0xFFL) << 40) |
+                        ((bytecode[offset + 6] & 0xFFL) << 48) |
+                        ((bytecode[offset + 7] & 0xFFL) << 56);
+    }
+
+    // endregion
 }

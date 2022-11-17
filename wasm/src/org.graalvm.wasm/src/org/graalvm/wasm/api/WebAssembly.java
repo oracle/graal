@@ -395,8 +395,8 @@ public class WebAssembly extends Dictionary {
         }
         List<ByteArrayBuffer> sections = new ArrayList<>();
         for (WasmCustomSection section : module.customSections()) {
-            if (section.getName().equals(name)) {
-                final byte[] sectionData = section.getData();
+            if (section.name().equals(name)) {
+                final byte[] sectionData = section.data();
                 sections.add(new ByteArrayBuffer(sectionData, 0, sectionData.length));
             }
         }

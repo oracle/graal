@@ -48,17 +48,15 @@ public final class WasmCodeEntry {
     private final WasmFunction function;
     @CompilationFinal(dimensions = 1) private final byte[] bytecode;
     @CompilationFinal(dimensions = 1) private final byte[] localTypes;
-    private final int maxStackSize;
-    private final BranchProfile errorBranch = BranchProfile.create();
     @CompilationFinal(dimensions = 1) private final byte[] resultTypes;
+    private final BranchProfile errorBranch = BranchProfile.create();
     private final int numLocals;
     private final int resultCount;
 
-    public WasmCodeEntry(WasmFunction function, byte[] bytecode, byte[] localTypes, byte[] resultTypes, int maxStackSize) {
+    public WasmCodeEntry(WasmFunction function, byte[] bytecode, byte[] localTypes, byte[] resultTypes) {
         this.function = function;
         this.bytecode = bytecode;
         this.localTypes = localTypes;
-        this.maxStackSize = maxStackSize;
         this.numLocals = localTypes.length;
         this.resultTypes = resultTypes;
         this.resultCount = resultTypes.length;
@@ -72,15 +70,11 @@ public final class WasmCodeEntry {
         return bytecode;
     }
 
-    public int maxStackSize() {
-        return maxStackSize;
-    }
-
     public byte localType(int index) {
         return localTypes[index];
     }
 
-    public int numLocals() {
+    public int localCount() {
         return numLocals;
     }
 

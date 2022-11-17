@@ -60,48 +60,34 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
     private final String name;
     private final ArrayList<BiConsumer<WasmContext, WasmInstance>> linkActions;
     private final ModuleLimits limits;
+
     private Source source;
-
-    @CompilationFinal(dimensions = 1) private CodeEntry[] codeEntries;
-
-    @CompilationFinal private boolean hasCodeSection;
-    @CompilationFinal(dimensions = 1) private byte[] data;
+    @CompilationFinal(dimensions = 1) private byte[] sourceCode;
 
     @CompilationFinal(dimensions = 1) private byte[] bytecode;
+    @CompilationFinal(dimensions = 1) private CodeEntry[] codeEntries;
     @CompilationFinal private boolean isParsed;
 
-    private WasmModule(String name, byte[] data, ModuleLimits limits) {
+    private WasmModule(String name, byte[] sourceCode, ModuleLimits limits) {
         super();
         this.name = name;
         this.limits = limits == null ? ModuleLimits.DEFAULTS : limits;
         this.linkActions = new ArrayList<>();
-        this.data = data;
+        this.sourceCode = sourceCode;
         this.isParsed = false;
     }
 
-    public static WasmModule create(String name, byte[] data, ModuleLimits limits) {
-        return new WasmModule(name, data, limits);
+    public static WasmModule create(String name, byte[] sourceCode, ModuleLimits limits) {
+        return new WasmModule(name, sourceCode, limits);
     }
 
     public static WasmModule createBuiltin(String name) {
         return new WasmModule(name, null, null);
     }
 
-    public ModuleLimits limits() {
-        return limits;
-    }
-
     @Override
     protected WasmModule module() {
         return this;
-    }
-
-    public void setParsed() {
-        isParsed = true;
-    }
-
-    public boolean isParsed() {
-        return isParsed;
     }
 
     public SymbolTable symbolTable() {
@@ -112,41 +98,6 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
         return name;
     }
 
-    public byte[] data() {
-        return data;
-    }
-
-    public void setData(byte[] data) {
-        this.data = data;
-    }
-
-    public byte[] bytecode() {
-        return bytecode;
-    }
-
-    public void setBytecode(byte[] bytecode) {
-        this.bytecode = bytecode;
-    }
-
-    public int bytecodeLength() {
-        return bytecode != null ? bytecode.length : 0;
-    }
-
-    public boolean isBuiltin() {
-        return data == null;
-    }
-
-    public Source source() {
-        if (source == null) {
-            if (isBuiltin()) {
-                source = Source.newBuilder(WasmLanguage.ID, "", name).internal(true).build();
-            } else {
-                source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(data), name).build();
-            }
-        }
-        return source;
-    }
-
     public List<BiConsumer<WasmContext, WasmInstance>> linkActions() {
         return Collections.unmodifiableList(linkActions);
     }
@@ -155,18 +106,47 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
         linkActions.add(action);
     }
 
-    @Override
-    public String toString() {
-        return "wasm-module(" + name + ")";
+    public ModuleLimits limits() {
+        return limits;
+    }
+
+    public Source source() {
+        if (source == null) {
+            if (isBuiltin()) {
+                source = Source.newBuilder(WasmLanguage.ID, "", name).internal(true).build();
+            } else {
+                source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(sourceCode), name).build();
+            }
+        }
+        return source;
+    }
+
+    public byte[] sourceCode() {
+        return sourceCode;
+    }
+
+    public void setSourceCode(byte[] sourceCode) {
+        this.sourceCode = sourceCode;
+    }
+
+    public byte[] bytecode() {
+        return bytecode;
+    }
+
+    public int bytecodeLength() {
+        return bytecode != null ? bytecode.length : 0;
+    }
+
+    public void setBytecode(byte[] bytecode) {
+        this.bytecode = bytecode;
+    }
+
+    public CodeEntry[] codeEntries() {
+        return codeEntries;
     }
 
     public void setCodeEntries(CodeEntry[] codeEntries) {
         this.codeEntries = codeEntries;
-        this.hasCodeSection = true;
-    }
-
-    public CodeEntry[] getCodeEntries() {
-        return codeEntries;
     }
 
     public void removeCodeEntryCallNodes() {
@@ -182,7 +162,20 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
         return (codeEntries == null) || (codeEntries.length == 0) || (codeEntries[0].hasCallNodes());
     }
 
-    public boolean hasCodeSection() {
-        return hasCodeSection;
+    public void setParsed() {
+        isParsed = true;
+    }
+
+    public boolean isParsed() {
+        return isParsed;
+    }
+
+    public boolean isBuiltin() {
+        return sourceCode == null;
+    }
+
+    @Override
+    public String toString() {
+        return "wasm-module(" + name + ")";
     }
 }

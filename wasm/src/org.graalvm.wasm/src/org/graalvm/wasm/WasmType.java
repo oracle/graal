@@ -118,7 +118,7 @@ public class WasmType implements TruffleObject {
         return type == FUNCREF_TYPE || type == EXTERNREF_TYPE || type == UNKNOWN_TYPE;
     }
 
-    public static int getCommonTypeDescriptor(byte[] types) {
+    public static int getCommonValueType(byte[] types) {
         int type = 0;
         for (byte resultType : types) {
             type |= WasmType.isNumberType(resultType) ? 0x10 : 0;

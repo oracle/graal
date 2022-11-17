@@ -49,11 +49,11 @@ import org.graalvm.wasm.parser.bytecode.BytecodeList;
  * Representation of a wasm loop during module validation.
  */
 class LoopFrame extends ControlFrame {
-    private final int labelOffset;
+    private final int labelLocation;
 
-    LoopFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, int labelOffset) {
+    LoopFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, int labelLocation) {
         super(paramTypes, resultTypes, initialStackSize, unreachable);
-        this.labelOffset = labelOffset;
+        this.labelLocation = labelLocation;
     }
 
     @Override
@@ -72,16 +72,16 @@ class LoopFrame extends ControlFrame {
 
     @Override
     void addBranch(BytecodeList bytecodeList) {
-        bytecodeList.addBranch(labelOffset);
+        bytecodeList.addBranch(labelLocation);
     }
 
     @Override
     void addBranchIf(BytecodeList bytecodeList) {
-        bytecodeList.addBranchIf(labelOffset);
+        bytecodeList.addBranchIf(labelLocation);
     }
 
     @Override
     void addBranchTableItem(BytecodeList bytecodeList) {
-        bytecodeList.patchLocation(bytecodeList.addBranchTableElementLocation(), labelOffset);
+        bytecodeList.patchLocation(bytecodeList.addBranchTableItemLocation(), labelLocation);
     }
 }

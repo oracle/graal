@@ -51,9 +51,9 @@ public abstract class ControlFrame {
     private final byte[] paramTypes;
     private final byte[] resultTypes;
 
-    private final int commonResultType;
     private final int initialStackSize;
     private boolean unreachable;
+    private final int commonResultType;
 
     /**
      * @param paramTypes The parameter value types of the block structure.
@@ -66,34 +66,8 @@ public abstract class ControlFrame {
         this.resultTypes = resultTypes;
         this.initialStackSize = initialStackSize;
         this.unreachable = unreachable;
-        commonResultType = WasmType.getCommonTypeDescriptor(resultTypes);
+        commonResultType = WasmType.getCommonValueType(resultTypes);
     }
-
-    /**
-     * @return The types that must be on the value stack when branching to this frame.
-     */
-    abstract byte[] labelTypes();
-
-    /**
-     * Performs checks and actions when entering an else branch.
-     * 
-     * @param state The current parser state.
-     * @param bytecode The current extra data array.
-     */
-    abstract void enterElse(ParserState state, BytecodeList bytecode);
-
-    /**
-     * Performs checks and actions when exiting a frame.
-     * 
-     * @param bytecode The current extra data array.
-     */
-    abstract void exit(BytecodeList bytecode);
-
-    abstract void addBranch(BytecodeList bytecodeList);
-
-    abstract void addBranchIf(BytecodeList bytecodeList);
-
-    abstract void addBranchTableItem(BytecodeList bytecodeList);
 
     protected byte[] paramTypes() {
         return paramTypes;
@@ -103,16 +77,24 @@ public abstract class ControlFrame {
         return resultTypes;
     }
 
-    protected int labelTypeLength() {
-        return labelTypes().length;
-    }
-
     protected int resultTypeLength() {
         return resultTypes.length;
     }
 
+    /**
+     * @return The union of all result types.
+     */
     protected int commonResultType() {
         return commonResultType;
+    }
+
+    /**
+     * @return The types that must be on the value stack when branching to this frame.
+     */
+    abstract byte[] labelTypes();
+
+    protected int labelTypeLength() {
+        return labelTypes().length;
     }
 
     int initialStackSize() {
@@ -130,4 +112,45 @@ public abstract class ControlFrame {
     protected void resetUnreachable() {
         this.unreachable = false;
     }
+
+    /**
+     * Performs checks and actions when entering an else branch.
+     * 
+     * @param state The current parser state.
+     * @param bytecode The current extra data array.
+     */
+    abstract void enterElse(ParserState state, BytecodeList bytecode);
+
+    /**
+     * Performs checks and actions when exiting a frame.
+     * 
+     * @param bytecode The current extra data array.
+     */
+    abstract void exit(BytecodeList bytecode);
+
+    /**
+     * Adds an unconditional branch targeting this control frame. Automatically patches the branch
+     * target as soon as it is available.
+     * 
+     * @param bytecodeList The bytecode of the current control frame.
+     */
+    abstract void addBranch(BytecodeList bytecodeList);
+
+    /**
+     * Adds a conditional branch targeting this control frame. Automatically patches the branch *
+     * target as soon as it is available.
+     * 
+     * @param bytecodeList The bytecode of the current control frame.
+     */
+
+    abstract void addBranchIf(BytecodeList bytecodeList);
+
+    /**
+     * Adds a branch table item targeting this control frame. Automatically patches the branch *
+     * target as soon as it is available.
+     * 
+     * @param bytecodeList The bytecode of the current control frame.
+     */
+
+    abstract void addBranchTableItem(BytecodeList bytecodeList);
 }

@@ -54,13 +54,13 @@ import org.graalvm.wasm.parser.bytecode.BytecodeList;
 class IfFrame extends ControlFrame {
 
     private final IntArrayList branchTargets;
-    private int fixupLocation;
+    private int falseJumpLocation;
     private boolean elseBranch;
 
-    IfFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, int fixupLocation) {
+    IfFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, int falseJumpLocation) {
         super(paramTypes, resultTypes, initialStackSize, unreachable);
         branchTargets = new IntArrayList();
-        this.fixupLocation = fixupLocation;
+        this.falseJumpLocation = falseJumpLocation;
         this.elseBranch = false;
     }
 
@@ -72,8 +72,8 @@ class IfFrame extends ControlFrame {
     @Override
     void enterElse(ParserState state, BytecodeList bytecode) {
         final int location = bytecode.addBranchLocation();
-        bytecode.patchLocation(fixupLocation, bytecode.location());
-        fixupLocation = location;
+        bytecode.patchLocation(falseJumpLocation, bytecode.location());
+        falseJumpLocation = location;
         elseBranch = true;
         state.checkStackAfterFrameExit(this, resultTypes());
         // Since else is a separate block the unreachable state has to be reset.
@@ -85,10 +85,14 @@ class IfFrame extends ControlFrame {
         if (!elseBranch && !Arrays.equals(paramTypes(), resultTypes())) {
             throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with incompatible param and result types requires else branch.");
         }
-        final int location = bytecode.location();
-        bytecode.patchLocation(fixupLocation, location);
-        for (int branchLocation : branchTargets.toArray()) {
-            bytecode.patchLocation(branchLocation, location);
+        if (branchTargets.size() == 0) {
+            bytecode.patchLocation(falseJumpLocation, bytecode.location());
+        } else {
+            final int location = bytecode.addLabel(resultTypeLength(), initialStackSize(), commonResultType());
+            bytecode.patchLocation(falseJumpLocation, location);
+            for (int branchLocation : branchTargets.toArray()) {
+                bytecode.patchLocation(branchLocation, location);
+            }
         }
     }
 
@@ -104,6 +108,6 @@ class IfFrame extends ControlFrame {
 
     @Override
     void addBranchTableItem(BytecodeList bytecodeList) {
-        branchTargets.add(bytecodeList.addBranchTableElementLocation());
+        branchTargets.add(bytecodeList.addBranchTableItemLocation());
     }
 }

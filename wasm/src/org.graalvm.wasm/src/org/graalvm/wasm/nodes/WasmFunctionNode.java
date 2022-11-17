@@ -126,18 +126,18 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     private final WasmInstance instance;
     private final WasmCodeEntry codeEntry;
-    private final int functionStartOffset;
-    private final int functionEndOffset;
+    private final int bytecodeStartOffset;
+    private final int bytecodeEndOffset;
 
     @Children private Node[] callNodes;
 
     @CompilationFinal private Object osrMetadata;
 
-    public WasmFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, int functionStartOffset, int functionEndOffset) {
+    public WasmFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset) {
         this.instance = instance;
         this.codeEntry = codeEntry;
-        this.functionStartOffset = functionStartOffset;
-        this.functionEndOffset = functionEndOffset;
+        this.bytecodeStartOffset = bytecodeStartOffset;
+        this.bytecodeEndOffset = bytecodeEndOffset;
     }
 
     @SuppressWarnings("hiding")
@@ -145,43 +145,43 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         this.callNodes = callNodes;
     }
 
-    public int getStartOffset() {
-        return functionStartOffset;
+    public int startOffset() {
+        return bytecodeStartOffset;
     }
 
     public void enterErrorBranch() {
         codeEntry.errorBranch();
     }
 
-    public int getParamCount() {
+    public int paramCount() {
         return instance.symbolTable().function(codeEntry.functionIndex()).paramCount();
     }
 
-    public int getLocalCount() {
-        return codeEntry.numLocals();
+    public int localCount() {
+        return codeEntry.localCount();
     }
 
-    public byte getLocalType(int localIndex) {
+    public byte localType(int localIndex) {
         return codeEntry.localType(localIndex);
     }
 
-    public WasmInstance getInstance() {
+    public WasmInstance instance() {
         return instance;
     }
 
-    public String getName() {
+    public String name() {
         return codeEntry.function().name();
     }
 
-    public String getQualifiedName() {
-        return codeEntry.function().moduleName() + "." + getName();
+    public String qualifiedName() {
+        return codeEntry.function().moduleName() + "." + name();
     }
 
-    public int getResultCount() {
+    public int resultCount() {
         return codeEntry.resultCount();
     }
 
-    public byte getResultType(int resultIndex) {
+    public byte resultType(int resultIndex) {
         return codeEntry.resultType(resultIndex);
     }
 
@@ -225,7 +225,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     public void execute(WasmContext context, VirtualFrame frame) {
-        executeBodyFromOffset(context, frame, functionStartOffset, codeEntry.numLocals());
+        executeBodyFromOffset(context, frame, bytecodeStartOffset, codeEntry.localCount());
     }
 
     @BytecodeInterpreterSwitch
@@ -233,7 +233,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     @SuppressWarnings("UnusedAssignment")
     public Object executeBodyFromOffset(WasmContext context, VirtualFrame frame, int startOffset, int startStackPointer) {
         final WasmCodeEntry wasmCodeEntry = codeEntry;
-        final int numLocals = wasmCodeEntry.numLocals();
+        final int localCount = wasmCodeEntry.localCount();
         final byte[] bytecode = wasmCodeEntry.bytecode();
 
         // The back edge count is stored in an object, since else the MERGE_EXPLODE policy would
@@ -250,7 +250,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         check(bytecode.length, (1 << 31) - 1);
 
         int opcode = UNREACHABLE;
-        loop: while (offset < functionEndOffset) {
+        loop: while (offset < bytecodeEndOffset) {
             opcode = rawPeekU8(bytecode, offset);
             offset++;
             CompilerAsserts.partialEvaluationConstant(offset);
@@ -268,8 +268,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         LoopNode.reportLoopCount(this, backEdgeCounter.count);
                     }
                     final int resultCount = codeEntry.resultCount();
-                    unwindStack(frame, stackPointer, numLocals, resultCount);
-                    dropStack(frame, stackPointer, numLocals + resultCount);
+                    unwindStack(frame, stackPointer, localCount, resultCount);
+                    dropStack(frame, stackPointer, localCount + resultCount);
                     return RETURN_VALUE;
                 }
                 case Bytecode.SKIP_LABEL:
@@ -310,7 +310,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         }
                     }
                     final int returnType = (value & 0x30);
-                    final int targetStackPointer = stackSize + numLocals;
+                    final int targetStackPointer = stackSize + localCount;
                     if (returnType == 0x10) {
                         unwindPrimitiveStack(frame, stackPointer, targetStackPointer, resultCount);
                     } else if (returnType == 0x20) {
@@ -353,7 +353,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         }
                     }
                     final int returnType = (value & 0x30);
-                    final int targetStackPointer = stackSize + numLocals;
+                    final int targetStackPointer = stackSize + localCount;
                     if (returnType == 0x10) {
                         unwindPrimitiveStack(frame, stackPointer, targetStackPointer, resultCount);
                     } else if (returnType == 0x20) {
@@ -1501,7 +1501,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 case Bytecode.REF_FUNC:
                     final int functionIndex = rawPeekI32(bytecode, offset);
-                    final WasmFunction function = instance.module().function(functionIndex);
+                    final WasmFunction function = instance.symbolTable().function(functionIndex);
                     final WasmFunctionInstance functionInstance = instance.functionInstance(function);
                     pushReference(frame, stackPointer, functionInstance);
                     stackPointer++;

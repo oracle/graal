@@ -50,11 +50,11 @@ import org.graalvm.wasm.parser.bytecode.BytecodeList;
  * Representation of a wasm block during module validation.
  */
 class BlockFrame extends ControlFrame {
-    private final IntArrayList branchTargets;
+    private final IntArrayList branches;
 
     BlockFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable) {
         super(paramTypes, resultTypes, initialStackSize, unreachable);
-        branchTargets = new IntArrayList();
+        branches = new IntArrayList();
     }
 
     @Override
@@ -69,27 +69,27 @@ class BlockFrame extends ControlFrame {
 
     @Override
     void exit(BytecodeList bytecode) {
-        if (branchTargets.size() == 0) {
+        if (branches.size() == 0) {
             return;
         }
         final int location = bytecode.addLabel(resultTypeLength(), initialStackSize(), commonResultType());
-        for (int branchLocation : branchTargets.toArray()) {
+        for (int branchLocation : branches.toArray()) {
             bytecode.patchLocation(branchLocation, location);
         }
     }
 
     @Override
     void addBranch(BytecodeList bytecodeList) {
-        branchTargets.add(bytecodeList.addBranchLocation());
+        branches.add(bytecodeList.addBranchLocation());
     }
 
     @Override
     void addBranchIf(BytecodeList bytecodeList) {
-        branchTargets.add(bytecodeList.addBranchIfLocation());
+        branches.add(bytecodeList.addBranchIfLocation());
     }
 
     @Override
     void addBranchTableItem(BytecodeList bytecodeList) {
-        branchTargets.add(bytecodeList.addBranchTableElementLocation());
+        branches.add(bytecodeList.addBranchTableItemLocation());
     }
 }

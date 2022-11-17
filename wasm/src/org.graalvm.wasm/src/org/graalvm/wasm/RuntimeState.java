@@ -199,10 +199,6 @@ public class RuntimeState {
         return module.symbolTable();
     }
 
-    public byte[] data() {
-        return module.data();
-    }
-
     public WasmModule module() {
         return module;
     }

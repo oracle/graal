@@ -52,6 +52,18 @@ public class BytecodeList {
         bytecode = new ByteArrayList();
     }
 
+    private static boolean fitsIntoSignedByte(int value) {
+        return value >= Byte.MIN_VALUE && value <= Byte.MAX_VALUE;
+    }
+
+    private static boolean fitsIntoSignedByte(long value) {
+        return value >= Byte.MIN_VALUE && value <= Byte.MAX_VALUE;
+    }
+
+    private static boolean fitsIntoUnsignedByte(int value) {
+        return Integer.compareUnsigned(value, 255) <= 0;
+    }
+
     private void add1(int value) {
         bytecode.add((byte) value);
     }
@@ -83,68 +95,178 @@ public class BytecodeList {
         bytecode.add((byte) ((value >>> 56) & 0x0000_00FF));
     }
 
-    private static boolean fitsIntoSignedByte(int value) {
-        return value >= Byte.MIN_VALUE && value <= Byte.MAX_VALUE;
-    }
-
-    private static boolean fitsIntoUnsignedByte(int value) {
-        return Integer.compareUnsigned(value, 255) <= 0;
-    }
-
-    private static boolean fitsIntoSignedByte(long value) {
-        return value >= Byte.MIN_VALUE && value <= Byte.MAX_VALUE;
-    }
-
-    public void addInstruction(int instruction) {
+    /**
+     * Adds an instruction to the bytecode. See {@link Bytecode} for a list of instructions.
+     * 
+     * @param instruction The instruction
+     */
+    public void add(int instruction) {
         add1(instruction);
     }
 
-    private int addLabel(int results, int stack, int resultType, int label) {
+    /**
+     * Adds an instruction and an i32 immediate value to the bytecode. See {@link Bytecode} for a
+     * list of instructions.
+     * 
+     * @param instruction The instruction
+     * @param value The immediate value
+     */
+    public void add(int instruction, int value) {
+        add1(instruction);
+        add4(value);
+    }
+
+    /**
+     * Adds an instruction and an i64 immediate value to the bytecode. See {@link Bytecode} for a
+     * list of instructions.
+     * 
+     * @param instruction The instruction
+     * @param value The immediate value
+     */
+    public void add(int instruction, long value) {
+        add1(instruction);
+        add8(value);
+    }
+
+    /**
+     * Adds an instruction and two i32 immediate values to the bytecode. See {@link Bytecode} for a
+     * list of instructions.
+     * 
+     * @param instruction The instruction
+     * @param value1 The first immediate value
+     * @param value2 The second immediate value
+     */
+    public void add(int instruction, int value1, int value2) {
+        add1(instruction);
+        add4(value1);
+        add4(value2);
+    }
+
+    /**
+     * Adds an instruction and an immediate value to the bytecode. If the value fits into a signed
+     * i8 value, the i8Instruction and an i8 value is added. Otherwise, the i32Instruction and an
+     * i32 value is added.
+     * 
+     * @param i8Instruction The i8 instruction
+     * @param i32Instruction The i32 instruction
+     * @param value The immediate value
+     */
+    public void addSigned(int i8Instruction, int i32Instruction, int value) {
+        if (fitsIntoSignedByte(value)) {
+            add1(i8Instruction);
+            add1(value);
+        } else {
+            add1(i32Instruction);
+            add4(value);
+        }
+    }
+
+    /**
+     * Adds an instruction and an immediate value to the bytecode. If the value fits into a signed
+     * i8 value, the i8Instruction and an i8 value is added. Otherwise, the i64Instruction and an
+     * i64 value is added.
+     *
+     * @param i8Instruction The i8 instruction
+     * @param i64Instruction The i64 instruction
+     * @param value The immediate value
+     */
+    public void addSigned(int i8Instruction, int i64Instruction, long value) {
+        if (fitsIntoSignedByte(value)) {
+            add1(i8Instruction);
+            add1(value);
+        } else {
+            add1(i64Instruction);
+            add8(value);
+        }
+    }
+
+    /**
+     * Adds an instruction and an immediate value to the bytecode. If the value fits into a unsigned
+     * i8 value, the i8Instruction and an i8 value is added. Otherwise, the i32Instruction and an
+     * i32 value is added.
+     *
+     * @param i8Instruction The i8 instruction
+     * @param i32Instruction The i32 instruction
+     * @param value The immediate value
+     */
+    public void addUnsignedImmediateInstruction(int i8Instruction, int i32Instruction, int value) {
+        if (fitsIntoUnsignedByte(value)) {
+            add1(i8Instruction);
+            add1(value);
+        } else {
+            add1(i32Instruction);
+            add4(value);
+        }
+    }
+
+    private int addLabel(int resultCount, int stackSize, int commonResultType, int label) {
         final int location;
-        if (results <= 1 && stack <= 15) {
+        if (resultCount <= 1 && stackSize <= 15) {
             add1(Bytecode.SKIP_LABEL);
             location = bytecode.size();
             add1(label);
-            add1(results << 7 | resultType | stack);
-        } else if (results <= 15 && fitsIntoUnsignedByte(stack)) {
+            add1(resultCount << 7 | commonResultType | stackSize);
+        } else if (resultCount <= 15 && fitsIntoUnsignedByte(stackSize)) {
             add1(Bytecode.SKIP_LABEL_I8);
             add1(4);
             location = bytecode.size();
             add1(label);
-            add1(0x40 | resultType | results);
-            add1(stack);
+            add1(0x40 | commonResultType | resultCount);
+            add1(stackSize);
         } else {
-            final boolean resultFitsIntoByte = fitsIntoUnsignedByte(results);
-            final boolean stackFitsIntoByte = fitsIntoUnsignedByte(stack);
+            final boolean resultFitsIntoByte = fitsIntoUnsignedByte(resultCount);
+            final boolean stackFitsIntoByte = fitsIntoUnsignedByte(stackSize);
             add1(Bytecode.SKIP_LABEL_I8);
             add1(3 + (resultFitsIntoByte ? 1 : 4) + (stackFitsIntoByte ? 1 : 4));
             location = bytecode.size();
             add1(label);
-            add1(0xC0 | resultType | (resultFitsIntoByte ? 0 : 0x04) | (stackFitsIntoByte ? 0 : 0x01));
+            add1(0xC0 | commonResultType | (resultFitsIntoByte ? 0 : 0x04) | (stackFitsIntoByte ? 0 : 0x01));
             if (resultFitsIntoByte) {
-                add1(results);
+                add1(resultCount);
             } else {
-                add4(results);
+                add4(resultCount);
             }
             if (stackFitsIntoByte) {
-                add1(stack);
+                add1(stackSize);
             } else {
-                add4(stack);
+                add4(stackSize);
             }
         }
         return location;
     }
 
-    public int addLabel(int results, int stack, int resultType) {
-        return addLabel(results, stack, resultType, Bytecode.LABEL);
+    /**
+     * Adds a branch label to the bytecode.
+     * 
+     * @param resultCount The number of results of the block.
+     * @param stackSize The stack size at the start of the block.
+     * @param commonResultType The most common result type of the result types of the block.
+     * @return The location of the label in the bytecode.
+     */
+    public int addLabel(int resultCount, int stackSize, int commonResultType) {
+        return addLabel(resultCount, stackSize, commonResultType, Bytecode.LABEL);
     }
 
-    public int addLoopLabel(int results, int stack, int resultType) {
-        return addLabel(results, stack, resultType, Bytecode.LOOP_LABEL);
+    /**
+     * Adds a loop label to the bytecode.
+     *
+     * @param resultCount The number of results of the loop.
+     * @param stackSize The stack size at the start of the loop.
+     * @param commonResultType The most common result type of the result types of the loop.
+     * @return The location of the label in the bytecode.
+     */
+    public int addLoopLabel(int resultCount, int stackSize, int commonResultType) {
+        return addLabel(resultCount, stackSize, commonResultType, Bytecode.LOOP_LABEL);
     }
 
-    public void addBranch(int offset) {
-        final int relativeOffset = offset - (bytecode.size() + 1);
+    /**
+     * Adds a branch instruction to the bytecode. If the jump offset fits into a signed i8 value, a
+     * br_i8 and i8 jump offset is added. Otherwise, a br_i32 and i32 jump offset is added.
+     * 
+     * @param location The target location of the branch.
+     */
+    public void addBranch(int location) {
+        final int relativeOffset = location - (bytecode.size() + 1);
         if (fitsIntoSignedByte(relativeOffset)) {
             add1(Bytecode.BR_I8);
             add1(relativeOffset);
@@ -154,6 +276,12 @@ public class BytecodeList {
         }
     }
 
+    /**
+     * Adds a br_i32 instruction to the bytecode and reserves an i32 value for the jump offset.
+     * 
+     * @return The location of the jump offset to be patched later. (see
+     *         {@link #patchLocation(int, int)})
+     */
     public int addBranchLocation() {
         add1(Bytecode.BR_I32);
         final int location = bytecode.size();
@@ -161,8 +289,15 @@ public class BytecodeList {
         return location;
     }
 
-    public void addBranchIf(int offset) {
-        final int relativeOffset = offset - (bytecode.size() + 1);
+    /**
+     * Adds a conditional branch instruction to the bytecode. If the jump offset fits into a signed
+     * i8 value, a br_if_i8 and i8 jump offset is added. Otherwise, a br_if_i32 and i32 jump offset
+     * is added. In both cases a profile with a size of 2-byte is added.
+     * 
+     * @param location The target location of the branch.
+     */
+    public void addBranchIf(int location) {
+        final int relativeOffset = location - (bytecode.size() + 1);
         if (fitsIntoSignedByte(relativeOffset)) {
             add1(Bytecode.BR_IF_I8);
             // target
@@ -178,6 +313,13 @@ public class BytecodeList {
         }
     }
 
+    /**
+     * Adds a br_if_i32 instruction to the bytecode and reserves an i32 value for the jump offset.
+     * In addition, a profile with a size of 2-byte is added.
+     * 
+     * @return The location of the jump offset to be patched later. (see
+     *         {@link #patchLocation(int, int)})
+     */
     public int addBranchIfLocation() {
         add1(Bytecode.BR_IF_I32);
         final int location = bytecode.size();
@@ -188,6 +330,13 @@ public class BytecodeList {
         return location;
     }
 
+    /**
+     * Adds a branch table instruction to the bytecode. If the size fits into an unsigned i8 value,
+     * a br_table_I8 and i8 size is added. Otherwise, a br_table_i32 and i32 size is added. In both
+     * cases a profile with a size of 2-byte is added.
+     * 
+     * @param size The number of items in the branch table.
+     */
     public void addBranchTable(int size) {
         if (fitsIntoUnsignedByte(size)) {
             add1(Bytecode.BR_TABLE_I8);
@@ -202,7 +351,13 @@ public class BytecodeList {
         }
     }
 
-    public int addBranchTableElementLocation() {
+    /**
+     * Reserves an i32 jump offset location and 2-byte profile for a branch table item.
+     * 
+     * @return The location of the jump offset to be patched later. (see
+     *         {@link #patchLocation(int, int)})
+     */
+    public int addBranchTableItemLocation() {
         final int location = bytecode.size();
         // target
         add4(0);
@@ -211,18 +366,35 @@ public class BytecodeList {
         return location;
     }
 
-    public void patchLocation(int location, int offset) {
-        final int relativeOffset = offset - location;
-        bytecode.set(location, (byte) (relativeOffset & 0x0000_00FF));
-        bytecode.set(location + 1, (byte) ((relativeOffset >>> 8) & 0x0000_00FF));
-        bytecode.set(location + 2, (byte) ((relativeOffset >>> 16) & 0x0000_00FF));
-        bytecode.set(location + 3, (byte) ((relativeOffset >>> 24) & 0x0000_00FF));
+    /**
+     * Patches a jump offset location based on a given target location.
+     *
+     * @param jumpOffsetLocation The jump offset location
+     * @param targetLocation The target location
+     */
+    public void patchLocation(int jumpOffsetLocation, int targetLocation) {
+        final int relativeOffset = targetLocation - jumpOffsetLocation;
+        bytecode.set(jumpOffsetLocation, (byte) (relativeOffset & 0x0000_00FF));
+        bytecode.set(jumpOffsetLocation + 1, (byte) ((relativeOffset >>> 8) & 0x0000_00FF));
+        bytecode.set(jumpOffsetLocation + 2, (byte) ((relativeOffset >>> 16) & 0x0000_00FF));
+        bytecode.set(jumpOffsetLocation + 3, (byte) ((relativeOffset >>> 24) & 0x0000_00FF));
     }
 
+    /**
+     * @return The current location in the bytecode.
+     */
     public int location() {
         return bytecode.size();
     }
 
+    /**
+     * Adds a call instruction to the bytecode. If the nodeIndex and functionIndex both fit into an
+     * unsigned i8 value, a call_i8 and two i8 values are added. Otherwise, a call_i32 and two i32
+     * value are added.
+     * 
+     * @param nodeIndex The node index of the call
+     * @param functionIndex The function index of the call
+     */
     public void addCall(int nodeIndex, int functionIndex) {
         if (fitsIntoUnsignedByte(nodeIndex) && fitsIntoUnsignedByte(functionIndex)) {
             add1(Bytecode.CALL_I8);
@@ -235,6 +407,16 @@ public class BytecodeList {
         }
     }
 
+    /**
+     * Adds an indirect call instruction to the bytecode. If the nodeIndex, typeIndex, and
+     * tableIndex all fit into an unsigned i8 value, a call_indirect_i8 and three i8 values are
+     * added. Otherwise, a call_indirect_i32 and three i32 values are added. In both cases, a 2-byte
+     * profile is added.
+     * 
+     * @param nodeIndex The node index of the indirect call
+     * @param typeIndex The type index of the indirect call
+     * @param tableIndex The table index of the indirect call
+     */
     public void addIndirectCall(int nodeIndex, int typeIndex, int tableIndex) {
         if (fitsIntoUnsignedByte(nodeIndex) && fitsIntoUnsignedByte(typeIndex) && fitsIntoUnsignedByte(tableIndex)) {
             add1(Bytecode.CALL_INDIRECT_I8);
@@ -253,52 +435,9 @@ public class BytecodeList {
         }
     }
 
-    public void addImmediateInstruction(int instruction, int value) {
-        add1(instruction);
-        add4(value);
-    }
-
-    public void addImmediateInstruction(int instruction, long value) {
-        add1(instruction);
-        add8(value);
-    }
-
-    public void addImmediateInstruction(int instruction, int value1, int value2) {
-        add1(instruction);
-        add4(value1);
-        add4(value2);
-    }
-
-    public void addSignedImmediateInstruction(int i8, int i32, int value) {
-        if (fitsIntoSignedByte(value)) {
-            add1(i8);
-            add1(value);
-        } else {
-            add1(i32);
-            add4(value);
-        }
-    }
-
-    public void addUnsignedImmediateInstruction(int i8, int i32, int value) {
-        if (fitsIntoUnsignedByte(value)) {
-            add1(i8);
-            add1(value);
-        } else {
-            add1(i32);
-            add4(value);
-        }
-    }
-
-    public void addSignedImmediateInstruction(int i8, int i64, long value) {
-        if (fitsIntoSignedByte(value)) {
-            add1(i8);
-            add1(value);
-        } else {
-            add1(i64);
-            add8(value);
-        }
-    }
-
+    /**
+     * @return A byte array representation of the bytecode.
+     */
     public byte[] toArray() {
         return bytecode.toArray();
     }

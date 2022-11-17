@@ -284,7 +284,7 @@ public class ParserState {
      * @param resultTypes The result types of the loop that was entered.
      */
     public void enterLoop(byte[] paramTypes, byte[] resultTypes) {
-        final int label = bytecode.addLoopLabel(paramTypes.length, valueStack.size(), WasmType.getCommonTypeDescriptor(paramTypes));
+        final int label = bytecode.addLoopLabel(paramTypes.length, valueStack.size(), WasmType.getCommonValueType(paramTypes));
         ControlFrame frame = new LoopFrame(paramTypes, resultTypes, valueStack.size(), false, label);
         controlStack.push(frame);
         pushAll(paramTypes);
@@ -298,7 +298,7 @@ public class ParserState {
      * @param resultTypes The result type of the if and else branch that was entered.
      */
     public void enterIf(byte[] paramTypes, byte[] resultTypes) {
-        bytecode.addInstruction(Bytecode.I32_NEG);
+        bytecode.add(Bytecode.I32_NEG);
         final int fixupLocation = bytecode.addBranchIfLocation();
         ControlFrame frame = new IfFrame(paramTypes, resultTypes, valueStack.size(), false, fixupLocation);
         controlStack.push(frame);
@@ -315,7 +315,7 @@ public class ParserState {
     }
 
     public void addInstruction(int instruction) {
-        bytecode.addInstruction(instruction);
+        bytecode.add(instruction);
     }
 
     /**
@@ -382,7 +382,7 @@ public class ParserState {
         }
         checkResultTypes(frame);
 
-        bytecode.addInstruction(Bytecode.RETURN);
+        bytecode.add(Bytecode.RETURN);
     }
 
     /**
@@ -403,32 +403,78 @@ public class ParserState {
         bytecode.addCall(nodeIndex, functionIndex);
     }
 
+    /**
+     * Adds the mics flag to the bytecode.
+     */
     public void addMiscFlag() {
-        bytecode.addInstruction(Bytecode.MISC);
+        bytecode.add(Bytecode.MISC);
     }
 
-    public void addImmediateInstruction(int instruction, int immediateValue) {
-        bytecode.addImmediateInstruction(instruction, immediateValue);
+    /**
+     * Adds the given instruction and an i32 immediate value to the bytecode.
+     * 
+     * @param instruction The instruction
+     * @param value The immediate value
+     */
+    public void addInstruction(int instruction, int value) {
+        bytecode.add(instruction, value);
     }
 
-    public void addImmediateInstruction(int instruction, long immediateValue) {
-        bytecode.addImmediateInstruction(instruction, immediateValue);
+    /**
+     * Adds the given instruction and an i64 immediate value to the bytecode.
+     * 
+     * @param instruction The instruction
+     * @param value The immediate value
+     */
+    public void addInstruction(int instruction, long value) {
+        bytecode.add(instruction, value);
     }
 
-    public void addImmediateInstruction(int instruction, int immediateValue1, int immediateValue2) {
-        bytecode.addImmediateInstruction(instruction, immediateValue1, immediateValue2);
+    /**
+     * Adds the given instruction and two i32 immediate values to the bytecode.
+     * 
+     * @param instruction The instruction
+     * @param value1 The first immediate value
+     * @param value2 The second immediate value
+     */
+    public void addInstruction(int instruction, int value1, int value2) {
+        bytecode.add(instruction, value1, value2);
     }
 
-    public void addSignedImmediateInstruction(int instruction, int immediateValue) {
-        bytecode.addSignedImmediateInstruction(instruction, instruction + 1, immediateValue);
+    /**
+     * Adds the i8 or i32 version of the given instruction to the bytecode based on the given
+     * immediate value. If the value fits into a signed i8 value, the i8 instruction and an i8 value
+     * are added. Otherwise, the i32 instruction and an i32 value are added.
+     * 
+     * @param instruction The i8 version of the instruction
+     * @param value The immediate value.
+     */
+    public void addSignedInstruction(int instruction, int value) {
+        bytecode.addSigned(instruction, instruction + 1, value);
     }
 
-    public void addUnsignedImmediateInstruction(int instruction, int immediateValue) {
-        bytecode.addUnsignedImmediateInstruction(instruction, instruction + 1, immediateValue);
+    /**
+     * Adds the i8 or i64 version of the given instruction to the bytecode based on the given
+     * immediate value. If the value fits into a signed i8 value, the i8 instruction and an i8 value
+     * are added. Otherwise, the i64 instruction and i64 value are added.
+     * 
+     * @param instruction The i8 version of the instruction
+     * @param value The immediate value
+     */
+    public void addSignedInstruction(int instruction, long value) {
+        bytecode.addSigned(instruction, instruction + 1, value);
     }
 
-    public void addSignedImmediateInstruction(int instruction, long immediateValue) {
-        bytecode.addSignedImmediateInstruction(instruction, instruction + 1, immediateValue);
+    /**
+     * Adds the i8 or i32 version of the given instruction to the bytecode based on the given
+     * immediate value. If the value fits into an unsigned i8 value, the i8 instruction and an i8
+     * value are added. Otherwise, the i32 instruction and i32 value are added.
+     * 
+     * @param instruction The i8 version of the instruction
+     * @param value The immediate value
+     */
+    public void addUnsignedInstruction(int instruction, int value) {
+        bytecode.addUnsignedImmediateInstruction(instruction, instruction + 1, value);
     }
 
     /**

@@ -316,7 +316,6 @@ public class Bytecode {
     public static final int MISC = 0xFC;
 
     // Misc opcodes
-
     public static final int MEMORY_INIT = 0x00;
     public static final int DATA_DROP = 0x01;
     public static final int MEMORY_COPY = 0x02;

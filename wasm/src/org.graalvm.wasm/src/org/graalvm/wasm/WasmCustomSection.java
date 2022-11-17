@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,9 @@ public class WasmCustomSection {
      */
     private final String name;
 
+    /**
+     * Data of the custom section.
+     */
     private final byte[] data;
 
     public WasmCustomSection(String name, byte[] data) {
@@ -61,11 +64,16 @@ public class WasmCustomSection {
      * 
      * @return name of the custom section.
      */
-    public String getName() {
+    public String name() {
         return name;
     }
 
-    public byte[] getData() {
+    /**
+     * Returns the data of the custom section.
+     * 
+     * @return data of the custom section.
+     */
+    public byte[] data() {
         return data;
     }
 

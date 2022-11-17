@@ -50,54 +50,54 @@ public class CodeEntry {
     private final int functionIndex;
     private final int maxStackSize;
     private final byte[] localTypes;
-    private List<CallNode> callNodes;
-    private final int startOffset;
-    private final int endOffset;
     private final byte[] resultTypes;
+    private List<CallNode> callNodes;
+    private final int bytecodeStartOffset;
+    private final int bytecodeEndOffset;
 
-    public CodeEntry(int functionIndex, int currentMaxStackSize, byte[] localTypes, List<CallNode> callNodes, int startOffset, int endOffset, byte[] resultTypes) {
+    public CodeEntry(int functionIndex, int maxStackSize, byte[] localTypes, byte[] resultTypes, List<CallNode> callNodes, int startOffset, int endOffset) {
         this.functionIndex = functionIndex;
-        this.maxStackSize = currentMaxStackSize;
+        this.maxStackSize = maxStackSize;
         this.localTypes = localTypes;
-        this.callNodes = callNodes;
-        this.startOffset = startOffset;
-        this.endOffset = endOffset;
         this.resultTypes = resultTypes;
+        this.callNodes = callNodes;
+        this.bytecodeStartOffset = startOffset;
+        this.bytecodeEndOffset = endOffset;
     }
 
-    public int getMaxStackSize() {
+    public int maxStackSize() {
         return maxStackSize;
     }
 
-    public int getFunctionIndex() {
+    public int functionIndex() {
         return functionIndex;
     }
 
-    public byte[] getLocalTypes() {
+    public byte[] localTypes() {
         return localTypes;
     }
 
-    public List<CallNode> getCallNodes() {
+    public byte[] resultTypes() {
+        return resultTypes;
+    }
+
+    public List<CallNode> callNodes() {
         return callNodes;
     }
 
-    public int getStartOffset() {
-        return startOffset;
-    }
-
-    public int getEndOffset() {
-        return endOffset;
-    }
-
-    public byte[] getResultTypes() {
-        return resultTypes;
+    public boolean hasCallNodes() {
+        return callNodes != null;
     }
 
     public void setCallNodes(List<CallNode> callNodes) {
         this.callNodes = callNodes;
     }
 
-    public boolean hasCallNodes() {
-        return callNodes != null;
+    public int bytecodeStartOffset() {
+        return bytecodeStartOffset;
+    }
+
+    public int bytecodeEndOffset() {
+        return bytecodeEndOffset;
     }
 }

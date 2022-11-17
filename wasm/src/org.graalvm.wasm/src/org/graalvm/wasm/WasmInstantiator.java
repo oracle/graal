@@ -114,7 +114,7 @@ public class WasmInstantiator {
     }
 
     private void instantiateCodeEntries(WasmContext context, WasmInstance instance) {
-        final CodeEntry[] codeEntries = instance.module().getCodeEntries();
+        final CodeEntry[] codeEntries = instance.module().codeEntries();
         if (codeEntries == null) {
             return;
         }
@@ -132,10 +132,10 @@ public class WasmInstantiator {
     }
 
     private void instantiateCodeEntry(WasmContext context, WasmInstance instance, CodeEntry codeEntry) {
-        final int functionIndex = codeEntry.getFunctionIndex();
+        final int functionIndex = codeEntry.functionIndex();
         final WasmFunction function = instance.module().symbolTable().function(functionIndex);
-        WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, instance.module().bytecode(), codeEntry.getLocalTypes(), codeEntry.getResultTypes(), codeEntry.getMaxStackSize());
-        final FrameDescriptor frameDescriptor = createFrameDescriptor(codeEntry.getLocalTypes(), codeEntry.getMaxStackSize());
+        WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, instance.module().bytecode(), codeEntry.localTypes(), codeEntry.resultTypes());
+        final FrameDescriptor frameDescriptor = createFrameDescriptor(codeEntry.localTypes(), codeEntry.maxStackSize());
         final WasmFunctionNode functionNode = instantiateFunctionNode(instance, wasmCodeEntry, codeEntry);
         final WasmRootNode rootNode;
         if (context.getContextOptions().memoryOverheadMode()) {
@@ -143,12 +143,12 @@ public class WasmInstantiator {
         } else {
             rootNode = new WasmRootNode(language, frameDescriptor, functionNode);
         }
-        instance.setTarget(codeEntry.getFunctionIndex(), rootNode.getCallTarget());
+        instance.setTarget(codeEntry.functionIndex(), rootNode.getCallTarget());
     }
 
     private static WasmFunctionNode instantiateFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, CodeEntry entry) {
-        final WasmFunctionNode currentBlock = new WasmFunctionNode(instance, codeEntry, entry.getStartOffset(), entry.getEndOffset());
-        List<CallNode> childNodeList = entry.getCallNodes();
+        final WasmFunctionNode currentBlock = new WasmFunctionNode(instance, codeEntry, entry.bytecodeStartOffset(), entry.bytecodeEndOffset());
+        List<CallNode> childNodeList = entry.callNodes();
         Node[] callNodes = new Node[childNodeList.size()];
         int childIndex = 0;
         for (CallNode callNode : childNodeList) {
