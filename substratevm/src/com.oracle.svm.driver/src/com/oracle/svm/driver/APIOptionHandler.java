@@ -321,10 +321,16 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                         option = optionInfo;
                         optionNameAndOptionValue = new String[]{headArg, optionValue};
                         break found;
-                    } else if (headArg.startsWith(optionName + valueSeparator)) {
-                        option = optionInfo;
-                        optionNameAndOptionValue = SubstrateUtil.split(headArg, Character.toString(valueSeparator), 2);
-                        break found;
+                    } else {
+                        boolean withSeparator = valueSeparator != APIOption.NO_SEPARATOR;
+                        String separatorString = withSeparator ? Character.toString(valueSeparator) : "";
+                        String optionNameWithSeparator = optionName + separatorString;
+                        if (headArg.startsWith(optionNameWithSeparator)) {
+                            option = optionInfo;
+                            int length = optionNameWithSeparator.length();
+                            optionNameAndOptionValue = new String[]{headArg.substring(0, length), headArg.substring(length)};
+                            break found;
+                        }
                     }
                 }
             }

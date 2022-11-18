@@ -214,7 +214,6 @@ public class NativeImage {
     final String oHPath = oH(SubstrateOptions.Path);
     final String oHEnableSharedLibraryFlag = oH + "+" + SubstrateOptions.SharedLibrary.getName();
     final String oHCLibraryPath = oH(SubstrateOptions.CLibraryPath);
-    final String oHOptimize = oH(SubstrateOptions.Optimize);
     final String oHFallbackThreshold = oH(SubstrateOptions.FallbackThreshold);
     final String oHFallbackExecutorJavaArg = oH(FallbackExecutor.Options.FallbackExecutorJavaArg);
     final String oRRuntimeJavaArg = oR(Options.FallbackExecutorRuntimeJavaArg);
