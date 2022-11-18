@@ -259,30 +259,33 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             logHandler = logHandler != null ? logHandler : PolyglotEngineImpl.createLogHandler(logConfig, dispatchErr);
             EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
 
+            AbstractPolyglotHostService usePolyglotHostService;
+            if (polyglotHostService != null) {
+                usePolyglotHostService = polyglotHostService;
+            } else {
+                usePolyglotHostService = new DefaultPolyglotHostService(this);
+            }
+
             impl = (PolyglotEngineImpl) EngineAccessor.RUNTIME.tryLoadCachedEngine(engineOptions, loggerProvider);
             if (impl == null && boundEngine && !hostLanguageOnly && !EngineAccessor.RUNTIME.isStoreEnabled(engineOptions)) {
                 impl = preInitializedEngineRef.getAndSet(null);
             }
 
             if (impl != null) {
-                if (hostLanguage.getClass() != impl.getHostLanguageSPI().getClass()) {
-                    // Patching engine with different host language is not supported.
-                    // Fall back to new engine.
-                    impl = null;
-                } else {
-                    impl.patch(dispatchOut,
-                                    dispatchErr,
-                                    resolvedIn,
-                                    engineOptions,
-                                    logConfig,
-                                    loggerProvider,
-                                    options,
-                                    useAllowExperimentalOptions,
-                                    boundEngine,
-                                    logHandler,
-                                    polyglotHostService);
+                assert hostLanguage.getClass() == impl.getHostLanguageSPI().getClass() || PreInitContextHostLanguage.isInstance(impl.hostLanguage);
+                impl.patch(dispatchOut,
+                                dispatchErr,
+                                resolvedIn,
+                                engineOptions,
+                                logConfig,
+                                loggerProvider,
+                                options,
+                                useAllowExperimentalOptions,
+                                boundEngine,
+                                logHandler,
+                                (TruffleLanguage<?>) hostLanguage,
+                                usePolyglotHostService);
 
-                }
             }
             if (impl == null) {
                 impl = new PolyglotEngineImpl(this,
@@ -300,7 +303,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 logHandler,
                                 (TruffleLanguage<Object>) hostLanguage,
                                 hostLanguageOnly,
-                                polyglotHostService);
+                                usePolyglotHostService);
             }
             return getAPIAccess().newEngine(engineDispatch, impl, registerInActiveEngines);
         } catch (Throwable t) {
@@ -331,8 +334,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @Override
     @SuppressWarnings("unchecked")
-    public void preInitializeEngine(Object hostLanguage) {
-        PolyglotEngineImpl engine = createDefaultEngine((TruffleLanguage<Object>) hostLanguage);
+    public void preInitializeEngine() {
+        PolyglotEngineImpl engine = createDefaultEngine(new PreInitContextHostLanguage());
         getAPIAccess().newEngine(engineDispatch, engine, false);
         try {
             engine.preInitialize();
@@ -360,7 +363,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         Handler logHandler = PolyglotEngineImpl.createLogHandler(logConfig, err);
         EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
         final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, new String[0], out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
-                        true, true, null, logHandler, hostLanguage, false, null);
+                        true, true, null, logHandler, hostLanguage, false, new DefaultPolyglotHostService(this));
         getAPIAccess().newEngine(engineDispatch, engine, false);
         return engine;
     }

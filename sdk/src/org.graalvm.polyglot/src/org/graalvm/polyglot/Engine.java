@@ -155,7 +155,7 @@ public final class Engine implements AutoCloseable {
          */
         @SuppressWarnings("unused")
         private static void preInitializeEngine() {
-            IMPL.preInitializeEngine(IMPL.createHostLanguage(IMPL.createHostAccess()));
+            IMPL.preInitializeEngine();
         }
 
         /**
@@ -174,7 +174,7 @@ public final class Engine implements AutoCloseable {
          */
         private static void debugContextPreInitialization() {
             if (!ImageInfo.inImageCode() && System.getProperty("polyglot.image-build-time.PreinitializeContexts") != null) {
-                IMPL.preInitializeEngine(IMPL.createHostLanguage(IMPL.createHostAccess()));
+                IMPL.preInitializeEngine();
             }
         }
 
@@ -1020,7 +1020,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public void preInitializeEngine(Object hostLanguage) {
+        public void preInitializeEngine() {
         }
 
         @Override

@@ -40,33 +40,22 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractPolyglotHostService;
-
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
 
 /**
- * Polyglot host service is needed for polyglot isolates. In case it is used for a non-isolated
- * engine, DefaultPolyglotHostService is used. Since there is no host side in terms of polyglot
- * isolates, all operations are no-op.
+ * A marker host language used at the time of the context pre-initialization. A host language
+ * context must not be created during pre initialization. The creation of the host language context
+ * must be postponed until the time of patching.
  */
-class DefaultPolyglotHostService extends AbstractPolyglotHostService {
-    DefaultPolyglotHostService(AbstractPolyglotImpl polyglot) {
-        super(polyglot);
-    }
+final class PreInitContextHostLanguage extends TruffleLanguage<Object> {
 
     @Override
-    public void notifyClearExplicitContextStack(Object contextReceiver) {
+    protected Object createContext(Env env) {
+        throw CompilerDirectives.shouldNotReachHere("Host language context must not be created during context pre-initialization.");
     }
 
-    @Override
-    public void notifyContextCancellingOrExiting(Object contextReceiver, boolean exit, int exitCode, boolean resourceLimit, String message) {
-    }
-
-    @Override
-    public void notifyContextClosed(Object contextReceiver, boolean cancelIfExecuting, boolean resourceLimit, String message) {
-    }
-
-    @Override
-    public void notifyEngineClosed(Object engineReceiver, boolean cancelIfExecuting) {
+    static boolean isInstance(PolyglotLanguage language) {
+        return language.isHost() && language.cache.loadLanguage().getClass() == PreInitContextHostLanguage.class;
     }
 }
