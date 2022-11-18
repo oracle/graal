@@ -7,11 +7,11 @@ permalink: /reference-manual/native-image/workshops/
 
 # Interactive Labs and Workshops
 
+## Interactive Labs
+
 Consider running interactive workshops in Oracle Cloud to get some practical experience. 
 The interactive cloud platform provides you with a temporary account for the time you run a lab with required cloud resources (a virtual machine, Oracle Linux, storage, and so on).
 This means you can try Native Image without downloading any additional software to your computer.
-
-### Interactive Labs
 
 Go to [Luna Labs](https://luna.oracle.com/) and search for "Native Image". 
 The following labs are available:
@@ -23,7 +23,7 @@ The following labs are available:
 - [GraalVM Native Image Bootcamp](https://luna.oracle.com/lab/d642bb4a-0340-4dab-a4cf-c5ef35795884): This workshop covers how GraalVM Native Image works, what it can do, when to use it, and how to tune and debug applications. You will also look at containerisation options and deployment to cloud platforms including Oracle Cloud Infrastructure.
 - [GraalVM Native Build Tools, for Maven](https://luna.oracle.com/lab/e5af592b-3365-45ce-b964-6fd409e5c76f): This lab shows you how to use the GraalVM Native Build Tools to easily build a native executable of your application using Maven. It is aimed at developers with the knowledge of Java.
 
-### Workshops
+## Workshops
 
 Have a look at [GraalVM Workshops and Tutorials collection on GitHub](https://github.com/graalvm/workshops). There you can find the workshops intended to work on your own device (laptop, server). Each workshop begins with prerequisites that you need to have installed. 
 
