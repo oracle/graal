@@ -28,7 +28,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.GuardedInlinedMethodNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedFrameAccess;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodNode;
-import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodPredicate;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 
 public final class InlinedSubstitutionBodyNode extends InlinedMethodNode.BodyNode {
@@ -43,7 +42,7 @@ public final class InlinedSubstitutionBodyNode extends InlinedMethodNode.BodyNod
         Method.MethodVersion methodVersion = inlinedMethod.getMethodVersion();
         InlinedSubstitutionBodyNode bodyNode = new InlinedSubstitutionBodyNode(methodVersion, factory.create());
         if (factory.guard() != null) {
-            return new GuardedInlinedMethodNode(methodVersion, top, opcode, callerBCI, statementIndex, bodyNode, (InlinedMethodPredicate) factory.guard());
+            return new GuardedInlinedMethodNode(methodVersion, top, opcode, callerBCI, statementIndex, bodyNode, factory.guard());
         } else {
             return new InlinedMethodNode(methodVersion, top, opcode, callerBCI, statementIndex, bodyNode);
         }

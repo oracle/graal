@@ -29,11 +29,15 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodPredicate;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -49,14 +53,18 @@ public final class Target_java_lang_Object {
         return self.getKlass().mirror();
     }
 
-    public static final InlinedMethodPredicate InitGuard = //
-                    (context, version, frame, node) -> {
-                        StaticObject receiver = node.peekReceiver(frame);
-                        return StaticObject.isNull(receiver) || !Init.hasFinalizer(receiver);
-                    };
+    public static final class InitGuard implements InlinedMethodPredicate {
+        public static final InlinedMethodPredicate INSTANCE = new InitGuard();
+
+        @Override
+        public boolean isValid(EspressoContext context, Method.MethodVersion version, VirtualFrame frame, InlinedMethodNode node) {
+            StaticObject receiver = node.peekReceiver(frame);
+            return StaticObject.isNull(receiver) || !Init.hasFinalizer(receiver);
+        }
+    }
 
     @Substitution(hasReceiver = true, methodName = "<init>", isTrivial = true)
-    @InlineInBytecode(guard = "InitGuard")
+    @InlineInBytecode(guard = InitGuard.class)
     abstract static class Init extends SubstitutionNode {
 
         abstract void execute(@JavaType(Object.class) StaticObject self);

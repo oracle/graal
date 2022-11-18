@@ -28,6 +28,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodPredicate;
+
 /**
  * Marks a substitution that should be bytecode-inlined. If this annotation is specified for the
  * substitution class, then it is applied to every substitution for that class.
@@ -47,10 +49,10 @@ public @interface InlineInBytecode {
      * guard} for this inlined substitution.
      * <p>
      * <ul>
-     * <li>If this returns an empty string, no guard is needed.</li>
-     * <li>The non-empty value it returns should be the name of a {@code public static final} field
-     * in the class.</li>
+     * <li>If this returns {@link InlinedMethodPredicate}, no guard is needed.</li>
+     * <li>Else, the class returned by this value should have a public static final field named
+     * {@code INSTANCE} which returns an instance of this class..</li>
      * </ul>
      */
-    String guard() default "";
+    Class<? extends InlinedMethodPredicate> guard() default InlinedMethodPredicate.class;
 }
