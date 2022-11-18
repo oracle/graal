@@ -217,6 +217,19 @@ abstract class JavaMonitorQueuedSynchronizer {
         }
     }
 
+    protected boolean hasReleaseSuccessor() {
+        Node h = head;
+        if (h == null) {
+            return false;
+        }
+        Node s = h.next;
+        return s != null && s.status != 0;
+    }
+
+    protected void signalReleaseSuccessor() {
+        signalNext(head);
+    }
+
     // see AbstractQueuedSynchronizer.acquire(Node, int, boolean, boolean, boolean, long)
     @SuppressWarnings("all")
     final int acquire(Node node, int arg) {

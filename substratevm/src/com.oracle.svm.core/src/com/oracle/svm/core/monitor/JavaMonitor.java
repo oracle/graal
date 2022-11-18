@@ -43,8 +43,8 @@ import jdk.internal.misc.Unsafe;
  * Only the relevant methods from the JDK sources have been kept. Some additional Native
  * Image-specific functionality has been added.
  */
-public final class JavaMonitor extends JavaMonitorQueuedSynchronizer {
-    private long latestJfrTid;
+public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
+    protected long latestJfrTid;
 
     public JavaMonitor() {
         latestJfrTid = 0;
@@ -53,7 +53,7 @@ public final class JavaMonitor extends JavaMonitorQueuedSynchronizer {
     public void monitorEnter(Object obj) {
         if (!tryLock()) {
             long startTicks = JfrTicks.elapsedTicks();
-            lock();
+            acquire(1);
             JavaMonitorEnterEvent.emit(obj, latestJfrTid, startTicks);
         }
 
@@ -78,23 +78,6 @@ public final class JavaMonitor extends JavaMonitorQueuedSynchronizer {
             newCondition = condition;
         }
         return newCondition;
-    }
-
-    /**
-     * Creates a new {@link JavaMonitor} that is locked by the provided thread. This requires
-     * patching of internal state.
-     */
-    public static JavaMonitor newLockedMonitorForThread(Thread thread, int recursionDepth) {
-        JavaMonitor result = new JavaMonitor();
-        for (int i = 0; i < recursionDepth; i++) {
-            result.lock();
-        }
-
-        result.latestJfrTid = SubstrateJVM.getThreadId(thread);
-        assert result.getExclusiveOwnerThread() == Thread.currentThread() : "Must be locked by current thread";
-        result.setExclusiveOwnerThread(thread);
-
-        return result;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -134,24 +117,6 @@ public final class JavaMonitor extends JavaMonitorQueuedSynchronizer {
 
     private JavaMonitorConditionObject condition;
 
-    // see ReentrantLock.NonFairSync.initialTryLock()
-    boolean initialTryLock() {
-        Thread current = Thread.currentThread();
-        if (compareAndSetState(0, 1)) { // first attempt is unguarded
-            setExclusiveOwnerThread(current);
-            return true;
-        } else if (getExclusiveOwnerThread() == current) {
-            int c = getState() + 1;
-            if (c < 0) { // overflow
-                throw new Error("Maximum lock count exceeded");
-            }
-            setState(c);
-            return true;
-        } else {
-            return false;
-        }
-    }
-
     // see ReentrantLock.NonFairSync.tryAcquire(int)
     @Override
     protected boolean tryAcquire(int acquires) {
@@ -179,13 +144,6 @@ public final class JavaMonitor extends JavaMonitorQueuedSynchronizer {
             return true;
         }
         return false;
-    }
-
-    // see ReentrantLock.Sync.lock()
-    void lock() {
-        if (!initialTryLock()) {
-            acquire(1);
-        }
     }
 
     // see ReentrantLock.Sync.tryRelease()
