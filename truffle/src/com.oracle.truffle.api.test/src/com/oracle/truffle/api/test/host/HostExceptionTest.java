@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayOutputStream;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -59,6 +60,8 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.management.ExecutionEvent;
+import org.graalvm.polyglot.management.ExecutionListener;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -90,11 +93,27 @@ public class HostExceptionTest {
     private Env env;
     private Class<? extends Throwable> expectedException;
     private Consumer<Throwable> customExceptionVerfier;
+    ByteArrayOutputStream outStream;
     private boolean checkHostExceptionElements;
+
+    private static final String INSTRUMENTATION_TEST_LANGUAGE = "instrumentation-test-language";
+
+    @Test
+    public void testExceptionFromExecutionListener() {
+        ExecutionListener.newBuilder().statements(true).onEnter(new Consumer<ExecutionEvent>() {
+            @Override
+            public void accept(ExecutionEvent executionEvent) {
+                throw new RuntimeException("ExceptionFromExecutionListener");
+            }
+        }).attach(context.getEngine());
+        context.eval(INSTRUMENTATION_TEST_LANGUAGE, "TRY(STATEMENT, CATCH(RuntimeException, ex, PRINT(OUT, INVOKE_MEMBER(getMessage, READ_VAR(ex)))))");
+        assertEquals("ExceptionFromExecutionListener", outStream.toString());
+    }
 
     @Before
     public void before() {
-        context = Context.newBuilder().allowAllAccess(true).build();
+        outStream = new ByteArrayOutputStream();
+        context = Context.newBuilder().allowAllAccess(true).out(outStream).build();
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
             protected LanguageContext createContext(Env contextEnv) {
