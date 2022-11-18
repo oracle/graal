@@ -26,18 +26,6 @@
 
 package com.oracle.graal.pointsto.standalone.features;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.standalone.StandaloneHost;
-import com.oracle.svm.util.UnsafePartitionKind;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
-
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
@@ -49,6 +37,19 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.standalone.StandaloneHost;
+import com.oracle.svm.util.UnsafePartitionKind;
 
 public class StandaloneAnalysisFeatureImpl {
     public abstract static class FeatureAccessImpl implements Feature.FeatureAccess {
@@ -175,11 +176,11 @@ public class StandaloneAnalysisFeatureImpl {
 
         @Override
         public void registerAsInHeap(Class<?> clazz) {
-            registerAsInHeap(getMetaAccess().lookupJavaType(clazz));
+            registerAsInHeap(getMetaAccess().lookupJavaType(clazz), "Registered from Feature API.");
         }
 
-        public void registerAsInHeap(AnalysisType aType) {
-            aType.registerAsInHeap();
+        public void registerAsInHeap(AnalysisType aType, Object reason) {
+            aType.registerAsInHeap(reason);
         }
 
         @Override

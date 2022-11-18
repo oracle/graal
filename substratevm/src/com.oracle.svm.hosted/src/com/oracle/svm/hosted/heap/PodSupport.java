@@ -59,6 +59,7 @@ import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodSpec;
 import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.util.ReflectionUtil;
@@ -140,8 +141,8 @@ final class PodFeature implements PodSupport, InternalFeature {
         pods.forEach((spec, podInfo) -> registerPodAsInstantiated(access, spec, podInfo));
     }
 
-    private static void registerPodAsInstantiated(BeforeAnalysisAccess access, PodSpec spec, PodInfo info) {
-        access.registerAsInHeap(info.podClass);
+    private static void registerPodAsInstantiated(BeforeAnalysisAccess a, PodSpec spec, PodInfo info) {
+        ((BeforeAnalysisAccessImpl) a).registerAsInHeap(info.podClass, "Pod class registered by PodFeature.");
         Pod.RuntimeSupport.singleton().registerPod(spec, info);
     }
 

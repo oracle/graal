@@ -1041,17 +1041,17 @@ public class NativeImageGenerator {
          * good example.
          */
         try (Indent ignored = debug.logAndIndent("add initial classes/fields/methods")) {
-            bb.markTypeInHeap(bb.addRootClass(Object.class, false, false));
+            bb.registerTypeAsInHeap(bb.addRootClass(Object.class, false, false), "Root class.");
             bb.addRootField(DynamicHub.class, "vtable");
-            bb.markTypeInHeap(bb.addRootClass(String.class, false, false));
-            bb.markTypeInHeap(bb.addRootClass(String[].class, false, false));
-            bb.markTypeInHeap(bb.addRootField(String.class, "value"));
-            bb.markTypeInHeap(bb.addRootClass(long[].class, false, false));
-            bb.markTypeInHeap(bb.addRootClass(byte[].class, false, false));
-            bb.markTypeInHeap(bb.addRootClass(byte[][].class, false, false));
-            bb.markTypeInHeap(bb.addRootClass(Object[].class, false, false));
-            bb.markTypeInHeap(bb.addRootClass(CFunctionPointer[].class, false, false));
-            bb.markTypeInHeap(bb.addRootClass(PointerBase[].class, false, false));
+            bb.registerTypeAsInHeap(bb.addRootClass(String.class, false, false), "Root class.");
+            bb.registerTypeAsInHeap(bb.addRootClass(String[].class, false, false), "Root class.");
+            bb.registerTypeAsInHeap(bb.addRootField(String.class, "value"), "Root class.");
+            bb.registerTypeAsInHeap(bb.addRootClass(long[].class, false, false), "Root class.");
+            bb.registerTypeAsInHeap(bb.addRootClass(byte[].class, false, false), "Root class.");
+            bb.registerTypeAsInHeap(bb.addRootClass(byte[][].class, false, false), "Root class.");
+            bb.registerTypeAsInHeap(bb.addRootClass(Object[].class, false, false), "Root class.");
+            bb.registerTypeAsInHeap(bb.addRootClass(CFunctionPointer[].class, false, false), "Root class.");
+            bb.registerTypeAsInHeap(bb.addRootClass(PointerBase[].class, false, false), "Root class.");
 
             bb.addRootMethod(ReflectionUtil.lookupMethod(SubstrateArraycopySnippets.class, "doArraycopy", Object.class, int.class, Object.class, int.class, int.class), true);
             bb.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true);
@@ -1059,7 +1059,7 @@ public class NativeImageGenerator {
             for (JavaKind kind : JavaKind.values()) {
                 if (kind.isPrimitive() && kind != JavaKind.Void) {
                     bb.addRootClass(kind.toJavaClass(), false, true);
-                    bb.addRootClass(kind.toBoxedJavaClass(), false, true).registerAsInHeap();
+                    bb.addRootClass(kind.toBoxedJavaClass(), false, true).registerAsInHeap("Root class.");
                     bb.addRootField(kind.toBoxedJavaClass(), "value");
                     bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), "valueOf", kind.toJavaClass()), true);
                     bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), kind.getJavaName() + "Value"), true);

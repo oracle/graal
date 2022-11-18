@@ -32,9 +32,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 
-import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
@@ -52,6 +49,10 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
+
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Core class of the Reachability Analysis. Contains the crucial part: resolving virtual methods.
@@ -114,7 +115,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
                 }
             }
 
-            markTypeReachable(type);
+            markTypeAsReachable(type);
 
             if (type.getSuperclass() != null) {
                 addRootClass(type.getSuperclass(), addFields, addArrayClass);
@@ -185,9 +186,9 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     }
 
     @Override
-    public boolean markTypeInHeap(AnalysisType t) {
+    public boolean registerTypeAsInHeap(AnalysisType t, Object reason) {
         ReachabilityAnalysisType type = (ReachabilityAnalysisType) t;
-        if (!type.registerAsInHeap()) {
+        if (!type.registerAsInHeap(reason)) {
             return false;
         }
         if (type.registerAsInstantiated()) {
@@ -197,9 +198,9 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     }
 
     @Override
-    public boolean markTypeInstantiated(AnalysisType t) {
+    public boolean registerTypeAsAllocated(AnalysisType t, Object reason) {
         ReachabilityAnalysisType type = (ReachabilityAnalysisType) t;
-        if (!type.registerAsAllocated(null)) {
+        if (!type.registerAsAllocated(reason)) {
             return false;
         }
         if (type.registerAsInstantiated()) {
@@ -211,7 +212,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     /**
      * Processes an embedded constant found in a method graph/summary.
      */
-    public void handleEmbeddedConstant(ReachabilityAnalysisMethod method, JavaConstant constant) {
+    public void handleEmbeddedConstant(ReachabilityAnalysisMethod method, JavaConstant constant, Object reason) {
         if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
             if (scanningPolicy().trackConstant(this, constant)) {
                 BytecodePosition position = new BytecodePosition(null, method, 0);
@@ -219,7 +220,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
 
                 Object obj = getSnippetReflectionProvider().asObject(Object.class, constant);
                 AnalysisType type = getMetaAccess().lookupJavaType(obj.getClass());
-                markTypeInHeap(type);
+                registerTypeAsInHeap(type, reason);
             }
         }
     }

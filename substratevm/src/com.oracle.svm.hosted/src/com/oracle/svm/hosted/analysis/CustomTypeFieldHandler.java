@@ -108,7 +108,7 @@ public abstract class CustomTypeFieldHandler {
     private void injectFieldTypes(AnalysisField field, List<AnalysisType> customTypes) {
         for (AnalysisType type : customTypes) {
             if (!type.isPrimitive()) {
-                type.registerAsAllocated(null);
+                type.registerAsAllocated("Is declared as the type of an unknown object field.");
             }
         }
 

@@ -435,7 +435,7 @@ public abstract class RuntimeCompilationFeature implements Feature {
 
         NodeClass<?>[] snippetNodeClasses = ((SubstrateReplacements) runtimeProviders.getReplacements()).getSnippetNodeClasses();
         for (NodeClass<?> nodeClass : snippetNodeClasses) {
-            config.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsAllocated(null);
+            config.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsAllocated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
         }
 
         /* Initialize configuration with reasonable default values. */
@@ -534,7 +534,7 @@ public abstract class RuntimeCompilationFeature implements Feature {
         AnalysisMetaAccess metaAccess = config.getMetaAccess();
         NodeClass<?>[] nodeClasses = graphEncoder.getNodeClasses();
         for (NodeClass<?> nodeClass : nodeClasses) {
-            metaAccess.lookupJavaType(nodeClass.getClazz()).registerAsAllocated(null);
+            metaAccess.lookupJavaType(nodeClass.getClazz()).registerAsAllocated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
         }
         if (GraalSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), nodeClasses)) {
             config.requireAnalysisIteration();

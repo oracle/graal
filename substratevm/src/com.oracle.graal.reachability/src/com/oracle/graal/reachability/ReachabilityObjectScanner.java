@@ -60,41 +60,41 @@ public class ReachabilityObjectScanner implements ObjectScanningObserver {
     public boolean forNullFieldValue(JavaConstant receiver, AnalysisField field, ObjectScanner.ScanReason reason) {
         boolean modified = false;
         if (receiver != null) {
-            modified = bb.markTypeReachable(constantType(receiver));
+            modified = bb.markTypeAsReachable(constantType(receiver));
         }
-        return modified || bb.markTypeReachable(field.getType());
+        return modified || bb.markTypeAsReachable(field.getType());
     }
 
     @Override
     public boolean forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ObjectScanner.ScanReason reason) {
         boolean modified = false;
         if (receiver != null) {
-            bb.markTypeInHeap(constantType(receiver));
-            modified = bb.markTypeReachable(constantType(receiver));
+            bb.registerTypeAsInHeap(constantType(receiver), reason);
+            modified = bb.markTypeAsReachable(constantType(receiver));
         }
-        return modified || bb.markTypeReachable(field.getType());
+        return modified || bb.markTypeAsReachable(field.getType());
     }
 
     @Override
     public boolean forNullArrayElement(JavaConstant array, AnalysisType arrayType, int elementIndex, ObjectScanner.ScanReason reason) {
-        return bb.markTypeReachable(arrayType);
+        return bb.markTypeAsReachable(arrayType);
     }
 
     @Override
     public boolean forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int elementIndex, ObjectScanner.ScanReason reason) {
-        return bb.markTypeReachable(arrayType) || bb.markTypeInHeap(elementType);
+        return bb.markTypeAsReachable(arrayType) || bb.registerTypeAsInHeap(elementType, reason);
     }
 
     @Override
     public void forEmbeddedRoot(JavaConstant root, ObjectScanner.ScanReason reason) {
-        bb.markTypeReachable(constantType(root));
-        bb.markTypeInHeap(constantType(root));
+        bb.markTypeAsReachable(constantType(root));
+        bb.registerTypeAsInHeap(constantType(root), reason);
     }
 
     @Override
     public void forScannedConstant(JavaConstant scannedValue, ObjectScanner.ScanReason reason) {
         AnalysisType type = constantType(scannedValue);
-        bb.markTypeInHeap(type);
+        bb.registerTypeAsInHeap(type, reason);
     }
 
     private AnalysisType constantType(JavaConstant constant) {

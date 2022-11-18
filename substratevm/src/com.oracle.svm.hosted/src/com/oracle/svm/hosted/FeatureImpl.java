@@ -345,16 +345,20 @@ public class FeatureImpl {
         }
 
         public void registerAsUsed(AnalysisType aType) {
-            bb.markTypeReachable(aType);
+            bb.markTypeAsReachable(aType);
         }
 
         @Override
         public void registerAsInHeap(Class<?> clazz) {
-            registerAsInHeap(getMetaAccess().lookupJavaType(clazz));
+            registerAsInHeap(getMetaAccess().lookupJavaType(clazz), "Registered from Feature API.");
         }
 
-        public void registerAsInHeap(AnalysisType aType) {
-            bb.markTypeInHeap(aType);
+        public void registerAsInHeap(Class<?> clazz, Object reason) {
+            registerAsInHeap(getMetaAccess().lookupJavaType(clazz), reason);
+        }
+
+        public void registerAsInHeap(AnalysisType aType, Object reason) {
+            bb.registerTypeAsInHeap(aType, reason);
         }
 
         @Override

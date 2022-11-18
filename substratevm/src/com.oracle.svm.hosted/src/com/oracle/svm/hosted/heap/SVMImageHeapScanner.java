@@ -145,8 +145,8 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     }
 
     @Override
-    protected void onObjectReachable(ImageHeapConstant imageHeapConstant) {
-        super.onObjectReachable(imageHeapConstant);
+    protected void onObjectReachable(ImageHeapConstant imageHeapConstant, ScanReason reason) {
+        super.onObjectReachable(imageHeapConstant, reason);
 
         if (metaAccess.isInstanceOf(imageHeapConstant, Field.class) || metaAccess.isInstanceOf(imageHeapConstant, Executable.class)) {
             reflectionSupport.registerHeapReflectionObject((AccessibleObject) SubstrateObjectConstant.asObject(imageHeapConstant.getHostedObject()));

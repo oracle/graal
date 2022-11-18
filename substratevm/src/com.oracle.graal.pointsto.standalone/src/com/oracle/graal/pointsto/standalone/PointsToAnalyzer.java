@@ -26,6 +26,27 @@
 
 package com.oracle.graal.pointsto.standalone;
 
+import java.io.File;
+import java.lang.reflect.Method;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ForkJoinPool;
+
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.compiler.word.WordTypes;
+import org.graalvm.nativeimage.hosted.Feature;
+
 import com.oracle.graal.pointsto.AnalysisObjectScanningObserver;
 import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -53,30 +74,11 @@ import com.oracle.graal.pointsto.util.PointsToOptionParser;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
+
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.compiler.word.WordTypes;
-import org.graalvm.nativeimage.hosted.Feature;
-
-import java.io.File;
-import java.lang.reflect.Method;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ForkJoinPool;
 
 public final class PointsToAnalyzer {
 
@@ -169,14 +171,14 @@ public final class PointsToAnalyzer {
          * good example.
          */
         try (Indent ignored = debugContext.logAndIndent("add initial classes/fields/methods")) {
-            bigbang.addRootClass(Object.class, false, false).registerAsInHeap();
-            bigbang.addRootClass(String.class, false, false).registerAsInHeap();
-            bigbang.addRootClass(String[].class, false, false).registerAsInHeap();
-            bigbang.addRootField(String.class, "value").registerAsInHeap();
-            bigbang.addRootClass(long[].class, false, false).registerAsInHeap();
-            bigbang.addRootClass(byte[].class, false, false).registerAsInHeap();
-            bigbang.addRootClass(byte[][].class, false, false).registerAsInHeap();
-            bigbang.addRootClass(Object[].class, false, false).registerAsInHeap();
+            bigbang.addRootClass(Object.class, false, false).registerAsInHeap("Root class.");
+            bigbang.addRootClass(String.class, false, false).registerAsInHeap("Root class.");
+            bigbang.addRootClass(String[].class, false, false).registerAsInHeap("Root class.");
+            bigbang.addRootField(String.class, "value").registerAsInHeap("Root class.");
+            bigbang.addRootClass(long[].class, false, false).registerAsInHeap("Root class.");
+            bigbang.addRootClass(byte[].class, false, false).registerAsInHeap("Root class.");
+            bigbang.addRootClass(byte[][].class, false, false).registerAsInHeap("Root class.");
+            bigbang.addRootClass(Object[].class, false, false).registerAsInHeap("Root class.");
 
             bigbang.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true);
 
