@@ -28,7 +28,6 @@ import static jdk.vm.ci.aarch64.AArch64.SIMD;
 
 import java.nio.ByteOrder;
 import java.util.Arrays;
-import java.util.stream.StreamSupport;
 
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.code.DataSection;
@@ -66,8 +65,47 @@ public abstract class AArch64ComplexVectorOp extends AArch64LIRInstruction {
         return values;
     }
 
-    protected static Value[] allocateConsecutiveVectorRegisters(int n) {
-        return StreamSupport.stream(AArch64.simdRegisters.spliterator(), false).limit(n).map(Register::asValue).toArray(Value[]::new);
+    private static final Register[] consecutiveSIMDRegisters = {
+                    AArch64.v0,
+                    AArch64.v1,
+                    AArch64.v2,
+                    AArch64.v3,
+                    AArch64.v4,
+                    AArch64.v5,
+                    AArch64.v6,
+                    AArch64.v7,
+                    AArch64.v8,
+                    AArch64.v9,
+                    AArch64.v10,
+                    AArch64.v11,
+                    AArch64.v12,
+                    AArch64.v13,
+                    AArch64.v14,
+                    AArch64.v15,
+                    AArch64.v16,
+                    AArch64.v17,
+                    AArch64.v18,
+                    AArch64.v19,
+                    AArch64.v20,
+                    AArch64.v21,
+                    AArch64.v22,
+                    AArch64.v23,
+                    AArch64.v24,
+                    AArch64.v25,
+                    AArch64.v26,
+                    AArch64.v27,
+                    AArch64.v28,
+                    AArch64.v29,
+                    AArch64.v30,
+                    AArch64.v31
+    };
+
+    protected static Value[] allocateConsecutiveVectorRegisters(LIRGeneratorTool tool, int n) {
+        Value[] ret = new Value[n];
+        for (int i = 0; i < n; i++) {
+            ret[i] = consecutiveSIMDRegisters[i].asValue(LIRKind.value(tool.target().arch.getLargestStorableKind(SIMD)));
+        }
+        return ret;
     }
 
     protected static void loadDataSectionAddress(CompilationResultBuilder crb, AArch64MacroAssembler asm, Register dst, DataSection.Data data) {

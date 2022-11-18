@@ -97,7 +97,7 @@ public final class AArch64ArrayRegionCompareToOp extends AArch64ComplexVectorOp 
         this.lengthValue = length;
         this.dynamicStridesValue = dynamicStrides == null ? Value.ILLEGAL : dynamicStrides;
 
-        temp = allocateTempRegisters(tool, 2);
+        temp = allocateTempRegisters(tool, withDynamicStrides() ? 3 : 2);
         vectorTemp = allocateVectorRegisters(tool, 7);
     }
 
@@ -122,7 +122,9 @@ public final class AArch64ArrayRegionCompareToOp extends AArch64ComplexVectorOp 
                 for (int i = 0; i < variants.length; i++) {
                     variants[i] = new Label();
                 }
-                AArch64ControlFlow.RangeTableSwitchOp.emitJumpTable(crb, masm, tmp, asRegister(dynamicStridesValue), 0, 8, Arrays.stream(variants));
+                Register tmp2 = asRegister(temp[2]);
+                masm.mov(32, tmp2, asRegister(dynamicStridesValue));
+                AArch64ControlFlow.RangeTableSwitchOp.emitJumpTable(crb, masm, tmp, tmp2, 0, 8, Arrays.stream(variants));
 
                 for (Stride stride1 : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
                     for (Stride stride2 : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {

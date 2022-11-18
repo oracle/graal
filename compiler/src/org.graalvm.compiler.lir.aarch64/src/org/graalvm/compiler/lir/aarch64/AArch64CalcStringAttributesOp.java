@@ -109,7 +109,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
         temp = allocateTempRegisters(tool, getNumberOfTempRegisters(encoding, assumeValid));
         int nVectors = getNumberOfRequiredVectorRegisters(encoding, assumeValid);
-        vectorTemp = needConsecutiveVectors(encoding, assumeValid) ? allocateConsecutiveVectorRegisters(nVectors) : allocateVectorRegisters(tool, nVectors);
+        vectorTemp = needConsecutiveVectors(encoding, assumeValid) ? allocateConsecutiveVectorRegisters(tool, nVectors) : allocateVectorRegisters(tool, nVectors);
     }
 
     private static boolean needConsecutiveVectors(CalcStringAttributesEncoding encoding, boolean assumeValid) {

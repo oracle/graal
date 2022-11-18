@@ -33,6 +33,7 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Address.createBaseRegister
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.createImmediateAddress;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.createPairBaseRegisterOnlyAddress;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.createStructureImmediatePostIndexAddress;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.createStructureNoOffsetAddress;
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT;
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT;
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.asElementSize;
@@ -61,8 +62,8 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
 /**
- * Emits code which compares two arrays of the same length. If the CPU supports any vector
- * instructions specialized code is emitted to leverage these instructions.
+ * Emits code which compares two arrays of the same length for equality. Optionally, a third array
+ * ({@code arrayMask}) is OR-ed to the first array before comparison.
  */
 @Opcode("ARRAY_EQUALS")
 public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
@@ -74,9 +75,9 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
 
     @Def({REG}) protected Value resultValue;
     @Alive({REG}) protected Value arrayAValue;
-    @Alive({REG, ILLEGAL}) protected Value offsetAValue;
+    @Alive({REG}) protected Value offsetAValue;
     @Alive({REG}) protected Value arrayBValue;
-    @Alive({REG, ILLEGAL}) protected Value offsetBValue;
+    @Alive({REG}) protected Value offsetBValue;
     @Alive({REG}) protected Value lengthValue;
     @Alive({REG, ILLEGAL}) protected Value arrayMaskValue;
     @Alive({REG, ILLEGAL}) private Value dynamicStridesValue;
@@ -97,21 +98,22 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
 
         GraalError.guarantee(result.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
         GraalError.guarantee(arrayA.getPlatformKind() == AArch64Kind.QWORD && arrayA.getPlatformKind() == arrayB.getPlatformKind(), "pointer value expected");
-        GraalError.guarantee(offsetA == null || offsetA.getPlatformKind() == AArch64Kind.QWORD, "long value expected");
-        GraalError.guarantee(offsetB == null || offsetB.getPlatformKind() == AArch64Kind.QWORD, "long value expected");
+        GraalError.guarantee(offsetA.getPlatformKind() == AArch64Kind.QWORD, "long value expected");
+        GraalError.guarantee(offsetB.getPlatformKind() == AArch64Kind.QWORD, "long value expected");
         GraalError.guarantee(length.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
+        GraalError.guarantee(dynamicStrides == null || dynamicStrides.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
 
         this.resultValue = result;
         this.arrayAValue = arrayA;
-        this.offsetAValue = offsetA == null ? Value.ILLEGAL : offsetA;
+        this.offsetAValue = offsetA;
         this.arrayBValue = arrayB;
-        this.offsetBValue = offsetB == null ? Value.ILLEGAL : offsetB;
+        this.offsetBValue = offsetB;
         this.lengthValue = length;
         this.arrayMaskValue = mask == null ? Value.ILLEGAL : mask;
         this.dynamicStridesValue = dynamicStrides == null ? Value.ILLEGAL : dynamicStrides;
 
-        temp = allocateTempRegisters(tool, withMask() ? 3 : 2);
-        vectorTemp = allocateConsecutiveVectorRegisters(withMask() ? 12 : 8);
+        temp = allocateTempRegisters(tool, 2 + (withMask() ? 1 : 0) + (withDynamicStrides() ? 1 : 0));
+        vectorTemp = allocateConsecutiveVectorRegisters(tool, withMask() ? 12 : 8);
     }
 
     @Override
@@ -139,7 +141,9 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                 for (int i = 0; i < variants.length; i++) {
                     variants[i] = new Label();
                 }
-                AArch64ControlFlow.RangeTableSwitchOp.emitJumpTable(crb, masm, tmp, asRegister(dynamicStridesValue), 0, 8, Arrays.stream(variants));
+                Register tmp2 = asRegister(temp[withMask() ? 3 : 2]);
+                masm.mov(32, tmp2, asRegister(dynamicStridesValue));
+                AArch64ControlFlow.RangeTableSwitchOp.emitJumpTable(crb, masm, tmp, tmp2, 0, 8, Arrays.stream(variants));
 
                 // reuse the 1-byte-1-byte stride variant for the 2-2 and 4-4 cases by simply
                 // shifting the length
@@ -367,8 +371,10 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                         }
                     }
                 }
+                // EOR lower bytes of arrayMax and arrayMin
                 asm.neon.eorVVV(FullReg, v(0), v(0), v(4));
                 asm.neon.eorVVV(FullReg, v(2), v(2), v(5));
+                // OR with upper bytes of arrayMax to check if they are zero
                 asm.neon.orrVVV(FullReg, v(0), v(0), v(1));
                 asm.neon.orrVVV(FullReg, v(2), v(2), v(3));
                 asm.neon.orrVVV(FullReg, v(0), v(0), v(2));
@@ -403,7 +409,9 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                         }
                     }
                 }
+                // EOR lower bytes of arrayMax and arrayMin
                 asm.neon.eorVVV(FullReg, v(0), v(0), v(4));
+                // OR with upper bytes of arrayMax to check if they are zero
                 asm.neon.orrVVV(FullReg, v(2), v(2), v(3));
                 asm.neon.orrVVV(FullReg, v(0), v(0), v(1));
                 asm.neon.orrVVV(FullReg, v(0), v(0), v(2));
@@ -483,15 +491,14 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                 asm.neon.orrVVV(FullReg, v(0), v(0), v(4));
                 break;
             case 1:
-                asm.sub(64, len, len, 32 >> strideMax.log2);
                 // 1 -> 2 byte comparison
-                asm.neon.ld2MultipleVV(FullReg, minESize, v(0), v(1), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, minESize, arrayMax, 32));
-                asm.fldr(128, v(4), createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, arrayMin, 16));
+                asm.neon.ld2MultipleVV(FullReg, minESize, v(0), v(1), createStructureNoOffsetAddress(arrayMax));
+                asm.fldr(128, v(4), createBaseRegisterOnlyAddress(128, arrayMin));
                 if (withMask()) {
                     if (strideMask == strideMin) {
-                        asm.fldr(128, v(6), createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, arrayMask, 16));
+                        asm.fldr(128, v(6), createBaseRegisterOnlyAddress(128, arrayMask));
                     } else {
-                        asm.neon.ld2MultipleVV(FullReg, minESize, v(6), v(7), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, minESize, arrayMask, 32));
+                        asm.neon.ld2MultipleVV(FullReg, minESize, v(6), v(7), createStructureNoOffsetAddress(arrayMask));
                     }
                 }
                 asm.add(64, arrayMin, arrayMin, len, ShiftType.LSL, strideMin.log2);
@@ -499,13 +506,13 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                 if (withMask()) {
                     asm.add(64, arrayMask, arrayMask, len, ShiftType.LSL, strideMask.log2);
                 }
-                asm.neon.ld2MultipleVV(FullReg, minESize, v(2), v(3), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, minESize, arrayMax, 32));
-                asm.fldr(128, v(5), createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, arrayMin, 16));
+                asm.neon.ld2MultipleVV(FullReg, minESize, v(2), v(3), createStructureNoOffsetAddress(arrayMax));
+                asm.fldr(128, v(5), createBaseRegisterOnlyAddress(128, arrayMin));
                 if (withMask()) {
                     if (strideMask == strideMin) {
-                        asm.fldr(128, v(7), createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, arrayMask, 16));
+                        asm.fldr(128, v(7), createBaseRegisterOnlyAddress(128, arrayMask));
                     } else {
-                        asm.neon.ld2MultipleVV(FullReg, minESize, v(8), v(9), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, minESize, arrayMask, 32));
+                        asm.neon.ld2MultipleVV(FullReg, minESize, v(8), v(9), createStructureNoOffsetAddress(arrayMask));
                     }
                     int arrayA1 = strideA == strideMax ? 0 : 4;
                     int arrayA2 = strideA == strideMax ? 2 : 5;
@@ -533,15 +540,14 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                 asm.neon.orrVVV(FullReg, v(0), v(0), v(2));
                 break;
             case 2:
-                asm.sub(64, len, len, 32 >> strideMax.log2);
                 // 1 -> 4 byte comparison
-                asm.neon.ld2MultipleVV(FullReg, minESize.expand(), v(0), v(1), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, minESize.expand(), arrayMax, 32));
-                asm.fldr(64, v(4), createImmediateAddress(64, AddressingMode.IMMEDIATE_POST_INDEXED, arrayMin, 8));
+                asm.neon.ld2MultipleVV(FullReg, minESize.expand(), v(0), v(1), createStructureNoOffsetAddress(arrayMax));
+                asm.fldr(64, v(4), createBaseRegisterOnlyAddress(64, arrayMin));
                 if (withMask()) {
                     if (strideMask == strideMin) {
-                        asm.fldr(64, v(6), createImmediateAddress(64, AddressingMode.IMMEDIATE_POST_INDEXED, arrayMask, 8));
+                        asm.fldr(64, v(6), createBaseRegisterOnlyAddress(64, arrayMask));
                     } else {
-                        asm.neon.ld2MultipleVV(FullReg, minESize.expand(), v(6), v(7), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, minESize.expand(), arrayMask, 32));
+                        asm.neon.ld2MultipleVV(FullReg, minESize.expand(), v(6), v(7), createStructureNoOffsetAddress(arrayMask));
                     }
                 }
                 asm.add(64, arrayMin, arrayMin, len, ShiftType.LSL, strideMin.log2);
@@ -549,17 +555,17 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                 if (withMask()) {
                     asm.add(64, arrayMask, arrayMask, len, ShiftType.LSL, strideMask.log2);
                 }
-                asm.neon.ld2MultipleVV(FullReg, minESize.expand(), v(2), v(3), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, minESize.expand(), arrayMax, 32));
-                asm.fldr(64, v(5), createImmediateAddress(64, AddressingMode.IMMEDIATE_POST_INDEXED, arrayMin, 8));
+                asm.neon.ld2MultipleVV(FullReg, minESize.expand(), v(2), v(3), createStructureNoOffsetAddress(arrayMax));
+                asm.fldr(64, v(5), createBaseRegisterOnlyAddress(64, arrayMin));
                 asm.neon.uxtlVV(minESize, v(4), v(4));
                 asm.neon.uxtlVV(minESize, v(5), v(5));
                 if (withMask()) {
                     if (strideMask == strideMin) {
-                        asm.fldr(64, v(7), createImmediateAddress(64, AddressingMode.IMMEDIATE_POST_INDEXED, arrayMask, 8));
+                        asm.fldr(64, v(7), createBaseRegisterOnlyAddress(64, arrayMask));
                         asm.neon.uxtlVV(minESize, v(6), v(6));
                         asm.neon.uxtlVV(minESize, v(7), v(7));
                     } else {
-                        asm.neon.ld2MultipleVV(FullReg, minESize.expand(), v(8), v(9), createStructureImmediatePostIndexAddress(LD2_MULTIPLE_2R, FullReg, minESize.expand(), arrayMask, 32));
+                        asm.neon.ld2MultipleVV(FullReg, minESize.expand(), v(8), v(9), createStructureNoOffsetAddress(arrayMask));
                     }
                     int arrayA1 = strideA == strideMax ? 0 : 4;
                     int arrayA2 = strideA == strideMax ? 2 : 5;
@@ -754,7 +760,9 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
         } else if (strideMax.value == nBytes) {
             asm.bind(entry);
             // tail for length == 1
-            asm.adds(64, len, len, (nBytes << 1) >> strideMax.log2);
+            // at this point, len is either -1 or -2.
+            // if len is -2, it was originally 0, otherwise it was 1.
+            asm.compare(64, len, -2);
             asm.branchConditionally(ConditionFlag.EQ, end);
             asm.ldr(strideA.getBitCount(), tmp, createBaseRegisterOnlyAddress(strideA.getBitCount(), arrayA));
             if (withMask()) {
@@ -784,6 +792,6 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
     }
 
     private static int loadBits(Stride strideA, Stride strideMax, int nBytes) {
-        return (nBytes << 3) >> (strideMax.log2 - strideA.log2);
+        return (nBytes * Byte.SIZE) >> (strideMax.log2 - strideA.log2);
     }
 }

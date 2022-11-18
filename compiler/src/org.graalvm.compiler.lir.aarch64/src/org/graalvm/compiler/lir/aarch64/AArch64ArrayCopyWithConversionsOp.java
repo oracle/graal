@@ -98,7 +98,7 @@ public final class AArch64ArrayCopyWithConversionsOp extends AArch64ComplexVecto
         this.lengthValue = length;
         this.dynamicStridesValue = dynamicStrides == null ? Value.ILLEGAL : dynamicStrides;
 
-        temp = allocateTempRegisters(tool, 3);
+        temp = allocateTempRegisters(tool, withDynamicStrides() ? 3 : 2);
         vectorTemp = allocateVectorRegisters(tool, dynamicStrides != null || (strideDst.log2 - strideSrc.log2) == 2 ? 8 : 4);
     }
 
@@ -124,7 +124,9 @@ public final class AArch64ArrayCopyWithConversionsOp extends AArch64ComplexVecto
                 for (int i = 0; i < variants.length; i++) {
                     variants[i] = new Label();
                 }
-                AArch64ControlFlow.RangeTableSwitchOp.emitJumpTable(crb, masm, tmp, asRegister(dynamicStridesValue), 0, 8, Arrays.stream(variants));
+                Register tmp2 = asRegister(temp[2]);
+                masm.mov(32, tmp2, asRegister(dynamicStridesValue));
+                AArch64ControlFlow.RangeTableSwitchOp.emitJumpTable(crb, masm, tmp, tmp2, 0, 8, Arrays.stream(variants));
 
                 // use the 1-byte-1-byte stride variant for the 2-2 and 4-4 cases by simply shifting
                 // the length
