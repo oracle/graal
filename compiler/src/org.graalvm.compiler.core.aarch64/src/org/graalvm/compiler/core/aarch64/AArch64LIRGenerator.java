@@ -533,7 +533,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     private AllocatableValue emitConvertNullToZero(Value value) {
-        AllocatableValue result = newVariable(value.getValueKind());
+        AllocatableValue result = newVariable(LIRKind.unknownReference(target().arch.getWordKind()));
         emitConvertNullToZero(result, value);
         return result;
     }

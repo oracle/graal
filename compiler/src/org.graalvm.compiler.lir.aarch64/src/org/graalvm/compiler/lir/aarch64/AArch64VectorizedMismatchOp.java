@@ -235,9 +235,6 @@ public final class AArch64VectorizedMismatchOp extends AArch64ComplexVectorOp {
         asm.eor(64, ret, ret, tmp);
         asm.cbz(64, ret, endOfArray);
         asm.rbit(Math.max(bits, 32), ret, ret);
-        if (bits < 32) {
-            asm.lsl(32, ret, ret, 32 - bits);
-        }
         asm.clz(Math.max(bits, 32), ret, ret);
         asm.lsr(64, ret, ret, 3);
         asm.jmp(end);
@@ -248,9 +245,6 @@ public final class AArch64VectorizedMismatchOp extends AArch64ComplexVectorOp {
         asm.eor(64, ret, ret, tmp);
         asm.cbz(64, ret, retEqual);
         asm.rbit(Math.max(bits, 32), ret, ret);
-        if (bits < 32) {
-            asm.lsl(32, ret, ret, 32 - bits);
-        }
         asm.clz(Math.max(bits, 32), ret, ret);
         asm.add(64, ret, len, ret, ShiftType.LSR, 3);
         asm.jmp(end);
