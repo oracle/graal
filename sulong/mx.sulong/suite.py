@@ -594,18 +594,23 @@ suite = {
     },
 
     "toolchain-launchers-tests": {
+      "class" : "CMakeNinjaProject",
       "subDir": "tests",
-      "native": True,
       "vpath": True,
       "platformDependent": True,
-      "max_jobs": "1",
-      "buildEnv" : {
+      "ninja_targets" : ["all"],
+      "ninja_install_targets" : ["test"],
+      "results" : ["main.out"],
+      "cmakeConfig" : {
         "SULONG_EXE" : "<mx_exe> lli",
-        "CLANG": "<toolchainGetToolPath:native,CC>",
-        "CLANGXX": "<toolchainGetToolPath:native,CXX>",
-        "TOOLCHAIN_LD": "<toolchainGetToolPath:native,LD>",
-        "OS": "<os>",
-        "JACOCO": "<jacoco>",
+        "CMAKE_C_COMPILER": "<toolchainGetToolPath:native,CC>",
+        "CMAKE_CXX_COMPILER": "<toolchainGetToolPath:native,CXX>",
+        "CMAKE_LINKER": "<toolchainGetToolPath:native,LD>",
+        "SULONG_LIB" : "<path:SULONG_HOME>/native/lib",
+        "LLVM_OBJDUMP" : "<path:LLVM_TOOLCHAIN>/bin/<exe:llvm-objdump>",
+      },
+      "buildEnv" : {
+        "CTEST_PARALLEL_LEVEL" : "16",
       },
       "buildDependencies" : [
         "SULONG_CORE",
