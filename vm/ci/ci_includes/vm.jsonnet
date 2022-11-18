@@ -213,6 +213,7 @@ local jdks = common_json.jdks;
 
     #
     # Deploy GraalVM Base and Installables
+    # NOTE: After adding or removing deploy jobs, please make sure you modify ce-release-artifacts.json accordingly.
     #
 
     # Linux/AMD64
