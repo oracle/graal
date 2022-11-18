@@ -45,7 +45,11 @@ public class LoopsData {
     private final List<LoopEx> loops;
 
     static LoopsData compute(final StructuredGraph graph) {
-        return new LoopsData(graph);
+        return new LoopsData(graph, null);
+    }
+
+    static LoopsData compute(final ControlFlowGraph cfg) {
+        return new LoopsData(cfg.graph, cfg);
     }
 
     protected LoopsData(ControlFlowGraph cfg, List<LoopEx> loops, EconomicMap<LoopBeginNode, LoopEx> loopBeginToEx) {
@@ -55,13 +59,17 @@ public class LoopsData {
     }
 
     @SuppressWarnings("try")
-    protected LoopsData(final StructuredGraph graph) {
+    protected LoopsData(final StructuredGraph graph, ControlFlowGraph preComputedCFG) {
         loopBeginToEx = EconomicMap.create(Equivalence.IDENTITY);
         DebugContext debug = graph.getDebug();
-        try (DebugContext.Scope s = debug.scope("ControlFlowGraph")) {
-            cfg = ControlFlowGraph.compute(graph, true, true, true, true);
-        } catch (Throwable e) {
-            throw debug.handle(e);
+        if (preComputedCFG == null) {
+            try (DebugContext.Scope s = debug.scope("ControlFlowGraph")) {
+                this.cfg = ControlFlowGraph.compute(graph, true, true, true, true);
+            } catch (Throwable e) {
+                throw debug.handle(e);
+            }
+        } else {
+            this.cfg = preComputedCFG;
         }
         assert checkLoopOrder(cfg.getLoops());
         loops = new ArrayList<>(cfg.getLoops().size());

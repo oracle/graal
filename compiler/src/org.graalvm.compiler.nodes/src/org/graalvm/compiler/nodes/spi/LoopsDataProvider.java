@@ -25,6 +25,7 @@
 package org.graalvm.compiler.nodes.spi;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.loop.LoopsData;
 
 /**
@@ -33,4 +34,6 @@ import org.graalvm.compiler.nodes.loop.LoopsData;
 public interface LoopsDataProvider {
 
     LoopsData getLoopsData(StructuredGraph graph);
+
+    LoopsData getLoopsData(ControlFlowGraph cfg);
 }

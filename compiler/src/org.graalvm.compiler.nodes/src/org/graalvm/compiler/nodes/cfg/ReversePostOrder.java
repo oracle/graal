@@ -24,12 +24,10 @@
  */
 package org.graalvm.compiler.nodes.cfg;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.LinkedNodeStack;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeMap;
@@ -58,6 +56,47 @@ import org.graalvm.compiler.nodes.LoopExitNode;
  */
 public class ReversePostOrder {
 
+    private static class RPOStack<T> {
+
+        private static class StackNode<T> {
+            StackNode<T> next;
+            T node;
+
+            StackNode(T node) {
+                this.node = node;
+            }
+        }
+
+        RPOStack() {
+            dummyHead = new StackNode<>(null);
+        }
+
+        final StackNode<T> dummyHead;
+
+        public void push(T n) {
+            StackNode<T> prevHead = dummyHead.next;
+            StackNode<T> newHead = new StackNode<>(n);
+            newHead.next = prevHead;
+            dummyHead.next = newHead;
+        }
+
+        public T pop() {
+            StackNode<T> prevHead = dummyHead.next;
+            dummyHead.next = prevHead.next;
+            return prevHead.node;
+        }
+
+        public T peek() {
+            StackNode<T> prevHead = dummyHead.next;
+            return prevHead.node;
+        }
+
+        public boolean isEmpty() {
+            return dummyHead.next == null;
+        }
+
+    }
+
     /**
      * Enqueue the block in the reverse post order with the next index and assign the index to the
      * block itself.
@@ -77,7 +116,7 @@ public class ReversePostOrder {
      */
     private static void compute(ControlFlowGraph cfg, FixedNode start, Block[] rpoBlocks, int startIndex) {
         assert startIndex < rpoBlocks.length;
-        LinkedList<FixedNode> toProcess = new LinkedList<>();
+        LinkedNodeStack toProcess = new LinkedNodeStack();
         toProcess.push(start);
         NodeBitMap visitedNodes = cfg.graph.createNodeBitMap();
         int currentIndex = startIndex;
@@ -86,11 +125,13 @@ public class ReversePostOrder {
         class OpenLoopsData {
             int endsVisited;
             final LoopBeginNode lb;
-            final boolean loopHasNoExits;
 
             OpenLoopsData(LoopBeginNode lb) {
                 this.lb = lb;
-                loopHasNoExits = lb.loopExits().count() == 0;
+            }
+
+            boolean loopHasNoExits() {
+                return lb.loopExits().count() == 0;
             }
 
             /**
@@ -123,7 +164,7 @@ public class ReversePostOrder {
 
         // stack of open (nested) loops processed at the moment, i.e., not fully included in the
         // reverse post order yet
-        ArrayDeque<OpenLoopsData> openLoops = new ArrayDeque<>();
+        RPOStack<OpenLoopsData> openLoops = new RPOStack<>();
 
         /**
          * Traverse the FixedNodes of the graph in a reverse post order manner by following next
@@ -146,7 +187,7 @@ public class ReversePostOrder {
             }
             if (cur == null) {
                 if (!toProcess.isEmpty()) {
-                    cur = toProcess.pop();
+                    cur = (FixedNode) toProcess.pop();
                 }
             }
             // we are done
@@ -182,7 +223,7 @@ public class ReversePostOrder {
                  * and every predecessor node of a loop exit is visited
                  */
                 if (!ol.loopFullyProcessed()) {
-                    GraalError.guarantee(toProcess.size() > 0, "If a loop is not fully processed there need to be further blocks, %s", lex);
+                    GraalError.guarantee(!toProcess.isEmpty(), "If a loop is not fully processed there need to be further blocks, %s", lex);
                     /*
                      * Since the current loop is not fully processed we need to stall the processing
                      * of the exit paths still. Mixing the stalled exits with the loop blocks would
@@ -235,7 +276,7 @@ public class ReversePostOrder {
                         final OpenLoopsData ol = openLoops.peek();
                         GraalError.guarantee(ol.lb == len.loopBegin(), "Loop begin does not match, loop end begin %s stack loop begin %s", len.loopBegin(), ol.lb);
                         ol.endsVisited++;
-                        if (ol.loopHasNoExits && ol.loopFullyProcessed()) {
+                        if (ol.loopHasNoExits() && ol.loopFullyProcessed()) {
                             openLoops.pop();
                         }
                     } else if (cur instanceof ControlSplitNode) {
@@ -260,7 +301,7 @@ public class ReversePostOrder {
 
     }
 
-    private static void pushOrStall(FixedNode n, LinkedList<FixedNode> toProcess) {
+    private static void pushOrStall(FixedNode n, LinkedNodeStack toProcess) {
         if (!(n instanceof LoopExitNode)) {
             toProcess.push(n);
         }
@@ -284,7 +325,6 @@ public class ReversePostOrder {
         compute(cfg, cfg.graph.start(), reversePostOrder, 0);
         assignPredecessorsAndSuccessors(reversePostOrder, cfg);
         return reversePostOrder;
-
     }
 
     private static void computeLoopPredecessors(NodeMap<Block> nodeMap, Block block, LoopBeginNode loopBeginNode) {
@@ -309,14 +349,16 @@ public class ReversePostOrder {
                 Block suxBlock = cfg.getNodeToBlock().get(endNode.merge());
                 b.setSuccessors(new Block[]{suxBlock});
             } else if (blockEndNode instanceof ControlSplitNode) {
-                ArrayList<Block> succ = new ArrayList<>();
+                ControlSplitNode split = (ControlSplitNode) blockEndNode;
+                Block[] succ = new Block[split.getSuccessorCount()];
                 Block[] ifPred = new Block[]{b};
+                int index = 0;
                 for (Node sux : blockEndNode.successors()) {
                     Block sucBlock = cfg.getNodeToBlock().get(sux);
-                    succ.add(sucBlock);
+                    succ[index++] = sucBlock;
                     sucBlock.setPredecessors(ifPred);
                 }
-                b.setSuccessors(succ.toArray(new Block[succ.size()]), ((ControlSplitNode) blockEndNode).successorProbabilities());
+                b.setSuccessors(succ, ((ControlSplitNode) blockEndNode).successorProbabilities());
             } else if (blockEndNode instanceof LoopEndNode) {
                 LoopEndNode loopEndNode = (LoopEndNode) blockEndNode;
                 b.setSuccessors(new Block[]{cfg.getNodeToBlock().get(loopEndNode.loopBegin())});
