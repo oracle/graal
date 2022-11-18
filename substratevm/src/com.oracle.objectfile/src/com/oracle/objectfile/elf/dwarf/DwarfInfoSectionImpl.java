@@ -549,7 +549,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         } else {
             /* Inherit layout from object header. */
             superName = OBJECT_HEADER_STRUCT_NAME;
-            TypeEntry headerType = lookupType(null);
+            TypeEntry headerType = headerType();
             superTypeOffset = getTypeIndex(headerType);
         }
         /* Now write the child fields. */

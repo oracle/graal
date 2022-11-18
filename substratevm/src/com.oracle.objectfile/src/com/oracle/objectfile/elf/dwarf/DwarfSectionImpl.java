@@ -49,7 +49,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -689,9 +688,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      * @return the unique object header type notified via the DebugTypeInfo API.
      */
     protected HeaderTypeEntry headerType() {
-        Optional<HeaderTypeEntry> optHeader = typeStream().filter(TypeEntry::isHeader).map(entry -> ((HeaderTypeEntry) entry)).findFirst();
-        assert optHeader.isPresent();
-        return optHeader.get();
+        return dwarfSections.lookupHeaderType();
     }
 
     /**
@@ -705,8 +702,8 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     /**
-     * Retrieve an iterable for all all instance classes, including interfaces and enums, notified
-     * via the DebugTypeInfo API.
+     * Retrieve an iterable for all instance classes, including interfaces and enums, notified via
+     * the DebugTypeInfo API.
      * 
      * @return an iterable for all instance classes notified via the DebugTypeInfo API.
      */
@@ -729,7 +726,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return dwarfSections.lookupTypeEntry(type);
     }
 
-    protected TypeEntry lookupObjectClass() {
+    protected ClassEntry lookupObjectClass() {
         return dwarfSections.lookupObjectClass();
     }
 
