@@ -70,7 +70,6 @@ public class Range {
     private static final DebugLocalInfo[] EMPTY_LOCAL_INFOS = new DebugLocalInfo[0];
     private static final String CLASS_DELIMITER = ".";
     private final MethodEntry methodEntry;
-    private final String fullMethodName;
     private final int lo;
     private int hi;
     private final int line;
@@ -152,7 +151,6 @@ public class Range {
             stringTable.uniqueDebugString(methodEntry.fileEntry.getPathName());
         }
         this.methodEntry = methodEntry;
-        this.fullMethodName = isTopLevel ? stringTable.uniqueDebugString(constructClassAndMethodName()) : stringTable.uniqueString(constructClassAndMethodName());
         this.lo = lo;
         this.hi = hi;
         this.line = line;
@@ -222,7 +220,7 @@ public class Range {
     }
 
     public String getFullMethodName() {
-        return fullMethodName;
+        return constructClassAndMethodName();
     }
 
     public String getFullMethodNameWithParams() {
