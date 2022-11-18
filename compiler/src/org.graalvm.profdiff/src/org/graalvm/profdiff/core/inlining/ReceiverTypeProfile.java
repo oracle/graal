@@ -29,19 +29,23 @@ import java.util.List;
 import org.graalvm.profdiff.util.Writer;
 
 /**
- * Holds type profile information for a callsite (inlining tree node).
+ * Receiver-type profile information for a concrete inlining tree node.
  */
-public class ProfilingInfo {
+public class ReceiverTypeProfile {
     /**
-     * A type name with a probability.
+     * A single profiled type of the receiver.
      */
     public static class ProfiledType {
         private final String typeName;
+
         private final double probability;
 
-        public ProfiledType(String typeName, double probability) {
+        private final String concreteMethodName;
+
+        public ProfiledType(String typeName, double probability, String concreteMethodName) {
             this.typeName = typeName;
             this.probability = probability;
+            this.concreteMethodName = concreteMethodName;
         }
 
         public String getTypeName() {
@@ -63,7 +67,7 @@ public class ProfilingInfo {
      */
     private final List<ProfiledType> profiledTypes;
 
-    public ProfilingInfo(boolean isMature, List<ProfiledType> profiledTypes) {
+    public ReceiverTypeProfile(boolean isMature, List<ProfiledType> profiledTypes) {
         this.isMature = isMature;
         this.profiledTypes = profiledTypes;
     }
@@ -81,7 +85,12 @@ public class ProfilingInfo {
 
     public void write(Writer writer) {
         for (ProfiledType profiledType : getProfiledTypes()) {
-            writer.writeln(String.format("%5.2f%% %s", profiledType.getProbability() * 100, profiledType.getTypeName()));
+            writer.write(String.format("%5.2f%% %s", profiledType.getProbability() * 100, profiledType.getTypeName()));
+            if (profiledType.concreteMethodName != null) {
+                writer.writeln(" -> " + profiledType.concreteMethodName);
+            } else {
+                writer.writeln();
+            }
         }
     }
 }

@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.profdiff.core.VerbosityLevel;
+import org.graalvm.profdiff.matching.tree.InliningDeltaTreeWriterVisitor;
 import org.graalvm.profdiff.util.Writer;
 import org.graalvm.util.CollectionsUtil;
 
@@ -126,7 +127,11 @@ public class InliningTree {
         } else {
             writer.writeln("Inlining tree");
             writer.increaseIndent();
-            root.writeRecursive(writer);
+            root.forEach(node -> {
+                node.writeHead(writer);
+                InliningDeltaTreeWriterVisitor.writeReceiverTypeProfile(writer, node, null);
+                writer.increaseIndent();
+            }, node -> writer.decreaseIndent());
             writer.decreaseIndent();
         }
     }
@@ -155,11 +160,14 @@ public class InliningTree {
         InliningPath.PathElement element = path.get(pathIndex);
         List<InliningTreeNode> children = node == null ? List.of(root) : node.getChildren();
         for (InliningTreeNode child : children) {
-            if (element.matches(child.pathElement())) {
-                InliningTreeNode result = getNodeAt(child, path, pathIndex + 1);
-                if (result != null) {
-                    return result;
-                }
+            InliningTreeNode result = null;
+            if (child.isAbstract()) {
+                result = getNodeAt(child, path, pathIndex);
+            } else if (element.matches(child.pathElement())) {
+                result = getNodeAt(child, path, pathIndex + 1);
+            }
+            if (result != null) {
+                return result;
             }
         }
         return null;
@@ -170,7 +178,7 @@ public class InliningTree {
         if (rootNode == null) {
             return new InliningTree(null);
         }
-        InliningTreeNode clonedNode = new InliningTreeNode(rootNode.getName(), -1, rootNode.isPositive(), null, rootNode.getProfilingInfo());
+        InliningTreeNode clonedNode = new InliningTreeNode(rootNode.getName(), -1, rootNode.isPositive(), null, rootNode.isAbstract(), rootNode.getReceiverTypeProfile());
         cloneSubtreeInto(rootNode, clonedNode);
         return new InliningTree(clonedNode);
     }
@@ -178,7 +186,7 @@ public class InliningTree {
     private static void cloneSubtreeInto(InliningTreeNode originalNode, InliningTreeNode clonedNode) {
         for (InliningTreeNode originalChild : originalNode.getChildren()) {
             InliningTreeNode clonedChild = new InliningTreeNode(originalChild.getName(), originalChild.getBCI(), originalChild.isPositive(), originalChild.getReason(),
-                            originalChild.getProfilingInfo());
+                            originalChild.isAbstract(), originalChild.getReceiverTypeProfile());
             cloneSubtreeInto(originalChild, clonedChild);
             clonedNode.addChild(clonedChild);
         }

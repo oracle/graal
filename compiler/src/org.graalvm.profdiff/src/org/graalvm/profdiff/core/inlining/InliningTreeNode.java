@@ -51,6 +51,8 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
 
     public static final String AT_BCI = " at bci ";
 
+    public static final String ABSTRACT_PREFIX = "(abstract) ";
+
     /**
      * The bci of the parent method's callsite of this inlinee.
      */
@@ -68,23 +70,27 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
      */
     private final List<String> reason;
 
-    private final ProfilingInfo profilingInfo;
+    private final boolean isAbstract;
+
+    private final ReceiverTypeProfile receiverTypeProfile;
 
     /**
      * Constructs an inlining tree node.
      *
      * @param targetMethodName the name of this inlined method
-     * @param bci              the bci of the parent method's callsite of this inlinee
-     * @param positive         {@code true} if the target method was inlined
-     * @param reason           the reasoning for this inlining decision
-     * @param profilingInfo
+     * @param bci the bci of the parent method's callsite of this inlinee
+     * @param positive {@code true} if the target method was inlined
+     * @param reason the reasoning for this inlining decision
+     * @param isAbstract
+     * @param receiverTypeProfile
      */
-    public InliningTreeNode(String targetMethodName, int bci, boolean positive, List<String> reason, ProfilingInfo profilingInfo) {
+    public InliningTreeNode(String targetMethodName, int bci, boolean positive, List<String> reason, boolean isAbstract, ReceiverTypeProfile receiverTypeProfile) {
         super(targetMethodName);
         this.bci = bci;
         this.positive = positive;
         this.reason = reason == null ? List.of() : reason;
-        this.profilingInfo = profilingInfo;
+        this.isAbstract = isAbstract;
+        this.receiverTypeProfile = receiverTypeProfile;
     }
 
     /**
@@ -101,6 +107,10 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
         return positive;
     }
 
+    public boolean isAbstract() {
+        return isAbstract;
+    }
+
     /**
      * Gets the reasoning for this inlining decision.
      */
@@ -110,7 +120,9 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
 
     @Override
     public void writeHead(Writer writer) {
-        if (!positive) {
+        if (isAbstract) {
+            writer.write(ABSTRACT_PREFIX);
+        } else if (!positive) {
             writer.write(NOT_INLINED_PREFIX);
         }
         writer.writeln((getName() == null ? UNKNOWN_NAME : getName()) + AT_BCI + bci);
@@ -162,7 +174,7 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
         return new InliningPath.PathElement(getName(), getBCI());
     }
 
-    public ProfilingInfo getProfilingInfo() {
-        return profilingInfo;
+    public ReceiverTypeProfile getReceiverTypeProfile() {
+        return receiverTypeProfile;
     }
 }

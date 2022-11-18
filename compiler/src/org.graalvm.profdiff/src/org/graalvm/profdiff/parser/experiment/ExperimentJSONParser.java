@@ -123,6 +123,10 @@ public class ExperimentJSONParser {
         public Integer asNullableInteger() throws ExperimentParserTypeError {
             return asNullableInstanceOf(Integer.class);
         }
+
+        public Boolean asNullableBoolean() throws ExperimentParserTypeError {
+            return asNullableInstanceOf(Boolean.class);
+        }
     }
 
     /**

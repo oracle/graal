@@ -102,7 +102,9 @@ public class InliningPath {
     public static InliningPath fromRootToNode(InliningTreeNode node) {
         List<PathElement> path = new ArrayList<>();
         while (node != null) {
-            path.add(new PathElement(node.getName(), node.getBCI()));
+            if (!node.isAbstract()) {
+                path.add(new PathElement(node.getName(), node.getBCI()));
+            }
             node = node.getParent();
         }
         Collections.reverse(path);

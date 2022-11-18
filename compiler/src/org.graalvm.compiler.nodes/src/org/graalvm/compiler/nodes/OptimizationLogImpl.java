@@ -119,6 +119,12 @@ public class OptimizationLogImpl implements OptimizationLog {
     public static final String INLINED_PROPERTY = "inlined";
 
     /**
+     * The key of the property which is {@code true} iff the callsite targets a method known to be
+     * abstract.
+     */
+    public static final String ABSTRACT_PROPERTY = "abstract";
+
+    /**
      * The key of the reason property. The property holds a list of reasons for inlining decisions
      * in their original order.
      */
@@ -158,20 +164,9 @@ public class OptimizationLogImpl implements OptimizationLog {
     public static final String OPTIMIZATION_LOG_DIRECTORY = "optimization_log";
 
     /**
-     * The name of the property holding profiling info of a callsite.
-     */
-    public static final String PROFILING_INFO_PROPERTY = "profilingInfo";
-
-    /**
      * The key of the maturity flag in profiling info.
      */
-    public static final String IS_MATURE_PROPERTY = "isMature";
-
-    /**
-     * The name of the property holding a map representing a {@link JavaTypeProfile}. The map holds
-     * probabilities mapped by type names.
-     */
-    public static final String TYPE_PROFILE_PROPERTY = "typeProfile";
+    public static final String MATURE_PROPERTY = "mature";
 
     /**
      * The line separator, which separates compilation units in optimization log files. Profdiff
@@ -179,6 +174,32 @@ public class OptimizationLogImpl implements OptimizationLog {
      * common line separator for all platform simplifies the logic.
      */
     public static final char LINE_SEPARATOR = '\n';
+
+    /**
+     * The name of the property holding the name of a receiver type.
+     */
+    public static final String TYPE_NAME_PROPERTY = "typeName";
+
+    /**
+     * The name of the property holding a probability of a receiver type.
+     */
+    public static final String PROBABILITY_PROPERTY = "probability";
+
+    /**
+     * The name of the property holding a list of receiver types with probabilities.
+     */
+    public static final String PROFILED_TYPES_PROPERTY = "profiledTypes";
+
+    /**
+     * The name of the property holding a receiver-type profile for a polymorphic callsite.
+     */
+    public static final String RECEIVER_TYPE_PROFILE_PROPERTY = "receiverTypeProfile";
+
+    /**
+     * The name of the property holding the name of the concrete method called for a given receiver
+     * type.
+     */
+    public static final String CONCRETE_METHOD_NAME_PROPERTY = "concreteMethodName";
 
     /**
      * Represents an optimization phase, which can trigger its own subphases and/or individual
@@ -727,12 +748,13 @@ public class OptimizationLogImpl implements OptimizationLog {
         map.put(CALLSITE_BCI_PROPERTY, callsite.getBci());
         map.put(INLINED_PROPERTY, isInlined);
         map.put(REASON_PROPERTY, reason);
-        EconomicMap<String, Object> profilingInfoMap = profilingInfoAsJSONMap(callsite);
-        if (profilingInfoMap != null) {
-            map.put(PROFILING_INFO_PROPERTY, profilingInfoMap);
-        }
-        if (!isInlined) {
-            return map;
+        boolean isAbstract = callsite.target != null && callsite.target.isAbstract();
+        map.put(ABSTRACT_PROPERTY, isAbstract);
+        if (isAbstract) {
+            EconomicMap<String, Object> receiverTypeProfile = receiverTypeProfileAsJSONMap(callsite, methodNameFormatter);
+            if (receiverTypeProfile != null) {
+                map.put(RECEIVER_TYPE_PROFILE_PROPERTY, receiverTypeProfile);
+            }
         }
         List<Object> invokes = null;
         for (InliningLog.Callsite child : callsite.children) {
@@ -757,27 +779,36 @@ public class OptimizationLogImpl implements OptimizationLog {
     }
 
     /**
-     * Converts the profiling info of a callsite to a JSON map. Returns {@code null} if there is no
+     * Converts the type profile of the receiver to a JSON map. Returns {@code null} if there is no
      * profiling info available.
      *
      * @param callsite the callsite whose profiling info is returned
-     * @return the profiling info as a map or {@code null}
+     * @return the type profile as a map or {@code null}
      */
-    private EconomicMap<String, Object> profilingInfoAsJSONMap(InliningLog.Callsite callsite) {
+    private EconomicMap<String, Object> receiverTypeProfileAsJSONMap(InliningLog.Callsite callsite, Function<ResolvedJavaMethod, String> methodNameFormatter) {
         if (callsite.parent == null || callsite.parent.target == null || callsite.parent.target.getProfilingInfo() == null) {
             return null;
         }
         ProfilingInfo profilingInfo = callsite.parent.target.getProfilingInfo();
-        EconomicMap<String, Object> profilingInfoMap = EconomicMap.create();
-        profilingInfoMap.put(IS_MATURE_PROPERTY, profilingInfo.isMature());
+        EconomicMap<String, Object> typeProfileMap = EconomicMap.create();
+        typeProfileMap.put(MATURE_PROPERTY, profilingInfo.isMature());
         JavaTypeProfile typeProfile = profilingInfo.getTypeProfile(callsite.getBci());
         if (typeProfile != null) {
-            EconomicMap<String, Object> typeProfileMap = EconomicMap.create();
+            List<EconomicMap<String, Object>> profiledTypes = new ArrayList<>();
             for (JavaTypeProfile.ProfiledType profiledType : typeProfile.getTypes()) {
-                typeProfileMap.put(profiledType.getType().getName(), profiledType.getProbability());
+                EconomicMap<String, Object> profiledTypeMap = EconomicMap.create();
+                profiledTypeMap.put(TYPE_NAME_PROPERTY, profiledType.getType().getName());
+                profiledTypeMap.put(PROBABILITY_PROPERTY, profiledType.getProbability());
+                if (callsite.target != null) {
+                    ResolvedJavaMethod concreteMethod = profiledType.getType().resolveConcreteMethod(callsite.target, callsite.parent.target.getDeclaringClass());
+                    if (concreteMethod != null) {
+                        profiledTypeMap.put(CONCRETE_METHOD_NAME_PROPERTY, methodNameFormatter.apply(concreteMethod));
+                    }
+                }
+                profiledTypes.add(profiledTypeMap);
             }
-            profilingInfoMap.put(TYPE_PROFILE_PROPERTY, typeProfileMap);
+            typeProfileMap.put(PROFILED_TYPES_PROPERTY, profiledTypes);
         }
-        return profilingInfoMap;
+        return typeProfileMap;
     }
 }

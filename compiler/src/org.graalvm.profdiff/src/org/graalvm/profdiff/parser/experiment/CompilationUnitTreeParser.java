@@ -30,13 +30,12 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.collections.Pair;
 import org.graalvm.compiler.nodes.OptimizationLogImpl;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
-import org.graalvm.profdiff.core.inlining.ProfilingInfo;
+import org.graalvm.profdiff.core.inlining.ReceiverTypeProfile;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
@@ -86,7 +85,8 @@ public class CompilationUnitTreeParser implements CompilationUnit.TreeLoader {
                 reason.add(reasonItem.asString());
             }
         }
-        InliningTreeNode inliningTreeNode = new InliningTreeNode(methodName, bci, positive, reason, parseProfilingInfo(map));
+        boolean isAbstract = map.property(OptimizationLogImpl.ABSTRACT_PROPERTY).asBoolean();
+        InliningTreeNode inliningTreeNode = new InliningTreeNode(methodName, bci, positive, reason, isAbstract, parseProfilingInfo(map));
         ExperimentJSONParser.JSONLiteral invokes = map.property(OptimizationLogImpl.INVOKES_PROPERTY);
         if (invokes.isNull()) {
             return inliningTreeNode;
@@ -97,22 +97,26 @@ public class CompilationUnitTreeParser implements CompilationUnit.TreeLoader {
         return inliningTreeNode;
     }
 
-    private static ProfilingInfo parseProfilingInfo(ExperimentJSONParser.JSONMap map) throws ExperimentParserTypeError {
-        ExperimentJSONParser.JSONLiteral profilingInfoObject = map.property(OptimizationLogImpl.PROFILING_INFO_PROPERTY);
-        if (profilingInfoObject.isNull()) {
+    private static ReceiverTypeProfile parseProfilingInfo(ExperimentJSONParser.JSONMap map) throws ExperimentParserTypeError {
+        ExperimentJSONParser.JSONLiteral receiverTypeProfileObject = map.property(OptimizationLogImpl.RECEIVER_TYPE_PROFILE_PROPERTY);
+        if (receiverTypeProfileObject.isNull()) {
             return null;
         }
-        ExperimentJSONParser.JSONMap profilingInfoMap = profilingInfoObject.asMap();
-        boolean isMature = profilingInfoMap.property(OptimizationLogImpl.IS_MATURE_PROPERTY).asBoolean();
-        List<ProfilingInfo.ProfiledType> profiledTypes = null;
-        ExperimentJSONParser.JSONLiteral typeProfilesLiteral = profilingInfoMap.property(OptimizationLogImpl.TYPE_PROFILE_PROPERTY);
-        if (!typeProfilesLiteral.isNull()) {
+        ExperimentJSONParser.JSONMap receiverTypeProfileMap = receiverTypeProfileObject.asMap();
+        boolean mature = receiverTypeProfileMap.property(OptimizationLogImpl.MATURE_PROPERTY).asBoolean();
+        List<ReceiverTypeProfile.ProfiledType> profiledTypes = null;
+        ExperimentJSONParser.JSONLiteral profiledTypesLiteral = receiverTypeProfileMap.property(OptimizationLogImpl.PROFILED_TYPES_PROPERTY);
+        if (!profiledTypesLiteral.isNull()) {
             profiledTypes = new ArrayList<>();
-            for (Pair<String, ExperimentJSONParser.JSONLiteral> pair : typeProfilesLiteral.asMap().getEntries()) {
-                profiledTypes.add(new ProfilingInfo.ProfiledType(pair.getLeft(), pair.getRight().asDouble()));
+            for (ExperimentJSONParser.JSONLiteral profiledTypeLiteral : profiledTypesLiteral.asList()) {
+                ExperimentJSONParser.JSONMap profiledTypeMap = profiledTypeLiteral.asMap();
+                String typeName = profiledTypeMap.property(OptimizationLogImpl.TYPE_NAME_PROPERTY).asString();
+                double probability = profiledTypeMap.property(OptimizationLogImpl.PROBABILITY_PROPERTY).asDouble();
+                String concreteMethodName = profiledTypeMap.property(OptimizationLogImpl.CONCRETE_METHOD_NAME_PROPERTY).asNullableString();
+                profiledTypes.add(new ReceiverTypeProfile.ProfiledType(typeName, probability, concreteMethodName));
             }
         }
-        return new ProfilingInfo(isMature, profiledTypes);
+        return new ReceiverTypeProfile(mature, profiledTypes);
     }
 
     private OptimizationPhase parseOptimizationPhase(ExperimentJSONParser.JSONMap map) throws ExperimentParserTypeError {

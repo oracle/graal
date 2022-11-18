@@ -341,6 +341,25 @@ public class InliningLog {
         return log.noUpdates;
     }
 
+    /**
+     * Opens a new update scope that registers callsites for cloned invokes as children of the
+     * original invoke's callsite.
+     *
+     * @return a bound {@link UpdateScope} or {@code null} if the log is disabled
+     */
+    public static UpdateScope openUpdateScopeAttachingClonesToOriginal(InliningLog inliningLog) {
+        if (inliningLog == null) {
+            return null;
+        }
+        return inliningLog.openUpdateScope((parent, newInvoke) -> {
+            if (parent != null) {
+                Callsite parentCallsite = inliningLog.leaves.get(parent);
+                Callsite callsite = parentCallsite.addChild(newInvoke);
+                inliningLog.leaves.put(newInvoke, callsite);
+            }
+        });
+    }
+
     private RootScope currentRootScope = null;
 
     /**
