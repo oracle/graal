@@ -46,7 +46,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.ref.WeakReference;
@@ -134,7 +133,7 @@ final class PolyglotLoggers {
      * @param out the {@link OutputStream} to print log messages into
      */
     static LogHandler createDefaultHandler(final OutputStream out) {
-        return new StreamLogHandler(new RedirectNotificationOutputStream(out), false, true, true);
+        return new StreamLogHandler(out, false, true, true);
     }
 
     static LogHandler getFileHandler(String path) {
@@ -306,6 +305,11 @@ final class PolyglotLoggers {
 
     private static class StreamLogHandler extends LogHandler {
 
+        private static final String REDIRECT_FORMAT = "[To redirect Truffle log output to a file use one of the following options:%n" +
+                        "* '--log.file=<path>' if the option is passed using a guest language launcher.%n" +
+                        "* '-Dpolyglot.log.file=<path>' if the option is passed using the host Java launcher.%n" +
+                        "* Configure logging using the polyglot embedding API.]%n";
+
         private final OutputStream stream;
         private final OutputStreamWriter writer;
         private final Formatter formatter;
@@ -314,6 +318,7 @@ final class PolyglotLoggers {
         private final boolean isDefault;
 
         private ErrorManager errorManager;
+        private boolean notificationPrinted;
 
         StreamLogHandler(OutputStream stream, boolean closeStream, boolean flushOnPublish, boolean isDefault) {
             Objects.requireNonNull(stream, "Stream must be non null");
@@ -335,6 +340,10 @@ final class PolyglotLoggers {
                 return;
             }
             try {
+                if (isDefault && !notificationPrinted) {
+                    writer.write(String.format(REDIRECT_FORMAT));
+                    notificationPrinted = true;
+                }
                 writer.write(msg);
                 if (flushOnPublish) {
                     writer.flush();
@@ -735,52 +744,6 @@ final class PolyglotLoggers {
             } else {
                 return new SafeHandler(handler);
             }
-        }
-    }
-
-    private static final class RedirectNotificationOutputStream extends OutputStream {
-
-        private static final String REDIRECT_FORMAT = "[To redirect Truffle log output to a file use one of the following options:%n" +
-                        "* '--log.file=<path>' if the option is passed using a guest language launcher.%n" +
-                        "* '-Dpolyglot.log.file=<path>' if the option is passed using the host Java launcher.%n" +
-                        "* Configure logging using the polyglot embedding API.]%n";
-
-        private final OutputStream delegate;
-        private volatile boolean notificationPrinted;
-
-        RedirectNotificationOutputStream(OutputStream delegate) {
-            this.delegate = Objects.requireNonNull(delegate, "Delegate must be non null.");
-        }
-
-        @Override
-        public void write(int b) throws IOException {
-            printNotification();
-            delegate.write(b);
-        }
-
-        @Override
-        public void write(byte[] b, int off, int len) throws IOException {
-            printNotification();
-            delegate.write(b, off, len);
-        }
-
-        private void printNotification() {
-            if (notificationPrinted) {
-                return;
-            }
-            synchronized (this) {
-                if (!notificationPrinted) {
-                    PrintStream ps = new PrintStream(delegate);
-                    ps.printf(REDIRECT_FORMAT);
-                    ps.flush();
-                    notificationPrinted = true;
-                }
-            }
-        }
-
-        @Override
-        public void close() throws IOException {
-            delegate.close();
         }
     }
 }

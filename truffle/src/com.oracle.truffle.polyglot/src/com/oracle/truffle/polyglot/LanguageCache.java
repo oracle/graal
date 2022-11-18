@@ -462,21 +462,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     /**
-     * Collect languages included in a native image.
-     *
-     * NOTE: this method is called reflectively by TruffleBaseFeature
-     */
-    @SuppressWarnings("unused")
-    private static Set<String> collectLanguages() {
-        assert TruffleOptions.AOT : "Only supported during image generation";
-        Set<String> toRet = new HashSet<>();
-        for (LanguageCache languageCache : nativeImageCache.values()) {
-            toRet.add(languageCache.id);
-        }
-        return toRet;
-    }
-
-    /**
      * Resets the state for native image generation.
      *
      * NOTE: this method is called reflectively by downstream projects.
