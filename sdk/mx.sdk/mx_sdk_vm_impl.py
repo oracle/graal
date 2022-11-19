@@ -2539,6 +2539,7 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
             testDistribution=False,
             archive_factory=create_archive,
             path=None,
+            include_native_image_resources_filelists=True,
             **kw_args)
 
     def get_artifact_metadata(self):
