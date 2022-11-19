@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,36 +38,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 package com.oracle.truffle.api.strings;
 
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
-final class Stride {
-
-    static final String STRIDE_CACHE_LIMIT = "3";
-    static final int STRIDE_UNROLL = 3;
-
-    static boolean isStride(int stride) {
-        return 0 <= stride && stride <= 2;
-    }
-
-    static int fromCodeRange(int codeRange, Encoding encoding) {
-        if (TStringGuards.isUTF16(encoding)) {
-            return fromCodeRangeUTF16(codeRange);
-        } else if (TStringGuards.isUTF32(encoding)) {
-            return fromCodeRangeUTF32(codeRange);
-        } else {
-            return 0;
-        }
-    }
-
-    static int fromCodeRangeUTF16(int codeRange) {
-        return TSCodeRange.toStrideUTF16(codeRange);
-    }
-
-    static int fromCodeRangeUTF32(int codeRange) {
-        return TSCodeRange.toStrideUTF32(codeRange);
-    }
+@ImportStatic({TStringGuards.class, Encoding.class})
+@GenerateUncached(value = true, inherit = true)
+@GenerateInline(value = true, inherit = true)
+@GenerateCached(value = false, inherit = true)
+abstract class AbstractInternalNode extends Node {
 
 }

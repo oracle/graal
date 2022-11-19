@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.strings;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import static com.oracle.truffle.api.strings.TStringGuards.isStride0;
 import static com.oracle.truffle.api.strings.TStringGuards.isStride1;
 import static com.oracle.truffle.api.strings.TStringGuards.isStride2;
@@ -50,15 +49,16 @@ import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GeneratePackagePrivate;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString.AsTruffleStringNode;
 import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
@@ -144,6 +144,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
     @ImportStatic(TStringGuards.class)
     @GeneratePackagePrivate
     @GenerateUncached
+    @GenerateInline(false)
     public abstract static class FromByteArrayNode extends Node {
 
         FromByteArrayNode() {
@@ -216,6 +217,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
     @ImportStatic({TStringGuards.class, TStringAccessor.class})
     @GeneratePackagePrivate
     @GenerateUncached
+    @GenerateInline(false)
     public abstract static class FromNativePointerNode extends Node {
 
         FromNativePointerNode() {
@@ -308,6 +310,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
     @ImportStatic({TStringGuards.class, TStringAccessor.class})
     @GeneratePackagePrivate
     @GenerateUncached
+    @GenerateInline(false)
     public abstract static class AsMutableTruffleStringNode extends Node {
 
         AsMutableTruffleStringNode() {
@@ -364,6 +367,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
     @ImportStatic({TStringGuards.class, TStringAccessor.class})
     @GeneratePackagePrivate
     @GenerateUncached
+    @GenerateInline(false)
     public abstract static class AsManagedNode extends Node {
 
         AsManagedNode() {
@@ -417,6 +421,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
     @ImportStatic(TStringGuards.class)
     @GeneratePackagePrivate
     @GenerateUncached
+    @GenerateInline(false)
     public abstract static class WriteByteNode extends Node {
 
         WriteByteNode() {
@@ -474,10 +479,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
      *
      * @since 22.1
      */
-    @ImportStatic(TStringGuards.class)
-    @GeneratePackagePrivate
-    @GenerateUncached
-    public abstract static class ConcatNode extends Node {
+    public abstract static class ConcatNode extends AbstractPublicNode {
 
         ConcatNode() {
         }
@@ -491,16 +493,16 @@ public final class MutableTruffleString extends AbstractTruffleString {
         public abstract MutableTruffleString execute(AbstractTruffleString a, AbstractTruffleString b, Encoding expectedEncoding);
 
         @Specialization
-        static MutableTruffleString concat(AbstractTruffleString a, AbstractTruffleString b, Encoding expectedEncoding,
+        final MutableTruffleString concat(AbstractTruffleString a, AbstractTruffleString b, Encoding expectedEncoding,
                         @Cached TruffleString.ToIndexableNode toIndexableNodeA,
                         @Cached TruffleString.ToIndexableNode toIndexableNodeB,
                         @Cached TStringInternalNodes.ConcatMaterializeBytesNode materializeBytesNode,
-                        @Cached BranchProfile outOfMemoryProfile) {
+                        @Cached InlinedBranchProfile outOfMemoryProfile) {
             a.checkEncoding(expectedEncoding);
             b.checkEncoding(expectedEncoding);
-            int length = TruffleString.ConcatNode.addByteLengths(a, b, expectedEncoding.naturalStride, outOfMemoryProfile);
+            int length = TruffleString.ConcatNode.addByteLengths(this, a, b, expectedEncoding.naturalStride, outOfMemoryProfile);
             int offset = 0;
-            byte[] array = materializeBytesNode.execute(a, toIndexableNodeA.execute(a, a.data()), b, toIndexableNodeB.execute(b, b.data()), expectedEncoding, length,
+            byte[] array = materializeBytesNode.execute(this, a, toIndexableNodeA.execute(this, a, a.data()), b, toIndexableNodeB.execute(this, b, b.data()), expectedEncoding, length,
                             expectedEncoding.naturalStride);
             return MutableTruffleString.create(array, offset, length, expectedEncoding);
         }
@@ -543,6 +545,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
     @ImportStatic(TStringGuards.class)
     @GeneratePackagePrivate
     @GenerateUncached
+    @GenerateInline(false)
     public abstract static class SubstringNode extends Node {
 
         SubstringNode() {
@@ -557,18 +560,18 @@ public final class MutableTruffleString extends AbstractTruffleString {
         public abstract MutableTruffleString execute(AbstractTruffleString a, int fromIndex, int length, Encoding expectedEncoding);
 
         @Specialization
-        static MutableTruffleString substring(AbstractTruffleString a, int fromIndex, int length, Encoding expectedEncoding,
+        MutableTruffleString substring(AbstractTruffleString a, int fromIndex, int length, Encoding expectedEncoding,
                         @Cached TruffleString.ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeANode,
                         @Cached TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
                         @Cached TStringInternalNodes.CodePointIndexToRawNode translateIndexNode,
                         @Cached TruffleString.CopyToByteArrayNode copyToByteArrayNode) {
             a.checkEncoding(expectedEncoding);
-            a.boundsCheckRegion(fromIndex, length, getCodePointLengthNode);
-            Object arrayA = toIndexableNode.execute(a, a.data());
-            final int codeRangeA = getCodeRangeANode.execute(a);
-            int fromIndexRaw = translateIndexNode.execute(a, arrayA, codeRangeA, expectedEncoding, 0, fromIndex, length == 0);
-            int lengthRaw = translateIndexNode.execute(a, arrayA, codeRangeA, expectedEncoding, fromIndexRaw, length, true);
+            a.boundsCheckRegion(this, fromIndex, length, getCodePointLengthNode);
+            Object arrayA = toIndexableNode.execute(this, a, a.data());
+            final int codeRangeA = getCodeRangeANode.execute(this, a);
+            int fromIndexRaw = translateIndexNode.execute(this, a, arrayA, codeRangeA, expectedEncoding, 0, fromIndex, length == 0);
+            int lengthRaw = translateIndexNode.execute(this, a, arrayA, codeRangeA, expectedEncoding, fromIndexRaw, length, true);
             int stride = expectedEncoding.naturalStride;
             return SubstringByteIndexNode.createSubstring(a, fromIndexRaw << stride, lengthRaw << stride, expectedEncoding, copyToByteArrayNode);
         }
@@ -610,6 +613,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
     @ImportStatic(TStringGuards.class)
     @GeneratePackagePrivate
     @GenerateUncached
+    @GenerateInline(false)
     public abstract static class SubstringByteIndexNode extends Node {
 
         SubstringByteIndexNode() {
@@ -676,6 +680,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
     @ImportStatic(TStringGuards.class)
     @GeneratePackagePrivate
     @GenerateUncached
+    @GenerateInline(false)
     public abstract static class SwitchEncodingNode extends Node {
 
         SwitchEncodingNode() {
@@ -735,6 +740,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
     @ImportStatic(TStringGuards.class)
     @GeneratePackagePrivate
     @GenerateUncached
+    @GenerateInline(false)
     public abstract static class ForceEncodingNode extends Node {
 
         ForceEncodingNode() {
@@ -783,65 +789,96 @@ public final class MutableTruffleString extends AbstractTruffleString {
         }
     }
 
-    @GenerateUncached
-    abstract static class CalcLazyAttributesNode extends Node {
+    abstract static class DataClassProfile extends AbstractInternalNode {
 
-        abstract void execute(MutableTruffleString a);
+        abstract Object execute(Node node, Object a);
 
         @Specialization
-        void calc(MutableTruffleString a,
-                        @Cached("createClassProfile()") ValueProfile dataClassProfile,
-                        @Cached ConditionProfile asciiBytesLatinProfile,
-                        @Cached ConditionProfile utf8Profile,
-                        @Cached ConditionProfile utf8BrokenProfile,
-                        @Cached ConditionProfile utf16Profile,
-                        @Cached ConditionProfile utf16S0Profile,
-                        @Cached ConditionProfile utf32Profile,
-                        @Cached ConditionProfile utf32S0Profile,
-                        @Cached ConditionProfile utf32S1Profile,
-                        @Cached ConditionProfile exoticMaterializeNativeProfile,
-                        @Cached ConditionProfile exoticValidProfile,
-                        @Cached ConditionProfile exoticFixedWidthProfile) {
-            final Object data = dataClassProfile.profile(a.data());
+        static byte[] doByteArray(byte[] v) {
+            return v;
+        }
+
+        @Specialization
+        static String doString(String v) {
+            return v;
+        }
+
+        @Specialization
+        static NativePointer doNativePointer(NativePointer v) {
+            return v;
+        }
+
+        @Specialization
+        static LazyLong doLazyLong(LazyLong v) {
+            return v;
+        }
+
+        @Specialization
+        static LazyConcat doLazyConcat(LazyConcat v) {
+            return v;
+        }
+
+    }
+
+    abstract static class CalcLazyAttributesNode extends AbstractInternalNode {
+
+        abstract void execute(Node node, MutableTruffleString a);
+
+        @Specialization
+        static void calc(Node node, MutableTruffleString a,
+                        @Cached DataClassProfile dataClassProfile,
+                        @Cached InlinedConditionProfile asciiBytesLatinProfile,
+                        @Cached InlinedConditionProfile utf8Profile,
+                        @Cached InlinedConditionProfile utf8BrokenProfile,
+                        @Cached InlinedConditionProfile utf16Profile,
+                        @Cached InlinedConditionProfile utf16S0Profile,
+                        @Cached InlinedConditionProfile utf32Profile,
+                        @Cached InlinedConditionProfile utf32S0Profile,
+                        @Cached InlinedConditionProfile utf32S1Profile,
+                        @Cached InlinedConditionProfile exoticMaterializeNativeProfile,
+                        @Cached InlinedConditionProfile exoticValidProfile,
+                        @Cached InlinedConditionProfile exoticFixedWidthProfile) {
+
+            final Object data = dataClassProfile.execute(node, a.data());
             final int encoding = a.encoding();
             final int offset = a.offset();
             final int length = a.length();
             final int codePointLength;
             final int codeRange;
-            if (utf16Profile.profile(isUTF16(encoding))) {
-                if (utf16S0Profile.profile(isStride0(a))) {
-                    codeRange = TStringOps.calcStringAttributesLatin1(this, data, offset, length);
+            if (utf16Profile.profile(node, isUTF16(encoding))) {
+                if (utf16S0Profile.profile(node, isStride0(a))) {
+                    codeRange = TStringOps.calcStringAttributesLatin1(node, data, offset, length);
                     codePointLength = length;
                 } else {
                     assert isStride1(a);
-                    long attrs = TStringOps.calcStringAttributesUTF16(this, data, offset, length, false);
+                    long attrs = TStringOps.calcStringAttributesUTF16(node, data, offset, length, false);
                     codePointLength = StringAttributes.getCodePointLength(attrs);
                     codeRange = StringAttributes.getCodeRange(attrs);
                 }
-            } else if (utf32Profile.profile(isUTF32(encoding))) {
-                if (utf32S0Profile.profile(isStride0(a))) {
-                    codeRange = TStringOps.calcStringAttributesLatin1(this, data, offset, length);
-                } else if (utf32S1Profile.profile(isStride1(a))) {
-                    codeRange = TStringOps.calcStringAttributesBMP(this, data, offset, length);
+            } else if (utf32Profile.profile(node, isUTF32(encoding))) {
+                if (utf32S0Profile.profile(node, isStride0(a))) {
+                    codeRange = TStringOps.calcStringAttributesLatin1(node, data, offset, length);
+                } else if (utf32S1Profile.profile(node, isStride1(a))) {
+                    codeRange = TStringOps.calcStringAttributesBMP(node, data, offset, length);
                 } else {
                     assert isStride2(a);
-                    codeRange = TStringOps.calcStringAttributesUTF32(this, data, offset, length);
+                    codeRange = TStringOps.calcStringAttributesUTF32(node, data, offset, length);
                 }
                 codePointLength = length;
             } else {
-                if (utf8Profile.profile(isUTF8(encoding))) {
-                    long attrs = TStringOps.calcStringAttributesUTF8(this, data, offset, length, false, false, utf8BrokenProfile);
+                if (utf8Profile.profile(node, isUTF8(encoding))) {
+                    long attrs = TStringOps.calcStringAttributesUTF8(node, data, offset, length, false, false, utf8BrokenProfile);
                     codeRange = StringAttributes.getCodeRange(attrs);
                     codePointLength = StringAttributes.getCodePointLength(attrs);
-                } else if (asciiBytesLatinProfile.profile(TStringGuards.isAsciiBytesOrLatin1(encoding))) {
-                    int cr = TStringOps.calcStringAttributesLatin1(this, data, offset, length);
+                } else if (asciiBytesLatinProfile.profile(node, TStringGuards.isAsciiBytesOrLatin1(encoding))) {
+                    int cr = TStringOps.calcStringAttributesLatin1(node, data, offset, length);
                     codeRange = TStringGuards.is8Bit(cr) ? TSCodeRange.asciiLatinBytesNonAsciiCodeRange(encoding) : cr;
                     codePointLength = length;
                 } else {
                     if (data instanceof NativePointer) {
-                        ((NativePointer) data).materializeByteArray(a, exoticMaterializeNativeProfile);
+                        ((NativePointer) data).materializeByteArray(node, a, exoticMaterializeNativeProfile);
                     }
-                    long attrs = JCodings.getInstance().calcStringAttributes(this, data, offset, length, Encoding.get(encoding), 0, exoticValidProfile, exoticFixedWidthProfile);
+                    long attrs = JCodings.getInstance().calcStringAttributes(node, data, offset, length, Encoding.get(encoding), 0, exoticValidProfile, exoticFixedWidthProfile);
                     codeRange = StringAttributes.getCodeRange(attrs);
                     codePointLength = StringAttributes.getCodePointLength(attrs);
                 }

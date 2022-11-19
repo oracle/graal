@@ -29,12 +29,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.graalvm.compiler.replacements.nodes.CalcStringAttributesNode;
+import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -137,8 +138,8 @@ public class TStringOpsCalcStringAttributesUTF8Test extends TStringOpsTest<CalcS
 
     @Test
     public void testUtf8() {
-        ResolvedJavaMethod method = getTStringOpsMethod("calcStringAttributesUTF8", Object.class, int.class, int.class, boolean.class, boolean.class, ConditionProfile.class);
-        testWithNative(method, null, DUMMY_LOCATION, array, offset, length, true, false, ConditionProfile.getUncached());
-        testWithNative(method, null, DUMMY_LOCATION, array, offset, length, false, false, ConditionProfile.getUncached());
+        ResolvedJavaMethod method = getTStringOpsMethod("calcStringAttributesUTF8", Object.class, int.class, int.class, boolean.class, boolean.class, InlinedConditionProfile.class);
+        testWithNative(method, null, DUMMY_LOCATION, array, offset, length, true, false, InlinedConditionProfile.getUncached());
+        testWithNative(method, null, DUMMY_LOCATION, array, offset, length, false, false, InlinedConditionProfile.getUncached());
     }
 }
