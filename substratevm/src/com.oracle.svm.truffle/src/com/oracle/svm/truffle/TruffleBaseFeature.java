@@ -55,8 +55,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 import java.util.stream.Stream;
-
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.truffle.api.TruffleFile;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -168,6 +170,9 @@ public final class TruffleBaseFeature implements InternalFeature {
                         "Language resources for each language are specified in the native-image-resources.filelist file located in the language home directory." +
                         "If there is no native-image-resources.filelist file in the language home directory or the file is empty, then no resources are copied.", type = User)//
         public static final HostedOptionKey<Boolean> CopyLanguageResources = new HostedOptionKey<>(true);
+
+        @Option(help = "Check that context pre-initialization does not introduce absolute TruffleFiles into the image heap.")//
+        public static final HostedOptionKey<Boolean> TruffleCheckPreinitializedFiles = new HostedOptionKey<>(true);
     }
 
     public static final class IsEnabled implements BooleanSupplier {
@@ -387,6 +392,9 @@ public final class TruffleBaseFeature implements InternalFeature {
         layoutInfoMapField = config.findField("com.oracle.truffle.object.DefaultLayout$LayoutInfo", "LAYOUT_INFO_MAP");
         layoutMapField = config.findField("com.oracle.truffle.object.DefaultLayout", "LAYOUT_MAP");
         libraryFactoryCacheField = config.findField("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "CACHE");
+        if (Options.TruffleCheckPreinitializedFiles.getValue()) {
+            access.registerObjectReplacer(new TruffleFileCheck(((FeatureImpl.DuringSetupAccessImpl) access).getHostVM().getClassInitializationSupport()));
+        }
     }
 
     @SuppressWarnings("deprecation")
@@ -654,6 +662,29 @@ public final class TruffleBaseFeature implements InternalFeature {
         }
         for (Field field : config.findAnnotatedFields(dynamicFieldClass.asSubclass(Annotation.class))) {
             config.registerAsUnsafeAccessed(field);
+        }
+    }
+
+    private static final class TruffleFileCheck implements Function<Object, Object> {
+        private final ClassInitializationSupport classInitializationSupport;
+
+        TruffleFileCheck(ClassInitializationSupport classInitializationSupport) {
+            this.classInitializationSupport = classInitializationSupport;
+        }
+
+        @Override
+        public Object apply(Object object) {
+            if (object instanceof TruffleFile) {
+                TruffleFile file = (TruffleFile) object;
+                if (file.isAbsolute()) {
+                    UserError.abort("Detected an absolute TruffleFile %s in the image heap. " +
+                                    "Files with an absolute path created during the context pre-initialization may not be valid at the image execution time. " +
+                                    "This check can be disabled using -H:-TruffleCheckPreinitializedFiles." +
+                                    classInitializationSupport.objectInstantiationTraceMessage(object, ""),
+                                    file.getPath());
+                }
+            }
+            return object;
         }
     }
 

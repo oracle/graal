@@ -530,7 +530,7 @@ final class FileSystems {
                     }
                     return result;
                 } else {
-                    throw new IllegalStateException("Unknown delegate " + String.valueOf(current));
+                    throw new IllegalStateException("Unknown delegate " + current);
                 }
             }
 
@@ -544,7 +544,7 @@ final class FileSystems {
                         break;
                     }
                 }
-                delegatePath = new ImageHeapPath(languageId, internalPath.toString());
+                delegatePath = new ImageHeapPath(languageId, internalPath.toString(), internalPath.isAbsolute());
             }
 
             @Override
@@ -554,7 +554,14 @@ final class FileSystems {
 
             @Override
             public boolean isAbsolute() {
-                return getDelegate().isAbsolute();
+                // We need to support isAbsolute and toString even after conversion to image heap
+                // form. These methods are used by the TruffleBaseFeature to report the absolute
+                // TruffleFiles created during context pre-initialization.
+                if (delegate == INVALID_FILESYSTEM) {
+                    return ((ImageHeapPath) delegatePath).absolute;
+                } else {
+                    return getDelegate().isAbsolute();
+                }
             }
 
             @Override
@@ -695,7 +702,18 @@ final class FileSystems {
 
             @Override
             public String toString() {
-                return getDelegate().toString();
+                // We need to support isAbsolute and toString even after conversion to image heap
+                // form. These methods are used by the TruffleBaseFeature to report the absolute
+                // TruffleFiles created during context pre-initialization.
+                if (delegate == INVALID_FILESYSTEM) {
+                    ImageHeapPath imageHeapPath = (ImageHeapPath) delegatePath;
+                    if (imageHeapPath.languageId != null) {
+                        throw new UnsupportedOperationException("ToString in the image heap form is supported only for files outside language homes.");
+                    }
+                    return imageHeapPath.path;
+                } else {
+                    return getDelegate().toString();
+                }
             }
         }
 
@@ -703,11 +721,13 @@ final class FileSystems {
 
             private final String languageId;
             private final String path;
+            private final boolean absolute;
 
-            ImageHeapPath(String languageId, String path) {
+            ImageHeapPath(String languageId, String path, boolean absolute) {
                 assert path != null;
                 this.languageId = languageId;
                 this.path = path;
+                this.absolute = absolute;
             }
         }
     }
@@ -769,7 +789,7 @@ final class FileSystems {
         @Override
         public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
             if (isFollowLinks(linkOptions)) {
-                hostfs.checkAccess(resolveRelative(path), modes.toArray(new AccessMode[modes.size()]));
+                hostfs.checkAccess(resolveRelative(path), modes.toArray(new AccessMode[0]));
             } else if (modes.isEmpty()) {
                 hostfs.readAttributes(path, "isRegularFile", LinkOption.NOFOLLOW_LINKS);
             } else {
@@ -1083,17 +1103,17 @@ final class FileSystems {
         }
 
         @Override
-        public void createLink(Path link, Path existing) throws IOException {
+        public void createLink(Path link, Path existing) {
             throw forbidden(link);
         }
 
         @Override
-        public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) throws IOException {
+        public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) {
             throw forbidden(link);
         }
 
         @Override
-        public Path readSymbolicLink(Path link) throws IOException {
+        public Path readSymbolicLink(Path link) {
             throw forbidden(link);
         }
 
@@ -1429,7 +1449,7 @@ final class FileSystems {
 
         @Override
         public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
-            Set<? extends AccessMode> writeModes = new HashSet<>(modes);
+            Set<AccessMode> writeModes = new HashSet<>(modes);
             writeModes.removeAll(READ_MODES);
             if (writeModes.isEmpty()) {
                 delegateFileSystem.checkAccess(path, modes, linkOptions);
@@ -1473,7 +1493,7 @@ final class FileSystems {
         }
 
         @Override
-        public Path readSymbolicLink(Path link) throws IOException {
+        public Path readSymbolicLink(Path link) {
             return delegateFileSystem.toAbsolutePath(link);
         }
 
@@ -1576,27 +1596,27 @@ final class FileSystems {
         }
 
         @Override
-        public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
+        public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) {
             throw forbidden(path);
         }
 
         @Override
-        public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
+        public void createDirectory(Path dir, FileAttribute<?>... attrs) {
             throw forbidden(dir);
         }
 
         @Override
-        public void delete(Path path) throws IOException {
+        public void delete(Path path) {
             throw forbidden(path);
         }
 
         @Override
-        public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+        public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) {
             throw forbidden(path);
         }
 
         @Override
-        public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
+        public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) {
             throw forbidden(dir);
         }
 
@@ -1606,42 +1626,42 @@ final class FileSystems {
         }
 
         @Override
-        public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
+        public Path toRealPath(Path path, LinkOption... linkOptions) {
             throw forbidden(path);
         }
 
         @Override
-        public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
+        public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) {
             throw forbidden(path);
         }
 
         @Override
-        public void setAttribute(Path path, String attribute, Object value, LinkOption... options) throws IOException {
+        public void setAttribute(Path path, String attribute, Object value, LinkOption... options) {
             throw forbidden(path);
         }
 
         @Override
-        public void copy(Path source, Path target, CopyOption... options) throws IOException {
+        public void copy(Path source, Path target, CopyOption... options) {
             throw forbidden(source);
         }
 
         @Override
-        public void move(Path source, Path target, CopyOption... options) throws IOException {
+        public void move(Path source, Path target, CopyOption... options) {
             throw forbidden(source);
         }
 
         @Override
-        public void createLink(Path link, Path existing) throws IOException {
+        public void createLink(Path link, Path existing) {
             throw forbidden(link);
         }
 
         @Override
-        public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) throws IOException {
+        public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) {
             throw forbidden(link);
         }
 
         @Override
-        public Path readSymbolicLink(Path link) throws IOException {
+        public Path readSymbolicLink(Path link) {
             throw forbidden(link);
         }
 
