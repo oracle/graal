@@ -210,7 +210,7 @@ public final class PolyglotNativeAPI {
         nullCheck(key_utf8, "key_utf8");
         nullCheck(value_utf8, "value_utf8");
         Engine.Builder eb = fetchHandle(engine_builder);
-        eb.option(CTypeConversion.toJavaString(key_utf8), CTypeConversion.toJavaString(value_utf8));
+        eb.option(CTypeConversion.utf8ToJavaString(key_utf8), CTypeConversion.utf8ToJavaString(value_utf8));
         return poly_ok;
     }
 
@@ -649,9 +649,9 @@ public final class PolyglotNativeAPI {
                     "Evaluate a source of guest languages inside a context.",
                     "",
                     "@param context in which we evaluate source code.",
-                    "@param language_id the language identifier.",
-                    "@param name_utf8 given to the evaluate source code.",
-                    "@param source_utf8 the source code to be evaluated.",
+                    "@param language_id_utf8 0 terminated and UTF-8 encoded language identifier.",
+                    "@param name_utf8 0 terminated and UTF-8 encoded name given to the evaluate source code.",
+                    "@param source_utf8 0 terminated and UTF-8 encoded source code to be evaluated.",
                     "@param result <code>poly_value</code> that is the result of the evaluation. You can pass <code>NULL</code> if you just want to evaluate the source and you can ignore the result.",
                     "@return poly_ok if all works, poly_generic_error if there is a failure.",
                     "",
@@ -659,16 +659,16 @@ public final class PolyglotNativeAPI {
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html#eval-org.graalvm.polyglot.Source-",
                     "@since 19.0",
     })
-    public static PolyglotStatus poly_context_eval(PolyglotIsolateThread thread, PolyglotContext context, @CConst CCharPointer language_id, @CConst CCharPointer name_utf8,
+    public static PolyglotStatus poly_context_eval(PolyglotIsolateThread thread, PolyglotContext context, @CConst CCharPointer language_id_utf8, @CConst CCharPointer name_utf8,
                     @CConst CCharPointer source_utf8, PolyglotValuePointer result) throws Exception {
         resetErrorState();
         nullCheck(context, "context");
-        nullCheck(language_id, "language_id");
+        nullCheck(language_id_utf8, "language_id_utf8");
         nullCheck(name_utf8, "name_utf8");
         nullCheck(source_utf8, "source_utf8");
         nullCheck(result, "result");
         Context c = fetchHandle(context);
-        String languageName = CTypeConversion.toJavaString(language_id);
+        String languageName = CTypeConversion.utf8ToJavaString(language_id_utf8);
         String jName = CTypeConversion.utf8ToJavaString(name_utf8);
         String jCode = CTypeConversion.utf8ToJavaString(source_utf8);
 
@@ -708,21 +708,21 @@ public final class PolyglotNativeAPI {
                     "will be initialized when the bindings are requested.",
                     "",
                     "@param context for which we extract the bindings.",
-                    "@param language_id the language identifier.",
-                    "@param result a value whose members correspond to the symbols in the top scope of the `language_id`.",
+                    "@param language_id_utf8 0 terminated and UTF-8 encoded language identifier.",
+                    "@param result a value whose members correspond to the symbols in the top scope of the `language_id_utf8`.",
                     "@return poly_generic_failure if the language does not exist, if context is already closed, ",
                     "        in case the lazy initialization failed due to a guest language error.",
                     "",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html#getBindings-java.lang.String-",
                     "@since 19.0",
     })
-    public static PolyglotStatus poly_context_get_bindings(PolyglotIsolateThread thread, PolyglotContext context, @CConst CCharPointer language_id, PolyglotValuePointer result) {
+    public static PolyglotStatus poly_context_get_bindings(PolyglotIsolateThread thread, PolyglotContext context, @CConst CCharPointer language_id_utf8, PolyglotValuePointer result) {
         resetErrorState();
         nullCheck(context, "context");
-        nullCheck(language_id, "language_id");
+        nullCheck(language_id_utf8, "language_id_utf8");
         nullCheck(result, "result");
         Context jContext = fetchHandle(context);
-        String jLanguage = CTypeConversion.toJavaString(language_id);
+        String jLanguage = CTypeConversion.utf8ToJavaString(language_id_utf8);
         Value languageBindings = jContext.getBindings(jLanguage);
         result.write(createHandle(languageBindings));
         return poly_ok;
@@ -807,27 +807,29 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_get_member", exceptionHandler = ExceptionHandler.class, documentation = {
-                    "Returns the member with a given `utf8_identifier` or `null` if the member does not exist.",
+                    "Returns the member with a given `identifier_utf8` or `null` if the member does not exist.",
                     "",
+                    "@param identifier_utf8 0 terminated and UTF-8 encoded member identifier.",
                     "@return poly_ok if all works, poly_generic_failure if the value has no members, the given identifier exists ",
                     "        but is not readable, if a guest language error occurred during execution.",
                     "",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#getMember-java.lang.String-",
                     "@since 19.0",
     })
-    public static PolyglotStatus poly_value_get_member(PolyglotIsolateThread thread, PolyglotValue value, @CConst CCharPointer utf8_identifier, PolyglotValuePointer result) {
+    public static PolyglotStatus poly_value_get_member(PolyglotIsolateThread thread, PolyglotValue value, @CConst CCharPointer identifier_utf8, PolyglotValuePointer result) {
         resetErrorState();
         nullCheck(value, "value");
-        nullCheck(utf8_identifier, "utf8_identifier");
+        nullCheck(identifier_utf8, "identifier_utf8");
         nullCheck(result, "result");
         Value jObject = fetchHandle(value);
-        result.write(createHandle(jObject.getMember(CTypeConversion.utf8ToJavaString(utf8_identifier))));
+        result.write(createHandle(jObject.getMember(CTypeConversion.utf8ToJavaString(identifier_utf8))));
         return poly_ok;
     }
 
     @CEntryPoint(name = "poly_value_put_member", exceptionHandler = ExceptionHandler.class, documentation = {
-                    "Sets the value of a member with the `utf8_identifier`.",
+                    "Sets the value of a member with the `identifier_utf8`.",
                     "",
+                    "@param identifier_utf8 0 terminated and UTF-8 encoded member identifier.",
                     "@return poly_ok if all works, poly_generic_failure if the context is already closed, if the value does ",
                     "         not have any members, the key does not exist and new members cannot be added, or the existing ",
                     "         member is not modifiable.",
@@ -835,32 +837,33 @@ public final class PolyglotNativeAPI {
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#putMember-java.lang.String-java.lang.Object-",
                     "@since 19.0",
     })
-    public static PolyglotStatus poly_value_put_member(PolyglotIsolateThread thread, PolyglotValue value, @CConst CCharPointer utf8_identifier, PolyglotValue member) {
+    public static PolyglotStatus poly_value_put_member(PolyglotIsolateThread thread, PolyglotValue value, @CConst CCharPointer identifier_utf8, PolyglotValue member) {
         resetErrorState();
         nullCheck(value, "value");
-        nullCheck(utf8_identifier, "utf8_identifier");
+        nullCheck(identifier_utf8, "identifier_utf8");
         Value jObject = fetchHandle(value);
         Value jMember = fetchHandle(member);
-        jObject.putMember(CTypeConversion.utf8ToJavaString(utf8_identifier), jMember);
+        jObject.putMember(CTypeConversion.utf8ToJavaString(identifier_utf8), jMember);
         return poly_ok;
     }
 
     @CEntryPoint(name = "poly_value_has_member", exceptionHandler = ExceptionHandler.class, documentation = {
-                    "Returns `true` if such a member exists for the given `utf8_identifier`. If the value has no members ",
+                    "Returns `true` if such a member exists for the given `identifier_utf8`. If the value has no members ",
                     "then it returns `false`.",
                     "",
+                    "@param identifier_utf8 0 terminated and UTF-8 encoded member identifier.",
                     "@return poly_ok if all works, poly_generic_failure if the underlying context was closed, if guest language error occurred ",
                     "         during execution.",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#hasMember-java.lang.String-",
                     "@since 19.0",
     })
-    public static PolyglotStatus poly_value_has_member(PolyglotIsolateThread thread, PolyglotValue value, @CConst CCharPointer utf8_identifier, CBoolPointer result) {
+    public static PolyglotStatus poly_value_has_member(PolyglotIsolateThread thread, PolyglotValue value, @CConst CCharPointer identifier_utf8, CBoolPointer result) {
         resetErrorState();
         nullCheck(value, "value");
-        nullCheck(utf8_identifier, "utf8_identifier");
+        nullCheck(identifier_utf8, "identifier_utf8");
         nullCheck(result, "result");
         Value jObject = fetchHandle(value);
-        result.write(CTypeConversion.toCBoolean(jObject.hasMember(CTypeConversion.utf8ToJavaString(utf8_identifier))));
+        result.write(CTypeConversion.toCBoolean(jObject.hasMember(CTypeConversion.utf8ToJavaString(identifier_utf8))));
         return poly_ok;
     }
 
@@ -1061,24 +1064,29 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_create_string_utf8", exceptionHandler = ExceptionHandler.class, documentation = {
-                    "Creates a polyglot string from an UTF-8 encoded string. Only the `length` of the string in bytes is used unless",
-                    "`POLY_AUTO_LENGTH` is passed as the `length` argument.",
+                    "Creates a polyglot string from an UTF-8 encoded string. ",
+                    "If `POLY_AUTO_LENGTH` is passed as the `length` argument, then `string_utf8` is decoded until a 0 terminator is found.",
+                    "Otherwise, `length` bytes from `string_uft8` are encoded as a polyglot string value.",
                     "",
-                    "@param string the C string, null terminated or not.",
-                    "@param length the length of C string, or POLY_AUTO_LENGTH if the string is null terminated.",
+                    "@param string_utf8 UTF-8 encoded C string, which may or may not be 0 terminated.",
+                    "@param length POLY_AUTO_LENGTH if the string is 0 terminated, or otherwise the length of C string.",
                     "@return the polyglot string value.",
                     "@return poly_ok if all works, poly_generic_failure if context is null, if the underlying context was closed.",
                     "",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html#asValue-java.lang.Object-",
                     "@since 19.0",
     })
-    public static PolyglotStatus poly_create_string_utf8(PolyglotIsolateThread thread, PolyglotContext context, @CConst CCharPointer string, UnsignedWord length, PolyglotValuePointer result) {
+    public static PolyglotStatus poly_create_string_utf8(PolyglotIsolateThread thread, PolyglotContext context, @CConst CCharPointer string_utf8, UnsignedWord length, PolyglotValuePointer result) {
         resetErrorState();
         nullCheck(context, "context");
-        nullCheck(string, "string");
+        nullCheck(string_utf8, "string_utf8");
         nullCheck(result, "result");
         Context ctx = fetchHandle(context);
-        result.write(createHandle(ctx.asValue(length.equal(POLY_AUTO_LENGTH) ? CTypeConversion.toJavaString(string) : CTypeConversion.toJavaString(string, length, UTF8_CHARSET))));
+        if (length.equal(POLY_AUTO_LENGTH)) {
+            result.write(createHandle(ctx.asValue(CTypeConversion.utf8ToJavaString(string_utf8))));
+        } else {
+            result.write(createHandle(ctx.asValue(CTypeConversion.toJavaString(string_utf8, length, UTF8_CHARSET))));
+        }
         return poly_ok;
     }
 
@@ -1533,16 +1541,17 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_as_string_utf8", exceptionHandler = ExceptionHandler.class, documentation = {
-                    "Converts a string value to a C string by filling the <code>buffer</code> with with a string encoded in UTF-8 and ",
-                    "storing the number of written bytes to <code>result</code>. If the the buffer is <code>NULL</code> writes the required",
-                    "size to <code>result</code>.",
+                    "Writes the Polyglot value's string representation as a 0 terminated and UTF-8 encoded string.",
                     "",
-                    "@return poly_ok if all works, poly_generic_failure if a guest language error occurred during execution ",
-                    "         poly_string_expected if the value is not a string.",
+                    "@param buffer Where to write the UTF-8 string representing the polyglot value. Can be NULL.",
+                    "@param buffer_size Size of the user-supplied buffer.",
+                    "@param result If buffer is NULL, this will contain the byte size of the string, otherwise, it will contain the number of bytes written. Note in either case this length does not contain the 0 terminator written to the end of the buffer",
+                    "@return poly_ok if everything went ok, otherwise an error occurred.",
                     "",
-                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#asString--",
-                    "@since 19.0",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#asString--", "@since 19.0",
+
     })
+
     public static PolyglotStatus poly_value_as_string_utf8(PolyglotIsolateThread thread, PolyglotValue value, CCharPointer buffer, UnsignedWord buffer_size, SizeTPointer result) {
         resetErrorState();
         nullCheck(value, "value");
@@ -1557,12 +1566,12 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_to_string_utf8", exceptionHandler = ExceptionHandler.class, documentation = {
-                    "Returns a <code>toString</code> representation of a <code>poly_value</code> by filling the <code>buffer</code> with with a string encoded ",
-                    "in UTF-8 and stores the number of written bytes to <code>result</code>. If the the buffer is <code>NULL</code> writes the ",
-                    "required size to <code>result</code>.",
+                    "Writes a <code>toString</code> representation of a <code>poly_value</code> as a 0 terminated and UTF-8 encoded string.",
                     "",
-                    "@return poly_ok if all works, poly_generic_failure if a guest language error occurred during execution ",
-                    "         poly_string_expected if the value is not a string.",
+                    "@param buffer Where to write the UTF-8 string representing the toString representation of the polyglot value. Can be NULL.",
+                    "@param buffer_size Size of the user-supplied buffer.",
+                    "@param result If buffer is NULL, this will contain the byte size of the string, otherwise, it will contain the number of bytes written. Note in either case this length does not contain the 0 terminator written to the end of the buffer",
+                    "@return poly_ok if everything went ok, otherwise an error occurred.",
                     "",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#toString--",
                     "@since 19.0",
@@ -1780,20 +1789,24 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_language_get_id", exceptionHandler = ExceptionHandler.class, documentation = {
-                    "Gets the primary identification string of this language. The language id is",
-                    "used as the primary way of identifying languages in the polyglot API. (eg. <code>js</code>)",
+                    "Writes the primary identification string of this language as a 0 terminated and UTF-8 encoded string.",
                     "",
-                    "@return a language ID string.",
+                    "The language id is used as the primary way of identifying languages in the polyglot API. (eg. <code>js</code>)",
+                    "",
+                    "@param buffer Where to write the UTF-8 string representing the language id. Can be NULL.",
+                    "@param buffer_size Size of the user-supplied buffer.",
+                    "@param result If buffer is NULL, this will contain the byte size of the language, otherwise, it will contain the number of bytes written. Note in either case this length does not contain the 0 terminator written to the end of the buffer",
+                    "@return poly_ok if everything went ok, otherwise an error occurred.",
                     "",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Language.html#getId--",
                     "@since 19.0",
     })
-    public static PolyglotStatus poly_language_get_id(PolyglotIsolateThread thread, PolyglotLanguage language, CCharPointer utf8_result, UnsignedWord buffer_size, SizeTPointer length) {
+    public static PolyglotStatus poly_language_get_id(PolyglotIsolateThread thread, PolyglotLanguage language, CCharPointer buffer, UnsignedWord buffer_size, SizeTPointer result) {
         resetErrorState();
         nullCheck(language, "language");
-        nullCheck(length, "length");
+        nullCheck(result, "result");
         Language jLanguage = fetchHandle(language);
-        writeUTF8String(jLanguage.getId(), utf8_result, buffer_size, length);
+        writeUTF8String(jLanguage.getId(), buffer, buffer_size, result);
         return poly_ok;
     }
 
@@ -1931,14 +1944,14 @@ public final class PolyglotNativeAPI {
                     "the exception has been raised. If this method is called multiple times only the last exception will be thrown in",
                     "in the guest language.",
                     "",
-                    "@param utf8_message 0 terminated error message.",
+                    "@param message_utf8 0 terminated and UTF-8 encoded error message.",
                     "",
                     "@since 19.0",
     })
-    public static PolyglotStatus poly_throw_exception(PolyglotIsolateThread thread, @CConst CCharPointer utf8_message) {
+    public static PolyglotStatus poly_throw_exception(PolyglotIsolateThread thread, @CConst CCharPointer message_utf8) {
         resetErrorState();
-        nullCheck(utf8_message, "utf8_message");
-        exceptionsTL.set(new CallbackException(CTypeConversion.utf8ToJavaString(utf8_message)));
+        nullCheck(message_utf8, "message_utf8");
+        exceptionsTL.set(new CallbackException(CTypeConversion.utf8ToJavaString(message_utf8)));
         return poly_ok;
     }
 
@@ -2124,12 +2137,12 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_exception_get_stack_trace", exceptionHandler = ExceptionHandler.class, documentation = {
-                    "Gets the full stack trace as a UTF-8 encoded string.",
+                    "Writes the full stack trace as a 0 terminated and UTF-8 encoded string.",
                     "",
                     "@param exception Handle to the exception object.",
                     "@param buffer Where to write the UTF-8 string representing the stack trace. Can be NULL.",
                     "@param buffer_size Size of the user-supplied buffer.",
-                    "@param result If buffer is NULL, this will contain the buffer size required to put the trace string in, otherwise, it will contain the number of bytes written",
+                    "@param result If buffer is NULL, this will contain the byte size of the trace string, otherwise, it will contain the number of bytes written. Note in either case this length does not contain the 0 terminator written to the end of the buffer",
                     "@return poly_ok if everything went ok, otherwise an error occurred.",
                     "",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException.html#getStackTrace--",
@@ -2150,12 +2163,12 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_exception_get_guest_stack_trace", exceptionHandler = ExceptionHandler.class, documentation = {
-                    "Gets the guest stack trace as a UTF-8 encoded string.",
+                    "Writes the guest stack trace as a 0 terminated and UTF-8 encoded string.",
                     "",
                     "@param exception Handle to the exception object.",
                     "@param buffer Where to write the UTF-8 string representing the stack trace. Can be NULL.",
                     "@param buffer_size Size of the user-supplied buffer.",
-                    "@param result If buffer is NULL, this will contain the buffer size required to put the trace string in, otherwise, it will contain the number of bytes written",
+                    "@param result If buffer is NULL, this will contain the byte size of the trace, otherwise, it will contain the number of bytes written. Note in either case this length does not contain the 0 terminator written to the end of the buffer",
                     "@return poly_ok if everything went ok, otherwise an error occurred.",
                     "",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException.html#getPolyglotStackTrace--",
@@ -2181,12 +2194,12 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_exception_get_message", exceptionHandler = ExceptionHandler.class, documentation = {
-                    "Gets the error message as a UTF-8 encoded string.",
+                    "Gets the error message as a 0 terminated and UTF-8 encoded string.",
                     "",
                     "@param exception Handle to the exception object.",
                     "@param buffer Where to write the UTF-8 string representing the error message. Can be NULL.",
                     "@param buffer_size Size of the user-supplied buffer.",
-                    "@param result If buffer is NULL, this will contain the buffer size required to put the error message string in, otherwise, it will contain the number of bytes written",
+                    "@param result If buffer is NULL, this will contain the byte size of the error message string, otherwise, it will contain the number of bytes written. Note in either case this length does not contain the 0 terminator written to the end of the buffer",
                     "@return poly_ok if everything went ok, otherwise an error occurred.",
                     "",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException.html#getMessage--",
@@ -2272,17 +2285,17 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_perf_data_get_address_of_int64_t", exceptionHandler = ExceptionHandler.class, documentation = {
                     "Gets the address of the int64_t value for a performance data entry of type long. Performance data support must be enabled.",
                     "",
-                    "@param utf8_key UTF8-encoded, 0 terminated key that identifies the performance data entry.",
+                    "@param key_utf8 0 terminated and UTF-8 encoded key that identifies the performance data entry.",
                     "@param result a pointer to which the address of the int64_t value will be written.",
                     "@return poly_ok if everything went ok, otherwise an error occurred.",
                     "",
                     "@since 22.3",
     })
-    public static PolyglotStatus poly_perf_data_get_address_of_int64_t(PolyglotIsolateThread thread, CCharPointer utf8Key, CInt64PointerPointer result) {
+    public static PolyglotStatus poly_perf_data_get_address_of_int64_t(PolyglotIsolateThread thread, CCharPointer key_utf8, CInt64PointerPointer result) {
         resetErrorState();
-        nullCheck(utf8Key, "utf8Key");
+        nullCheck(key_utf8, "key_utf8");
         nullCheck(result, "result");
-        String key = CTypeConversion.utf8ToJavaString(utf8Key);
+        String key = CTypeConversion.utf8ToJavaString(key_utf8);
         if (!ImageSingletons.lookup(PerfDataSupport.class).hasLong(key)) {
             throw reportError("Key " + key + " is not a valid performance data entry key.", poly_generic_failure);
         }
