@@ -27,7 +27,7 @@ package org.graalvm.compiler.nodes.cfg;
 import java.util.List;
 
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.LinkedNodeStack;
+import org.graalvm.compiler.graph.LinkedStack;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeMap;
@@ -56,47 +56,6 @@ import org.graalvm.compiler.nodes.LoopExitNode;
  */
 public class ReversePostOrder {
 
-    private static class RPOStack<T> {
-
-        private static class StackNode<T> {
-            StackNode<T> next;
-            T node;
-
-            StackNode(T node) {
-                this.node = node;
-            }
-        }
-
-        RPOStack() {
-            dummyHead = new StackNode<>(null);
-        }
-
-        final StackNode<T> dummyHead;
-
-        public void push(T n) {
-            StackNode<T> prevHead = dummyHead.next;
-            StackNode<T> newHead = new StackNode<>(n);
-            newHead.next = prevHead;
-            dummyHead.next = newHead;
-        }
-
-        public T pop() {
-            StackNode<T> prevHead = dummyHead.next;
-            dummyHead.next = prevHead.next;
-            return prevHead.node;
-        }
-
-        public T peek() {
-            StackNode<T> prevHead = dummyHead.next;
-            return prevHead.node;
-        }
-
-        public boolean isEmpty() {
-            return dummyHead.next == null;
-        }
-
-    }
-
     /**
      * Enqueue the block in the reverse post order with the next index and assign the index to the
      * block itself.
@@ -116,7 +75,7 @@ public class ReversePostOrder {
      */
     private static void compute(ControlFlowGraph cfg, FixedNode start, Block[] rpoBlocks, int startIndex) {
         assert startIndex < rpoBlocks.length;
-        LinkedNodeStack toProcess = new LinkedNodeStack();
+        LinkedStack<Node> toProcess = new LinkedStack<>();
         toProcess.push(start);
         NodeBitMap visitedNodes = cfg.graph.createNodeBitMap();
         int currentIndex = startIndex;
@@ -164,7 +123,7 @@ public class ReversePostOrder {
 
         // stack of open (nested) loops processed at the moment, i.e., not fully included in the
         // reverse post order yet
-        RPOStack<OpenLoopsData> openLoops = new RPOStack<>();
+        LinkedStack<OpenLoopsData> openLoops = new LinkedStack<>();
 
         /**
          * Traverse the FixedNodes of the graph in a reverse post order manner by following next
@@ -301,7 +260,7 @@ public class ReversePostOrder {
 
     }
 
-    private static void pushOrStall(FixedNode n, LinkedNodeStack toProcess) {
+    private static void pushOrStall(FixedNode n, LinkedStack<Node> toProcess) {
         if (!(n instanceof LoopExitNode)) {
             toProcess.push(n);
         }
