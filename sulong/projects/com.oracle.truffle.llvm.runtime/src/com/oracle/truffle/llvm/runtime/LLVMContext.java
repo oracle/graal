@@ -159,9 +159,6 @@ public final class LLVMContext {
     private boolean[] libraryLoaded;
     private RootCallTarget[] destructorFunctions;
 
-    // Source cache (for reusing bitcode IDs).
-    protected final EconomicMap<BitcodeID, Source> sourceCache = EconomicMap.create();
-
     // Calltarget Cache for SOName.
     protected final EconomicMap<String, CallTarget> calltargetCache = EconomicMap.create();
 
@@ -319,11 +316,17 @@ public final class LLVMContext {
              * libraries.
              */
             String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
-            for (int i = sulongLibraryNames.length - 1; i >= 0; i--) {
-                TruffleFile file = InternalLibraryLocator.INSTANCE.locateLibrary(this, sulongLibraryNames[i], "<default bitcode library>");
-                Source librarySource = Source.newBuilder("llvm", file).internal(isInternalLibraryFile(file)).build();
-                sourceCache.put(IDGenerater.INVALID_ID, librarySource);
-                env.parseInternal(librarySource);
+            Source[] libraries = new Source[sulongLibraryNames.length];
+            if (language.isDefaultInternalLibraryCacheEmpty()) {
+                for (int i = sulongLibraryNames.length - 1; i >= 0; i--) {
+                    TruffleFile file = InternalLibraryLocator.INSTANCE.locateLibrary(this, sulongLibraryNames[i], "<default bitcode library>");
+                    Source librarySource = Source.newBuilder("llvm", file).internal(isInternalLibraryFile(file)).build();
+                    // use the source cache in the language.
+                    language.addLibrarySource(file.getPath(), librarySource);
+                    env.parseInternal(librarySource);
+                    libraries[i] = librarySource;
+                }
+                language.setDefaultInternalLibraryCache(libraries);
             }
             setLibsulongAuxFunction(SULONG_INIT_CONTEXT);
             setLibsulongAuxFunction(SULONG_DISPOSE_CONTEXT);
@@ -758,10 +761,8 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public void addSourceForCache(BitcodeID bitcodeID, Source source) {
-        if (!sourceCache.containsKey(bitcodeID)) {
-            sourceCache.put(bitcodeID, source);
-        }
+    public void addSourceForCache(Source source) {
+        language.addLibrarySource(source.getPath(), source);
     }
 
     @TruffleBoundary
