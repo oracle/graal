@@ -24,8 +24,11 @@
  * questions.
  */
 
-package com.oracle.objectfile.debugentry;
+package com.oracle.objectfile.debugentry.range;
 
+import com.oracle.objectfile.debugentry.FileEntry;
+import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
 
@@ -66,141 +69,75 @@ import java.util.List;
  * parameter values for separate sub-extents of an inline called method whose full extent is
  * represented by the parent call range at level N.
  */
-public class Range {
-    private static final DebugLocalInfo[] EMPTY_LOCAL_INFOS = new DebugLocalInfo[0];
+public abstract class Range {
     private static final String CLASS_DELIMITER = ".";
-    private final MethodEntry methodEntry;
-    private final int lo;
-    private int hi;
-    private final int line;
-    private final int depth;
-    /**
-     * This is null for a primary range. For sub ranges it holds the root of the call tree they
-     * belong to.
-     */
-    private final Range primary;
+    protected final MethodEntry methodEntry;
+    protected final int lo;
+    protected int hi;
+    protected final int line;
+    protected final int depth;
 
     /**
-     * The range for the caller or the primary range when this range if for top level method code.
+     * Create a primary range representing the root of the subrange tree for a top level compiled
+     * method.
+     * 
+     * @param methodEntry the top level compiled method for this primary range.
+     * @param lo the lowest address included in the range.
+     * @param hi the first address above the highest address in the range.
+     * @param line the line number associated with the range
+     * @return a new primary range to serve as the root of the subrange tree.
      */
-    private Range caller;
-    /**
-     * The first direct callee whose range is wholly contained in this range or null if this is a
-     * leaf range.
-     */
-    private Range firstCallee;
-
-    /**
-     * The last direct callee whose range is wholly contained in this range.
-     */
-    private Range lastCallee;
-
-    /**
-     * A link to a sibling callee, i.e., a range sharing the same caller with this range.
-     */
-    private Range siblingCallee;
-
-    /**
-     * Values for the associated method's local and parameter variables that are available or,
-     * alternatively, marked as invalid in this range.
-     */
-    private DebugLocalValueInfo[] localValueInfos;
-
-    /**
-     * The set of local or parameter variables with which each corresponding local value in field
-     * localvalueInfos is associated. Local values which are associated with the same local or
-     * parameter variable will share the same reference in the corresponding array entries. Local
-     * values with which no local variable can be associated will have a null reference in the
-     * corresponding array. The latter case can happen when a local value has an invalid slot or
-     * when a local value that maps to a parameter slot has a different name or type to the
-     * parameter.
-     */
-    private DebugLocalInfo[] localInfos;
-
-    public int getLocalValueCount() {
-        assert !this.isPrimary() : "primary range does not have local values";
-        return localValueInfos.length;
+    public static PrimaryRange createPrimary(MethodEntry methodEntry, int lo, int hi, int line) {
+        return new PrimaryRange(methodEntry, lo, hi, line);
     }
 
-    public DebugLocalValueInfo getLocalValue(int i) {
-        assert !this.isPrimary() : "primary range does not have local values";
-        assert i >= 0 && i < localValueInfos.length : "bad index";
-        return localValueInfos[i];
-    }
-
-    public DebugLocalInfo getLocal(int i) {
-        assert !this.isPrimary() : "primary range does not have local vars";
-        assert i >= 0 && i < localInfos.length : "bad index";
-        return localInfos[i];
-    }
-
-    /*
-     * Create a primary range.
+    /**
+     * Create a subrange representing a segment of the address range for code of a top level or
+     * inlined compiled method. The result will either be a call or a leaf range.
+     * 
+     * @param methodEntry the method from which code in the subrange is derived.
+     * @param lo the lowest address included in the range.
+     * @param hi the first address above the highest address in the range.
+     * @param line the line number associated with the range
+     * @param primary the primary range to which this subrange belongs
+     * @param caller the range for which this is a subrange, either an inlined call range or the
+     *            primary range.
+     * @param isLeaf true if this is a leaf range with no subranges
+     * @return a new subrange to be linked into the range tree below the primary range.
      */
-    public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line) {
-        this(stringTable, methodEntry, lo, hi, line, null, false, null);
-    }
-
-    /*
-     * Create a primary or secondary range.
-     */
-    public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line, Range primary, boolean isTopLevel, Range caller) {
-        assert methodEntry != null;
-        if (methodEntry.fileEntry != null) {
-            stringTable.uniqueDebugString(methodEntry.fileEntry.getFileName());
-            stringTable.uniqueDebugString(methodEntry.fileEntry.getPathName());
+    public static SubRange createSubrange(MethodEntry methodEntry, int lo, int hi, int line, PrimaryRange primary, Range caller, boolean isLeaf) {
+        assert primary != null;
+        assert primary.isPrimary();
+        if (isLeaf) {
+            return new LeafRange(methodEntry, lo, hi, line, primary, caller);
+        } else {
+            return new CallRange(methodEntry, lo, hi, line, primary, caller);
         }
+    }
+
+    protected Range(MethodEntry methodEntry, int lo, int hi, int line, int depth) {
+        assert methodEntry != null;
         this.methodEntry = methodEntry;
         this.lo = lo;
         this.hi = hi;
         this.line = line;
-        this.primary = primary;
-        this.firstCallee = null;
-        this.lastCallee = null;
-        this.siblingCallee = null;
-        this.caller = caller;
-        if (caller != null) {
-            caller.addCallee(this);
-        }
-        if (this.isPrimary()) {
-            this.depth = -1;
-        } else {
-            this.depth = caller.depth + 1;
-        }
+        this.depth = depth;
     }
 
-    private void addCallee(Range callee) {
-        assert this.lo <= callee.lo;
-        assert this.hi >= callee.hi;
-        assert callee.caller == this;
-        assert callee.siblingCallee == null;
-        if (this.firstCallee == null) {
-            assert this.lastCallee == null;
-            this.firstCallee = this.lastCallee = callee;
-        } else {
-            this.lastCallee.siblingCallee = callee;
-            this.lastCallee = callee;
-        }
-    }
+    protected abstract void addCallee(SubRange callee);
 
     public boolean contains(Range other) {
         return (lo <= other.lo && hi >= other.hi);
     }
 
-    public boolean isPrimary() {
-        return getPrimary() == null;
-    }
-
-    public Range getPrimary() {
-        return primary;
-    }
+    public abstract boolean isPrimary();
 
     public String getClassName() {
-        return methodEntry.ownerType.typeName;
+        return methodEntry.ownerType().getTypeName();
     }
 
     public String getMethodName() {
-        return methodEntry.memberName;
+        return methodEntry.methodName();
     }
 
     public String getSymbolName() {
@@ -233,8 +170,8 @@ public class Range {
 
     private String getExtendedMethodName(boolean includeClass, boolean includeParams, boolean includeReturnType) {
         StringBuilder builder = new StringBuilder();
-        if (includeReturnType && methodEntry.valueType.typeName.length() > 0) {
-            builder.append(methodEntry.valueType.typeName);
+        if (includeReturnType && methodEntry.getValueType().getTypeName().length() > 0) {
+            builder.append(methodEntry.getValueType().getTypeName());
             builder.append(' ');
         }
         if (includeClass && getClassName() != null) {
@@ -257,7 +194,7 @@ public class Range {
         }
         if (includeReturnType) {
             builder.append(" ");
-            builder.append(methodEntry.valueType.typeName);
+            builder.append(methodEntry.getValueType().getTypeName());
         }
         return builder.toString();
     }
@@ -271,18 +208,13 @@ public class Range {
     }
 
     public FileEntry getFileEntry() {
-        return methodEntry.fileEntry;
+        return methodEntry.getFileEntry();
     }
 
-    public int getFileIndex() {
-        // the primary range's class entry indexes all files defined by the compilation unit
-        Range primaryRange = (isPrimary() ? this : getPrimary());
-        ClassEntry owner = primaryRange.methodEntry.ownerType();
-        return owner.localFilesIdx(getFileEntry());
-    }
+    public abstract int getFileIndex();
 
     public int getModifiers() {
-        return methodEntry.modifiers;
+        return methodEntry.getModifiers();
     }
 
     @Override
@@ -298,70 +230,42 @@ public class Range {
         return methodEntry;
     }
 
-    public Range getCaller() {
-        return caller;
-    }
+    public abstract SubRange getFirstCallee();
 
-    public Range getFirstCallee() {
-        return firstCallee;
-    }
+    public abstract boolean isLeaf();
 
-    public Range getSiblingCallee() {
-        return siblingCallee;
-    }
-
-    public boolean isLeaf() {
-        return firstCallee == null;
-    }
-
-    public boolean includesInlineRanges() {
-        Range child = firstCallee;
-        while (child != null && child.isLeaf()) {
-            child = child.siblingCallee;
-        }
-        return child != null;
-    }
+    public abstract boolean includesInlineRanges();
 
     public int getDepth() {
         return depth;
     }
 
-    public void setLocalValueInfo(DebugLocalValueInfo[] localValueInfos) {
-        int len = localValueInfos.length;
-        this.localValueInfos = localValueInfos;
-        this.localInfos = (len > 0 ? new DebugLocalInfo[len] : EMPTY_LOCAL_INFOS);
-        // set up mapping from local values to local variables
-        for (int i = 0; i < len; i++) {
-            localInfos[i] = methodEntry.recordLocal(localValueInfos[i]);
-        }
-    }
-
-    public HashMap<DebugLocalInfo, List<Range>> getVarRangeMap() {
+    public HashMap<DebugLocalInfo, List<SubRange>> getVarRangeMap() {
         MethodEntry calleeMethod;
         if (isPrimary()) {
             calleeMethod = getMethodEntry();
         } else {
             assert !isLeaf() : "should only be looking up var ranges for inlined calls";
-            calleeMethod = firstCallee.getMethodEntry();
+            calleeMethod = getFirstCallee().getMethodEntry();
         }
-        HashMap<DebugLocalInfo, List<Range>> varRangeMap = new HashMap<>();
+        HashMap<DebugLocalInfo, List<SubRange>> varRangeMap = new HashMap<>();
         if (calleeMethod.getThisParam() != null) {
-            varRangeMap.put(calleeMethod.getThisParam(), new ArrayList<Range>());
+            varRangeMap.put(calleeMethod.getThisParam(), new ArrayList<>());
         }
         for (int i = 0; i < calleeMethod.getParamCount(); i++) {
-            varRangeMap.put(calleeMethod.getParam(i), new ArrayList<Range>());
+            varRangeMap.put(calleeMethod.getParam(i), new ArrayList<>());
         }
         for (int i = 0; i < calleeMethod.getLocalCount(); i++) {
-            varRangeMap.put(calleeMethod.getLocal(i), new ArrayList<Range>());
+            varRangeMap.put(calleeMethod.getLocal(i), new ArrayList<>());
         }
         return updateVarRangeMap(varRangeMap);
     }
 
-    public HashMap<DebugLocalInfo, List<Range>> updateVarRangeMap(HashMap<DebugLocalInfo, List<Range>> varRangeMap) {
+    public HashMap<DebugLocalInfo, List<SubRange>> updateVarRangeMap(HashMap<DebugLocalInfo, List<SubRange>> varRangeMap) {
         // leaf subranges of the current range may provide values for param or local vars
         // of this range's method. find them and index the range so that we can identify
         // both the local/param and the associated range.
-        Range subRange = this.firstCallee;
+        SubRange subRange = this.getFirstCallee();
         while (subRange != null) {
             addVarRanges(subRange, varRangeMap);
             subRange = subRange.siblingCallee;
@@ -369,7 +273,7 @@ public class Range {
         return varRangeMap;
     }
 
-    public void addVarRanges(Range subRange, HashMap<DebugLocalInfo, List<Range>> varRangeMap) {
+    public void addVarRanges(SubRange subRange, HashMap<DebugLocalInfo, List<SubRange>> varRangeMap) {
         int localValueCount = subRange.getLocalValueCount();
         for (int i = 0; i < localValueCount; i++) {
             DebugLocalValueInfo localValueInfo = subRange.getLocalValue(i);
@@ -379,7 +283,7 @@ public class Range {
                     case REGISTER:
                     case STACKSLOT:
                     case CONSTANT:
-                        List<Range> varRanges = varRangeMap.get(local);
+                        List<SubRange> varRanges = varRangeMap.get(local);
                         assert varRanges != null : "local not present in var to ranges map!";
                         varRanges.add(subRange);
                         break;
@@ -390,13 +294,4 @@ public class Range {
         }
     }
 
-    public DebugLocalValueInfo lookupValue(DebugLocalInfo local) {
-        int localValueCount = getLocalValueCount();
-        for (int i = 0; i < localValueCount; i++) {
-            if (getLocal(i) == local) {
-                return getLocalValue(i);
-            }
-        }
-        return null;
-    }
 }

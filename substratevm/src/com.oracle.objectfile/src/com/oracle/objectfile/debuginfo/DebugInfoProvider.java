@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import com.oracle.objectfile.debugentry.range.Range;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -282,7 +283,7 @@ public interface DebugInfoProvider {
 
     /**
      * Access details of a compiled top level or inline method producing the code in a specific
-     * {@link com.oracle.objectfile.debugentry.Range}.
+     * {@link Range}.
      */
     public interface DebugRangeInfo extends DebugMethodInfo {
 
@@ -357,6 +358,8 @@ public interface DebugInfoProvider {
          *         variables present in the frame of the current range.
          */
         DebugLocalValueInfo[] getLocalValueInfo();
+
+        boolean isLeaf();
     }
 
     /**

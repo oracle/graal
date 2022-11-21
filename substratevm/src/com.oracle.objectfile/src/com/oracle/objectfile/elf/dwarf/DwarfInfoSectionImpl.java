@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.stream.Stream;
 import java.util.function.Predicate;
 
+import com.oracle.objectfile.debugentry.range.SubRange;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
@@ -51,7 +52,7 @@ import com.oracle.objectfile.debugentry.InterfaceClassEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
-import com.oracle.objectfile.debugentry.Range;
+import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
@@ -1085,9 +1086,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] concrete entries [0x%x,0x%x] %s", pos, primary.getLo(), primary.getHi(), primary.getFullMethodName());
         ClassEntry classEntry = compiledEntry.getClassEntry();
         int depth = 0;
-        Iterator<Range> iterator = compiledEntry.topDownRangeIterator();
+        Iterator<SubRange> iterator = compiledEntry.topDownRangeIterator();
         while (iterator.hasNext()) {
-            Range subrange = iterator.next();
+            SubRange subrange = iterator.next();
             if (subrange.isLeaf()) {
                 // we only generate concrete methods for non-leaf entries
                 continue;
@@ -1099,7 +1100,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             }
             depth = subrange.getDepth();
             pos = writeInlineSubroutine(context, classEntry, subrange, depth + 2, buffer, pos);
-            HashMap<DebugLocalInfo, List<Range>> varRangeMap = subrange.getVarRangeMap();
+            HashMap<DebugLocalInfo, List<SubRange>> varRangeMap = subrange.getVarRangeMap();
             // increment depth to account for parameter and method locations
             depth++;
             pos = writeMethodParameterLocations(context, classEntry, varRangeMap, subrange, depth + 2, buffer, pos);
@@ -1137,9 +1138,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             return;
         }
         verboseLog(context, "  [0x%08x] collect abstract inlined methods %s", p, primary.getFullMethodName());
-        Iterator<Range> iterator = compiledEntry.topDownRangeIterator();
+        Iterator<SubRange> iterator = compiledEntry.topDownRangeIterator();
         while (iterator.hasNext()) {
-            Range subrange = iterator.next();
+            SubRange subrange = iterator.next();
             if (subrange.isLeaf()) {
                 // we only generate abstract inline methods for non-leaf entries
                 continue;
@@ -1455,7 +1456,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int methodSpecOffset = getMethodDeclarationIndex(primary.getMethodEntry());
         log(context, "  [0x%08x]     specification  0x%x (%s)", pos, methodSpecOffset, methodKey);
         pos = writeInfoSectionOffset(methodSpecOffset, buffer, pos);
-        HashMap<DebugLocalInfo, List<Range>> varRangeMap = primary.getVarRangeMap();
+        HashMap<DebugLocalInfo, List<SubRange>> varRangeMap = primary.getVarRangeMap();
         pos = writeMethodParameterLocations(context, null, varRangeMap, primary, 2, buffer, pos);
         pos = writeMethodLocalLocations(context, null, varRangeMap, primary, 2, buffer, pos);
         if (primary.includesInlineRanges()) {
@@ -1471,7 +1472,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return writeAttrNull(buffer, pos);
     }
 
-    private int writeMethodParameterLocations(DebugContext context, ClassEntry classEntry, HashMap<DebugLocalInfo, List<Range>> varRangeMap, Range range, int depth, byte[] buffer, int p) {
+    private int writeMethodParameterLocations(DebugContext context, ClassEntry classEntry, HashMap<DebugLocalInfo, List<SubRange>> varRangeMap, Range range, int depth, byte[] buffer, int p) {
         int pos = p;
         MethodEntry methodEntry;
         if (range.isPrimary()) {
@@ -1483,19 +1484,19 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         if (!Modifier.isStatic(methodEntry.getModifiers())) {
             DebugLocalInfo thisParamInfo = methodEntry.getThisParam();
             int refAddr = getMethodLocalIndex(classEntry, methodEntry, thisParamInfo);
-            List<Range> ranges = varRangeMap.get(thisParamInfo);
+            List<SubRange> ranges = varRangeMap.get(thisParamInfo);
             pos = writeMethodLocalLocation(context, range, thisParamInfo, refAddr, ranges, depth, true, buffer, pos);
         }
         for (int i = 0; i < methodEntry.getParamCount(); i++) {
             DebugLocalInfo paramInfo = methodEntry.getParam(i);
             int refAddr = getMethodLocalIndex(classEntry, methodEntry, paramInfo);
-            List<Range> ranges = varRangeMap.get(paramInfo);
+            List<SubRange> ranges = varRangeMap.get(paramInfo);
             pos = writeMethodLocalLocation(context, range, paramInfo, refAddr, ranges, depth, true, buffer, pos);
         }
         return pos;
     }
 
-    private int writeMethodLocalLocations(DebugContext context, ClassEntry classEntry, HashMap<DebugLocalInfo, List<Range>> varRangeMap, Range range, int depth, byte[] buffer, int p) {
+    private int writeMethodLocalLocations(DebugContext context, ClassEntry classEntry, HashMap<DebugLocalInfo, List<SubRange>> varRangeMap, Range range, int depth, byte[] buffer, int p) {
         int pos = p;
         MethodEntry methodEntry;
         if (range.isPrimary()) {
@@ -1508,18 +1509,18 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         for (int i = 0; i < count; i++) {
             DebugLocalInfo localInfo = methodEntry.getLocal(i);
             int refAddr = getMethodLocalIndex(classEntry, methodEntry, localInfo);
-            List<Range> ranges = varRangeMap.get(localInfo);
+            List<SubRange> ranges = varRangeMap.get(localInfo);
             pos = writeMethodLocalLocation(context, range, localInfo, refAddr, ranges, depth, false, buffer, pos);
         }
         return pos;
     }
 
-    private int writeMethodLocalLocation(DebugContext context, Range range, DebugLocalInfo localInfo, int refAddr, List<Range> ranges, int depth, boolean isParam, byte[] buffer,
+    private int writeMethodLocalLocation(DebugContext context, Range range, DebugLocalInfo localInfo, int refAddr, List<SubRange> ranges, int depth, boolean isParam, byte[] buffer,
                     int p) {
         int pos = p;
         log(context, "  [0x%08x] method %s location %s:%s", pos, (isParam ? "parameter" : "local"), localInfo.name(), localInfo.typeName());
         List<DebugLocalValueInfo> localValues = new ArrayList<>();
-        for (Range subrange : ranges) {
+        for (SubRange subrange : ranges) {
             DebugLocalValueInfo value = subrange.lookupValue(localInfo);
             if (value != null) {
                 log(context, "  [0x%08x]     local  %s:%s [0x%x, 0x%x] = %s", pos, value.name(), value.typeName(), subrange.getLo(), subrange.getHi(), formatValue(value));

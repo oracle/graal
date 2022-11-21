@@ -1699,6 +1699,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         private int hi;
         private DebugLocationInfo callersLocationInfo;
         private List<DebugLocalValueInfo> localInfoList;
+        private boolean isLeaf;
 
         NativeImageDebugLocationInfo(FrameNode frameNode, NativeImageDebugLocationInfo callersLocationInfo, int framesize) {
             this(frameNode.frame, frameNode.getStartPos(), frameNode.getEndPos() + 1, callersLocationInfo, framesize);
@@ -1711,9 +1712,15 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             this.hi = hi;
             this.callersLocationInfo = callersLocationInfo;
             this.localInfoList = initLocalInfoList(bcpos, framesize);
+            // assume this is a leaf until we find out otherwise
+            this.isLeaf = true;
+            // tag the caller as a non-leaf
+            if (callersLocationInfo != null) {
+                callersLocationInfo.isLeaf = false;
+            }
         }
 
-        // special constructor for synthetic lcoation info added at start of method
+        // special constructor for synthetic location info added at start of method
         NativeImageDebugLocationInfo(ResolvedJavaMethod method, int hi, ParamLocationProducer locProducer) {
             super(method);
             // bci is always 0 and lo is always 0.
@@ -1724,8 +1731,12 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             this.callersLocationInfo = null;
             // location info is synthesized off the method signature
             this.localInfoList = initSyntheticInfoList(locProducer);
+            // assume this is a leaf until we find out otherwise
+            this.isLeaf = true;
         }
 
+        // special constructor for synthetic location info which splits off the initial segment
+        // of the first range to accommodate a stack access prior to the stack push
         NativeImageDebugLocationInfo(NativeImageDebugLocationInfo toSplit, int stackDecrement, int frameSize) {
             super(toSplit.method);
             this.lo = stackDecrement;
@@ -1733,6 +1744,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             toSplit.hi = this.lo;
             this.bci = toSplit.bci;
             this.callersLocationInfo = toSplit.callersLocationInfo;
+            this.isLeaf = toSplit.isLeaf;
+            toSplit.isLeaf = true;
             this.localInfoList = new ArrayList<>(toSplit.localInfoList.size());
             for (DebugLocalValueInfo localInfo : toSplit.localInfoList) {
                 if (localInfo.localKind() == DebugLocalValueInfo.LocalKind.STACKSLOT) {
@@ -1883,6 +1896,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
         }
 
+        @Override
+        public boolean isLeaf() {
+            return isLeaf;
+        }
+
         public int depth() {
             int depth = 1;
             DebugLocationInfo caller = getCaller();
@@ -1911,6 +1929,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
          */
         NativeImageDebugLocationInfo merge(NativeImageDebugLocationInfo that) {
             assert callersLocationInfo == that.callersLocationInfo;
+            assert isLeaf == that.isLeaf;
             assert depth() == that.depth() : "should only compare sibling ranges";
             assert this.hi <= that.lo : "later nodes should not overlap earlier ones";
             if (this.hi != that.lo) {
