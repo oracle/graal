@@ -49,6 +49,14 @@ native-image --replay .../path/to/alaunch.nirb.jar
 this will rebuild the `alaunch` image with the same image arguments, environment variables, system properties
 settings, classpath and module-path options as in the initial build.
 
+To support the use-case of image-building-as-a-service, there should also be a way to create a bundle without
+performing the initial build locally. This allows users to offload image building to a cloud-service specialized in
+image building and retaining of replay bundles. The command line for that should be:     
+
+```shell
+native-image --replay-prepare ...other native-image arguments...
+```
+
 ## Replay Bundles File Format
 
 A `<imagename>.nirb.jar` file is a regular jar-file that contains all information needed to replay a previous build.
@@ -79,11 +87,19 @@ alaunch.nirb.jar
 │       ├── all.env <- All environment variables used in the image build
 │       ├── all.properties  <- All system properties passed to the builder
 │       ├── build.cmd <- Full native-image command line (minus --replay-create option)
-│       └── run.cmd <- Arguments to run application on java (for laucher, see below) 
+│       ├── run.cmd <- Arguments to run application on java (for laucher, see below) 
+│       └── container <- For containerized build this subdirs holds all info about that 
+│           ├── Dockerfile <- Container image that was used to perform the build
+│           ├── run.cmd <- Arguments passed to docker/podman to run the container
+│           └── setup.json <- Info about the docker/podman setup that was used
+│                             * Linux kernel version
+│                             * Docker/podman version
+│                             * CGroup v2 or CGroup v1
 ├── META-INF
 │   ├── MANIFEST.MF <- Specifes rbundle/Launcher as mainclass
 │   └── RBUNDLE.MF <- Contains replay bundle version info:
 │                     * Replay-bundle format version
+│                     * Platform the bundle was created on (e.g. linux-amd64) 
 │                     * GraalVM / Native-image version used for build
 ├── out
 │   ├── alaunch.debug <- Native debuginfo for the built image
@@ -106,6 +122,8 @@ Here we also find `RBUNDLE.MF`. This file is specific to replay bundles. Its exi
 ordinary jar-file but a native image replay bundle. The file contains version information of the native image replay
 bundle format itself and also which GraalVM version was used to create the bundle. This can later be used to report a
 warning message if a bundle gets replayed with a GraalVM version different from the one used to create the bundle.
+This file also contains information about the platform the bundle was created on (e.g. `linux-amd64` or
+`darwin-aarch64`).
 
 ### `input`:
 
@@ -124,6 +142,15 @@ class/module-path entries as the initial build. The use of `run.cmd` is explaine
 
 File `all.env` contains the environment variables that we allowed the builder to see during the initial build and
 `all.properties` the respective system-properties.
+
+#### `input/stage/container`:
+
+If the image builder runs in a container environment, this subdirectory holds all information necessary to redo the
+image build later in an equivalent container environment. It contains the `Dockerfile` that was used to specify the
+container image that executed the image builder. Next, `run.cmd` contains all the arguments that were passed to
+docker/podman. It does not contain the arguments passed to be builder. In `setup.json` we save all information about
+the container environment that was used (Linux kernel version, CGroup V1 or V2, Docker/podman version). For more info
+see [below](#containerized-image-building-on-supported-platforms).
 
 ### `build`:
 
@@ -162,7 +189,8 @@ us to prevent the builder from using the network during image build**, thus guar
 not depend on some unknown (and therefore unreproducible) network state. Another advantage is that we can mount
 `input/classes` and `$GRAALVM_HOME` read-only into the container and only allow read-write access to the mounted `out`
 and `build` directories. This will prevent the application code that runs at image build time to mess with anything
-other than those directories. 
+other than those directories. All information about containerized building is recorded in bundle subdirectory
+`input/stage/container`.
 
 ### Fallback for systems without container support
 
