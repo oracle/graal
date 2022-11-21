@@ -25,6 +25,8 @@
 
 package com.oracle.svm.core.posix;
 
+import java.util.function.BooleanSupplier;
+
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -47,7 +49,7 @@ import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 
-@AutomaticallyRegisteredImageSingleton(SubstrateSigprofHandler.class)
+@AutomaticallyRegisteredImageSingleton(value = SubstrateSigprofHandler.class, onlyWith = LinuxOnly.class)
 public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
 
     public static final long INTERVAL_S = 0;
@@ -132,5 +134,12 @@ public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
          * implementation-specific behavior here.
          */
         return (IsolateThread) Pthread.pthread_getspecific((Pthread.pthread_key_t) key);
+    }
+}
+
+class LinuxOnly implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return Platform.includedIn(Platform.LINUX.class);
     }
 }

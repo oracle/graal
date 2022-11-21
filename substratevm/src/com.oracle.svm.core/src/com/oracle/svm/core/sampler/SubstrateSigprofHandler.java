@@ -213,10 +213,6 @@ public abstract class SubstrateSigprofHandler {
         return ImageSingletons.lookup(SamplerStackWalkVisitor.class);
     }
 
-    private static boolean isOSSupported() {
-        return Platform.includedIn(Platform.LINUX.class);
-    }
-
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean isProfilingEnabled() {
         return enabled;
@@ -260,7 +256,7 @@ public abstract class SubstrateSigprofHandler {
      * Installs the platform dependent sigprof handler.
      */
     void install() {
-        if (JfrManager.isJFREnabled() && Options.SamplingBasedProfiling.getValue() && isOSSupported()) {
+        if (JfrManager.isJFREnabled() && Options.SamplingBasedProfiling.getValue()) {
             threadMXBean = (SubstrateThreadMXBean) ManagementFactory.getThreadMXBean();
 
             /* Call VM operation to initialize the sampler and the threads. */
