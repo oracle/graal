@@ -27,6 +27,7 @@ package com.oracle.svm.core.sampler;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
@@ -35,6 +36,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 /**
@@ -57,6 +59,8 @@ public final class SamplerBufferAccess {
         if (result.isNonNull()) {
             result.setSize(dataSize);
             result.setFreeable(false);
+            result.setNext(WordFactory.nullPointer());
+            result.setOwner(0);
             reinitialize(result);
         }
         return result;
@@ -71,7 +75,6 @@ public final class SamplerBufferAccess {
     public static void reinitialize(SamplerBuffer buffer) {
         Pointer dataStart = getDataStart(buffer);
         buffer.setPos(dataStart);
-        buffer.setOwner(0L);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -87,5 +90,10 @@ public final class SamplerBufferAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getDataEnd(SamplerBuffer buffer) {
         return getDataStart(buffer).add(buffer.getSize());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isOwner(SamplerBuffer buffer, IsolateThread thread) {
+        return buffer.getOwner() == SubstrateJVM.getThreadId(thread);
     }
 }

@@ -41,6 +41,7 @@ import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
+import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
@@ -384,9 +385,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
          */
         @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
         private void changeEpoch() {
-            /* Process all unprocessed sampler buffers before changing the epoch. */
-            SamplerBuffersAccess.processActiveBuffers();
-            SamplerBuffersAccess.processFullBuffers();
+            processSamplerBuffers();
 
             // Write unflushed data from the thread local buffers but do *not* reinitialize them
             // The thread local code will handle space reclamation on their own time
@@ -413,6 +412,24 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
             // Now that the epoch changed, re-register all running threads for the new epoch.
             SubstrateJVM.getThreadRepo().registerRunningThreads();
+        }
+
+        /**
+         * The VM is at a safepoint, so all other threads have a native state. However, the SIGPROF
+         * handler may still be executed at any time for any thread (including the current thread).
+         * To prevent races, we need to ensure that there are no threads that execute the SIGPROF
+         * handler while we are accessing the currently active buffers of other threads.
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        private void processSamplerBuffers() {
+            SubstrateSigprofHandler.singleton().preventThreadsFromEnteringSigProfHandler();
+            try {
+                SubstrateSigprofHandler.singleton().waitUntilAllThreadsExitedSignalHandler();
+                SamplerBuffersAccess.processActiveBuffers();
+                SamplerBuffersAccess.processFullBuffers();
+            } finally {
+                SubstrateSigprofHandler.singleton().allowThreadsInSigProfHandler();
+            }
         }
     }
 

@@ -44,7 +44,7 @@ public class SamplerThreadLocal implements ThreadListener {
     private static final FastThreadLocalWord<SamplerBuffer> localBuffer = FastThreadLocalFactory.createWord("SamplerThreadLocal.localBuffer");
     private static final FastThreadLocalLong missedSamples = FastThreadLocalFactory.createLong("SamplerThreadLocal.missedSamples");
     private static final FastThreadLocalLong unparseableStacks = FastThreadLocalFactory.createLong("SamplerThreadLocal.unparseableStacks");
-    private static final FastThreadLocalInt isSignalHandlerLocallyDisabled = FastThreadLocalFactory.createInt("SamplerThreadLocal.isSignalHandlerLocallyDisabled");
+    private static final FastThreadLocalInt isSigProfHandlerDisabled = FastThreadLocalFactory.createInt("SamplerThreadLocal.isSignalHandlerDisabled");
     /**
      * The data that we are using during the stack walk, allocated on the stack.
      */
@@ -139,13 +139,22 @@ public class SamplerThreadLocal implements ThreadListener {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void setSignalHandlerLocallyDisabled(boolean isDisabled) {
-        isSignalHandlerLocallyDisabled.set(isDisabled ? 1 : 0);
+    public static void preventSigProfHandlerExecution() {
+        int newValue = isSigProfHandlerDisabled.get() + 1;
+        assert newValue > 0;
+        isSigProfHandlerDisabled.set(newValue);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean isSignalHandlerLocallyDisabled() {
-        return isSignalHandlerLocallyDisabled.get() == 1;
+    public static void allowSigProfHandlerExecution() {
+        int newValue = isSigProfHandlerDisabled.get() - 1;
+        assert newValue >= 0;
+        isSigProfHandlerDisabled.set(newValue);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isSignalHandlerDisabled() {
+        return isSigProfHandlerDisabled.get() >= 1;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

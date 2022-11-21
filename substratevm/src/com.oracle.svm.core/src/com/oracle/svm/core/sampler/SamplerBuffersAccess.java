@@ -59,41 +59,35 @@ public final class SamplerBuffersAccess {
     public static void processActiveBuffers() {
         VMOperation.guaranteeInProgressAtSafepoint("Needed for iterating the threads");
 
-        SubstrateSigprofHandler.singleton().setSignalHandlerGloballyDisabled(true);
-        try {
-            for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
-                SamplerBuffer buffer = SamplerThreadLocal.getThreadLocalBuffer(thread);
-                if (buffer.isNonNull()) {
-                    processSamplerBuffer(buffer);
-                }
+        for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
+            SamplerBuffer buffer = SamplerThreadLocal.getThreadLocalBuffer(thread);
+            if (buffer.isNonNull()) {
+                processSamplerBuffer(buffer);
+
+                assert SamplerBufferAccess.isOwner(buffer, thread);
+                assert SamplerThreadLocal.getThreadLocalBuffer(thread) == buffer;
             }
-        } finally {
-            SubstrateSigprofHandler.singleton().setSignalHandlerGloballyDisabled(false);
         }
     }
 
     @Uninterruptible(reason = "All code that accesses a sampler buffer must be uninterruptible.")
     public static void processFullBuffers() {
-        SubstrateSigprofHandler.singleton().setSignalHandlerGloballyDisabled(true);
-        try {
-            while (true) {
-                /* Pop top buffer from stack of full buffers. */
-                SamplerBuffer buffer = SubstrateSigprofHandler.singleton().fullBuffers().popBuffer();
-                if (buffer.isNull()) {
-                    /* No remaining buffers. */
-                    break;
-                }
-
-                /* Process the buffer. */
-                processSamplerBuffer(buffer);
-                if (buffer.getFreeable()) {
-                    SamplerBufferAccess.free(buffer);
-                } else {
-                    SubstrateSigprofHandler.singleton().availableBuffers().pushBuffer(buffer);
-                }
+        while (true) {
+            /* Pop top buffer from stack of full buffers. */
+            SamplerBuffer buffer = SubstrateSigprofHandler.singleton().fullBuffers().popBuffer();
+            if (buffer.isNull()) {
+                /* No remaining buffers. */
+                break;
             }
-        } finally {
-            SubstrateSigprofHandler.singleton().setSignalHandlerGloballyDisabled(false);
+
+            /* Process the buffer. */
+            processSamplerBuffer(buffer);
+            if (buffer.getFreeable()) {
+                SamplerBufferAccess.free(buffer);
+            } else {
+                SamplerBufferAccess.reinitialize(buffer);
+                SubstrateSigprofHandler.singleton().availableBuffers().pushBuffer(buffer);
+            }
         }
     }
 
@@ -129,8 +123,11 @@ public final class SamplerBuffersAccess {
             stackTraceRepo.acquireLock();
             try {
                 long stackTraceId = stackTraceRepo.getStackTraceId(current, current.add(sampleSize), sampleHash, status, true);
+                long owner = buffer.getOwner();
+                assert owner != 0;
+
                 if (JfrStackTraceRepository.JfrStackTraceTableEntryStatus.get(status, JfrStackTraceRepository.JfrStackTraceTableEntryStatus.SERIALIZED)) {
-                    ExecutionSampleEvent.writeExecutionSample(sampleTick, buffer.getOwner(), stackTraceId, threadState);
+                    ExecutionSampleEvent.writeExecutionSample(sampleTick, owner, stackTraceId, threadState);
                     /* Sample is already there, skip the rest of sample plus END_MARK symbol. */
                     current = current.add(sampleSize).add(SamplerSampleWriter.END_MARKER_SIZE);
                 } else {
@@ -140,7 +137,7 @@ public final class SamplerBuffersAccess {
                     while (current.belowThan(end)) {
                         long ip = current.readLong(0);
                         if (ip == SamplerSampleWriter.END_MARKER) {
-                            ExecutionSampleEvent.writeExecutionSample(sampleTick, buffer.getOwner(), stackTraceId, threadState);
+                            ExecutionSampleEvent.writeExecutionSample(sampleTick, owner, stackTraceId, threadState);
                             current = current.add(SamplerSampleWriter.END_MARKER_SIZE);
                             break;
                         } else {
@@ -153,6 +150,8 @@ public final class SamplerBuffersAccess {
                 stackTraceRepo.releaseLock();
             }
         }
+
+        SamplerBufferAccess.reinitialize(buffer);
     }
 
     @Uninterruptible(reason = "The handle should only be accessed from uninterruptible code to prevent that the GC frees the CodeInfo.", callerMustBe = true)

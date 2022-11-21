@@ -106,27 +106,30 @@ public class JfrStackTraceRepository implements JfrConstantPool {
 
         /* Initialize stack walk. */
         SamplerSampleWriterData data = StackValue.get(SamplerSampleWriterData.class);
-        SamplerThreadLocal.setSignalHandlerLocallyDisabled(true);
-        if (SamplerSampleWriterDataAccess.initialize(data, skipCount, maxDepth, true)) {
-            SamplerSampleWriter.begin(data);
-            /* Walk the stack. */
-            Pointer sp = KnownIntrinsics.readCallerStackPointer();
-            CodePointer ip = FrameAccess.singleton().readReturnAddress(sp);
-            if (JavaStackWalker.walkCurrentThread(sp, ip, SubstrateSigprofHandler.visitor()) || data.getTruncated()) {
-                acquireLock();
-                try {
-                    CIntPointer status = StackValue.get(CIntPointer.class);
-                    Pointer start = data.getStartPos().add(SamplerSampleWriter.getHeaderSize());
-                    stackTraceId = getStackTraceId(start, data.getCurrentPos(), data.getHashCode(), status, false);
-                    if (JfrStackTraceTableEntryStatus.get(status, JfrStackTraceTableEntryStatus.NEW)) {
-                        SamplerSampleWriter.end(data);
+        SamplerThreadLocal.preventSigProfHandlerExecution();
+        try {
+            if (SamplerSampleWriterDataAccess.initialize(data, skipCount, maxDepth, true)) {
+                SamplerSampleWriter.begin(data);
+                /* Walk the stack. */
+                Pointer sp = KnownIntrinsics.readCallerStackPointer();
+                CodePointer ip = FrameAccess.singleton().readReturnAddress(sp);
+                if (JavaStackWalker.walkCurrentThread(sp, ip, SubstrateSigprofHandler.visitor()) || data.getTruncated()) {
+                    acquireLock();
+                    try {
+                        CIntPointer status = StackValue.get(CIntPointer.class);
+                        Pointer start = data.getStartPos().add(SamplerSampleWriter.getHeaderSize());
+                        stackTraceId = getStackTraceId(start, data.getCurrentPos(), data.getHashCode(), status, false);
+                        if (JfrStackTraceTableEntryStatus.get(status, JfrStackTraceTableEntryStatus.NEW)) {
+                            SamplerSampleWriter.end(data);
+                        }
+                    } finally {
+                        releaseLock();
                     }
-                } finally {
-                    releaseLock();
                 }
             }
+        } finally {
+            SamplerThreadLocal.allowSigProfHandlerExecution();
         }
-        SamplerThreadLocal.setSignalHandlerLocallyDisabled(false);
         return stackTraceId;
     }
 
