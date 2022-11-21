@@ -120,16 +120,6 @@ suite = {
         "<others>": {"optional": True},
       },
     },
-    # This is a dummy library for marking sulong native mode support.
-    "NATIVE_MODE_SUPPORT" : {
-      "os" : {
-        "windows" : {"optional": True},
-        "<others>" : {
-          "path": "tests/support.txt",
-          "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
-        },
-      },
-    },
     # This is a dummy library for disabling tests that won't compile because of missing GNU make.
     "UNIX_SUPPORT" : {
       "os" : {
@@ -150,10 +140,36 @@ suite = {
         "<others>" : {"optional": True},
       },
     },
+    # Projects depending on these will only be built if the given
+    # buildDependency is satisfied. The path and digest properties are required
+    # by mx.
+    # This is a dummy library for marking sulong native mode support.
+    "NATIVE_MODE_SUPPORT" : {
+      "path": "tests/support.txt",
+      "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
+      "buildDependencies" : ["UNIX_SUPPORT"],
+    },
+    # This is a dummy library for dragonegg support.
+    "DRAGONEGG_SUPPORT" : {
+      "path": "tests/support.txt",
+      "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
+      "buildDependencies" : ["LINUX_AMD64_SUPPORT"],
+    },
+    # This is a dummy library for malloc.h support.
+    "MALLOC_H_SUPPORT" : {
+      "path": "tests/support.txt",
+      "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
+      "buildDependencies" : ["LINUX_AMD64_SUPPORT"],
+    },
+    # This is a dummy library for alias() support.
+    "ALIAS_SUPPORT" : {
+      "path": "tests/support.txt",
+      "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
+      "buildDependencies" : ["LINUX_AMD64_SUPPORT"],
+    },
   },
 
   "projects" : {
-
     "com.oracle.truffle.llvm.docs" : {
       "class" : "DocumentationProject",
       "subDir" : "docs",
