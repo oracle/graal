@@ -509,6 +509,12 @@ bool polyglot_remove_array_element(polyglot_value array, int idx);
  * multiple bytes per character.
  */
 
+#ifdef _WIN32
+#define POLYGLOT_WCHAR_ENCODING "utf-16le"
+#else
+#define POLYGLOT_WCHAR_ENCODING "utf-32le"
+#endif
+
 /**
  * Get the size of a polyglot string value.
  *

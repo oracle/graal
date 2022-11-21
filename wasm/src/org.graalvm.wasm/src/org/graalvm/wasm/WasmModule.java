@@ -64,6 +64,7 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
 
     @CompilationFinal(dimensions = 1) private CodeEntry[] codeEntries;
 
+    @CompilationFinal private boolean hasCodeSection;
     @CompilationFinal(dimensions = 1) private byte[] data;
     @CompilationFinal private boolean isParsed;
 
@@ -147,6 +148,7 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
 
     public void setCodeEntries(CodeEntry[] codeEntries) {
         this.codeEntries = codeEntries;
+        this.hasCodeSection = true;
     }
 
     public CodeEntry[] getCodeEntries() {
@@ -159,5 +161,9 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
 
     public boolean hasCodeEntries() {
         return codeEntries != null;
+    }
+
+    public boolean hasCodeSection() {
+        return hasCodeSection;
     }
 }

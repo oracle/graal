@@ -1865,7 +1865,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (localInfoList != null) {
                 return localInfoList.toArray(new DebugLocalValueInfo[localInfoList.size()]);
             } else {
-                return new DebugLocalValueInfo[0];
+                return EMPTY_LOCAL_VALUE_INFOS;
             }
         }
 
@@ -1933,6 +1933,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
     }
+
+    private static final DebugLocalValueInfo[] EMPTY_LOCAL_VALUE_INFOS = new DebugLocalValueInfo[0];
 
     static final Register[] AARCH64_GPREG = {
                     AArch64.r0,

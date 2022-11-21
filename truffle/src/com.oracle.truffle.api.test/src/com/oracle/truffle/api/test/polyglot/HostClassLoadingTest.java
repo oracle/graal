@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -338,6 +340,57 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
             Files.deleteIfExists(jar);
             deleteDir(tempDir);
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    @Test
+    public void testNoClassDefFoundError() throws IOException {
+        Class<?> hostClass = HostClassLoadingTestClass1.class;
+        String simpleName = hostClass.getSimpleName();
+        URL hostClassURL = hostClass.getResource(simpleName.concat(".class"));
+        assertNotNull(hostClassURL);
+        String urlStr = hostClassURL.toString();
+        URL baseURL = new URL(hostClassURL, urlStr.substring(0, urlStr.lastIndexOf('/') + 1));
+        assertEquals(hostClassURL.toString(), baseURL.toString().concat(simpleName.concat(".class")));
+
+        ClassLoader mockClassLoader = new URLClassLoader(new URL[]{baseURL}, null);
+
+        setupEnv(Context.newBuilder().hostClassLoader(mockClassLoader).allowHostAccess(HostAccess.ALL).allowHostClassLookup((String s) -> true).build());
+        assertFails(() -> languageEnv.lookupHostSymbol(simpleName), AbstractTruffleException.class, (e) -> {
+            assertNonInternalException(e);
+            assertTrue(e.getMessage().contains(String.format("Access to host class %s is not allowed or does not exist.", simpleName)));
+        });
+    }
+
+    @SuppressWarnings("deprecation")
+    @Test
+    public void testClassFormatError() throws IOException {
+        Class<?> hostClass = HostClassLoadingTestClass1.class;
+        String qualifiedName = hostClass.getName();
+        URL hostClassURL = hostClass.getResource(hostClass.getSimpleName().concat(".class"));
+        assertNotNull(hostClassURL);
+        String hostClassFilePath = qualifiedName.replace('.', '/').concat(".class");
+        String urlStr = hostClassURL.toString();
+        assertTrue(urlStr.endsWith(hostClassFilePath));
+        URL baseURL = new URL(hostClassURL, urlStr.substring(0, urlStr.length() - hostClassFilePath.length()));
+        assertEquals(hostClassURL.toString(), baseURL.toString().concat(hostClassFilePath));
+
+        ClassLoader mockClassLoader = new URLClassLoader(new URL[]{hostClassURL}, null) {
+            @Override
+            protected Class<?> findClass(String name) throws ClassNotFoundException {
+                if (name.equals(qualifiedName)) {
+                    throw new ClassFormatError("bad class");
+                } else {
+                    return super.findClass(name);
+                }
+            }
+        };
+
+        setupEnv(Context.newBuilder().hostClassLoader(mockClassLoader).allowHostAccess(HostAccess.ALL).allowHostClassLookup((String s) -> true).build());
+        assertFails(() -> languageEnv.lookupHostSymbol(qualifiedName), AbstractTruffleException.class, (e) -> {
+            assertNonInternalException(e);
+            assertThat(e.getMessage(), containsString(String.format("Access to host class %s is not allowed or does not exist.", qualifiedName)));
+        });
     }
 
     @Test

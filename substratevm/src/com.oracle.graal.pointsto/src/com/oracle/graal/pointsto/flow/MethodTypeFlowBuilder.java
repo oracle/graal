@@ -70,11 +70,14 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.java.AtomicReadAndWriteNode;
+import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
 import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
 import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
@@ -134,6 +137,7 @@ import com.oracle.graal.pointsto.nodes.UnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
+import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
@@ -226,17 +230,19 @@ public class MethodTypeFlowBuilder {
             if (n instanceof InstanceOfNode) {
                 InstanceOfNode node = (InstanceOfNode) n;
                 AnalysisType type = (AnalysisType) node.type().getType();
-                type.registerAsReachable();
+                if (!ignoreInstanceOfType(type)) {
+                    type.registerAsReachable();
+                }
 
             } else if (n instanceof NewInstanceNode) {
                 NewInstanceNode node = (NewInstanceNode) n;
                 AnalysisType type = (AnalysisType) node.instanceClass();
-                type.registerAsAllocated(node);
+                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof VirtualObjectNode) {
                 VirtualObjectNode node = (VirtualObjectNode) n;
                 AnalysisType type = (AnalysisType) node.type();
-                type.registerAsAllocated(node);
+                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof CommitAllocationNode) {
                 CommitAllocationNode node = (CommitAllocationNode) n;
@@ -259,20 +265,20 @@ public class MethodTypeFlowBuilder {
             } else if (n instanceof NewArrayNode) {
                 NewArrayNode node = (NewArrayNode) n;
                 AnalysisType type = ((AnalysisType) node.elementType()).getArrayClass();
-                type.registerAsAllocated(node);
+                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof NewMultiArrayNode) {
                 NewMultiArrayNode node = (NewMultiArrayNode) n;
                 AnalysisType type = ((AnalysisType) node.type());
                 for (int i = 0; i < node.dimensionCount(); i++) {
-                    type.registerAsAllocated(node);
+                    type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
                     type = type.getComponentType();
                 }
 
             } else if (n instanceof BoxNode) {
                 BoxNode node = (BoxNode) n;
                 AnalysisType type = (AnalysisType) StampTool.typeOrNull(node);
-                type.registerAsAllocated(node);
+                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof LoadFieldNode) {
                 LoadFieldNode node = (LoadFieldNode) n;
@@ -289,8 +295,8 @@ public class MethodTypeFlowBuilder {
                 if (cn.hasUsages() && cn.isJavaConstant() && cn.asJavaConstant().getJavaKind() == JavaKind.Object && cn.asJavaConstant().isNonNull()) {
                     assert StampTool.isExactType(cn);
                     AnalysisType type = (AnalysisType) StampTool.typeOrNull(cn);
-                    type.registerAsInHeap();
-                    if (registerEmbeddedRoots) {
+                    type.registerAsInHeap(AbstractAnalysisEngine.sourcePosition(cn));
+                    if (registerEmbeddedRoots && !ignoreConstant(cn)) {
                         registerEmbeddedRoot(cn);
                     }
                 }
@@ -319,6 +325,61 @@ public class MethodTypeFlowBuilder {
                 registerForeignCall(bb, bb.getProviders().getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature));
             }
         }
+    }
+
+    /**
+     * This method filters constants, i.e., these constants are not seen as reachable on its own.
+     * This avoids making things reachable just because of that constant usage. For all cases where
+     * this method returns true, {@link StrengthenGraphs} must have a corresponding re-write of the
+     * constant in case nothing else in the application made that constant reachable.
+     *
+     * {@link Class#isAssignableFrom} is often used with a constant receiver class. In that case, we
+     * do not want to make the receiver class reachable, because as long as the receiver class is
+     * not reachable for any other "real" reason we know that isAssignableFrom will always return
+     * false. So in {@link StrengthenGraphs} we can then constant-fold the
+     * {@link ClassIsAssignableFromNode} to false.
+     *
+     * Similarly, a class should not be marked as reachable only so that we can add the class name
+     * to the error message of a {@link ClassCastException}. In {@link StrengthenGraphs} we can
+     * re-write the Class constant to a String constant, i.e., only embed the class name and not the
+     * full java.lang.Class object in the image.
+     */
+    protected boolean ignoreConstant(ConstantNode cn) {
+        if (!ignoreInstanceOfType((AnalysisType) bb.getProviders().getConstantReflection().asJavaType(cn.asConstant()))) {
+            return false;
+        }
+        for (var usage : cn.usages()) {
+            if (usage instanceof ClassIsAssignableFromNode) {
+                if (((ClassIsAssignableFromNode) usage).getThisClass() != cn) {
+                    return false;
+                }
+            } else if (usage instanceof BytecodeExceptionNode) {
+                if (((BytecodeExceptionNode) usage).getExceptionKind() != BytecodeExceptionKind.CLASS_CAST) {
+                    return false;
+                }
+            } else if (usage instanceof FrameState) {
+                /* FrameState usages are only for debugging and not necessary for correctness. */
+            } else {
+                return false;
+            }
+        }
+        /* Success, the ConstantNode do not need to be seen as reachable. */
+        return true;
+    }
+
+    protected boolean ignoreInstanceOfType(AnalysisType type) {
+        if (type == null || !bb.strengthenGraalGraphs()) {
+            return false;
+        }
+        if (type.isArray()) {
+            /*
+             * There is no real overhead when making array types reachable (which automatically also
+             * makes them instantiated), and it avoids manual reflection configuration because
+             * casting to an array type then automatically marks the array type as instantiated.
+             */
+            return false;
+        }
+        return true;
     }
 
     private void registerEmbeddedRoot(ConstantNode cn) {

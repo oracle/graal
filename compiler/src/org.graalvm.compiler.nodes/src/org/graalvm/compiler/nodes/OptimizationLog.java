@@ -47,8 +47,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Unifies counting, logging and dumping in optimization phases. If enabled, collects info about
- * optimizations performed in a single compilation and dumps them to the standard output, a JSON
- * file and/or IGV.
+ * optimizations performed in a single compilation and dumps them to the standard output, JSON
+ * files, and/or IGV.
  */
 public interface OptimizationLog extends CompilationListener {
 
@@ -70,7 +70,7 @@ public interface OptimizationLog extends CompilationListener {
          *
          * @return a representation of the optimization subtree that can be formatted as JSON
          */
-        abstract EconomicMap<String, Object> asJsonMap(Function<ResolvedJavaMethod, String> methodNameFormatter);
+        abstract EconomicMap<String, Object> asJSONMap(Function<ResolvedJavaMethod, String> methodNameFormatter);
     }
 
     /**
@@ -310,8 +310,8 @@ public interface OptimizationLog extends CompilationListener {
      * Returns {@code true} iff {@link DebugOptions#OptimizationLog the optimization log} is
      * enabled.
      *
-     * @see OptimizationLog#isOptimizationLogEnabled(OptionValues)
      * @return whether {@link DebugOptions#OptimizationLog the optimization log} is enabled
+     * @see OptimizationLog#isOptimizationLogEnabled(OptionValues)
      */
     boolean isOptimizationLogEnabled();
 

@@ -33,6 +33,7 @@ import static org.graalvm.compiler.options.OptionType.Debug;
 import static org.graalvm.compiler.options.OptionType.Expert;
 import static org.graalvm.compiler.options.OptionType.User;
 
+import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -207,7 +208,8 @@ public class SubstrateOptions {
         BUILD_TIME
     }
 
-    @Option(help = "Control native-image code optimizations: b - optimize for shortest build time, 0 - no optimizations, 1 - basic optimizations, 2 - aggressive optimizations.", type = OptionType.User)//
+    @APIOption(name = "-O", valueSeparator = APIOption.NO_SEPARATOR)//
+    @Option(help = "Control code optimizations: b - quick build mode for development, 0 - no optimizations, 1 - basic optimizations, 2 - aggressive optimizations (default).", type = OptionType.User)//
     public static final HostedOptionKey<String> Optimize = new HostedOptionKey<>("2") {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
@@ -365,6 +367,9 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = "At CEntryPoints check that the passed IsolateThread is valid.") //
+    public static final HostedOptionKey<Boolean> CheckIsolateThreadAtEntry = new HostedOptionKey<>(false);
+
     @Option(help = "Trace VMOperation execution.")//
     public static final HostedOptionKey<Boolean> TraceVMOperations = new HostedOptionKey<>(false);
 
@@ -438,7 +443,7 @@ public class SubstrateOptions {
 
     @Option(help = "Print build output statistics as JSON to the specified file. " +
                     "The output is according to the JSON schema located at: " +
-                    "docs/reference-manual/native-image/assets/build-output-schema-v0.9.0.json", type = OptionType.User)//
+                    "docs/reference-manual/native-image/assets/build-output-schema-v0.9.1.json", type = OptionType.User)//
     public static final HostedOptionKey<String> BuildOutputJSONFile = new HostedOptionKey<>("");
 
     /*
@@ -563,6 +568,11 @@ public class SubstrateOptions {
         return "llvm".equals(CompilerBackend.getValue());
     }
 
+    @Fold
+    public static boolean useLIRBackend() {
+        return "lir".equals(CompilerBackend.getValue());
+    }
+
     /*
      * RemoveUnusedSymbols is not enabled on Darwin by default, because the linker sometimes
      * segfaults when the -dead_strip option is used.
@@ -665,6 +675,9 @@ public class SubstrateOptions {
     @Option(help = "Omit generation of DebugLineInfo originating from inlined methods") //
     public static final HostedOptionKey<Boolean> OmitInlinedMethodDebugLineInfo = new HostedOptionKey<>(true);
 
+    @Option(help = "Emit debuginfo debug.svm.imagebuild.* sections with detailed image-build options.")//
+    public static final HostedOptionKey<Boolean> UseImagebuildDebugSections = new HostedOptionKey<>(true);
+
     @Fold
     public static boolean supportCompileInIsolates() {
         UserError.guarantee(!ConcealedOptions.SupportCompileInIsolates.getValue() || SpawnIsolates.getValue(),
@@ -766,6 +779,22 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = "The path (filename or directory) where heap dumps are created (defaults to the working directory).")//
+    public static final RuntimeOptionKey<String> HeapDumpPath = new RuntimeOptionKey<>("", Immutable);
+
+    /* Utility method that follows the `-XX:HeapDumpPath` behavior of the JVM. */
+    public static final String getHeapDumpPath(String defaultFilename) {
+        String heapDumpFilenameOrDirectory = HeapDumpPath.getValue();
+        if (heapDumpFilenameOrDirectory.isEmpty()) {
+            return defaultFilename;
+        }
+        var targetPath = Paths.get(heapDumpFilenameOrDirectory);
+        if (Files.isDirectory(targetPath)) {
+            targetPath = targetPath.resolve(defaultFilename);
+        }
+        return targetPath.toFile().getAbsolutePath();
+    }
+
     @Option(help = "Create a heap dump and exit.")//
     public static final RuntimeOptionKey<Boolean> DumpHeapAndExit = new RuntimeOptionKey<>(false, Immutable);
 
@@ -855,6 +884,6 @@ public class SubstrateOptions {
     };
 
     @Option(help = "Instead of abort, only warn if image builder classes are found on the image class-path.", type = Debug)//
-    public static final HostedOptionKey<Boolean> TolerateBuilderClassesOnImageClasspath = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> AllowDeprecatedBuilderClassesOnImageClasspath = new HostedOptionKey<>(false);
 
 }

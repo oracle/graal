@@ -76,7 +76,7 @@ public final class RelocatableBuffer {
         return byteBuffer;
     }
 
-    static final class Info {
+    public static final class Info {
         private final ObjectFile.RelocationKind relocationKind;
         private final long addend;
         /**

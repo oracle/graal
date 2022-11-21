@@ -432,6 +432,14 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
         int numAnnotations = (deleteAnnotation != null ? 1 : 0) + (substituteAnnotation != null ? 1 : 0) + (annotateOriginalAnnotation != null ? 1 : 0) + (aliasAnnotation != null ? 1 : 0);
         if (numAnnotations == 0) {
+            if (!(annotatedMethod instanceof Constructor) && annotatedMethod.getName().startsWith("lambda$")) {
+                String targetClass = annotatedMethod.getDeclaringClass().getName();
+                String[] methodNameParts = annotatedMethod.getName().split("[$]");
+                String method = methodNameParts.length > 1 ? methodNameParts[1] : annotatedMethod.getName();
+
+                throw UserError.abort("Lambda usage detected in the substitution method: %s#%s. Lambdas are not supported inside" +
+                                " substitution methods. To fix the issue, replace the culprit lambda with an equivalent anonymous class.", targetClass, method);
+            }
             guarantee(annotatedMethod instanceof Constructor, "One of @Delete, @Substitute, @AnnotateOriginal, or @Alias must be used: %s", annotatedMethod);
             return;
         }

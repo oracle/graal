@@ -47,7 +47,6 @@ import java.util.Deque;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
-import com.oracle.truffle.regex.tregex.parser.ast.SubTreeIndex;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
@@ -69,24 +68,27 @@ public final class PureNFAGenerator {
         transitionGen = new PureNFATransitionGenerator(ast, this);
     }
 
-    public static PureNFAMap mapToNFA(RegexAST ast) {
+    public static PureNFA mapToNFA(RegexAST ast) {
         ast.hidePrefix();
         PureNFAGenerator gen = new PureNFAGenerator(ast);
-        PureNFA root = gen.createNFA(ast.getRoot().getSubTreeParent());
-        PureNFAIndex subtrees = mapSubtrees(gen, ast.getSubtrees());
+        PureNFA rootNFA = gen.createNFA(ast.getRoot().getSubTreeParent());
+        Deque<PureNFA> subtreeExpansionQueue = new ArrayDeque<>();
+        subtreeExpansionQueue.push(rootNFA);
+        while (!subtreeExpansionQueue.isEmpty()) {
+            PureNFA parentNFA = subtreeExpansionQueue.pop();
+            RegexASTSubtreeRootNode parentRoot = parentNFA.getASTSubtree(ast);
+            for (int i = 0; i < parentNFA.getSubtrees().length; i++) {
+                PureNFA childNFA = gen.createNFA(parentRoot.getSubtrees().get(i));
+                assert !childNFA.isRoot();
+                subtreeExpansionQueue.push(childNFA);
+                parentNFA.getSubtrees()[i] = childNFA;
+            }
+        }
         ast.unhidePrefix();
-        return new PureNFAMap(ast, root, subtrees);
-    }
-
-    private static PureNFAIndex mapSubtrees(PureNFAGenerator gen, SubTreeIndex subtrees) {
-        if (subtrees.isEmpty()) {
-            return PureNFAIndex.getEmptyInstance(gen.ast.getLanguage());
-        }
-        PureNFAIndex map = new PureNFAIndex(subtrees.getNumberOfStates());
-        for (RegexASTSubtreeRootNode subtreeRootNode : subtrees) {
-            map.add(gen.createNFA(subtreeRootNode));
-        }
-        return map;
+        assert rootNFA.getGlobalSubTreeId() == -1;
+        assert rootNFA.getSubTreeId() == -1;
+        assert rootNFA.isRoot();
+        return rootNFA;
     }
 
     public Counter.ThresholdCounter getTransitionIdCounter() {

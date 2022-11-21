@@ -34,9 +34,14 @@
 
 typedef int int_t;
 POLYGLOT_DECLARE_TYPE(int_t)
+typedef double double_t;
+POLYGLOT_DECLARE_TYPE(double_t)
 
 polyglot_typeid get_int_t_typeid() {
     return polyglot_int_t_typeid();
+}
+polyglot_typeid get_double_t_typeid() {
+    return polyglot_double_t_typeid();
 }
 
 struct StructA {
@@ -71,7 +76,7 @@ int test_va_list_callback(int (*callback)(va_list *, void *), void *libHandle, .
     return res;
 }
 
-int test_va_list_callback4(int (*callback)(va_list *, void *), void *libHandle, int a0, int a1, int a2, void *saNative, void *saManaged) {
+int test_va_list_callback4(int (*callback)(va_list *, void *), void *libHandle, int a0, int a1, double a2, void *saNative, void *saManaged) {
     return test_va_list_callback(callback, libHandle, a0, a1, a2, saNative, polyglot_as_StructA(saManaged));
 }
 

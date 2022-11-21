@@ -86,7 +86,7 @@ class IfFrame extends ControlFrame {
         falseJump.setTargetInfo(offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
         for (BranchTargetWithStackChange branchTarget : branchTargets()) {
             branchTarget.setTargetInfo(offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
-            branchTarget.setStackInfo(labelTypeLength(), initialStackSize());
+            branchTarget.setStackInfo(labelUnwindType(), labelTypeLength(), initialStackSize());
         }
     }
 

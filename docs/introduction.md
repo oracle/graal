@@ -3,6 +3,7 @@ layout: docs
 toc_group: docs
 title: Architecture Overview
 permalink: /docs/introduction/
+redirect_from: /$version/docs/introduction/
 ---
 
 # Introduction to GraalVM

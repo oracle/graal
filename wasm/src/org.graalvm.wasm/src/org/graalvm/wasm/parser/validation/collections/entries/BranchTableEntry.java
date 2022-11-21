@@ -48,18 +48,25 @@ import org.graalvm.wasm.util.ExtraDataUtil;
 
 /**
  * Represents a br_table entry in the extra data list.
- *
+ * <p>
  * Compact format:
- * 
- * <code>
- *     | compactFormatIndicator (1-bit) | size (unsigned 15-bit) | profileCounter (unsigned 16-bit) | compact brIfEntry | ... | compact brIfEntry |
- * </code>
- * 
+ * <p>
+ * <ul>
+ * <li>compactFormatIndicator (1-bit)
+ * <li>size (unsigned 15-bit)
+ * <li>profileCounter (unsigned 16-bit)
+ * <li>(branchEntry {@link ConditionalBranchEntry})*
+ * </ul>
+ * <p>
  * Extended format:
- * 
- * <code>
- *     | extendedFormatIndicator (1-bit) | size (unsigned 31-bit) | unused (16-bit) | profileCounter (unsigned 16-bit) | extended brIfEntry | ... | extended brIfEntry |
- * </code>
+ * <p>
+ * <ul>
+ * <li>extendedFormatIndicator (1-bit)
+ * <li>size (unsigned 31-bit)
+ * <li>unused (16-bit)
+ * <li>profileCounter (unsigned 16-bit)
+ * <li>(extendedBranchEntry {@link ConditionalBranchEntry})*
+ * </ul>
  */
 public class BranchTableEntry extends ExtraDataEntry implements ExtraDataFormatHelper {
     private final ConditionalBranchEntry[] items;
@@ -74,7 +81,7 @@ public class BranchTableEntry extends ExtraDataEntry implements ExtraDataFormatH
         }
         this.items = new ConditionalBranchEntry[elementCount];
         for (int i = 0; i < elementCount; i++) {
-            this.items[i] = new ConditionalBranchEntry(this, byteCodeOffset, extraDataOffset, extraDataIndex);
+            this.items[i] = new ConditionalBranchEntry(this, byteCodeOffset, extraDataOffset, extraDataIndex, 0);
         }
     }
 
@@ -123,6 +130,17 @@ public class BranchTableEntry extends ExtraDataEntry implements ExtraDataFormatH
     }
 
     public BranchTargetWithStackChange item(int index) {
+        return items[index];
+    }
+
+    /**
+     *
+     * @param index The index of the branch item
+     * @param unwindType The new unwind type
+     * @return The updated item
+     */
+    public BranchTargetWithStackChange updateItemUnwindType(int index, int unwindType) {
+        items[index].updateUnwindType(unwindType);
         return items[index];
     }
 

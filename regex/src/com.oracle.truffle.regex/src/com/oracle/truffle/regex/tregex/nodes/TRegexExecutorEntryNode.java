@@ -86,8 +86,13 @@ public abstract class TRegexExecutorEntryNode extends Node {
             } catch (NoSuchFieldException e) {
                 throw new RuntimeException("failed to get coder field offset", e);
             }
-            coderFieldOffset = UNSAFE.objectFieldOffset(coderField);
+            coderFieldOffset = getObjectFieldOffset(coderField);
         }
+    }
+
+    @SuppressWarnings("deprecation"/* JDK-8277863 */)
+    static long getObjectFieldOffset(Field field) {
+        return UNSAFE.objectFieldOffset(field);
     }
 
     private static Unsafe getUnsafe() {
@@ -106,7 +111,7 @@ public abstract class TRegexExecutorEntryNode extends Node {
 
     private static final class TRegexExecutorRootNode extends RootNode {
 
-        @Child TRegexExecutorNode executor;
+        @Child TRegexExecutorBaseNode executor;
         private final TruffleString.CodeRange codeRange;
         private final boolean isTString;
 
@@ -124,7 +129,7 @@ public abstract class TRegexExecutorEntryNode extends Node {
             int fromIndex = (int) arguments[1];
             int index = (int) arguments[2];
             int maxIndex = (int) arguments[3];
-            return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), codeRange, isTString);
+            return executor.execute(frame, executor.createLocals(input, fromIndex, index, maxIndex), codeRange, isTString);
         }
 
         @TruffleBoundary
@@ -136,64 +141,63 @@ public abstract class TRegexExecutorEntryNode extends Node {
     }
 
     private final RegexLanguage language;
-    @Child TRegexExecutorNode executor;
+    @Child TRegexExecutorBaseNode executor;
 
-    public TRegexExecutorEntryNode(RegexLanguage language, TRegexExecutorNode executor) {
+    public TRegexExecutorEntryNode(RegexLanguage language, TRegexExecutorBaseNode executor) {
         this.language = language;
         this.executor = executor;
     }
 
-    public static TRegexExecutorEntryNode create(RegexLanguage language, TRegexExecutorNode executor) {
+    public static TRegexExecutorEntryNode create(RegexLanguage language, TRegexExecutorBaseNode executor) {
         if (executor == null) {
             return null;
         }
-        executor.initialize();
         return TRegexExecutorEntryNodeGen.create(language, executor);
     }
 
-    public TRegexExecutorNode getExecutor() {
+    public TRegexExecutorBaseNode getExecutor() {
         return executor;
     }
 
-    public abstract Object execute(Object input, int fromIndex, int index, int maxIndex);
+    public abstract Object execute(VirtualFrame frame, Object input, int fromIndex, int index, int maxIndex);
 
     @Specialization
-    Object doByteArray(byte[] input, int fromIndex, int index, int maxIndex,
+    Object doByteArray(VirtualFrame frame, byte[] input, int fromIndex, int index, int maxIndex,
                     @Cached("createCallTarget(BROKEN, false)") DirectCallNode callNode) {
-        return runExecutor(input, fromIndex, index, maxIndex, callNode, TruffleString.CodeRange.BROKEN, false);
+        return runExecutor(frame, input, fromIndex, index, maxIndex, callNode, TruffleString.CodeRange.BROKEN, false);
     }
 
     @Specialization(guards = "isCompactString(input)")
-    Object doStringCompact(String input, int fromIndex, int index, int maxIndex,
+    Object doStringCompact(VirtualFrame frame, String input, int fromIndex, int index, int maxIndex,
                     @Cached("createCallTarget(LATIN_1, false)") DirectCallNode callNode) {
-        return runExecutor(input, fromIndex, index, maxIndex, callNode, TruffleString.CodeRange.LATIN_1, false);
+        return runExecutor(frame, input, fromIndex, index, maxIndex, callNode, TruffleString.CodeRange.LATIN_1, false);
     }
 
     @Specialization(guards = "!isCompactString(input)")
-    Object doStringNonCompact(String input, int fromIndex, int index, int maxIndex,
+    Object doStringNonCompact(VirtualFrame frame, String input, int fromIndex, int index, int maxIndex,
                     @Cached("createCallTarget(BROKEN, false)") DirectCallNode callNode) {
-        return runExecutor(input, fromIndex, index, maxIndex, callNode, TruffleString.CodeRange.BROKEN, false);
+        return runExecutor(frame, input, fromIndex, index, maxIndex, callNode, TruffleString.CodeRange.BROKEN, false);
     }
 
     @Specialization(guards = "codeRangeEqualsNode.execute(input, cachedCodeRange)", limit = "5")
-    Object doTString(TruffleString input, int fromIndex, int index, int maxIndex,
+    Object doTString(VirtualFrame frame, TruffleString input, int fromIndex, int index, int maxIndex,
                     @Cached TruffleString.MaterializeNode materializeNode,
                     @Cached @SuppressWarnings("unused") TruffleString.GetCodeRangeNode codeRangeNode,
                     @Cached @SuppressWarnings("unused") TruffleString.CodeRangeEqualsNode codeRangeEqualsNode,
-                    @Cached("codeRangeNode.execute(input, executor.getEncoding().getTStringEncoding())") TruffleString.CodeRange cachedCodeRange,
+                    @Cached("codeRangeNode.execute(input, getExecutor().getEncoding().getTStringEncoding())") TruffleString.CodeRange cachedCodeRange,
                     @Cached("createCallTarget(cachedCodeRange, true)") DirectCallNode callNode) {
         materializeNode.execute(input, executor.getEncoding().getTStringEncoding());
-        return runExecutor(input, fromIndex, index, maxIndex, callNode, cachedCodeRange, true);
+        return runExecutor(frame, input, fromIndex, index, maxIndex, callNode, cachedCodeRange, true);
     }
 
     @Specialization(guards = "neitherByteArrayNorString(input)")
-    Object doTruffleObject(Object input, int fromIndex, int index, int maxIndex,
+    Object doTruffleObject(VirtualFrame frame, Object input, int fromIndex, int index, int maxIndex,
                     @Cached("createClassProfile()") ValueProfile inputClassProfile,
                     @Cached("createCallTarget(BROKEN, false)") DirectCallNode callNode) {
         // conservatively disable compact string optimizations.
         // TODO: maybe add an interface for TruffleObjects to announce if they are compact / ascii
         // strings?
-        return runExecutor(inputClassProfile.profile(input), fromIndex, index, maxIndex, callNode, TruffleString.CodeRange.BROKEN, false);
+        return runExecutor(frame, inputClassProfile.profile(input), fromIndex, index, maxIndex, callNode, TruffleString.CodeRange.BROKEN, false);
     }
 
     DirectCallNode createCallTarget(TruffleString.CodeRange codeRange, boolean isTString) {
@@ -204,12 +208,12 @@ public abstract class TRegexExecutorEntryNode extends Node {
         }
     }
 
-    private Object runExecutor(Object input, int fromIndex, int index, int maxIndex, DirectCallNode callNode, TruffleString.CodeRange cachedCodeRange, boolean isTString) {
+    private Object runExecutor(VirtualFrame frame, Object input, int fromIndex, int index, int maxIndex, DirectCallNode callNode, TruffleString.CodeRange cachedCodeRange, boolean isTString) {
         CompilerAsserts.partialEvaluationConstant(cachedCodeRange);
         CompilerAsserts.partialEvaluationConstant(isTString);
         CompilerAsserts.partialEvaluationConstant(callNode);
         if (callNode == null) {
-            return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), cachedCodeRange, isTString);
+            return executor.execute(frame, executor.createLocals(input, fromIndex, index, maxIndex), cachedCodeRange, isTString);
         } else {
             return callNode.call(input, fromIndex, index, maxIndex);
         }

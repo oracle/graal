@@ -1103,7 +1103,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         // TODO([GR-40899]): Reset the stack pointer to the unwound value
         // TODO([GR-40900]): Call exception object destructor
         LLVMExpressionNode getStack = nodeFactory.createGetStackFromFrame();
-        LLVMControlFlowNode node = cleanupRet.getSuccessorCount() > 0 ? nodeFactory.createCatchReturn(cleanupRet.getSuccessor(0).getBlockIndex(), getStack, getPhiWriteNodes(cleanupRet)[0])
+        LLVMControlFlowNode node = cleanupRet.getSuccessorCount() > 0 ? nodeFactory.createCleanupReturn(cleanupRet.getSuccessor(0).getBlockIndex(), getStack, getPhiWriteNodes(cleanupRet)[0])
                         : nodeFactory.createResumeInstruction(exceptionSlot);
 
         setControlFlowNode(node, cleanupRet);

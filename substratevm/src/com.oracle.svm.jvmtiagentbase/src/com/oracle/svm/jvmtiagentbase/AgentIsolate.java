@@ -65,7 +65,7 @@ public final class AgentIsolate {
             if (global.isNull()) {
                 return CEntryPointErrors.UNINITIALIZED_ISOLATE;
             }
-            return CEntryPointActions.enterIsolate(global);
+            return CEntryPointActions.enterByIsolate(global);
         }
     }
 

@@ -65,6 +65,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
+import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -756,13 +757,11 @@ public abstract class TruffleInstrument {
          * @param path the absolute or relative path to create {@link TruffleFile} for
          * @return {@link TruffleFile}
          * @since 19.0
+         * @deprecated since 23.0. Use {@link #getTruffleFile(TruffleContext, String)}.
          */
+        @Deprecated
         public TruffleFile getTruffleFile(String path) {
-            try {
-                return InstrumentAccessor.engineAccess().getTruffleFile(path);
-            } catch (Throwable t) {
-                throw engineToInstrumentException(t);
-            }
+            return getTruffleFile(null, path);
         }
 
         /**
@@ -772,10 +771,42 @@ public abstract class TruffleInstrument {
          * @param uri the {@link URI} to create {@link TruffleFile} for
          * @return {@link TruffleFile}
          * @since 19.0
+         * @deprecated since 23.0. Use {@link #getTruffleFile(TruffleContext, URI)}.
          */
+        @Deprecated
         public TruffleFile getTruffleFile(URI uri) {
+            return getTruffleFile(null, uri);
+        }
+
+        /**
+         * Returns a {@link TruffleFile} for given path and {@link TruffleContext context}.
+         *
+         * @param context the {@link TruffleContext}, or <code>null</code> to use a current entered
+         *            context.
+         * @param path the absolute or relative path to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 23.0
+         */
+        public TruffleFile getTruffleFile(TruffleContext context, String path) {
             try {
-                return InstrumentAccessor.engineAccess().getTruffleFile(uri);
+                return InstrumentAccessor.engineAccess().getTruffleFile(context, path);
+            } catch (Throwable t) {
+                throw engineToInstrumentException(t);
+            }
+        }
+
+        /**
+         * Returns a {@link TruffleFile} for given {@link URI} and {@link TruffleContext context}.
+         *
+         * @param context the {@link TruffleContext}, or <code>null</code> to use a current entered
+         *            context.
+         * @param uri the {@link URI} to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 23.0
+         */
+        public TruffleFile getTruffleFile(TruffleContext context, URI uri) {
+            try {
+                return InstrumentAccessor.engineAccess().getTruffleFile(context, uri);
             } catch (Throwable t) {
                 throw engineToInstrumentException(t);
             }
@@ -1280,6 +1311,16 @@ public abstract class TruffleInstrument {
         /**
          * A link to a website with more information about the instrument. Will be shown in the help
          * text of GraalVM launchers.
+         * <p>
+         * The link can contain the following substitutions:
+         * <dl>
+         * <dt>{@code ${graalvm-version}}</dt>
+         * <dd>the current GraalVM version. Optionally, a format string can be provided for the
+         * version using {@code ${graalvm-version:format}}. See {@link Version#format}.
+         * <dt>{@code ${graalvm-website-version}}</dt>
+         * <dd>the current GraalVM version in a format suitable for links to the GraalVM reference
+         * manual. The exact format may change without notice.</dd>
+         * </dl>
          * 
          * @since 22.1.0
          */

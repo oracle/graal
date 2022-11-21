@@ -64,6 +64,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMMaybeVaPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 
@@ -76,6 +77,7 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
     public static final PointerType VA_LIST_TYPE = PointerType.I8;
 
     DarwinAArch64ArgsArea argsArea;
+    private int consumedBytes;
 
     public LLVMDarwinAarch64VaListStorage() {
         super(null);
@@ -288,10 +290,42 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
         throw CompilerDirectives.shouldNotReachHere("should never be called directly");
     }
 
+    /**
+     * This is the implementation of the {@code va_arg} instruction.
+     */
     @SuppressWarnings("static-method")
     @ExportMessage
-    Object shift(@SuppressWarnings("unused") Type type, @SuppressWarnings("unused") Frame frame) {
-        throw CompilerDirectives.shouldNotReachHere("should never be called directly");
+    Object shift(Type type, @SuppressWarnings("unused") Frame frame,
+                    @CachedLibrary(limit = "1") LLVMManagedReadLibrary readLib) {
+
+        try {
+            if (type instanceof PrimitiveType) {
+                switch (((PrimitiveType) type).getPrimitiveKind()) {
+                    case DOUBLE:
+                        return readLib.readDouble(this, consumedBytes);
+                    case FLOAT:
+                        return readLib.readFloat(this, consumedBytes);
+                    case I1:
+                        return readLib.readI8(this, consumedBytes) != 0;
+                    case I16:
+                        return readLib.readI16(this, consumedBytes);
+                    case I32:
+                        return readLib.readI32(this, consumedBytes);
+                    case I64:
+                        return readLib.readGenericI64(this, consumedBytes);
+                    case I8:
+                        return readLib.readI8(this, consumedBytes);
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere("not implemented");
+                }
+            } else if (type instanceof PointerType) {
+                return readLib.readPointer(this, consumedBytes);
+            } else {
+                throw CompilerDirectives.shouldNotReachHere("not implemented");
+            }
+        } finally {
+            consumedBytes += Long.BYTES;
+        }
     }
 
     @GenerateUncached

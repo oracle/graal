@@ -225,15 +225,18 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     @CompilationFinal volatile StableLocalLocations contextLocalLocations = new StableLocalLocations(EMPTY_LOCATIONS);
     @CompilationFinal volatile StableLocalLocations contextThreadLocalLocations = new StableLocalLocations(EMPTY_LOCATIONS);
 
-    final PolyglotLanguage hostLanguage;
-    @CompilationFinal AbstractHostLanguageService host; // effectively final
+    @CompilationFinal PolyglotLanguage hostLanguage;    // effectively final after engine patching
+    @CompilationFinal AbstractHostLanguageService host; // effectively final after engine patching
+
+    boolean inEnginePreInitialization; // effectively final after engine pre-initialization
+
     final boolean hostLanguageOnly;
 
     final List<PolyglotSharingLayer> sharedLayers = new ArrayList<>();
 
     private boolean runtimeInitialized;
 
-    final AbstractPolyglotHostService polyglotHostService;
+    AbstractPolyglotHostService polyglotHostService; // effectively final after engine patching
 
     private final Set<InstrumentSystemThread> activeSystemThreads = Collections.newSetFromMap(new HashMap<>());
 
@@ -258,7 +261,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.storeEngine = RUNTIME.isStoreEnabled(engineOptions);
         this.hostLanguageOnly = hostLanguageOnly;
 
-        this.polyglotHostService = polyglotHostService != null ? polyglotHostService : new DefaultPolyglotHostService(impl);
+        this.polyglotHostService = polyglotHostService;
 
         Map<String, LanguageInfo> languageInfos = new LinkedHashMap<>();
         this.idToLanguage = Collections.unmodifiableMap(initializeLanguages(languageInfos));
@@ -465,7 +468,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.host = prototype.host;
         this.boundEngine = prototype.boundEngine;
         this.logHandler = prototype.logHandler;
-        this.hostLanguage = createLanguage(LanguageCache.createHostLanguageCache((TruffleLanguage<Object>) prototype.getHostLanguageSPI()), PolyglotEngineImpl.HOST_LANGUAGE_INDEX, null);
+        this.hostLanguage = createLanguage(LanguageCache.createHostLanguageCache(prototype.getHostLanguageSPI()), HOST_LANGUAGE_INDEX, null);
         this.runtimeData = RUNTIME.createRuntimeData(prototype.engineOptionValues, prototype.engineLoggerSupplier);
         this.engineLoggerSupplier = prototype.engineLoggerSupplier;
 
@@ -608,7 +611,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     EngineLoggerProvider logSupplier,
                     Map<String, String> newOptions,
                     boolean newAllowExperimentalOptions,
-                    boolean newBoundEngine, Handler newLogHandler, AbstractPolyglotHostService newPolyglotHostService) {
+                    boolean newBoundEngine, Handler newLogHandler,
+                    TruffleLanguage<?> newHostLanguage,
+                    AbstractPolyglotHostService newPolyglotHostService) {
         CompilerAsserts.neverPartOfCompilation();
         this.out = newOut;
         this.err = newErr;
@@ -618,7 +623,12 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.engineOptionValues = engineOptions;
         this.logLevels = newLogConfig.logLevels;
 
-        this.polyglotHostService.patch(newPolyglotHostService);
+        if (PreInitContextHostLanguage.isInstance(hostLanguage)) {
+            this.hostLanguage = createLanguage(LanguageCache.createHostLanguageCache(newHostLanguage), HOST_LANGUAGE_INDEX, null);
+            this.languages[HOST_LANGUAGE_INDEX] = this.hostLanguage;
+        }
+
+        polyglotHostService = newPolyglotHostService;
 
         /*
          * Store must only go from false to true, and never back. As it is used for
@@ -627,6 +637,12 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.storeEngine = this.storeEngine || RUNTIME.isStoreEnabled(engineOptions);
         this.engineLoggerSupplier = logSupplier;
         this.engineLogger = null;
+        /*
+         * The engineLoggers must be created before calling PolyglotContextImpl#patch, otherwise the
+         * engineLoggers is not in an array returned by the PolyglotContextImpl#getAllLoggers and
+         * the context log levels are not set.
+         */
+        getOrCreateEngineLoggers();
 
         INSTRUMENT.patchInstrumentationHandler(instrumentationHandler, newOut, newErr, newIn);
 
@@ -1270,6 +1286,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 }
 
                 polyglotHostService.notifyEngineClosed(this, force);
+
                 if (runtimeData != null) {
                     EngineAccessor.RUNTIME.flushCompileQueue(runtimeData);
                 }
@@ -1358,38 +1375,43 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     void preInitialize() {
         synchronized (this.lock) {
-            if (isSharingEnabled(null)) {
-                for (PolyglotSharingLayer layer : sharedLayers) {
-                    if (!layer.isClaimed()) {
-                        continue;
+            inEnginePreInitialization = true;
+            try {
+                if (isSharingEnabled(null)) {
+                    for (PolyglotSharingLayer layer : sharedLayers) {
+                        if (!layer.isClaimed()) {
+                            continue;
+                        }
+                        layer.preInitialize();
                     }
-                    layer.preInitialize();
-                }
-            } else {
-                final String oldOption = engineOptionValues.get(PolyglotEngineOptions.PreinitializeContexts);
-                final String newOption = ImageBuildTimeOptions.get(ImageBuildTimeOptions.PREINITIALIZE_CONTEXTS_NAME);
-                final String optionValue;
-                if (!oldOption.isEmpty() && !newOption.isEmpty()) {
-                    optionValue = oldOption + "," + newOption;
                 } else {
-                    optionValue = oldOption + newOption;
-                }
-
-                final Set<String> languageIds = new HashSet<>();
-                if (!optionValue.isEmpty()) {
-                    Collections.addAll(languageIds, optionValue.split(","));
-                }
-                final Set<PolyglotLanguage> preinitLanguages = new HashSet<>();
-                for (String id : languageIds) {
-                    PolyglotLanguage language = this.idToLanguage.get(id);
-                    if (language != null && !language.cache.isInternal()) {
-                        preinitLanguages.add(language);
+                    final String oldOption = engineOptionValues.get(PolyglotEngineOptions.PreinitializeContexts);
+                    final String newOption = ImageBuildTimeOptions.get(ImageBuildTimeOptions.PREINITIALIZE_CONTEXTS_NAME);
+                    final String optionValue;
+                    if (!oldOption.isEmpty() && !newOption.isEmpty()) {
+                        optionValue = oldOption + "," + newOption;
+                    } else {
+                        optionValue = oldOption + newOption;
                     }
-                }
 
-                boolean allowNativeAccess = ImageBuildTimeOptions.getBoolean(ImageBuildTimeOptions.PREINITIALIZE_CONTEXTS_WITH_NATIVE_NAME);
-                PreinitConfig preinitConfig = allowNativeAccess ? PreinitConfig.DEFAULT_WITH_NATIVE_ACCESS : PreinitConfig.DEFAULT;
-                this.preInitializedContext.set(PolyglotContextImpl.preinitialize(this, preinitConfig, null, preinitLanguages, true));
+                    final Set<String> languageIds = new HashSet<>();
+                    if (!optionValue.isEmpty()) {
+                        Collections.addAll(languageIds, optionValue.split(","));
+                    }
+                    final Set<PolyglotLanguage> preinitLanguages = new HashSet<>();
+                    for (String id : languageIds) {
+                        PolyglotLanguage language = this.idToLanguage.get(id);
+                        if (language != null && !language.cache.isInternal()) {
+                            preinitLanguages.add(language);
+                        }
+                    }
+
+                    boolean allowNativeAccess = ImageBuildTimeOptions.getBoolean(ImageBuildTimeOptions.PREINITIALIZE_CONTEXTS_WITH_NATIVE_NAME);
+                    PreinitConfig preinitConfig = allowNativeAccess ? PreinitConfig.DEFAULT_WITH_NATIVE_ACCESS : PreinitConfig.DEFAULT;
+                    this.preInitializedContext.set(PolyglotContextImpl.preinitialize(this, preinitConfig, null, preinitLanguages, true));
+                }
+            } finally {
+                inEnginePreInitialization = false;
             }
         }
     }
@@ -1885,6 +1907,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     context = null;
                 } else {
                     PolyglotEngineImpl engine = new PolyglotEngineImpl(this);
+                    // If the patching fails we have to perform a silent engine close without
+                    // notifying the new polyglotHostService.
+                    polyglotHostService = new DefaultPolyglotHostService(impl);
                     ensureClosed(true, false, false);
                     synchronized (engine.lock) {
                         context = new PolyglotContextImpl(engine, config);

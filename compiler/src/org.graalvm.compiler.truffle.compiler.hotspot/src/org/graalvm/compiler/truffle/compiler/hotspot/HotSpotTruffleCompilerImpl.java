@@ -349,7 +349,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     @Override
     protected void exitHostVM(int status) {
         HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
-        HotSpotGraalServices.exit(-1, runtime);
+        HotSpotGraalServices.exit(status, runtime);
     }
 
     @Override

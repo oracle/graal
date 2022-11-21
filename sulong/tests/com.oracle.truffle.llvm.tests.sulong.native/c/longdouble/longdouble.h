@@ -70,7 +70,7 @@
         printfp(#a " " #op " " #b, &z);                                                                                                              \
     }
 
-#if defined(__x86_64__)
+#if defined(__x86_64__) && !defined(_WIN32)
 #define LONGDOUBLE_SIZE 10
 #else
 #define LONGDOUBLE_SIZE sizeof(long double)

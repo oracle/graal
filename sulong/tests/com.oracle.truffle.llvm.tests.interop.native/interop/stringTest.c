@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -55,9 +55,9 @@ int test_as_string_utf8(void *str) {
     }
 }
 
-int test_as_string_utf32(void *str) {
+int test_as_string_wchar(void *str) {
     wchar_t buffer[100];
-    int bytes = polyglot_as_string(str, (char *) buffer, sizeof(buffer), "utf-32le");
+    int bytes = polyglot_as_string(str, (char *) buffer, sizeof(buffer), POLYGLOT_WCHAR_ENCODING);
     if (wcsncmp(buffer, L"test unicode äáç€", sizeof(buffer)) == 0) {
         return bytes;
     } else {
@@ -78,7 +78,7 @@ int test_as_string_overflow(void *str) {
 void *test_from_string(int variant) {
     static char ascii[] = "Hello, from Native!\0There is more!";
     static char utf8[] = "unicode from native ☺\0stuff after zero ☹";
-    static wchar_t utf32[] = L"utf-32 works too ☺\0also with zero ☹";
+    static wchar_t wchar[] = L"wide char encoding works too ☺\0also with zero ☹";
 
     switch (variant) {
         case 1:
@@ -90,9 +90,9 @@ void *test_from_string(int variant) {
         case 4:
             return polyglot_from_string_n(utf8, sizeof(utf8), "utf-8");
         case 5:
-            return polyglot_from_string((const char *) utf32, "utf-32le");
+            return polyglot_from_string((const char *) wchar, POLYGLOT_WCHAR_ENCODING);
         case 6:
-            return polyglot_from_string_n((const char *) utf32, sizeof(utf32), "utf-32le");
+            return polyglot_from_string_n((const char *) wchar, sizeof(wchar), POLYGLOT_WCHAR_ENCODING);
     }
     return NULL;
 }

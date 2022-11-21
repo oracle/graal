@@ -41,20 +41,26 @@
 
 package org.graalvm.wasm.test.suites;
 
+import static org.graalvm.wasm.WasmType.VOID_TYPE_ARRAY;
+
+import java.util.Arrays;
+
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.parser.validation.ParserState;
 import org.junit.Assert;
 import org.junit.Test;
-
-import java.util.Arrays;
-
-import static org.graalvm.wasm.WasmType.VOID_TYPE_ARRAY;
 
 public class ExtraDataSuite {
     private static int compactTargetInfo(int byteCodeTarget, int extraDataTarget) {
         int e = Short.toUnsignedInt((short) extraDataTarget);
         int b = Short.toUnsignedInt((short) byteCodeTarget);
         return ((e << 16) + b) & 0x7fff_ffff;
+    }
+
+    private static int compactStackChange(int typeIndicator, int returnLength, int stackSize) {
+        int r = Short.toUnsignedInt((short) returnLength);
+        int s = Short.toUnsignedInt((short) stackSize);
+        return typeIndicator | (r << 24) | (s << 16);
     }
 
     private static int extendedTargetInfo(int extraDataTarget) {
@@ -94,7 +100,7 @@ public class ExtraDataSuite {
         state.addConditionalBranch(0, 32779);
         state.exit(32780, false);
         state.exit(32781, false);
-        final int[] expected = {extendedTargetInfo(0), -32769, 0, 0, 0};
+        final int[] expected = {extendedTargetInfo(0), -32769, 0, 0, 0, 0};
         Assert.assertArrayEquals(expected, state.extraData());
     }
 
@@ -106,7 +112,7 @@ public class ExtraDataSuite {
         state.addConditionalBranch(0, 10);
         state.exit(32778, false);
         state.exit(32779, false);
-        final int[] expected = {extendedTargetInfo(5), 32768, 0, 0, 0};
+        final int[] expected = {extendedTargetInfo(6), 32768, 0, 0, 0, 0};
         Assert.assertArrayEquals(expected, state.extraData());
     }
 
@@ -153,7 +159,7 @@ public class ExtraDataSuite {
         state.addConditionalBranch(0, 16386);
         state.exit(16387, false);
         state.exit(16388, false);
-        final int[] expected = new int[16390];
+        final int[] expected = new int[16391];
         expected[16385] = extendedTargetInfo(-16385);
         expected[16386] = -16386;
         Assert.assertArrayEquals(expected, state.extraData());
@@ -170,8 +176,8 @@ public class ExtraDataSuite {
         }
         state.exit(16383, false);
         state.exit(16384, false);
-        final int[] expected = new int[16387];
-        expected[0] = extendedTargetInfo(16387);
+        final int[] expected = new int[16388];
+        expected[0] = extendedTargetInfo(16388);
         expected[1] = 16383;
         Assert.assertArrayEquals(expected, state.extraData());
     }
@@ -186,14 +192,14 @@ public class ExtraDataSuite {
         state.exit(20, false);
         state.pop();
         state.exit(21, false);
-        final int[] expected = {compactTargetInfo(10, 2), 1 << 24};
+        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(0x0080_0000, 1, 0)};
         Assert.assertArrayEquals(expected, state.extraData());
     }
 
     @Test
     public void testCompactReturnLengthMax() {
         ParserState state = new ParserState();
-        final byte[] returnTypes = new byte[255];
+        final byte[] returnTypes = new byte[127];
         Arrays.fill(returnTypes, WasmType.I32_TYPE);
         state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
         state.enterBlock(VOID_TYPE_ARRAY, returnTypes);
@@ -202,14 +208,14 @@ public class ExtraDataSuite {
         state.exit(20, true);
         state.popAll(returnTypes);
         state.exit(21, true);
-        final int[] expected = {compactTargetInfo(10, 2), 255 << 24};
+        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(0x0080_0000, 127, 0)};
         Assert.assertArrayEquals(expected, state.extraData());
     }
 
     @Test
     public void testExtendedReturnLengthMin() {
         ParserState state = new ParserState();
-        final byte[] returnTypes = new byte[256];
+        final byte[] returnTypes = new byte[128];
         Arrays.fill(returnTypes, WasmType.I32_TYPE);
         state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
         state.enterBlock(VOID_TYPE_ARRAY, returnTypes);
@@ -218,7 +224,7 @@ public class ExtraDataSuite {
         state.exit(20, true);
         state.popAll(returnTypes);
         state.exit(21, true);
-        final int[] expected = {extendedTargetInfo(5), 10, 256, 0, 0};
+        final int[] expected = {extendedTargetInfo(6), 10, 0x0080_0000, 128, 0, 0};
         Assert.assertArrayEquals(expected, state.extraData());
     }
 
@@ -232,7 +238,7 @@ public class ExtraDataSuite {
         state.exit(20, false);
         state.pop();
         state.exit(21, false);
-        final int[] expected = {compactTargetInfo(10, 2), 1 << 16};
+        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(0, 0, 1)};
         Assert.assertArrayEquals(expected, state.extraData());
     }
 
@@ -240,17 +246,17 @@ public class ExtraDataSuite {
     public void testCompactStackSizeMax() {
         ParserState state = new ParserState();
         state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
-        for (int i = 0; i < 255; i++) {
+        for (int i = 0; i < 127; i++) {
             state.push(WasmType.I32_TYPE);
         }
         state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
         state.addConditionalBranch(0, 10);
         state.exit(20, false);
-        for (int i = 0; i < 255; i++) {
+        for (int i = 0; i < 127; i++) {
             state.pop();
         }
         state.exit(21, false);
-        final int[] expected = {compactTargetInfo(10, 2), 255 << 16};
+        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(0, 0, 127)};
         Assert.assertArrayEquals(expected, state.extraData());
     }
 
@@ -258,17 +264,109 @@ public class ExtraDataSuite {
     public void testExtendedStackSizeMin() {
         ParserState state = new ParserState();
         state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
-        for (int i = 0; i < 256; i++) {
+        for (int i = 0; i < 128; i++) {
             state.push(WasmType.I32_TYPE);
         }
         state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
         state.addConditionalBranch(0, 10);
         state.exit(20, false);
-        for (int i = 0; i < 256; i++) {
+        for (int i = 0; i < 128; i++) {
             state.pop();
         }
         state.exit(21, false);
-        final int[] expected = {extendedTargetInfo(5), 10, 0, 256, 0};
+        final int[] expected = {extendedTargetInfo(6), 10, 0, 0, 128, 0};
+        Assert.assertArrayEquals(expected, state.extraData());
+    }
+
+    @Test
+    public void testReferenceReturnType() {
+        ParserState state = new ParserState();
+        state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
+        state.enterBlock(VOID_TYPE_ARRAY, new byte[]{WasmType.FUNCREF_TYPE});
+        state.push(WasmType.FUNCREF_TYPE);
+        state.addConditionalBranch(0, 10);
+        state.exit(20, false);
+        state.pop();
+        state.exit(21, false);
+        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(0x8000_0000, 1, 0)};
+        Assert.assertArrayEquals(expected, state.extraData());
+    }
+
+    @Test
+    public void testBothReturnTypes() {
+        ParserState state = new ParserState();
+        state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
+        state.enterBlock(VOID_TYPE_ARRAY, new byte[]{WasmType.I32_TYPE, WasmType.FUNCREF_TYPE});
+        state.push(WasmType.I32_TYPE);
+        state.push(WasmType.FUNCREF_TYPE);
+        state.addConditionalBranch(0, 10);
+        state.exit(20, true);
+        state.pop();
+        state.pop();
+        state.exit(21, true);
+        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(0x8080_0000, 2, 0)};
+        Assert.assertArrayEquals(expected, state.extraData());
+    }
+
+    @Test
+    public void testNumericStackChange() {
+        ParserState state = new ParserState();
+        state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
+        state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
+        state.push(WasmType.I32_TYPE);
+        state.addConditionalBranch(0, 10);
+        state.pop();
+        state.exit(20, false);
+        state.exit(21, false);
+        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(0x0080_0000, 0, 0)};
+        Assert.assertArrayEquals(expected, state.extraData());
+    }
+
+    @Test
+    public void testReferenceStackChange() {
+        ParserState state = new ParserState();
+        state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
+        state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
+        state.push(WasmType.FUNCREF_TYPE);
+        state.addConditionalBranch(0, 10);
+        state.pop();
+        state.exit(20, false);
+        state.exit(21, false);
+        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(0x8000_0000, 0, 0)};
+        Assert.assertArrayEquals(expected, state.extraData());
+    }
+
+    @Test
+    public void testBothTypesStackChange() {
+        ParserState state = new ParserState();
+        state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
+        state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
+        state.push(WasmType.FUNCREF_TYPE);
+        state.push(WasmType.I32_TYPE);
+        state.addConditionalBranch(0, 10);
+        state.pop();
+        state.pop();
+        state.exit(20, false);
+        state.exit(21, false);
+        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(0x8080_0000, 0, 0)};
+        Assert.assertArrayEquals(expected, state.extraData());
+    }
+
+    @Test
+    public void testCombinedTypeStackChangeAndReturn() {
+        ParserState state = new ParserState();
+        state.enterBlock(VOID_TYPE_ARRAY, VOID_TYPE_ARRAY);
+        state.enterBlock(VOID_TYPE_ARRAY, new byte[]{WasmType.I32_TYPE});
+        state.push(WasmType.FUNCREF_TYPE);
+        state.push(WasmType.I32_TYPE);
+        state.addConditionalBranch(0, 10);
+        state.pop();
+        state.pop();
+        state.push(WasmType.I32_TYPE);
+        state.exit(20, false);
+        state.pop();
+        state.exit(21, false);
+        final int[] expected = {compactTargetInfo(10, 2), compactStackChange(0x8080_0000, 1, 0)};
         Assert.assertArrayEquals(expected, state.extraData());
     }
 }

@@ -42,6 +42,11 @@ int A::foo(int x) {
     return 0 * x;
 } //dummy
 
+// A constructor is required to ensure the vtable is emitted
+A *testCreateA() {
+    return new A();
+}
+
 POLYGLOT_DECLARE_TYPE(A);
 
 int evaluateDirectly(A *a, int x) {

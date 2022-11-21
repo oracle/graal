@@ -741,22 +741,25 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         LLVMTypeRef newType = LLVMIRBuilder.typeOf(newValue);
         assert LLVMIRBuilder.compatibleTypes(expectedType, newType) : dumpValues("invalid cmpxchg arguments", expectedValue, newValue);
 
-        boolean trackedAddress = LLVMIRBuilder.isObjectType(typeOf(address));
-        LLVMValueRef castedAddress;
-        if (!trackedAddress && LLVMIRBuilder.isObjectType(expectedType)) {
-            castedAddress = builder.buildAddrSpaceCast(address, builder.pointerType(expectedType, true, false));
-        } else {
-            castedAddress = builder.buildBitcast(address, builder.pointerType(expectedType, trackedAddress, false));
-        }
-
         boolean convertResult = LLVMIRBuilder.isFloatType(expectedType) || LLVMIRBuilder.isDoubleType(expectedType);
         LLVMValueRef castedExpectedValue = expectedValue;
         LLVMValueRef castedNewValue = newValue;
+        LLVMTypeRef castedExpectedType = expectedType;
         if (convertResult) {
             LLVMTypeRef cmpxchgType = LLVMIRBuilder.isFloatType(expectedType) ? builder.intType() : builder.longType();
             castedExpectedValue = builder.buildFPToSI(expectedValue, cmpxchgType);
             castedNewValue = builder.buildFPToSI(newValue, cmpxchgType);
+            castedExpectedType = LLVMIRBuilder.typeOf(castedExpectedValue);
         }
+
+        boolean trackedAddress = LLVMIRBuilder.isObjectType(typeOf(address));
+        LLVMValueRef castedAddress;
+        if (!trackedAddress && LLVMIRBuilder.isObjectType(expectedType)) {
+            castedAddress = builder.buildAddrSpaceCast(address, builder.pointerType(castedExpectedType, true, false));
+        } else {
+            castedAddress = builder.buildBitcast(address, builder.pointerType(castedExpectedType, trackedAddress, false));
+        }
+
         LLVMValueRef result = builder.buildCmpxchg(castedAddress, castedExpectedValue, castedNewValue, memoryOrder, returnValue);
         if (returnValue && convertResult) {
             return builder.buildSIToFP(result, expectedType);

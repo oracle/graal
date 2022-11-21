@@ -333,8 +333,8 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract int getPriority();
 
-    public void preInitializeEngine(Object hostLanguage) {
-        getNext().preInitializeEngine(hostLanguage);
+    public void preInitializeEngine() {
+        getNext().preInitializeEngine();
     }
 
     public Object createHostLanguage(AbstractHostAccess access) {
@@ -753,8 +753,6 @@ public abstract class AbstractPolyglotImpl {
         protected AbstractPolyglotHostService(AbstractPolyglotImpl polyglot) {
             Objects.requireNonNull(polyglot);
         }
-
-        public abstract void patch(AbstractPolyglotHostService otherService);
 
         public abstract void notifyClearExplicitContextStack(Object contextReceiver);
 

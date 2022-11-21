@@ -52,14 +52,17 @@ import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationIdentifier.Verbosity;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GlobalMetrics;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.java.StableMethodNameFormatter;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.asm.DataBuilder;
@@ -430,7 +433,7 @@ public class CompileQueue {
         return regularSuites == null && deoptTargetLIRSuites == null && regularLIRSuites == null && deoptTargetSuites == null;
     }
 
-    private void createSuites() {
+    protected void createSuites() {
         regularSuites = createRegularSuites();
         modifyRegularSuites(regularSuites);
         deoptTargetSuites = createDeoptTargetSuites();
@@ -1102,7 +1105,7 @@ public class CompileQueue {
     private CompilationResult defaultCompileFunction(DebugContext debug, HostedMethod method, CompilationIdentifier compilationIdentifier, CompileReason reason, RuntimeConfiguration config) {
 
         if (NativeImageOptions.PrintAOTCompilation.getValue()) {
-            System.out.println("Compiling " + method.format("%r %H.%n(%p)") + "  [" + reason + "]");
+            TTY.println(String.format("[CompileQueue] Compiling [idHash=%10d] %s Reason: %s", System.identityHashCode(method), method.format("%r %H.%n(%p)"), reason));
         }
 
         try {
@@ -1147,7 +1150,7 @@ public class CompileQueue {
 
                 CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.format("%H.%n(%p)"));
 
-                try (Indent indent = debug.logAndIndent("compile %s", method)) {
+                try (Indent indent = debug.logAndIndent("compile %s", method); DebugCloseable l = graph.getOptimizationLog().listen(new StableMethodNameFormatter(graph, backend.getProviders()))) {
                     GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, getOptimisticOpts(), method.getProfilingInfo(), suites, lirSuites, result,
                                     new HostedCompilationResultBuilderFactory(), false);
                 }
@@ -1204,9 +1207,8 @@ public class CompileQueue {
                 VMConstant constant = ((ConstantReference) reference).getConstant();
                 if (constant instanceof SubstrateMethodPointerConstant) {
                     MethodPointer pointer = ((SubstrateMethodPointerConstant) constant).pointer();
-                    final ResolvedJavaMethod method1 = pointer.getMethod();
-                    HostedMethod hMethod = (HostedMethod) method1;
-                    ensureCompiled(hMethod, new MethodPointerConstantReason(method, hMethod, reason));
+                    HostedMethod referencedMethod = (HostedMethod) pointer.getMethod();
+                    ensureCompiled(referencedMethod, new MethodPointerConstantReason(method, referencedMethod, reason));
                 }
             }
         }

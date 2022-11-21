@@ -46,18 +46,26 @@ import org.graalvm.wasm.util.ExtraDataUtil;
 
 /**
  * Represents an if entry in the extra data list.
- * 
+ * <p>
  * Compact format:
- * 
- * <code>
- *     | compactFormatIndicator (1-bit) | extraDataDisplacement (signed 15-bit) | byteCodeDisplacement (signed 16-bit) | unused (16-bit) | profileCounter (unsigned 16-bit) |
- * </code>
- * 
+ * <p>
+ * <ul>
+ * <li>compactFormatIndicator (1-bit)
+ * <li>extraDataDisplacement (signed 15-bit)
+ * <li>byteCodeDisplacement (signed 16-bit)
+ * <li>unused (16-bit)
+ * <li>profileCounter (unsigned 16-bit)
+ * </ul>
+ * <p>
  * Extended format:
- * 
- * <code>
- *     | extendedFormatIndicator (1-bit) | extraDataDisplacement (signed 32-bit) | byteCodeDisplacement (signed 32-bit) | unused (16-bit) | profileCounter (unsigned 16-bit) |
- * </code>
+ * <p>
+ * <ul>
+ * <li>extendedFormatIndicator (1-bit)
+ * <li>extraDataDisplacement (signed 31-bit)
+ * <li>byteCodeDisplacement (signed 32-bit)
+ * <li>unused (16-bit)
+ * <li>profileCounter (unsigned 16-bit)
+ * </ul>
  */
 public class IfEntry extends BranchTarget {
 

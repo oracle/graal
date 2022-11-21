@@ -170,7 +170,7 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
                     }
 
                     private void forward() {
-                        while (i < NodeMap.this.values.length && (NodeMap.this.getKey(i) == null || NodeMap.this.values[i] == null)) {
+                        while (i < NodeMap.this.values.length && (NodeMap.this.values[i] == null || NodeMap.this.getKey(i) == null)) {
                             i++;
                         }
                     }
@@ -253,7 +253,7 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
                     }
 
                     private void forward() {
-                        while (i < NodeMap.this.values.length && (NodeMap.this.getKey(i) == null || NodeMap.this.values[i] == null)) {
+                        while (i < NodeMap.this.values.length && (NodeMap.this.values[i] == null || NodeMap.this.getKey(i) == null)) {
                             i++;
                         }
                     }

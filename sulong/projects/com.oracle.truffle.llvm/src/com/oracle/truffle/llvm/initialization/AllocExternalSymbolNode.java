@@ -34,15 +34,18 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMScopeChain;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
+import com.oracle.truffle.llvm.runtime.LLVMThreadLocalSymbol;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension.NativeLookupResult;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension.NativePointerIntoLibrary;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -71,9 +74,73 @@ public class AllocExternalSymbolNode extends LLVMNode {
         this.nodeFactory = result.getRuntime().getNodeFactory();
     }
 
-    public LLVMPointer execute(LLVMScopeChain localScope, LLVMScopeChain globalScope, LLVMIntrinsicProvider intrinsicProvider, NativeContextExtension nativeContextExtension,
-                    LLVMContext context, LLVMDLOpen.RTLDFlags rtldFlags, LLVMSymbol symbol) {
+    public LLVMPointer execute(LLVMScopeChain localScope, LLVMScopeChain globalScope, NativeContextExtension nativeContextExtension,
+                    LLVMContext context, LLVMDLOpen.RTLDFlags rtldFlags, LLVMGlobal global) {
 
+        LLVMPointer fromScope = getFromScope(localScope, globalScope, context, rtldFlags, global);
+        if (fromScope != null) {
+            return fromScope;
+        }
+
+        // Allocating a native global symbol to the symbol table as provided by the nfi context.
+        if (global.isExternalWeak()) {
+            return LLVMNativePointer.createNull();
+        } else if (nativeContextExtension != null) {
+            NativeContextExtension.NativePointerIntoLibrary pointer = getNativePointer(nativeContextExtension, global);
+            if (pointer != null) {
+                return LLVMNativePointer.create(pointer.getAddress());
+            }
+        }
+        return null;
+    }
+
+    public LLVMPointer execute(LLVMScopeChain localScope, LLVMScopeChain globalScope, LLVMIntrinsicProvider intrinsicProvider, NativeContextExtension nativeContextExtension,
+                    LLVMContext context, LLVMDLOpen.RTLDFlags rtldFlags, LLVMFunction function) {
+
+        LLVMPointer fromScope = getFromScope(localScope, globalScope, context, rtldFlags, function);
+        if (fromScope != null) {
+            return fromScope;
+        }
+
+        // Allocates a managed pointer for the newly constructed function descriptors of a
+        // native function and intrinsic function.
+        if (function.isExternalWeak()) {
+            return LLVMNativePointer.createNull();
+        } else if (intrinsicProvider != null && intrinsicProvider.isIntrinsified(function.getName())) {
+            LLVMFunctionCode functionCode = new LLVMFunctionCode(function);
+            LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(function, functionCode);
+            functionDescriptor.getFunctionCode().define(intrinsicProvider, nodeFactory);
+            return LLVMManagedPointer.create(functionDescriptor);
+        } else if (intrinsicProvider != null && !intrinsicProvider.isIntrinsified(function.getName()) && nativeContextExtension != null) {
+            /*
+             * Currently native functions/globals that are not in the nfi context are not written
+             * into the symbol table. For function, another lookup will happen when something tries
+             * to call the function. (see {@link LLVMDispatchNode#doCachedNative}) The function will
+             * be taken from the filescope directly. Ideally the filescope and symbol table is in
+             * sync, and any lazy look up will resolve from the function code in the symbol table.
+             */
+            NativeLookupResult nativeFunction = getNativeFunction(nativeContextExtension, function);
+            if (nativeFunction != null) {
+                LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(function, new LLVMFunctionCode(function));
+                functionDescriptor.getFunctionCode().define(new LLVMFunctionCode.NativeFunction(nativeFunction.getObject()));
+                function.setNFISymbol(nativeFunction.getObject());
+                return LLVMManagedPointer.create(functionDescriptor);
+            }
+        }
+
+        /*
+         * Fallback for when the same symbol is being overwritten. There exists code where the
+         * symbol is not there.
+         */
+        return null;
+    }
+
+    public LLVMPointer execute(LLVMScopeChain localScope, LLVMScopeChain globalScope, LLVMContext context, LLVMDLOpen.RTLDFlags rtldFlags, LLVMThreadLocalSymbol threadLocalSymbol) {
+        return getFromScope(localScope, globalScope, context, rtldFlags, threadLocalSymbol);
+    }
+
+    private static LLVMPointer getFromScope(LLVMScopeChain localScope, LLVMScopeChain globalScope,
+                    LLVMContext context, LLVMDLOpen.RTLDFlags rtldFlags, LLVMSymbol symbol) {
         LLVMPointer pointerFromLocal = lookupFromScope(localScope, symbol, context);
         // The default case for active default flag is to search the local scope first.
         if (pointerFromLocal != null && isDefaultFlagActive(rtldFlags)) {
@@ -89,58 +156,7 @@ public class AllocExternalSymbolNode extends LLVMNode {
 
         // Finally, the symbol is searched in the local scope again (for the case where the default
         // flag is not active).
-        if (pointerFromLocal != null) {
-            return pointerFromLocal;
-        }
-
-        // Allocating a native global symbol to the symbol table as provided by the nfi context.
-        if (symbol.isGlobalVariable()) {
-            if (symbol.isExternalWeak()) {
-                return LLVMNativePointer.createNull();
-            } else if (nativeContextExtension != null) {
-                NativeContextExtension.NativePointerIntoLibrary pointer = getNativePointer(nativeContextExtension, symbol);
-                if (pointer != null) {
-                    return LLVMNativePointer.create(pointer.getAddress());
-                }
-                return null;
-            }
-        }
-
-        // Allocates a managed pointer for the newly constructed function descriptors of a
-        // native function and intrinsic function.
-        if (symbol.isFunction()) {
-            if (symbol.isExternalWeak()) {
-                return LLVMNativePointer.createNull();
-            } else if (intrinsicProvider != null && intrinsicProvider.isIntrinsified(symbol.getName())) {
-                LLVMFunctionCode functionCode = new LLVMFunctionCode(symbol.asFunction());
-                LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction(), functionCode);
-                functionDescriptor.getFunctionCode().define(intrinsicProvider, nodeFactory);
-                return LLVMManagedPointer.create(functionDescriptor);
-            } else if (intrinsicProvider != null && !intrinsicProvider.isIntrinsified(symbol.getName()) && nativeContextExtension != null) {
-                /*
-                 * Currently native functions/globals that are not in the nfi context are not
-                 * written into the symbol table. For function, another lookup will happen when
-                 * something tries to call the function. (see {@link
-                 * LLVMDispatchNode#doCachedNative}) The function will be taken from the filescope
-                 * directly. Ideally the filescope and symbol table is in sync, and any lazy look up
-                 * will resolve from the function code in the symbol table.
-                 */
-                NativeLookupResult nativeFunction = getNativeFunction(nativeContextExtension, symbol);
-                if (nativeFunction != null) {
-                    LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction(), new LLVMFunctionCode(symbol.asFunction()));
-                    functionDescriptor.getFunctionCode().define(new LLVMFunctionCode.NativeFunction(nativeFunction.getObject()));
-                    symbol.asFunction().setNFISymbol(nativeFunction.getObject());
-                    return LLVMManagedPointer.create(functionDescriptor);
-                }
-                return null;
-            }
-        }
-
-        /*
-         * Fallback for when the same symbol is being overwritten. There exists code where the
-         * symbol is not there.
-         */
-        return null;
+        return pointerFromLocal;
     }
 
     @TruffleBoundary

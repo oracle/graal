@@ -29,15 +29,11 @@ import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_DIR;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_1;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_2;
 import static com.oracle.svm.test.NativeImageResourceUtils.ROOT_DIRECTORY;
-import static com.oracle.svm.test.NativeImageResourceUtils.compareTwoURLs;
 import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToPath;
 import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToURI;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.SeekableByteChannel;
@@ -54,16 +50,12 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -454,49 +446,5 @@ public class NativeImageResourceFileSystemProviderTest {
         } catch (IOException e) {
             Assert.fail("Exception occurs during attributes operations!");
         }
-    }
-
-    @Test
-    public void moduleResourceURLAccess() {
-        URL url = Class.class.getResource("uniName.dat");
-        Assert.assertNotNull("URL for resource java.base/java/lang/uniName.dat must not be null", url);
-        try (InputStream in = url.openStream()) {
-            try {
-                Assert.assertNotEquals("uniName.dat does not seem to contain valid data", in.read(), 0);
-            } catch (IOException e) {
-                Assert.fail("IOException in in.read(): " + e.getMessage());
-            }
-        } catch (IOException e) {
-            Assert.fail("IOException in url.openStream(): " + e.getMessage());
-        }
-    }
-
-    @Test
-    public void testURLExternalFormEquivalence() {
-        Enumeration<URL> urlEnumeration = null;
-        try {
-            urlEnumeration = ClassLoader.getSystemResources("module-info.class");
-        } catch (IOException e) {
-            Assert.fail("IOException in ClassLoader.getSystemResources(\"module-info.class\"): " + e.getMessage());
-        }
-
-        Assert.assertNotNull(urlEnumeration);
-        Enumeration<URL> finalVar = urlEnumeration;
-        Iterable<URL> urlIterable = () -> finalVar.asIterator();
-        List<URL> urlList = StreamSupport.stream(urlIterable.spliterator(), false).collect(Collectors.toList());
-        Assert.assertTrue("ClassLoader.getSystemResources(\"module-info.class\") must return many module-info.class URLs",
-                        urlList.size() > 3);
-
-        URL thirdEntry = urlList.get(2);
-        String thirdEntryExternalForm = thirdEntry.toExternalForm();
-        URL thirdEntryFromExternalForm = null;
-        try {
-            thirdEntryFromExternalForm = new URL(thirdEntryExternalForm);
-        } catch (MalformedURLException e) {
-            Assert.fail("Creating a new URL from the ExternalForm of another has to work: " + e.getMessage());
-        }
-
-        boolean compareResult = compareTwoURLs(thirdEntry, thirdEntryFromExternalForm);
-        Assert.assertTrue("Contents of original URL and one created from originals ExternalForm must be the same", compareResult);
     }
 }

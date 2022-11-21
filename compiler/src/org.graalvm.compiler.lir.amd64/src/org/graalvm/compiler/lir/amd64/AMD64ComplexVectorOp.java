@@ -422,11 +422,6 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
         asm.movdq(vecArray, tmp);
     }
 
-    protected static void bindAligned(CompilationResultBuilder crb, AMD64MacroAssembler asm, Label label) {
-        asm.align(crb.target.wordSize * 2);
-        asm.bind(label);
-    }
-
     protected void loadMask(CompilationResultBuilder crb, AMD64MacroAssembler asm, Stride stride, Register vecMask, int value) {
         asm.movdqu(vectorSize, vecMask, getMaskOnce(crb, createMaskBytes(value, stride)));
     }

@@ -232,15 +232,23 @@ public final class ProbeNode extends Node {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private boolean isNullOrInteropValue(Object result) {
         if (!(context.getInstrumentedNode() instanceof InstrumentableNode)) {
             // legacy support
             return true;
         }
+        InstrumentableNode node = (InstrumentableNode) context.getInstrumentedNode();
         if (result == null) {
             return true;
         }
-        InstrumentAccessor.interopAccess().checkInteropType(result);
+        for (Class<?> tag : StandardTags.ALL_TAGS) {
+            if (node.hasTag((Class<? extends Tag>) tag)) {
+                // for standard tags we must always return an interop type
+                InstrumentAccessor.interopAccess().checkInteropType(result);
+                return true;
+            }
+        }
         return true;
     }
 

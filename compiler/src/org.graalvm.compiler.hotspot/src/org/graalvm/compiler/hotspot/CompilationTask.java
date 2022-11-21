@@ -37,6 +37,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilationPrinter;
+import org.graalvm.compiler.core.CompilationWatchDog;
 import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.CounterKey;
@@ -46,6 +47,7 @@ import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.StableProfileProvider;
@@ -67,7 +69,14 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
-public class CompilationTask {
+public class CompilationTask implements CompilationWatchDog.EventHandler {
+
+    @Override
+    public void onStuckCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier compilation, StackTraceElement[] stackTrace, int stuckTime) {
+        CompilationWatchDog.EventHandler.super.onStuckCompilation(watchDog, watched, compilation, stackTrace, stuckTime);
+        TTY.println("Compilation %s on %s appears stuck - exiting VM", compilation, watched);
+        HotSpotGraalServices.exit(STUCK_COMPILATION_EXIT_CODE, jvmciRuntime);
+    }
 
     private final HotSpotJVMCIRuntime jvmciRuntime;
 

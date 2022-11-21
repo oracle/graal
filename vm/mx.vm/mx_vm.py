@@ -153,6 +153,7 @@ if mx.suite('tools', fatalIfMissing=False) is not None and mx.suite('graal-js', 
         provided_executables=[('tools:VISUALVM_PLATFORM_SPECIFIC', './bin/<exe:jvisualvm>')],
         installable=True,
         extra_installable_qualifiers=['ce'],
+        stability="supported",
     ))
 
 polybench_benchmark_methods = ["_run"]

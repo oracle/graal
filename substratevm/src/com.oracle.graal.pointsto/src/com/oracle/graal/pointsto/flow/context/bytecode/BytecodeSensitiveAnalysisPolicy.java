@@ -54,6 +54,7 @@ import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.object.AllocationContextSensitiveObject;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
+import com.oracle.graal.pointsto.flow.context.object.ConstantContextSensitiveObject;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -152,10 +153,16 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     public AnalysisObject createConstantObject(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType) {
         /* Get the analysis object wrapping the JavaConstant. */
         if (bb.trackConcreteAnalysisObjects(exactType)) {
-            return exactType.getCachedConstantObject(bb, constant);
+            return exactType.getCachedConstantObject(bb, constant, (c) -> new ConstantContextSensitiveObject(bb, exactType, c));
         } else {
             return exactType.getContextInsensitiveAnalysisObject();
         }
+    }
+
+    @Override
+    public TypeState constantTypeState(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType) {
+        AnalysisObject constantObject = bb.analysisPolicy().createConstantObject(bb, constant, exactType);
+        return TypeState.forNonNullObject(bb, constantObject);
     }
 
     @Override
@@ -258,7 +265,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
-    public FieldTypeStore createFieldTypeStore(AnalysisObject object, AnalysisField field, AnalysisUniverse universe) {
+    public FieldTypeStore createFieldTypeStore(PointsToAnalysis bb, AnalysisObject object, AnalysisField field, AnalysisUniverse universe) {
         assert PointstoOptions.AllocationSiteSensitiveHeap.getValue(options);
         if (object.isContextInsensitiveObject()) {
             /*

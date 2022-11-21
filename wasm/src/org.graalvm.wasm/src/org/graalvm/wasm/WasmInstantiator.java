@@ -41,20 +41,21 @@
 
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.nodes.Node;
+import java.util.List;
+
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.nodes.WasmFunctionNode;
 import org.graalvm.wasm.nodes.WasmCallStubNode;
+import org.graalvm.wasm.nodes.WasmFunctionNode;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 import org.graalvm.wasm.nodes.WasmRootNode;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 
-import java.util.List;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Creates wasm instances by converting parser nodes into Truffle nodes.
@@ -140,7 +141,8 @@ public class WasmInstantiator {
         final WasmFunction function = instance.module().symbolTable().function(functionIndex);
         WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, instance.module().data(), codeEntry.getLocalTypes(), codeEntry.getResultTypes(), codeEntry.getMaxStackSize(),
                         codeEntry.getExtraData());
-        WasmRootNode rootNode = new WasmRootNode(language, createFrameDescriptor(codeEntry.getLocalTypes(), codeEntry.getMaxStackSize()), instantiateFunctionNode(instance, wasmCodeEntry, codeEntry));
+        WasmRootNode rootNode = new WasmRootNode(language, createFrameDescriptor(codeEntry.getLocalTypes(), codeEntry.getMaxStackSize()),
+                        instantiateFunctionNode(instance, wasmCodeEntry, codeEntry));
         instance.setTarget(codeEntry.getFunctionIndex(), rootNode.getCallTarget());
     }
 
@@ -164,7 +166,7 @@ public class WasmInstantiator {
                 final WasmFunction function = instance.module().function(callNode.getFunctionIndex());
                 child = new WasmCallStubNode(function);
                 final int stubIndex = childIndex;
-                instance.module().addLinkAction((context, inst) -> context.linker().resolveCallsite(inst, currentBlock, stubIndex, function));
+                instance.module().addLinkAction((ctx, inst) -> ctx.linker().resolveCallsite(inst, currentBlock, stubIndex, function));
             }
             callNodes[childIndex++] = child;
         }

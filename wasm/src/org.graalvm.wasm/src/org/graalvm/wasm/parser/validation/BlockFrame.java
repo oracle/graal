@@ -68,7 +68,7 @@ class BlockFrame extends ControlFrame {
     void exit(ExtraDataList extraData, int offset) {
         for (BranchTargetWithStackChange jumpTarget : branchTargets()) {
             jumpTarget.setTargetInfo(offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
-            jumpTarget.setStackInfo(labelTypeLength(), initialStackSize());
+            jumpTarget.setStackInfo(labelUnwindType(), labelTypeLength(), initialStackSize());
         }
     }
 }

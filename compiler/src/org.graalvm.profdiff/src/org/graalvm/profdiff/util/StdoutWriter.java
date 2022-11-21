@@ -69,13 +69,25 @@ public class StdoutWriter implements Writer {
     @Override
     public void writeln(String output) {
         printIndentIfNeeded();
-        System.out.println(output);
-        indentWritten = false;
+        System.out.print(output);
+        writeln();
     }
 
     @Override
     public void writeln() {
         System.out.println();
+        indentWritten = false;
+    }
+
+    @Override
+    public int getIndentLevel() {
+        return indentLevel;
+    }
+
+    @Override
+    public void setIndentLevel(int newIndentLevel) {
+        assert newIndentLevel >= 0;
+        indentLevel = newIndentLevel;
     }
 
     @Override
@@ -108,7 +120,7 @@ public class StdoutWriter implements Writer {
 
     @Override
     public void clearPrefixAfterIndent() {
-        this.prefix = null;
+        prefix = null;
     }
 
     @Override

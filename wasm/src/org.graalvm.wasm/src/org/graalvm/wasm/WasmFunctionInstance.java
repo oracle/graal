@@ -122,11 +122,13 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
             // stack.
             // At this point the multi-value stack has already been populated, therefore, we don't
             // have to check the size of the multi-value stack.
-            if (result == WasmMultiValueResult.INSTANCE) {
-                final long[] multiValueStack = context.multiValueStack();
+            if (result == WasmConstant.MULTI_VALUE) {
+                final long[] multiValueStack = context.primitiveMultiValueStack();
+                final Object[] referenceMultiValueStack = context().referenceMultiValueStack();
                 final int resultCount = function.resultCount();
                 CompilerAsserts.partialEvaluationConstant(resultCount);
                 assert multiValueStack.length >= resultCount;
+                assert referenceMultiValueStack.length >= resultCount;
                 final Object[] values = new Object[resultCount];
                 for (int i = 0; i < resultCount; i++) {
                     byte resultType = function.resultTypeAt(i);
@@ -142,6 +144,10 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
                             break;
                         case WasmType.F64_TYPE:
                             values[i] = Double.longBitsToDouble(multiValueStack[i]);
+                            break;
+                        case WasmType.FUNCREF_TYPE:
+                        case WasmType.EXTERNREF_TYPE:
+                            values[i] = referenceMultiValueStack[i];
                             break;
                         default:
                             throw WasmException.create(Failure.UNSPECIFIED_INTERNAL);

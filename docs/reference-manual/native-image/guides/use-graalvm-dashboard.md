@@ -17,13 +17,33 @@ This guide demonstrates how to use the dashboard to optimize the size of a nativ
 ## Fortune
 Package the contents of the first implementation ([fortune](https://github.com/graalvm/graalvm-demos/tree/master/fortune-demo/fortune)) as a native executable and review its composition.
 
-1. Clone the project, build the application, and run it:
-    ```shell
+1. Download or clone the repository and navigate into the _fortune-demo/fortune_ directory:
+    ```
     git clone https://github.com/graalvm/graalvm-demos
     cd fortune-demo/fortune
-    mvn package
+    ```
+2. Build the project:
+    ```
+    mvn clean package
+    ```
+3. When the build succeeds, run the application on the JVM with the [Tracing agent](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html#agent-support). Since you have installed GraalVM, it will run on GraalVM JDK.
+    ```
+    mvn -Pnative -Dagent exec:exec@java-agent
+    ```
+    The application will return a random saying. 
+    The agent generates the configuration files in the `target/native/agent-output` subdirectory.
+
+4. Build a native executable of this application with GraalVM Native Image and Maven:
+    ```
+    mvn -Pnative -Dagent package
+    ```
+    When the command completes, a native executable, `fortune`, is generated in the `/target` directory of the project and ready for use.
+
+5. Run the application by launching a native executable directly:
+    ```
     ./target/fortune
     ```
+
     The application should slowly print a random phrase.
 
     The application's [_pom.xml_](https://github.com/graalvm/graalvm-demos/blob/master/fortune-demo/fortune/pom.xml) file employs the [Native Image Maven plugin](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html) to build a native executable, configured to produce diagnostic data using these two options:
@@ -53,7 +73,7 @@ Package the contents of the first implementation ([fortune](https://github.com/g
     
     The size of the JAR file is 2MB, compared to the 17MB size of the native executable. The increase in size is because the native executable contains all necessary runtime code as well as pre-initialized data in its heap.
 
-2.  Open the [GraalVM Dashboard](https://www.graalvm.org/dashboard) and load the _fortune.bgv_ file. (Click **+**, click **Select File**, select the _fortune.bgv_ file from the _target_ directory, and then click **OK**.)
+6.  Open the [GraalVM Dashboard](https://www.graalvm.org/dashboard) and load the _fortune.bgv_ file. (Click **+**, click **Select File**, select the _fortune.bgv_ file from the _target_ directory, and then click **OK**.)
 
     The GraalVM dashboard provides two visualizations of a native executable: code size breakdown and heap size breakdown. (For more information, see [Code Size Breakdown](https://www.graalvm.org/dashboard/?ojr=help%3Btopic%3Dcode-size-histogram.md) and [Heap Size Breakdown](https://www.graalvm.org/dashboard/?ojr=help%3Btopic%3Dheap-size-histogram.md), respectively.)
 
@@ -71,10 +91,28 @@ Package the contents of the first implementation ([fortune](https://github.com/g
 
 The first implementation of the fortune application uses the [Jackson JSON parser](https://github.com/FasterXML/jackson) (package `com.fasterxml`) at **runtime** to parse the contents of a [resource file](https://github.com/graalvm/graalvm-demos/blob/master/fortune-demo/fortune/src/main/resources/fortunes.json) that the native image builder has included in the native executable. An alternative implementation (named "staticfortune") parses the contents of the resource file at build time. This means that the resource file is no longer included in the executable, and the code required to parse the file is omitted from the native executable because it is only required at build time.
 
-1. Build the application and run it:
-    ```shell
+1. Change to the project directory and build the project:
+    ```
     cd ../staticfortune
-    mvn package
+    ```
+    ```
+    mvn clean package
+    ```
+
+2. Run the application on the JVM (GraalVM JDK) with the [Tracing agent](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html#agent-support):
+    ```
+    mvn -Pnative -Dagent exec:exec@java-agent
+    ```
+    The application will print a random saying. The agent generates the configuration files in the `target/native/agent-output` subdirectory.
+3. Build a static native executable:
+    ```
+    mvn -Pnative -Dagent package
+    ```
+    When the command completes, a native executable, `staticfortune`, is generated in the `/target` directory of the project and ready for use.
+
+4. Run the demo by launching a native executable directly or with the Maven profile:
+
+    ```
     ./target/staticfortune
     ```
     The application should behave in exactly the same way as the first implementation.
@@ -106,7 +144,7 @@ The first implementation of the fortune application uses the [Jackson JSON parse
 
     The reduction in size is due to the use of the `--initialize-at-build-time=` argument used with the [Native Image Maven plugin](use-native-image-maven-plugin.md).
 
-2.  The build created a file named _staticfortune.bgv_. Load it into the GraalVM Dashboard to view the composition of the `staticfortune` native executable. 
+5.  The build created a file named _staticfortune.bgv_. Load it into the GraalVM Dashboard to view the composition of the `staticfortune` native executable. 
 
     ![Code Size Breakdown View](img/staticfortune-codesize.png)
 

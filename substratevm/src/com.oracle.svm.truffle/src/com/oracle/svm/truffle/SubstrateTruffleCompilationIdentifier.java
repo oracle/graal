@@ -60,6 +60,7 @@ public class SubstrateTruffleCompilationIdentifier extends SubstrateCompilationI
         return sb;
     }
 
+    @Override
     protected void buildName(StringBuilder sb) {
         sb.append(optimizedCallTarget.toString());
     }

@@ -70,8 +70,12 @@ public final class Target_sun_misc_Unsafe {
 
     /** The value of {@code addressSize()}. */
     public static final int ADDRESS_SIZE;
-    static final int SAFETY_FIELD_OFFSET = 123456789;
     private static final long PARK_BLOCKER_OFFSET;
+
+    private static final int SAFETY_FIELD_OFFSET = 123456789;
+    private static final int SAFETY_STATIC_FIELD_OFFSET = 3456789;
+    private static final int ALLOWED_HIDDEN_FIELDS = 0x1000;
+
     private static final String TARGET_JDK_INTERNAL_MISC_UNSAFE = "Target_jdk_internal_misc_Unsafe";
     private static final String TARGET_SUN_MISC_UNSAFE = "Target_sun_misc_Unsafe";
 
@@ -201,25 +205,79 @@ public final class Target_sun_misc_Unsafe {
     public static long objectFieldOffset(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(java.lang.reflect.Field.class) StaticObject field,
                     @Inject Meta meta) {
         Field target = Field.getReflectiveFieldRoot(field, meta);
-        return SAFETY_FIELD_OFFSET + target.getSlot();
+        return (target.isStatic() ? SAFETY_STATIC_FIELD_OFFSET : SAFETY_FIELD_OFFSET) + target.getSlot();
     }
 
-    private static Field getInstanceFieldFromIndex(StaticObject holder, int slot) {
-        if (!(0 <= slot && slot < (1 << 16)) && slot >= 0) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere("the field offset is not normalized");
+    private static final class ResolvedAccess {
+        Field field;
+        StaticObject holder;
+
+        static ResolvedAccess create(Field field, StaticObject holder) {
+            return new ResolvedAccess(field, holder);
         }
+
+        private ResolvedAccess(Field field, StaticObject holder) {
+            this.field = field;
+            this.holder = holder;
+        }
+    }
+
+    static int safetyOffsetToSlot(long safetyOffset) {
+        int offset = Math.toIntExact(safetyOffset);
+        if (offset >= (SAFETY_FIELD_OFFSET - ALLOWED_HIDDEN_FIELDS)) {
+            return offset - SAFETY_FIELD_OFFSET;
+        } else {
+            assert offset >= (SAFETY_STATIC_FIELD_OFFSET - ALLOWED_HIDDEN_FIELDS) : "offset: " + offset;
+            return offset - SAFETY_STATIC_FIELD_OFFSET;
+        }
+    }
+
+    static long slotToSafetyOffset(int slot, boolean isStatic) {
+        return ((long) (isStatic ? SAFETY_STATIC_FIELD_OFFSET : SAFETY_FIELD_OFFSET)) + slot;
+    }
+
+    private static ResolvedAccess resolveUnsafeAccess(StaticObject holder, long offset) {
+        int slot;
+        int safetyOffset = Math.toIntExact(offset);
+        boolean isStatic = false;
+        if (safetyOffset >= (SAFETY_FIELD_OFFSET - ALLOWED_HIDDEN_FIELDS)) {
+            slot = safetyOffset - SAFETY_FIELD_OFFSET;
+        } else {
+            assert safetyOffset >= (SAFETY_STATIC_FIELD_OFFSET - ALLOWED_HIDDEN_FIELDS) : "safetyOffset: " + safetyOffset;
+            slot = safetyOffset - SAFETY_STATIC_FIELD_OFFSET;
+            isStatic = true;
+        }
+
+        assert !StaticObject.isNull(holder);
+
+        if (slot >= 1 << 16 || slot < (-ALLOWED_HIDDEN_FIELDS)) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("the field offset is not normalized: slot=" + slot + ", safteyOffset=" + safetyOffset);
+        }
+        Field field = null;
+        StaticObject resolvedHolder = holder;
         try {
-            if (holder.isStaticStorage()) {
-                // Lookup static field in current class.
-                return holder.getKlass().lookupStaticFieldTable(slot);
+            if (isStatic) {
+                if (holder.getKlass().getType() == Type.java_lang_Class) {
+                    // This is needed to support:
+                    // > int off = U.objectFieldOffset(SomeClass.class, "staticField")
+                    // > U.getInt(SomeClass.class, off);
+                    // HotSpot supports it, although it is a questionable usage.
+                    resolvedHolder = holder.getMirrorKlass().getStatics();
+                    field = holder.getMirrorKlass().lookupStaticFieldTable(slot);
+                } else {
+                    assert holder.isStaticStorage();
+                    field = holder.getKlass().lookupStaticFieldTable(slot);
+                }
             } else {
-                return holder.getKlass().lookupFieldTable(slot);
+                field = holder.getKlass().lookupFieldTable(slot);
             }
         } catch (IndexOutOfBoundsException ex) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("invalid field offset");
         }
+        assert field != null;
+        return ResolvedAccess.create(field, resolvedHolder);
     }
 
     @TruffleBoundary
@@ -263,9 +321,8 @@ public final class Target_sun_misc_Unsafe {
             return UnsafeAccess.getIfAllowed(meta).compareAndSwapObject(unwrapNullOrArray(language, holder), offset, before, after);
         }
         // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.compareAndSwapObject(holder, before, after);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        return ra.field.compareAndSwapObject(ra.holder, before, after);
     }
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
@@ -274,9 +331,16 @@ public final class Target_sun_misc_Unsafe {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).compareAndSwapInt(unwrapNullOrArray(language, holder), offset, before, after);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.compareAndSwapInt(holder, before, after);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        switch (ra.field.getKind()) {
+            case Int:
+                return ra.field.compareAndSwapInt(ra.holder, before, after);
+            case Float:
+                return ra.field.compareAndSwapFloat(ra.holder, Float.intBitsToFloat(before), Float.intBitsToFloat(after));
+            default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere();
+        }
     }
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
@@ -285,9 +349,16 @@ public final class Target_sun_misc_Unsafe {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).compareAndSwapLong(unwrapNullOrArray(language, holder), offset, before, after);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.compareAndSwapLong(holder, before, after);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        switch (ra.field.getKind()) {
+            case Long:
+                return ra.field.compareAndSwapLong(ra.holder, before, after);
+            case Double:
+                return ra.field.compareAndSwapDouble(ra.holder, Double.longBitsToDouble(before), Double.longBitsToDouble(after));
+            default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere();
+        }
     }
 
     // endregion compareAndSwap*
@@ -306,13 +377,12 @@ public final class Target_sun_misc_Unsafe {
             return (StaticObject) UnsafeSupport.compareAndExchangeObject(unwrapNullOrArray(language, holder), offset, before, after);
         }
         // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        if (f.getKind() != JavaKind.Object) {
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        if (ra.field.getKind() != JavaKind.Object) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
         }
-        return f.compareAndExchangeObject(holder, before, after);
+        return ra.field.compareAndExchangeObject(ra.holder, before, after);
     }
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
@@ -323,13 +393,12 @@ public final class Target_sun_misc_Unsafe {
             return UnsafeSupport.compareAndExchangeInt(unwrapNullOrArray(language, holder), offset, before, after);
         }
         // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        switch (f.getKind()) {
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        switch (ra.field.getKind()) {
             case Int:
-                return f.compareAndExchangeInt(holder, before, after);
+                return ra.field.compareAndExchangeInt(ra.holder, before, after);
             case Float:
-                return Float.floatToRawIntBits(f.compareAndExchangeFloat(holder, Float.intBitsToFloat(before), Float.intBitsToFloat(after)));
+                return Float.floatToRawIntBits(ra.field.compareAndExchangeFloat(ra.holder, Float.intBitsToFloat(before), Float.intBitsToFloat(after)));
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
@@ -357,13 +426,12 @@ public final class Target_sun_misc_Unsafe {
             UnsafeAccess.checkAllowed(meta);
             return UnsafeSupport.compareAndExchangeByte(unwrapNullOrArray(language, holder), offset, before, after);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        switch (f.getKind()) {
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        switch (ra.field.getKind()) {
             case Boolean:
-                return f.compareAndExchangeBoolean(holder, before != 0, after != 0) ? (byte) 1 : (byte) 0;
+                return ra.field.compareAndExchangeBoolean(ra.holder, before != 0, after != 0) ? (byte) 1 : (byte) 0;
             case Byte:
-                return f.compareAndExchangeByte(holder, before, after);
+                return ra.field.compareAndExchangeByte(ra.holder, before, after);
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
@@ -380,13 +448,12 @@ public final class Target_sun_misc_Unsafe {
             UnsafeAccess.checkAllowed(meta);
             return UnsafeSupport.compareAndExchangeShort(unwrapNullOrArray(language, holder), offset, before, after);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        switch (f.getKind()) {
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        switch (ra.field.getKind()) {
             case Short:
-                return f.compareAndExchangeShort(holder, before, after);
+                return ra.field.compareAndExchangeShort(ra.holder, before, after);
             case Char:
-                return (short) f.compareAndExchangeChar(holder, (char) before, (char) after);
+                return (short) ra.field.compareAndExchangeChar(ra.holder, (char) before, (char) after);
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
@@ -400,13 +467,12 @@ public final class Target_sun_misc_Unsafe {
             UnsafeAccess.checkAllowed(meta);
             return UnsafeSupport.compareAndExchangeLong(unwrapNullOrArray(language, holder), offset, before, after);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        switch (f.getKind()) {
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        switch (ra.field.getKind()) {
             case Long:
-                return f.compareAndExchangeLong(holder, before, after);
+                return ra.field.compareAndExchangeLong(ra.holder, before, after);
             case Double:
-                return Double.doubleToRawLongBits(f.compareAndExchangeDouble(holder, Double.longBitsToDouble(before), Double.longBitsToDouble(after)));
+                return Double.doubleToRawLongBits(ra.field.compareAndExchangeDouble(ra.holder, Double.longBitsToDouble(before), Double.longBitsToDouble(after)));
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
@@ -521,9 +587,8 @@ public final class Target_sun_misc_Unsafe {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getByte(unwrapNullOrArray(language, holder), offset);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.getAsByte(meta, holder, false);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        return ra.field.getAsByte(meta, ra.holder, false);
     }
 
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeObjectAccessToReference.class)
@@ -535,9 +600,8 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.getAsObject(meta, holder);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        return ra.field.getAsObject(meta, ra.holder);
     }
 
     @Substitution(hasReceiver = true)
@@ -546,9 +610,8 @@ public final class Target_sun_misc_Unsafe {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getBoolean(unwrapNullOrArray(language, holder), offset);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.getAsBoolean(meta, holder, false);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        return ra.field.getAsBoolean(meta, ra.holder, false);
     }
 
     @Substitution(hasReceiver = true)
@@ -557,9 +620,8 @@ public final class Target_sun_misc_Unsafe {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getChar(unwrapNullOrArray(language, holder), offset);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.getAsChar(meta, holder, false);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        return ra.field.getAsChar(meta, ra.holder, false);
     }
 
     @Substitution(hasReceiver = true)
@@ -568,9 +630,8 @@ public final class Target_sun_misc_Unsafe {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getShort(unwrapNullOrArray(language, holder), offset);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.getAsShort(meta, holder, false);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        return ra.field.getAsShort(meta, ra.holder, false);
     }
 
     @Substitution(hasReceiver = true)
@@ -579,9 +640,8 @@ public final class Target_sun_misc_Unsafe {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getInt(unwrapNullOrArray(language, holder), offset);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.getAsInt(meta, holder, false);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        return ra.field.getAsInt(meta, ra.holder, false);
     }
 
     @Substitution(hasReceiver = true)
@@ -590,9 +650,8 @@ public final class Target_sun_misc_Unsafe {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getFloat(unwrapNullOrArray(language, holder), offset);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.getAsFloat(meta, holder, false);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        return ra.field.getAsFloat(meta, ra.holder, false);
     }
 
     @Substitution(hasReceiver = true)
@@ -601,9 +660,8 @@ public final class Target_sun_misc_Unsafe {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getDouble(unwrapNullOrArray(language, holder), offset);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.getAsDouble(meta, holder, false);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        return ra.field.getAsDouble(meta, ra.holder, false);
     }
 
     @Substitution(hasReceiver = true)
@@ -612,9 +670,8 @@ public final class Target_sun_misc_Unsafe {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getLong(unwrapNullOrArray(language, holder), offset);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.getAsLong(meta, holder, false);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        return ra.field.getAsLong(meta, ra.holder, false);
     }
 
     // endregion get*(Object holder, long offset)
@@ -628,9 +685,8 @@ public final class Target_sun_misc_Unsafe {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getBooleanVolatile(unwrapNullOrArray(language, holder), offset);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.getAsBoolean(meta, holder, false, true);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        return ra.field.getAsBoolean(meta, ra.holder, false, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -640,9 +696,8 @@ public final class Target_sun_misc_Unsafe {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getByteVolatile(unwrapNullOrArray(language, holder), offset);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.getAsByte(meta, holder, false, true);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        return ra.field.getAsByte(meta, ra.holder, false, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -652,9 +707,8 @@ public final class Target_sun_misc_Unsafe {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getShortVolatile(unwrapNullOrArray(language, holder), offset);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.getAsShort(meta, holder, false, true);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        return ra.field.getAsShort(meta, ra.holder, false, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -664,9 +718,8 @@ public final class Target_sun_misc_Unsafe {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getCharVolatile(unwrapNullOrArray(language, holder), offset);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.getAsChar(meta, holder, false, true);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        return ra.field.getAsChar(meta, ra.holder, false, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -676,9 +729,8 @@ public final class Target_sun_misc_Unsafe {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getFloatVolatile(unwrapNullOrArray(language, holder), offset);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.getAsFloat(meta, holder, false, true);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        return ra.field.getAsFloat(meta, ra.holder, false, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -688,9 +740,8 @@ public final class Target_sun_misc_Unsafe {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getIntVolatile(unwrapNullOrArray(language, holder), offset);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.getAsInt(meta, holder, false, true);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        return ra.field.getAsInt(meta, ra.holder, false, true);
     }
 
     @Substitution(hasReceiver = true)
@@ -699,9 +750,8 @@ public final class Target_sun_misc_Unsafe {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getLongVolatile(unwrapNullOrArray(language, holder), offset);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.getAsLong(meta, holder, false, true);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        return ra.field.getAsLong(meta, ra.holder, false, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -711,9 +761,8 @@ public final class Target_sun_misc_Unsafe {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getDoubleVolatile(unwrapNullOrArray(language, holder), offset);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.getAsDouble(meta, holder, false, true);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        return ra.field.getAsDouble(meta, ra.holder, false, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -725,9 +774,8 @@ public final class Target_sun_misc_Unsafe {
         if (isNullOrArray(holder)) {
             return (StaticObject) UnsafeAccess.getIfAllowed(meta).getObjectVolatile(unwrapNullOrArray(language, holder), offset);
         }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.getAsObject(meta, holder, true);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        return ra.field.getAsObject(meta, ra.holder, true);
     }
 
     // endregion get*Volatile(Object holder, long offset)
@@ -825,10 +873,9 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        assert !f.getKind().isSubWord();
-        f.setObject(holder, value, true);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        assert !ra.field.getKind().isSubWord();
+        ra.field.setObject(ra.holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -842,10 +889,9 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        assert f.getKind().isSubWord();
-        f.setInt(holder, value, true);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        assert ra.field.getKind().isSubWord();
+        ra.field.setInt(ra.holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -859,10 +905,9 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        assert f.getKind().needsTwoSlots();
-        f.setLong(holder, value, true);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        assert ra.field.getKind().needsTwoSlots();
+        ra.field.setLong(ra.holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -876,10 +921,9 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        assert f.getKind().isSubWord();
-        f.setBoolean(holder, value, true);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        assert ra.field.getKind().isSubWord();
+        ra.field.setBoolean(ra.holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -893,10 +937,9 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        assert f.getKind().isSubWord();
-        f.setChar(holder, value, true);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        assert ra.field.getKind().isSubWord();
+        ra.field.setChar(ra.holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -910,10 +953,9 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        assert f.getKind().isSubWord();
-        f.setShort(holder, value, true);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        assert ra.field.getKind().isSubWord();
+        ra.field.setShort(ra.holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -927,10 +969,9 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        assert f.getKind().isSubWord();
-        f.setFloat(holder, value, true);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        assert ra.field.getKind().isSubWord();
+        ra.field.setFloat(ra.holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -944,10 +985,9 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        assert f.getKind().needsTwoSlots();
-        f.setDouble(holder, value, true);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        assert ra.field.getKind().needsTwoSlots();
+        ra.field.setDouble(ra.holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -961,10 +1001,9 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        assert f.getKind().isSubWord();
-        f.setByte(holder, value, true);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        assert ra.field.getKind().isSubWord();
+        ra.field.setByte(ra.holder, value, true);
     }
     // endregion put*Volatile(Object holder, long offset)
 
@@ -1108,9 +1147,8 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        f.setObject(holder, value);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        ra.field.setObject(ra.holder, value);
     }
 
     @Substitution(hasReceiver = true)
@@ -1123,9 +1161,8 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        f.setBoolean(holder, value);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        ra.field.setBoolean(ra.holder, value);
     }
 
     @Substitution(hasReceiver = true)
@@ -1137,9 +1174,8 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        f.setByte(holder, value);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        ra.field.setByte(ra.holder, value);
     }
 
     @Substitution(hasReceiver = true)
@@ -1151,9 +1187,8 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        f.setChar(holder, value);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        ra.field.setChar(ra.holder, value);
     }
 
     @Substitution(hasReceiver = true)
@@ -1165,9 +1200,8 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        f.setShort(holder, value);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        ra.field.setShort(ra.holder, value);
     }
 
     @Substitution(hasReceiver = true)
@@ -1179,9 +1213,8 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        f.setInt(holder, value);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        ra.field.setInt(ra.holder, value);
     }
 
     @Substitution(hasReceiver = true)
@@ -1193,9 +1226,8 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        f.setFloat(holder, value);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        ra.field.setFloat(ra.holder, value);
     }
 
     @Substitution(hasReceiver = true)
@@ -1207,9 +1239,8 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        f.setDouble(holder, value);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        ra.field.setDouble(ra.holder, value);
     }
 
     @Substitution(hasReceiver = true)
@@ -1221,9 +1252,8 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        f.setLong(holder, value);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        ra.field.setLong(ra.holder, value);
     }
 
     @Substitution(hasReceiver = true)
@@ -1236,10 +1266,9 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        // TODO(peterssen): Volatile is stronger than needed.
-        f.setInt(holder, value, true);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        // TODO(peterssen): Volatile is stronger than needed
+        ra.field.setInt(ra.holder, value, true);
     }
 
     @Substitution(hasReceiver = true)
@@ -1252,10 +1281,9 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
         // TODO(peterssen): Volatile is stronger than needed.
-        f.setLong(holder, value, true);
+        ra.field.setLong(ra.holder, value, true);
     }
 
     @Substitution(hasReceiver = true)
@@ -1267,10 +1295,9 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
         // TODO(peterssen): Volatile is stronger than needed.
-        f.setObject(holder, value, true);
+        ra.field.setObject(ra.holder, value, true);
     }
 
     // endregion put*(Object holder, long offset, * value)
@@ -1341,7 +1368,7 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static long staticFieldOffset(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(java.lang.reflect.Field.class) StaticObject field,
                     @Inject Meta meta) {
-        return Field.getReflectiveFieldRoot(field, meta).getSlot() + SAFETY_FIELD_OFFSET;
+        return Field.getReflectiveFieldRoot(field, meta).getSlot() + SAFETY_STATIC_FIELD_OFFSET;
     }
 
     /**
@@ -1563,9 +1590,8 @@ public final class Target_sun_misc_Unsafe {
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return f.getAndSetObject(holder, value);
+        ResolvedAccess ra = resolveUnsafeAccess(holder, offset);
+        return ra.field.getAndSetObject(ra.holder, value);
     }
 
     @SuppressWarnings("deprecation")
@@ -1625,7 +1651,7 @@ public final class Target_sun_misc_Unsafe {
             }
             for (Field f : kl.getStaticFieldTable()) {
                 if (!f.isRemoved() && f.getNameAsString().equals(hostName)) {
-                    return SAFETY_FIELD_OFFSET + f.getSlot();
+                    return SAFETY_STATIC_FIELD_OFFSET + f.getSlot();
                 }
             }
         }

@@ -7,7 +7,6 @@
 
   suite_name: 'espresso',
 
-  windows_11 : common.windows + devkits["windows-jdk11"],
   windows_17 : common.windows + devkits["windows-jdk17"],
 
   builds: common.builds + [

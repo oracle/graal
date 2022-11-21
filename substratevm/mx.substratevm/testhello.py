@@ -159,6 +159,8 @@ def test():
     if os.environ.get('GDB_CAN_PRINT', '') == 'True':
         can_print_data = True
 
+    musl = os.environ.get('debuginfotest_musl', 'no') == 'yes'
+
     isolates = False
     if os.environ.get('debuginfotest_isolates', 'no') == 'yes':
         isolates = True
@@ -211,14 +213,17 @@ def test():
     # expect "#0  hello.Hello.main(java.lang.String[] *).* at hello.Hello.java:76"
     # expect "#1  0x[0-9a-f]+ in com.oracle.svm.core.code.IsolateEnterStub.JavaMainWrapper_run_.* at [a-z/]+/JavaMainWrapper.java:[0-9]+"
     exec_string = execute("backtrace")
-    checker = Checker("backtrace hello.Hello::main",
-                      [r"#0%shello\.Hello::main%s %s at hello/Hello\.java:76"%(spaces_pattern, param_types_pattern, arg_values_pattern),
+    stacktraceRegex = [r"#0%shello\.Hello::main%s %s at hello/Hello\.java:76"%(spaces_pattern, param_types_pattern, arg_values_pattern),
                        r"#1%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
                        r"#2%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
                        r"#3%scom\.oracle\.svm\.core\.JavaMainWrapper::doRun%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, param_types_pattern, arg_values_pattern, package_pattern),
                        r"#4%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::run%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
                        r"#5%scom\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s %s"%(spaces_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern)
-                      ])
+                      ]
+    if musl:
+        # musl has a different entry point - drop the last two frames
+        stacktraceRegex = stacktraceRegex[:-2]
+    checker = Checker("backtrace hello.Hello::main", stacktraceRegex)
     checker.check(exec_string, skip_fails=False)
 
     # check input argument args is known
@@ -412,15 +417,18 @@ def test():
 
     # run a backtrace
     exec_string = execute("backtrace")
-    checker = Checker("backtrace hello.Hello.Greeter::greeter",
-                      [r"#0%shello\.Hello\$Greeter::greeter%s %s at hello/Hello\.java:37"%(spaces_pattern, param_types_pattern, arg_values_pattern),
+    stacktraceRegex = [r"#0%shello\.Hello\$Greeter::greeter%s %s at hello/Hello\.java:37"%(spaces_pattern, param_types_pattern, arg_values_pattern),
                        r"#1%s%s in hello\.Hello::main%s %s at hello/Hello\.java:76"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern),
                        r"#2%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
                        r"#3%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
                        r"#4%scom\.oracle\.svm\.core\.JavaMainWrapper::doRun%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, param_types_pattern, arg_values_pattern, package_pattern),
                        r"#5%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::run%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
                        r"#6%scom\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s %s"%(spaces_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern)
-                      ])
+                      ]
+    if musl:
+        # musl has a different entry point - drop the last two frames
+        stacktraceRegex = stacktraceRegex[:-2]
+    checker = Checker("backtrace hello.Hello.Greeter::greeter", stacktraceRegex)
     checker.check(exec_string, skip_fails=False)
 
     # now step into inlined code

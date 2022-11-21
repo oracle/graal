@@ -36,6 +36,7 @@ import functools
 import glob
 import re
 import sys
+import atexit
 from mx_gate import Task
 
 from os import environ, listdir, remove, linesep
@@ -78,7 +79,7 @@ def _unittest_config_participant(config):
 
 mx_unittest.add_config_participant(_unittest_config_participant)
 
-def _check_compiler_log(compiler_log_file, expectations):
+def _check_compiler_log(compiler_log_file, expectations, extra_check=None):
     """
     Checks that `compiler_log_file` exists and that its contents match each regular expression in `expectations`.
     If all checks succeed, `compiler_log_file` is deleted.
@@ -88,11 +89,13 @@ def _check_compiler_log(compiler_log_file, expectations):
         mx.abort('No output written to ' + compiler_log_file)
     with open(compiler_log_file) as fp:
         compiler_log = fp.read()
-    if not isinstance(expectations, list):
+    if not isinstance(expectations, list) and not isinstance(expectations, tuple):
         expectations = [expectations]
     for pattern in expectations:
         if not re.search(pattern, compiler_log):
             mx.abort('Did not find expected pattern ("{}") in compiler log:{}{}'.format(pattern, linesep, compiler_log))
+    if extra_check is not None:
+        extra_check(compiler_log)
     if mx.get_opts().verbose or in_exception_path:
         mx.log(compiler_log)
     remove(compiler_log_file)
@@ -107,18 +110,52 @@ def _test_libgraal_basic(extra_vm_arguments):
     graalvm_jdk = mx.JDKConfig(graalvm_home)
     jres = [graalvm_home]
 
-    if mx_sdk_vm.jlink_has_save_jlink_argfiles(graalvm_jdk) and mx_sdk_vm.jlink_has_copy_files(graalvm_jdk):
+    if mx_sdk_vm.jlink_has_save_jlink_argfiles(graalvm_jdk):
         # Create a minimal image that should contain libgraal
         libgraal_jre = abspath('libgraal-jre')
         if exists(libgraal_jre):
             mx.rmtree(libgraal_jre)
         mx.run([join(graalvm_home, 'bin', 'jlink'), f'--output={libgraal_jre}', '--add-modules=java.base'])
         jres.append(libgraal_jre)
+        atexit.register(mx.rmtree, libgraal_jre)
 
-    expect = r"Using compiler configuration '[^']+' provided by [\.\w]+ loaded from[ \w]* JVMCI native library"
+    expect = r"Using compiler configuration '[^']+' \(\"[^\"]+\"\) provided by [\.\w]+ loaded from a[ \w]* Native Image shared library"
     compiler_log_file = abspath('graal-compiler.log')
-    args = ['-Dgraal.ShowConfiguration=info',
-            '-Dgraal.LogFile=' + compiler_log_file,
+
+    # To test Graal stubs do not create and install duplicate RuntimeStubs:
+    # - use a new libgraal isolate for each compilation
+    # - use 1 JVMCI compiler thread
+    # - enable PrintCompilation (which also logs stub compilations)
+    # - check that log shows at least one stub is compiled and each stub is compiled at most once
+    check_stub_sharing = [
+        '-XX:JVMCIThreadsPerNativeLibraryRuntime=1',
+        '-XX:JVMCICompilerIdleDelay=0',
+        '-XX:JVMCIThreads=1',
+        '-Dlibgraal.PrintCompilation=true',
+        '-Dlibgraal.LogFile=' + compiler_log_file,
+    ]
+
+    def extra_check(compiler_log):
+        """
+        Checks that compiler log shows at least stub compilation
+        and that each stub is compiled at most once.
+        """
+        nl = linesep
+        stub_compilations = {}
+        stub_compilation = re.compile(r'StubCompilation-\d+ +<stub> +([\S]+) +([\S]+) +.*')
+        for line in compiler_log.split('\n'):
+            m = stub_compilation.match(line)
+            if m:
+                stub = f'{m.group(1)}{m.group(2)}'
+                stub_compilations[stub] = stub_compilations.get(stub, 0) + 1
+        if not stub_compilations:
+            mx.abort('Expected at least one stub compilation in compiler log')
+        duplicated = {stub: count for stub, count in stub_compilations.items() if count > 1}
+        if duplicated:
+            table = f'  Count    Stub{nl}  ' + f'{nl}  '.join((f'{count:<8d} {stub}') for stub, count in stub_compilations.items())
+            mx.abort(f'Following stubs were compiled more than once according to compiler log:{nl}{table}')
+
+    args = check_stub_sharing + ['-Dgraal.ShowConfiguration=verbose',
             '-jar', mx.library('DACAPO').get_path(True), 'avrora', '-n', '1']
 
     # Verify execution via raw java launcher in `mx graalvm-home`.
@@ -126,7 +163,7 @@ def _test_libgraal_basic(extra_vm_arguments):
         try:
             mx.run([join(jre, 'bin', 'java')] + args)
         finally:
-            _check_compiler_log(compiler_log_file, expect)
+            _check_compiler_log(compiler_log_file, expect, extra_check=extra_check)
 
     # Verify execution via `mx vm`.
     import mx_compiler
@@ -197,6 +234,77 @@ def _jdk_has_ForceTranslateFailure_jvmci_option(jdk):
         return False
     mx.abort(sink.data)
 
+def _test_libgraal_CompilationTimeout_JIT():
+    """
+    Tests timeout handling of CompileBroker compilations.
+    """
+
+    graalvm_home = mx_sdk_vm_impl.graalvm_home()
+    compiler_log_file = abspath('graal-compiler.log')
+    G = '-Dgraal.' #pylint: disable=invalid-name
+    for vm_can_exit in (False, True):
+        vm_exit_delay = 0 if not vm_can_exit else 2
+        vmargs = [f'{G}CompilationWatchDogStartDelay=1',  # set compilation timeout to 1 sec
+                  f'{G}InjectedCompilationDelay=4',       # inject a 4 sec compilation delay
+                  f'{G}CompilationWatchDogVMExitDelay={vm_exit_delay}',
+                  f'{G}CompilationFailureAction=Print',
+                  f'{G}PrintCompilation=false',
+                  f'{G}LogFile={compiler_log_file}',
+                   '-Ddebug.graal.CompilationWatchDog=true'] # helps debug failure
+
+        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + ['-jar', mx.library('DACAPO').get_path(True), 'avrora', '-n', '1']
+        exit_code = mx.run(cmd, nonZeroIsFatal=False)
+        expectations = ['detected long running compilation'] + (['a stuck compilation'] if vm_can_exit else [])
+        _check_compiler_log(compiler_log_file, expectations)
+        if vm_can_exit:
+            # org.graalvm.compiler.core.CompilationWatchDog.EventHandler.STUCK_COMPILATION_EXIT_CODE
+            if exit_code != 84:
+                mx.abort(f'expected process to exit with 84 (indicating a stuck compilation) instead of {exit_code}')
+        elif exit_code != 0:
+            mx.abort(f'process exit code was {exit_code}, not 0')
+
+def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
+    """
+    Tests timeout handling of Truffle PE compilations.
+    """
+    graalvm_home = mx_sdk_vm_impl.graalvm_home()
+    compiler_log_file = abspath('graal-compiler.log')
+    G = '-Dgraal.' #pylint: disable=invalid-name
+    P = '-Dpolyglot.engine.' #pylint: disable=invalid-name
+    for vm_can_exit in (False, True):
+        vm_exit_delay = 0 if not vm_can_exit else 2
+        vmargs = [f'{G}CompilationWatchDogStartDelay=1',  # set compilation timeout to 1 sec
+                  f'{G}InjectedCompilationDelay=4',       # inject a 4 sec compilation delay
+                  f'{G}CompilationWatchDogVMExitDelay={vm_exit_delay}',
+                  f'{G}CompilationFailureAction=Print',
+                  f'{G}ShowConfiguration=info',
+                  f'{G}MethodFilter=delay',
+                  f'{G}PrintCompilation=false',
+                  f'{G}LogFile={compiler_log_file}',
+                  f'{P}AllowExperimentalOptions=true',
+                  f'{P}TraceCompilation=false',
+                  f'{P}CompileImmediately=true',
+                  f'{P}BackgroundCompilation=false',
+                  f'-Dpolyglot.log.file={compiler_log_file}',
+                   '-Ddebug.graal.CompilationWatchDog=true', # helps debug failure
+                   '-Dgraalvm.locatorDisabled=true',
+                   '-XX:-UseJVMCICompiler',       # Stop compilation timeout being applied to JIT
+                   '-XX:+UseJVMCINativeLibrary']  # but ensure libgraal is still used by Truffle
+
+        delay = abspath(join(dirname(__file__), 'Delay.sl'))
+        cp = mx.classpath(["com.oracle.truffle.sl", "com.oracle.truffle.sl.launcher"])
+        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + ['-cp', cp, 'com.oracle.truffle.sl.launcher.SLMain', delay]
+        exit_code = mx.run(cmd, nonZeroIsFatal=False)
+
+        expectations = ['detected long running compilation'] + (['a stuck compilation'] if vm_can_exit else [])
+        _check_compiler_log(compiler_log_file, expectations)
+        if vm_can_exit:
+            # org.graalvm.compiler.core.CompilationWatchDog.EventHandler.STUCK_COMPILATION_EXIT_CODE
+            if exit_code != 84:
+                mx.abort(f'expected process to exit with 84 (indicating a stuck compilation) instead of {exit_code}')
+        elif exit_code != 0:
+            mx.abort(f'process exit code was {exit_code}, not 0')
+
 def _test_libgraal_ctw(extra_vm_arguments):
     import mx_compiler
 
@@ -205,10 +313,10 @@ def _test_libgraal_ctw(extra_vm_arguments):
         # This test is only possible if the jvmci.ForceTranslateFailure option exists.
         compiler_log_file = abspath('graal-compiler-ctw.log')
         fail_to_translate_value = 'nmethod/StackOverflowError:hotspot,method/String.hashCode:native,valueOf'
-        expectations = ['ForceTranslateFailure filter "{}"'.format(f) for f in fail_to_translate_value.split(',')]
+        expectations = [f'ForceTranslateFailure filter "{f}"' for f in fail_to_translate_value.split(',')]
         try:
             mx_compiler.ctw([
-                '-DCompileTheWorld.Config=Inline=false ' + ' '.join(mx_compiler._compiler_error_options(prefix='')),
+               f'-DCompileTheWorld.Config=Inline=false {" ".join(mx_compiler._compiler_error_options(prefix=""))}',
                 '-XX:+EnableJVMCI',
                 '-Dgraal.InlineDuringParsing=false',
                 '-Dgraal.TrackNodeSourcePosition=true',
@@ -253,7 +361,6 @@ def _test_libgraal_truffle(extra_vm_arguments):
     else:
         unittest_args = []
     unittest_args = unittest_args + ["--enable-timing", "--verbose"]
-    compiler_log_file = "graal-compiler.log"
     mx_unittest.unittest(unittest_args + extra_vm_arguments + [
         "-Dpolyglot.engine.AllowExperimentalOptions=true",
         "-Dpolyglot.engine.CompileImmediately=true",
@@ -261,8 +368,6 @@ def _test_libgraal_truffle(extra_vm_arguments):
         "-Dpolyglot.engine.CompilationFailureAction=Throw",
         "-Dgraalvm.locatorDisabled=true",
         "truffle"])
-    if exists(compiler_log_file):
-        remove(compiler_log_file)
 
 def gate_body(args, tasks):
     with Task('Vm: GraalVM dist names', tasks, tags=['names']) as t:
@@ -294,6 +399,10 @@ def gate_body(args, tasks):
                     if t: _test_libgraal_basic(extra_vm_arguments)
                 with Task('LibGraal Compiler:FatalErrorHandling', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_fatal_error_handling()
+                with Task('LibGraal Compiler:CompilationTimeout:JIT', tasks, tags=[VmGateTasks.libgraal]) as t:
+                    if t: _test_libgraal_CompilationTimeout_JIT()
+                with Task('LibGraal Compiler:CompilationTimeout:Truffle', tasks, tags=[VmGateTasks.libgraal]) as t:
+                    if t: _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments)
 
                 with Task('LibGraal Compiler:CTW', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_ctw(extra_vm_arguments)

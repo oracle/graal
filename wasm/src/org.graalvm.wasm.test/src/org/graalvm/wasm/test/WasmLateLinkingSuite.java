@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -217,6 +217,7 @@ public class WasmLateLinkingSuite {
 
     private static void runTest(byte[] firstBinary, Consumer<Context> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+        contextBuilder.option("wasm.BulkMemoryAndRefTypes", "true");
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
         final Context context = contextBuilder.build();
         Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(firstBinary), "main");

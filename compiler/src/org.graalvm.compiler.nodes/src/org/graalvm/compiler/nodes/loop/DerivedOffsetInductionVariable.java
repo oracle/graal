@@ -220,4 +220,9 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
             return new DerivedConvertedInductionVariable(loop, newBase, newValue.stamp(NodeView.DEFAULT), newValue);
         }
     }
+
+    @Override
+    public ValueNode entryTripValue() {
+        return op(getBase().entryTripValue(), offset);
+    }
 }

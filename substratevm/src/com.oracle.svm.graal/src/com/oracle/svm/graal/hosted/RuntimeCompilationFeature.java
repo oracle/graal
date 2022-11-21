@@ -98,10 +98,12 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
+import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
+import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -399,9 +401,11 @@ public abstract class RuntimeCompilationFeature implements Feature {
         Function<Providers, SubstrateBackend> backendProvider = GraalSupport.getRuntimeBackendProvider();
         ClassInitializationSupport classInitializationSupport = config.getHostVM().getClassInitializationSupport();
         Providers originalProviders = GraalAccess.getOriginalProviders();
+        SubstratePlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(ImageSingletons.lookup(BarrierSetProvider.class).createBarrierSet(config.getMetaAccess()));
         runtimeConfigBuilder = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).createRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(),
                         config.getMetaAccess(),
-                        originalProviders.getConstantReflection(), backendProvider, config.getNativeLibraries(), classInitializationSupport, originalProviders.getLoopsDataProvider()).build();
+                        originalProviders.getConstantReflection(), backendProvider, config.getNativeLibraries(), classInitializationSupport, originalProviders.getLoopsDataProvider(),
+                        platformConfig).build();
         RuntimeConfiguration runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
 
         Providers runtimeProviders = runtimeConfig.getProviders();
@@ -431,7 +435,7 @@ public abstract class RuntimeCompilationFeature implements Feature {
 
         NodeClass<?>[] snippetNodeClasses = ((SubstrateReplacements) runtimeProviders.getReplacements()).getSnippetNodeClasses();
         for (NodeClass<?> nodeClass : snippetNodeClasses) {
-            config.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsAllocated(null);
+            config.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsAllocated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
         }
 
         /* Initialize configuration with reasonable default values. */
@@ -530,7 +534,7 @@ public abstract class RuntimeCompilationFeature implements Feature {
         AnalysisMetaAccess metaAccess = config.getMetaAccess();
         NodeClass<?>[] nodeClasses = graphEncoder.getNodeClasses();
         for (NodeClass<?> nodeClass : nodeClasses) {
-            metaAccess.lookupJavaType(nodeClass.getClazz()).registerAsAllocated(null);
+            metaAccess.lookupJavaType(nodeClass.getClazz()).registerAsAllocated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
         }
         if (GraalSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), nodeClasses)) {
             config.requireAnalysisIteration();

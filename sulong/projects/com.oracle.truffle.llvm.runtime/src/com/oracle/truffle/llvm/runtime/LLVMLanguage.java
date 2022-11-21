@@ -96,7 +96,7 @@ import org.graalvm.options.OptionValues;
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE,
                                 LLVMLanguage.LLVM_MS_DOS_MIME_TYPE}, //
                 fileTypeDetectors = LLVMFileDetector.class, services = {Toolchain.class}, version = LLVMConfig.VERSION, contextPolicy = TruffleLanguage.ContextPolicy.SHARED, //
-                website = "https://www.graalvm.org/22.1/reference-manual/llvm/")
+                website = "https://www.graalvm.org/${graalvm-website-version}/reference-manual/llvm/")
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, StandardTags.RootBodyTag.class, DebuggerTags.AlwaysHalt.class})
 public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
@@ -171,9 +171,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     private final EconomicMap<String, LibraryCacheEntry> libraryCache = EconomicMap.create();
     private final ReferenceQueue<CallTarget> libraryCacheQueue = new ReferenceQueue<>();
     private final Object libraryCacheLock = new Object();
-
     private final EconomicMap<String, Source> librarySources = EconomicMap.create();
-
     private final IDGenerater idGenerater = new IDGenerater();
     private final LLDBSupport lldbSupport = new LLDBSupport(this);
     private final Assumption noCommonHandleAssumption = Truffle.getRuntime().createAssumption("no common handle");
@@ -183,6 +181,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     private final ConcurrentHashMap<Class<?>, RootCallTarget> cachedCallTargets = new ConcurrentHashMap<>();
 
+    /**
+     * This cache ensures that the truffle cache maintains the default internal libraries, and that
+     * these default internal libraries are not parsed more than once.
+     */
+    private Source[] defaultInternalLibraryCache = null;
     private DataLayout defaultDataLayout;
     private TargetTriple defaultTargetTriple;
 
@@ -304,6 +307,10 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
         public LLVMUserException popException() {
             return exceptionStack.remove(exceptionStack.size() - 1);
+        }
+
+        public boolean hasException() {
+            return !exceptionStack.isEmpty();
         }
 
         public void setLLVMStack(LLVMStack stack) {
@@ -439,11 +446,21 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     public void addLibrarySource(String path, Source source) {
-        librarySources.put(path, source);
+        if (!librarySources.containsKey(path)) {
+            librarySources.put(path, source);
+        }
     }
 
     public boolean containsLibrarySource(String path) {
         return librarySources.containsKey(path);
+    }
+
+    public boolean isDefaultInternalLibraryCacheEmpty() {
+        return defaultInternalLibraryCache == null;
+    }
+
+    public void setDefaultInternalLibraryCache(Source[] libraries) {
+        defaultInternalLibraryCache = libraries;
     }
 
     @Override

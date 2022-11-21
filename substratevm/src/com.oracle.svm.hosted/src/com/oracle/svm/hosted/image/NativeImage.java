@@ -58,13 +58,16 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.CHeader;
+import org.graalvm.nativeimage.c.CHeader.Header;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.type.CConst;
+import org.graalvm.nativeimage.c.type.CTypedef;
+import org.graalvm.nativeimage.c.type.CUnsigned;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.util.Timer;
-import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
@@ -75,7 +78,6 @@ import com.oracle.objectfile.ObjectFile.ProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.objectfile.ObjectFile.Section;
 import com.oracle.objectfile.SectionName;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.FrameAccess;
@@ -84,26 +86,19 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.c.CConst;
 import com.oracle.svm.core.c.CGlobalDataImpl;
-import com.oracle.svm.core.c.CHeader;
-import com.oracle.svm.core.c.CHeader.Header;
-import com.oracle.svm.core.c.CTypedef;
-import com.oracle.svm.core.c.CUnsigned;
 import com.oracle.svm.core.c.function.GraalIsolateHeader;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CSourceCodeWriter;
@@ -112,7 +107,6 @@ import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.RelocatableBuffer.Info;
-import com.oracle.svm.hosted.image.sources.SourceManager;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -180,7 +174,6 @@ public abstract class NativeImage extends AbstractImage {
         } catch (Exception ex) {
             throw shouldNotReachHere(ex);
         }
-        resultingImageSize = (int) outputFile.toFile().length();
         debugInfoSize = 0;
         String debugIdentifier = OS.getCurrent() == OS.DARWIN ? "__debug" : ".debug";
         for (Element e : objectFile.getElements()) {
@@ -315,6 +308,11 @@ public abstract class NativeImage extends AbstractImage {
         return rm1Line - rm2Line;
     }
 
+    private static boolean isUnsigned(AnnotatedType type) {
+        var legacyCUnsigned = com.oracle.svm.core.c.CUnsigned.class;
+        return type.isAnnotationPresent(CUnsigned.class) || type.isAnnotationPresent(legacyCUnsigned);
+    }
+
     private void writeMethodHeader(HostedMethod m, CSourceCodeWriter writer, boolean dynamic) {
         assert Modifier.isStatic(m.getModifiers()) : "Published methods that go into the header must be static.";
         CEntryPointData cEntryPointData = (CEntryPointData) m.getWrapped().getEntryPointData();
@@ -334,7 +332,7 @@ public abstract class NativeImage extends AbstractImage {
                         (ResolvedJavaType) m.getSignature().getReturnType(m.getDeclaringClass()),
                         Optional.ofNullable(annotatedReturnType.getAnnotation(CTypedef.class)).map(CTypedef::name),
                         false,
-                        annotatedReturnType.isAnnotationPresent(CUnsigned.class),
+                        isUnsigned(annotatedReturnType),
                         metaAccess, nativeLibs));
         writer.append(" ");
 
@@ -358,7 +356,7 @@ public abstract class NativeImage extends AbstractImage {
                             (ResolvedJavaType) m.getSignature().getParameterType(i, m.getDeclaringClass()),
                             Optional.ofNullable(annotatedParameterTypes[i].getAnnotation(CTypedef.class)).map(CTypedef::name),
                             annotatedParameterTypes[i].isAnnotationPresent(CConst.class),
-                            annotatedParameterTypes[i].isAnnotationPresent(CUnsigned.class),
+                            isUnsigned(annotatedParameterTypes[i]),
                             metaAccess, nativeLibs));
             if (parameters[i].isNamePresent()) {
                 writer.append(" ");
@@ -465,18 +463,6 @@ public abstract class NativeImage extends AbstractImage {
                             (offset, symbolName, isGlobalSymbol) -> defineRelocationForSymbol(symbolName, offset));
             defineDataSymbol(CGlobalDataInfo.CGLOBALDATA_BASE_SYMBOL_NAME, rwDataSection, RWDATA_CGLOBALS_PARTITION_OFFSET);
 
-            /*
-             * If we constructed debug info give the object file a chance to install it
-             */
-            if (SubstrateOptions.GenerateDebugInfo.getValue(HostedOptionValues.singleton()) > 0) {
-                Timer timer = TimerCollection.singleton().get(TimerCollection.Registry.DEBUG_INFO);
-                try (Timer.StopTimer t = timer.start()) {
-                    ImageSingletons.add(SourceManager.class, new SourceManager());
-                    DebugInfoProvider provider = new NativeImageDebugInfoProvider(debug, codeCache, heap, metaAccess);
-                    objectFile.installDebugInfo(provider);
-                }
-                ProgressReporter.singleton().setDebugInfoTimer(timer);
-            }
             // - Write the heap to its own section.
             // Dynamic linkers/loaders generally don't ensure any alignment to more than page
             // boundaries, so we take care of this ourselves in CommittedMemoryProvider, if we can.
@@ -770,13 +756,8 @@ public abstract class NativeImage extends AbstractImage {
     }
 
     @Override
-    public ObjectFile getOrCreateDebugObjectFile() {
-        assert objectFile != null;
-        /*
-         * FIXME: use ObjectFile.getOrCreateDebugObject, which knows how/whether to split (but is
-         * somewhat unimplemented right now, i.e. doesn't actually implement splitting, even on
-         * Mach-O where this is customary).
-         */
+    public ObjectFile getObjectFile() {
+        assert objectFile != null : "objectFile accessed before set";
         return objectFile;
     }
 

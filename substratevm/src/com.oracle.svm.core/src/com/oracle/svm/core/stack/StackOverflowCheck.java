@@ -28,6 +28,7 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -110,6 +111,18 @@ public interface StackOverflowCheck {
             return lookupStackEnd();
         }
 
+        /**
+         * Find the highest address of the stack or zero if is not supported, and the lowest address
+         * of the stack. If the OS reserved stack memory is larger than requestedStackSize, then the
+         * value for end of the stack memory returned may be before the real stack end.
+         * 
+         * @param requestedStackSize requested stack size. If zero, then the value is ignored.
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        default void lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr, UnsignedWord requestedStackSize) {
+            stackBasePtr.write(lookupStackBase());
+            stackEndPtr.write(lookupStackEnd(requestedStackSize));
+        }
     }
 
     @Fold

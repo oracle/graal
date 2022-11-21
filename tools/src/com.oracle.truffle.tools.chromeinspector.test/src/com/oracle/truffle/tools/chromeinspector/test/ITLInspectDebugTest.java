@@ -24,17 +24,17 @@
  */
 package com.oracle.truffle.tools.chromeinspector.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 
-import org.junit.After;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import org.junit.Test;
-
 import org.graalvm.polyglot.Source;
+import org.junit.After;
+import org.junit.Test;
 
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.tck.DebuggerTester;
@@ -302,17 +302,17 @@ public class ITLInspectDebugTest {
     @Test
     public void testOutput() throws Exception {
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
-                        "  PRINT(OUT, \"one\ntwo\n\"),\n" +
+                        "  PRINT(OUT, CONSTANT(\"one\ntwo\n\")),\n" +
                         "  STATEMENT(),\n" +
-                        "  PRINT(OUT, \"three,\"),\n" +
+                        "  PRINT(OUT, CONSTANT(\"three,\")),\n" +
                         "  STATEMENT(),\n" +
-                        "  PRINT(OUT, \"four\rfive\"),\n" +
+                        "  PRINT(OUT, CONSTANT(\"four\rfive\")),\n" +
                         "  STATEMENT(),\n" +
-                        "  PRINT(OUT, \"\r\n\"),\n" +
-                        "  PRINT(OUT, \"\r\nsix,\"),\n" +
-                        "  PRINT(OUT, \"seven\n\neight\"),\n" +
+                        "  PRINT(OUT, CONSTANT(\"\r\n\")),\n" +
+                        "  PRINT(OUT, CONSTANT(\"\r\nsix,\")),\n" +
+                        "  PRINT(OUT, CONSTANT(\"seven\n\neight\")),\n" +
                         "  STATEMENT(),\n" +
-                        "  PRINT(OUT, \"\r\nnine\rten\r\n\")\n" +
+                        "  PRINT(OUT, CONSTANT(\"\r\nnine\rten\r\n\"))\n" +
                         ")\n", "code").build();
         String sourceURI = InspectorTester.getStringURI(source.getURI());
         tester = InspectorTester.start(true);
@@ -327,8 +327,8 @@ public class ITLInspectDebugTest {
         tester.eval(source);
         long id = tester.getContextId();
         assertTrue(tester.compareReceivedMessages(
-                        "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":22,\"scriptId\":\"0\",\"endColumn\":1,\"startColumn\":0,\"startLine\":0,\"length\":248," +
-                                "\"executionContextId\":" + id + ",\"url\":\"" + sourceURI + "\",\"hash\":\"e47e9ba0e3dc9092fc857bbaf75a5a33fe8aba69\"}}\n"));
+                        "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":22,\"scriptId\":\"0\",\"endColumn\":1,\"startColumn\":0,\"startLine\":0,\"length\":318," +
+                                "\"executionContextId\":" + id + ",\"url\":\"" + sourceURI + "\",\"hash\":\"f0f02f21f7562986fa514314ffa08d72fb6b765d\"}}\n"));
         tester.receiveMessages(
                         "{\"method\":\"Runtime.consoleAPICalled\"", "\"value\":\"one\\ntwo\"}",
                         "}}\n");
@@ -379,7 +379,7 @@ public class ITLInspectDebugTest {
     @Test
     public void testOutputNoNL() throws Exception {
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
-                        "  PRINT(OUT, \"no newline\"),\n" +
+                        "  PRINT(OUT, CONSTANT(\"no newline\")),\n" +
                         "  STATEMENT()\n" +
                         ")\n", "code").build();
         String sourceURI = InspectorTester.getStringURI(source.getURI());
@@ -395,8 +395,8 @@ public class ITLInspectDebugTest {
         tester.eval(source);
         long id = tester.getContextId();
         assertTrue(tester.compareReceivedMessages(
-                        "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":3,\"scriptId\":\"0\",\"endColumn\":1,\"startColumn\":0,\"startLine\":0,\"length\":50," +
-                                "\"executionContextId\":" + id + ",\"url\":\"" + sourceURI + "\",\"hash\":\"f4399823ddd23020fd98c79ff77b9c76ffffffff\"}}\n"));
+                        "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":3,\"scriptId\":\"0\",\"endColumn\":1,\"startColumn\":0,\"startLine\":0,\"length\":60," +
+                                "\"executionContextId\":" + id + ",\"url\":\"" + sourceURI + "\",\"hash\":\"f4399823ddd23020fd98c79fff69c0a9ffffffff\"}}\n"));
         // no newline, no output yet
         tester.receiveMessages("{\"method\":\"Debugger.paused\"", "\"url\":\"" + sourceURI + "\"}]}}\n");
         tester.sendMessage("{\"id\":5,\"method\":\"Debugger.resume\"}");

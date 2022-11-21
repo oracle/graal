@@ -34,6 +34,7 @@ import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -69,31 +70,31 @@ public class DigestBaseSnippets implements Snippets {
                     @Snippet.ConstantParameter ResolvedJavaType sha256type,
                     @Snippet.ConstantParameter ResolvedJavaType sha512type,
                     @Snippet.ConstantParameter ResolvedJavaType sha3type) {
-        Object realReceiver = PiNode.piCastNonNull(receiver, receiverType);
+        Object realReceiver = PiNode.piCast(receiver, receiverType, false, true, SnippetAnchorNode.anchor());
 
         Word bufAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(buf, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Byte) + ofs));
         if (useMD5Intrinsics(INJECTED_VMCONFIG) && doInstanceof(md5type, realReceiver)) {
-            Object md5obj = PiNode.piCastNonNull(realReceiver, md5type);
+            Object md5obj = PiNode.piCast(realReceiver, md5type, false, true, SnippetAnchorNode.anchor());
             Object state = RawLoadNode.load(md5obj, HotSpotReplacementsUtil.getFieldOffset(md5type, "state"), JavaKind.Object, LocationIdentity.any());
             Word stateAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(state, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Int)));
             return HotSpotBackend.md5ImplCompressMBStub(bufAddr, stateAddr, ofs, limit);
         } else if (useSHA1Intrinsics(INJECTED_VMCONFIG) && doInstanceof(sha1type, realReceiver)) {
-            Object sha1obj = PiNode.piCastNonNull(realReceiver, sha1type);
+            Object sha1obj = PiNode.piCast(realReceiver, sha1type, false, true, SnippetAnchorNode.anchor());
             Object state = RawLoadNode.load(sha1obj, HotSpotReplacementsUtil.getFieldOffset(sha1type, "state"), JavaKind.Object, LocationIdentity.any());
             Word stateAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(state, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Int)));
             return HotSpotBackend.shaImplCompressMBStub(bufAddr, stateAddr, ofs, limit);
         } else if (useSHA256Intrinsics(INJECTED_VMCONFIG) && doInstanceof(sha256type, realReceiver)) {
-            Object sha256obj = PiNode.piCastNonNull(realReceiver, sha256type);
+            Object sha256obj = PiNode.piCast(realReceiver, sha256type, false, true, SnippetAnchorNode.anchor());
             Object state = RawLoadNode.load(sha256obj, HotSpotReplacementsUtil.getFieldOffset(sha256type, "state"), JavaKind.Object, LocationIdentity.any());
             Word stateAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(state, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Int)));
             return HotSpotBackend.sha2ImplCompressMBStub(bufAddr, stateAddr, ofs, limit);
         } else if (useSHA512Intrinsics(INJECTED_VMCONFIG) && doInstanceof(sha512type, realReceiver)) {
-            Object sha512obj = PiNode.piCastNonNull(realReceiver, sha512type);
+            Object sha512obj = PiNode.piCast(realReceiver, sha512type, false, true, SnippetAnchorNode.anchor());
             Object state = RawLoadNode.load(sha512obj, HotSpotReplacementsUtil.getFieldOffset(sha512type, "state"), JavaKind.Object, LocationIdentity.any());
             Word stateAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(state, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Long)));
             return HotSpotBackend.sha5ImplCompressMBStub(bufAddr, stateAddr, ofs, limit);
         } else if (useSHA3Intrinsics(INJECTED_VMCONFIG) && doInstanceof(sha3type, realReceiver)) {
-            Object sha3obj = PiNode.piCastNonNull(realReceiver, sha3type);
+            Object sha3obj = PiNode.piCast(realReceiver, sha3type, false, true, SnippetAnchorNode.anchor());
             Object state = RawLoadNode.load(sha3obj, HotSpotReplacementsUtil.getFieldOffset(sha3type, "state"), JavaKind.Object, LocationIdentity.any());
             Word stateAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(state, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Int)));
             return HotSpotBackend.shaImplCompressMBStub(bufAddr, stateAddr, ofs, limit);

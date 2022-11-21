@@ -36,8 +36,8 @@ import java.util.function.Predicate;
 
 /**
  * Implements a hash map that is concurrent, backed by a concurrent hash map, and memory efficient.
- * The memory efficiency comes from the fact that the map is initialized only when the set contains
- * more than one entry. When it contains a single entry it is simply stored in a field as a
+ * The memory efficiency comes from the fact that the underlying map is initialized only when it
+ * contains more than one entry. When it contains a single entry it is simply stored in a field as a
  * {@link SimpleImmutableEntry}. When the map is empty the field is null. In situations where is
  * likely that the map will contain no or only one entry there is no memory overhead incurred by
  * allocating the map.

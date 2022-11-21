@@ -65,6 +65,8 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -125,8 +127,11 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
          * Get the real physical end of the stack. Everything past this point is memory-protected.
          */
         OSSupport osSupport = ImageSingletons.lookup(StackOverflowCheck.OSSupport.class);
-        UnsignedWord stackBase = osSupport.lookupStackBase();
-        UnsignedWord stackEnd = osSupport.lookupStackEnd();
+        WordPointer stackBasePtr = StackValue.get(WordPointer.class);
+        WordPointer stackEndPtr = StackValue.get(WordPointer.class);
+        osSupport.lookupStack(stackBasePtr, stackEndPtr, WordFactory.zero());
+        UnsignedWord stackBase = stackBasePtr.read();
+        UnsignedWord stackEnd = stackEndPtr.read();
 
         /* Initialize the stack base and the stack end thread locals. */
         VMThreads.StackBase.set(thread, stackBase);

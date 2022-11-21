@@ -93,16 +93,16 @@ public interface ReachabilityAnalysis {
         return false;
     }
 
-    default boolean markTypeReachable(AnalysisType type) {
+    default boolean markTypeAsReachable(AnalysisType type) {
         return type.registerAsReachable();
     }
 
-    default boolean markTypeInstantiated(AnalysisType type) {
-        return type.registerAsAllocated(null);
+    default boolean registerTypeAsAllocated(AnalysisType type, Object reason) {
+        return type.registerAsAllocated(reason);
     }
 
-    default boolean markTypeInHeap(AnalysisType type) {
-        return type.registerAsInHeap();
+    default boolean registerTypeAsInHeap(AnalysisType type, Object reason) {
+        return type.registerAsInHeap(reason);
     }
 
     default void markFieldAccessed(AnalysisField field) {

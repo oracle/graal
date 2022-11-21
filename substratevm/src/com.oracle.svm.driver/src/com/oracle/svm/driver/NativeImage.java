@@ -80,6 +80,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ClasspathUtils;
+import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.Registry;
@@ -213,7 +214,6 @@ public class NativeImage {
     final String oHPath = oH(SubstrateOptions.Path);
     final String oHEnableSharedLibraryFlag = oH + "+" + SubstrateOptions.SharedLibrary.getName();
     final String oHCLibraryPath = oH(SubstrateOptions.CLibraryPath);
-    final String oHOptimize = oH(SubstrateOptions.Optimize);
     final String oHFallbackThreshold = oH(SubstrateOptions.FallbackThreshold);
     final String oHFallbackExecutorJavaArg = oH(FallbackExecutor.Options.FallbackExecutorJavaArg);
     final String oRRuntimeJavaArg = oR(Options.FallbackExecutorRuntimeJavaArg);
@@ -259,6 +259,8 @@ public class NativeImage {
     private final List<ExcludeConfig> excludedConfigs = new ArrayList<>();
     private final LinkedHashSet<String> addModules = new LinkedHashSet<>();
 
+    private long imageBuilderPid = -1;
+
     protected static class BuildConfiguration {
 
         /*
@@ -272,6 +274,7 @@ public class NativeImage {
 
         protected final Path workDir;
         protected final Path rootDir;
+        protected final Path libJvmciDir;
         protected final List<String> args;
 
         BuildConfiguration(BuildConfiguration original) {
@@ -279,7 +282,8 @@ public class NativeImage {
             imageBuilderModeEnforcer = original.imageBuilderModeEnforcer;
             workDir = original.workDir;
             rootDir = original.rootDir;
-            args = new ArrayList<>(original.args);
+            libJvmciDir = original.libJvmciDir;
+            args = original.args;
         }
 
         protected BuildConfiguration(List<String> args) {
@@ -294,7 +298,7 @@ public class NativeImage {
                 VMError.shouldNotReachHere(e);
             }
             imageBuilderModeEnforcer = null;
-            this.args = args;
+            this.args = Collections.unmodifiableList(args);
             this.workDir = workDir != null ? workDir : Paths.get(".").toAbsolutePath().normalize();
             if (rootDir != null) {
                 this.rootDir = rootDir;
@@ -320,6 +324,8 @@ public class NativeImage {
                     this.rootDir = Paths.get(rootDirString);
                 }
             }
+            Path ljDir = this.rootDir.resolve(Paths.get("lib", "jvmci"));
+            libJvmciDir = Files.exists(ljDir) ? ljDir : null;
         }
 
         /**
@@ -379,7 +385,9 @@ public class NativeImage {
                 return Collections.emptyList();
             }
             List<Path> result = new ArrayList<>();
-            result.addAll(getJars(rootDir.resolve(Paths.get("lib", "jvmci")), "graal-sdk", "graal", "enterprise-graal"));
+            if (libJvmciDir != null) {
+                result.addAll(getJars(libJvmciDir, "graal-sdk", "graal", "enterprise-graal"));
+            }
             result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder"))));
             return result;
         }
@@ -504,7 +512,9 @@ public class NativeImage {
             List<Path> result = new ArrayList<>();
             // Non-jlinked JDKs need truffle and graal-sdk on the module path since they
             // don't have those modules as part of the JDK.
-            result.addAll(getJars(rootDir.resolve(Paths.get("lib", "jvmci")), "graal-sdk", "enterprise-graal"));
+            if (libJvmciDir != null) {
+                result.addAll(getJars(libJvmciDir, "graal-sdk", "enterprise-graal"));
+            }
             result.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-api"));
             if (modulePathBuild) {
                 result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder"))));
@@ -516,7 +526,7 @@ public class NativeImage {
          * @return entries for the --upgrade-module-path of the image builder
          */
         public List<Path> getBuilderUpgradeModulePath() {
-            return getJars(rootDir.resolve(Paths.get("lib", "jvmci")), "graal", "graal-management");
+            return libJvmciDir != null ? getJars(libJvmciDir, "graal", "graal-management") : Collections.emptyList();
         }
 
         /**
@@ -1120,7 +1130,7 @@ public class NativeImage {
 
         if (!config.buildFallbackImage() && imageBuilderArgs.contains(oHFallbackThreshold + SubstrateOptions.ForceFallback)) {
             /* Bypass regular build and proceed with fallback image building */
-            return 2;
+            return ExitStatus.FALLBACK_IMAGE.getValue();
         }
 
         if (!addModules.isEmpty()) {
@@ -1339,10 +1349,10 @@ public class NativeImage {
         }
 
         if (dryRun) {
-            return 0;
+            return ExitStatus.OK.getValue();
         }
 
-        int exitStatus = 1;
+        int exitStatus = ExitStatus.DRIVER_TO_BUILDER_ERROR.getValue();
 
         Process p = null;
         try {
@@ -1351,6 +1361,7 @@ public class NativeImage {
             pb.environment().put(ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM, Boolean.toString(config.modulePathBuild));
             sanitizeJVMEnvironment(pb.environment());
             p = pb.inheritIO().start();
+            imageBuilderPid = p.pid();
             exitStatus = p.waitFor();
         } catch (IOException | InterruptedException e) {
             throw showError(e.getMessage());
@@ -1383,6 +1394,19 @@ public class NativeImage {
         performBuild(new BuildConfiguration(javaHome, workDir, buildArgs), NativeImage::new);
     }
 
+    public static List<String> translateAPIOptions(List<String> arguments) {
+        var handler = new APIOptionHandler(new NativeImage(new BuildConfiguration(arguments)));
+        var argumentQueue = new ArgumentQueue(null);
+        handler.nativeImage.config.args.forEach(argumentQueue::add);
+        List<String> translatedOptions = new ArrayList<>();
+        while (!argumentQueue.isEmpty()) {
+            String translatedOption = handler.translateOption(argumentQueue);
+            String originalOption = argumentQueue.poll();
+            translatedOptions.add(translatedOption != null ? translatedOption : originalOption);
+        }
+        return translatedOptions;
+    }
+
     private static void performBuild(BuildConfiguration config, Function<BuildConfiguration, NativeImage> nativeImageProvider) {
         try {
             build(config, nativeImageProvider);
@@ -1398,7 +1422,7 @@ public class NativeImage {
             }
             System.exit(e.exitCode);
         }
-        System.exit(0);
+        System.exit(ExitStatus.OK.getValue());
     }
 
     protected static void build(BuildConfiguration config, Function<BuildConfiguration, NativeImage> nativeImageProvider) {
@@ -1416,16 +1440,25 @@ public class NativeImage {
                 }
             }
             int buildStatus = nativeImage.completeImageBuild();
-            if (buildStatus == 2) {
-                /* Perform fallback build */
-                nativeImage.showMessage("Generating fallback image...");
-                build(new FallbackBuildConfiguration(nativeImage), nativeImageProvider);
-                showWarning("Image '" + nativeImage.imageName +
-                                "' is a fallback image that requires a JDK for execution " +
-                                "(use --" + SubstrateOptions.OptionNameNoFallback +
-                                " to suppress fallback image generation and to print more detailed information why a fallback image was necessary).");
-            } else if (buildStatus != 0) {
-                throw showError("Image build request failed with exit status " + buildStatus, null, buildStatus);
+            switch (ExitStatus.of(buildStatus)) {
+                case OK:
+                    break;
+                case BUILDER_ERROR:
+                    /* Exit, builder has handled error reporting. */
+                    System.exit(ExitStatus.BUILDER_ERROR.getValue());
+                    break;
+                case FALLBACK_IMAGE:
+                    nativeImage.showMessage("Generating fallback image...");
+                    build(new FallbackBuildConfiguration(nativeImage), nativeImageProvider);
+                    showWarning("Image '" + nativeImage.imageName +
+                                    "' is a fallback image that requires a JDK for execution " +
+                                    "(use --" + SubstrateOptions.OptionNameNoFallback +
+                                    " to suppress fallback image generation and to print more detailed information why a fallback image was necessary).");
+                    break;
+                default:
+                    String message = String.format("Image build request for '%s' (pid: %d, path: %s) failed with exit status %d",
+                                    nativeImage.imageName, nativeImage.imageBuilderPid, nativeImage.imagePath, buildStatus);
+                    throw showError(message, null, buildStatus);
             }
         }
     }
@@ -1710,7 +1743,7 @@ public class NativeImage {
         }
 
         private NativeImageError(String message, Throwable cause) {
-            this(message, cause, 1);
+            this(message, cause, ExitStatus.DRIVER_ERROR.getValue());
         }
 
         public NativeImageError(String message, Throwable cause, int exitCode) {

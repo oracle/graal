@@ -42,6 +42,7 @@ import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -60,7 +61,9 @@ import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
+import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
@@ -187,6 +190,8 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
     protected abstract void setInvokeProfiles(Invoke invoke, JavaTypeProfile typeProfile, JavaMethodProfile methodProfile);
 
+    protected abstract String getTypeName(AnalysisType type);
+
     class StrengthenSimplifier implements CustomSimplification {
 
         private final StructuredGraph graph;
@@ -307,6 +312,41 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                     tool.addToWorkList(replacement);
                 }
 
+            } else if (n instanceof ClassIsAssignableFromNode) {
+                ClassIsAssignableFromNode node = (ClassIsAssignableFromNode) n;
+                AnalysisType nonReachableType = asConstantNonReachableType(node.getThisClass(), tool);
+                if (nonReachableType != null) {
+                    node.replaceAndDelete(LogicConstantNode.contradiction(graph));
+                }
+
+            } else if (n instanceof BytecodeExceptionNode) {
+                /*
+                 * We do not want a type to be reachable only to be used for the error message of a
+                 * ClassCastException. Therefore, in that case we replace the java.lang.Class with a
+                 * java.lang.String that is then used directly in the error message.
+                 */
+                BytecodeExceptionNode node = (BytecodeExceptionNode) n;
+                if (node.getExceptionKind() == BytecodeExceptionNode.BytecodeExceptionKind.CLASS_CAST) {
+                    AnalysisType nonReachableType = asConstantNonReachableType(node.getArguments().get(1), tool);
+                    if (nonReachableType != null) {
+                        node.getArguments().set(1, ConstantNode.forConstant(tool.getConstantReflection().forString(getTypeName(nonReachableType)), tool.getMetaAccess(), graph));
+                    }
+                }
+
+            } else if (n instanceof FrameState) {
+                /*
+                 * We do not want a type to be reachable only to be used for debugging purposes in a
+                 * FrameState. We could just null out the frame slot, but to leave as much
+                 * information as possible we replace the java.lang.Class with the type name.
+                 */
+                FrameState node = (FrameState) n;
+                for (int i = 0; i < node.values().size(); i++) {
+                    AnalysisType nonReachableType = asConstantNonReachableType(node.values().get(i), tool);
+                    if (nonReachableType != null) {
+                        node.values().set(i, ConstantNode.forConstant(tool.getConstantReflection().forString(getTypeName(nonReachableType)), tool.getMetaAccess(), graph));
+                    }
+                }
+
             } else if (n instanceof PiNode) {
                 PiNode node = (PiNode) n;
                 Stamp oldStamp = node.piStamp();
@@ -316,6 +356,16 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                     tool.addToWorkList(node);
                 }
             }
+        }
+
+        private AnalysisType asConstantNonReachableType(ValueNode value, CoreProviders providers) {
+            if (value != null && value.isConstant()) {
+                AnalysisType expectedType = (AnalysisType) providers.getConstantReflection().asJavaType(value.asConstant());
+                if (expectedType != null && !expectedType.isReachable()) {
+                    return expectedType;
+                }
+            }
+            return null;
         }
 
         private void handleInvoke(Invoke invoke, SimplifierTool tool) {
@@ -628,6 +678,16 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             AnalysisType originalType = (AnalysisType) stamp.type();
             if (originalType == null) {
                 return null;
+            }
+
+            if (!originalType.isReachable()) {
+                /* We must be in dead code. */
+                if (stamp.nonNull()) {
+                    /* We must be in dead code. */
+                    return StampFactory.empty(JavaKind.Object);
+                } else {
+                    return StampFactory.alwaysNull();
+                }
             }
 
             AnalysisType singleImplementorType = getSingleImplementorType(originalType);

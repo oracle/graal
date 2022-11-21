@@ -50,7 +50,7 @@ public class EnumArgument<T extends Enum<T>> extends ValuedArgument<T> {
         if (defaultValue == null) {
             throw new IllegalArgumentException("Default value must not be null");
         }
-        this.enumClass = defaultValue.getDeclaringClass();
+        enumClass = defaultValue.getDeclaringClass();
     }
 
     /**
@@ -78,13 +78,13 @@ public class EnumArgument<T extends Enum<T>> extends ValuedArgument<T> {
     }
 
     /**
-     * Returns a help message by extending the user-provided help string with the list of accepted
-     * values.
+     * Returns a description of the argument by extending the user-provided description with the
+     * list of accepted values.
      *
-     * @return a help message
+     * @return a description of the argument
      */
     @Override
-    public String getHelp() {
-        return super.getHelp() + ", accepted values are " + getAllValues();
+    public String getDescription() {
+        return super.getDescription() + ", accepted values are " + getAllValues();
     }
 }

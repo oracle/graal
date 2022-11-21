@@ -367,7 +367,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.isSubstitution = isSubstitution;
         assert checkIsSubstitutionInvariants(method, isSubstitution);
         this.cancellable = cancellable;
-        this.inliningLog = GraalOptions.TraceInlining.getValue(options) ? new InliningLog(rootMethod) : null;
+        this.inliningLog = GraalOptions.TraceInlining.getValue(options) || OptimizationLog.isOptimizationLogEnabled(options) ? new InliningLog(rootMethod) : null;
         this.callerContext = context;
         this.optimizationLog = OptimizationLog.getInstance(this);
     }
@@ -588,7 +588,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     public void logInliningTree() {
-        if (inliningLog != null) {
+        if (GraalOptions.TraceInlining.getValue(getOptions())) {
             String formattedTree = inliningLog.formatAsTree(true);
             if (formattedTree != null) {
                 TTY.println(formattedTree);

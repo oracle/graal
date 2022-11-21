@@ -45,6 +45,26 @@ import org.graalvm.profdiff.util.Writer;
  */
 public class EditScript<T extends TreeNode<T>> implements TreeMatching {
     /**
+     * The prefix of an identity operation.
+     */
+    public static final String IDENTITY_PREFIX = "    ";
+
+    /**
+     * The prefix of a delete operation.
+     */
+    public static final String DELETE_PREFIX = "  - ";
+
+    /**
+     * The prefix of an insert operation.
+     */
+    public static final String INSERT_PREFIX = "  + ";
+
+    /**
+     * The prefix of a relabeling operation.
+     */
+    public static final String RELABEL_PREFIX = "  * ";
+
+    /**
      * An operation that modifies a rooted, ordered and labeled tree. It is a node of the delta
      * tree. Each operation works on at most one node from the first (left) tree and at most one
      * node from the second (right) tree. The nodes have always the same depth (the depth of root is
@@ -115,7 +135,7 @@ public class EditScript<T extends TreeNode<T>> implements TreeMatching {
         @Override
         public void write(Writer writer) {
             writer.increaseIndent(depth);
-            writer.setPrefixAfterIndent("    ");
+            writer.setPrefixAfterIndent(IDENTITY_PREFIX);
             left.writeHead(writer);
             writer.clearPrefixAfterIndent();
             writer.decreaseIndent(depth);
@@ -139,7 +159,7 @@ public class EditScript<T extends TreeNode<T>> implements TreeMatching {
         @Override
         public void write(Writer writer) {
             writer.increaseIndent(depth);
-            writer.setPrefixAfterIndent("  + ");
+            writer.setPrefixAfterIndent(INSERT_PREFIX);
             right.writeRecursive(writer);
             writer.clearPrefixAfterIndent();
             writer.decreaseIndent(depth);
@@ -164,7 +184,7 @@ public class EditScript<T extends TreeNode<T>> implements TreeMatching {
         @Override
         public void write(Writer writer) {
             writer.increaseIndent(depth);
-            writer.setPrefixAfterIndent("  - ");
+            writer.setPrefixAfterIndent(DELETE_PREFIX);
             left.writeRecursive(writer);
             writer.clearPrefixAfterIndent();
             writer.decreaseIndent(depth);
@@ -189,7 +209,7 @@ public class EditScript<T extends TreeNode<T>> implements TreeMatching {
         @Override
         public void write(Writer writer) {
             writer.increaseIndent(depth);
-            writer.writeln("  * " + left.getName() + " -> " + right.getName());
+            writer.writeln(RELABEL_PREFIX + left.getNameOrNull() + " -> " + right.getNameOrNull());
             writer.decreaseIndent(depth);
         }
 

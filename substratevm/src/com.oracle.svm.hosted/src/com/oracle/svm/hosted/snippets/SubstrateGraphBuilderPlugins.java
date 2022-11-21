@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
@@ -81,10 +82,13 @@ import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AESCryptPlugin;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AllocateUninitializedArrayPlugin;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.CounterModeCryptPlugin;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.ReachabilityFencePlugin;
+import org.graalvm.compiler.replacements.nodes.AESNode;
+import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
+import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordCastNode;
@@ -220,7 +224,7 @@ public class SubstrateGraphBuilderPlugins {
         r.register(new RequiredInvocationPlugin("identityHashCode", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
-                b.addPush(JavaKind.Int, new SubstrateIdentityHashCodeNode(object, b.bci()));
+                b.addPush(JavaKind.Int, SubstrateIdentityHashCodeNode.create(object, b.bci()));
                 return true;
             }
         });
@@ -560,7 +564,7 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get();
-                b.addPush(JavaKind.Int, new SubstrateIdentityHashCodeNode(object, b.bci()));
+                b.addPush(JavaKind.Int, SubstrateIdentityHashCodeNode.create(object, b.bci()));
                 return true;
             }
         });
@@ -736,7 +740,7 @@ public class SubstrateGraphBuilderPlugins {
                         AnalysisType type = (AnalysisType) b.getMetaAccess().lookupJavaType(clazz);
                         for (int i = 0; i < dimensionCount; i++) {
                             type = type.getArrayClass();
-                            type.registerAsAllocated(clazzNode);
+                            type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(clazzNode));
                         }
                     }
                 }
@@ -1092,9 +1096,27 @@ public class SubstrateGraphBuilderPlugins {
         });
     }
 
+    private static class SubstrateCipherBlockChainingCryptPlugin extends StandardGraphBuilderPlugins.CipherBlockChainingCryptPlugin {
+
+        SubstrateCipherBlockChainingCryptPlugin(AESNode.CryptMode mode) {
+            super(mode);
+        }
+
+        @Override
+        protected boolean canApply(GraphBuilderContext b) {
+            return b instanceof BytecodeParser;
+        }
+
+        @Override
+        protected ResolvedJavaType getTypeAESCrypt(MetaAccessProvider metaAccess, ResolvedJavaType context) throws ClassNotFoundException {
+            Class<?> classAESCrypt = Class.forName("com.sun.crypto.provider.AESCrypt", true, ClassLoader.getSystemClassLoader());
+            return metaAccess.lookupJavaType(classAESCrypt);
+        }
+    }
+
     private static void registerAESPlugins(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
         Registration r = new Registration(plugins, "com.sun.crypto.provider.CounterMode", replacements);
-        r.registerConditional(AESCryptPlugin.isSupported(arch), new CounterModeCryptPlugin() {
+        r.registerConditional(CounterModeAESNode.isSupported(arch), new CounterModeCryptPlugin() {
             @Override
             protected boolean canApply(GraphBuilderContext b) {
                 return b instanceof BytecodeParser;
@@ -1114,6 +1136,10 @@ public class SubstrateGraphBuilderPlugins {
                 return metaAccess.lookupJavaType(classAESCrypt);
             }
         });
+
+        r = new Registration(plugins, "com.sun.crypto.provider.CipherBlockChaining", replacements);
+        r.registerConditional(CipherBlockChainingAESNode.isSupported(arch), new SubstrateCipherBlockChainingCryptPlugin(AESNode.CryptMode.ENCRYPT));
+        r.registerConditional(CipherBlockChainingAESNode.isSupported(arch), new SubstrateCipherBlockChainingCryptPlugin(AESNode.CryptMode.DECRYPT));
     }
 
     private static <T> T constantObjectParameter(GraphBuilderContext b, SnippetReflectionProvider snippetReflection, ResolvedJavaMethod targetMethod, int parameterIndex, Class<T> declaredType,

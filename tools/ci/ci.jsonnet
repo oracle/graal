@@ -2,6 +2,7 @@
   local common_json = import '../../common.json',
   local common = import '../../common.jsonnet',
   local composable = (import '../../common-utils.libsonnet').composable,
+  local top_level_ci = (import '../../common-utils.libsonnet').top_level_ci,
   local devkits = composable(common_json.devkits),
 
   local tools_common = composable(common_json.deps.common) + common.mx + {
@@ -13,7 +14,7 @@
 
   local common_guard = {
     guard+: {
-      includes+: ["<graal>/tools/**"]
+      includes+: ["<graal>/tools/**"] + top_level_ci,
     }
   },
   local gate_guard = common_guard + {
@@ -26,8 +27,8 @@
     name: 'gate-tools-oraclejdk' + self.jdk_version + '-' + self.os + '-' + self.arch,
     run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
     targets: ["gate"],
-    guard: {
-        includes: ["<graal>/sdk/**", "<graal>/truffle/**", "<graal>/tools/**", "**.jsonnet"],
+    guard+: {
+        includes+: ["**.jsonnet"],
     }
   },
 
@@ -63,7 +64,7 @@
     run: [
       ["mx"] + coverage_whitelisting + [
         "--strict-compliance",
-        "gate", 
+        "gate",
         "--strict-mode",
         "--jacoco-omit-excluded",
         "--jacoco-relativize-paths",
@@ -75,9 +76,10 @@
       ],
     ],
     teardown+: [
-      ["mx", "sversions", "--print-related-repos", "|", "coverage-uploader.py", "--associated-repos", "-"],
+      ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
     ],
     targets: ["weekly"],
+    notify_groups:: ["tools"],
   },
 
   builds: [

@@ -384,7 +384,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         // check if there are enough array slots remaining for the bulk loop
         asm.cmpqAndJcc(index, arrayLength, ConditionFlag.Greater, skipBulkVectorLoop, true);
 
-        emitAlign(crb, asm);
+        asm.align(preferredLoopAlignment(crb));
         asm.bind(bulkVectorLoop);
         // memory-aligned bulk comparison
         emitVectorCompare(asm, vectorSize, nVectors, arrayPtr, index, vecCmp, vecArray, cmpResult, vectorFound, false);
@@ -402,7 +402,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         } else {
             // remove bulk offset
             asm.subq(index, bulkSize);
-            emitAlign(crb, asm);
+            asm.align(preferredLoopAlignment(crb));
             // same loop as bulkVectorLoop, with only one vector
             asm.bind(singleVectorLoop);
             // add vector size
@@ -486,10 +486,6 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
             asm.movl(tmpReg, asConstant(val).asInt());
             return tmpReg;
         }
-    }
-
-    private static void emitAlign(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
-        asm.align(crb.target.wordSize * 2);
     }
 
     /**

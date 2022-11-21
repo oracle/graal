@@ -412,7 +412,7 @@ public class TruffleFeature implements InternalFeature {
          * adds it as a root and non-static root methods are only compiled if types implementing
          * them or any of their subtypes are allocated.
          */
-        access.registerAsInHeap(TruffleSupport.singleton().getOptimizedCallTargetClass());
+        config.registerAsInHeap(TruffleSupport.singleton().getOptimizedCallTargetClass(), "Concrete subclass of OptimizedCallTarget registered by TruffleFeature.");
 
         /*
          * This effectively initializes the Truffle fallback engine which does all the system

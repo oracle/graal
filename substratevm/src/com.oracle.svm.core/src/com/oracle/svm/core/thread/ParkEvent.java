@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * Each thread has several of these on which to wait. Instances are usually expensive objects
@@ -38,7 +39,22 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 public abstract class ParkEvent {
 
     public interface ParkEventFactory {
-        ParkEvent create();
+        default ParkEvent acquire() {
+            return create();
+        }
+
+        /** For legacy code that does not implement {@link #acquire}. */
+        default ParkEvent create() {
+            throw VMError.shouldNotReachHere("Must implement acquire().");
+        }
+
+        /**
+         * For legacy code. This should be an implementation detail of {@link #acquire} and
+         * {@link ParkEvent#release}.
+         */
+        default boolean usesParkEventList() {
+            return true;
+        }
     }
 
     /** Currently required by legacy code. */
@@ -78,14 +94,16 @@ public abstract class ParkEvent {
         return result;
     }
 
-    /**
-     * Acquire a ParkEvent, either from the free-list or by construction. ParkEvents are immortal,
-     * so they are acquired and released, rather than being allocated and garbage collected.
-     */
+    /** Acquire a ParkEvent, either by allocating or reusing a previously released event. */
     static ParkEvent acquire(boolean isSleepEvent) {
+        ParkEventFactory factory = ImageSingletons.lookup(ParkEventFactory.class);
+        if (!factory.usesParkEventList()) {
+            return factory.acquire();
+        }
+
         ParkEvent result = ParkEventList.getSingleton().pop();
         if (result == null) {
-            result = ImageSingletons.lookup(ParkEventFactory.class).create();
+            result = factory.acquire();
         }
 
         /* Assign a *new* cons-cell for this ParkEvent. */
@@ -96,8 +114,9 @@ public abstract class ParkEvent {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static void release(ParkEvent event) {
-        ParkEventList.getSingleton().push(event);
+    protected void release() {
+        assert ImageSingletons.lookup(ParkEventFactory.class).usesParkEventList();
+        ParkEventList.getSingleton().push(this);
     }
 }
 

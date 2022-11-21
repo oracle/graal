@@ -95,16 +95,22 @@ public final class CTypeConversion {
     }
 
     /**
-     * Copies the provide {@code javaString} into the buffer up to the provide {@code bufferSize}
-     * bytes encoded with the default character set.
+     * Copies the {@code javaString} into the buffer as a 0 terminated C string encoded with the
+     * default character set.
      * <p>
-     * In case the string is larger than the {@code buffer}, the {@code bufferSize} bytes are
-     * copied.
+     * When a nullptr is passed as the buffer and the buffer size is zero, then no copying is
+     * performed but the byte-sized length of the {@code javaString} is still returned.
+     * <p>
+     * In case the string is larger than the {@code buffer}, then an
+     * {@code IllegalArgumentException} is thrown.
      *
      * @param javaString managed Java string
-     * @param buffer to store the bytes of javaString encoded with charset
-     * @param bufferSize size of the buffer
-     * @return number of bytes copied to the buffer
+     * @param buffer to store the bytes of 0 terminated javaString encoded with the default charset
+     *            or a nullptr
+     * @param bufferSize size of the buffer or 0 when the buffer is a nullptr
+     * @return the byte-sized length of the {@code javaString} when represented as a C string
+     *         encoded with the default character set. This length does not include the 0
+     *         terminator.
      *
      * @since 19.0
      */
@@ -113,16 +119,22 @@ public final class CTypeConversion {
     }
 
     /**
-     * Copies the {@code javaString} into the buffer encoded with the {@code charset} character set.
+     * Copies the {@code javaString} into the buffer as a 0 terminated C string encoded with the
+     * {@code charset} character set.
      * <p>
-     * In case the string is larger than the {@code buffer}, the {@code bufferSize} bytes are
-     * copied.
+     * When a nullptr is passed as the buffer and the buffer size is zero, then no copying is
+     * performed but the byte-sized length of the {@code javaString} is still returned.
+     * <p>
+     * In case the string is larger than the {@code buffer}, then an
+     * {@code IllegalArgumentException} is thrown.
      *
      * @param javaString managed Java string
      * @param charset desired character set for the returned string
-     * @param buffer to store the bytes of javaString encoded with charset
-     * @param bufferSize size of the buffer
-     * @return number of bytes copied to the buffer
+     * @param buffer to store the bytes of 0 terminated javaString encoded with charset or a nullptr
+     * @param bufferSize size of the buffer or 0 when the buffer is a nullptr
+     * @return the byte-sized length of the {@code javaString} when represented as C string encoded
+     *         with the {@code charset} character set. This length does not include the 0
+     *         terminator.
      *
      * @since 19.0
      */

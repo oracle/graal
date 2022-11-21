@@ -33,7 +33,6 @@ import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.PLAIN;
 import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.RELEASE;
 import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.VOLATILE;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION;
-import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AESCryptPlugin.supports;
 import static org.graalvm.compiler.replacements.nodes.AESNode.CryptMode.DECRYPT;
 import static org.graalvm.compiler.replacements.nodes.AESNode.CryptMode.ENCRYPT;
 
@@ -42,7 +41,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
@@ -168,6 +166,7 @@ import org.graalvm.compiler.replacements.nodes.AESNode;
 import org.graalvm.compiler.replacements.nodes.AESNode.CryptMode;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
+import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import org.graalvm.compiler.replacements.nodes.LogNode;
@@ -193,8 +192,6 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import org.graalvm.word.LocationIdentity;
 
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -217,13 +214,13 @@ public class StandardGraphBuilderPlugins {
     public static void registerInvocationPlugins(SnippetReflectionProvider snippetReflection,
                     InvocationPlugins plugins,
                     Replacements replacements,
-                    boolean allowDeoptimization,
+                    boolean useExactMathPlugins,
                     boolean explicitUnsafeNullChecks,
                     boolean supportsStubBasedPlugins,
                     LoweringProvider lowerer) {
         registerObjectPlugins(plugins);
         registerClassPlugins(plugins);
-        registerMathPlugins(plugins, allowDeoptimization, replacements, lowerer);
+        registerMathPlugins(plugins, useExactMathPlugins, replacements, lowerer);
         registerStrictMathPlugins(plugins);
         registerUnsignedMathPlugins(plugins);
         registerStringPlugins(plugins, replacements, snippetReflection, supportsStubBasedPlugins);
@@ -908,9 +905,9 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    private static void registerMathPlugins(InvocationPlugins plugins, boolean allowDeoptimization, Replacements replacements, LoweringProvider lowerer) {
+    private static void registerMathPlugins(InvocationPlugins plugins, boolean useExactMathPlugins, Replacements replacements, LoweringProvider lowerer) {
         Registration r = new Registration(plugins, Math.class, replacements);
-        if (allowDeoptimization) {
+        if (useExactMathPlugins) {
             for (JavaKind kind : new JavaKind[]{JavaKind.Int, JavaKind.Long}) {
                 Class<?> type = kind.toJavaClass();
                 r.register(new InvocationPlugin("decrementExact", type) {
@@ -2080,26 +2077,6 @@ public class StandardGraphBuilderPlugins {
             ValueNode array = b.nullCheckedValue(helper.loadField(receiver, field));
             return helper.arrayStart(array, arrayKind);
         }
-
-        static boolean supports(AMD64 arch, AMD64.CPUFeature... features) {
-            EnumSet<AMD64.CPUFeature> supportedFeatures = arch.getFeatures();
-            for (AMD64.CPUFeature feature : features) {
-                if (!supportedFeatures.contains(feature)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        static boolean supports(AArch64 arch, AArch64.CPUFeature... features) {
-            EnumSet<AArch64.CPUFeature> supportedFeatures = arch.getFeatures();
-            for (AArch64.CPUFeature feature : features) {
-                if (!supportedFeatures.contains(feature)) {
-                    return false;
-                }
-            }
-            return true;
-        }
     }
 
     public static class AESCryptPlugin extends AESCryptPluginBase {
@@ -2140,15 +2117,6 @@ public class StandardGraphBuilderPlugins {
                 b.add(new AESNode(inAddr, outAddr, kAddr, mode));
             }
             return true;
-        }
-
-        public static boolean isSupported(Architecture arch) {
-            if (arch instanceof AMD64) {
-                return supports((AMD64) arch, AMD64.CPUFeature.AVX, AMD64.CPUFeature.AES);
-            } else if (arch instanceof AArch64) {
-                return supports((AArch64) arch, AArch64.CPUFeature.AES);
-            }
-            return false;
         }
     }
 
@@ -2213,6 +2181,39 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
+    public abstract static class CipherBlockChainingCryptPlugin extends AESCryptDelegatePlugin {
+
+        public CipherBlockChainingCryptPlugin(CryptMode mode) {
+            super(mode, mode.isEncrypt() ? "implEncrypt" : "implDecrypt",
+                            Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
+        }
+
+        protected abstract boolean canApply(GraphBuilderContext b);
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode in, ValueNode inOffset, ValueNode inLength, ValueNode out, ValueNode outOffset) {
+            if (!canApply(b)) {
+                return false;
+            }
+            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                ResolvedJavaType receiverType = targetMethod.getDeclaringClass();
+                ResolvedJavaType typeAESCrypt = getTypeAESCrypt(b.getMetaAccess(), receiverType);
+
+                ValueNode nonNullReceiver = receiver.get();
+                ValueNode inAddr = helper.arrayElementPointer(in, JavaKind.Byte, inOffset);
+                ValueNode outAddr = helper.arrayElementPointer(out, JavaKind.Byte, outOffset);
+                ValueNode kAddr = readEmbeddedAESCryptKArrayStart(b, helper, receiverType, typeAESCrypt, nonNullReceiver);
+                // Read CipherBlockChaining.r
+                ValueNode rAddr = readFieldArrayStart(b, helper, receiverType, "r", nonNullReceiver, JavaKind.Byte);
+                CipherBlockChainingAESNode call = b.add(new CipherBlockChainingAESNode(inAddr, outAddr, kAddr, rAddr, inLength, mode));
+                helper.emitFinalReturn(JavaKind.Int, call);
+                return true;
+            } catch (ClassNotFoundException e) {
+                return false;
+            }
+        }
+    }
+
     public static class GHASHPlugin extends InvocationPlugin {
 
         public GHASHPlugin() {
@@ -2230,26 +2231,17 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         }
-
-        public static boolean isSupported(Architecture arch) {
-            if (arch instanceof AMD64) {
-                return supports((AMD64) arch, AMD64.CPUFeature.SSSE3, AMD64.CPUFeature.CLMUL);
-            } else if (arch instanceof AArch64) {
-                return supports((AArch64) arch, AArch64.CPUFeature.PMULL);
-            }
-            return false;
-        }
     }
 
     private static void registerAESPlugins(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
         Registration r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt", replacements);
-        r.registerConditional(AESCryptPlugin.isSupported(arch), new AESCryptPlugin(ENCRYPT));
-        r.registerConditional(AESCryptPlugin.isSupported(arch), new AESCryptPlugin(DECRYPT));
+        r.registerConditional(AESNode.isSupported(arch), new AESCryptPlugin(ENCRYPT));
+        r.registerConditional(AESNode.isSupported(arch), new AESCryptPlugin(DECRYPT));
     }
 
     private static void registerGHASHPlugin(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
         Registration r = new Registration(plugins, "com.sun.crypto.provider.GHASH", replacements);
-        r.registerConditional(GHASHPlugin.isSupported(arch), new GHASHPlugin());
+        r.registerConditional(GHASHProcessBlocksNode.isSupported(arch), new GHASHPlugin());
     }
 
     private static void registerBigIntegerPlugins(InvocationPlugins plugins, Replacements replacements) {

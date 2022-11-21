@@ -58,7 +58,7 @@ public class NativeImageReachabilityAnalysisEngine extends ReachabilityAnalysisE
             protected void injectFieldTypes(AnalysisField aField, AnalysisType... declaredTypes) {
                 markFieldAccessed(aField);
                 for (AnalysisType declaredType : declaredTypes) {
-                    markTypeReachable(declaredType);
+                    markTypeAsReachable(declaredType);
                 }
             }
         };

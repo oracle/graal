@@ -50,6 +50,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMArgNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRaiseExceptionNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRaiseExceptionWindowsNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMWindowsInitThreadIntrinsicsFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMAbortNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMACosNodeGen;
@@ -522,6 +523,10 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
 
     private static void registerWindowsIntrinsics() {
         add("ExitProcess", (args, nodeFactory) -> LLVMExitNodeGen.create(args.get(1)));
+        add("_Init_thread_lock", (args, nodeFactory) -> LLVMWindowsInitThreadIntrinsicsFactory.InitThreadLockNodeGen.create());
+        add("_Init_thread_wait", (args, nodeFactory) -> LLVMWindowsInitThreadIntrinsicsFactory.InitThreadWaitNodeGen.create(args.get(1)));
+        add("_Init_thread_unlock", (args, nodeFactory) -> LLVMWindowsInitThreadIntrinsicsFactory.InitThreadUnlockNodeGen.create());
+        add("_Init_thread_notify", (args, nodeFactory) -> LLVMWindowsInitThreadIntrinsicsFactory.InitThreadNotifyNodeGen.create());
     }
 
     private static void registerMathFunctionIntrinsics() {
