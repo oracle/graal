@@ -556,6 +556,10 @@ public class CodeTreeBuilder {
         return string("// ").string(text).newLine();
     }
 
+    public CodeTreeBuilder lineCommentf(String text, Object... args) {
+        return lineComment(String.format(text, args));
+    }
+
     public CodeTreeBuilder startComment() {
         string("/*");
         startGroup();

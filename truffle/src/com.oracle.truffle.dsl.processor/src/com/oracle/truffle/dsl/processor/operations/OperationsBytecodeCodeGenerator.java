@@ -89,6 +89,8 @@ public class OperationsBytecodeCodeGenerator {
     static final Object MARKER_CHILD = new Object();
     static final Object MARKER_CONST = new Object();
 
+    private static final int INSTRUCTIONS_PER_GROUP = 21;
+
     static final boolean DO_STACK_LOGGING = false;
 
     final ProcessorContext context = ProcessorContext.getInstance();
@@ -288,14 +290,14 @@ public class OperationsBytecodeCodeGenerator {
 
         b.declaration("int", vars.sp.getName(), CodeTreeBuilder.singleString("$startSp"));
         b.declaration("int", vars.bci.getName(), CodeTreeBuilder.singleString("$startBci"));
-        b.declaration("Counter", "loopCounter", "new Counter()");
+        if (!isUncached) {
+            b.declaration("Counter", "loopCounter", "new Counter()");
+        }
 
         // this moves the frame null check out of the loop
         b.startStatement().startCall(vars.stackFrame, "getArguments").end(2);
 
         if (isUncached) {
-            // todo: better signaling to compiler that the method is not ready for compilation
-            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
             b.declaration("Counter", "uncachedExecuteCount", "new Counter()");
             b.statement("uncachedExecuteCount.count = $this.uncachedExecuteCount");
         }
@@ -326,12 +328,6 @@ public class OperationsBytecodeCodeGenerator {
         b.tree(GeneratorUtils.createPartialEvaluationConstant(vars.sp));
 
         b.declaration("int", varCurOpcode.getName(), CodeTreeBuilder.createBuilder().tree(OperationGeneratorUtils.createReadOpcode(vars.bc, vars.bci)).string(" & 0xffff").build());
-
-        if (isUncached) {
-            b.startAssign("curOpcode");
-            b.tree(OperationGeneratorUtils.extractInstruction(ctx, CodeTreeBuilder.singleString("curOpcode")));
-            b.end();
-        }
 
         b.tree(GeneratorUtils.createPartialEvaluationConstant(varCurOpcode));
 
@@ -382,77 +378,96 @@ public class OperationsBytecodeCodeGenerator {
         for (Map.Entry<Integer, List<Instruction>> lenGroup : wrappedInstructions.entrySet().stream().sorted((x, y) -> Integer.compare(x.getKey(), y.getKey())).collect(Collectors.toList())) {
             int instructionLength = lenGroup.getKey();
 
-            b.lineComment("length group " + instructionLength);
+            int doneInstructions = 0;
+            int numInstructions = lenGroup.getValue().size();
+            int numSubgroups = (int) Math.round((double) numInstructions / INSTRUCTIONS_PER_GROUP);
 
-            for (Instruction instr : lenGroup.getValue()) {
-                generateAllCasesForInstruction(ctx, b, instr);
-            }
+            for (int subgroup = 0; subgroup < numSubgroups; subgroup++) {
 
-            b.startCaseBlock();
+                b.lineCommentf("length group %d (%d / %d)", instructionLength, subgroup + 1, numSubgroups);
 
-            String groupMethodName = "instructionGroup_" + instructionLength;
-            OperationGeneratorUtils.createHelperMethod(bytecodeType, groupMethodName, () -> {
-                CodeExecutableElement met = new CodeExecutableElement(MOD_PRIVATE_STATIC, context.getType(int.class), groupMethodName);
-                met.addParameter(mContinueAt.getParameters().get(0)); // $this
-                met.addParameter(vars.stackFrame);
+                int instrsInGroup = (numInstructions - doneInstructions) / (numSubgroups - subgroup);
+                List<Instruction> instructionsInGroup = lenGroup.getValue().subList(doneInstructions, doneInstructions + instrsInGroup);
+
+                doneInstructions += instrsInGroup;
+
+                for (Instruction instr : instructionsInGroup) {
+                    generateAllCasesForInstruction(ctx, b, instr);
+                }
+
+                b.startCaseBlock();
+
+                String groupMethodName = String.format("instructionGroup_%d_%d%s", instructionLength, subgroup, (isUncached ? "_uncached" : ""));
+
+                OperationGeneratorUtils.createHelperMethod(bytecodeType, groupMethodName, () -> {
+                    CodeExecutableElement met = new CodeExecutableElement(MOD_PRIVATE_STATIC, context.getType(int.class), groupMethodName);
+                    met.addParameter(mContinueAt.getParameters().get(0)); // $this
+                    met.addParameter(vars.stackFrame);
+                    if (m.enableYield) {
+                        met.addParameter(vars.localFrame);
+                    }
+                    met.addParameter(vars.bc);
+                    met.addParameter(vars.bci);
+                    met.addParameter(new CodeVariableElement(context.getType(int.class), "$startSp"));
+                    met.addParameter(vars.consts);
+                    met.addParameter(vars.children);
+                    if (ctx.hasBoxingElimination()) {
+                        met.addParameter(new CodeVariableElement(context.getType(byte[].class), "$localTags"));
+                    }
+                    met.addParameter(new CodeVariableElement(context.getType(int[].class), "$conditionProfiles"));
+                    met.addParameter(new CodeVariableElement(context.getType(int.class), "curOpcode"));
+                    if (ctx.getData().isTracing()) {
+                        met.addParameter(new CodeVariableElement(types.ExecutionTracer, "tracer"));
+                    }
+
+                    CodeTreeBuilder b2 = met.createBuilder();
+
+                    b2.statement("int $sp = $startSp");
+
+                    b2.startSwitch().string("curOpcode").end().startBlock();
+
+                    for (Instruction instr : instructionsInGroup) {
+                        generateExecuteCase(ctx, vars, b2, varTracer, instr, false);
+                    }
+
+                    b2.caseDefault().startCaseBlock();
+                    b2.tree(GeneratorUtils.createShouldNotReachHere());
+                    b2.end();
+
+                    b2.end();
+
+                    return met;
+                });
+
+                b.startAssign(vars.sp).startCall(groupMethodName);
+
+                b.string("$this");
+                b.variable(vars.stackFrame);
                 if (m.enableYield) {
-                    met.addParameter(vars.localFrame);
+                    b.variable(vars.localFrame);
                 }
-                met.addParameter(vars.bc);
-                met.addParameter(vars.bci);
-                met.addParameter(new CodeVariableElement(context.getType(int.class), "$startSp"));
-                met.addParameter(vars.consts);
-                met.addParameter(vars.children);
+                b.variable(vars.bc);
+                b.variable(vars.bci);
+                b.variable(vars.sp);
+                b.variable(vars.consts);
+                b.variable(vars.children);
                 if (ctx.hasBoxingElimination()) {
-                    met.addParameter(new CodeVariableElement(context.getType(byte[].class), "$localTags"));
+                    b.string("$localTags");
                 }
-                met.addParameter(new CodeVariableElement(context.getType(int[].class), "$conditionProfiles"));
-                met.addParameter(new CodeVariableElement(context.getType(int.class), "curOpcode"));
-
-                CodeTreeBuilder b2 = met.createBuilder();
-
-                b2.statement("int $sp = $startSp");
-
-                b2.startSwitch().string("curOpcode").end().startBlock();
-
-                for (Instruction instr : lenGroup.getValue()) {
-                    generateExecuteCase(ctx, vars, b2, varTracer, instr, false);
+                b.string("$conditionProfiles");
+                b.string("curOpcode");
+                if (ctx.getData().isTracing()) {
+                    b.string("tracer");
                 }
 
-                b2.caseDefault().startCaseBlock();
-                b2.tree(GeneratorUtils.createShouldNotReachHere());
-                b2.end();
+                b.end(2); // assign, call
 
-                b2.end();
+                b.startAssign(vars.bci).variable(vars.bci).string(" + " + instructionLength).end();
 
-                return met;
-            });
+                b.statement("continue loop");
 
-            b.startAssign(vars.sp).startCall(groupMethodName);
-
-            b.string("$this");
-            b.variable(vars.stackFrame);
-            if (m.enableYield) {
-                b.variable(vars.localFrame);
+                b.end();
             }
-            b.variable(vars.bc);
-            b.variable(vars.bci);
-            b.variable(vars.sp);
-            b.variable(vars.consts);
-            b.variable(vars.children);
-            if (ctx.hasBoxingElimination()) {
-                b.string("$localTags");
-            }
-            b.string("$conditionProfiles");
-            b.string("curOpcode");
-
-            b.end(2); // assign, call
-
-            b.startAssign(vars.bci).variable(vars.bci).string(" + " + instructionLength).end();
-
-            b.statement("continue loop");
-
-            b.end();
 
         }
 
@@ -578,11 +593,7 @@ public class OperationsBytecodeCodeGenerator {
                 b.end();
             }
         } else {
-            if (isUncached) {
-                b.startCase().variable(op.opcodeIdField).end();
-            } else {
-                b.startCase().tree(combineBoxingBits(ctx, op, 0)).end();
-            }
+            b.startCase().tree(combineBoxingBits(ctx, op, 0)).end();
             b.startBlock();
             if (ctx.hasBoxingElimination()) {
                 vars.specializedKind = FrameKind.OBJECT;
@@ -612,11 +623,7 @@ public class OperationsBytecodeCodeGenerator {
                 }
             }
         } else {
-            if (isUncached) {
-                b.startCase().variable(op.opcodeIdField).end();
-            } else {
-                b.startCase().tree(combineBoxingBits(ctx, op, 0)).end();
-            }
+            b.startCase().tree(combineBoxingBits(ctx, op, 0)).end();
         }
     }
 

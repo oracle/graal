@@ -55,6 +55,10 @@ public class ShortCircuitInstruction extends CustomInstruction {
 
     @Override
     public CodeTree createExecuteCode(ExecutionVariables vars) {
+        return createExecuteCode(vars, false);
+    }
+
+    public CodeTree createExecuteCode(ExecutionVariables vars, boolean uncached) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         createTracerCode(vars, b);
@@ -64,7 +68,11 @@ public class ShortCircuitInstruction extends CustomInstruction {
             b.string("!");
         }
 
-        b.startStaticCall(executeMethods[0]);
+        if (uncached) {
+            b.startStaticCall(uncachedExecuteMethod);
+        } else {
+            b.startStaticCall(executeMethods[0]);
+        }
         b.variable(vars.stackFrame);
         if (ctx.getData().enableYield) {
             b.variable(vars.localFrame);
@@ -75,6 +83,12 @@ public class ShortCircuitInstruction extends CustomInstruction {
         b.variable(vars.sp);
         b.variable(vars.consts);
         b.variable(vars.children);
+        if (uncached) {
+            b.startCall("UFA", "unsafeUncheckedGetObject");
+            b.variable(vars.stackFrame);
+            b.string("$sp - 1");
+            b.end();
+        }
         b.end(2).startBlock();
         // {
         b.startAssign(vars.sp).variable(vars.sp).string(" - 1").end();
@@ -95,7 +109,7 @@ public class ShortCircuitInstruction extends CustomInstruction {
 
     @Override
     public CodeTree createExecuteUncachedCode(ExecutionVariables vars) {
-        return createExecuteCode(vars);
+        return createExecuteCode(vars, true);
     }
 
     @Override

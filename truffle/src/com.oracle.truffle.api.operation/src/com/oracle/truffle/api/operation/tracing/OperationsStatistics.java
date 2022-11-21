@@ -573,6 +573,11 @@ public class OperationsStatistics {
 
         @Override
         public void traceActiveSpecializations(int bci, int id, boolean[] activeSpecializations) {
+            if (activeSpecializations.length < 2) {
+                // we do not care for single specialisation instructions
+                return;
+            }
+
             boolean anyActive = false;
             for (int i = 0; i < activeSpecializations.length; i++) {
                 if (activeSpecializations[i]) {

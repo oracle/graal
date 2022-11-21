@@ -3,9 +3,19 @@
     "Do not modify, as it will be overwritten when running with tracing support.",
     "Use the overrides file to alter the optimisation decisions.",
     {
-        "specializations": ["FromLong"],
-        "_comment": "value: 7214274.0",
-        "id": "quicken:c.SLUnbox:FromLong",
+        "specializations": ["FromBigNumber"],
+        "_comment": "value: 6938182.0",
+        "id": "quicken:c.SLUnbox:FromBigNumber",
+        "type": "Quicken",
+        "operation": "SLUnbox"
+    },
+    {
+        "specializations": [
+            "FromLong",
+            "FromBigNumber"
+        ],
+        "_comment": "value: 4179750.0",
+        "id": "quicken:c.SLUnbox:FromLong,FromBigNumber",
         "type": "Quicken",
         "operation": "SLUnbox"
     },
@@ -14,7 +24,7 @@
             "load.local",
             "c.SLUnbox"
         ],
-        "_comment": "value: 3831023.0",
+        "_comment": "value: 3830950.0",
         "id": "si:load.local,c.SLUnbox",
         "type": "SuperInstruction"
     },
@@ -77,13 +87,6 @@
         "type": "SuperInstruction"
     },
     {
-        "specializations": ["FromBigNumber"],
-        "_comment": "value: 2827220.0",
-        "id": "quicken:c.SLUnbox:FromBigNumber",
-        "type": "Quicken",
-        "operation": "SLUnbox"
-    },
-    {
         "instructions": [
             "load.local",
             "load.constant",
@@ -95,16 +98,6 @@
         "type": "SuperInstruction"
     },
     {
-        "specializations": [
-            "FromLong",
-            "FromBigNumber"
-        ],
-        "_comment": "value: 2459249.0",
-        "id": "quicken:c.SLUnbox:FromLong,FromBigNumber",
-        "type": "Quicken",
-        "operation": "SLUnbox"
-    },
-    {
         "instructions": [
             "c.SLUnbox",
             "load.local.boxed",
@@ -112,7 +105,7 @@
             "c.SLLessOrEqual",
             "c.SLUnbox"
         ],
-        "_comment": "value: 2400444.0",
+        "_comment": "value: 2400468.0",
         "id": "si:c.SLUnbox,load.local.boxed,c.SLUnbox,c.SLLessOrEqual,c.SLUnbox",
         "type": "SuperInstruction"
     },
@@ -128,6 +121,13 @@
         "_comment": "value: 2205210.0",
         "id": "si:load.local,load.constant,load.local,load.constant,c.SLReadProperty,c.SLUnbox",
         "type": "SuperInstruction"
+    },
+    {
+        "specializations": ["FromLong"],
+        "_comment": "value: 2192389.0",
+        "id": "quicken:c.SLUnbox:FromLong",
+        "type": "Quicken",
+        "operation": "SLUnbox"
     },
     {
         "instructions": [
@@ -150,7 +150,7 @@
             "c.SLLessOrEqual",
             "c.SLUnbox"
         ],
-        "_comment": "value: 2000370.0",
+        "_comment": "value: 2000390.0",
         "id": "si:load.local,c.SLUnbox,load.local.boxed,c.SLUnbox,c.SLLessOrEqual,c.SLUnbox",
         "type": "SuperInstruction"
     },
@@ -198,6 +198,13 @@
         "_comment": "value: 1617147.0",
         "id": "si:load.constant,load.local,load.constant,c.SLReadProperty,c.SLUnbox,load.constant,c.SLUnbox,c.SLAdd",
         "type": "SuperInstruction"
+    },
+    {
+        "specializations": ["FromBoolean"],
+        "_comment": "value: 1557962.0",
+        "id": "quicken:c.SLUnbox:FromBoolean",
+        "type": "Quicken",
+        "operation": "SLUnbox"
     },
     {
         "instructions": [
@@ -301,11 +308,11 @@
         "type": "SuperInstruction"
     },
     {
-        "specializations": ["FromBoolean"],
-        "_comment": "value: 1440534.0",
-        "id": "quicken:c.SLUnbox:FromBoolean",
+        "specializations": ["Add0"],
+        "_comment": "value: 1426876.0",
+        "id": "quicken:c.SLAdd:Add0",
         "type": "Quicken",
-        "operation": "SLUnbox"
+        "operation": "SLAdd"
     },
     {
         "instructions": [
@@ -318,7 +325,7 @@
             "c.SLLessOrEqual",
             "c.SLUnbox"
         ],
-        "_comment": "value: 1400259.0",
+        "_comment": "value: 1400273.0",
         "id": "si:load.local,load.constant,c.SLReadProperty,c.SLUnbox,load.local.boxed,c.SLUnbox,c.SLLessOrEqual,c.SLUnbox",
         "type": "SuperInstruction"
     },
@@ -338,17 +345,10 @@
     },
     {
         "specializations": ["ReadSLObject0"],
-        "_comment": "value: 880189.0",
+        "_comment": "value: 924071.0",
         "id": "quicken:c.SLReadProperty:ReadSLObject0",
         "type": "Quicken",
         "operation": "SLReadProperty"
-    },
-    {
-        "specializations": ["AddLong"],
-        "_comment": "value: 880097.0",
-        "id": "quicken:c.SLAdd:AddLong",
-        "type": "Quicken",
-        "operation": "SLAdd"
     },
     {
         "instructions": [
@@ -372,43 +372,43 @@
         "type": "SuperInstruction"
     },
     {
-        "_comment": "value: 3.5962172E7",
+        "_comment": "value: 3.596216E7",
         "instruction": "c.SLUnbox",
         "id": "c:c.SLUnbox",
         "type": "CommonInstruction"
     },
     {
-        "_comment": "value: 3.596081E7",
+        "_comment": "value: 3.5960798E7",
         "instruction": "return",
         "id": "c:return",
         "type": "CommonInstruction"
     },
     {
-        "_comment": "value: 3.5130024E7",
+        "_comment": "value: 3.5130023E7",
         "instruction": "store.local",
         "id": "c:store.local",
         "type": "CommonInstruction"
     },
     {
-        "_comment": "value: 3.5130008E7",
+        "_comment": "value: 3.5130007E7",
         "instruction": "load.local",
         "id": "c:load.local",
         "type": "CommonInstruction"
     },
     {
-        "_comment": "value: 3.4369648E7",
+        "_comment": "value: 3.4369647E7",
         "instruction": "load.argument",
         "id": "c:load.argument",
         "type": "CommonInstruction"
     },
     {
-        "_comment": "value: 3.0165153E7",
+        "_comment": "value: 3.0165142E7",
         "instruction": "load.constant",
         "id": "c:load.constant",
         "type": "CommonInstruction"
     },
     {
-        "_comment": "value: 2.933489E7",
+        "_comment": "value: 2.9334879E7",
         "instruction": "pop",
         "id": "c:pop",
         "type": "CommonInstruction"
@@ -432,7 +432,7 @@
         "type": "CommonInstruction"
     },
     {
-        "_comment": "value: 2.9324362E7",
+        "_comment": "value: 2.9327091E7",
         "instruction": "load.local.boxed",
         "id": "c:load.local.boxed",
         "type": "CommonInstruction"
@@ -444,19 +444,19 @@
         "type": "CommonInstruction"
     },
     {
-        "_comment": "value: 2.4836825E7",
+        "_comment": "value: 2.4836824E7",
         "instruction": "c.SLAdd",
         "id": "c:c.SLAdd",
         "type": "CommonInstruction"
     },
     {
-        "_comment": "value: 2.1352306E7",
+        "_comment": "value: 2.1352295E7",
         "instruction": "c.SLInvoke",
         "id": "c:c.SLInvoke",
         "type": "CommonInstruction"
     },
     {
-        "_comment": "value: 2.1352158E7",
+        "_comment": "value: 2.1352147E7",
         "instruction": "c.SLFunctionLiteral",
         "id": "c:c.SLFunctionLiteral",
         "type": "CommonInstruction"
@@ -552,21 +552,21 @@
         "type": "CommonInstruction"
     },
     {
-        "_comment": "value: 799136.0",
-        "instruction": "si.load.local.c.SLUnbox",
-        "id": "c:si.load.local.c.SLUnbox",
-        "type": "CommonInstruction"
-    },
-    {
-        "_comment": "value: 798495.0",
+        "_comment": "value: 799160.0",
         "instruction": "c.SLUnbox.q.FromLong",
         "id": "c:c.SLUnbox.q.FromLong",
         "type": "CommonInstruction"
     },
     {
-        "_comment": "value: 798495.0",
+        "_comment": "value: 799160.0",
         "instruction": "c.SLUnbox.q.FromBigNumber",
         "id": "c:c.SLUnbox.q.FromBigNumber",
+        "type": "CommonInstruction"
+    },
+    {
+        "_comment": "value: 799136.0",
+        "instruction": "si.load.local.c.SLUnbox",
+        "id": "c:si.load.local.c.SLUnbox",
         "type": "CommonInstruction"
     },
     {
@@ -579,12 +579,6 @@
         "_comment": "value: 567798.0",
         "instruction": "c.SLReadProperty.q.ReadSLObject0",
         "id": "c:c.SLReadProperty.q.ReadSLObject0",
-        "type": "CommonInstruction"
-    },
-    {
-        "_comment": "value: 567798.0",
-        "instruction": "c.SLAdd.q.AddLong",
-        "id": "c:c.SLAdd.q.AddLong",
         "type": "CommonInstruction"
     },
     {
@@ -606,21 +600,27 @@
         "type": "CommonInstruction"
     },
     {
+        "_comment": "value: 547136.0",
+        "instruction": "c.SLUnbox.q.FromBoolean",
+        "id": "c:c.SLUnbox.q.FromBoolean",
+        "type": "CommonInstruction"
+    },
+    {
         "_comment": "value: 546483.0",
         "instruction": "si.load.constant.c.SLFunctionLiteral.load.local.c.SLUnbox",
         "id": "c:si.load.constant.c.SLFunctionLiteral.load.local.c.SLUnbox",
         "type": "CommonInstruction"
     },
     {
-        "_comment": "value: 546483.0",
-        "instruction": "c.SLUnbox.q.FromBoolean",
-        "id": "c:c.SLUnbox.q.FromBoolean",
+        "_comment": "value: 340063.0",
+        "instruction": "si.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd.c.SLUnbox",
+        "id": "c:si.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd.c.SLUnbox",
         "type": "CommonInstruction"
     },
     {
         "_comment": "value: 340063.0",
-        "instruction": "si.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd.c.SLUnbox",
-        "id": "c:si.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd.c.SLUnbox",
+        "instruction": "c.SLUnbox.q.FromLong",
+        "id": "c:c.SLUnbox.q.FromLong",
         "type": "CommonInstruction"
     },
     {
@@ -637,6 +637,18 @@
     },
     {
         "_comment": "value: 340063.0",
+        "instruction": "c.SLAdd.q.Add0",
+        "id": "c:c.SLAdd.q.Add0",
+        "type": "CommonInstruction"
+    },
+    {
+        "_comment": "value: 340063.0",
+        "instruction": "c.SLUnbox.q.FromBoolean",
+        "id": "c:c.SLUnbox.q.FromBoolean",
+        "type": "CommonInstruction"
+    },
+    {
+        "_comment": "value: 340063.0",
         "instruction": "si.pop.load.local.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox",
         "id": "c:si.pop.load.local.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox",
         "type": "CommonInstruction"
@@ -645,6 +657,18 @@
         "_comment": "value: 340063.0",
         "instruction": "si.c.SLToBoolean.branch.false",
         "id": "c:si.c.SLToBoolean.branch.false",
+        "type": "CommonInstruction"
+    },
+    {
+        "_comment": "value: 340063.0",
+        "instruction": "c.SLUnbox.q.FromBigNumber",
+        "id": "c:c.SLUnbox.q.FromBigNumber",
+        "type": "CommonInstruction"
+    },
+    {
+        "_comment": "value: 252677.0",
+        "instruction": "c.SLAdd.q.Add0",
+        "id": "c:c.SLAdd.q.Add0",
         "type": "CommonInstruction"
     },
     {

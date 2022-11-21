@@ -86,7 +86,7 @@ public class BranchInstruction extends Instruction {
         if (SAFEPOINT_POLL || LOOP_COUNTING || TRY_OSR || uncached) {
             b.startIf().string("targetBci <= ").variable(vars.bci).end().startBlock(); // {
 
-            if (LOOP_COUNTING || SAFEPOINT_POLL) {
+            if (!uncached && (LOOP_COUNTING || SAFEPOINT_POLL)) {
                 b.startIf();
                 b.tree(GeneratorUtils.createHasNextTier());
                 if (LOOP_COUNTING) {
