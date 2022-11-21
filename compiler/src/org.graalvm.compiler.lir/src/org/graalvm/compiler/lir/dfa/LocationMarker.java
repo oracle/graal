@@ -89,7 +89,8 @@ public abstract class LocationMarker<S extends ValueSet<S>> {
      */
     private boolean updateOutBlock(AbstractBlockBase<?> block) {
         S union = newLiveValueSet();
-        for (AbstractBlockBase<?> succ : block.getSuccessors()) {
+        for (int i = 0; i < block.getSuccessorCount(); i++) {
+            AbstractBlockBase<?> succ = block.getSuccessorAt(i);
             union.putAll(liveInMap.get(succ));
         }
         S outSet = liveOutMap.get(block);
@@ -114,7 +115,8 @@ public abstract class LocationMarker<S extends ValueSet<S>> {
                 }
                 liveInMap.put(block, currentSet);
                 currentSet = null;
-                for (AbstractBlockBase<?> b : block.getPredecessors()) {
+                for (int i = 0; i < block.getPredecessorCount(); i++) {
+                    AbstractBlockBase<?> b = block.getPredecessorAt(i);
                     worklist.add(b);
                 }
             }

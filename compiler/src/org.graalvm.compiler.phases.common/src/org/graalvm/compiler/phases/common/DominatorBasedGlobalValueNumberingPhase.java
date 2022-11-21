@@ -212,7 +212,8 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
 
             if (!b.isLoopHeader()) {
                 // apply kill effects of dominator tree siblings (not the dominator itself)
-                for (Block predecessor : b.getPredecessors()) {
+                for (int i = 0; i < b.getPredecessorCount(); i++) {
+                    Block predecessor = b.getPredecessorAt(i);
                     if (b.getDominator() == predecessor) {
                         // dominator already handled when creating the map, don't re-kill
                         // everything already killed there.

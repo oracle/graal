@@ -672,7 +672,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                 Block mergeBlock = currentNodeMap.get(merge);
                 for (int i = 0; i < phi.valueCount(); ++i) {
                     if (phi.valueAt(i) == node) {
-                        Block otherBlock = mergeBlock.getPredecessors()[i];
+                        Block otherBlock = mergeBlock.getPredecessorAt(i);
                         currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, otherBlock);
                     }
                 }
@@ -1200,8 +1200,19 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             for (Block b : getCFG().getBlocks()) {
                 buf.format("==== b: %s (loopDepth: %s). ", b, b.getLoopDepth());
                 buf.format("dom: %s. ", b.getDominator());
-                buf.format("preds: %s. ", Arrays.toString(b.getPredecessors()));
-                buf.format("succs: %s ====%n", Arrays.toString(b.getSuccessors()));
+
+                int predCount = b.getPredecessorCount();
+                Block[] pred = new Block[predCount];
+                for (int i = 0; i < predCount; i++) {
+                    pred[i] = b.getPredecessorAt(i);
+                }
+                int succCount = b.getSuccessorCount();
+                Block[] succ = new Block[succCount];
+                for (int i = 0; i < succCount; i++) {
+                    succ[i] = b.getSuccessorAt(i);
+                }
+                buf.format("preds: %s. ", Arrays.toString(pred));
+                buf.format("succs: %s ====%n", Arrays.toString(succ));
 
                 if (blockToNodesMap.get(b) != null) {
                     for (Node n : nodesFor(b)) {

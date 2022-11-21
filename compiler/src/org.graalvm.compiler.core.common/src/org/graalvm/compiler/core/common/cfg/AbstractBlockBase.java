@@ -26,8 +26,6 @@ package org.graalvm.compiler.core.common.cfg;
 
 import java.util.Comparator;
 
-import org.graalvm.compiler.debug.GraalError;
-
 public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     public static final double[] EMPTY_PROBABILITY_ARRAY = new double[0];
     public static final double[] SINGLETON_PROBABILITY_ARRAY = new double[]{1.0};
@@ -35,9 +33,14 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     protected int id;
     protected int domDepth;
 
-    protected T[] predecessors;
-    protected T[] successors;
-    protected double[] successorProbabilities;
+    private T pred0;
+    private T[] extraPred;
+
+    private T succ0;
+    private T[] extraSucc;
+
+    private double succ0Probability;
+    private double[] extraProbabilities;
 
     private T dominator;
     private T firstDominated;
@@ -79,43 +82,85 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
         this.id = id;
     }
 
-    public T[] getPredecessors() {
-        return predecessors;
+    private static <T extends AbstractBlockBase<T>> int getCount(T first, T[] extra) {
+        return first == null ? 0 : 1 + (extra == null ? 0 : extra.length);
     }
 
-    public void setPredecessors(T[] predecessors) {
-        this.predecessors = predecessors;
+    private static <T extends AbstractBlockBase<T>> T getAtIndex(T first, T[] extra, int index) {
+        return index == 0 ? first : extra[index - 1];
     }
 
-    public T[] getSuccessors() {
-        return successors;
+    public int getPredecessorCount() {
+        return getCount(pred0, extraPred);
     }
 
-    public void setSuccessors(T[] successors) {
-        this.successors = successors;
-        // Set successor probabilities, assuming all successors are equally probable.
-        if (successors.length == 0) {
-            successorProbabilities = EMPTY_PROBABILITY_ARRAY;
-        } else if (successors.length == 1) {
-            successorProbabilities = SINGLETON_PROBABILITY_ARRAY;
-        } else {
-            throw GraalError.shouldNotReachHere("use setSuccessors(T[], double[]) for more than one successor");
+    public int getSuccessorCount() {
+        return getCount(succ0, extraSucc);
+    }
+
+    private static <T extends AbstractBlockBase<T>> boolean contains(T key, T first, T[] extra) {
+        if (first == key) {
+            return true;
         }
+        if (extra != null) {
+            for (int i = 0; i < extra.length; i++) {
+                if (extra[i] == key) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
-    public void setSuccessors(T[] successors, double[] successorProbabilities) {
-        assert successors.length == successorProbabilities.length;
-        this.successors = successors;
-        this.successorProbabilities = successorProbabilities;
+    public boolean containsPred(T key) {
+        return contains(key, pred0, extraPred);
     }
 
-    public double[] getSuccessorProbabilities() {
-        return successorProbabilities;
+    public boolean containsSucc(T key) {
+        return contains(key, succ0, extraSucc);
     }
 
-    public void setSuccessorProbabilities(double[] successorProbabilities) {
-        assert successors.length == successorProbabilities.length;
-        this.successorProbabilities = successorProbabilities;
+    public T getPredecessorAt(int predIndex) {
+        assert predIndex < getPredecessorCount();
+        return getAtIndex(pred0, extraPred, predIndex);
+    }
+
+    public T getSuccessorAt(int succIndex) {
+        assert succIndex < getSuccessorCount();
+        return getAtIndex(succ0, extraSucc, succIndex);
+    }
+
+    public void setPredecessor(T p0) {
+        pred0 = p0;
+    }
+
+    @SuppressWarnings("unchecked")
+    public void setPredecessors(T p0, T[] rest) {
+        this.pred0 = p0;
+        this.extraPred = rest;
+    }
+
+    public void setSuccessor(T s0) {
+        succ0 = s0;
+        succ0Probability = 1.0D;
+    }
+
+    @SuppressWarnings("unchecked")
+    public void setSuccessors(T s0, T[] rest) {
+        this.succ0 = s0;
+        this.extraSucc = rest;
+    }
+
+    public double getSuccessorProbabilityAt(int succIndex) {
+        if (succIndex == 0) {
+            return succ0Probability;
+        }
+        return extraProbabilities[succIndex - 1];
+    }
+
+    public void setSuccessorProbabilities(double succ0Probability, double[] extraSuccProbabilities) {
+        this.succ0Probability = succ0Probability;
+        this.extraProbabilities = extraSuccProbabilities;
     }
 
     public T getDominator() {
@@ -185,14 +230,6 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     @Override
     public String toString() {
         return "B" + id;
-    }
-
-    public int getPredecessorCount() {
-        return getPredecessors().length;
-    }
-
-    public int getSuccessorCount() {
-        return getSuccessors().length;
     }
 
     public int getLinearScanNumber() {

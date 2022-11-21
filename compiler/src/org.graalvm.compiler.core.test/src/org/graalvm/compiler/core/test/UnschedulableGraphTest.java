@@ -76,8 +76,8 @@ public class UnschedulableGraphTest extends GraalCompilerTest {
         Assert.assertEquals(4, res.getCFG().getBlocks().length);
         Block split = res.getCFG().getStartBlock();
         Assert.assertEquals(2, split.getSuccessorCount());
-        Block trueSucc = split.getSuccessors()[0];
-        Block falseSucc = split.getSuccessors()[1];
+        Block trueSucc = split.getSuccessorAt(0);
+        Block falseSucc = split.getSuccessorAt(1);
         Block merge = trueSucc.getFirstSuccessor();
         Assert.assertEquals(merge, falseSucc.getFirstSuccessor());
         for (OpaqueNode op : graph.getNodes().filter(OpaqueNode.class)) {

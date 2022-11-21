@@ -25,6 +25,7 @@
 package org.graalvm.compiler.nodes.cfg;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
@@ -120,11 +121,11 @@ public final class Block extends AbstractBlockBase<Block> {
     }
 
     public Block getFirstPredecessor() {
-        return getPredecessors()[0];
+        return getPredecessorAt(0);
     }
 
     public Block getFirstSuccessor() {
-        return getSuccessors()[0];
+        return getSuccessorAt(0);
     }
 
     @Override
@@ -215,7 +216,7 @@ public final class Block extends AbstractBlockBase<Block> {
                     if (i != 0) {
                         sb.append(',');
                     }
-                    sb.append('B').append(getSuccessors()[i].getId());
+                    sb.append('B').append(getSuccessorAt(i).getId());
                 }
                 sb.append(']');
             }
@@ -226,7 +227,7 @@ public final class Block extends AbstractBlockBase<Block> {
                     if (i != 0) {
                         sb.append(',');
                     }
-                    sb.append('B').append(getPredecessors()[i].getId());
+                    sb.append('B').append(getPredecessorAt(i).getId());
                 }
                 sb.append(']');
             }
@@ -379,7 +380,8 @@ public final class Block extends AbstractBlockBase<Block> {
                 assert stopBlock.getLoopDepth() < this.getLoopDepth();
                 dominatorResult.addAll(((HIRLoop) this.getLoop()).getKillLocations());
             } else {
-                for (Block b : this.getPredecessors()) {
+                for (int i = 0; i < getPredecessorCount(); i++) {
+                    Block b = getPredecessorAt(i);
                     assert !this.isLoopHeader();
                     if (b != stopBlock) {
                         dominatorResult.addAll(b.getKillLocations());
@@ -424,19 +426,20 @@ public final class Block extends AbstractBlockBase<Block> {
 
         // adjust successor and predecessor lists
         GraalError.guarantee(getSuccessorCount() == 1, "can only delete blocks with exactly one successor");
-        Block next = getSuccessors()[0];
+        Block next = getSuccessorAt(0);
         int predecessorCount = getPredecessorCount();
-        for (Block pred : getPredecessors()) {
-            Block[] predSuccs = pred.successors;
-            Block[] newPredSuccs = new Block[predSuccs.length];
-            for (int i = 0; i < predSuccs.length; ++i) {
-                if (predSuccs[i] == this) {
-                    newPredSuccs[i] = next;
+        for (int i = 0; i < getPredecessorCount(); i++) {
+            Block pred = getPredecessorAt(i);
+            Block[] newPredSuccs = new Block[pred.getSuccessorCount()];
+            for (int j = 0; j < pred.getSuccessorCount(); j++) {
+                Block predSuccAt = pred.getSuccessorAt(j);
+                if (predSuccAt == this) {
+                    newPredSuccs[j] = next;
                 } else {
-                    newPredSuccs[i] = predSuccs[i];
+                    newPredSuccs[j] = predSuccAt;
                 }
             }
-            pred.setSuccessors(newPredSuccs, pred.getSuccessorProbabilities());
+            pred.setSuccessors(newPredSuccs[0], Arrays.copyOfRange(newPredSuccs, 1, newPredSuccs.length));
 
             if (isLoopEnd()) {
                 // The predecessor becomes a loop end.
@@ -450,17 +453,29 @@ public final class Block extends AbstractBlockBase<Block> {
 
         ArrayList<Block> newPreds = new ArrayList<>();
         for (int i = 0; i < next.getPredecessorCount(); i++) {
-            Block curPred = next.getPredecessors()[i];
+            Block curPred = next.getPredecessorAt(i);
             if (curPred == this) {
-                for (Block b : getPredecessors()) {
-                    newPreds.add(b);
+                for (int j = 0; j < getPredecessorCount(); j++) {
+                    newPreds.add(getPredecessorAt(j));
                 }
             } else {
                 newPreds.add(curPred);
             }
         }
 
-        next.setPredecessors(newPreds.toArray(Block.EMPTY_ARRAY));
+        Block firstPred = newPreds.get(0);
+        Block[] extraPred = null;
+        if (newPreds.size() - 1 > 0) {
+            extraPred = new Block[newPreds.size() - 1];
+            for (int i = 1; i < newPreds.size(); i++) {
+                extraPred[i - 1] = newPreds.get(i);
+            }
+            next.setPredecessors(firstPred, extraPred);
+        } else {
+            next.setPredecessor(firstPred);
+        }
+
+        // next.setPredecessors(newPreds.toArray(Block.EMPTY_ARRAY));
 
         // Remove the current block from the blocks of the loops it belongs to
         for (Loop<Block> currLoop = loop; currLoop != null; currLoop = currLoop.getParent()) {

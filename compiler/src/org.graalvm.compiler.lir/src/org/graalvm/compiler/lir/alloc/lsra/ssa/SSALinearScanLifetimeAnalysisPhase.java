@@ -74,7 +74,8 @@ public class SSALinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnalys
 
             AbstractBlockBase<?> selectedPredecessor = null;
             AllocatableValue selectedSource = null;
-            for (AbstractBlockBase<?> pred : block.getPredecessors()) {
+            for (int i = 0; i < block.getPredecessorCount(); i++) {
+                AbstractBlockBase<?> pred = block.getPredecessorAt(i);
                 if (selectedPredecessor == null || pred.getRelativeFrequency() > selectedPredecessor.getRelativeFrequency()) {
                     StandardOp.JumpOp jump = SSAUtil.phiOut(lir, pred);
                     Value sourceValue = jump.getOutgoingValue(idx);

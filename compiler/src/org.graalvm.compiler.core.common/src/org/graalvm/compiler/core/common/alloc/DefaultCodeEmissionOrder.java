@@ -117,7 +117,8 @@ public class DefaultCodeEmissionOrder<T extends AbstractBlockBase<T>> implements
             if (block.isLoopEnd()) {
                 Loop<T> blockLoop = block.getLoop();
 
-                for (T succ : block.getSuccessors()) {
+                for (int i = 0; i < block.getSuccessorCount(); i++) {
+                    T succ = block.getSuccessorAt(i);
                     if (order.isScheduled(succ)) {
                         continue;
                     }
@@ -138,7 +139,8 @@ public class DefaultCodeEmissionOrder<T extends AbstractBlockBase<T>> implements
                         if (alignSucc) {
                             // Make sure the loop successors of the loop header are aligned
                             // as they are the target of the backward jump.
-                            for (T successor : loop.getHeader().getSuccessors()) {
+                            for (int j = 0; j < loop.getHeader().getSuccessorCount(); j++) {
+                                T successor = loop.getHeader().getSuccessorAt(j);
                                 if (successor.getLoopDepth() == block.getLoopDepth()) {
                                     successor.setAlign(true);
                                 }
@@ -160,7 +162,8 @@ public class DefaultCodeEmissionOrder<T extends AbstractBlockBase<T>> implements
      */
     protected static <T extends AbstractBlockBase<T>> boolean skipLoopHeader(AbstractBlockBase<T> block) {
         if (block.isLoopHeader() && !block.isLoopEnd() && block.numBackedges() == 1) {
-            for (T pred : block.getPredecessors()) {
+            for (int i = 0; i < block.getPredecessorCount(); i++) {
+                T pred = block.getPredecessorAt(i);
                 if (pred.isLoopEnd() && pred.getLoop().getHeader() == block) {
                     return true;
                 }

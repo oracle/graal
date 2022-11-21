@@ -87,7 +87,8 @@ public final class LinearScanOrder {
                 // We are at a merge. Check probabilities of predecessors that are not yet
                 // scheduled.
                 double unscheduledSum = 0.0;
-                for (T pred : mostLikelySuccessor.getPredecessors()) {
+                for (int i = 0; i < mostLikelySuccessor.getPredecessorCount(); i++) {
+                    T pred = mostLikelySuccessor.getPredecessorAt(i);
                     if (pred.getLinearScanNumber() == -1) {
                         unscheduledSum += pred.getRelativeFrequency();
                     }

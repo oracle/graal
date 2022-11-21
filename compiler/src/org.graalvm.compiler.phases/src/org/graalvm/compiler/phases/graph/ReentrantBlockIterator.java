@@ -103,10 +103,11 @@ public final class ReentrantBlockIterator {
     public static <StateT> LoopInfo<StateT> processLoop(BlockIteratorClosure<StateT> closure, Loop<Block> loop, StateT initialState) {
         EconomicMap<FixedNode, StateT> blockEndStates = apply(closure, loop.getHeader(), initialState, block -> !(block.getLoop() == loop || block.isLoopHeader()));
 
-        Block[] predecessors = loop.getHeader().getPredecessors();
-        LoopInfo<StateT> info = new LoopInfo<>(predecessors.length - 1, loop.getLoopExits().size());
-        for (int i = 1; i < predecessors.length; i++) {
-            StateT endState = blockEndStates.get(predecessors[i].getEndNode());
+        Block lh = loop.getHeader();
+        final int predCount = lh.getPredecessorCount();
+        LoopInfo<StateT> info = new LoopInfo<>(predCount - 1, loop.getLoopExits().size());
+        for (int i = 1; i < predCount; i++) {
+            StateT endState = blockEndStates.get(lh.getPredecessorAt(i).getEndNode());
             // make sure all end states are unique objects
             info.endStates.add(closure.cloneState(endState));
         }
@@ -151,11 +152,10 @@ public final class ReentrantBlockIterator {
             } else {
                 state = closure.processBlock(current, state);
 
-                Block[] successors = current.getSuccessors();
-                if (successors.length == 0) {
+                if (current.getSuccessorCount() == 0) {
                     // nothing to do...
-                } else if (successors.length == 1) {
-                    Block successor = successors[0];
+                } else if (current.getSuccessorCount() == 1) {
+                    Block successor = current.getSuccessorAt(0);
                     if (successor.isLoopHeader()) {
                         if (current.isLoopEnd()) {
                             // nothing to do... loop ends only lead to loop begins we've already
@@ -181,7 +181,7 @@ public final class ReentrantBlockIterator {
                         next = successor;
                     }
                 } else {
-                    next = processMultipleSuccessors(closure, blockQueue, states, state, successors);
+                    next = processMultipleSuccessors(closure, blockQueue, states, state, current);
                 }
             }
 
@@ -208,19 +208,20 @@ public final class ReentrantBlockIterator {
         return true;
     }
 
-    private static <StateT> Block processMultipleSuccessors(BlockIteratorClosure<StateT> closure, Deque<Block> blockQueue, EconomicMap<FixedNode, StateT> states, StateT state, Block[] successors) {
-        assert successors.length > 1;
-        for (int i = 1; i < successors.length; i++) {
-            Block successor = successors[i];
+    private static <StateT> Block processMultipleSuccessors(BlockIteratorClosure<StateT> closure, Deque<Block> blockQueue, EconomicMap<FixedNode, StateT> states, StateT state, Block current) {
+        assert current.getSuccessorCount() > 1;
+        for (int i = 1; i < current.getSuccessorCount(); i++) {
+            Block successor = current.getSuccessorAt(i);
             blockQueue.addFirst(successor);
             states.put(successor.getBeginNode(), closure.afterSplit(successor, closure.cloneState(state)));
         }
-        return successors[0];
+        return current.getSuccessorAt(0);
     }
 
     private static <StateT> ArrayList<StateT> mergeStates(EconomicMap<FixedNode, StateT> states, StateT state, Block current, Block successor, AbstractMergeNode merge) {
         ArrayList<StateT> mergedStates = new ArrayList<>(merge.forwardEndCount());
-        for (Block predecessor : successor.getPredecessors()) {
+        for (int i = 0; i < successor.getPredecessorCount(); i++) {
+            Block predecessor = successor.getPredecessorAt(i);
             assert predecessor == current || states.containsKey(predecessor.getEndNode());
             StateT endState = predecessor == current ? state : states.removeKey(predecessor.getEndNode());
             mergedStates.add(endState);

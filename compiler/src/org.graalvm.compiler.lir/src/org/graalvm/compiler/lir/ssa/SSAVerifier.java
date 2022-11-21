@@ -86,7 +86,8 @@ final class SSAVerifier {
         if (visited.get(b.getId())) {
             return;
         }
-        for (AbstractBlockBase<?> pred : b.getPredecessors()) {
+        for (int i = 0; i < b.getPredecessorCount(); i++) {
+            AbstractBlockBase<?> pred = b.getPredecessorAt(i);
             if (!b.isLoopHeader() || !pred.isLoopEnd()) {
                 doBlock(pred);
             }

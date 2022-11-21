@@ -255,7 +255,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         assert gen.getResult().getLIR().getControlFlowGraph() instanceof ControlFlowGraph;
         Block result = ((ControlFlowGraph) gen.getResult().getLIR().getControlFlowGraph()).blockFor(b);
         int suxIndex = 0;
-        for (AbstractBlockBase<?> succ : gen.getCurrentBlock().getSuccessors()) {
+        for (int i = 0; i < gen.getCurrentBlock().getSuccessorCount(); i++) {
+            AbstractBlockBase<?> succ = gen.getCurrentBlock().getSuccessorAt(i);
             if (succ == result) {
                 assert gen.getCurrentBlock() instanceof Block;
                 return LabelRef.forSuccessor(gen.getResult().getLIR(), gen.getCurrentBlock(), suxIndex);
@@ -346,7 +347,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
         if (SpectrePHTBarriers.getValue(options) == AllTargets) {
             boolean hasControlSplitPredecessor = false;
-            for (Block b : block.getPredecessors()) {
+            for (int i = 0; i < block.getPredecessorCount(); i++) {
+                Block b = block.getPredecessorAt(i);
                 if (b.getSuccessorCount() > 1) {
                     hasControlSplitPredecessor = true;
                     break;

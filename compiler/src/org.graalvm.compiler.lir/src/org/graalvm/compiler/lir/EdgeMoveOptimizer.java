@@ -119,7 +119,8 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
          * {@code block} to the start of {@code block}.
          */
         private void optimizeMovesAtBlockEnd(AbstractBlockBase<?> block) {
-            for (AbstractBlockBase<?> pred : block.getPredecessors()) {
+            for (int i = 0; i < block.getPredecessorCount(); i++) {
+                AbstractBlockBase<?> pred = block.getPredecessorAt(i);
                 if (pred == block) {
                     // currently we can't handle this correctly.
                     return;
@@ -133,7 +134,8 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
             assert numPreds > 1 : "do not call otherwise";
 
             // setup a list with the LIR instructions of all predecessors
-            for (AbstractBlockBase<?> pred : block.getPredecessors()) {
+            for (int i = 0; i < block.getPredecessorCount(); i++) {
+                AbstractBlockBase<?> pred = block.getPredecessorAt(i);
                 assert pred != null;
                 assert ir.getLIRforBlock(pred) != null;
                 ArrayList<LIRInstruction> predInstructions = ir.getLIRforBlock(pred);
@@ -144,7 +146,7 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
                     return;
                 }
 
-                assert pred.getSuccessors()[0] == block : "invalid control flow";
+                assert pred.getSuccessorAt(0) == block : "invalid control flow";
                 assert predInstructions.get(predInstructions.size() - 1) instanceof StandardOp.JumpOp : "block must end with unconditional jump";
 
                 if (predInstructions.get(predInstructions.size() - 1).hasState()) {
@@ -218,7 +220,8 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
             int insertIdx = instructions.size() - 1;
 
             // setup a list with the lir-instructions of all successors
-            for (AbstractBlockBase<?> sux : block.getSuccessors()) {
+            for (int i = 0; i < block.getSuccessorCount(); i++) {
+                AbstractBlockBase<?> sux = block.getSuccessorAt(i);
                 ArrayList<LIRInstruction> suxInstructions = ir.getLIRforBlock(sux);
 
                 assert suxInstructions.get(0) instanceof StandardOp.LabelOp : "block must start with label";
@@ -228,7 +231,7 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
                     // the same blocks.
                     return;
                 }
-                assert sux.getPredecessors()[0] == block : "invalid control flow";
+                assert sux.getPredecessorAt(0) == block : "invalid control flow";
 
                 // ignore the label at the beginning of the block
                 List<LIRInstruction> seq = suxInstructions.subList(1, suxInstructions.size());

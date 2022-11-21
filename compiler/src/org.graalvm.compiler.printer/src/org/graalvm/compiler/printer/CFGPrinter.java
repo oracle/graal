@@ -131,13 +131,15 @@ class CFGPrinter extends CompilationPrinter {
         out.println("to_bci -1");
 
         out.print("predecessors ");
-        for (AbstractBlockBase<?> pred : block.getPredecessors()) {
+        for (int i = 0; i < block.getPredecessorCount(); i++) {
+            AbstractBlockBase<?> pred = block.getPredecessorAt(i);
             out.print("\"").print(blockToString(pred)).print("\" ");
         }
         out.println();
 
         out.print("successors ");
-        for (AbstractBlockBase<?> succ : block.getSuccessors()) {
+        for (int i = 0; i < block.getSuccessorCount(); i++) {
+            AbstractBlockBase<?> succ = block.getSuccessorAt(i);
             if (!succ.isExceptionEntry()) {
                 out.print("\"").print(blockToString(succ)).print("\" ");
             }
@@ -145,7 +147,8 @@ class CFGPrinter extends CompilationPrinter {
         out.println();
 
         out.print("xhandlers");
-        for (AbstractBlockBase<?> succ : block.getSuccessors()) {
+        for (int i = 0; i < block.getSuccessorCount(); i++) {
+            AbstractBlockBase<?> succ = block.getSuccessorAt(i);
             if (succ.isExceptionEntry()) {
                 out.print("\"").print(blockToString(succ)).print("\" ");
             }

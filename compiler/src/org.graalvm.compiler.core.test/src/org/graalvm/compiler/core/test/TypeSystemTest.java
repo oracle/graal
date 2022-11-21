@@ -217,7 +217,8 @@ public class TypeSystemTest extends GraalCompilerTest {
                 TTY.print("* ");
             }
             TTY.print("-> ");
-            for (Block succ : block.getSuccessors()) {
+            for (int i = 0; i < block.getSuccessorCount(); i++) {
+                Block succ = block.getSuccessorAt(i);
                 TTY.print(succ + " ");
             }
             TTY.println();

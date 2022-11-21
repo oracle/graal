@@ -336,7 +336,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                             scratch.clear();
                             // block has successors
                             if (n > 0) {
-                                for (AbstractBlockBase<?> successor : block.getSuccessors()) {
+                                for (int j = 0; j < block.getSuccessorCount(); j++) {
+                                    AbstractBlockBase<?> successor = block.getSuccessorAt(j);
                                     scratch.or(allocator.getBlockData(successor).liveIn);
                                 }
                             }
@@ -491,7 +492,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                         while (!definedIn.isEmpty()) {
                             AbstractBlockBase<?> block = definedIn.removeFirst();
                             usedIn.remove(block);
-                            for (AbstractBlockBase<?> successor : block.getSuccessors()) {
+                            for (int i = 0; i < block.getSuccessorCount(); i++) {
+                                AbstractBlockBase<?> successor = block.getSuccessorAt(i);
                                 if (successor.isLoopHeader()) {
                                     if (!block.isLoopEnd()) {
                                         definedIn.add(successor);

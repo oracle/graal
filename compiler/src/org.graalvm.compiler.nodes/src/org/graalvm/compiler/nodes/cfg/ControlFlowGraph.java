@@ -27,7 +27,6 @@ package org.graalvm.compiler.nodes.cfg;
 import static org.graalvm.compiler.core.common.cfg.AbstractBlockBase.BLOCK_ID_COMPARATOR;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 import java.util.function.Consumer;
@@ -559,8 +558,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         Block cur = b;
         // while cur has a single predecessor which has a single successor which is cur, i.e., a
         // sequential successor, this typically only happens in not-fully-canonicalized graphs
-        while (cur.getPredecessorCount() == 1 && cur.getPredecessors()[0].getSuccessorCount() == 1) {
-            Block pred = cur.getPredecessors()[0];
+        while (cur.getPredecessorCount() == 1 && cur.getPredecessorAt(0).getSuccessorCount() == 1) {
+            Block pred = cur.getPredecessorAt(0);
             FixedNode f = pred.getBeginNode();
             while (true) {
                 if (f instanceof LoopExitNode) {
@@ -571,7 +570,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                 }
                 f = ((FixedWithNextNode) f).next();
             }
-            cur = cur.getPredecessors()[0];
+            cur = cur.getPredecessorAt(0);
         }
         return false;
     }
@@ -584,7 +583,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             Block block = blocks[i];
             assert block.getPredecessorCount() > 0;
             Block dominator = null;
-            for (Block pred : block.getPredecessors()) {
+            for (int j = 0; j < block.getPredecessorCount(); j++) {
+                Block pred = block.getPredecessorAt(j);
                 if (!pred.isLoopEnd()) {
                     dominator = ((dominator == null) ? pred : commonDominatorRaw(dominator, pred));
                 }
@@ -855,7 +855,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                         // loop exit successor frequency is weighted differently
                         continue outer;
                     }
-                    for (Block succ : loopBlock.getSuccessors()) {
+                    for (int i = 0; i < loopBlock.getSuccessorCount(); i++) {
+                        Block succ = loopBlock.getSuccessorAt(i);
                         if (isDominatorTreeLoopExit(succ, true)) {
                             // loop exit successor frequency is weighted differently
                             continue outer;
@@ -868,7 +869,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                     }
                     final double selfFrequency = loopBlock.relativeFrequency;
                     double succFrequency = 0D;
-                    for (Block succ : loopBlock.getSuccessors()) {
+                    for (int i = 0; i < loopBlock.getSuccessorCount(); i++) {
+                        Block succ = loopBlock.getSuccessorAt(i);
                         succFrequency += succ.relativeFrequency;
                     }
                     if (loopBlock.getSuccessorCount() == 0) {
@@ -940,11 +942,10 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     private void perBasicBlockFrequencyAction(Block b, boolean computingLocalLoopFrequencies) {
         double relativeFrequency = -1D;
         ProfileSource source = ProfileSource.UNKNOWN;
-        Block[] predecessors = b.getPredecessors();
-        if (predecessors.length == 0) {
+        if (b.getPredecessorCount() == 0) {
             relativeFrequency = 1D;
-        } else if (predecessors.length == 1) {
-            Block pred = predecessors[0];
+        } else if (b.getPredecessorCount() == 1) {
+            Block pred = b.getPredecessorAt(0);
             relativeFrequency = pred.relativeFrequency;
             if (pred.getSuccessorCount() > 1) {
                 assert pred.getEndNode() instanceof ControlSplitNode;
@@ -955,12 +956,13 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                 }
             }
         } else {
-            relativeFrequency = predecessors[0].relativeFrequency;
-            for (int i = 1; i < predecessors.length; ++i) {
-                relativeFrequency += predecessors[i].relativeFrequency;
+            relativeFrequency = b.getPredecessorAt(0).relativeFrequency;
+            for (int i = 1; i < b.getPredecessorCount(); ++i) {
+                Block pred = b.getPredecessorAt(i);
+                relativeFrequency += pred.relativeFrequency;
                 if (computingLocalLoopFrequencies) {
-                    if (predecessors[i].frequencySource != null) {
-                        source = source.combine(predecessors[i].frequencySource);
+                    if (pred.frequencySource != null) {
+                        source = source.combine(pred.frequencySource);
                     }
                 }
             }
@@ -1104,7 +1106,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                     // Note that at this point, due to traversal order, child loops of `loop` have
                     // not been discovered yet.
                     for (Block b : loop.getBlocks()) {
-                        for (Block sux : b.getSuccessors()) {
+                        for (int i = 0; i < b.getSuccessorCount(); i++) {
+                            Block sux = b.getSuccessorAt(i);
                             if (sux.getLoop() != loop) {
                                 assert sux.getLoopDepth() < loop.getDepth();
                                 loop.getNaturalExits().add(sux);
@@ -1127,7 +1130,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                         int size = loop.getBlocks().size();
                         for (int i = 0; i < size; ++i) {
                             Block b = loop.getBlocks().get(i);
-                            for (Block sux : b.getSuccessors()) {
+                            for (int j = 0; j < b.getSuccessorCount(); j++) {
+                                Block sux = b.getSuccessorAt(j);
                                 if (sux.getLoop() != loop) {
                                     AbstractBeginNode begin = sux.getBeginNode();
                                     if (!loopBegin.isLoopExit(begin)) {
@@ -1157,7 +1161,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                 Block block = stack[tos--];
 
                 // Add predecessors or successors to the loop.
-                for (Block b : (usePred ? block.getPredecessors() : block.getSuccessors())) {
+                for (int i = 0; i < (usePred ? block.getPredecessorCount() : block.getSuccessorCount()); i++) {
+                    Block b = (usePred ? block.getPredecessorAt(i) : block.getSuccessorAt(i));
                     if (b.getLoop() != loop) {
                         stack[++tos] = b;
                         b.setLoop(loop);
@@ -1181,20 +1186,21 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                 // No successors => no postdominator.
                 continue;
             }
-            Block firstSucc = block.getSuccessors()[0];
+            Block firstSucc = block.getSuccessorAt(0);
             if (block.getSuccessorCount() == 1) {
                 block.postdominator = firstSucc;
                 continue;
             }
             Block postdominator = firstSucc;
-            for (Block sux : block.getSuccessors()) {
+            for (int i = 0; i < block.getSuccessorCount(); i++) {
+                Block sux = block.getSuccessorAt(i);
                 postdominator = commonPostdominator(postdominator, sux);
                 if (postdominator == null) {
                     // There is a dead end => no postdominator available.
                     continue outer;
                 }
             }
-            assert !Arrays.asList(block.getSuccessors()).contains(postdominator) : "Block " + block + " has a wrong post dominator: " + postdominator;
+            assert !block.containsSucc(postdominator) : "Block " + block + " has a wrong post dominator: " + postdominator;
             block.setPostDominator(postdominator);
         }
     }

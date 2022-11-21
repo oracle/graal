@@ -146,7 +146,7 @@ public class LinearScanAssignLocationsPhase extends LinearScanAllocationPhase {
             final LIRInstruction instr = allocator.getLIR().getLIRforBlock(block).get(allocator.getLIR().getLIRforBlock(block).size() - 1);
             if (instr instanceof StandardOp.JumpOp) {
                 if (allocator.getBlockData(block).liveOut.get(allocator.operandNumber(operand))) {
-                    tempOpId = allocator.getFirstLirInstructionId(block.getSuccessors()[0]);
+                    tempOpId = allocator.getFirstLirInstructionId(block.getSuccessorAt(0));
                     mode = OperandMode.DEF;
                 }
             }

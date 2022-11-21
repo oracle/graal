@@ -121,7 +121,8 @@ final class RegisterVerifier {
             }
 
             // iterate all successors
-            for (AbstractBlockBase<?> succ : block.getSuccessors()) {
+            for (int i = 0; i < block.getSuccessorCount(); i++) {
+                AbstractBlockBase<?> succ = block.getSuccessorAt(i);
                 processSuccessor(succ, inputState);
             }
         }

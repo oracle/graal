@@ -102,7 +102,8 @@ final class FixPointIntervalBuilder {
      */
     private boolean updateOutBlock(AbstractBlockBase<?> block) {
         BitSet union = new BitSet(stackSlotMap.length);
-        for (AbstractBlockBase<?> succ : block.getSuccessors()) {
+        for (int i = 0; i < block.getSuccessorCount(); i++) {
+            AbstractBlockBase<?> succ = block.getSuccessorAt(i);
             union.or(liveInMap.get(succ));
         }
         BitSet outSet = liveOutMap.get(block);
@@ -133,7 +134,8 @@ final class FixPointIntervalBuilder {
                 }
 
                 // add predecessors to work list
-                for (AbstractBlockBase<?> b : block.getPredecessors()) {
+                for (int i = 0; i < block.getPredecessorCount(); i++) {
+                    AbstractBlockBase<?> b = block.getPredecessorAt(i);
                     worklist.add(b);
                 }
                 // set in set and mark intervals

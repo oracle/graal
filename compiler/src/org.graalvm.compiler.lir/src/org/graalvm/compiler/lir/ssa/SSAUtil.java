@@ -25,10 +25,10 @@
 package org.graalvm.compiler.lir.ssa;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
@@ -90,9 +90,15 @@ public final class SSAUtil {
         if (merge.getPredecessorCount() < 2) {
             return;
         }
-        assert Arrays.asList(merge.getPredecessors()).contains(pred) : String.format("%s not in predecessor list: %s", pred, Arrays.toString(merge.getPredecessors()));
-        assert pred.getSuccessorCount() == 1 : String.format("Merge predecessor block %s has more than one successor? %s", pred, Arrays.toString(pred.getSuccessors()));
-        assert pred.getSuccessors()[0] == merge : String.format("Predecessor block %s has wrong successor: %s, should be: %s", pred, pred.getSuccessors()[0], merge);
+        if (Assertions.assertionsEnabled()) {
+            boolean found = false;
+            for (int i = 0; i < merge.getPredecessorCount(); i++) {
+                found = found || merge.getPredecessorAt(i) == pred;
+            }
+            assert found : String.format("%s not in predecessor list", pred);
+        }
+        assert pred.getSuccessorCount() == 1 : String.format("Merge predecessor block %s has more than one successor", pred);
+        assert pred.getSuccessorAt(0) == merge : String.format("Predecessor block %s has wrong successor: %s, should be: %s", pred, pred.getSuccessorAt(0), merge);
 
         JumpOp jump = phiOut(lir, pred);
         LabelOp label = phiIn(lir, merge);
@@ -142,7 +148,8 @@ public final class SSAUtil {
 
     public static void verifyPhi(LIR lir, AbstractBlockBase<?> merge) {
         assert merge.getPredecessorCount() > 1;
-        for (AbstractBlockBase<?> pred : merge.getPredecessors()) {
+        for (int i = 0; i < merge.getPredecessorCount(); i++) {
+            AbstractBlockBase<?> pred = merge.getPredecessorAt(i);
             forEachPhiValuePair(lir, merge, pred, (phiIn, phiOut) -> {
                 assert phiIn.getValueKind().equals(phiOut.getValueKind()) ||
                                 (phiIn.getPlatformKind().equals(phiOut.getPlatformKind()) && LIRKind.isUnknownReference(phiIn) && LIRKind.isValue(phiOut));

@@ -245,7 +245,19 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             }
 
             OptionValues options = block.getBeginNode().getOptions();
-            VirtualUtil.trace(options, debug, "\nBlock: %s, preds: %s, succ: %s (", block, block.getPredecessors(), block.getSuccessors());
+            if (GraalOptions.TraceEscapeAnalysis.getValue(block.getBeginNode().getOptions())) {
+                int predCount = block.getPredecessorCount();
+                Block[] pred = new Block[predCount];
+                for (int i = 0; i < predCount; i++) {
+                    pred[i] = block.getPredecessorAt(i);
+                }
+                int succCount = block.getSuccessorCount();
+                Block[] succ = new Block[succCount];
+                for (int i = 0; i < succCount; i++) {
+                    succ[i] = block.getSuccessorAt(i);
+                }
+                VirtualUtil.trace(options, debug, "\nBlock: %s, preds: %s, succ: %s (", block, pred, succ);
+            }
 
             // a lastFixedNode is needed in case we want to insert fixed nodes
             FixedWithNextNode lastFixedNode = null;
@@ -495,7 +507,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 loopLocationKillCache = loopLocationKillCacheCopy;
                 initialStateRemovedKilledLocations = initialStateRemovedKilledLocationsBackup;
                 processStateBeforeLoopOnOverflow(initialStateRemovedKilledLocations, ((LoopBeginNode) loop.getHeader().getBeginNode()).forwardEnd(),
-                                blockEffects.get(loop.getHeader().getPredecessors()[0]));
+                                blockEffects.get(loop.getHeader().getPredecessorAt(0)));
                 currentMode = EffectsClosureMode.MATERIALIZE_ALL;
                 continue;
             }
@@ -612,7 +624,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         }
 
         protected final Block getPredecessor(int index) {
-            return mergeBlock.getPredecessors()[stateIndexes[index]];
+            return mergeBlock.getPredecessorAt(stateIndexes[index]);
         }
 
         protected final NodeIterable<PhiNode> getPhis() {

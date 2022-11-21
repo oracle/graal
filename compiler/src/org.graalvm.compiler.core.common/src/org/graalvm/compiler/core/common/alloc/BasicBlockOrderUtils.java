@@ -88,8 +88,8 @@ public final class BasicBlockOrderUtils {
         boolean isTriangle = false;
         if (block.getSuccessorCount() == 2 && computationTime == ComputationTime.AFTER_CONTROL_FLOW_OPTIMIZATIONS) {
             double thisFrequency = block.getRelativeFrequency();
-            T left = block.getSuccessors()[0];
-            T right = block.getSuccessors()[1];
+            T left = block.getSuccessorAt(0);
+            T right = block.getSuccessorAt(1);
             // Check if we have a control flow triangle merging up at one of these successors. See
             // usage of isTriangle below for explanation.
             if (Math.abs(left.getRelativeFrequency() - thisFrequency) < 0.0001 && right.getPredecessorCount() == 1) {
@@ -99,8 +99,8 @@ public final class BasicBlockOrderUtils {
             }
         }
         for (int i = 0; i < block.getSuccessorCount(); i++) {
-            T successor = block.getSuccessors()[i];
-            double succProbability = block.getSuccessorProbabilities()[i];
+            T successor = block.getSuccessorAt(i);
+            double succProbability = block.getSuccessorProbabilityAt(i);
             double succFrequency = successor.getRelativeFrequency();
             assert succFrequency >= 0.0 : "Relative frequencies must be positive";
             if (computationTime == ComputationTime.AFTER_CONTROL_FLOW_OPTIMIZATIONS) {
@@ -253,7 +253,8 @@ public final class BasicBlockOrderUtils {
      * Add successor blocks into the given work list if they are not already marked as visited.
      */
     protected static <T extends AbstractBlockBase<T>> void enqueueSuccessors(T block, PriorityQueue<T> worklist, BitSet visitedBlocks) {
-        for (T successor : block.getSuccessors()) {
+        for (int i = 0; i < block.getSuccessorCount(); i++) {
+            T successor = block.getSuccessorAt(i);
             if (!visitedBlocks.get(successor.getId())) {
                 visitedBlocks.set(successor.getId());
                 worklist.add(successor);

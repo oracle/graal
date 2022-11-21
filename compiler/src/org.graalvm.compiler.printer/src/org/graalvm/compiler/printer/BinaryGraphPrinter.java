@@ -211,7 +211,11 @@ public class BinaryGraphPrinter implements
 
     @Override
     public List<Block> blockSuccessors(Block block) {
-        return Arrays.asList(block.getSuccessors());
+        ArrayList<Block> succ = new ArrayList<>();
+        for (int i = 0; i < block.getSuccessorCount(); i++) {
+            succ.add(block.getSuccessorAt(i));
+        }
+        return succ;
     }
 
     @Override

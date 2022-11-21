@@ -59,8 +59,7 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
     protected void resolveCollectMappings(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> midBlock, MoveResolver moveResolver) {
         assert moveResolver.checkEmpty();
         assert midBlock == null ||
-                        (midBlock.getPredecessorCount() == 1 && midBlock.getSuccessorCount() == 1 && midBlock.getPredecessors()[0].equals(fromBlock) && midBlock.getSuccessors()[0].equals(
-                                        toBlock));
+                        (midBlock.getPredecessorCount() == 1 && midBlock.getSuccessorCount() == 1 && midBlock.getPredecessorAt(0).equals(fromBlock) && midBlock.getSuccessorAt(0).equals(toBlock));
 
         int toBlockFirstInstructionId = allocator.getFirstLirInstructionId(toBlock);
         int fromBlockLastInstructionId = allocator.getLastLirInstructionId(fromBlock) + 1;
@@ -111,7 +110,8 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
                  * blocks which are reached by switch statements may have be more than one
                  * predecessor but it will be guaranteed that all predecessors will be the same.
                  */
-                for (AbstractBlockBase<?> predecessor : toBlock.getPredecessors()) {
+                for (int i = 0; i < toBlock.getPredecessorCount(); i++) {
+                    AbstractBlockBase<?> predecessor = toBlock.getPredecessorAt(i);
                     assert fromBlock == predecessor : "all critical edges must be broken";
                 }
             }
@@ -149,8 +149,8 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
 
                 // check if block is empty (only label and branch)
                 if (instructions.size() == 2) {
-                    AbstractBlockBase<?> pred = block.getPredecessors()[0];
-                    AbstractBlockBase<?> sux = block.getSuccessors()[0];
+                    AbstractBlockBase<?> pred = block.getPredecessorAt(0);
+                    AbstractBlockBase<?> sux = block.getSuccessorAt(0);
 
                     // prevent optimization of two consecutive blocks
                     if (!blockCompleted.get(pred.getLinearScanNumber()) && !blockCompleted.get(sux.getLinearScanNumber())) {
@@ -183,7 +183,8 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
                 alreadyResolved.clear();
                 alreadyResolved.or(blockCompleted);
 
-                for (AbstractBlockBase<?> toBlock : fromBlock.getSuccessors()) {
+                for (int i = 0; i < fromBlock.getSuccessorCount(); i++) {
+                    AbstractBlockBase<?> toBlock = fromBlock.getSuccessorAt(i);
 
                     /*
                      * Check for duplicate edges between the same blocks (can happen with switch

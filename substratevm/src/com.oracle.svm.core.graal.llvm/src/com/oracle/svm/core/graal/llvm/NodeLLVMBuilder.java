@@ -205,7 +205,8 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
                 for (SpecialRegister reg : SpecialRegister.registers()) {
                     List<LLVMValueRef> forwardPredValues = new ArrayList<>();
                     List<LLVMBasicBlockRef> forwardBlocks = new ArrayList<>();
-                    for (Block predecessor : block.getPredecessors()) {
+                    for (int i = 0; i < block.getPredecessorCount(); i++) {
+                        Block predecessor = block.getPredecessorAt(i);
                         if (processedBlocks.contains(predecessor)) {
                             forwardPredValues.add(block.isExceptionEntry() ? gen.getHandlerSpecialRegisterValue(reg, predecessor) : gen.getSpecialRegisterValue(reg, predecessor));
                             forwardBlocks.add(gen.getBlockEnd(predecessor));
@@ -221,7 +222,8 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
                     LLVMTypeRef phiType = getLLVMType(phiNode);
 
                     boolean hasBackwardIncomingEdges = false;
-                    for (Block predecessor : block.getPredecessors()) {
+                    for (int i = 0; i < block.getPredecessorCount(); i++) {
+                        Block predecessor = block.getPredecessorAt(i);
                         if (processedBlocks.contains(predecessor)) {
                             ValueNode phiValue = phiNode.valueAt((AbstractEndNode) predecessor.getEndNode());
                             LLVMValueRef value;
@@ -304,7 +306,8 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
     }
 
     private boolean verifyPredecessors(Block block) {
-        for (Block pred : block.getPredecessors()) {
+        for (int i = 0; i < block.getPredecessorCount(); i++) {
+            Block pred = block.getPredecessorAt(i);
             assert block.isLoopHeader() && pred.isLoopEnd() || processedBlocks.contains(pred) : "Predecessor not yet processed " + pred;
         }
         return true;

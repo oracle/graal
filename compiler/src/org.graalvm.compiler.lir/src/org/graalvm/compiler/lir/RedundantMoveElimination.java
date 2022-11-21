@@ -272,7 +272,8 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
                                 /*
                                  * Merge the states of predecessor blocks
                                  */
-                                for (AbstractBlockBase<?> predecessor : block.getPredecessors()) {
+                                for (int i = 0; i < block.getPredecessorCount(); i++) {
+                                    AbstractBlockBase<?> predecessor = block.getPredecessorAt(i);
                                     BlockData predData = blockData.get(predecessor);
                                     newState |= mergeState(data.entryState, predData.exitState, valueNum);
                                 }

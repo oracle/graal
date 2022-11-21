@@ -136,7 +136,8 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
                     writer.print("* ");
                 }
                 writer.print("-> ");
-                for (Block successor : block.getSuccessors()) {
+                for (int i = 0; i < block.getSuccessorCount(); i++) {
+                    Block successor = block.getSuccessorAt(i);
                     writer.print(successor);
                     writer.print(" ");
                 }
@@ -190,7 +191,8 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
                     writer.print("* ");
                 }
                 writer.print("-> ");
-                for (Block successor : block.getSuccessors()) {
+                for (int i = 0; i < block.getSuccessorCount(); i++) {
+                    Block successor = block.getSuccessorAt(i);
                     writer.print(successor);
                     writer.print(" ");
                 }

@@ -144,7 +144,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
         assert currentLocation != null : "active intervals must have a location assigned!";
 
         // get predecessor stuff
-        AbstractBlockBase<?> predecessorBlock = currentBlock.getPredecessors()[0];
+        AbstractBlockBase<?> predecessorBlock = currentBlock.getPredecessorAt(0);
         int predEndId = allocator.getLastLirInstructionId(predecessorBlock);
         Interval predecessorInterval = currentInterval.getIntervalCoveringOpId(predEndId);
         assert predecessorInterval != null : "variable not live at the end of the only predecessor! " + predecessorBlock + " -> " + currentBlock + " interval: " + currentInterval;

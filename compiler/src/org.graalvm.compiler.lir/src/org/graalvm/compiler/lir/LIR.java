@@ -260,10 +260,12 @@ public final class LIR extends LIRGenerator.VariableProvider {
             if (block == null) {
                 continue;
             }
-            for (AbstractBlockBase<?> sux : block.getSuccessors()) {
+            for (int i = 0; i < block.getSuccessorCount(); i++) {
+                AbstractBlockBase<?> sux = block.getSuccessorAt(i);
                 assert Arrays.asList(blocks).contains(sux) : "missing successor from: " + block + "to: " + sux;
             }
-            for (AbstractBlockBase<?> pred : block.getPredecessors()) {
+            for (int i = 0; i < block.getPredecessorCount(); i++) {
+                AbstractBlockBase<?> pred = block.getPredecessorAt(i);
                 assert Arrays.asList(blocks).contains(pred) : "missing predecessor from: " + block + "to: " + pred;
             }
             if (!verifyBlock(lir, block)) {

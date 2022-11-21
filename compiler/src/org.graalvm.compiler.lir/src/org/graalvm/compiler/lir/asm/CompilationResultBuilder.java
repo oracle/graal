@@ -506,9 +506,9 @@ public class CompilationResultBuilder {
                 this.formatter.format("%d, %d, %d, %f, [", b.getId(), startPC, endPC, b.getRelativeFrequency());
                 for (int i = 0; i < b.getSuccessorCount(); ++i) {
                     if (i < b.getSuccessorCount() - 1) {
-                        this.formatter.format("(%d, %f),", b.getSuccessors()[i].getId(), b.getSuccessorProbabilities()[i]);
+                        this.formatter.format("(%d, %f),", b.getSuccessorAt(i).getId(), b.getSuccessorProbabilityAt(i));
                     } else {
-                        this.formatter.format("(%d, %f)", b.getSuccessors()[i].getId(), b.getSuccessorProbabilities()[i]);
+                        this.formatter.format("(%d, %f)", b.getSuccessorAt(i).getId(), b.getSuccessorProbabilityAt(i));
                     }
                 }
                 this.formatter.format("]\n");
@@ -543,11 +543,17 @@ public class CompilationResultBuilder {
         for (AbstractBlockBase<?> b : lir.codeEmittingOrder()) {
             assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == null) || lir.codeEmittingOrder()[currentBlockIndex].equals(b);
             if (b != null) {
-                if (b.isAligned() && previousBlock != null && Arrays.stream(previousBlock.getSuccessors()).noneMatch((x) -> x == b)) {
-                    ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(b);
-                    assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
-                    StandardOp.LabelOp label = (StandardOp.LabelOp) instructions.get(0);
-                    label.setAlignment(IsolatedLoopHeaderAlignment.getValue(options));
+                if (b.isAligned() && previousBlock != null) {
+                    AbstractBlockBase<?>[] successorArray = new AbstractBlockBase<?>[previousBlock.getSuccessorCount()];
+                    for (int i = 0; i < successorArray.length; i++) {
+                        successorArray[i] = previousBlock.getSuccessorAt(i);
+                    }
+                    if (Arrays.stream(successorArray).noneMatch((x) -> x == b)) {
+                        ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(b);
+                        assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
+                        StandardOp.LabelOp label = (StandardOp.LabelOp) instructions.get(0);
+                        label.setAlignment(IsolatedLoopHeaderAlignment.getValue(options));
+                    }
                 }
                 int basicBlockStartingPC = asm.position();
                 emitBlock(b);

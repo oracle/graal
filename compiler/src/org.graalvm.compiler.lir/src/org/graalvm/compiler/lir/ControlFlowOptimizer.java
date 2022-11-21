@@ -68,7 +68,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
          * @return whether the block can be deleted
          */
         private boolean canDeleteBlock(AbstractBlockBase<?> block) {
-            if (block == null || block.getSuccessorCount() != 1 || block.getPredecessorCount() == 0 || block.getSuccessors()[0] == block) {
+            if (block == null || block.getSuccessorCount() != 1 || block.getPredecessorCount() == 0 || block.getSuccessorAt(0) == block) {
                 return false;
             }
 
@@ -77,7 +77,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
             assert instructions.size() >= 2 : "block must have label and branch";
             assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
             assert instructions.get(instructions.size() - 1) instanceof StandardOp.JumpOp : "last instruction must always be a branch";
-            assert ((StandardOp.JumpOp) instructions.get(instructions.size() - 1)).destination().label() == ((StandardOp.LabelOp) lir.getLIRforBlock(block.getSuccessors()[0]).get(
+            assert ((StandardOp.JumpOp) instructions.get(instructions.size() - 1)).destination().label() == ((StandardOp.LabelOp) lir.getLIRforBlock(block.getSuccessorAt(0)).get(
                             0)).getLabel() : "branch target must be the successor";
 
             // Block must have exactly one successor.
@@ -105,7 +105,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
 
                     block.delete();
                     // adjust successor and predecessor lists
-                    AbstractBlockBase<?> other = block.getSuccessors()[0];
+                    AbstractBlockBase<?> other = block.getSuccessorAt(0);
                     copyAlignment(block, other);
 
                     BLOCKS_DELETED.increment(lir.getDebug());

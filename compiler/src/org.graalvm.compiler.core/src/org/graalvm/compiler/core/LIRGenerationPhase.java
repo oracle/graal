@@ -95,7 +95,8 @@ public class LIRGenerationPhase extends LIRPhase<LIRGenerationPhase.LIRGeneratio
     }
 
     private static boolean verifyPredecessors(LIRGenerationResult lirGenRes, Block block) {
-        for (Block pred : block.getPredecessors()) {
+        for (int i = 0; i < block.getPredecessorCount(); i++) {
+            Block pred = block.getPredecessorAt(i);
             if (!block.isLoopHeader() || !pred.isLoopEnd()) {
                 assert isProcessed(lirGenRes, pred) : "Predecessor not yet processed " + pred;
             }

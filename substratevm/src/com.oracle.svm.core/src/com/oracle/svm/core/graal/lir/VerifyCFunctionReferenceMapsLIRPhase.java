@@ -168,7 +168,8 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends FinalCodeAnalysisPhase
             if (block.getSuccessorCount() == 0) {
                 throw VMError.shouldNotReachHere("No epilogue marker found");
             }
-            for (AbstractBlockBase<?> successor : block.getSuccessors()) {
+            for (int i = 0; i < block.getSuccessorCount(); i++) {
+                AbstractBlockBase<?> successor = block.getSuccessorAt(i);
                 if (!processed.contains(successor)) {
                     worklist.add(successor);
                 }

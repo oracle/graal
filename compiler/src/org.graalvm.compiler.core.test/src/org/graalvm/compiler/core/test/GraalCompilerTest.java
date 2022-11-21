@@ -562,7 +562,8 @@ public abstract class GraalCompilerTest extends GraalTest {
                 result.append("* ");
             }
             result.append("-> ");
-            for (Block succ : block.getSuccessors()) {
+            for (int i = 0; i < block.getSuccessorCount(); i++) {
+                Block succ = block.getSuccessorAt(i);
                 result.append(succ).append(' ');
             }
             result.append('\n');
@@ -636,7 +637,8 @@ public abstract class GraalCompilerTest extends GraalTest {
                 result.append("* ");
             }
             result.append("-> ");
-            for (Block succ : block.getSuccessors()) {
+            for (int i = 0; i < block.getSuccessorCount(); i++) {
+                Block succ = block.getSuccessorAt(i);
                 result.append(succ).append(' ');
             }
             result.append('\n');
