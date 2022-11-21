@@ -27,6 +27,8 @@ package org.graalvm.component.installer.persist;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
+import java.util.List;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.CommandTestBase;
@@ -35,6 +37,7 @@ import org.graalvm.component.installer.SoftwareChannelSource;
 import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
+import org.graalvm.component.installer.model.GraalEdition;
 import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -72,13 +75,18 @@ public class DirectoryChannelFactoryTest extends CommandTestBase implements Comm
     }
 
     @Override
-    public ComponentCatalog createComponentCatalog(CommandInput input, ComponentRegistry targetGraalVM) {
+    public ComponentCatalog createComponentCatalog(CommandInput input) {
         return new CatalogContents(this, downloader.getStorage(), getLocalRegistry());
     }
 
     @Override
     public CatalogFactory getCatalogFactory() {
         return this;
+    }
+
+    @Override
+    public List<GraalEdition> listEditions(ComponentRegistry targetGraalVM) {
+        return Collections.emptyList();
     }
 
 }

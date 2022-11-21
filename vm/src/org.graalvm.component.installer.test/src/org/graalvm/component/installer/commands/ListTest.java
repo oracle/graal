@@ -24,6 +24,9 @@
  */
 package org.graalvm.component.installer.commands;
 
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
+import com.oracle.truffle.tools.utils.json.JSONTokener;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -32,11 +35,16 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandTestBase;
+import org.graalvm.component.installer.Commands;
+import org.graalvm.component.installer.CommonConstants;
+import static org.graalvm.component.installer.CommonConstants.JSON_KEY_COMPONENTS;
+import org.graalvm.component.installer.MemoryFeedback;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
@@ -54,6 +62,9 @@ import org.junit.rules.TestName;
  */
 public class ListTest extends CommandTestBase {
     @Rule public TestName name = new TestName();
+
+    private static final String GVM_VERSION = "1.0.0-rc3-dev";
+    private static final String STABILITY = "ComponentStabilityLevel_undefined";
 
     private RemotePropertiesStorage remoteStorage;
     private Properties catalogContents = new Properties();
@@ -76,13 +87,14 @@ public class ListTest extends CommandTestBase {
         }
         initRemoteStorage();
 
+        options.put(Commands.OPTION_SHOW_UPDATES, "");
         AvailableCommand avC = new AvailableCommand();
         avC.init(this, this.withBundle(AvailableCommand.class));
 
         delegateFeedback(new FeedbackAdapter() {
             @Override
             public String l10n(String key, Object... params) {
-                if ("LIST_ComponentShortList".equals(key)) {
+                if ("LIST_ComponentShortList".equals(key) || (key != null && key.startsWith("ComponentStability"))) {
                     return reallyl10n(key, params);
                 }
                 return null;
@@ -234,5 +246,39 @@ public class ListTest extends CommandTestBase {
         assertFalse(found.contains("org.graalvm.ruby"));
         assertTrue(found.contains("org.graalvm.r"));
         assertTrue(found.contains("org.graalvm.python"));
+    }
+
+    @Test
+    public void testJSONOutput() throws Exception {
+        options.put(Commands.OPTION_JSON_OUTPUT, "");
+
+        try (InputStream is = getClass().getResourceAsStream("catalog.rcb1")) {
+            catalogContents.load(is);
+        }
+        initRemoteStorage();
+
+        options.put(Commands.OPTION_SHOW_UPDATES, "");
+        AvailableCommand avC = new AvailableCommand();
+        avC.init(this, this.withBundle(AvailableCommand.class));
+
+        MemoryFeedback mf = new MemoryFeedback();
+        delegateFeedback(mf);
+        avC.execute();
+
+        for (MemoryFeedback.Memory mem : mf) {
+            if (!mem.silent) {
+                JSONObject jo = new JSONObject(new JSONTokener(mem.key));
+                JSONArray comps = jo.getJSONArray(JSON_KEY_COMPONENTS);
+                assertEquals(3, comps.length());
+                for (int i = 0; i < comps.length(); ++i) {
+                    JSONObject comp = comps.getJSONObject(i);
+                    assertEquals(comp.toString(2), GVM_VERSION, comp.getString(CommonConstants.JSON_KEY_COMPONENT_GRAALVM));
+                    assertEquals(comp.toString(2), GVM_VERSION, comp.getString(CommonConstants.JSON_KEY_COMPONENT_VERSION));
+                    assertEquals(comp.toString(2), STABILITY, comp.getString(CommonConstants.JSON_KEY_COMPONENT_STABILITY));
+                    assertTrue(comp.toString(2), comp.getString(CommonConstants.JSON_KEY_COMPONENT_ORIGIN).contains(comp.getString(CommonConstants.JSON_KEY_COMPONENT_ID).toLowerCase(Locale.ENGLISH)));
+                    assertTrue(comp.toString(2), comp.getString(CommonConstants.JSON_KEY_COMPONENT_NAME) != null);
+                }
+            }
+        }
     }
 }

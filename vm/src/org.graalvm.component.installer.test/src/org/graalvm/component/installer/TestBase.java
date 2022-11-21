@@ -78,6 +78,16 @@ public class TestBase implements Feedback {
     public TestBase() {
     }
 
+    @Override
+    public boolean isSilent() {
+        return feedbackDelegate == null ? false : feedbackDelegate.isSilent();
+    }
+
+    @Override
+    public boolean setSilent(boolean silent) {
+        return feedbackDelegate == null ? false : feedbackDelegate.setSilent(silent);
+    }
+
     static class ClassTempFolder extends TemporaryFolder {
         ThreadLocal<File> root = new ThreadLocal<>();
 
@@ -265,7 +275,7 @@ public class TestBase implements Feedback {
     }
 
     public void verbosePart(ResourceBundle bundle, String bundleKey, Object... params) {
-        if (bundle != null) {
+        if (bundle != null && bundleKey != null) {
             MessageFormat.format(bundle.getString(bundleKey), params);
         }
         if (feedbackDelegate instanceof FeedbackAdapter) {
@@ -507,10 +517,26 @@ public class TestBase implements Feedback {
         public Path getLocalCache(URL location) {
             return TestBase.this.getLocalCache(location);
         }
+
+        @Override
+        public boolean isNonInteractive() {
+            return TestBase.this.isNonInteractive();
+        }
+
+        @Override
+        public boolean isSilent() {
+            return TestBase.this.isSilent();
+        }
+
+        @Override
+        public boolean setSilent(boolean silent) {
+            return TestBase.this.setSilent(silent);
+        }
     }
 
     public class FeedbackAdapter implements Feedback {
         private ResourceBundle currentBundle;
+        private boolean silent;
 
         @Override
         public boolean verbatimOut(String msg, boolean beVerbose) {
@@ -611,6 +637,27 @@ public class TestBase implements Feedback {
             return TestBase.this.getLocalCache(location);
         }
 
+        @Override
+        public boolean isNonInteractive() {
+            return TestBase.this.isNonInteractive();
+        }
+
+        @Override
+        public boolean isSilent() {
+            return silent;
+        }
+
+        @Override
+        public boolean setSilent(boolean silent) {
+            boolean wasSilent = this.silent;
+            this.silent = silent;
+            return wasSilent;
+        }
+    }
+
+    @Override
+    public boolean isNonInteractive() {
+        return false;
     }
 
     public static boolean isWindows() {
@@ -638,7 +685,7 @@ public class TestBase implements Feedback {
             nl = userInput.length();
         }
         String r = userInput.substring(0, nl);
-        userInput.delete(0, nl);
+        userInput.delete(0, nl + 1); // including the newline
         return r;
     }
 

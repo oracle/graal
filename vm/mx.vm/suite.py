@@ -106,7 +106,14 @@ suite = {
             },
         ]
     },
-
+    "libraries": {
+        "TruffleJSON" : {
+        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20220320.jar"],
+        "sha1" : "bb27152e93770f4e0c993efd3e620133817e5edb",
+        "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20220320-src.jar"],
+        "sourceSha1" : "d085e808a3ef7549cdb72a20056e5f87469f8d56",
+        }
+    },
     "projects": {
         "org.graalvm.component.installer" : {
             "subDir" : "src",
@@ -116,6 +123,7 @@ suite = {
             "checkstyleVersion" : "8.8",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
+                "TruffleJSON"
             ],
         },
         "org.graalvm.component.installer.test" : {

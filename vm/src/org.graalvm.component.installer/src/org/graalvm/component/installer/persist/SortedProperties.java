@@ -27,9 +27,13 @@ package org.graalvm.component.installer.persist;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Provides sorted properties, for deterministic saves.
@@ -54,5 +58,12 @@ public final class SortedProperties extends Properties {
         }
         Collections.sort(keyList);
         return Collections.enumeration((Collection) keyList);
+    }
+
+    @Override
+    public Set<Map.Entry<Object, Object>> entrySet() {
+        TreeSet<Map.Entry<Object, Object>> treeSet = new TreeSet<>(Comparator.comparing(o -> ((String) o.getKey())));
+        treeSet.addAll(super.entrySet());
+        return Collections.synchronizedSet(treeSet);
     }
 }

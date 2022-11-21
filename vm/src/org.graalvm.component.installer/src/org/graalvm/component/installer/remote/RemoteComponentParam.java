@@ -302,13 +302,45 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
         }
     }
 
+    protected FileDownloader createFileDownloader(URL remote, String desc, boolean mainFile) {
+        FileDownloader dn = new FileDownloader(desc, remote, feedback);
+        if (mainFile) {
+            configureRelatedDownloader(dn);
+        }
+        return dn;
+    }
+
+    public String downloadAndHashLicense(String remote) {
+        String desc = getLicenseType();
+        if (desc == null) {
+            desc = remote;
+        }
+        try {
+            URL u = new URL(remote);
+            FileDownloader dn = createFileDownloader(u, feedback.l10n("LICENSE_RemoteLicenseDescription", desc), false);
+            dn.download();
+            String s = String.join("\n", Files.readAllLines(dn.getLocalFile().toPath()));
+            return SystemUtils.digestString(s, false) /* + "_" + remote */;
+        } catch (IOException ex) {
+            throw feedback.failure("ERROR_DownloadLicense", ex, desc, ex.getLocalizedMessage());
+        }
+    }
+
+    /**
+     * License digest or URL.
+     */
+    private String cachedLicenseID;
+
     @Override
     public String getLicenseID() {
+        if (cachedLicenseID != null) {
+            return cachedLicenseID;
+        }
         String s = getLicensePath();
         if (s != null && SystemUtils.isRemotePath(s)) {
             // special case, so that the package will not be downloaded, if the
             // catalog specifies HTTP remote path.
-            return s;
+            return cachedLicenseID = downloadAndHashLicense(s);
         }
         try {
             return createFileLoader().getLicenseID();

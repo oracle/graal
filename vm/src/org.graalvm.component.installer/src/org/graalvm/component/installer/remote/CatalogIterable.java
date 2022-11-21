@@ -86,9 +86,13 @@ public class CatalogIterable implements ComponentIterable {
         return new It();
     }
 
+    void setRemoteRegistry(ComponentCatalog remote) {
+        this.remoteRegistry = remote;
+    }
+
     ComponentCatalog getRegistry() {
         if (remoteRegistry == null) {
-            remoteRegistry = input.getCatalogFactory().createComponentCatalog(input, input.getLocalRegistry());
+            remoteRegistry = input.getCatalogFactory().createComponentCatalog(input);
         }
         return remoteRegistry;
     }
@@ -109,7 +113,7 @@ public class CatalogIterable implements ComponentIterable {
 
     private ComponentParam latest(String s, Collection<ComponentInfo> infos) {
         List<ComponentInfo> ordered = new ArrayList<>(infos);
-        Collections.sort(ordered, ComponentInfo.versionComparator().reversed());
+        Collections.sort(ordered, ComponentInfo.reverseVersionComparator(input.getLocalRegistry().getManagementStorage()));
         boolean progress = input.optValue(Commands.OPTION_NO_DOWNLOAD_PROGRESS) == null;
         return createComponentParam(s, ordered.get(0), progress);
     }
@@ -279,6 +283,15 @@ public class CatalogIterable implements ComponentIterable {
         public CatalogItemParam(ComponentCatalog.DownloadInterceptor conf, ComponentInfo catalogInfo, String dispName, String spec, Feedback feedback, boolean progress) {
             super(catalogInfo, dispName, spec, feedback, progress);
             this.configurer = conf;
+        }
+
+        @Override
+        public MetadataLoader createMetaLoader() throws IOException {
+            if (configurer == null) {
+                return super.createMetaLoader();
+            } else {
+                return configurer.interceptMetadataLoader(getCatalogInfo(), super.createMetaLoader());
+            }
         }
 
         @Override

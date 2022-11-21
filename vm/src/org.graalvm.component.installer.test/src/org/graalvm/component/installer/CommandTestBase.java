@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -41,6 +42,7 @@ import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.model.ComponentStorage;
+import org.graalvm.component.installer.model.GraalEdition;
 import org.graalvm.component.installer.os.DefaultFileOperations;
 import org.graalvm.component.installer.os.WindowsFileOperations;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
@@ -234,7 +236,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     @Override
     public ComponentCatalog getRegistry() {
         if (registry == null) {
-            registry = getCatalogFactory().createComponentCatalog(this, getLocalRegistry());
+            registry = getCatalogFactory().createComponentCatalog(this);
         }
         return registry;
     }
@@ -277,11 +279,21 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
 
     @Override
     public CatalogFactory getCatalogFactory() {
-        if (registry != null) {
-            return (a, b) -> registry;
-        } else {
-            return (a, b) -> new CatalogContents(this, catalogStorage, getLocalRegistry());
-        }
+        return new CatalogFactory() {
+            @Override
+            public ComponentCatalog createComponentCatalog(CommandInput input) {
+                if (registry != null) {
+                    return registry;
+                } else {
+                    return new CatalogContents(CommandTestBase.this, catalogStorage, getLocalRegistry());
+                }
+            }
+
+            @Override
+            public List<GraalEdition> listEditions(ComponentRegistry targetGraalVM) {
+                return Collections.emptyList();
+            }
+        };
     }
 
     @Override

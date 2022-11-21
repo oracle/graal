@@ -223,11 +223,13 @@ public class Verifier {
                     Version gv = localRegistry.getGraalVersion();
                     int n = gv.compareTo(rq);
                     if (n > 0) {
-                        addOrThrow(new DependencyException.Mismatch(
-                                        GRAALVM_CAPABILITY,
-                                        s, reqVal, graalVal,
-                                        feedback.l10n("VERIFY_ObsoleteGraalVM",
-                                                        componentInfo.getName(), reqVal, gv.displayString())));
+                        if (!gv.installVersion().equals(rq.installVersion())) {
+                            addOrThrow(new DependencyException.Mismatch(
+                                            GRAALVM_CAPABILITY,
+                                            s, reqVal, graalVal,
+                                            feedback.l10n("VERIFY_ObsoleteGraalVM",
+                                                            componentInfo.getName(), reqVal, gv.displayString())));
+                        }
                     } else if (collectVersion) {
                         minVersion = rq;
                     } else {
