@@ -224,11 +224,11 @@ final class Target_jdk_internal_access_SharedSecrets {
      * captures state like "is a tty". The only way to remove such state is by resetting the field.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    @TargetElement(onlyWith = JDK17OrLater.class) //
+    @TargetElement(onlyWith = JDK19OrLater.class) //
     private static Target_jdk_internal_access_JavaIOAccess javaIOAccess;
 }
 
-@TargetClass(className = "jdk.internal.access.JavaIOAccess", onlyWith = JDK17OrLater.class)
+@TargetClass(className = "jdk.internal.access.JavaIOAccess", onlyWith = JDK19OrLater.class)
 final class Target_jdk_internal_access_JavaIOAccess {
 }
 

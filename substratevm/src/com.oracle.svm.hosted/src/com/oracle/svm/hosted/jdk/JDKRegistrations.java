@@ -43,7 +43,7 @@ class JDKRegistrations extends JNIRegistrationUtil implements InternalFeature {
         rerunClassInit(a, "java.io.RandomAccessFile", "java.lang.ProcessEnvironment", "java.io.File$TempDirectory", "java.nio.file.TempFileHelper", "java.lang.Terminator");
         rerunClassInit(a, "java.lang.ProcessImpl", "java.lang.ProcessHandleImpl", "java.lang.ProcessHandleImpl$Info", "java.io.FilePermission");
 
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
             /*
              * The class initializer queries and caches state (like "is a tty") - some state on JDK
              * 17 and even more after JDK 17.
