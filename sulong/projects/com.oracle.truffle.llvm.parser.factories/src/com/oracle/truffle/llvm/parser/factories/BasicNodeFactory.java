@@ -804,6 +804,7 @@ public class BasicNodeFactory implements NodeFactory {
                     return LLVMDoubleLoadNodeGen.create(targetAddress);
                 case X86_FP80:
                     return LLVM80BitFloatLoadNodeGen.create(targetAddress);
+                    //TODO: FP128
                 default:
                     throw new AssertionError(type);
             }
@@ -1095,6 +1096,7 @@ public class BasicNodeFactory implements NodeFactory {
                 case X86_FP80:
                     store = LLVM80BitFloatStoreNode.create();
                     break;
+                    //TODO: FP128
                 default:
                     throw new AssertionError(llvmType + " is not supported for insertvalue");
             }
