@@ -37,8 +37,10 @@ import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.CFGVerifier;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.Assertions;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.MemUseTrackerKey;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
@@ -121,37 +123,43 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         return compute(graph, connectBlocks, true, computeLoops, computeDominators, computePostdominators);
     }
 
+    private static final MemUseTrackerKey CFG_MEMORY = DebugContext.memUseTracker("CFGComputation");
+
+    @SuppressWarnings("try")
     public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeFrequency, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
-        ControlFlowGraph cfg = new ControlFlowGraph(graph);
 
-        cfg.identifyBlocks();
+        try (DebugCloseable c = CFG_MEMORY.start(graph.getDebug())) {
+            ControlFlowGraph cfg = new ControlFlowGraph(graph);
 
-        boolean loopInfoComputed = false;
-        if (CFGOptions.DumpEndVersusExitLoopFrequencies.getValue(graph.getOptions())) {
-            // additional loop info for sink frequencies inside the loop body
-            cfg.computeLoopInformation();
-            cfg.computeDominators();
-            loopInfoComputed = true;
-        }
+            cfg.identifyBlocks();
 
-        if (computeFrequency) {
-            cfg.computeFrequencies();
-        }
+            boolean loopInfoComputed = false;
+            if (CFGOptions.DumpEndVersusExitLoopFrequencies.getValue(graph.getOptions())) {
+                // additional loop info for sink frequencies inside the loop body
+                cfg.computeLoopInformation();
+                cfg.computeDominators();
+                loopInfoComputed = true;
+            }
 
-        if (computeLoops && !loopInfoComputed) {
-            cfg.computeLoopInformation();
-        }
-        if (computeDominators && !loopInfoComputed) {
-            cfg.computeDominators();
-            assert cfg.verifyRPOInnerLoopsFirst();
-        }
-        if (computePostdominators) {
-            cfg.computePostdominators();
-        }
+            if (computeFrequency) {
+                cfg.computeFrequencies();
+            }
 
-        // there's not much to verify when connectBlocks == false
-        assert !(connectBlocks || computeLoops || computeDominators || computePostdominators) || CFGVerifier.verify(cfg);
-        return cfg;
+            if (computeLoops && !loopInfoComputed) {
+                cfg.computeLoopInformation();
+            }
+            if (computeDominators && !loopInfoComputed) {
+                cfg.computeDominators();
+                assert cfg.verifyRPOInnerLoopsFirst();
+            }
+            if (computePostdominators) {
+                cfg.computePostdominators();
+            }
+
+            // there's not much to verify when connectBlocks == false
+            assert !(connectBlocks || computeLoops || computeDominators || computePostdominators) || CFGVerifier.verify(cfg);
+            return cfg;
+        }
     }
 
     private void identifyBlocks() {
