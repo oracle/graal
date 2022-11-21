@@ -28,33 +28,45 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-set(CMAKE_TOOLCHAIN_FILE)
-cmake_path(SET SULONG_TOOLCHAIN_CMAKE_PATH NORMALIZE "${CMAKE_CURRENT_LIST_DIR}")
-cmake_path(GET SULONG_TOOLCHAIN_CMAKE_PATH PARENT_PATH SULONG_TOOLCHAIN_PATH)
+macro(set_ifndef VAR VALUE)
+  if(NOT DEFINED ${VAR})
+    set(${VAR} ${VALUE})
+  endif()
+endmacro()
+
+set_ifndef(SULONG_TOOLCHAIN_PATH ${CMAKE_CURRENT_LIST_DIR}/..)
 
 message(VERBOSE "Using Sulong toolchain at ${SULONG_TOOLCHAIN_PATH}")
 
-set(SULONG_TOOLCHAIN_BIN ${SULONG_TOOLCHAIN_PATH}/bin)
+set_ifndef(SULONG_TOOLCHAIN_BIN ${SULONG_TOOLCHAIN_PATH}/bin)
 
 if(WIN32)
-  set(SULONG_CMD_SUFFIX ".cmd")
-  set(CMAKE_LINKER ${SULONG_TOOLCHAIN_BIN}/lld-link${SULONG_CMD_SUFFIX})
-  set(CMAKE_RC_COMPILER ${GRAAL_HOME}/lib/llvm/llvm-rc.exe)
+  set_ifndef(SULONG_CMD_SUFFIX ".cmd")
+  set_ifndef(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
+  set_ifndef(CMAKE_LINKER ${SULONG_TOOLCHAIN_BIN}/lld-link${SULONG_CMD_SUFFIX})
+  set_ifndef(CMAKE_RC_COMPILER ${GRAAL_HOME}/lib/llvm/llvm-rc.exe)
 
   # Set the build profile to sulong. This prevents CMake from adding additional
   # flags such as -O0 which preventing interop from working.
-  set(CMAKE_BUILD_TYPE "Sulong")
+  set_ifndef(CMAKE_BUILD_TYPE "Sulong")
+  set_ifndef(CMAKE_TRY_COMPILE_CONFIGURATION "Sulong")
+
+  # For cmake versions before 3.15 with old CMP0091 handling
+  if(SULONG_CMAKE_PRE_315)
+    set(CMAKE_C_FLAGS_SULONG_INIT "-D_DLL -D_MT -Xclang --dependent-lib=msvcrt")
+    set(CMAKE_CXX_FLAGS_SULONG_INIT "-D_DLL -D_MT -Xclang --dependent-lib=msvcrt")
+  endif()
 elseif(APPLE)
-  set(SULONG_CMD_SUFFIX "")
-  set(CMAKE_LINKER ${SULONG_TOOLCHAIN_BIN}/ld64.lld${SULONG_CMD_SUFFIX})
+  set_ifndef(SULONG_CMD_SUFFIX "")
+  set_ifndef(CMAKE_LINKER ${SULONG_TOOLCHAIN_BIN}/ld64.lld${SULONG_CMD_SUFFIX})
 else()
-  set(SULONG_CMD_SUFFIX "")
-  set(CMAKE_LINKER ${SULONG_TOOLCHAIN_BIN}/ld.lld${SULONG_CMD_SUFFIX})
+  set_ifndef(SULONG_CMD_SUFFIX "")
+  set_ifndef(CMAKE_LINKER ${SULONG_TOOLCHAIN_BIN}/ld.lld${SULONG_CMD_SUFFIX})
 endif()
 
-set(CMAKE_C_COMPILER ${SULONG_TOOLCHAIN_BIN}/clang${SULONG_CMD_SUFFIX})
-set(CMAKE_CXX_COMPILER ${SULONG_TOOLCHAIN_BIN}/clang++${SULONG_CMD_SUFFIX})
-set(CMAKE_AR ${SULONG_TOOLCHAIN_BIN}/llvm-ar${SULONG_CMD_SUFFIX})
-set(CMAKE_NM ${SULONG_TOOLCHAIN_BIN}/llvm-nm${SULONG_CMD_SUFFIX})
+set_ifndef(CMAKE_C_COMPILER ${SULONG_TOOLCHAIN_BIN}/clang${SULONG_CMD_SUFFIX})
+set_ifndef(CMAKE_CXX_COMPILER ${SULONG_TOOLCHAIN_BIN}/clang++${SULONG_CMD_SUFFIX})
+set_ifndef(CMAKE_AR ${SULONG_TOOLCHAIN_BIN}/llvm-ar${SULONG_CMD_SUFFIX})
+set_ifndef(CMAKE_NM ${SULONG_TOOLCHAIN_BIN}/llvm-nm${SULONG_CMD_SUFFIX})
 
-set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set_ifndef(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)

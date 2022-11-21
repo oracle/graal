@@ -930,6 +930,7 @@ suite = {
           "results" : ["native/lib/c++.lib", "native/bin/<lib:c++>", "native/include"],
           "cmakeConfig" : {
             "LLVM_ENABLE_RUNTIMES" : "libcxx",
+            "SULONG_CMAKE_PRE315" : "True",
           }
         },
       },
