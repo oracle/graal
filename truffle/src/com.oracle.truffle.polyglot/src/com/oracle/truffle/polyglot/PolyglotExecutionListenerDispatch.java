@@ -231,7 +231,7 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
                         invokeReturn();
                     }
                 } catch (Throwable t) {
-                    throw wrapHostError(t);
+                    throw config.engine.toHostException(t);
                 }
             }
         }
@@ -254,7 +254,7 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
                         invokeException();
                     }
                 } catch (Throwable t) {
-                    throw wrapHostError(t);
+                    throw config.engine.toHostException(t);
                 }
             }
         }
@@ -335,7 +335,7 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
                 try {
                     invokeReturn();
                 } catch (Throwable t) {
-                    throw wrapHostError(t);
+                    throw config.engine.toHostException(t);
                 }
             }
         }
@@ -346,7 +346,7 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
                 try {
                     invokeException();
                 } catch (Throwable t) {
-                    throw wrapHostError(t);
+                    throw config.engine.toHostException(t);
                 }
             }
         }
@@ -374,7 +374,9 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
             try {
                 return rootNode.getName();
             } catch (Throwable t) {
-                throw wrapHostError(t);
+                // TODO: Why we are wrapping to host exception? Shouldn't it be an internal error?
+                assert !config.engine.host.isHostException(t);
+                throw config.engine.host.toHostException(PolyglotFastThreadLocals.getLanguageContext(null, computeLanguageIndexFromStaticIndex(HOST_LANGUAGE_INDEX, LANGUAGE_CONTEXT_OFFSET)), t);
             }
         }
 
@@ -384,14 +386,9 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
                 try {
                     invokeOnEnter();
                 } catch (Throwable t) {
-                    throw wrapHostError(t);
+                    throw config.engine.toHostException(t);
                 }
             }
-        }
-
-        protected RuntimeException wrapHostError(Throwable t) {
-            assert !config.engine.host.isHostException(t);
-            throw config.engine.host.toHostException(PolyglotFastThreadLocals.getLanguageContext(null, computeLanguageIndexFromStaticIndex(HOST_LANGUAGE_INDEX, LANGUAGE_CONTEXT_OFFSET)), t);
         }
 
         @TruffleBoundary(allowInlining = true)

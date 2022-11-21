@@ -2209,6 +2209,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
     }
 
+    RuntimeException toHostException(Throwable t) {
+        return polyglotHostService.toHostException(host, t);
+    }
+
     static final class StableLocalLocations {
 
         @CompilationFinal(dimensions = 1) final LocalLocation[] locations;
