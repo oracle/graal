@@ -63,7 +63,7 @@ abstract class Decision {
 
     abstract String id(GlobalOperationStatistics stats);
 
-    protected abstract String prettyPrint(GlobalOperationStatistics stats);
+    protected abstract String prettyPrint(GlobalOperationStatistics stats, double normalizationValue);
 
     protected String createsInstruction(GlobalOperationStatistics stats) {
         return null;
@@ -74,9 +74,9 @@ abstract class Decision {
         return false;
     }
 
-    JSONObject serialize(GlobalOperationStatistics stats) {
+    JSONObject serialize(GlobalOperationStatistics stats, double normalizationValue) {
         JSONObject obj = new JSONObject();
-        obj.put("_comment", "value: " + value());
+        obj.put("_comment", "value: " + value() / normalizationValue);
         obj.put("type", type);
         obj.put("id", id(stats));
         return obj;
@@ -106,8 +106,8 @@ abstract class Decision {
         }
 
         @Override
-        JSONObject serialize(GlobalOperationStatistics stats) {
-            JSONObject result = super.serialize(stats);
+        JSONObject serialize(GlobalOperationStatistics stats, double norm) {
+            JSONObject result = super.serialize(stats, norm);
             String instrName = stats.instrNames[instruction];
             String shortName;
             if (instrName.startsWith("c.")) {
@@ -128,11 +128,11 @@ abstract class Decision {
         }
 
         @Override
-        protected String prettyPrint(GlobalOperationStatistics stats) {
+        protected String prettyPrint(GlobalOperationStatistics stats, double normalizationValue) {
             StringBuilder sb = new StringBuilder();
 
             sb.append("Quicken ").append(id(stats)).append('\n');
-            sb.append("    value: ").append(value()).append('\n');
+            sb.append("    value: ").append(value() / normalizationValue).append('\n');
             sb.append("    total execution count: ").append(executionCount).append('\n');
             sb.append("    instruction: ").append(stats.instrNames[instruction]).append('\n');
             for (int i = 0; i < specializations.length; i++) {
@@ -199,8 +199,8 @@ abstract class Decision {
         }
 
         @Override
-        JSONObject serialize(GlobalOperationStatistics stats) {
-            JSONObject result = super.serialize(stats);
+        JSONObject serialize(GlobalOperationStatistics stats, double norm) {
+            JSONObject result = super.serialize(stats, norm);
 
             JSONArray instrNames = new JSONArray();
             result.put("instructions", instrNames);
@@ -212,11 +212,11 @@ abstract class Decision {
         }
 
         @Override
-        protected String prettyPrint(GlobalOperationStatistics stats) {
+        protected String prettyPrint(GlobalOperationStatistics stats, double normalizationValue) {
             StringBuilder sb = new StringBuilder();
 
             sb.append("SuperInstruction ").append(id(stats)).append('\n');
-            sb.append("    value: ").append(value()).append('\n');
+            sb.append("    value: ").append(value() / normalizationValue).append('\n');
             sb.append("    total execution count: ").append(executionCount).append('\n');
             for (int i = 0; i < instructions.length; i++) {
                 sb.append("    instruction[").append(i).append("]: ").append(stats.instrNames[instructions[i]]).append('\n');
@@ -269,8 +269,8 @@ abstract class Decision {
         }
 
         @Override
-        JSONObject serialize(GlobalOperationStatistics stats) {
-            JSONObject result = super.serialize(stats);
+        JSONObject serialize(GlobalOperationStatistics stats, double norm) {
+            JSONObject result = super.serialize(stats, 1.0);
             result.put("instruction", instruction);
             return result;
         }
@@ -281,7 +281,7 @@ abstract class Decision {
         }
 
         @Override
-        protected String prettyPrint(GlobalOperationStatistics stats) {
+        protected String prettyPrint(GlobalOperationStatistics stats, double normalizationValue) {
             StringBuilder sb = new StringBuilder();
 
             sb.append("Common ").append(id(stats)).append('\n');

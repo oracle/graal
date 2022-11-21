@@ -263,12 +263,12 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                                     continue loop;
                                 }
                             }
-                            // length group 1
+                            // length group 1 (1 / 1)
                             case ((INSTR_POP << 3) | 0) :
-                                $sp = instructionGroup_1($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
+                                $sp = instructionGroup_1_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
                                 $bci = $bci + 1;
                                 continue loop;
-                            // length group 2
+                            // length group 2 (1 / 1)
                             case ((INSTR_LOAD_CONSTANT << 3) | 0) :
                             case ((INSTR_LOAD_ARGUMENT << 3) | 0) :
                             case ((INSTR_LOAD_LOCAL << 3) | 0 /* OBJECT */) :
@@ -279,18 +279,18 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                             case ((INSTR_LOAD_LOCAL_BOXED << 3) | 1 /* LONG */) :
                             case ((INSTR_LOAD_LOCAL_MAT << 3) | 0) :
                             case ((INSTR_STORE_LOCAL_MAT << 3) | 0) :
-                                $sp = instructionGroup_2($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
+                                $sp = instructionGroup_2_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
                                 $bci = $bci + 2;
                                 continue loop;
-                            // length group 3
+                            // length group 3 (1 / 1)
                             case ((INSTR_STORE_LOCAL << 3) | 0 /* OBJECT */) :
                             case ((INSTR_STORE_LOCAL << 3) | 5 /* BOOLEAN */) :
                             case ((INSTR_STORE_LOCAL << 3) | 1 /* LONG */) :
                             case ((INSTR_STORE_LOCAL << 3) | 7) :
-                                $sp = instructionGroup_3($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
+                                $sp = instructionGroup_3_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
                                 $bci = $bci + 3;
                                 continue loop;
-                            // length group 5
+                            // length group 5 (1 / 1)
                             case ((INSTR_C_SL_EQUAL << 3) | 0 /* OBJECT */) :
                             case ((INSTR_C_SL_EQUAL << 3) | 5 /* BOOLEAN */) :
                             case ((INSTR_C_SL_LESS_OR_EQUAL << 3) | 0 /* OBJECT */) :
@@ -300,15 +300,15 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                             case ((INSTR_C_SL_LOGICAL_NOT << 3) | 0 /* OBJECT */) :
                             case ((INSTR_C_SL_LOGICAL_NOT << 3) | 5 /* BOOLEAN */) :
                             case ((INSTR_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
-                            case ((INSTR_C_SL_UNBOX << 3) | 1 /* LONG */) :
                             case ((INSTR_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                            case ((INSTR_C_SL_UNBOX << 3) | 1 /* LONG */) :
                             case ((INSTR_C_SL_FUNCTION_LITERAL << 3) | 0) :
                             case ((INSTR_C_SL_TO_BOOLEAN << 3) | 0 /* OBJECT */) :
                             case ((INSTR_C_SL_TO_BOOLEAN << 3) | 5 /* BOOLEAN */) :
-                                $sp = instructionGroup_5($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
+                                $sp = instructionGroup_5_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
                                 $bci = $bci + 5;
                                 continue loop;
-                            // length group 6
+                            // length group 6 (1 / 1)
                             case ((INSTR_C_SL_ADD << 3) | 0 /* OBJECT */) :
                             case ((INSTR_C_SL_ADD << 3) | 1 /* LONG */) :
                             case ((INSTR_C_SL_DIV << 3) | 0 /* OBJECT */) :
@@ -318,13 +318,13 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                             case ((INSTR_C_SL_READ_PROPERTY << 3) | 0) :
                             case ((INSTR_C_SL_SUB << 3) | 0 /* OBJECT */) :
                             case ((INSTR_C_SL_SUB << 3) | 1 /* LONG */) :
-                                $sp = instructionGroup_6($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
+                                $sp = instructionGroup_6_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
                                 $bci = $bci + 6;
                                 continue loop;
-                            // length group 7
+                            // length group 7 (1 / 1)
                             case ((INSTR_C_SL_WRITE_PROPERTY << 3) | 0) :
                             case ((INSTR_C_SL_INVOKE << 3) | 0) :
-                                $sp = instructionGroup_7($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
+                                $sp = instructionGroup_7_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
                                 $bci = $bci + 7;
                                 continue loop;
                             default :
@@ -4144,7 +4144,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_1(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
+        private static int instructionGroup_1_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
             int $sp = $startSp;
             switch (curOpcode) {
                 // pop
@@ -4163,7 +4163,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_2(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
+        private static int instructionGroup_2_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
             int $sp = $startSp;
             switch (curOpcode) {
                 // load.constant
@@ -4280,7 +4280,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_3(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
+        private static int instructionGroup_3_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
             int $sp = $startSp;
             switch (curOpcode) {
                 // store.local
@@ -4327,7 +4327,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_5(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
+        private static int instructionGroup_5_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
             int $sp = $startSp;
             switch (curOpcode) {
                 // c.SLEqual
@@ -4460,18 +4460,18 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                     SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
                     return $sp;
                 }
-                case ((INSTR_C_SL_UNBOX << 3) | 1 /* LONG */) :
-                {
-                    tracer.traceInstruction($bci, INSTR_C_SL_UNBOX, 0, 0);
-                    tracer.traceActiveSpecializations($bci, INSTR_C_SL_UNBOX, SLOperationRootNodeGen.doGetStateBits_SLUnbox_($bc, $bci));
-                    SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
-                    return $sp;
-                }
                 case ((INSTR_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
                 {
                     tracer.traceInstruction($bci, INSTR_C_SL_UNBOX, 0, 0);
                     tracer.traceActiveSpecializations($bci, INSTR_C_SL_UNBOX, SLOperationRootNodeGen.doGetStateBits_SLUnbox_($bc, $bci));
                     SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    tracer.traceInstruction($bci, INSTR_C_SL_UNBOX, 0, 0);
+                    tracer.traceActiveSpecializations($bci, INSTR_C_SL_UNBOX, SLOperationRootNodeGen.doGetStateBits_SLUnbox_($bc, $bci));
+                    SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
                     return $sp;
                 }
                 // c.SLFunctionLiteral
@@ -4522,7 +4522,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_6(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
+        private static int instructionGroup_6_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
             int $sp = $startSp;
             switch (curOpcode) {
                 // c.SLAdd
@@ -4681,7 +4681,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_7(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
+        private static int instructionGroup_7_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
             int $sp = $startSp;
             switch (curOpcode) {
                 // c.SLWriteProperty
@@ -5098,27 +5098,27 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                                     continue loop;
                                 }
                             }
-                            // length group 1
+                            // length group 1 (1 / 1)
                             case ((INSTR_POP << 3) | 0) :
-                                $sp = instructionGroup_1_uncached($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
+                                $sp = instructionGroup_1_0_uncached($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
                                 $bci = $bci + 1;
                                 continue loop;
-                            // length group 2
+                            // length group 2 (1 / 1)
                             case ((INSTR_LOAD_CONSTANT << 3) | 0) :
                             case ((INSTR_LOAD_ARGUMENT << 3) | 0) :
                             case ((INSTR_LOAD_LOCAL << 3) | 0) :
                             case ((INSTR_LOAD_LOCAL_BOXED << 3) | 0) :
                             case ((INSTR_LOAD_LOCAL_MAT << 3) | 0) :
                             case ((INSTR_STORE_LOCAL_MAT << 3) | 0) :
-                                $sp = instructionGroup_2_uncached($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
+                                $sp = instructionGroup_2_0_uncached($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
                                 $bci = $bci + 2;
                                 continue loop;
-                            // length group 3
+                            // length group 3 (1 / 1)
                             case ((INSTR_STORE_LOCAL << 3) | 0) :
-                                $sp = instructionGroup_3_uncached($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
+                                $sp = instructionGroup_3_0_uncached($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
                                 $bci = $bci + 3;
                                 continue loop;
-                            // length group 5
+                            // length group 5 (1 / 1)
                             case ((INSTR_C_SL_EQUAL << 3) | 0) :
                             case ((INSTR_C_SL_LESS_OR_EQUAL << 3) | 0) :
                             case ((INSTR_C_SL_LESS_THAN << 3) | 0) :
@@ -5126,22 +5126,22 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                             case ((INSTR_C_SL_UNBOX << 3) | 0) :
                             case ((INSTR_C_SL_FUNCTION_LITERAL << 3) | 0) :
                             case ((INSTR_C_SL_TO_BOOLEAN << 3) | 0) :
-                                $sp = instructionGroup_5_uncached($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
+                                $sp = instructionGroup_5_0_uncached($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
                                 $bci = $bci + 5;
                                 continue loop;
-                            // length group 6
+                            // length group 6 (1 / 1)
                             case ((INSTR_C_SL_ADD << 3) | 0) :
                             case ((INSTR_C_SL_DIV << 3) | 0) :
                             case ((INSTR_C_SL_MUL << 3) | 0) :
                             case ((INSTR_C_SL_READ_PROPERTY << 3) | 0) :
                             case ((INSTR_C_SL_SUB << 3) | 0) :
-                                $sp = instructionGroup_6_uncached($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
+                                $sp = instructionGroup_6_0_uncached($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
                                 $bci = $bci + 6;
                                 continue loop;
-                            // length group 7
+                            // length group 7 (1 / 1)
                             case ((INSTR_C_SL_WRITE_PROPERTY << 3) | 0) :
                             case ((INSTR_C_SL_INVOKE << 3) | 0) :
-                                $sp = instructionGroup_7_uncached($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
+                                $sp = instructionGroup_7_0_uncached($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode, tracer);
                                 $bci = $bci + 7;
                                 continue loop;
                             default :
@@ -5896,7 +5896,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             return SLToBooleanNode.doFallback($child0Value, ($this), ($bci));
         }
 
-        private static int instructionGroup_1_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
+        private static int instructionGroup_1_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
             int $sp = $startSp;
             switch (curOpcode) {
                 // pop
@@ -5915,7 +5915,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_2_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
+        private static int instructionGroup_2_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
             int $sp = $startSp;
             switch (curOpcode) {
                 // load.constant
@@ -5998,7 +5998,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_3_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
+        private static int instructionGroup_3_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
             int $sp = $startSp;
             switch (curOpcode) {
                 // store.local
@@ -6021,7 +6021,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_5_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
+        private static int instructionGroup_5_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
             int $sp = $startSp;
             switch (curOpcode) {
                 // c.SLEqual
@@ -6164,7 +6164,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_6_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
+        private static int instructionGroup_6_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
             int $sp = $startSp;
             switch (curOpcode) {
                 // c.SLAdd
@@ -6291,7 +6291,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_7_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
+        private static int instructionGroup_7_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode, ExecutionTracer tracer) {
             int $sp = $startSp;
             switch (curOpcode) {
                 // c.SLWriteProperty
@@ -7303,20 +7303,20 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         return;
     }
 
-    private static void SLUnbox_entryPoint_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+    private static void SLUnbox_entryPoint_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
         int destSlot = $sp - 1;
         try {
-            UFA.unsafeSetLong($frame, destSlot, BytecodeNode.SLUnbox_executeLong_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            UFA.unsafeSetBoolean($frame, destSlot, BytecodeNode.SLUnbox_executeBoolean_($frame, $this, $bc, $bci, $sp, $consts, $children));
             return;
         } catch (UnexpectedResultException ex) {
             UFA.unsafeSetObject($frame, destSlot, ex.getResult());
         }
     }
 
-    private static void SLUnbox_entryPoint_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+    private static void SLUnbox_entryPoint_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
         int destSlot = $sp - 1;
         try {
-            UFA.unsafeSetBoolean($frame, destSlot, BytecodeNode.SLUnbox_executeBoolean_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            UFA.unsafeSetLong($frame, destSlot, BytecodeNode.SLUnbox_executeLong_($frame, $this, $bc, $bci, $sp, $consts, $children));
             return;
         } catch (UnexpectedResultException ex) {
             UFA.unsafeSetObject($frame, destSlot, ex.getResult());

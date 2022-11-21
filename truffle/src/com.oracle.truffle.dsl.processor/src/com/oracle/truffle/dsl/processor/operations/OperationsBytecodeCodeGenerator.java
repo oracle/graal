@@ -380,7 +380,7 @@ public class OperationsBytecodeCodeGenerator {
 
             int doneInstructions = 0;
             int numInstructions = lenGroup.getValue().size();
-            int numSubgroups = (int) Math.round((double) numInstructions / INSTRUCTIONS_PER_GROUP);
+            int numSubgroups = (int) Math.max(1.0, Math.round((double) numInstructions / INSTRUCTIONS_PER_GROUP));
 
             for (int subgroup = 0; subgroup < numSubgroups; subgroup++) {
 

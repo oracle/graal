@@ -747,12 +747,14 @@ public class OperationsStatistics {
                 dumpWriter.println();
             }
 
+            double normValue = acceptedDecisions.size() == 0 ? 1.0 : acceptedDecisions.get(0).value();
+
             // serialize
             for (Decision dec : acceptedDecisions) {
                 if (dumpWriter != null) {
-                    dumpWriter.println(dec.prettyPrint(stats));
+                    dumpWriter.println(dec.prettyPrint(stats, normValue));
                 }
-                result.put(dec.serialize(stats));
+                result.put(dec.serialize(stats, normValue));
             }
 
             if (dumpWriter != null) {
