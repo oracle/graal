@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, BELLSOFT. All rights reserved.
  * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, BELLSOFT. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -63,7 +63,7 @@ public final class OldGenerationMemoryPoolMXBean extends AbstractMemoryPoolMXBea
         return memoryUsage(used);
     }
 
-    private MemoryUsage memoryUsage(long usedAndCommitted) {
+    private static MemoryUsage memoryUsage(long usedAndCommitted) {
         CollectionPolicy policy = GCImpl.getPolicy();
         long maxHeap = policy.getMaximumHeapSize().rawValue();
         long maxYoung = policy.getMaximumYoungGenerationSize().rawValue();

@@ -229,7 +229,7 @@ public final class GCAccounting {
         }
     }
 
-    private void updatePeakValue(UninterruptibleUtils.AtomicUnsigned peakValue, UnsignedWord currentValue) {
+    private static void updatePeakValue(UninterruptibleUtils.AtomicUnsigned peakValue, UnsignedWord currentValue) {
         peakValue.set(UnsignedUtils.max(peakValue.get(), currentValue));
     }
 }
