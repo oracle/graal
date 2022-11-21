@@ -48,7 +48,6 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.util.VMError;
 
 /**
  * A Space is a collection of HeapChunks.
@@ -170,7 +169,7 @@ public final class Space {
         Pointer result = WordFactory.nullPointer();
         /* Fast-path: try allocating in the last chunk. */
         AlignedHeapChunk.AlignedHeader oldChunk;
-        if (ParallelGC.isSupported()) {
+        if (ParallelGC.isEnabled()) {
             oldChunk = ParallelGCImpl.getThreadLocalChunk();
         } else {
             oldChunk = getLastAlignedHeapChunk();
@@ -189,22 +188,22 @@ public final class Space {
      * Retract the latest allocation. Used by parallel collector.
      */
     @AlwaysInline("GC performance")
-    private Pointer freeMemory(UnsignedWord objectSize) {
-        assert ParallelGCImpl.isSupported() && ParallelGCImpl.isInParallelPhase();
+    private Pointer retractAllocation(UnsignedWord objectSize) {
+        assert ParallelGCImpl.isEnabled() && ParallelGCImpl.isInParallelPhase();
         AlignedHeapChunk.AlignedHeader oldChunk = ParallelGCImpl.getThreadLocalChunk();
         assert oldChunk.isNonNull();
-        return AlignedHeapChunk.freeMemory(oldChunk, objectSize);
+        return AlignedHeapChunk.retractAllocation(oldChunk, objectSize);
     }
 
     private Pointer allocateInNewChunk(AlignedHeapChunk.AlignedHeader oldChunk, UnsignedWord objectSize) {
-        if (ParallelGC.isSupported()) {
+        if (ParallelGC.isEnabled()) {
             ParallelGCImpl.mutex.lock();
             if (oldChunk.notEqual(ParallelGCImpl.getThreadLocalScannedChunk())) {
                 ParallelGCImpl.singleton().push(HeapChunk.asPointer(oldChunk));
             }
         }
         AlignedHeapChunk.AlignedHeader newChunk = requestAlignedHeapChunk();
-        if (ParallelGC.isSupported()) {
+        if (ParallelGC.isEnabled()) {
             ParallelGCImpl.mutex.unlock();
             ParallelGCImpl.setThreadLocalChunk(newChunk);
         }
@@ -231,7 +230,7 @@ public final class Space {
          * This method is used from {@link PosixJavaThreads#detachThread(VMThread)}, so it can not
          * guarantee that it is inside a VMOperation, only that there is some mutual exclusion.
          */
-        if (SubstrateOptions.MultiThreaded.getValue() && !SubstrateOptions.UseParallelGC.getValue()) {
+        if (SubstrateOptions.MultiThreaded.getValue() && !(SubstrateOptions.UseParallelGC.getValue() && VMOperation.isGCInProgress())) {
             VMThreads.guaranteeOwnsThreadMutex("Trying to append an aligned heap chunk but no mutual exclusion.");
         }
         appendAlignedHeapChunkUninterruptibly(aChunk);
@@ -284,7 +283,7 @@ public final class Space {
          * This method is used from {@link PosixJavaThreads#detachThread(VMThread)}, so it can not
          * guarantee that it is inside a VMOperation, only that there is some mutual exclusion.
          */
-        if (SubstrateOptions.MultiThreaded.getValue() && !SubstrateOptions.UseParallelGC.getValue()) {
+        if (SubstrateOptions.MultiThreaded.getValue() && !(SubstrateOptions.UseParallelGC.getValue() && VMOperation.isGCInProgress())) {
             VMThreads.guaranteeOwnsThreadMutex("Trying to append an unaligned chunk but no mutual exclusion.");
         }
         appendUnalignedHeapChunkUninterruptibly(uChunk);
@@ -378,7 +377,7 @@ public final class Space {
         assert ObjectHeaderImpl.isAlignedObject(original);
         assert this != originalSpace && originalSpace.isFromSpace();
 
-        if (ParallelGCImpl.isSupported() && ParallelGCImpl.isInParallelPhase()) {
+        if (ParallelGCImpl.isEnabled() && ParallelGCImpl.isInParallelPhase()) {
             return promoteAlignedObjectParallel(original, originalSpace);
         }
 
@@ -392,7 +391,7 @@ public final class Space {
     @AlwaysInline("GC performance")
     Object promoteAlignedObjectParallel(Object original, Space originalSpace) {
         assert VMOperation.isGCInProgress();
-        assert ParallelGCImpl.isSupported() && ParallelGCImpl.isInParallelPhase();
+        assert ParallelGCImpl.isEnabled() && ParallelGCImpl.isInParallelPhase();
         assert ObjectHeaderImpl.isAlignedObject(original);
 
         Pointer originalMemory = Word.objectToUntrackedPointer(original);
@@ -438,7 +437,7 @@ public final class Space {
             return copy;
         } else {
             // Retract speculatively allocated memory
-            freeMemory(size);
+            retractAllocation(size);
             return forward;
         }
     }
@@ -482,12 +481,12 @@ public final class Space {
     void promoteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
         assert this != originalSpace && originalSpace.isFromSpace();
 
-        if (ParallelGCImpl.isSupported() && ParallelGCImpl.isInParallelPhase()) {
+        if (ParallelGCImpl.isEnabled() && ParallelGCImpl.isInParallelPhase()) {
             ParallelGCImpl.mutex.lock();
         }
         originalSpace.extractAlignedHeapChunk(chunk);
         appendAlignedHeapChunk(chunk);
-        if (ParallelGCImpl.isSupported()) {
+        if (ParallelGCImpl.isEnabled()) {
             ParallelGCImpl.singleton().push(HeapChunk.asPointer(chunk));
             if (ParallelGCImpl.isInParallelPhase()) {
                 ParallelGCImpl.mutex.unlock();
@@ -508,12 +507,12 @@ public final class Space {
     void promoteUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader chunk, Space originalSpace) {
         assert this != originalSpace && originalSpace.isFromSpace();
 
-        if (ParallelGCImpl.isSupported() && ParallelGCImpl.isInParallelPhase()) {
+        if (ParallelGCImpl.isEnabled() && ParallelGCImpl.isInParallelPhase()) {
             ParallelGCImpl.mutex.lock();
         }
         originalSpace.extractUnalignedHeapChunk(chunk);
         appendUnalignedHeapChunk(chunk);
-        if (ParallelGCImpl.isSupported()) {
+        if (ParallelGCImpl.isEnabled()) {
             ParallelGCImpl.singleton().push(HeapChunk.asPointer(chunk).or(ParallelGCImpl.UNALIGNED_BIT));
             if (ParallelGCImpl.isInParallelPhase()) {
                 ParallelGCImpl.mutex.unlock();

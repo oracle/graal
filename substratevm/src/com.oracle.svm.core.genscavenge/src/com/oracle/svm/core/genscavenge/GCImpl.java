@@ -74,7 +74,6 @@ import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.heap.ParallelGC;
-import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
@@ -1043,7 +1042,7 @@ public final class GCImpl implements GC {
     private void scanGreyObjects(boolean isIncremental) {
         Timer scanGreyObjectsTimer = timers.scanGreyObjects.open();
         try {
-            if (ParallelGC.isSupported()) {
+            if (ParallelGC.isEnabled()) {
                 ParallelGCImpl.waitForIdle();
             } else if (isIncremental) {
                 scanGreyObjectsLoop();

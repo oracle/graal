@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, BELLSOFT. All rights reserved.
  * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, BELLSOFT. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,8 +30,10 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
+
 public class ParallelGCOptions {
 
     @Option(help = "Number of worker threads used by ParallelGC.", type = OptionType.User)
-    public static final RuntimeOptionKey<Integer> ParallelGCWorkers = new RuntimeOptionKey<>(0);
+    public static final RuntimeOptionKey<Integer> ParallelGCThreads = new RuntimeOptionKey<>(0, Immutable);
 }

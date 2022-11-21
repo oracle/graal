@@ -37,8 +37,10 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Predicate;
 
+import com.oracle.svm.core.util.InterruptImageBuilding;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -326,17 +328,26 @@ public class SubstrateOptions {
 
     @APIOption(name = "parallel", group = GCGroup.class, customHelp = "Parallel garbage collector")//
     @Option(help = "Use a parallel GC")//
-    public static final HostedOptionKey<Boolean> UseParallelGC = new HostedOptionKey<>(false) {
+    public static final HostedOptionKey<Boolean> UseParallelGC = new HostedOptionKey<>(false, SubstrateOptions::validateParallelGC) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
             if (newValue) {
                 SubstrateOptions.UseSerialGC.update(values, false);
                 SubstrateOptions.UseEpsilonGC.update(values, false);
-                ConcealedOptions.UseRememberedSet.update(values, false);
-                SubstrateOptions.MultiThreaded.update(values, true);
             }
         }
     };
+
+    private static void validateParallelGC(OptionKey<?> unused) {
+        validateParallelGC(SubstrateOptions.MultiThreaded, true);
+        validateParallelGC(ConcealedOptions.UseRememberedSet, false);
+    }
+
+    private static void validateParallelGC(HostedOptionKey<Boolean> optionKey, boolean expected) {
+        if (optionKey.getValue() != expected) {
+            throw UserError.abort("ParallelGC requires the option %s to be %s", optionKey, expected);
+        }
+    }
 
     @Fold
     public static boolean useSerialOrParallelGC() {
@@ -344,7 +355,7 @@ public class SubstrateOptions {
     }
 
     @Fold
-    public static boolean useGraalCeGC() {
+    public static boolean UseMarkAndCopyOrEpsilonGC() {
         return UseSerialGC.getValue() || UseParallelGC.getValue() || UseEpsilonGC.getValue();
     }
 

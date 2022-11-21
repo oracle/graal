@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, BELLSOFT. All rights reserved.
  * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, BELLSOFT. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,8 @@
 
 package com.oracle.svm.core.genscavenge.parallel;
 
+import com.oracle.svm.core.config.ConfigurationValues;
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
@@ -35,28 +37,25 @@ import org.graalvm.word.WordFactory;
  */
 public class ChunkBuffer {
     private Pointer buffer;
-    private int size, top, step;
+    private int size, top;
 
-    ChunkBuffer(int maxChunks, int refSize) {
-        this.step = refSize;
-        this.size = maxChunks * refSize;
+    ChunkBuffer(int maxChunks) {
+        this.size = maxChunks * ConfigurationValues.getTarget().wordSize;
         this.buffer = UnmanagedMemory.malloc(this.size);
     }
 
-    /**
-     * This method must be called with ParallelGCImpl.mutex locked
-     */
     void push(Pointer ptr) {
+        ParallelGCImpl.mutex.assertIsOwner("Must hold ParallelGCImpl.mutex");
         assert top < size;
         buffer.writeWord(top, ptr);
-        top += step;
+        top += ConfigurationValues.getTarget().wordSize;
     }
 
     Pointer pop() {
         ParallelGCImpl.mutex.lock();
         try {
             if (top > 0) {
-                top -= step;
+                top -= ConfigurationValues.getTarget().wordSize;
                 return buffer.readWord(top);
             } else {
                 return WordFactory.nullPointer();

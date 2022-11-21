@@ -113,7 +113,7 @@ public final class AlignedHeapChunk {
     }
 
     /** Retract the latest allocation. Used by parallel collector. */
-    static Pointer freeMemory(AlignedHeader that, UnsignedWord size) {
+    static Pointer retractAllocation(AlignedHeader that, UnsignedWord size) {
         Pointer newTop = HeapChunk.getTopPointer(that).subtract(size);
         assert newTop.aboveThan(HeapChunk.asPointer(that));
         HeapChunk.setTopPointer(that, newTop);
@@ -160,7 +160,7 @@ public final class AlignedHeapChunk {
     }
 
     /** Methods for a {@link MemoryWalker} to access an aligned heap chunk. */
-    @AutomaticallyRegisteredImageSingleton(onlyWith = UseGraalCeGC.class)
+    @AutomaticallyRegisteredImageSingleton(onlyWith = UseMarkAndCopyOrEpsilonGC.class)
     static final class MemoryWalkerAccessImpl extends HeapChunk.MemoryWalkerAccessImpl<AlignedHeapChunk.AlignedHeader> {
 
         @Platforms(Platform.HOSTED_ONLY.class)

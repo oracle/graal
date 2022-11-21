@@ -32,9 +32,9 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.SubstrateOptions;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public class UseGraalCeGC implements BooleanSupplier {
+public class UseMarkAndCopyOrEpsilonGC implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return SubstrateOptions.useGraalCeGC();
+        return SubstrateOptions.UseMarkAndCopyOrEpsilonGC();
     }
 }

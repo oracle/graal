@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, BELLSOFT. All rights reserved.
  * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, BELLSOFT. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -120,7 +120,7 @@ public class ParallelGCImpl extends ParallelGC {
         long alignedChunkSize = HeapParameters.getAlignedHeapChunkSize().rawValue();
         long unalignedChunkSize = HeapParameters.getLargeArrayThreshold().rawValue();
         long maxChunks = maxHeapSize / Math.min(alignedChunkSize, unalignedChunkSize) + 1;
-        buffer = new ChunkBuffer((int) maxChunks, ConfigurationValues.getObjectLayout().getReferenceSize());
+        buffer = new ChunkBuffer((int) maxChunks);
 
         workerCount = getWorkerCount();
         allWorkersBusy = ~(-1 << workerCount) & (-1 << 1);
@@ -131,7 +131,7 @@ public class ParallelGCImpl extends ParallelGC {
     }
 
     private int getWorkerCount() {
-        int setting = ParallelGCOptions.ParallelGCWorkers.getValue();
+        int setting = ParallelGCOptions.ParallelGCThreads.getValue();
         int workers = setting > 0 ? setting : getDefaultWorkerCount();
         workers = Math.min(workers, MAX_WORKERS_COUNT);
         verboseGCLog().string("[Number of ParallelGC workers: ").unsigned(workers).string("]").newline();
@@ -212,15 +212,15 @@ public class ParallelGCImpl extends ParallelGC {
                     AlignedHeapChunk.walkObjectsInline((AlignedHeapChunk.AlignedHeader) ptr, getVisitor());
                 }
             }
-            AlignedHeapChunk.AlignedHeader tlab = allocChunkTL.get();
-            debugLog().string("WW drain tlab=").zhex(tlab).newline();
-            if (tlab.equal(WordFactory.nullPointer())) {
+            AlignedHeapChunk.AlignedHeader allocChunk = allocChunkTL.get();
+            debugLog().string("WW drain allocChunk=").zhex(allocChunk).newline();
+            if (allocChunk.equal(WordFactory.nullPointer())) {
                 break;
             } else {
-                scannedChunkTL.set(tlab);
-                AlignedHeapChunk.walkObjectsInline(tlab, getVisitor());
-                if (allocChunkTL.get().equal(tlab)) {
-                    // this tlab is now black, retire it
+                scannedChunkTL.set(allocChunk);
+                AlignedHeapChunk.walkObjectsInline(allocChunk, getVisitor());
+                if (allocChunkTL.get().equal(allocChunk)) {
+                    // this allocation chunk is now black, retire it
                     allocChunkTL.set(WordFactory.nullPointer());
                 }
             }
@@ -248,7 +248,7 @@ class ParallelGCFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return ParallelGC.isSupported();
+        return ParallelGC.isEnabled();
     }
 
     @Override

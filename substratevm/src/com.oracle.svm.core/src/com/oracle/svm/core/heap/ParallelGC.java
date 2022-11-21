@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, BELLSOFT. All rights reserved.
  * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, BELLSOFT. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,12 +33,12 @@ import org.graalvm.nativeimage.ImageSingletons;
 public abstract class ParallelGC {
 
     @Fold
-    public static boolean isSupported() {
+    public static boolean isEnabled() {
         return SubstrateOptions.UseParallelGC.getValue();
     }
 
     public static void startWorkerThreads() {
-        if (isSupported()) {
+        if (isEnabled()) {
             ImageSingletons.lookup(ParallelGC.class).startWorkerThreadsImpl();
         }
     }

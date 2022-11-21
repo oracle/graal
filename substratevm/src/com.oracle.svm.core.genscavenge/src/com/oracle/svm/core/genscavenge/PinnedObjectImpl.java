@@ -42,7 +42,7 @@ import com.oracle.svm.core.thread.VMOperation;
 /** Support for pinning objects to a memory address with {@link PinnedObject}. */
 final class PinnedObjectImpl implements PinnedObject {
 
-    @AutomaticallyRegisteredImageSingleton(value = PinnedObjectSupport.class, onlyWith = UseGraalCeGC.class)
+    @AutomaticallyRegisteredImageSingleton(value = PinnedObjectSupport.class, onlyWith = UseMarkAndCopyOrEpsilonGC.class)
     static class PinnedObjectSupportImpl implements PinnedObjectSupport {
         @Override
         public PinnedObject create(Object object) {

@@ -162,7 +162,7 @@ public final class UnalignedHeapChunk {
         return ImageSingletons.lookup(UnalignedHeapChunk.MemoryWalkerAccessImpl.class);
     }
 
-    @AutomaticallyRegisteredImageSingleton(onlyWith = UseGraalCeGC.class)
+    @AutomaticallyRegisteredImageSingleton(onlyWith = UseMarkAndCopyOrEpsilonGC.class)
     static final class MemoryWalkerAccessImpl extends HeapChunk.MemoryWalkerAccessImpl<UnalignedHeapChunk.UnalignedHeader> {
 
         @Platforms(Platform.HOSTED_ONLY.class)

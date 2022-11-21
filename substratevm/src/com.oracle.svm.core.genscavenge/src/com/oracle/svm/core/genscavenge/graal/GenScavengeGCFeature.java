@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.svm.core.genscavenge.UseMarkAndCopyOrEpsilonGC;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -69,7 +70,7 @@ import com.oracle.svm.core.jvmstat.PerfManager;
 class GenScavengeGCFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return new com.oracle.svm.core.genscavenge.UseGraalCeGC().getAsBoolean();
+        return new UseMarkAndCopyOrEpsilonGC().getAsBoolean();
     }
 
     @Override

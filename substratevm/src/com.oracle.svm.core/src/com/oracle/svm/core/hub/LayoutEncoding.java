@@ -274,6 +274,7 @@ public class LayoutEncoding {
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getSizeFromEncoding(Object obj, int encoding) {
+        assert encoding == KnownIntrinsics.readHub(obj).getLayoutEncoding();
         if (isArrayLike(encoding)) {
             return getArraySize(encoding, ArrayLengthNode.arrayLength(obj));
         } else {
