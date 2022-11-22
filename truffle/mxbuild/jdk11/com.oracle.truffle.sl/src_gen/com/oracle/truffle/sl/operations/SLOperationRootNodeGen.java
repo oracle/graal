@@ -300,8 +300,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                             case ((INSTR_C_SL_LOGICAL_NOT << 3) | 0 /* OBJECT */) :
                             case ((INSTR_C_SL_LOGICAL_NOT << 3) | 5 /* BOOLEAN */) :
                             case ((INSTR_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
-                            case ((INSTR_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
                             case ((INSTR_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                            case ((INSTR_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
                             case ((INSTR_C_SL_FUNCTION_LITERAL << 3) | 0) :
                             case ((INSTR_C_SL_TO_BOOLEAN << 3) | 0 /* OBJECT */) :
                             case ((INSTR_C_SL_TO_BOOLEAN << 3) | 5 /* BOOLEAN */) :
@@ -4460,18 +4460,18 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                     SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
                     return $sp;
                 }
-                case ((INSTR_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
-                {
-                    tracer.traceInstruction($bci, INSTR_C_SL_UNBOX, 0, 0);
-                    tracer.traceActiveSpecializations($bci, INSTR_C_SL_UNBOX, SLOperationRootNodeGen.doGetStateBits_SLUnbox_($bc, $bci));
-                    SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
-                    return $sp;
-                }
                 case ((INSTR_C_SL_UNBOX << 3) | 1 /* LONG */) :
                 {
                     tracer.traceInstruction($bci, INSTR_C_SL_UNBOX, 0, 0);
                     tracer.traceActiveSpecializations($bci, INSTR_C_SL_UNBOX, SLOperationRootNodeGen.doGetStateBits_SLUnbox_($bc, $bci));
                     SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                {
+                    tracer.traceInstruction($bci, INSTR_C_SL_UNBOX, 0, 0);
+                    tracer.traceActiveSpecializations($bci, INSTR_C_SL_UNBOX, SLOperationRootNodeGen.doGetStateBits_SLUnbox_($bc, $bci));
+                    SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
                     return $sp;
                 }
                 // c.SLFunctionLiteral
@@ -7303,20 +7303,20 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         return;
     }
 
-    private static void SLUnbox_entryPoint_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+    private static void SLUnbox_entryPoint_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
         int destSlot = $sp - 1;
         try {
-            UFA.unsafeSetBoolean($frame, destSlot, BytecodeNode.SLUnbox_executeBoolean_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            UFA.unsafeSetLong($frame, destSlot, BytecodeNode.SLUnbox_executeLong_($frame, $this, $bc, $bci, $sp, $consts, $children));
             return;
         } catch (UnexpectedResultException ex) {
             UFA.unsafeSetObject($frame, destSlot, ex.getResult());
         }
     }
 
-    private static void SLUnbox_entryPoint_LONG(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+    private static void SLUnbox_entryPoint_BOOLEAN(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
         int destSlot = $sp - 1;
         try {
-            UFA.unsafeSetLong($frame, destSlot, BytecodeNode.SLUnbox_executeLong_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            UFA.unsafeSetBoolean($frame, destSlot, BytecodeNode.SLUnbox_executeBoolean_($frame, $this, $bc, $bci, $sp, $consts, $children));
             return;
         } catch (UnexpectedResultException ex) {
             UFA.unsafeSetObject($frame, destSlot, ex.getResult());

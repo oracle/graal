@@ -48,7 +48,6 @@ import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.operation.introspection.ExceptionHandler;
 import com.oracle.truffle.api.operation.introspection.Instruction;
 import com.oracle.truffle.api.operation.introspection.OperationIntrospection;
-import com.oracle.truffle.api.operation.introspection.SourceInformation;
 import com.oracle.truffle.api.source.SourceSection;
 
 public interface OperationRootNode extends NodeInterface, OperationIntrospection.Provider {
@@ -76,13 +75,13 @@ public interface OperationRootNode extends NodeInterface, OperationIntrospection
             }
         }
 
-        List<SourceInformation> sourceInfo = id.getSourceInformation();
-        if (sourceInfo != null) {
-            sb.append("Source Information:\n");
-            for (SourceInformation si : sourceInfo) {
-                sb.append("  ").append(si.toString()).append('\n');
-            }
-        }
+// List<SourceInformation> sourceInfo = id.getSourceInformation();
+// if (sourceInfo != null) {
+// sb.append("Source Information:\n");
+// for (SourceInformation si : sourceInfo) {
+// sb.append(" ").append(si.toString()).append('\n');
+// }
+// }
 
         return sb.toString();
     }
