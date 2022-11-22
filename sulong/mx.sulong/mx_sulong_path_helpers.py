@@ -44,7 +44,15 @@ def ensure_dirs(path, *paths):
 def ensure_copy(src, dst):
     if not os.path.isfile(src):
         mx.abort(f"The function mx_sulong_path_helpers.ensure_copy currently only supports files, but {src} is not a file.")
+    ensure_dirs(os.path.dirname(dst))
     shutil.copyfile(src, dst)
+    return dst
+
+def ensure_all_copy(src, dst):
+    for root, _, files in os.walk(src):
+        reldir = os.path.relpath(root, start=src)
+        for name in files:
+            ensure_copy(os.path.join(root, name), os.path.join(dst, reldir, name))
     return dst
 
 def ensure_symlink_file(src, dst):
@@ -69,6 +77,6 @@ def ensure_symlink_folder(src, dst):
 
 def ensure_symlink(src, dst):
     if os.path.isdir(src):
-      return ensure_symlink_folder(src, dst)
+        return ensure_symlink_folder(src, dst)
     else:
-      return ensure_symlink_file(src, dst)
+        return ensure_symlink_file(src, dst)

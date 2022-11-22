@@ -715,7 +715,7 @@ class ExternalCMakeTestSuite(ExternalTestSuiteMixin, SulongCMakeTestSuite):  # p
             # Symlink the CMakeLists.txt file and source folder into a single
             # directory to prevent max path length issues on Windows
             self._project_dir = path_helpers.ensure_dirs(self.get_output_root(), 'project')
-            path_helpers.ensure_copy(os.path.join(source_dir, 'CMakeLists.txt'), os.path.join(self._project_dir, 'CMakeLists.txt'))
+            path_helpers.ensure_all_copy(source_dir, self._project_dir)
             path_helpers.ensure_symlink(self.get_actual_test_source(), os.path.join(self._project_dir, 'src'))
         return self._project_dir
 
