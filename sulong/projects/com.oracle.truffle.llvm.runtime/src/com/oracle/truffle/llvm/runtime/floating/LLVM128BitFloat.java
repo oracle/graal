@@ -154,7 +154,7 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
             fractionMask = (1L << Long.SIZE + 1) - 1;
         }
         long maskedFractionValue = val & fractionMask;
-        long fraction = maskedFractionValue << (Long.SIZE - leadingOnePosition);
+        long fraction = maskedFractionValue << (Long.SIZE );
         return LLVM128BitFloat.fromRawValues(sign, exponent, fraction);
     }
 
@@ -169,10 +169,11 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
             int doubleExponent = DoubleHelper.getUnbiasedExponent(val);
             int biasedExponent = doubleExponent + EXPONENT_BIAS;
             long doubleFraction = rawValue & DoubleHelper.FRACTION_MASK;
-            long fraction = doubleFraction << (FRACTION_BIT_WIDTH - DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH);
-            return LLVM128BitFloat.fromRawValues(sign, biasedExponent, fraction);
+            long fraction = doubleFraction << (FRACTION_BIT_WIDTH - DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH); //112 - 52 = 60
+            // 48 --
+            // 4 --
+            long biasedExponentFraction = ((long) biasedExponent << 48) | (doubleFraction >> 4); // 112 - 64 = 48
+            return LLVM128BitFloat.fromRawValues(sign, biasedExponentFraction, fraction);
         }
     }
-
-
 }
