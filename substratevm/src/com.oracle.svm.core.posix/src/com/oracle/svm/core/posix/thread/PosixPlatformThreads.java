@@ -300,6 +300,9 @@ final class PosixParkEvent extends ParkEvent {
     /** Permit: 1 if an unpark is pending, otherwise 0. */
     private volatile int event = 0;
 
+    /** Whether the owner is currently parked. Guarded by {@link #mutex}. */
+    private boolean parked = false;
+
     PosixParkEvent() {
         // Allocate mutex and condition in a single step so that they are adjacent in memory.
         UnsignedWord mutexSize = SizeOf.unsigned(Pthread.pthread_mutex_t.class);
@@ -350,6 +353,8 @@ final class PosixParkEvent extends ParkEvent {
             PosixUtils.checkStatusIs0(status, "park: mutex trylock");
             try {
                 if (event == 0) {
+                    assert !parked;
+                    parked = true;
                     if (!isAbsolute && time == 0) {
                         status = Pthread.pthread_cond_wait(cond, mutex);
                         PosixUtils.checkStatusIs0(status, "park(): condition variable wait");
@@ -371,6 +376,7 @@ final class PosixParkEvent extends ParkEvent {
                             PosixUtils.checkStatusIs0(status, "park(boolean, long): condition variable timed wait");
                         }
                     }
+                    parked = false;
                 }
                 event = 0;
 
@@ -391,14 +397,16 @@ final class PosixParkEvent extends ParkEvent {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
             int s;
+            boolean p;
             PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "PosixParkEvent.unpark(): mutex lock");
             try {
                 s = event;
                 event = 1;
+                p = parked;
             } finally {
                 PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "PosixParkEvent.unpark(): mutex unlock");
             }
-            if (s == 0) {
+            if (s == 0 && p) {
                 /*
                  * Signal without holding the mutex, which is safe and avoids futile wakeups if the
                  * platform does not implement wait morphing.
