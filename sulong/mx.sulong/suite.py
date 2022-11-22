@@ -238,7 +238,7 @@ suite = {
       ],
       "results" : ["<lib:sulongtest>"],
       "os" : {
-        "windows" : {"results" : ["<lib:sulongtest>"]},
+        "windows" : {"results" : ["<staticlib:sulongtest>"]},
         "<others>" : {},
       },
       "buildDependencies" : [],
@@ -930,7 +930,9 @@ suite = {
           "results" : ["native/lib/c++.lib", "native/bin/<lib:c++>", "native/include"],
           "cmakeConfig" : {
             "LLVM_ENABLE_RUNTIMES" : "libcxx",
-            "SULONG_CMAKE_PRE315" : "True",
+            "SULONG_CMAKE_PRE_315" : "True",
+            "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang-cl>",
+            "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang-cl>",
           }
         },
       },
