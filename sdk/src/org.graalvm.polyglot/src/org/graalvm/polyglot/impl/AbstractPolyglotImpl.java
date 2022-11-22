@@ -1199,7 +1199,8 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract static class LogHandler {
 
-        protected LogHandler() {
+        protected LogHandler(AbstractPolyglotImpl polyglot) {
+            Objects.requireNonNull(polyglot);
         }
 
         public abstract void publish(LogRecord logRecord);

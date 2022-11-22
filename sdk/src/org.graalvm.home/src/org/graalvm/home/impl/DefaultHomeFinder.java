@@ -71,7 +71,17 @@ public final class DefaultHomeFinder extends HomeFinder {
     static final Path GRAAL_HOME_RELATIVE_PATH;
     static final Map<String, Path> LANGUAGE_RELATIVE_HOMES = new HashMap<>();
 
+    /**
+     * Languages included in the native image. The variable is set at the native image build time.
+     * When the languages are known, there is no need to list directories at image execution time to
+     * find the language homes.
+     */
     private static Set<String> nativeImageLanguages;
+    /**
+     * Tools included in the native image. The variable is set at the native image build time. When
+     * the tools are known, there is no need to list directories at image execution time to find the
+     * tool homes.
+     */
     private static Set<String> nativeImageTools;
 
     static {
@@ -200,23 +210,21 @@ public final class DefaultHomeFinder extends HomeFinder {
                 Path home = getHomeFolder();
                 if (home != null) {
                     Path releaseFile = home.resolve("release");
-                    if (Files.exists(releaseFile)) {
-                        try (InputStream in = new BufferedInputStream(Files.newInputStream(releaseFile, StandardOpenOption.READ))) {
-                            Properties properties = new Properties();
-                            properties.load(in);
-                            Object loadedVersion = properties.get("GRAALVM_VERSION");
-                            if (loadedVersion != null) {
-                                res = loadedVersion.toString();
-                                if (res.startsWith("\"")) {
-                                    res = res.substring(1, res.length());
-                                }
-                                if (res.endsWith("\"")) {
-                                    res = res.substring(0, res.length() - 1);
-                                }
+                    try (InputStream in = new BufferedInputStream(Files.newInputStream(releaseFile, StandardOpenOption.READ))) {
+                        Properties properties = new Properties();
+                        properties.load(in);
+                        Object loadedVersion = properties.get("GRAALVM_VERSION");
+                        if (loadedVersion != null) {
+                            res = loadedVersion.toString();
+                            if (res.startsWith("\"")) {
+                                res = res.substring(1, res.length());
                             }
-                        } catch (IOException ioe) {
-                            // pass with res = "snapshot"
+                            if (res.endsWith("\"")) {
+                                res = res.substring(0, res.length() - 1);
+                            }
                         }
+                    } catch (IOException ioe) {
+                        // pass with res = "snapshot"
                     }
                 }
             }

@@ -70,6 +70,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.polyglot.EngineAccessor.EngineImpl;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 
 final class PolyglotLoggers {
@@ -117,12 +118,12 @@ final class PolyglotLoggers {
      * @throws IllegalArgumentException if {@code logHandlerOrStream} is not {@link Handler} nor
      *             {@link OutputStream}
      */
-    static LogHandler asLogHandler(Object logHandlerOrStream) {
+    static LogHandler asLogHandler(AbstractPolyglotImpl polyglot, Object logHandlerOrStream) {
         if (logHandlerOrStream instanceof Handler) {
-            return new JavaLogHandler((Handler) logHandlerOrStream);
+            return new JavaLogHandler(polyglot, (Handler) logHandlerOrStream);
         }
         if (logHandlerOrStream instanceof OutputStream) {
-            return createStreamHandler((OutputStream) logHandlerOrStream, true, true);
+            return createStreamHandler(polyglot, (OutputStream) logHandlerOrStream, true, true);
         }
         throw new IllegalArgumentException("Unexpected logHandlerOrStream parameter: " + logHandlerOrStream);
     }
@@ -130,19 +131,20 @@ final class PolyglotLoggers {
     /**
      * Creates a default {@link Handler} for an engine when a {@link Handler} was not specified.
      *
+     * @param polyglot the polyglot owning the handler
      * @param out the {@link OutputStream} to print log messages into
      */
-    static LogHandler createDefaultHandler(final OutputStream out) {
-        return new StreamLogHandler(out, false, true, true);
+    static LogHandler createDefaultHandler(AbstractPolyglotImpl polyglot, OutputStream out) {
+        return new StreamLogHandler(polyglot, out, false, true, true);
     }
 
-    static LogHandler getFileHandler(String path) {
+    static LogHandler getFileHandler(AbstractPolyglotImpl polyglot, String path) {
         Path absolutePath = Paths.get(path).toAbsolutePath().normalize();
         synchronized (fileHandlers) {
             SharedFileHandler handler = fileHandlers.get(absolutePath);
             if (handler == null) {
                 try {
-                    handler = new SharedFileHandler(absolutePath);
+                    handler = new SharedFileHandler(polyglot, absolutePath);
                     fileHandlers.put(absolutePath, handler);
                 } catch (IOException ioe) {
                     throw PolyglotEngineException.illegalArgument("Cannot open log file " + path + " for writing, IO error: " + (ioe.getMessage() != null ? ioe.getMessage() : null));
@@ -164,6 +166,7 @@ final class PolyglotLoggers {
     /**
      * Creates a {@link Handler} printing log messages into given {@link OutputStream}.
      *
+     * @param polyglot the polyglot owning the handler
      * @param out the {@link OutputStream} to print log messages into
      * @param closeStream if true the {@link Handler#close() handler's close} method closes given
      *            stream
@@ -171,16 +174,8 @@ final class PolyglotLoggers {
      *            {@link Handler#publish(java.util.logging.LogRecord) publish}
      * @return the {@link Handler}
      */
-    static LogHandler createStreamHandler(final OutputStream out, final boolean closeStream, final boolean flushOnPublish) {
-        return new StreamLogHandler(out, closeStream, flushOnPublish, false);
-    }
-
-    static boolean isDefaultHandler(LogHandler handler) {
-        if (handler instanceof StreamLogHandler) {
-            return ((StreamLogHandler) handler).isDefault;
-        } else {
-            return false;
-        }
+    static LogHandler createStreamHandler(AbstractPolyglotImpl polyglot, OutputStream out, boolean closeStream, boolean flushOnPublish) {
+        return new StreamLogHandler(polyglot, out, closeStream, flushOnPublish, false);
     }
 
     static LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown, String formatKind) {
@@ -225,7 +220,7 @@ final class PolyglotLoggers {
         }
 
         static LoggerCache newEngineLoggerCache(PolyglotEngineImpl engine) {
-            return newEngineLoggerCache(new PolyglotLogHandler(engine.logHandler), engine.logLevels, true, Collections.emptySet());
+            return newEngineLoggerCache(new PolyglotLogHandler(engine.getImpl(), engine.logHandler), engine.logLevels, true, Collections.emptySet());
         }
 
         static LoggerCache newEngineLoggerCache(LogHandler handler, Map<String, Level> logLevels, boolean useCurrentContext,
@@ -283,13 +278,18 @@ final class PolyglotLoggers {
 
         private final Handler handler;
 
-        JavaLogHandler(Handler handler) {
+        JavaLogHandler(AbstractPolyglotImpl polyglot, Handler handler) {
+            super(polyglot);
             this.handler = Objects.requireNonNull(handler, "Handler must be non null");
         }
 
         @Override
         public void publish(LogRecord logRecord) {
-            handler.publish(logRecord);
+            try {
+                handler.publish(logRecord);
+            } catch (Throwable t) {
+                // Called by a compiler thread, never propagate exceptions to the compiler.
+            }
         }
 
         @Override
@@ -320,7 +320,8 @@ final class PolyglotLoggers {
         private ErrorManager errorManager;
         private boolean notificationPrinted;
 
-        StreamLogHandler(OutputStream stream, boolean closeStream, boolean flushOnPublish, boolean isDefault) {
+        StreamLogHandler(AbstractPolyglotImpl polyglot, OutputStream stream, boolean closeStream, boolean flushOnPublish, boolean isDefault) {
+            super(polyglot);
             Objects.requireNonNull(stream, "Stream must be non null");
             this.stream = stream;
             this.writer = new OutputStreamWriter(stream);
@@ -332,24 +333,28 @@ final class PolyglotLoggers {
 
         @Override
         public synchronized void publish(LogRecord logRecord) {
-            String msg;
             try {
-                msg = formatter.format(logRecord);
-            } catch (Exception ex) {
-                reportHandlerError(ErrorManager.FORMAT_FAILURE, ex);
-                return;
-            }
-            try {
-                if (isDefault && !notificationPrinted) {
-                    writer.write(String.format(REDIRECT_FORMAT));
-                    notificationPrinted = true;
+                String msg;
+                try {
+                    msg = formatter.format(logRecord);
+                } catch (Exception ex) {
+                    reportHandlerError(ErrorManager.FORMAT_FAILURE, ex);
+                    return;
                 }
-                writer.write(msg);
-                if (flushOnPublish) {
-                    writer.flush();
+                try {
+                    if (isDefault && !notificationPrinted) {
+                        writer.write(String.format(REDIRECT_FORMAT));
+                        notificationPrinted = true;
+                    }
+                    writer.write(msg);
+                    if (flushOnPublish) {
+                        writer.flush();
+                    }
+                } catch (Exception ex) {
+                    reportHandlerError(ErrorManager.WRITE_FAILURE, ex);
                 }
-            } catch (Exception ex) {
-                reportHandlerError(ErrorManager.WRITE_FAILURE, ex);
+            } catch (Throwable t) {
+                // Called by a compiler thread, never propagate exceptions to the compiler.
             }
         }
 
@@ -455,13 +460,19 @@ final class PolyglotLoggers {
         }
     }
 
+    /**
+     * A {@link LogHandler} used for engine created with the `log.file` option. There can be
+     * multiple engines with the same `log.file` value in a single process. In order to avoid
+     * overwriting each other's log files, these engines must share the same log handler. The is
+     * closed only when the reference count drops to zero.
+     */
     private static final class SharedFileHandler extends StreamLogHandler {
 
         private final Path path;
         private int refCount;
 
-        SharedFileHandler(Path path) throws IOException {
-            super(new FileOutputStream(path.toFile(), true), true, true, false);
+        SharedFileHandler(AbstractPolyglotImpl polyglot, Path path) throws IOException {
+            super(polyglot, new FileOutputStream(path.toFile(), true), true, true, false);
             this.path = path;
         }
 
@@ -484,46 +495,19 @@ final class PolyglotLoggers {
         }
     }
 
-    private static final class SafeHandler extends LogHandler {
-
-        private final LogHandler delegate;
-
-        SafeHandler(LogHandler delegate) {
-            Objects.requireNonNull(delegate);
-            this.delegate = delegate;
-        }
-
-        @Override
-        public void publish(LogRecord lr) {
-            try {
-                delegate.publish(lr);
-            } catch (Throwable t) {
-                // Called by a compiler thread, never propagate exceptions to the compiler.
-            }
-        }
-
-        @Override
-        public void flush() {
-            delegate.flush();
-        }
-
-        @Override
-        public void close() throws SecurityException {
-            delegate.close();
-        }
-    }
-
     private static final class PolyglotLogHandler extends LogHandler {
 
-        private static final LogHandler INSTANCE = new PolyglotLogHandler();
+        private static final LogHandler INSTANCE = new PolyglotLogHandler(PolyglotImpl.getInstance());
 
         private final LogHandler fallBackHandler;
 
-        PolyglotLogHandler() {
+        PolyglotLogHandler(AbstractPolyglotImpl polyglot) {
+            super(polyglot);
             this.fallBackHandler = null;
         }
 
-        PolyglotLogHandler(LogHandler fallbackHandler) {
+        PolyglotLogHandler(AbstractPolyglotImpl polyglot, LogHandler fallbackHandler) {
+            super(polyglot);
             this.fallBackHandler = fallbackHandler;
         }
 
@@ -569,6 +553,7 @@ final class PolyglotLoggers {
         private final WeakReference<PolyglotContextImpl> contextRef;
 
         ContextLogHandler(PolyglotContextImpl context) {
+            super(context.getImpl());
             this.contextRef = new WeakReference<>(context);
         }
 
@@ -729,21 +714,12 @@ final class PolyglotLoggers {
                 synchronized (this) {
                     loggersCache = loggers;
                     if (loggersCache == null) {
-                        LogHandler useHandler = resolveHandler(logHandler);
-                        LoggerCache spi = LoggerCache.newEngineLoggerCache(useHandler, logLevels, false, Collections.singleton(GRAAL_COMPILER_LOG_ID), Level.INFO);
+                        LoggerCache spi = LoggerCache.newEngineLoggerCache(logHandler, logLevels, false, Collections.singleton(GRAAL_COMPILER_LOG_ID), Level.INFO);
                         loggers = loggersCache = EngineAccessor.LANGUAGE.createEngineLoggers(spi);
                     }
                 }
             }
             return EngineAccessor.LANGUAGE.getLogger(loggerId, null, loggersCache);
-        }
-
-        private static LogHandler resolveHandler(LogHandler handler) {
-            if (isDefaultHandler(handler)) {
-                return handler;
-            } else {
-                return new SafeHandler(handler);
-            }
         }
     }
 }
