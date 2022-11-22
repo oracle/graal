@@ -18,7 +18,7 @@ docker pull ghcr.io/graalvm/jdk:ol8-java17-<version>
 Alternatively, use GraalVM JDK as base image in [Dockerfile](https://docs.docker.com/engine/reference/builder/):
 ```shell
 FROM ghcr.io/graalvm/jdk:ol8-java17-<version>
- ```
+```
 
 There are different images provided depending on the  platforms, the architecture and the Java version.
 GraalVM binaries are built for Linux, macOS, and Windows platforms on x86 64-bit systems, and for Linux on ARM 64-bit systems.
@@ -54,7 +54,7 @@ Processing component archive: Component ruby
 Downloading: Component ruby
 [######              ]
 ...
- ```
+```
 Here is a sample command that maps the `/absolute/path/to/directory/no/trailing/slash` directory from the host system to the `/path/inside/container` inside the container.
 
 ```shell
