@@ -855,7 +855,7 @@ public abstract class PlatformThreads {
         parkCurrentPlatformOrCarrierThread(false, 0);
     }
 
-    /** Interruptibly park the current thread with a given delay or deadline. */
+    /** Interruptibly park the current thread, indefinitely or with a timeout. */
     static void parkCurrentPlatformOrCarrierThread(boolean isAbsolute, long time) {
         VMOperationControl.guaranteeOkayToBlock("[PlatformThreads.parkCurrentPlatformOrCarrierThread: Should not park when it is not okay to block.]");
 
@@ -917,7 +917,7 @@ public abstract class PlatformThreads {
         }
     }
 
-    private static void sleep0(long delayNanos) {
+    private static void sleep0(long durationNanos) {
         VMOperationControl.guaranteeOkayToBlock("[PlatformThreads.sleep(long): Should not sleep when it is not okay to block.]");
         Thread thread = currentThread.get();
         ParkEvent sleepEvent = getCurrentThreadData().ensureSleepParkEvent();
@@ -944,7 +944,7 @@ public abstract class PlatformThreads {
              * If another thread interrupted this thread in the meanwhile, then the call below won't
              * block because Thread.interrupt() modifies the ParkEvent.
              */
-            sleepEvent.condTimedWait(delayNanos);
+            sleepEvent.condTimedWait(durationNanos);
         } finally {
             setThreadStatus(thread, oldStatus);
         }

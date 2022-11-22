@@ -324,9 +324,9 @@ final class PosixParkEvent extends ParkEvent {
     }
 
     @Override
-    protected void condTimedWait(long delayNanos) {
-        if (delayNanos > 0) {
-            park(false, delayNanos);
+    protected void condTimedWait(long durationNanos) {
+        if (durationNanos > 0) {
+            park(false, durationNanos);
         }
     }
 
@@ -354,14 +354,14 @@ final class PosixParkEvent extends ParkEvent {
                         status = Pthread.pthread_cond_wait(cond, mutex);
                         PosixUtils.checkStatusIs0(status, "park(): condition variable wait");
                     } else {
-                        long delayNanos = TimeUtils.delayNanos(isAbsolute, time);
+                        long durationNanos = TimeUtils.durationNanos(isAbsolute, time);
                         Time.timespec deadlineTimespec = UnsafeStackValue.get(Time.timespec.class);
-                        PthreadConditionUtils.delayNanosToDeadlineTimespec(delayNanos, deadlineTimespec);
+                        PthreadConditionUtils.durationNanosToDeadlineTimespec(durationNanos, deadlineTimespec);
 
                         status = Pthread.pthread_cond_timedwait(cond, mutex, deadlineTimespec);
                         if (status != 0 && status != Errno.ETIMEDOUT()) {
                             Log.log().newline()
-                                            .string("[PosixParkEvent.park(delayNanos: ").signed(delayNanos).string("): Should not reach here.")
+                                            .string("[PosixParkEvent.park(durationNanos: ").signed(durationNanos).string("): Should not reach here.")
                                             .string("  mutex: ").hex(mutex)
                                             .string("  cond: ").hex(cond)
                                             .string("  deadlineTimeSpec.tv_sec: ").signed(deadlineTimespec.tv_sec())

@@ -88,15 +88,15 @@ public class PthreadConditionUtils {
         }
     }
 
-    /** Turn a delay in nanoseconds into a deadline in a Time.timespec. */
+    /** Turn a duration in nanoseconds into a deadline in a Time.timespec. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void delayNanosToDeadlineTimespec(long delayNanos, Time.timespec result) {
+    public static void durationNanosToDeadlineTimespec(long durationNanos, Time.timespec result) {
         timespec currentTimespec = StackValue.get(timespec.class);
         getAbsoluteTimeNanos(currentTimespec);
 
-        assert delayNanos >= 0;
-        long sec = TimeUtils.addOrMaxValue(currentTimespec.tv_sec(), TimeUtils.divideNanosToSeconds(delayNanos));
-        long nsec = currentTimespec.tv_nsec() + TimeUtils.remainderNanosToSeconds(delayNanos);
+        assert durationNanos >= 0;
+        long sec = TimeUtils.addOrMaxValue(currentTimespec.tv_sec(), TimeUtils.divideNanosToSeconds(durationNanos));
+        long nsec = currentTimespec.tv_nsec() + TimeUtils.remainderNanosToSeconds(durationNanos);
         if (nsec >= TimeUtils.nanosPerSecond) {
             sec = TimeUtils.addOrMaxValue(sec, 1);
             nsec -= TimeUtils.nanosPerSecond;
@@ -108,7 +108,7 @@ public class PthreadConditionUtils {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    public static long deadlineTimespecToDelayNanos(Time.timespec deadlineTimespec) {
+    public static long deadlineTimespecToDurationNanos(Time.timespec deadlineTimespec) {
         timespec currentTimespec = StackValue.get(timespec.class);
         getAbsoluteTimeNanos(currentTimespec);
 

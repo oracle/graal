@@ -56,8 +56,11 @@ public abstract class ParkEvent {
     /** {@link #park} indefinitely: {@code park(false, 0);}. */
     protected abstract void condWait();
 
-    /** {@link #park} with a delay in nanoseconds: {@code if(delay > 0) park(false, delay);}. */
-    protected abstract void condTimedWait(long delayNanos);
+    /**
+     * {@link #park} with a duration in nanoseconds:
+     * {@code if(duration > 0) park(false, duration);}.
+     */
+    protected abstract void condTimedWait(long durationNanos);
 
     /**
      * Block the calling thread (which must be the owner of this instance) from being scheduled
@@ -75,7 +78,7 @@ public abstract class ParkEvent {
         if (!isAbsolute && time == 0) {
             condWait();
         } else if (time > 0) {
-            condTimedWait(TimeUtils.delayNanos(isAbsolute, time));
+            condTimedWait(TimeUtils.durationNanos(isAbsolute, time));
         }
     }
 
