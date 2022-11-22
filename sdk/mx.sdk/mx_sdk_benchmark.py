@@ -751,13 +751,14 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
         # summary +      8 in 00:00:00 =   68.4/s Avg:    46 Min:    30 Max:    58 Err:     0 (0.00%) Active: 0 Started: 3 Finished: 3
         # summary =   5518 in 00:01:40 =   55.1/s Avg:    53 Min:    26 Max:  7725 Err:     0 (0.00%)
         #
-        # The following rule matches `^summary \+` and reports the corresponding data points as 'warmup'.
+        # The following rules matches `^summary \+` and reports the corresponding data points as 'warmup'.
         # Note that the `run()` function calls `addAverageAcrossLatestResults()`, which computes
         # the avg. of the last `AveragingBenchmarkMixin.getExtraIterationCount()` warmup data points
         # and reports that value as 'throughput'.
+        pattern = r"^summary \+\s+(?P<requests>[0-9]+) in (?P<hours>\d+):(?P<minutes>\d\d):(?P<seconds>\d\d) =\s+(?P<throughput>\d*[.,]?\d*)/s Avg:\s+(?P<avg>\d+) Min:\s+(?P<min>\d+) Max:\s+(?P<max>\d+) Err:\s+(?P<errors>\d+) \((?P<errpct>\d*[.,]?\d*)\%\)"  # pylint: disable=line-too-long
         return [
             mx_benchmark.StdOutRule(
-                r"^summary \+\s+(?P<requests>[0-9]+) in (?P<hours>\d+):(?P<minutes>\d\d):(?P<seconds>\d\d) =\s+(?P<throughput>\d*[.,]?\d*)/s Avg:\s+(?P<avg>\d+) Min:\s+(?P<min>\d+) Max:\s+(?P<max>\d+) Err:\s+(?P<errors>\d+) \((?P<errpct>\d*[.,]?\d*)\%\)", # pylint: disable=line-too-long
+                pattern,
                 {
                     "benchmark": benchmarks[0],
                     "bench-suite": self.benchSuiteName(),
@@ -765,6 +766,19 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
                     "metric.value": ("<throughput>", float),
                     "metric.unit": "op/s",
                     "metric.better": "higher",
+                    "metric.iteration": ("$iteration", int),
+                    "warnings": ("<errors>", str),
+                }
+            ),
+            mx_benchmark.StdOutRule(
+                pattern,
+                {
+                    "benchmark": benchmarks[0],
+                    "bench-suite": self.benchSuiteName(),
+                    "metric.name": "peak-latency",
+                    "metric.value": ("<max>", float),
+                    "metric.unit": "ms",
+                    "metric.better": "lower",
                     "metric.iteration": ("$iteration", int),
                     "warnings": ("<errors>", str),
                 }
