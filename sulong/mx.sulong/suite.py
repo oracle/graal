@@ -145,27 +145,52 @@ suite = {
     # by mx.
     # This is a dummy library for marking sulong native mode support.
     "NATIVE_MODE_SUPPORT" : {
-      "path": "tests/support.txt",
-      "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
-      "buildDependencies" : ["UNIX_SUPPORT"],
+      "os" : {
+        "windows" : {"optional": True},
+        "<others>" : {
+          "path": "tests/support.txt",
+          "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
+        },
+      },
     },
     # This is a dummy library for dragonegg support.
     "DRAGONEGG_SUPPORT" : {
-      "path": "tests/support.txt",
-      "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
-      "buildDependencies" : ["LINUX_AMD64_SUPPORT"],
+      "os_arch" : {
+        "linux" : {
+          "amd64" : {
+            "path": "tests/support.txt",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
+          },
+          "<others>": {"optional": True},
+        },
+        "<others>" : {"<others>": {"optional": True}},
+      },
     },
     # This is a dummy library for malloc.h support.
     "MALLOC_H_SUPPORT" : {
-      "path": "tests/support.txt",
-      "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
-      "buildDependencies" : ["LINUX_AMD64_SUPPORT"],
+      "os_arch" : {
+        "linux" : {
+          "amd64" : {
+            "path": "tests/support.txt",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
+          },
+          "<others>": {"optional": True},
+        },
+        "<others>" : {"<others>": {"optional": True}},
+      },
     },
     # This is a dummy library for alias() support.
     "ALIAS_SUPPORT" : {
-      "path": "tests/support.txt",
-      "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
-      "buildDependencies" : ["LINUX_AMD64_SUPPORT"],
+      "os_arch" : {
+        "linux" : {
+          "amd64" : {
+            "path": "tests/support.txt",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
+          },
+          "<others>": {"optional": True},
+        },
+        "<others>" : {"<others>": {"optional": True}},
+      },
     },
   },
 
