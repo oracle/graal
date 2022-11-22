@@ -202,7 +202,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     private MethodPointer createExpandSignatureMethod(Executable member) {
         return expandSignatureMethods.computeIfAbsent(new SignatureKey(member), signatureKey -> {
             ResolvedJavaMethod prototype = analysisAccess.getMetaAccess().lookupJavaMethod(invokePrototype).getWrapped();
-            return register(new ReflectionExpandSignatureMethod(signatureKey.uniqueShortName(), prototype, signatureKey.isStatic, signatureKey.argTypes, signatureKey.returnKind));
+            return register(new ReflectionExpandSignatureMethod("invoke_" + signatureKey.uniqueShortName(), prototype, signatureKey.isStatic, signatureKey.argTypes, signatureKey.returnKind));
         });
     }
 
