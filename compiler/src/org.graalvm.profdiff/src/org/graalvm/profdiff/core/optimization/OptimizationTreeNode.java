@@ -100,5 +100,15 @@ public abstract class OptimizationTreeNode extends TreeNode<OptimizationTreeNode
         }
     }
 
+    /**
+     * Clones the optimization subtree for a given inlining path. The cloned subtree includes all
+     * {@link OptimizationPhase phase nodes} and includes an optimization iff the given inlining
+     * path is a prefix of the inlining path to the optimization's
+     * {@link InliningPath#ofEnclosingMethod(Optimization) enclosing method}.
+     *
+     * @param prefix the inlining path which is tested as a prefix of an optimization's enclosing
+     *            methods
+     * @return the cloned optimization subtree
+     */
     public abstract OptimizationTreeNode cloneMatchingPath(InliningPath prefix);
 }

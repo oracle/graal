@@ -25,12 +25,9 @@
 package org.graalvm.profdiff.parser.experiment;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
-import org.graalvm.collections.Pair;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.util.json.JSONParser;
 import org.graalvm.util.json.JSONParserException;
@@ -123,10 +120,6 @@ public class ExperimentJSONParser {
         public Integer asNullableInteger() throws ExperimentParserTypeError {
             return asNullableInstanceOf(Integer.class);
         }
-
-        public Boolean asNullableBoolean() throws ExperimentParserTypeError {
-            return asNullableInstanceOf(Boolean.class);
-        }
     }
 
     /**
@@ -155,15 +148,6 @@ public class ExperimentJSONParser {
          */
         public JSONLiteral property(String key) {
             return new JSONLiteral(map.get(key), key);
-        }
-
-        public List<Pair<String, JSONLiteral>> getEntries() {
-            List<Pair<String, JSONLiteral>> entries = new ArrayList<>();
-            MapCursor<String, Object> cursor = map.getEntries();
-            while (cursor.advance()) {
-                entries.add(Pair.create(cursor.getKey(), new JSONLiteral(cursor.getValue(), cursor.getKey())));
-            }
-            return entries;
         }
     }
 

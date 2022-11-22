@@ -28,25 +28,52 @@ import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.util.Writer;
 
+/**
+ * A node of an optimization-context tree. A non-root node is backend either by an
+ * {@link InliningTreeNode} or an {@link Optimization}.
+ *
+ * It is ordered by {@link #compareTo(OptimizationContextTreeNode)} in a way such that nodes backend
+ * by an optimization come before nodes backend by an inlining-tree node. This is appropriate for
+ * writing in pre-order, because nodes backend by an optimization do not have children.
+ */
 public class OptimizationContextTreeNode extends TreeNode<OptimizationContextTreeNode> implements Comparable<OptimizationContextTreeNode> {
-
+    /**
+     * {@code null} for the root, or the original {@link InliningTreeNode}, or an
+     * {@link Optimization} which backs this node.
+     */
     private final TreeNode<?> originalNode;
 
+    /**
+     * Creates the root node.
+     */
     public OptimizationContextTreeNode() {
         super("Optimization-context tree");
         originalNode = null;
     }
 
+    /**
+     * Creates a node backend by an optimization.
+     *
+     * @param optimization the optimization which backs this node
+     */
     public OptimizationContextTreeNode(Optimization optimization) {
         super(optimization.getName());
         originalNode = optimization;
     }
 
+    /**
+     * Creates a node backed by an inlining-tree node.
+     *
+     * @param inliningTreeNode the inlining-tree node which backs this node
+     */
     public OptimizationContextTreeNode(InliningTreeNode inliningTreeNode) {
         super(inliningTreeNode.getName());
         originalNode = inliningTreeNode;
     }
 
+    /**
+     * Gets the inlining-tree node which backs this node or {@code null}.
+     */
     public InliningTreeNode getOriginalInliningTreeNode() {
         if (originalNode instanceof InliningTreeNode) {
             return (InliningTreeNode) originalNode;
@@ -54,6 +81,9 @@ public class OptimizationContextTreeNode extends TreeNode<OptimizationContextTre
         return null;
     }
 
+    /**
+     * Gets the optimization which backs this node or {@code null}.
+     */
     public Optimization getOriginalOptimization() {
         if (originalNode instanceof Optimization) {
             return (Optimization) originalNode;
@@ -61,8 +91,12 @@ public class OptimizationContextTreeNode extends TreeNode<OptimizationContextTre
         return null;
     }
 
-    public boolean hasOriginalNode() {
-        return originalNode != null;
+    /**
+     * Returns {@code true} iff the node is a root, i.e., it is not backend by another original
+     * node.
+     */
+    public boolean isRoot() {
+        return originalNode == null;
     }
 
     @Override

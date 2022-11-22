@@ -207,7 +207,7 @@ delta tree is the result of tree matching. Each node represents either a deletio
 
 ## Optimization-context tree
 
-The optimization context tree is the inlining tree extended with optimizations placed in their method context.
+An optimization-context tree is an inlining tree extended with optimizations placed in their method context.
 Optimization-context trees make it easier to attribute optimizations to inlining decisions. However, the structure of
 the optimization tree is lost. The feature is enabled with the flag `--optimization-context-tree`, and is compatible
 with each use case, e.g., `mx profdiff --optimization-context-tree report scrabble_log`.
@@ -234,7 +234,7 @@ By combining the trees, we obtain the following optimization-context tree:
 
 ```
 A compilation unit of the method a()
-    Optimization context tree
+    Optimization-context tree
         a() at bci -1
             SomeOptimization OptimizationA at bci 3
             b() at bci 1

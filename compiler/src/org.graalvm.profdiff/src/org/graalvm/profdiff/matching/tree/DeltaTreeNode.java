@@ -154,10 +154,6 @@ public class DeltaTreeNode<T extends TreeNode<T>> extends TreeNode<DeltaTreeNode
         return depth;
     }
 
-    public T firstNonNull() {
-        return left == null ? right : left;
-    }
-
     @Override
     public void writeHead(Writer writer) {
         if (isIdentity()) {

@@ -29,21 +29,22 @@ import java.util.Objects;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 
 /**
- * Provides an equality test of two {@link InliningTreeNode inlining tree nodes} and determines
+ * Provides an equality test of two {@link InliningTreeNode inlining-tree nodes} and determines the
  * costs of edit operations.
  */
 public class InliningTreeEditPolicy extends TreeEditPolicy<InliningTreeNode> {
     /**
      * Tests two inlining tree nodes for equality by comparing the {@link InliningTreeNode#getBCI()
-     * bci of their callsites} and {@link InliningTreeNode#getName() method names}.
+     * bci of their callsites}, positivity of the inlining decision, abstractness, and
+     * {@link InliningTreeNode#getName() method names}.
      *
-     * @param node1 the first inlining tree node
-     * @param node2 the second inlining tree node
+     * @param node1 the first inlining-tree node
+     * @param node2 the second inlining-tree node
      * @return {@code true} iff the nodes are equal
      */
     @Override
     public boolean nodesEqual(InliningTreeNode node1, InliningTreeNode node2) {
-        return node1.getBCI() == node2.getBCI() && node1.isPositive() == node2.isPositive() && Objects.equals(node1.getName(), node2.getName());
+        return node1.getBCI() == node2.getBCI() && node1.isPositive() == node2.isPositive() && node1.isAbstract() == node2.isAbstract() && Objects.equals(node1.getName(), node2.getName());
     }
 
     /**
@@ -59,7 +60,7 @@ public class InliningTreeEditPolicy extends TreeEditPolicy<InliningTreeNode> {
     @Override
     public long relabelCost(InliningTreeNode node1, InliningTreeNode node2) {
         assert node1 != node2;
-        if (node1.getBCI() == node2.getBCI() && Objects.equals(node1.getName(), node2.getName())) {
+        if (node1.getBCI() == node2.getBCI() && node1.isAbstract() == node2.isAbstract() && Objects.equals(node1.getName(), node2.getName())) {
             return UNIT_COST;
         }
         return INFINITE_COST;

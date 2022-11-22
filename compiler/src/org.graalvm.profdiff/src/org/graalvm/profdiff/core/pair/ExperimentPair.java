@@ -32,7 +32,6 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicMapUtil;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.core.common.SuppressSVMWarnings;
 import org.graalvm.profdiff.core.CompilationFragment;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.Experiment;
@@ -102,11 +101,42 @@ public class ExperimentPair {
         return () -> methodPairs.stream().sorted(Comparator.comparingLong(pair -> -pair.getTotalPeriod())).iterator();
     }
 
+    /**
+     * Creates compilation fragments for both experiments.
+     *
+     * @throws ExperimentParserError failed to load a tree pair for an experiment
+     */
     public void createCompilationFragments() throws ExperimentParserError {
         createCompilationFragments(experiment1, experiment2);
         createCompilationFragments(experiment2, experiment1);
     }
 
+    /**
+     * Creates compilation fragments for the destination experiments by testing the requirements
+     * against the source experiment.
+     *
+     * The method executes the following algorithm to find appropriate candidates for a compilation fragment:
+     *
+     * @formatter:off
+     * <pre>
+     *     for each method M in the destination experiment:
+     *         for each hot compilation unit CU of the method M:
+     *             for each inlined method I in CU:
+     *                 if the path to I in CU is unique
+     *                    and (1) there is not any hot compilation unit of M in the other experiment
+     *                        (2) or there exists a hot compilation unit of M in the other experiment
+     *                                        where I is not inlined:
+     *                    create a fragment from CU rooted in I
+     * </pre>
+     * @formatter:on
+     *
+     * The first condition (1) ensures that optimizations can be properly attributed to the fragments. The second
+     * condition (2) reduces the set of created fragments to only those that are likely useful.
+     *
+     * @param destination the destination experiment where fragments are created
+     * @param source the source experiments, which is only used to test requirements
+     * @throws ExperimentParserError failed to load a tree pair for an experiment
+     */
     private static void createCompilationFragments(Experiment destination, Experiment source) throws ExperimentParserError {
         for (Method method : collect(destination.getMethodsByName().getValues())) {
             if (!method.isHot()) {

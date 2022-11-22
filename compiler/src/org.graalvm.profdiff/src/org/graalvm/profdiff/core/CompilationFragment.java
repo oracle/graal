@@ -28,18 +28,49 @@ import org.graalvm.profdiff.core.inlining.InliningPath;
 import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
 import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
-import org.graalvm.profdiff.util.StdoutWriter;
 
+/**
+ * A compilation which is a fragment of a full compilation unit.
+ *
+ * A fragment is created from the parent compilation unit's inlining tree and optimization tree. A
+ * subtree of the inlining tree becomes the inlining tree of the newly created fragment. The
+ * optimization tree of the fragment is created by cloning all internal nodes of the compilation
+ * unit's optimization tree and cloning individual optimizations, whose position is in the
+ * fragment's inlining subtree. This happens lazily only when the fragment's trees are
+ * {@link #loadTrees() loaded}.
+ *
+ * Proftool provides execution data on the granularity of compilation units. For that reason, the
+ * reported execution fraction of a compilation fragment is inherited from its parent compilation
+ * unit.
+ */
 public class CompilationFragment extends CompilationUnit {
-
+    /**
+     * The ID that will be assigned the fragment created next.
+     */
     private static int nextFragmentId = 0;
 
+    /**
+     * The compilation unit from which this fragment was created.
+     */
     private final CompilationUnit parentCompilationUnit;
 
+    /**
+     * The path to root in the parent compilation unit's inlining tree which defines this fragment.
+     */
     private final InliningPath pathFromRoot;
 
+    /**
+     * The ID of this fragment.
+     */
     private final int fragmentId;
 
+    /**
+     * Constructs a compilation fragment.
+     *
+     * @param rootFragmentMethod the root method of this fragment
+     * @param parentCompilationUnit the compilation unit from which this fragment was created
+     * @param pathFromRoot the path in the inlining tree of the parent to the root method
+     */
     public CompilationFragment(Method rootFragmentMethod, CompilationUnit parentCompilationUnit, InliningPath pathFromRoot) {
         super(rootFragmentMethod, parentCompilationUnit.getCompilationId(), parentCompilationUnit.getPeriod(), null);
         this.parentCompilationUnit = parentCompilationUnit;
@@ -48,11 +79,21 @@ public class CompilationFragment extends CompilationUnit {
         setHot(parentCompilationUnit.isHot());
     }
 
+    /**
+     * Gets the compilation ID of this compilation fragment. Includes the compilation ID of the
+     * parent compilation unit, followed by {@code "#"}, and the fragment ID, e.g. {@code "123#42"}.
+     *
+     * @return the compilation ID
+     */
     @Override
     public String getCompilationId() {
         return super.getCompilationId() + "#" + fragmentId;
     }
 
+    /**
+     * Gets the path from root to the root of this fragment in the inlining tree of the parent's
+     * compilation unit.
+     */
     public InliningPath getPathFromRoot() {
         return pathFromRoot;
     }

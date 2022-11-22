@@ -71,13 +71,13 @@ public class ReportCommand extends Command {
     @Override
     public void invoke(Writer writer) throws ExperimentParserError {
         boolean hasProftool = proftoolArgument.getValue() != null;
-        ExplanationWriter explanationWriter = new ExplanationWriter(writer, true, hasProftool, getCommandArguments().isOptimizationContextTreeEnabled());
+        ExplanationWriter explanationWriter = new ExplanationWriter(writer, true, hasProftool, getCommandParameters().isOptimizationContextTreeEnabled());
         explanationWriter.explain();
 
         VerbosityLevel verbosity = writer.getVerbosityLevel();
         writer.writeln();
         Experiment experiment = ExperimentParser.parseOrExit(ExperimentId.ONE, null, proftoolArgument.getValue(), optimizationLogArgument.getValue(), writer);
-        getCommandArguments().getHotCompilationUnitPolicy().markHotCompilationUnits(experiment);
+        getCommandParameters().getHotCompilationUnitPolicy().markHotCompilationUnits(experiment);
         experiment.writeExperimentSummary(writer);
 
         for (Method method : experiment.getMethodsByDescendingPeriod()) {

@@ -117,17 +117,16 @@ public class CompilationUnitPair {
             if (compilationUnit1.getMethod().getExperiment().isProfileAvailable()) {
                 sb.append(" (").append(compilationUnit1.createExecutionSummary()).append(")");
             }
-            sb.append(" in experiment ").append(compilationUnit1.getMethod().getExperiment().getExperimentId()).append(" vs compilation ")
-                            .append(compilationUnit2 instanceof CompilationFragment ? "fragment" : "unit").append(' ').append(compilationUnit2.getCompilationId());
+            sb.append(" in experiment ").append(compilationUnit1.getMethod().getExperiment().getExperimentId()).append(" vs compilation ").append(
+                            compilationUnit2 instanceof CompilationFragment ? "fragment" : "unit").append(' ').append(compilationUnit2.getCompilationId());
             if (compilationUnit2.getMethod().getExperiment().isProfileAvailable()) {
                 sb.append(" (").append(compilationUnit2.createExecutionSummary()).append(")");
             }
             sb.append(" in experiment ").append(compilationUnit2.getMethod().getExperiment().getExperimentId());
         } else {
             CompilationUnit compilationUnit = compilationUnit1 != null && compilationUnit1.isHot() ? compilationUnit1 : compilationUnit2;
-            sb.append(compilationUnit instanceof CompilationFragment ? "fragment" : "unit").append(' ').append(compilationUnit.getCompilationId())
-                            .append(" is ").append(compilationUnit.isHot() ? "hot" : "present").append(" only in experiment ")
-                            .append(compilationUnit.getMethod().getExperiment().getExperimentId());
+            sb.append(compilationUnit instanceof CompilationFragment ? "fragment" : "unit").append(' ').append(compilationUnit.getCompilationId()).append(" is ").append(
+                            compilationUnit.isHot() ? "hot" : "present").append(" only in experiment ").append(compilationUnit.getMethod().getExperiment().getExperimentId());
         }
         return sb.toString();
     }

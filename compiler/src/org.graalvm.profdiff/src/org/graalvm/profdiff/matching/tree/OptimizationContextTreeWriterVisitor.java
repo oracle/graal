@@ -27,6 +27,10 @@ package org.graalvm.profdiff.matching.tree;
 import org.graalvm.profdiff.core.OptimizationContextTreeNode;
 import org.graalvm.profdiff.util.Writer;
 
+/**
+ * A pre-order writer for an {@link org.graalvm.profdiff.core.OptimizationContextTree} delegating to
+ * {@link InliningDeltaTreeWriterVisitor}.
+ */
 public class OptimizationContextTreeWriterVisitor extends DeltaTreeWriterVisitor<OptimizationContextTreeNode> {
 
     private final InliningDeltaTreeWriterVisitor inliningDeltaTreeWriterVisitor;

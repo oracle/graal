@@ -39,6 +39,9 @@ import org.graalvm.profdiff.util.Writer;
  * performed by an {@link OptimizationPhase optimization phase} like {@code LoopPeelingPhase}.
  */
 public class Optimization extends OptimizationTreeNode {
+    /**
+     * A special bci value indicating that the true bci is unknown.
+     */
     public static final int UNKNOWN_BCI = -1;
 
     /**

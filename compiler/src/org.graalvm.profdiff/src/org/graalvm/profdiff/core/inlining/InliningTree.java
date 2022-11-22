@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.profdiff.core.VerbosityLevel;
-import org.graalvm.profdiff.matching.tree.InliningDeltaTreeWriterVisitor;
+import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.util.Writer;
 import org.graalvm.util.CollectionsUtil;
 
@@ -129,13 +129,25 @@ public class InliningTree {
             writer.increaseIndent();
             root.forEach(node -> {
                 node.writeHead(writer);
-                InliningDeltaTreeWriterVisitor.writeReceiverTypeProfile(writer, node, null);
+                node.writeReceiverTypeProfile(writer, null);
                 writer.increaseIndent();
             }, node -> writer.decreaseIndent());
             writer.decreaseIndent();
         }
     }
 
+    /**
+     * Returns {@code true} iff all paths in the inlining tree are distinct. Formally, the method
+     * returns {@code true} iff there do not exist two different nodes A and B, where
+     * {@link InliningPath#fromRootToNode(InliningTreeNode) the path from root} to A
+     * {@link InliningPath#matches(InliningPath) matches} the path from root to B.
+     *
+     * In other words, we are asking whether we can unambiguously navigate to each node in the tree
+     * using {@link InliningPath inlining paths}. This is necessary to properly construct an
+     * {@link org.graalvm.profdiff.core.OptimizationContextTree optimization-context tree}.
+     *
+     * @return {@code true} iff all paths in the inlining tree are distinct
+     */
     public boolean allInliningPathsAreDistinct() {
         if (root == null) {
             return true;
@@ -153,7 +165,21 @@ public class InliningTree {
         return true;
     }
 
-    private InliningTreeNode getNodeAt(InliningTreeNode node, InliningPath path, int pathIndex) {
+    /**
+     * Recursively finds a node on a path. Returns {@code null} if there is no such node. Tree nodes
+     * corresponding to abstract methods ({@link InliningTreeNode#isAbstract()}) are skipped as if
+     * they were removed from the tree and their children reattached to the closest ancestor.
+     *
+     * If several nodes match the path, then the first match is returned. Note that backtracking is
+     * necessary, because a path element may match 2 different edges, and one of the edges may lead
+     * to a dead-end.
+     *
+     * @param node the last node on the path (initially {@code null})
+     * @param path the path from root
+     * @param pathIndex the index to the next path element in the path (initially 0)
+     * @return the node found on the path or {@code null}
+     */
+    private InliningTreeNode findNodeAt(InliningTreeNode node, InliningPath path, int pathIndex) {
         if (pathIndex >= path.size()) {
             return node;
         }
@@ -162,9 +188,9 @@ public class InliningTree {
         for (InliningTreeNode child : children) {
             InliningTreeNode result = null;
             if (child.isAbstract()) {
-                result = getNodeAt(child, path, pathIndex);
+                result = findNodeAt(child, path, pathIndex);
             } else if (element.matches(child.pathElement())) {
-                result = getNodeAt(child, path, pathIndex + 1);
+                result = findNodeAt(child, path, pathIndex + 1);
             }
             if (result != null) {
                 return result;
@@ -173,16 +199,31 @@ public class InliningTree {
         return null;
     }
 
+    /**
+     * Clones a subtree given by path. The cloned subtree is rooted in the node given by path. The
+     * bci of the cloned root is set to {@link Optimization#UNKNOWN_BCI} and the inlining reason is
+     * reset. If there is no such node on the given path, an inlining tree with {@code null} root is
+     * returned.
+     *
+     * @param path the path to the root of the cloned subtree
+     * @return a cloned subtree
+     */
     public InliningTree cloneSubtreeAt(InliningPath path) {
-        InliningTreeNode rootNode = getNodeAt(null, path, 0);
+        InliningTreeNode rootNode = findNodeAt(null, path, 0);
         if (rootNode == null) {
             return new InliningTree(null);
         }
-        InliningTreeNode clonedNode = new InliningTreeNode(rootNode.getName(), -1, rootNode.isPositive(), null, rootNode.isAbstract(), rootNode.getReceiverTypeProfile());
+        InliningTreeNode clonedNode = new InliningTreeNode(rootNode.getName(), Optimization.UNKNOWN_BCI, rootNode.isPositive(), null, rootNode.isAbstract(), rootNode.getReceiverTypeProfile());
         cloneSubtreeInto(rootNode, clonedNode);
         return new InliningTree(clonedNode);
     }
 
+    /**
+     * Recursively clones the children of the original node the cloned node.
+     *
+     * @param originalNode the original node
+     * @param clonedNode the cloned node (initially without children)
+     */
     private static void cloneSubtreeInto(InliningTreeNode originalNode, InliningTreeNode clonedNode) {
         for (InliningTreeNode originalChild : originalNode.getChildren()) {
             InliningTreeNode clonedChild = new InliningTreeNode(originalChild.getName(), originalChild.getBCI(), originalChild.isPositive(), originalChild.getReason(),

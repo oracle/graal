@@ -24,7 +24,10 @@
  */
 package org.graalvm.profdiff.command;
 
+import java.util.Optional;
+
 import org.graalvm.profdiff.core.CompilationUnit;
+import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.OptimizationContextTree;
 import org.graalvm.profdiff.core.OptimizationContextTreeNode;
 import org.graalvm.profdiff.core.VerbosityLevel;
@@ -53,6 +56,12 @@ import org.graalvm.profdiff.util.Writer;
  */
 public class ExperimentMatcher {
     /**
+     * A format string of the warning printed when the optimization-context tree cannot be created
+     * in an experiment for a specific reason.
+     */
+    public static final String OPTIMIZATION_CONTEXT_TREE_UNSUITABLE_FORMAT = "Warning: Optimization-context tree cannot be created for experiment %s: %s";
+
+    /**
      * Matches optimization trees of two compilation units.
      */
     private final SelkowTreeMatcher<OptimizationTreeNode> optimizationTreeMatcher = new SelkowTreeMatcher<>(new OptimizationTreeEditPolicy());
@@ -69,6 +78,10 @@ public class ExperimentMatcher {
      */
     private final Writer writer;
 
+    /**
+     * {@code true} iff {@link OptimizationContextTree an optimization context tree} should be built
+     * and displayed instead of a separate inlining and optimization tree.
+     */
     private final boolean optimizationContextTreeEnabled;
 
     public ExperimentMatcher(Writer writer, boolean optimizationContextTreeEnabled) {
@@ -167,9 +180,20 @@ public class ExperimentMatcher {
         writer.decreaseIndent();
     }
 
+    /**
+     * Creates an optimization-context tree for 2 tree pairs, matches them, and prints out the
+     * results. A warning is printed if the pairs are unsuitable for an optimization-context.
+     *
+     * @param treePair1 the tree pair from the first experiment
+     * @param treePair2 the tree pair from the second experiment
+     */
     private void createOptimizationContextTreeAndMatch(CompilationUnit.TreePair treePair1, CompilationUnit.TreePair treePair2) {
-        if (treePair1.getInliningTree().getRoot() == null || treePair2.getInliningTree().getRoot() == null) {
-            throw new RuntimeException("Cannot create an optimization-context tree, because an inlining tree is missing.");
+        Optional<String> negativeReason1 = OptimizationContextTree.checkUnsuitability(treePair1.getInliningTree());
+        Optional<String> negativeReason2 = OptimizationContextTree.checkUnsuitability(treePair2.getInliningTree());
+        negativeReason1.ifPresent(reason -> writer.writeln(String.format(OPTIMIZATION_CONTEXT_TREE_UNSUITABLE_FORMAT, ExperimentId.ONE, reason)));
+        negativeReason2.ifPresent(reason -> writer.writeln(String.format(OPTIMIZATION_CONTEXT_TREE_UNSUITABLE_FORMAT, ExperimentId.TWO, reason)));
+        if (negativeReason1.isPresent() || negativeReason2.isPresent()) {
+            return;
         }
         treePair1.getInliningTree().preprocess(writer.getVerbosityLevel());
         treePair2.getInliningTree().preprocess(writer.getVerbosityLevel());

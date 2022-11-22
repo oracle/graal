@@ -74,12 +74,12 @@ public class JITAOTCommand extends Command {
 
     @Override
     public void invoke(Writer writer) throws ExperimentParserError {
-        ExplanationWriter explanationWriter = new ExplanationWriter(writer, false, true, getCommandArguments().isOptimizationContextTreeEnabled());
+        ExplanationWriter explanationWriter = new ExplanationWriter(writer, false, true, getCommandParameters().isOptimizationContextTreeEnabled());
         explanationWriter.explain();
 
         writer.writeln();
         Experiment jit = ExperimentParser.parseOrExit(ExperimentId.ONE, Experiment.CompilationKind.JIT, proftoolArgument.getValue(), jitOptimizationLogArgument.getValue(), writer);
-        getCommandArguments().getHotCompilationUnitPolicy().markHotCompilationUnits(jit);
+        getCommandParameters().getHotCompilationUnitPolicy().markHotCompilationUnits(jit);
         jit.writeExperimentSummary(writer);
 
         writer.writeln();
@@ -92,7 +92,7 @@ public class JITAOTCommand extends Command {
             aot.getMethodOrCreate(jitUnit.getMethod().getMethodName()).getCompilationUnits().forEach(aotUnit -> aotUnit.setHot(true));
         }
 
-        ExperimentMatcher matcher = new ExperimentMatcher(writer, getCommandArguments().isOptimizationContextTreeEnabled());
+        ExperimentMatcher matcher = new ExperimentMatcher(writer, getCommandParameters().isOptimizationContextTreeEnabled());
         matcher.match(new ExperimentPair(jit, aot));
     }
 }

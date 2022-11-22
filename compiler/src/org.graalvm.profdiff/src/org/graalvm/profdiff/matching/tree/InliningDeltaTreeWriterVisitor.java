@@ -56,7 +56,7 @@ public class InliningDeltaTreeWriterVisitor extends DeltaTreeWriterVisitor<Inlin
         adjustIndentLevel(node);
         writer.write(EditScript.DELETE_PREFIX);
         node.getLeft().writeHead(writer);
-        writeReceiverTypeProfile(writer, node.getLeft(), null);
+        node.getLeft().writeReceiverTypeProfile(writer, null);
     }
 
     @Override
@@ -64,7 +64,7 @@ public class InliningDeltaTreeWriterVisitor extends DeltaTreeWriterVisitor<Inlin
         adjustIndentLevel(node);
         writer.write(EditScript.INSERT_PREFIX);
         node.getRight().writeHead(writer);
-        writeReceiverTypeProfile(writer, node.getRight(), null);
+        node.getRight().writeReceiverTypeProfile(writer, null);
     }
 
     @Override
@@ -72,8 +72,8 @@ public class InliningDeltaTreeWriterVisitor extends DeltaTreeWriterVisitor<Inlin
         adjustIndentLevel(node);
         writer.write(EditScript.IDENTITY_PREFIX);
         node.getLeft().writeHead(writer);
-        writeReceiverTypeProfile(writer, node.getLeft(), ExperimentId.ONE);
-        writeReceiverTypeProfile(writer, node.getRight(), ExperimentId.TWO);
+        node.getLeft().writeReceiverTypeProfile(writer, ExperimentId.ONE);
+        node.getRight().writeReceiverTypeProfile(writer, ExperimentId.TWO);
     }
 
     @Override
@@ -108,8 +108,8 @@ public class InliningDeltaTreeWriterVisitor extends DeltaTreeWriterVisitor<Inlin
             writeReasoning(node.getLeft(), ExperimentId.ONE);
             writeReasoning(node.getRight(), ExperimentId.TWO);
         }
-        writeReceiverTypeProfile(writer, node.getLeft(), ExperimentId.ONE);
-        writeReceiverTypeProfile(writer, node.getRight(), ExperimentId.TWO);
+        node.getLeft().writeReceiverTypeProfile(writer, ExperimentId.ONE);
+        node.getRight().writeReceiverTypeProfile(writer, ExperimentId.TWO);
     }
 
     private void writeReasoning(InliningTreeNode node, ExperimentId experimentId) {
@@ -119,26 +119,6 @@ public class InliningDeltaTreeWriterVisitor extends DeltaTreeWriterVisitor<Inlin
         for (String reason : node.getReason()) {
             writer.writeln(reason);
         }
-        writer.decreaseIndent(3);
-    }
-
-    public static void writeReceiverTypeProfile(Writer writer, InliningTreeNode node, ExperimentId experimentId) {
-        if (node.getReceiverTypeProfile() == null || (node.getReceiverTypeProfile().isMature() && node.getReceiverTypeProfile().getProfiledTypes().isEmpty())) {
-            return;
-        }
-        writer.increaseIndent();
-        writer.write("|_");
-        if (!node.getReceiverTypeProfile().isMature()) {
-            writer.write(" immature");
-        }
-        writer.write(" receiver-type profile");
-        if (experimentId == null) {
-            writer.writeln();
-        } else {
-            writer.writeln(" in experiment " + experimentId);
-        }
-        writer.increaseIndent(2);
-        node.getReceiverTypeProfile().write(writer);
         writer.decreaseIndent(3);
     }
 }

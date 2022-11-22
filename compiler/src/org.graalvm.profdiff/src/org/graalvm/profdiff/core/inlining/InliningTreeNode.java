@@ -28,6 +28,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
+import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.TreeNode;
 import org.graalvm.profdiff.util.Writer;
 
@@ -51,6 +52,9 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
 
     public static final String AT_BCI = " at bci ";
 
+    /**
+     * The prefix of an abstract method.
+     */
     public static final String ABSTRACT_PREFIX = "(abstract) ";
 
     /**
@@ -70,8 +74,14 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
      */
     private final List<String> reason;
 
+    /**
+     * {@code true} iff the node corresponds to an abstract method.
+     */
     private final boolean isAbstract;
 
+    /**
+     * A receiver-type profile for the callsite which corresponds to this node.
+     */
     private final ReceiverTypeProfile receiverTypeProfile;
 
     /**
@@ -81,8 +91,8 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
      * @param bci the bci of the parent method's callsite of this inlinee
      * @param positive {@code true} if the target method was inlined
      * @param reason the reasoning for this inlining decision
-     * @param isAbstract
-     * @param receiverTypeProfile
+     * @param isAbstract {@code true} if the target method is abstract
+     * @param receiverTypeProfile the receiver-type profile of the callsite
      */
     public InliningTreeNode(String targetMethodName, int bci, boolean positive, List<String> reason, boolean isAbstract, ReceiverTypeProfile receiverTypeProfile) {
         super(targetMethodName);
@@ -107,6 +117,9 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
         return positive;
     }
 
+    /**
+     * Returns {@code true} if the target method is abstract.
+     */
     public boolean isAbstract() {
         return isAbstract;
     }
@@ -170,11 +183,44 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
         return (positive ? 1 : 0) - (other.positive ? 1 : 0);
     }
 
+    /**
+     * Creates and returns an inlining path element representing this callsite.
+     */
     public InliningPath.PathElement pathElement() {
         return new InliningPath.PathElement(getName(), getBCI());
     }
 
+    /**
+     * Gets the receiver-type profile of this callsite.
+     */
     public ReceiverTypeProfile getReceiverTypeProfile() {
         return receiverTypeProfile;
+    }
+
+    /**
+     * Writes the {@link ReceiverTypeProfile} if it is not empty, including its maturity and
+     * optionally and experiment ID.
+     *
+     * @param writer the destination writer
+     * @param experimentId an optional experiment ID
+     */
+    public void writeReceiverTypeProfile(Writer writer, ExperimentId experimentId) {
+        if (receiverTypeProfile == null || (receiverTypeProfile.isMature() && receiverTypeProfile.getProfiledTypes().isEmpty())) {
+            return;
+        }
+        writer.increaseIndent();
+        writer.write("|_");
+        if (!receiverTypeProfile.isMature()) {
+            writer.write(" immature");
+        }
+        writer.write(" receiver-type profile");
+        if (experimentId == null) {
+            writer.writeln();
+        } else {
+            writer.writeln(" in experiment " + experimentId);
+        }
+        writer.increaseIndent(2);
+        receiverTypeProfile.write(writer);
+        writer.decreaseIndent(3);
     }
 }

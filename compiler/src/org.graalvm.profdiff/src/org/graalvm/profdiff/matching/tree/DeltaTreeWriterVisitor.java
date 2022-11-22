@@ -27,6 +27,12 @@ package org.graalvm.profdiff.matching.tree;
 import org.graalvm.profdiff.core.TreeNode;
 import org.graalvm.profdiff.util.Writer;
 
+/**
+ * Formats a delta tree in pre-order using a destination writer. Each delta node is indented
+ * depending on its depth in the tree.
+ *
+ * @param <T> the type of the original node
+ */
 public class DeltaTreeWriterVisitor<T extends TreeNode<T>> implements DeltaTreeVisitor<T> {
     /**
      * The destination writer.
@@ -40,7 +46,7 @@ public class DeltaTreeWriterVisitor<T extends TreeNode<T>> implements DeltaTreeV
 
     public DeltaTreeWriterVisitor(Writer writer) {
         this.writer = writer;
-        this.baseIndentLevel = 0;
+        baseIndentLevel = 0;
     }
 
     protected void adjustIndentLevel(DeltaTreeNode<T> node) {

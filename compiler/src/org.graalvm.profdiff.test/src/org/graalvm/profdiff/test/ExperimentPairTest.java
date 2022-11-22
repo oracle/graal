@@ -25,7 +25,7 @@
 package org.graalvm.profdiff.test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -76,14 +76,12 @@ public class ExperimentPairTest {
         // expected result:
         // baz: baz1 unpaired
         // bar: bar1 matched with bar2
-        // foo: foo3 matched with foo4, foo2 unpaired
+        // foo: foo3 matched with foo4, foo2 matched with foo 4
         methodPairs = asList(pair.getHotMethodPairsByDescendingPeriod());
         assertEquals(3, methodPairs.size());
 
         List<CompilationUnitPair> bazCompilations = asList(methodPairs.get(0).getHotCompilationUnitPairsByDescendingPeriod());
-        assertEquals(1, bazCompilations.size());
-        assertNull(bazCompilations.get(0).getCompilationUnit1());
-        assertEquals(baz1, bazCompilations.get(0).getCompilationUnit2());
+        assertTrue(bazCompilations.isEmpty());
 
         List<CompilationUnitPair> barCompilations = asList(methodPairs.get(1).getHotCompilationUnitPairsByDescendingPeriod());
         assertEquals(1, barCompilations.size());
@@ -95,6 +93,6 @@ public class ExperimentPairTest {
         assertEquals(foo3, fooCompilations.get(0).getCompilationUnit1());
         assertEquals(foo4, fooCompilations.get(0).getCompilationUnit2());
         assertEquals(foo2, fooCompilations.get(1).getCompilationUnit1());
-        assertNull(fooCompilations.get(1).getCompilationUnit2());
+        assertEquals(foo4, fooCompilations.get(1).getCompilationUnit2());
     }
 }

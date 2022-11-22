@@ -108,8 +108,14 @@ public class Method {
         return compilationUnit;
     }
 
+    /**
+     * Creates and adds a compilation fragment to the method.
+     *
+     * @param parentCompilationUnit the parent compilation unit of the fragment
+     * @param pathFromRoot the path in the inlining tree to the root of the fragment
+     * @return the added compilation fragment
+     */
     public CompilationFragment addCompilationFragment(CompilationUnit parentCompilationUnit, InliningPath pathFromRoot) {
-        // assert Objects.equals(rootInliningTreeNode.getName(), methodName);
         CompilationFragment compilationFragment = new CompilationFragment(this, parentCompilationUnit, pathFromRoot);
         compilationUnits.add(compilationFragment);
         return compilationFragment;

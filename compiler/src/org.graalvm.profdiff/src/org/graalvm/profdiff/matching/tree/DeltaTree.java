@@ -204,6 +204,14 @@ public class DeltaTree<T extends TreeNode<T>> {
         visitor.afterVisit();
     }
 
+    /**
+     * Expands subtree operations (insertions and deletions) to node operations.
+     *
+     * The original edit script contains only entry for each subtree insertion/deletion, even if the
+     * tree contains more than one node. As a result of that, only one delta node is created for the
+     * whole subtree. This method expands the operations, so that the delta tree contains a delta
+     * node for each inserted/deleted node.
+     */
     public void expand() {
         forEach(node -> {
             if (node.isDeletion()) {

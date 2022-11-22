@@ -47,10 +47,6 @@ public abstract class TreeNode<T extends TreeNode<T>> {
      */
     private final String name;
 
-    public T getParent() {
-        return parent;
-    }
-
     /**
      * The parent node of this node in the tree.
      */
@@ -70,6 +66,13 @@ public abstract class TreeNode<T extends TreeNode<T>> {
     @SuppressWarnings("unchecked")
     private T asT() {
         return (T) this;
+    }
+
+    /**
+     * Gets the parent node.
+     */
+    public T getParent() {
+        return parent;
     }
 
     /**

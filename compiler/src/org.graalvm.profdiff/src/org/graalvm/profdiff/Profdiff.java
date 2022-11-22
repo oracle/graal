@@ -119,8 +119,8 @@ public class Profdiff {
             return hotCompilationUnitPolicy;
         }
 
-        public Command.CommandArguments getCommandArguments() {
-            return new Command.CommandArguments(getHotCompilationUnitPolicy(), optimizationContextTreeArgument.getValue());
+        public Command.CommandParameters getCommandArguments() {
+            return new Command.CommandParameters(getHotCompilationUnitPolicy(), optimizationContextTreeArgument.getValue());
         }
     }
 
@@ -134,7 +134,7 @@ public class Profdiff {
 
         programArguments.parseOrExit(args);
 
-        commandGroup.getSelectedCommand().setCommandArguments(programArguments.getCommandArguments());
+        commandGroup.getSelectedCommand().setCommandParameters(programArguments.getCommandArguments());
         VerbosityLevel verbosityLevel = programArguments.getVerbosityLevel();
         StdoutWriter writer = new StdoutWriter(verbosityLevel);
         try {

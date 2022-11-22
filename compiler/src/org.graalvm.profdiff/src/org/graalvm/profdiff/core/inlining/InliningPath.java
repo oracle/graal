@@ -33,10 +33,42 @@ import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.profdiff.core.optimization.Optimization;
 
-public class InliningPath {
+/**
+ * A path in the {@link InliningTree}.
+ *
+ * Consider the following inlining tree:
+ *
+ * @formatter:off
+ * <pre>
+ *          a()
+ *       at bci -1
+ *      ___/  \_____
+ *     /            \
+ *    b()           c()
+ * at bci 0       at bci 1
+ *               __/  \__
+ *             /         \
+ *           d()         e()
+ *        at bci 0     at bci 1
+ * </pre>
+ * @formatter:on
+ *
+ * As an example, the right-most path in the inlining tree is <pre>a() at bci -1, b() at bci 0</pre>.
+ */
+public final class InliningPath {
+    /**
+     * A single element of an inlining path. It is composed by a method name and the bci of the
+     * method's callsite.
+     */
     public static final class PathElement {
+        /**
+         * The name of the method.
+         */
         private final String methodName;
 
+        /**
+         * The bci of the method's callsite.
+         */
         private final int callsiteBCI;
 
         public PathElement(String methodName, int callsiteBCI) {
@@ -44,6 +76,15 @@ public class InliningPath {
             this.callsiteBCI = callsiteBCI;
         }
 
+        /**
+         * Returns {@code true} iff the path element matches another path element. A path element
+         * matches another element iff the method names are equals and the byte code indexes match
+         * ({@link Optimization#UNKNOWN_BCI} is treated as a wildcard). The relation is not
+         * transitive due to the possibility of a wildcard.
+         *
+         * @param otherElement the other path element
+         * @return {@code true} if the path elements match
+         */
         public boolean matches(PathElement otherElement) {
             if (!Objects.equals(methodName, otherElement.methodName)) {
                 return false;
@@ -51,35 +92,79 @@ public class InliningPath {
             return callsiteBCI == Optimization.UNKNOWN_BCI || otherElement.callsiteBCI == Optimization.UNKNOWN_BCI || callsiteBCI == otherElement.callsiteBCI;
         }
 
+        /**
+         * Gets the method name.
+         */
         public String getMethodName() {
             return methodName;
         }
 
+        /**
+         * Gets the bci of the method's callsite.
+         */
         public int getCallsiteBCI() {
             return callsiteBCI;
         }
     }
 
+    /**
+     * A list of path elements which compose this path.
+     */
     private final List<PathElement> path;
 
+    /**
+     * The empty path.
+     */
     public static final InliningPath EMPTY = new InliningPath(List.of());
 
     private InliningPath(List<PathElement> path) {
         this.path = path;
     }
 
+    /**
+     * Gets the number of path elements which compose this path.
+     */
     public int size() {
         return path.size();
     }
 
+    /**
+     * Gets a path element at an index.
+     *
+     * @param index the index of the path element
+     * @return the path element at the index
+     */
     public PathElement get(int index) {
         return path.get(index);
     }
 
+    /**
+     * Gets the path elements which compose this path.
+     */
     public Iterable<PathElement> elements() {
         return path;
     }
 
+    /**
+     * Returns a path to an optimization's enclosing method, starting from the root method. If the
+     * given {@link Optimization} does not have {@link Optimization#getPosition() a position},
+     * {@link #EMPTY the empty path} is returned.
+     *
+     * For instance, if an optimization has the position:
+     *
+     * <pre>
+     * {a(): 2, b(): 3, c(): 4}
+     * </pre>
+     *
+     * Then the path from root to the enclosing method is:
+     *
+     * <pre>
+     * a() at bci -1, b() at bci 2, c() at bci
+     * </pre>
+     *
+     * @param optimization the optimization to which the path is computed
+     * @return a path to an optimization's enclosing method
+     */
     public static InliningPath ofEnclosingMethod(Optimization optimization) {
         if (optimization.getPosition() == null) {
             return EMPTY;
@@ -99,6 +184,12 @@ public class InliningPath {
         return new InliningPath(path);
     }
 
+    /**
+     * Returns the path from a root node to the given node in an inlining tree.
+     *
+     * @param node a node in an inlining tree
+     * @return the path from root the to the node in an inlining tree
+     */
     public static InliningPath fromRootToNode(InliningTreeNode node) {
         List<PathElement> path = new ArrayList<>();
         while (node != null) {
@@ -111,6 +202,14 @@ public class InliningPath {
         return new InliningPath(path);
     }
 
+    /**
+     * Returns {@code true} if this path is a prefix of the other path. This path is a prefix of
+     * another path iff each path element in this path {@link PathElement#matches(InliningPath)
+     * matches} the corresponding path element (at the same index) from the other path.
+     *
+     * @param otherPath the other path
+     * @return {@code true} iff this path is a prefix of the other path
+     */
     public boolean isPrefixOf(InliningPath otherPath) {
         if (path.size() > otherPath.path.size()) {
             return false;
@@ -123,6 +222,13 @@ public class InliningPath {
         return true;
     }
 
+    /**
+     * Returns {@code true} iff this path matches the other path. This path matches the other path
+     * iff this path is a prefix of the other path and the other path is a prefix of this path.
+     *
+     * @param otherPath the other path
+     * @return {@code true} iff this path matches the other path
+     */
     public boolean matches(InliningPath otherPath) {
         return path.size() == otherPath.size() && isPrefixOf(otherPath);
     }

@@ -28,16 +28,16 @@ import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
 
 /**
- * Provides an equality test of two {@link OptimizationTreeNode optimization tree nodes} and
- * determines costs of edit operations.
+ * Provides an equality test of two {@link OptimizationTreeNode optimization-tree nodes} and
+ * determines the costs of edit operations.
  */
 public class OptimizationTreeEditPolicy extends TreeEditPolicy<OptimizationTreeNode> {
     /**
      * Tests the equality of two nodes. Phases are compared by name, other types are compared by
      * content.
      *
-     * @param node1 the first optimization tree node
-     * @param node2 the second optimization tree node
+     * @param node1 the first optimization-tree node
+     * @param node2 the second optimization-tree node
      * @return true iff the nodes are equal
      */
     @Override

@@ -24,11 +24,8 @@
  */
 package org.graalvm.profdiff.core.optimization;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.profdiff.core.VerbosityLevel;
 import org.graalvm.profdiff.util.Writer;
-
-import java.util.List;
 
 /**
  * An optimization tree of a compilation unit. The root phase is a dummy {@link OptimizationPhase},

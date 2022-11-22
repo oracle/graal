@@ -36,10 +36,19 @@ public class ReceiverTypeProfile {
      * A single profiled type of the receiver.
      */
     public static class ProfiledType {
+        /**
+         * The name of the receiver type.
+         */
         private final String typeName;
 
+        /**
+         * The probability of the receiver being an instance of this type.
+         */
         private final double probability;
 
+        /**
+         * The concrete method called when the receiver is an instance of this type.
+         */
         private final String concreteMethodName;
 
         public ProfiledType(String typeName, double probability, String concreteMethodName) {
@@ -48,12 +57,25 @@ public class ReceiverTypeProfile {
             this.concreteMethodName = concreteMethodName;
         }
 
+        /**
+         * Gets the name of the receiver type.
+         */
         public String getTypeName() {
             return typeName;
         }
 
+        /**
+         * Gets the probability of the receiver being an instance of this type.
+         */
         public double getProbability() {
             return probability;
+        }
+
+        /**
+         * Gets the concrete method called when the receiver is an instance of this type.
+         */
+        public String getConcreteMethodName() {
+            return concreteMethodName;
         }
     }
 
@@ -72,10 +94,16 @@ public class ReceiverTypeProfile {
         this.profiledTypes = profiledTypes;
     }
 
+    /**
+     * Returns {@code true} iff the profile is mature.
+     */
     public boolean isMature() {
         return isMature;
     }
 
+    /**
+     * Gets the list of profiled types.
+     */
     public List<ProfiledType> getProfiledTypes() {
         if (profiledTypes == null) {
             return List.of();
@@ -83,6 +111,13 @@ public class ReceiverTypeProfile {
         return profiledTypes;
     }
 
+    /**
+     * Writes a representation of this profile using the destination writer. Includes each profiled
+     * type on a separate line, with the probability, the name receiver type, and the name of the
+     * concrete method.
+     *
+     * @param writer the destination writer
+     */
     public void write(Writer writer) {
         for (ProfiledType profiledType : getProfiledTypes()) {
             writer.write(String.format("%5.2f%% %s", profiledType.getProbability() * 100, profiledType.getTypeName()));
