@@ -288,13 +288,13 @@ public class ReversePostOrder {
     private static void computeLoopPredecessors(NodeMap<Block> nodeMap, Block block, LoopBeginNode loopBeginNode) {
         int forwardEndCount = loopBeginNode.forwardEndCount();
         LoopEndNode[] loopEnds = loopBeginNode.orderedLoopEnds();
-        Block firstPred = nodeMap.get(loopBeginNode.forwardEndAt(0));
-        Block[] extraPred = new Block[forwardEndCount + loopEnds.length - 1];
+        int firstPred = nodeMap.get(loopBeginNode.forwardEndAt(0)).getId();
+        int[] extraPred = new int[forwardEndCount + loopEnds.length - 1];
         for (int i = 1; i < forwardEndCount; ++i) {
-            extraPred[i - 1] = nodeMap.get(loopBeginNode.forwardEndAt(i));
+            extraPred[i - 1] = nodeMap.get(loopBeginNode.forwardEndAt(i)).getId();
         }
         for (int i = 0; i < loopEnds.length; ++i) {
-            extraPred[i + forwardEndCount - 1] = nodeMap.get(loopEnds[i]);
+            extraPred[i + forwardEndCount - 1] = nodeMap.get(loopEnds[i]).getId();
         }
         block.setPredecessors(firstPred, extraPred);
     }
@@ -302,43 +302,44 @@ public class ReversePostOrder {
     private static void assignPredecessorsAndSuccessors(Block[] blocks, ControlFlowGraph cfg) {
         for (int bI = 0; bI < blocks.length; bI++) {
             Block b = blocks[bI];
+            b.setRpo(blocks);
             FixedNode blockEndNode = b.getEndNode();
             if (blockEndNode instanceof EndNode) {
                 EndNode endNode = (EndNode) blockEndNode;
                 Block suxBlock = cfg.getNodeToBlock().get(endNode.merge());
-                b.setSuccessor(suxBlock);
+                b.setSuccessor(suxBlock.getId());
             } else if (blockEndNode instanceof ControlSplitNode) {
                 ControlSplitNode split = (ControlSplitNode) blockEndNode;
                 int index = 0;
-                Block succ0 = null;
-                Block[] extraSucc = new Block[split.getSuccessorCount() - 1];
+                int succ0 = -1;
+                int[] extraSucc = new int[split.getSuccessorCount() - 1];
                 for (Node sux : blockEndNode.successors()) {
                     Block sucBlock = cfg.getNodeToBlock().get(sux);
                     if (index == 0) {
-                        succ0 = sucBlock;
+                        succ0 = sucBlock.getId();
                     } else {
-                        extraSucc[index - 1] = sucBlock;
+                        extraSucc[index - 1] = sucBlock.getId();
                     }
                     index++;
-                    sucBlock.setPredecessor(b);
+                    sucBlock.setPredecessor(b.getId());
                 }
                 b.setSuccessors(succ0, extraSucc);
                 double[] succP = ((ControlSplitNode) blockEndNode).successorProbabilities();
                 b.setSuccessorProbabilities(succP[0], Arrays.copyOfRange(succP, 1, succP.length));
             } else if (blockEndNode instanceof LoopEndNode) {
                 LoopEndNode loopEndNode = (LoopEndNode) blockEndNode;
-                b.setSuccessor(cfg.getNodeToBlock().get(loopEndNode.loopBegin()));
+                b.setSuccessor(cfg.getNodeToBlock().get(loopEndNode.loopBegin()).getId());
             } else if (blockEndNode instanceof ControlSinkNode) {
                 // nothing to do
             } else {
                 assert !(blockEndNode instanceof AbstractEndNode) : "Algorithm only supports EndNode and LoopEndNode.";
                 for (Node suxNode : blockEndNode.successors()) {
                     Block sux = cfg.getNodeToBlock().get(suxNode);
-                    sux.setPredecessor(b);
+                    sux.setPredecessor(b.getId());
                 }
                 assert blockEndNode.successors().count() == 1 : "Node " + blockEndNode;
                 Block sequentialSuc = cfg.getNodeToBlock().get(blockEndNode.successors().first());
-                b.setSuccessor(sequentialSuc);
+                b.setSuccessor(sequentialSuc.getId());
             }
             FixedNode blockBeginNode = b.getBeginNode();
             if (blockBeginNode instanceof LoopBeginNode) {
@@ -346,10 +347,10 @@ public class ReversePostOrder {
             } else if (blockBeginNode instanceof AbstractMergeNode) {
                 AbstractMergeNode mergeNode = (AbstractMergeNode) blockBeginNode;
                 int forwardEndCount = mergeNode.forwardEndCount();
-                Block[] extraPred = new Block[forwardEndCount - 1];
-                Block pred0 = cfg.getNodeToBlock().get(mergeNode.forwardEndAt(0));
+                int[] extraPred = new int[forwardEndCount - 1];
+                int pred0 = cfg.getNodeToBlock().get(mergeNode.forwardEndAt(0)).getId();
                 for (int i = 1; i < forwardEndCount; ++i) {
-                    extraPred[i - 1] = cfg.getNodeToBlock().get(mergeNode.forwardEndAt(i));
+                    extraPred[i - 1] = cfg.getNodeToBlock().get(mergeNode.forwardEndAt(i)).getId();
                 }
                 b.setPredecessors(pred0, extraPred);
             }

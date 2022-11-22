@@ -33,18 +33,19 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     protected int id;
     protected int domDepth;
 
-    private T pred0;
-    private T[] extraPred;
-
-    private T succ0;
-    private T[] extraSucc;
+    protected T[] rpo;
+    // the following fields are all indices into the PRO array
+    private int pred0 = -1;
+    private int[] extraPred;
+    private int succ0 = -1;
+    private int[] extraSucc;
+    private int dominator = -1;
+    private int firstDominated = -1;
+    private int dominatedSibling = -1;
 
     private double succ0Probability;
     private double[] extraProbabilities;
 
-    private T dominator;
-    private T firstDominated;
-    private T dominatedSibling;
     private int domNumber;
     private int maxChildDomNumber;
 
@@ -56,6 +57,14 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
         this.linearScanNumber = -1;
         this.domNumber = -1;
         this.maxChildDomNumber = -1;
+    }
+
+    public void setRpo(T[] rpo) {
+        this.rpo = rpo;
+    }
+
+    public T[] getRpo() {
+        return rpo;
     }
 
     public void setDominatorNumber(int domNumber) {
@@ -82,11 +91,11 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
         this.id = id;
     }
 
-    private static <T extends AbstractBlockBase<T>> int getCount(T first, T[] extra) {
-        return first == null ? 0 : 1 + (extra == null ? 0 : extra.length);
+    private static int getCount(int first, int[] extra) {
+        return first == -1 ? 0 : 1 + (extra == null ? 0 : extra.length);
     }
 
-    private static <T extends AbstractBlockBase<T>> T getAtIndex(T first, T[] extra, int index) {
+    private static int getAtIndex(int first, int[] extra, int index) {
         return index == 0 ? first : extra[index - 1];
     }
 
@@ -98,7 +107,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
         return getCount(succ0, extraSucc);
     }
 
-    private static <T extends AbstractBlockBase<T>> boolean contains(T key, T first, T[] extra) {
+    private static <T extends AbstractBlockBase<T>> boolean contains(int key, int first, int[] extra) {
         if (first == key) {
             return true;
         }
@@ -113,40 +122,40 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     }
 
     public boolean containsPred(T key) {
-        return contains(key, pred0, extraPred);
+        return contains(key.getId(), pred0, extraPred);
     }
 
     public boolean containsSucc(T key) {
-        return contains(key, succ0, extraSucc);
+        return contains(key.getId(), succ0, extraSucc);
     }
 
     public T getPredecessorAt(int predIndex) {
         assert predIndex < getPredecessorCount();
-        return getAtIndex(pred0, extraPred, predIndex);
+        return rpo[getAtIndex(pred0, extraPred, predIndex)];
     }
 
     public T getSuccessorAt(int succIndex) {
         assert succIndex < getSuccessorCount();
-        return getAtIndex(succ0, extraSucc, succIndex);
+        return rpo[getAtIndex(succ0, extraSucc, succIndex)];
     }
 
-    public void setPredecessor(T p0) {
+    public void setPredecessor(int p0) {
         pred0 = p0;
     }
 
     @SuppressWarnings("unchecked")
-    public void setPredecessors(T p0, T[] rest) {
+    public void setPredecessors(int p0, int[] rest) {
         this.pred0 = p0;
         this.extraPred = rest;
     }
 
-    public void setSuccessor(T s0) {
+    public void setSuccessor(int s0) {
         succ0 = s0;
         succ0Probability = 1.0D;
     }
 
     @SuppressWarnings("unchecked")
-    public void setSuccessors(T s0, T[] rest) {
+    public void setSuccessors(int s0, int[] rest) {
         this.succ0 = s0;
         this.extraSucc = rest;
     }
@@ -164,7 +173,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     }
 
     public T getDominator() {
-        return dominator;
+        return dominator >= 0 ? rpo[dominator] : null;
     }
 
     /**
@@ -200,7 +209,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     }
 
     public void setDominator(T dominator) {
-        this.dominator = dominator;
+        this.dominator = dominator.getId();
         this.domDepth = dominator.domDepth + 1;
     }
 
@@ -212,19 +221,21 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     }
 
     public T getFirstDominated() {
-        return this.firstDominated;
+        return firstDominated >= 0 ? rpo[firstDominated] : null;
     }
 
     public void setFirstDominated(T block) {
-        this.firstDominated = block;
+        this.firstDominated = block.getId();
     }
 
     public T getDominatedSibling() {
-        return this.dominatedSibling;
+        return dominatedSibling >= 0 ? rpo[dominatedSibling] : null;
     }
 
     public void setDominatedSibling(T block) {
-        this.dominatedSibling = block;
+        if (block != null) {
+            this.dominatedSibling = block.getId();
+        }
     }
 
     @Override

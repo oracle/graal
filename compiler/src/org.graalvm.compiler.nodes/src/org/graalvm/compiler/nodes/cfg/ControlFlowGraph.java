@@ -1090,7 +1090,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     }
 
     private void computeLoopInformation() {
-        loops = new ArrayList<>();
+        loops = new ArrayList<>(graph.getNodes(LoopBeginNode.TYPE).count());
         if (graph.hasLoops()) {
             Block[] stack = new Block[this.reversePostOrder.length];
             for (Block block : reversePostOrder) {
@@ -1182,7 +1182,6 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     }
 
     public void computePostdominators() {
-
         Block[] reversePostOrderTmp = this.reversePostOrder;
         outer: for (int j = reversePostOrderTmp.length - 1; j >= 0; --j) {
             Block block = reversePostOrderTmp[j];
@@ -1196,7 +1195,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             }
             Block firstSucc = block.getSuccessorAt(0);
             if (block.getSuccessorCount() == 1) {
-                block.postdominator = firstSucc;
+                block.postdominator = firstSucc.getId();
                 continue;
             }
             Block postdominator = firstSucc;

@@ -64,7 +64,7 @@ public final class Block extends AbstractBlockBase<Block> {
     private boolean markedAsLoopEnd = false;
     private long numBackedges = -1;
 
-    protected Block postdominator;
+    protected int postdominator = -1;
     private LocationSet killLocations;
     private LocationSet killLocationsBetweenThisAndDominator;
 
@@ -130,7 +130,7 @@ public final class Block extends AbstractBlockBase<Block> {
 
     @Override
     public Block getPostdominator() {
-        return postdominator;
+        return postdominator >= 0 ? rpo[postdominator] : null;
     }
 
     private class NodeIterator implements Iterator<FixedNode> {
@@ -430,13 +430,13 @@ public final class Block extends AbstractBlockBase<Block> {
         int predecessorCount = getPredecessorCount();
         for (int i = 0; i < getPredecessorCount(); i++) {
             Block pred = getPredecessorAt(i);
-            Block[] newPredSuccs = new Block[pred.getSuccessorCount()];
+            int[] newPredSuccs = new int[pred.getSuccessorCount()];
             for (int j = 0; j < pred.getSuccessorCount(); j++) {
                 Block predSuccAt = pred.getSuccessorAt(j);
                 if (predSuccAt == this) {
-                    newPredSuccs[j] = next;
+                    newPredSuccs[j] = next.getId();
                 } else {
-                    newPredSuccs[j] = predSuccAt;
+                    newPredSuccs[j] = predSuccAt.getId();
                 }
             }
             pred.setSuccessors(newPredSuccs[0], Arrays.copyOfRange(newPredSuccs, 1, newPredSuccs.length));
@@ -464,15 +464,15 @@ public final class Block extends AbstractBlockBase<Block> {
         }
 
         Block firstPred = newPreds.get(0);
-        Block[] extraPred = null;
+        int[] extraPred = null;
         if (newPreds.size() - 1 > 0) {
-            extraPred = new Block[newPreds.size() - 1];
+            extraPred = new int[newPreds.size() - 1];
             for (int i = 1; i < newPreds.size(); i++) {
-                extraPred[i - 1] = newPreds.get(i);
+                extraPred[i - 1] = newPreds.get(i).getId();
             }
-            next.setPredecessors(firstPred, extraPred);
+            next.setPredecessors(firstPred.getId(), extraPred);
         } else {
-            next.setPredecessor(firstPred);
+            next.setPredecessor(firstPred.getId());
         }
 
         // next.setPredecessors(newPreds.toArray(Block.EMPTY_ARRAY));
@@ -485,7 +485,9 @@ public final class Block extends AbstractBlockBase<Block> {
     }
 
     protected void setPostDominator(Block postdominator) {
-        this.postdominator = postdominator;
+        if (postdominator != null) {
+            this.postdominator = postdominator.getId();
+        }
     }
 
     /**
