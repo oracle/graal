@@ -358,17 +358,10 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
         // try installing the new header
         Pointer originalPtr = Word.objectToUntrackedPointer(original);
-        long witness;
-        if (getReferenceSize() == Integer.BYTES) {
-            witness = originalPtr.compareAndSwapInt(getHubOffset(),
-                    (int) originalHeader.rawValue(), (int) forwardHeader.rawValue(), LocationIdentity.ANY_LOCATION);
-        } else {
-            witness = originalPtr.compareAndSwapLong(getHubOffset(),
-                    originalHeader.rawValue(), forwardHeader.rawValue(), LocationIdentity.ANY_LOCATION);
-        }
+        UnsignedWord witness = originalPtr.compareAndSwapWord(getHubOffset(), originalHeader, forwardHeader, LocationIdentity.ANY_LOCATION);
         assert isPointerToForwardedObject(originalPtr);
-        if (witness != originalHeader.rawValue()) {
-            return getForwardedObject(originalPtr, WordFactory.unsigned(witness));
+        if (witness.notEqual(originalHeader)) {
+            return getForwardedObject(originalPtr, witness);
         } else if (hasShift) {
             // Compression with a shift uses all bits of a reference, so store the forwarding
             // pointer in the location following the hub pointer.

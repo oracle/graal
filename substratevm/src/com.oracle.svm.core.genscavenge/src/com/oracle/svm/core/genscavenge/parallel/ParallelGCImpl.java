@@ -112,9 +112,6 @@ public class ParallelGCImpl extends ParallelGC {
 
     @Override
     public void startWorkerThreadsImpl() {
-        int hubOffset = ConfigurationValues.getObjectLayout().getHubOffset();
-        VMError.guarantee(hubOffset == 0, "hub offset must be 0");
-
         // Allocate buffer large enough to store maximum possible number of heap chunks
         long maxHeapSize = GCImpl.getPolicy().getMaximumHeapSize().rawValue();
         long alignedChunkSize = HeapParameters.getAlignedHeapChunkSize().rawValue();

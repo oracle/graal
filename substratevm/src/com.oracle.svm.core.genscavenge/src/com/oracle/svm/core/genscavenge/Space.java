@@ -28,6 +28,7 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_SLO
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.config.ConfigurationValues;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -395,7 +396,8 @@ public final class Space {
         assert ObjectHeaderImpl.isAlignedObject(original);
 
         Pointer originalMemory = Word.objectToUntrackedPointer(original);
-        UnsignedWord originalHeader = ObjectHeaderImpl.readHeaderFromPointer(originalMemory);
+        int hubOffset = ObjectHeaderImpl.getHubOffset();
+        UnsignedWord originalHeader = originalMemory.readWord(hubOffset);
         if (ObjectHeaderImpl.isForwardedHeader(originalHeader)) {
             return ObjectHeaderImpl.getForwardedObject(originalMemory, originalHeader);
         }
@@ -414,19 +416,16 @@ public final class Space {
         }
 
         // Install forwarding pointer into the original header
-        assert ObjectHeaderImpl.getHubOffset() == 0;
         Object forward = ObjectHeaderImpl.installForwardingPointerParallel(original, originalHeader, copy);
-
         if (forward == copy) {
             // We have won the race, now we must copy the object bits. First install the original header
-            int headerSize = ObjectHeaderImpl.getReferenceSize();
-            if (headerSize == Integer.BYTES) {
-                copyMemory.writeInt(0, (int) originalHeader.rawValue());
-            } else {
-                copyMemory.writeWord(0, originalHeader);
-            }
+            copyMemory.writeWord(hubOffset, originalHeader);
             // Copy the rest of original object
-            UnmanagedMemoryUtil.copyLongsForward(originalMemory.add(headerSize), copyMemory.add(headerSize), size.subtract(headerSize));
+            if (hubOffset > 0) {
+                UnmanagedMemoryUtil.copyLongsForward(originalMemory, copyMemory, WordFactory.unsigned(hubOffset));
+            }
+            int offset = hubOffset + ConfigurationValues.getTarget().wordSize;
+            UnmanagedMemoryUtil.copyLongsForward(originalMemory.add(offset), copyMemory.add(offset), size.subtract(offset));
 
             if (isOldSpace()) {
                 // If the object was promoted to the old gen, we need to take care of the remembered
