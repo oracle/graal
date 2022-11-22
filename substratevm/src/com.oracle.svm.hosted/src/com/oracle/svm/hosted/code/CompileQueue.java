@@ -410,6 +410,8 @@ public class CompileQueue {
             try (ProgressReporter.ReporterClosable ac = reporter.printCompiling()) {
                 compileAll();
             }
+
+            metricValues.print(universe.getBigBang().getOptions());
         } catch (InterruptedException ie) {
             throw new InterruptImageBuilding();
         }
