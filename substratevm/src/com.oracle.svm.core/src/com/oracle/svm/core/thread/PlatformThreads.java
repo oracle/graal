@@ -940,11 +940,19 @@ public abstract class PlatformThreads {
         final int oldStatus = getThreadStatus(thread);
         setThreadStatus(thread, ThreadStatus.SLEEPING);
         try {
-            /*
-             * If another thread interrupted this thread in the meanwhile, then the call below won't
-             * block because Thread.interrupt() modifies the ParkEvent.
-             */
-            sleepEvent.condTimedWait(durationNanos);
+            long remainingNanos = durationNanos;
+            long startNanos = System.nanoTime();
+            while (remainingNanos > 0) {
+                /*
+                 * If another thread interrupted this thread in the meanwhile, then the call below
+                 * won't block because Thread.interrupt() modifies the ParkEvent.
+                 */
+                sleepEvent.condTimedWait(remainingNanos);
+                if (JavaThreads.isInterrupted(thread)) {
+                    return;
+                }
+                remainingNanos = durationNanos - (System.nanoTime() - startNanos);
+            }
         } finally {
             setThreadStatus(thread, oldStatus);
         }
