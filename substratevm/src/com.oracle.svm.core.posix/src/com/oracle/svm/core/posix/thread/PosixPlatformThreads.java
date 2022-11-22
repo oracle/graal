@@ -60,6 +60,7 @@ import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.monitor.JavaMonitor;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Errno;
@@ -290,6 +291,20 @@ final class Target_java_lang_Thread {
     Pthread.pthread_t pthreadIdentifier;
 }
 
+/**
+ * {@link PosixParkEvent} is based on HotSpot class {@code Parker} in {@code os_posix.cpp}, as of
+ * JDK 19 (git commit hash: f640fc5a1eb876a657d0de011dcd9b9a42b88eec, JDK tag: jdk-19+30).
+ * <p>
+ * HotSpot has two constructs with a similar purpose: {@code ParkEvent} and {@code Parker}. The
+ * latter implements JSR 166 synchronization primitives {@link Unsafe#park} and
+ * {@link Unsafe#unpark}, just like we do here, therefore we base this implementation on
+ * {@code Parker}. Our implementation of Java object monitors, {@link JavaMonitor}, uses the JSR 166
+ * primitives, so it can potentially experience interference from unrelated calls to
+ * {@link Unsafe#unpark}. This is a difference to HotSpot's {@code ObjectMonitor}, which uses a
+ * separate HotSpot {@code ParkEvent} instance. Another difference is that {@code Parker} and the
+ * code below return control to the caller on spurious wakeups, unlike HotSpot's {@code ParkEvent}.
+ * This does not affect correctness.
+ */
 final class PosixParkEvent extends ParkEvent {
     private static final Unsafe U = Unsafe.getUnsafe();
     private static final long EVENT_OFFSET = U.objectFieldOffset(PosixParkEvent.class, "event");
