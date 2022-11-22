@@ -34,22 +34,29 @@ project(toolchain-launchers-test)
 set(QUIETLY_REDIR)
 set(CHECK_WRAPPER_SCRIPT | grep.exe "GraalVM wrapper script" ${QUIETLY_REDIR})
 
-if (APPLE)
+if (APPLE AND DEFINED SULONG_NATIVE_BUILD)
   set(BC_MAGIC 0b17c0de)
   set(BC_SECTION __bitcode\|__bundle)
-  set(SHARED_FLAGS=-dynamic -dylib -arch x86_64 -macosx_version_min 10.14.0 -lSystem)
+  set(SHARED_FLAGS -dynamic -dylib -arch x86_64 -macosx_version_min 10.14.0 -lSystem)
 else()
   set(BC_MAGIC dec04342)
   set(BC_SECTION \.llvmbc)
-  set(SHARED_FLAGS=--shared)
+  set(SHARED_FLAGS --shared)
 endif()
 
-add_executable(runner runner.cpp)
-add_custom_command(TARGET runner POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy "${SULONG_LIB}/c++.dll" $<TARGET_FILE_DIR:runner>
-  COMMAND_EXPAND_LISTS
-)
-set_property(TARGET runner PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+if (WIN32)
+  # This is a hack on Windows to support the execution of absolute path
+  # executables in ctest
+  add_executable(runner runner.cpp)
+  add_custom_command(TARGET runner POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy "${SULONG_LIB}/c++.dll" $<TARGET_FILE_DIR:runner>
+    COMMAND_EXPAND_LISTS
+  )
+  set_property(TARGET runner PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+  set(TEST_RUNNER runner)
+else()
+  set(TEST_RUNNER)
+endif()
 
 separate_arguments(SULONG_EXE)
 
@@ -57,32 +64,34 @@ enable_testing()
 
 # Define toolchains
 
-set(TC_BITCODE_EXE ${CMAKE_C_COMPILER})
+set(TC_BITCODE_EXE ${SULONG_C_COMPILER})
 set(TC_BITCODE_FLAGS -c)
 
-set(TCXX_BITCODE_EXE ${CMAKE_CXX_COMPILER})
+set(TCXX_BITCODE_EXE ${SULONG_CXX_COMPILER})
 set(TCXX_BITCODE_FLAGS -c)
 
-set(TC_CLINK_EXE ${CMAKE_C_COMPILER})
+set(TC_CLINK_EXE ${SULONG_C_COMPILER})
+set(TC_CXXLINK_EXE ${SULONG_CXX_COMPILER})
 
-set(TC_LD_EXE ${CMAKE_LINKER})
+set(TC_LD_EXE ${SULONG_LINKER})
+set(TC_LD_FLAGS ${SHARED_FLAGS})
 
-set(TC_LDXX_EXE ${CMAKE_LINKER})
-set(TC_LDXX_FLAGS -lc++)
+set(TC_LDXX_EXE ${SULONG_LINKER})
+set(TC_LDXX_FLAGS ${SHARED_FLAGS} -lc++)
 
 if(WIN32)
   set(TC_LD_OUT_PREFIX /out:)
   set(TC_LD_OUT_FLAG)
-  set(TC_LD_FLAGS -defaultlib:libcmt)
+  list(APPEND TC_LD_FLAGS -defaultlib:libcmt)
 
   set(TC_LDXX_OUT_PREFIX /out:)
   set(TC_LDXX_OUT_FLAG)
-  set(TC_LDXX_FLAGS -defaultlib:libcmt)
+  list(APPEND TC_LDXX_FLAGS -defaultlib:libcmt)
 endif()
 
-set(TC_COMPLINK_EXE ${CMAKE_C_COMPILER})
+set(TC_COMPLINK_EXE ${SULONG_C_COMPILER})
 
-set(TC_COMPLINKXX_EXE ${CMAKE_C_COMPILER})
+set(TC_COMPLINKXX_EXE ${SULONG_CXX_COMPILER})
 
 # Helper functions
 
@@ -105,7 +114,7 @@ function(add_bc_magic_test PREFIX TEST DEST_EXT)
 endfunction()
 
 function(add_bc_section_test PREFIX TEST DEST_EXT)
-  add_test(NAME ${PREFIX}${TEST} COMMAND ${LLVM_OBJDUMP} -h ${TEST}${DEST_EXT})
+  add_test(NAME ${PREFIX}${TEST} COMMAND ${SULONG_OBJDUMP} -h ${TEST}${DEST_EXT})
   set_property(TEST ${PREFIX}${TEST} PROPERTY PASS_REGULAR_EXPRESSION ${BC_SECTION})
 endfunction()
 
@@ -151,36 +160,36 @@ add_bc_magic_tests("magic-lo-" CXX_FILES TCXX_BITCODE LO_FLAGS ".cpp" ".lopp")
 
 set(CLINK_FLAGS "-lgraalvm-llvm")
 add_bc_section_tests("section-o-" C_FILES TC_CLINK CLINK_FLAGS obj/ ".o" ".out")
-add_bc_section_tests("section-opp-" CXX_FILES TC_CLINK CLINK_FLAGS obj/ ".opp" ".out")
-set(LD_FLAGS ${SHARED_FLAGS} "-lgraalvm-llvm")
+add_bc_section_tests("section-opp-" CXX_FILES TC_CXXLINK CLINK_FLAGS obj/ ".opp" ".out")
+set(LD_FLAGS "-lgraalvm-llvm")
 if (WIN32)
   set(LD_FLAGS "graalvm-llvm.lib")
 endif()
-set(LDXX_FLAGS ${SHARED_FLAGS} ${LD_FLAGS} -lc++)
+set(LDXX_FLAGS ${LD_FLAGS} -lc++)
 add_bc_section_tests("section-lo-" C_FILES TC_LD LD_FLAGS obj/ ".lo" ".ld-linked.out")
 add_bc_section_tests("section-lopp-" CXX_FILES TC_LDXX LDXX_FLAGS obj/ ".lopp" ".ld-linked.out" )
 
 set(COMPLINK_FLAGS -lgraalvm-llvm)
 add_bc_section_tests("section-comp-and-link-" C_FILES TC_COMPLINK COMPLINK_FLAGS
   ${CMAKE_CURRENT_SOURCE_DIR}/src/ ".c" ".comp-and-link.out")
-add_bc_section_tests("section-comp-and-link-pp-" CXX_FILES TC_COMPLINK COMPLINK_FLAGS
+add_bc_section_tests("section-comp-and-link-pp-" CXX_FILES TC_COMPLINKXX COMPLINK_FLAGS
   ${CMAKE_CURRENT_SOURCE_DIR}/src/ ".cpp" ".comp-and-link.out")
 
 # Command line output tests
 
 set(GRAALVM_WRAPPER_SCRIPT "GraalVM wrapper script")
 
-add_test(NAME print-help COMMAND runner ${CMAKE_C_COMPILER} --help)
+add_test(NAME print-help COMMAND ${TEST_RUNNER} ${SULONG_C_COMPILER} --help)
 set_property(TEST print-help PROPERTY PASS_REGULAR_EXPRESSION ${GRAALVM_WRAPPER_SCRIPT})
 
-add_test(NAME print-graalvm-help COMMAND runner ${CMAKE_C_COMPILER} --graalvm-help)
+add_test(NAME print-graalvm-help COMMAND ${TEST_RUNNER} ${SULONG_C_COMPILER} --graalvm-help)
 set_property(TEST print-graalvm-help PROPERTY PASS_REGULAR_EXPRESSION ${GRAALVM_WRAPPER_SCRIPT})
 
-add_test(NAME print-graalvm-cmd COMMAND runner ${CMAKE_C_COMPILER} --graalvm-print-cmd bla.c)
+add_test(NAME print-graalvm-cmd COMMAND ${TEST_RUNNER} ${SULONG_C_COMPILER} --graalvm-print-cmd bla.c)
 set_property(TEST print-graalvm-cmd PROPERTY PASS_REGULAR_EXPRESSION "running:.*clang.*bla.c")
 
-add_test(NAME fembed-bitcode COMMAND runner ${CMAKE_C_COMPILER} -fembed-bitcode bla.c WILL_FAIL)
+add_test(NAME fembed-bitcode COMMAND ${TEST_RUNNER} ${SULONG_C_COMPILER} -fembed-bitcode bla.c WILL_FAIL)
 set_property(TEST fembed-bitcode PROPERTY PASS_REGULAR_EXPRESSION "Using \`-fembed-bitcode\` is not supported.")
 
-add_test(NAME fuse-ld COMMAND runner ${CMAKE_C_COMPILER} -fuse-ld=foo bla.c WILL_FAIL)
+add_test(NAME fuse-ld COMMAND ${TEST_RUNNER} ${SULONG_C_COMPILER} -fuse-ld=foo bla.c WILL_FAIL)
 set_property(TEST fuse-ld PROPERTY PASS_REGULAR_EXPRESSION "Using \`-fuse-ld\` is not supported.")

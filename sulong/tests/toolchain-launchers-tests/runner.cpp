@@ -2,7 +2,12 @@
 #include <algorithm>
 #include <vector>
 #include <iostream>
+
+#ifdef _WIN32
 #include <process.h>
+#else
+#include <unistd.h>
+#endif
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {

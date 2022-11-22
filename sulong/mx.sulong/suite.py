@@ -605,9 +605,12 @@ suite = {
         "SULONG_EXE" : "<mx_exe> lli",
         "CMAKE_C_COMPILER": "<toolchainGetToolPath:native,CC>",
         "CMAKE_CXX_COMPILER": "<toolchainGetToolPath:native,CXX>",
-        "CMAKE_LINKER": "<toolchainGetToolPath:native,LD>",
+        "SULONG_C_COMPILER": "<toolchainGetToolPath:native,CC>",
+        "SULONG_CXX_COMPILER": "<toolchainGetToolPath:native,CXX>",
+        "SULONG_LINKER": "<toolchainGetToolPath:native,LD>",
         "SULONG_LIB" : "<path:SULONG_HOME>/native/lib",
-        "LLVM_OBJDUMP" : "<path:LLVM_TOOLCHAIN>/bin/<exe:llvm-objdump>",
+        "SULONG_OBJDUMP" : "<path:LLVM_TOOLCHAIN>/bin/<exe:llvm-objdump>",
+        "SULONG_NATIVE_BUILD" : "True",
       },
       "buildEnv" : {
         "CTEST_PARALLEL_LEVEL" : "16",
@@ -1505,7 +1508,7 @@ suite = {
       "cmakeConfig" : {
         "CMAKE_BUILD_TYPE" : "Sulong",
         "CMAKE_C_COMPILER": "<toolchainGetToolPath:native,CC>",
-        "CMAKE_CXX_COMPILER": "<toolchainGetToolPath:native,CC>",
+        "CMAKE_CXX_COMPILER": "<toolchainGetToolPath:native,CXX>",
         "GRAALVM_LLVM_INCLUDE_DIR": "<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
         "GRAALVM_LLVM_LIB_DIR" : "<path:SULONG_NATIVE_HOME>/native/lib",
       },
