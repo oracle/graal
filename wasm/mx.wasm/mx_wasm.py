@@ -242,6 +242,16 @@ class WatBuildTask(GraalWasmBuildTask):
             mx.abort("No WABT_DIR specified - the source programs will not be compiled to .wasm.")
         wat2wasm_cmd = os.path.join(wabt_dir, "wat2wasm")
 
+        wat2wasm_version_cmd = [wat2wasm_cmd] + ["--version"]
+        out = mx.OutputCapture()
+        bulk_memory_option = None
+        mx.run(wat2wasm_version_cmd, nonZeroIsFatal=False, out=out)
+        wat2wasm_version = str(out.data).split(".")
+        major = int(wat2wasm_version[0])
+        build = int(wat2wasm_version[2])
+        if major <= 1 and build <= 24:
+            bulk_memory_option = "--enable-bulk-memory"
+
         mx.log("Building files from the source dir: " + source_dir)
         for root, filename in self.subject.getProgramSources():
             subdir = os.path.relpath(root, self.subject.getSourceDir())
@@ -257,6 +267,8 @@ class WatBuildTask(GraalWasmBuildTask):
 
             if must_rebuild:
                 build_cmd_line = [wat2wasm_cmd] + [source_path, "-o", output_wasm_path]
+                if bulk_memory_option is not None:
+                    build_cmd_line += [bulk_memory_option]
                 if mx.run(build_cmd_line, nonZeroIsFatal=False) != 0:
                     mx.abort("Could not build the wasm binary of '" + filename + "' with wat2wasm.")
                 shutil.copyfile(source_path, output_wat_path)
