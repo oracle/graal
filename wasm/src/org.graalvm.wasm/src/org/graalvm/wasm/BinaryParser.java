@@ -134,6 +134,7 @@ public class BinaryParser extends BinaryStreamParser {
     private void readSymbolSections() {
         int lastNonCustomSection = 0;
         boolean hasCodeSection = false;
+        BytecodeList bytecode = new BytecodeList();
         while (!isEOF()) {
             final byte sectionID = read1();
 
@@ -191,11 +192,11 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     break;
                 case Section.CODE:
-                    readCodeSection();
+                    readCodeSection(bytecode);
                     hasCodeSection = true;
                     break;
                 case Section.DATA:
-                    readDataSection(null, null);
+                    readDataSection(null, null, bytecode);
                     break;
             }
             assertIntEqual(offset - startOffset, size, String.format("Declared section (0x%02X) size is incorrect", sectionID), Failure.SECTION_SIZE_MISMATCH);
@@ -206,6 +207,7 @@ public class BinaryParser extends BinaryStreamParser {
         if (!wasmContext.getContextOptions().keepDataSections()) {
             module.setSourceCode(null);
         }
+        module.setBytecode(bytecode.toArray());
     }
 
     private void readCustomSection(int size) {
@@ -388,13 +390,12 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private void readCodeSection() {
+    private void readCodeSection(BytecodeList bytecode) {
         final int importedFunctionCount = module.importedFunctions().size();
         final int codeEntryCount = readLength();
         final int expectedCodeEntryCount = module.numFunctions() - importedFunctionCount;
         assertIntEqual(codeEntryCount, expectedCodeEntryCount, Failure.FUNCTIONS_CODE_INCONSISTENT_LENGTHS);
         final CodeEntry[] codeEntries = new CodeEntry[codeEntryCount];
-        final BytecodeList bytecode = new BytecodeList();
         for (int entryIndex = 0; entryIndex != codeEntryCount; entryIndex++) {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
             final int codeEntrySize = readUnsignedInt32();
@@ -407,7 +408,6 @@ public class BinaryParser extends BinaryStreamParser {
             assertIntEqual(offset - startOffset, codeEntrySize, String.format("Code entry %d size is incorrect", entryIndex), Failure.UNSPECIFIED_MALFORMED);
         }
         module.setCodeEntries(codeEntries);
-        module.setBytecode(bytecode.toArray());
     }
 
     private CodeEntry readCodeEntry(int functionIndex, ByteArrayList locals, int endOffset, boolean hasNextFunction, BytecodeList bytecode) {
@@ -1762,7 +1762,7 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private void readDataSection(WasmContext linkedContext, WasmInstance linkedInstance) {
+    private void readDataSection(WasmContext linkedContext, WasmInstance linkedInstance, BytecodeList bytecode) {
         final int dataSegmentCount = readLength();
         module.limits().checkDataSegmentCount(dataSegmentCount);
         if (bulkMemoryAndRefTypes && dataSegmentCount != 0) {
@@ -1811,9 +1811,10 @@ public class BinaryParser extends BinaryStreamParser {
             final int byteLength = readLength();
             final int currentDataSegmentId = dataSegmentIndex;
 
-            if (mode == SegmentMode.ACTIVE) {
-                assertTrue(module.memoryExists(), Failure.UNKNOWN_MEMORY);
-                if (linkedInstance != null) {
+            if(linkedInstance != null) {
+                final int bytecodeOffset = linkedInstance.dataInstanceOffset(dataSegmentIndex);
+                offset += byteLength;
+                if(mode == SegmentMode.ACTIVE) {
                     if (offsetGlobalIndex != -1) {
                         int offsetGlobalAddress = linkedInstance.globalAddress(offsetGlobalIndex);
                         offsetAddress = linkedContext.globals().loadAsInt(offsetGlobalAddress);
@@ -1823,35 +1824,26 @@ public class BinaryParser extends BinaryStreamParser {
                     // directly.
                     final WasmMemory memory = linkedInstance.memory();
 
-                    Assert.assertUnsignedLongLessOrEqual(offsetAddress, memory.byteSize(), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-                    Assert.assertUnsignedLongLessOrEqual(offsetAddress + byteLength, memory.byteSize(), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-
-                    for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
-                        final byte b = read1();
-                        memory.store_i32_8(null, offsetAddress + writeOffset, b);
-                    }
+                    Assert.assertUnsignedLongLessOrEqual(offsetAddress, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+                    Assert.assertUnsignedLongLessOrEqual(offsetAddress + byteLength, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+                    memory.initialize(linkedInstance.module().bytecode(), bytecodeOffset, offsetAddress, byteLength);
                 } else {
-                    // Reading of the data segment occurs during parsing, so add a linker action.
-                    final byte[] dataSegment = new byte[byteLength];
-                    for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
-                        byte b = read1();
-                        dataSegment[writeOffset] = b;
-                    }
+                    linkedInstance.setDataInstance(dataSegmentIndex, bytecodeOffset, byteLength);
+                }
+            } else {
+                // Add the data section to the bytecode.
+                final int bytecodeOffset = bytecode.location();
+                for (int i = 0; i < byteLength; i++) {
+                    bytecode.addByte(read1());
+                }
+                if (mode == SegmentMode.ACTIVE) {
+                    assertTrue(module.memoryExists(), Failure.UNKNOWN_MEMORY);
                     final long currentOffsetAddress = offsetAddress;
                     final int currentOffsetGlobalIndex = offsetGlobalIndex;
                     module.addLinkAction((context, instance) -> context.linker().resolveDataSegment(context, instance, currentDataSegmentId, currentOffsetAddress, currentOffsetGlobalIndex, byteLength,
-                                    dataSegment));
-                }
-            } else {
-                final byte[] bytes = new byte[byteLength];
-                for (int i = 0; i < byteLength; i++) {
-                    byte b = read1();
-                    bytes[i] = b;
-                }
-                if (linkedInstance != null) {
-                    linkedInstance.setDataInstance(dataSegmentIndex, bytes);
+                            bytecodeOffset));
                 } else {
-                    module.addLinkAction(((context, instance) -> context.linker().resolvePassiveDataSegment(context, instance, currentDataSegmentId, bytes)));
+                    module.addLinkAction(((context, instance) -> context.linker().resolvePassiveDataSegment(context, instance, currentDataSegmentId, bytecodeOffset, byteLength)));
                 }
             }
         }
@@ -2203,7 +2195,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     public void resetMemoryState(WasmContext context, WasmInstance instance) {
         if (tryJumpToSection(Section.DATA)) {
-            readDataSection(context, instance);
+            readDataSection(context, instance, null);
         }
     }
 

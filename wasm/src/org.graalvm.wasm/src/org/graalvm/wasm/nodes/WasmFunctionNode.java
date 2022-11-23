@@ -3022,13 +3022,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     @TruffleBoundary
     private void memory_init(int length, int source, int destination, int dataIndex) {
         final WasmMemory memory = instance.memory();
-        final byte[] dataInstance = instance.dataInstance(dataIndex);
-        final int dataLength;
-        if (dataInstance == null) {
-            dataLength = 0;
-        } else {
-            dataLength = dataInstance.length;
-        }
+        final int dataOffset = instance.dataInstanceOffset(dataIndex);
+        final int dataLength = instance.dataInstanceLength(dataIndex);
         if (checkOutOfBounds(source, length, dataLength) || checkOutOfBounds(destination, length, memory.byteSize())) {
             enterErrorBranch();
             throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
@@ -3036,7 +3031,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         if (length == 0) {
             return;
         }
-        memory.initialize(dataInstance, source, destination, length);
+        memory.initialize(codeEntry.bytecode(), dataOffset + source, destination, length);
     }
 
     @TruffleBoundary

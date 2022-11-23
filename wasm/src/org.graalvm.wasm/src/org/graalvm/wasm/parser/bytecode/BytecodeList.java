@@ -435,6 +435,9 @@ public class BytecodeList {
         }
     }
 
+    public void addByte(byte value) {
+        bytecode.add(value);
+    }
     /**
      * @return A byte array representation of the bytecode.
      */

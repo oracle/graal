@@ -43,7 +43,6 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import org.graalvm.wasm.memory.NativeDataInstanceStore;
 import org.graalvm.wasm.memory.WasmMemory;
 
 /**
@@ -105,11 +104,8 @@ public class RuntimeState {
      * be dropped after using them. They can be set to null even in compiled code, therefore they
      * cannot be compilation final.
      */
-    @CompilationFinal(dimensions = 0) private byte[][] dataInstances;
+    @CompilationFinal(dimensions = 0) private long[] dataInstances;
 
-    private final NativeDataInstanceStore dataInstanceStore;
-
-    private final boolean unsafeMemory;
     @CompilationFinal private Linker.LinkState linkState;
 
     private void ensureGlobalsCapacity(int index) {
@@ -138,13 +134,6 @@ public class RuntimeState {
         this.linkState = Linker.LinkState.nonLinked;
         this.elemInstances = null;
         this.dataInstances = null;
-        if (context.getContextOptions().useUnsafeMemory()) {
-            this.dataInstanceStore = new NativeDataInstanceStore();
-            this.unsafeMemory = true;
-        } else {
-            this.dataInstanceStore = null;
-            this.unsafeMemory = false;
-        }
     }
 
     private void checkNotLinked() {
@@ -297,52 +286,41 @@ public class RuntimeState {
 
     private void ensureDataInstanceCapacity(int index) {
         if (dataInstances == null) {
-            dataInstances = new byte[Math.max(Integer.highestOneBit(index) << 1, 2)][];
+            dataInstances = new long[Math.max(Integer.highestOneBit(index) << 1, 2)];
         } else if (index >= dataInstances.length) {
-            final byte[][] nDataInstances = new byte[Math.max(Integer.highestOneBit(index) << 1, 2 * dataInstances.length)][];
+            final long[] nDataInstances = new long[Math.max(Integer.highestOneBit(index) << 1, 2 * dataInstances.length)];
             System.arraycopy(dataInstances, 0, nDataInstances, 0, dataInstances.length);
             dataInstances = nDataInstances;
         }
     }
 
-    void setDataInstance(int index, byte[] dataInstance) {
-        assert dataInstance != null;
-        if (unsafeMemory) {
-            dataInstanceStore.setInstance(index, dataInstance);
-        } else {
-            ensureDataInstanceCapacity(index);
-            dataInstances[index] = dataInstance;
-        }
+    void setDataInstance(int index, int bytecodeOffset, int length) {
+        assert bytecodeOffset != -1;
+        ensureDataInstanceCapacity(index);
+        dataInstances[index] = (long) bytecodeOffset << 32 | length;
     }
 
     public void dropDataInstance(int index) {
-        if (unsafeMemory) {
-            dataInstanceStore.dropInstance(index);
-        } else {
-            if (dataInstances == null) {
-                return;
-            }
-            assert index < dataInstances.length;
-            dataInstances[index] = null;
-        }
-    }
-
-    public byte[] dataInstance(int index) {
-        assert !unsafeMemory;
         if (dataInstances == null) {
-            return null;
+            return;
         }
         assert index < dataInstances.length;
-        return dataInstances[index];
+        dataInstances[index] = dataInstances[index] & 0xffff_ffff_0000_0000L;
     }
 
-    public long dataInstanceAddress(int index) {
-        assert unsafeMemory;
-        return dataInstanceStore.instanceAddress(index);
+    public int dataInstanceOffset(int index) {
+        if (dataInstances == null) {
+            return 0;
+        }
+        assert index < dataInstances.length;
+        return (int) (dataInstances[index] >> 32);
     }
 
-    public int dataInstanceSize(int index) {
-        assert unsafeMemory;
-        return dataInstanceStore.instanceSize(index);
+    public int dataInstanceLength(int index) {
+        if (dataInstances == null) {
+            return 0;
+        }
+        assert index < dataInstances.length;
+        return (int) (dataInstances[index]);
     }
 }

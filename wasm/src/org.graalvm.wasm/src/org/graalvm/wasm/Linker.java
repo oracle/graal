@@ -374,7 +374,7 @@ public class Linker {
         });
     }
 
-    void resolveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, long offsetAddress, int offsetGlobalIndex, int byteLength, byte[] data) {
+    void resolveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, long offsetAddress, int offsetGlobalIndex, int byteLength, int bytecodeOffset) {
         assertTrue(instance.symbolTable().memoryExists(), String.format("No memory declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
         final Runnable resolveAction = () -> {
             if (context.getContextOptions().memoryOverheadMode()) {
@@ -394,13 +394,11 @@ public class Linker {
                 baseAddress = offsetAddress;
             }
 
-            Assert.assertUnsignedLongLessOrEqual(baseAddress, memory.byteSize(), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-            Assert.assertUnsignedLongLessOrEqual(baseAddress + byteLength, memory.byteSize(), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-
-            for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
-                byte b = data[writeOffset];
-                memory.store_i32_8(null, baseAddress + writeOffset, b);
-            }
+            Assert.assertUnsignedLongLessOrEqual(baseAddress, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+            Assert.assertUnsignedLongLessOrEqual(baseAddress + byteLength, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+            final byte[] bytecode = instance.module().bytecode();
+            memory.initialize(bytecode, bytecodeOffset, baseAddress, byteLength);
+            instance.setDataInstance(dataSegmentId, bytecodeOffset, 0);
         };
         final ArrayList<Sym> dependencies = new ArrayList<>();
         if (instance.symbolTable().importedMemory() != null) {
@@ -415,13 +413,13 @@ public class Linker {
         resolutionDag.resolveLater(new DataSym(instance.name(), dataSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
     }
 
-    void resolvePassiveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, byte[] data) {
+    void resolvePassiveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, int bytecodeOffset, int byteLength) {
         final Runnable resolveAction = () -> {
             if (context.getContextOptions().memoryOverheadMode()) {
                 // Do not initialize the data segment when in memory overhead mode.
                 return;
             }
-            instance.setDataInstance(dataSegmentId, data);
+            instance.setDataInstance(dataSegmentId, bytecodeOffset, byteLength);
         };
         final ArrayList<Sym> dependencies = new ArrayList<>();
         if (dataSegmentId > 0) {
