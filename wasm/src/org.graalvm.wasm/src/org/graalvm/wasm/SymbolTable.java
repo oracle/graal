@@ -841,7 +841,13 @@ public abstract class SymbolTable {
         module().addLinkAction((context, instance) -> {
             final int maxAllowedSize = minUnsigned(declaredMaxSize, module().limits().tableInstanceSizeLimit());
             module().limits().checkTableInstanceSize(declaredMinSize);
-            final WasmTable wasmTable = new WasmTable(declaredMinSize, declaredMaxSize, maxAllowedSize, elemType);
+            final WasmTable wasmTable;
+            if (context.getContextOptions().memoryOverheadMode()) {
+                // Initialize an empty table in memory overhead mode.
+                wasmTable = new WasmTable(0, 0, 0, elemType);
+            } else {
+                wasmTable = new WasmTable(declaredMinSize, declaredMaxSize, maxAllowedSize, elemType);
+            }
             final int address = context.tables().register(wasmTable);
             instance.setTableAddress(index, address);
         });
@@ -926,7 +932,10 @@ public abstract class SymbolTable {
             final int maxAllowedSize = minUnsigned(declaredMaxSize, module().limits().memoryInstanceSizeLimit());
             module().limits().checkMemoryInstanceSize(declaredMinSize);
             final WasmMemory wasmMemory;
-            if (context.environment().getOptions().get(WasmOptions.UseUnsafeMemory)) {
+            if (context.getContextOptions().memoryOverheadMode()) {
+                // Initialize an empty memory when in memory overhead mode.
+                wasmMemory = new ByteArrayWasmMemory(0, 0, 0);
+            } else if (context.environment().getOptions().get(WasmOptions.UseUnsafeMemory)) {
                 wasmMemory = new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize);
             } else {
                 wasmMemory = new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize);

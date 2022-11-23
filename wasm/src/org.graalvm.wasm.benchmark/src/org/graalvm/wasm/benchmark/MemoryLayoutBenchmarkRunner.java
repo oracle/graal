@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,59 +40,24 @@
  */
 package org.graalvm.wasm.benchmark;
 
+import java.io.IOException;
+import java.util.Arrays;
+
 import org.graalvm.polyglot.Context;
+import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.benchmark.memory.MemoryNode;
+import org.graalvm.wasm.benchmark.memory.PathParser;
 import org.graalvm.wasm.utils.WasmResource;
 import org.graalvm.wasm.utils.cases.WasmCase;
+import org.openjdk.jol.info.GraphPathRecord;
+import org.openjdk.jol.info.GraphVisitor;
+import org.openjdk.jol.info.GraphWalker;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+public class MemoryLayoutBenchmarkRunner {
 
-import static org.graalvm.wasm.utils.cases.WasmCase.collectFileCase;
-
-/**
- * For each benchmark case in {@code args}, measures the difference in heap size after forced GC
- * before and after the parsing phase. This corresponds to the memory allocated by the parser that
- * is needed to run the program.
- *
- * <p>
- * Example usage:
- * </p>
- *
- * <pre>
- * $ java org.graalvm.wasm.benchmark.MemoryProfiler --warmup-iterations 10 --result-iterations 6 go-hello
- * </pre>
- *
- * <p>
- * Example result:
- * </p>
- *
- * <pre>
- * go-hello: warmup iteration[0]: 50.863 MB
- * go-hello: warmup iteration[1]: 12.708 MB
- * ...
- * go-hello: iteration[0]: 16.902 MB
- * go-hello: iteration[1]: 17.161 MB
- * ...
- * go-hello: median: 17.057 MB
- * go-hello: min: 17.161 MB
- * go-hello: max: 16.902 MB
- * go-hello: average: 17.044 MB
- * </pre>
- *
- * <p>
- * This class is used by the <code>memory</code> mx benchmark suite, runnable with
- * <code>mx --dy /compiler benchmark memory -- --jvm=server --jvm-config=graal-core</code>. The
- * suite is defined in <code>MemoryBenchmarkSuite</code> in <code>mx_benchmark.py</code>.
- * </p>
- */
-public class MemoryFootprintBenchmarkRunner {
-    // We currently hardcode the path to memory-footprint-related tests. We might in the future
-    // generalize this to include more paths, if that turns out necessary.
     private static final String BENCHCASES_TYPE = "bench";
+
     private static final String BENCHCASES_RESOURCE = "wasm/memory";
 
     public static void main(String[] args) throws IOException, InterruptedException {
@@ -115,7 +80,7 @@ public class MemoryFootprintBenchmarkRunner {
         }
 
         for (final String caseSpec : Arrays.copyOfRange(args, offset, args.length)) {
-            final WasmCase benchmarkCase = collectFileCase(BENCHCASES_TYPE, BENCHCASES_RESOURCE, caseSpec);
+            final WasmCase benchmarkCase = WasmCase.collectFileCase(BENCHCASES_TYPE, BENCHCASES_RESOURCE, caseSpec);
             assert benchmarkCase != null : String.format("Test case %s/%s not found.", BENCHCASES_RESOURCE, caseSpec);
 
             final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
@@ -123,68 +88,53 @@ public class MemoryFootprintBenchmarkRunner {
             contextBuilder.option("wasm.Builtins", "go");
             contextBuilder.option("wasm.MemoryOverheadMode", "true");
 
-            final List<Double> results = new ArrayList<>();
-
-            for (int i = 0; i < warmup_iterations + result_iterations; ++i) {
+            for (int i = 0; i < warmup_iterations + result_iterations; i++) {
                 final Context context = contextBuilder.build();
 
-                final double heapSizeBefore = getHeapSize();
-
-                // The code we want to profile:
                 benchmarkCase.getSources().forEach(context::eval);
                 context.getBindings(WasmLanguage.ID).getMember("main").getMember("run");
 
-                final double heapSizeAfter = getHeapSize();
-                final double result = heapSizeAfter - heapSizeBefore;
-                if (i < warmup_iterations) {
-                    System.out.format("%s: warmup iteration[%d]: %.3f MB%n", caseSpec, i, result);
-                } else {
-                    results.add(result);
-                    System.out.format("%s: iteration[%d]: %.3f MB%n", caseSpec, i, result);
-                }
+                sleep();
+                System.gc();
+                sleep();
 
+                if (i >= warmup_iterations) {
+                    MemoryNode memoryRoot = readMemoryLayout(context);
+                    memoryRoot.print();
+                } else {
+                    System.out.println("warmup iteration : ");
+                }
                 context.close();
             }
-
-            Collections.sort(results);
-
-            System.out.format("%s: median: %.3f MB%n", caseSpec, median(results));
-            System.out.format("%s: min: %.3f MB%n", caseSpec, results.get(0));
-            System.out.format("%s: max: %.3f MB%n", caseSpec, results.get(results.size() - 1));
-            System.out.format("%s: average: %.3f MB%n", caseSpec, average(results));
         }
     }
 
-    static double getHeapSize() {
-        sleep();
-        System.gc();
-        sleep();
-        final Runtime runtime = Runtime.getRuntime();
-        return (runtime.totalMemory() - runtime.freeMemory()) / 1000000.0;
+    private static MemoryNode readMemoryLayout(Context context) {
+        final MemoryNode memoryRoot = new MemoryNode("context", 0);
+        GraphVisitor v = new GraphVisitor() {
+            private String contextPath = null;
+
+            @Override
+            public void visit(GraphPathRecord graphPathRecord) {
+                if (WasmContext.class.getCanonicalName().equals(graphPathRecord.klass().getCanonicalName())) {
+                    contextPath = graphPathRecord.path();
+                }
+                // System.out.println(graphPathRecord.path());
+                if (contextPath != null && graphPathRecord.path().contains(contextPath + ".")) {
+                    PathParser.parse(graphPathRecord.path().substring(contextPath.length()).toCharArray(), memoryRoot, graphPathRecord);
+                }
+            }
+        };
+        GraphWalker g = new GraphWalker(v);
+        g.walk(context);
+        return memoryRoot;
     }
 
-    static void sleep() {
+    private static void sleep() {
         try {
             Thread.sleep(2000);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-    }
-
-    private static double median(List<Double> xs) {
-        final int size = xs.size();
-        if (size % 2 == 0) {
-            return (xs.get(size / 2) + xs.get(size / 2 - 1)) / 2.0;
-        } else {
-            return xs.get(size / 2);
-        }
-    }
-
-    private static double average(List<Double> xs) {
-        double result = 0.0;
-        for (double x : xs) {
-            result += x;
-        }
-        return result / xs.size();
     }
 }

@@ -69,7 +69,16 @@ suite = {
       },
     ],
   },
-
+  "libraries": {
+    "JOL": {
+      "sha1" : "553a2ba27f58b71e7efb545d7d3c657761f5b596",
+      "maven" : {
+        "groupId" : "org.openjdk.jol",
+        "artifactId" : "jol-core",
+        "version" : "0.16",
+      },
+    },
+  },
   "projects" : {
     "org.graalvm.wasm" : {
       "subDir" : "src",
@@ -190,6 +199,7 @@ suite = {
         "org.graalvm.wasm",
         "org.graalvm.wasm.utils",
         "mx:JMH_1_21",
+        "JOL",
       ],
       "javaCompliance" : "11+",
       "annotationProcessors" : ["mx:JMH_1_21"],

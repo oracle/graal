@@ -268,6 +268,7 @@ _suite = mx.suite("wasm")
 
 
 MEMORY_PROFILER_CLASS_NAME = "org.graalvm.wasm.benchmark.MemoryFootprintBenchmarkRunner"
+MEMORY_LAYOUT_CLASS_NAME = "org.graalvm.wasm.benchmark.MemoryLayoutBenchmarkRunner"
 MEMORY_WARMUP_ITERATIONS = 10
 BENCHMARKCASES_DISTRIBUTION = "WASM_BENCHMARKCASES"
 
@@ -327,3 +328,41 @@ class MemoryBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averagi
 
 
 add_bm_suite(MemoryBenchmarkSuite())
+
+class MemoryLayoutSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin):
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "wasm"
+
+    def name(self):
+        return "wasm-memory-layout"
+
+    def benchmarkList(self, _):
+        jdk = mx.get_jdk(mx.distribution(BENCHMARKCASES_DISTRIBUTION).javaCompliance)
+        jvm_args = mx.get_runtime_jvm_args([BENCHMARKCASES_DISTRIBUTION], jdk=jdk)
+        args = jvm_args + [MEMORY_LAYOUT_CLASS_NAME, "--list"]
+
+        out = mx.OutputCapture()
+        jdk.run_java(args, out=out)
+        return out.data.split()
+
+    def createCommandLineArgs(self, benchmarks, bm_suite_args):
+        benchmarks = benchmarks if benchmarks is not None else self.benchmarkList(bm_suite_args)
+        jdk = mx.get_jdk(mx.distribution(BENCHMARKCASES_DISTRIBUTION).javaCompliance)
+        vm_args = self.vmArgs(bm_suite_args) + mx.get_runtime_jvm_args([BENCHMARKCASES_DISTRIBUTION], jdk=jdk)
+        run_args = ["--warmup-iterations", str(4),
+                    "--result-iterations", str(1)]
+        return vm_args + [MEMORY_LAYOUT_CLASS_NAME] + run_args + benchmarks
+
+    def rules(self, out, benchmarks, bm_suite_args):
+        return []
+
+    def run(self, benchmarks, bm_suite_args):
+        results = super(MemoryLayoutSuite, self).run(benchmarks, bm_suite_args)
+        self.addAverageAcrossLatestResults(results, "memory")
+        return results
+
+add_bm_suite(MemoryLayoutSuite())

@@ -1678,7 +1678,7 @@ public class BinaryParser extends BinaryStreamParser {
                 if (linkedInstance != null) {
                     linkedInstance.setDataInstance(dataSegmentIndex, bytes);
                 } else {
-                    module.addLinkAction(((context, instance) -> context.linker().resolvePassiveDataSegment(instance, currentDataSegmentId, bytes)));
+                    module.addLinkAction(((context, instance) -> context.linker().resolvePassiveDataSegment(context, instance, currentDataSegmentId, bytes)));
                 }
             }
         }
