@@ -257,6 +257,7 @@ suite = {
     },
     "com.oracle.truffle.llvm.tests.native" : {
       "class" : "CMakeNinjaProject",
+      "toolchain" : "SULONG_BOOTSTRAP_TOOLCHAIN",
       "subDir" : "tests",
       "ninja_targets" : [
         "default",
@@ -266,7 +267,7 @@ suite = {
         "windows" : {"results" : ["<staticlib:sulongtest>"]},
         "<others>" : {},
       },
-      "buildDependencies" : [],
+      "buildDependencies" : ["SULONG_BOOTSTRAP_TOOLCHAIN"],
       "license" : "BSD-new",
       "testProject" : True,
     },
@@ -376,6 +377,7 @@ suite = {
       "srcFrom" : "truffle:com.oracle.truffle.nfi.test.native",
       "toolchain" : "SULONG_BOOTSTRAP_TOOLCHAIN",
       "buildDependencies" : [
+        "SULONG_BOOTSTRAP_TOOLCHAIN",
         "truffle:TRUFFLE_NFI_NATIVE",
       ],
       "workingSets" : "Truffle, LLVM",
@@ -398,6 +400,7 @@ suite = {
       "srcFrom" : "truffle:com.oracle.truffle.nfi.test.native.isolation",
       "toolchain" : "SULONG_BOOTSTRAP_TOOLCHAIN",
       "buildDependencies" : [
+        "SULONG_BOOTSTRAP_TOOLCHAIN",
         "truffle:TRUFFLE_NFI_NATIVE",
       ],
       "workingSets" : "Truffle, LLVM",
@@ -862,17 +865,18 @@ suite = {
     "com.oracle.truffle.llvm.libraries.native" : {
       "subDir" : "projects",
       "class" : "CMakeNinjaProject",
+      "toolchain" : "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
       # NinjaBuildTask uses only 1 job otherwise
       "max_jobs" : "8",
       "vpath" : True,
       "ninja_install_targets" : ["install"],
       "buildDependencies" : [
+        "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
         "truffle:TRUFFLE_NFI_NATIVE",
         "sdk:LLVM_TOOLCHAIN",
       ],
       "cmakeConfig" : {
         "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.13",
-        "CMAKE_C_COMPILER" : "<path:LLVM_TOOLCHAIN>/bin/<exe:clang>",
         "TRUFFLE_NFI_NATIVE_INCLUDE" : "<path:truffle:TRUFFLE_NFI_NATIVE>/include",
       },
       "ninja_targets" : ["<lib:sulong-native>"],
@@ -882,7 +886,6 @@ suite = {
           "ninja_targets" : ["<staticlib:sulong-native>"],
           "results" : ["bin/<staticlib:sulong-native>"],
           "cmakeConfig" : {
-            "CMAKE_SHARED_LINKER_FLAGS" : "",
             "CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS" : "YES",
           },
         },
@@ -956,8 +959,14 @@ suite = {
           "cmakeConfig" : {
             "LLVM_ENABLE_RUNTIMES" : "libcxx",
             "SULONG_CMAKE_PRE_315" : "True",
+            # On Windows libcxx must be compiled using the cl compatible
+            # compiler rather than the clang toolchain
             "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang-cl>",
             "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang-cl>",
+            "CMAKE_LINKER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:lld-link>",
+            "CMAKE_C_FLAGS" : "/MD -flto -DNDEBUG -O1",
+            "CMAKE_CXX_FLAGS" : "/MD -flto -DNDEBUG -O1",
+            "CMAKE_SHARED_LINKER_FLAGS" : "/debug",
           }
         },
       },

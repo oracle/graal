@@ -29,7 +29,9 @@
 #
 
 macro(set_ifndef VAR VALUE)
-  if(NOT DEFINED ${VAR})
+  if(DEFINED ${VAR})
+    message(VERBOSE "  - ${VAR} is already set to '${${VAR}}'")
+  else()
     set(${VAR} ${VALUE})
   endif()
 endmacro()
@@ -49,7 +51,6 @@ if(WIN32)
   # Set the build profile to sulong. This prevents CMake from adding additional
   # flags such as -O0 which preventing interop from working.
   set_ifndef(CMAKE_BUILD_TYPE "Sulong")
-  set_ifndef(CMAKE_TRY_COMPILE_CONFIGURATION "Sulong")
 
   # For cmake versions before 3.15 with old CMP0091 handling
   if(SULONG_CMAKE_PRE_315)
