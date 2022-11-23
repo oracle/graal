@@ -117,7 +117,7 @@ class DragonEggSupport:
         mx.abort("Cannot find GCC program for dragonegg: {}\nDRAGONEGG_GCC environment variable not set".format(gccProgram))
 
 
-class SulongTestSuiteMixin(mx._with_metaclass(abc.ABCMeta, object)):
+class SulongTestSuiteMixin(object, metaclass=abc.ABCMeta):
 
     def getVariants(self):
         if not hasattr(self, '_variants'):
