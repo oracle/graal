@@ -49,6 +49,7 @@ public final class GuardedConditionalInlinedMethodNode extends InlinedMethodNode
 
     @Override
     public int execute(VirtualFrame frame) {
+        preludeChecks(frame);
         if (guard.isValid(getContext(), method, frame, this)) {
             if (condition.isValid(getContext(), method, frame, this)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();

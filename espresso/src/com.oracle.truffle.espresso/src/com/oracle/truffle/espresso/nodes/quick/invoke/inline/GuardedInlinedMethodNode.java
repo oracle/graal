@@ -41,8 +41,9 @@ public final class GuardedInlinedMethodNode extends InlinedMethodNode {
 
     @Override
     public int execute(VirtualFrame frame) {
+        preludeChecks(frame);
         if (guard.isValid(getContext(), method, frame, this)) {
-            return super.execute(frame);
+            return executeBody(frame);
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             return getBytecodeNode().reQuickenInvoke(frame, top, opcode, getCallerBCI(), statementIndex, method.getMethod());

@@ -142,11 +142,19 @@ public class InlinedMethodNode extends InvokeQuickNode implements InlinedFrameAc
 
     @Override
     public int execute(VirtualFrame frame) {
+        preludeChecks(frame);
+        return executeBody(frame);
+    }
+
+    protected final void preludeChecks(VirtualFrame frame) {
         if (method.isStatic()) {
             initCheck();
         } else {
             nullCheck(peekReceiver(frame));
         }
+    }
+
+    protected final int executeBody(VirtualFrame frame) {
         body.execute(frame, this);
         return stackEffect;
     }

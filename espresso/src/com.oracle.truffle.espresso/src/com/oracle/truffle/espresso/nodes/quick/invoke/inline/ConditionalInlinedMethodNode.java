@@ -59,6 +59,7 @@ public class ConditionalInlinedMethodNode extends InlinedMethodNode {
 
     @Override
     public final int execute(VirtualFrame frame) {
+        preludeChecks(frame);
         if (condition.isValid(getContext(), method, frame, this)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             InlinedMethodNode replacement = getDefinitiveNode(recipes, inlinedMethod(), top, opcode, getCallerBCI(), statementIndex);

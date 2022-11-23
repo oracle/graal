@@ -59,7 +59,7 @@ public final class Target_java_lang_Object {
         @Override
         public boolean isValid(EspressoContext context, Method.MethodVersion version, VirtualFrame frame, InlinedMethodNode node) {
             StaticObject receiver = node.peekReceiver(frame);
-            return StaticObject.isNull(receiver) || !Init.hasFinalizer(receiver);
+            return !Init.hasFinalizer(receiver);
         }
     }
 
