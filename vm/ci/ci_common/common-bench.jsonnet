@@ -1,5 +1,5 @@
 local vm = import '../ci_includes/vm.jsonnet';
-local common = import '../../../ci/common.jsonnet';
+local common = import '../../../ci/ci_common/common.jsonnet';
 local vm_common = import '../ci_common/common.jsonnet';
 
 local repo_config = import '../../../ci/repo-configuration.libsonnet';

@@ -1,5 +1,5 @@
 {
-  local c = import '../../../ci/common.jsonnet',
+  local c = import '../../../ci/ci_common/common.jsonnet',
   local config = import '../../../ci/repo-configuration.libsonnet',
   local jvm_config = config.compiler.default_jvm_config,
   local s = self,

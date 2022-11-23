@@ -1,5 +1,5 @@
 {
-  local common     = import "../../../common.jsonnet",
+  local common     = import "../../../ci/ci_common/common.jsonnet",
   local tools      = import "tools.libsonnet",
   local run_spec   = import "../../../ci/ci_common/run-spec.libsonnet",
 

@@ -1,5 +1,5 @@
 {
-  local common = import "ci/common.jsonnet",
+  local common = import "ci/ci_common/common.jsonnet",
   local utils = import "common-utils.libsonnet",
 
   # benchmark job base with automatically generated name

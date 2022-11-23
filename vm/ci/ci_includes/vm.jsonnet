@@ -1,10 +1,10 @@
-local composable = (import '../../../ci/common-utils.libsonnet').composable;
+local composable = (import '../../../ci/ci_common/common-utils.libsonnet').composable;
 local vm_common = import '../ci_common/common.jsonnet';
 local vm_common_bench = import '../ci_common/common-bench.jsonnet';
 local vm = import 'vm.jsonnet';
 local vm_bench = import 'vm-bench.jsonnet';
 local vm_native = import 'vm-native.jsonnet';
-local graal_common = import '../../../ci/common.jsonnet';
+local graal_common = import '../../../ci/ci_common/common.jsonnet';
 local common_json = composable(import '../../../common.json');
 local jdks = common_json.jdks;
 

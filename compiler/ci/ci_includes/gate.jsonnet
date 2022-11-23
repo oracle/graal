@@ -1,6 +1,6 @@
 {
-  local common = import '../../../ci/common.jsonnet',
-  local utils = import '../../../ci/common-utils.libsonnet',
+  local common = import '../../../ci/ci_common/common.jsonnet',
+  local utils = import '../../../ci/ci_common/common-utils.libsonnet',
   local config = import '../../../ci/repo-configuration.libsonnet',
 
   local gate_math_stubs_listener = {
