@@ -109,7 +109,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public int load_i32(Node node, long address) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             return ByteArraySupport.littleEndian().getInt(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
@@ -120,7 +120,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public long load_i64(Node node, long address) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             return ByteArraySupport.littleEndian().getLong(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
@@ -131,7 +131,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public float load_f32(Node node, long address) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             return ByteArraySupport.littleEndian().getFloat(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
@@ -142,7 +142,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public double load_f64(Node node, long address) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             return ByteArraySupport.littleEndian().getDouble(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
@@ -153,7 +153,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public int load_i32_8s(Node node, long address) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             return ByteArraySupport.littleEndian().getByte(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
@@ -164,7 +164,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public int load_i32_8u(Node node, long address) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             return 0x0000_00ff & ByteArraySupport.littleEndian().getByte(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
@@ -175,7 +175,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public int load_i32_16s(Node node, long address) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             return ByteArraySupport.littleEndian().getShort(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
@@ -186,7 +186,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public int load_i32_16u(Node node, long address) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             return 0x0000_ffff & ByteArraySupport.littleEndian().getShort(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
@@ -197,7 +197,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public long load_i64_8s(Node node, long address) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             return ByteArraySupport.littleEndian().getByte(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
@@ -208,7 +208,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public long load_i64_8u(Node node, long address) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             return 0x0000_0000_0000_00ffL & ByteArraySupport.littleEndian().getByte(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
@@ -219,7 +219,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public long load_i64_16s(Node node, long address) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             return ByteArraySupport.littleEndian().getShort(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
@@ -230,7 +230,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public long load_i64_16u(Node node, long address) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             return 0x0000_0000_0000_ffffL & ByteArraySupport.littleEndian().getShort(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
@@ -241,7 +241,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public long load_i64_32s(Node node, long address) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             return ByteArraySupport.littleEndian().getInt(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
@@ -252,7 +252,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public long load_i64_32u(Node node, long address) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             return 0x0000_0000_ffff_ffffL & ByteArraySupport.littleEndian().getInt(buffer, offset);
         } catch (final IndexOutOfBoundsException e) {
@@ -263,7 +263,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public void store_i32(Node node, long address, int value) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             ByteArraySupport.littleEndian().putInt(buffer, offset, value);
         } catch (final IndexOutOfBoundsException e) {
@@ -274,7 +274,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public void store_i64(Node node, long address, long value) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             ByteArraySupport.littleEndian().putLong(buffer, offset, value);
         } catch (final IndexOutOfBoundsException e) {
@@ -286,7 +286,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public void store_f32(Node node, long address, float value) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             ByteArraySupport.littleEndian().putFloat(buffer, offset, value);
         } catch (final IndexOutOfBoundsException e) {
@@ -297,7 +297,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public void store_f64(Node node, long address, double value) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             ByteArraySupport.littleEndian().putDouble(buffer, offset, value);
         } catch (final IndexOutOfBoundsException e) {
@@ -308,7 +308,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public void store_i32_8(Node node, long address, byte value) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             ByteArraySupport.littleEndian().putByte(buffer, offset, value);
         } catch (final IndexOutOfBoundsException e) {
@@ -319,7 +319,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public void store_i32_16(Node node, long address, short value) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             ByteArraySupport.littleEndian().putShort(buffer, offset, value);
         } catch (final IndexOutOfBoundsException e) {
@@ -330,7 +330,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public void store_i64_8(Node node, long address, byte value) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             ByteArraySupport.littleEndian().putByte(buffer, offset, value);
         } catch (final IndexOutOfBoundsException e) {
@@ -341,7 +341,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public void store_i64_16(Node node, long address, short value) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             ByteArraySupport.littleEndian().putShort(buffer, offset, value);
         } catch (final IndexOutOfBoundsException e) {
@@ -352,7 +352,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public void store_i64_32(Node node, long address, int value) {
         final byte[] buffer = byteArrayBuffer.segment(address);
-        final long offset = byteArrayBuffer.segmentOffsetAsLong(address);
+        final long offset = MultiByteArrayBuffer.segmentOffsetAsLong(address);
         try {
             ByteArraySupport.littleEndian().putInt(buffer, offset, value);
         } catch (final IndexOutOfBoundsException e) {
@@ -363,7 +363,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
     @Override
     public void initialize(byte[] dataInstance, int sourceOffset, long destinationOffset, int length) {
         assert destinationOffset + length <= byteSize();
-        System.arraycopy(dataInstance, sourceOffset, byteArrayBuffer.segment(destinationOffset), byteArrayBuffer.segmentOffsetAsInt(destinationOffset), length);
+        System.arraycopy(dataInstance, sourceOffset, byteArrayBuffer.segment(destinationOffset), MultiByteArrayBuffer.segmentOffsetAsInt(destinationOffset), length);
     }
 
     @Override
@@ -457,28 +457,28 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
             return dynamicBuffer;
         }
 
-        public byte[] segment(long address) {
+        byte[] segment(long address) {
             final int segmentIndex = (int) ((address & SEGMENT_MASK) >> SEGMENT_SHIFT);
             return buffer()[segmentIndex];
         }
 
-        public long segmentOffsetAsLong(long address) {
+        static long segmentOffsetAsLong(long address) {
             return address & OFFSET_MASK;
         }
 
-        public int segmentOffsetAsInt(long address) {
+        static int segmentOffsetAsInt(long address) {
             return (int) (address & OFFSET_MASK);
         }
 
-        public long size() {
+        long size() {
             return bufferByteSize / MEMORY_PAGE_SIZE;
         }
 
-        public long byteSize() {
+        long byteSize() {
             return bufferByteSize;
         }
 
-        public void grow(long targetSize) {
+        void grow(long targetSize) {
             final int currentSegmentCount = segmentCount;
             final int currentLastSegmentLength = lastSegmentLength;
             final byte[][] currentBuffer = buffer();
@@ -490,24 +490,24 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
             System.arraycopy(currentBuffer[currentSegmentCount - 1], 0, buffer()[currentSegmentCount - 1], 0, currentLastSegmentLength);
         }
 
-        public void reset(long byteSize) {
+        void reset(long byteSize) {
             constantMemoryBufferAssumption.invalidate("Memory reset");
             allocate(byteSize);
         }
 
-        public void close() {
+        void close() {
             constantBuffer = null;
             dynamicBuffer = null;
         }
 
-        public void copyTo(MultiByteArrayBuffer other) {
+        void copyTo(MultiByteArrayBuffer other) {
             for (int i = 0; i < segmentCount - 1; i++) {
                 System.arraycopy(buffer()[i], 0, other.segment((long) i * SEGMENT_LENGTH), 0, SEGMENT_LENGTH);
             }
             System.arraycopy(buffer()[segmentCount - 1], 0, other.segment((long) segmentCount * SEGMENT_LENGTH), 0, lastSegmentLength);
         }
 
-        public void copyFrom(MultiByteArrayBuffer other, long sourceAddress, long destinationAddress, long length) {
+        void copyFrom(MultiByteArrayBuffer other, long sourceAddress, long destinationAddress, long length) {
             long currentSrcAddress = sourceAddress;
             long currentDstAddress = destinationAddress;
             long remainingLength = length;
@@ -526,7 +526,7 @@ final class MultiByteArrayWasmMemory extends WasmMemory {
         }
 
         @CompilerDirectives.TruffleBoundary
-        public void fill(long address, long length, byte value) {
+        void fill(long address, long length, byte value) {
             long currentAddress = address;
             long remainingLength = length;
             while (remainingLength > 0) {

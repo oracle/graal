@@ -1274,9 +1274,9 @@ public class BinaryParser extends BinaryStreamParser {
         // of it, but we need to store its byte length, so that we can skip it
         // during the execution.
         readAlignHint(n); // align hint
-        final long offset = readUnsignedInt64(); // 64-bit store offset
+        final long memoryOffset = readUnsignedInt64(); // 64-bit store offset
         if (!idxType64) {
-            assertUnsignedLongLessOrEqual(offset, 0xffff_ffff, Failure.UNSPECIFIED_INVALID);
+            assertUnsignedLongLessOrEqual(memoryOffset, 0xffff_ffff, Failure.UNSPECIFIED_INVALID);
         }
         state.popChecked(type); // value to store
         if (module.memoryHasIndexType64() && memory64) {
@@ -1294,11 +1294,11 @@ public class BinaryParser extends BinaryStreamParser {
         // of it, but we need to store its byte length, so that we can skip it
         // during execution.
         readAlignHint(n); // align hint
-        final long offset = readUnsignedInt64(); // 64-bit load offset
+        final long memoryOffset = readUnsignedInt64(); // 64-bit load offset
         if (idxType64) {
-            assertUnsignedLongLess(offset, MAX_MEMORY_64_DECLARATION_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
+            assertUnsignedLongLess(memoryOffset, MAX_MEMORY_64_DECLARATION_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
         } else {
-            assertUnsignedLongLess(offset, MAX_TABLE_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
+            assertUnsignedLongLess(memoryOffset, MAX_TABLE_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
         }
         if (idxType64 && memory64) {
             state.popChecked(I64_TYPE); // 64-bit base address

@@ -303,7 +303,6 @@ import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.util.ExtraDataAccessor;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
