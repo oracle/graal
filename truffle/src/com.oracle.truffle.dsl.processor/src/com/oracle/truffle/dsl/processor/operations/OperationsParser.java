@@ -120,7 +120,7 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             }
 
             if (!isValid) {
-                data.addError(ctor, "Invalid constructor declaration, expected (TruffleLanguage, FrameDescriptor) or (TruffleLanguage, FrameDescriptor.Builder).");
+                data.addError(ctor, "Invalid constructor declaration, expected (TruffleLanguage, FrameDescriptor) or (TruffleLanguage, FrameDescriptor.Builder). Remove this constructor.");
             }
         }
 
@@ -181,7 +181,8 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             if (UNBOXABLE_TYPE_KINDS.contains(mir.getKind())) {
                 beTypes.add(mir.getKind());
             } else {
-                data.addError("Cannot perform boxing elimination on %s. Remove this type from the boxing eliminated types list.", mir);
+                data.addError("Cannot perform boxing elimination on %s. Remove this type from the boxing eliminated types list. Only primitive types boolean, byte, int, float, long, and double are supported.",
+                                mir);
             }
         }
 
@@ -193,7 +194,7 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             SingleOperationData opData = new SingleOperationParser(data, mir).parse(null, null);
 
             if (opData == null) {
-                data.addError(mir, ElementUtils.getAnnotationValue(mir, "value"), "Could not proxy operation");
+                data.addError(mir, ElementUtils.getAnnotationValue(mir, "value"), "Error generating operation. Fix issues on the referenced class first.");
                 continue;
             }
 
@@ -211,7 +212,7 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             if (opData != null) {
                 data.addOperationData(opData);
             } else {
-                data.addError("Could not generate operation: " + inner.getSimpleName());
+                data.addError("Error generating operation %s. Fix issues with the operation class fist.", inner.getSimpleName());
             }
 
             opData.redirectMessagesOnGeneratedElements(data);
@@ -222,7 +223,7 @@ public class OperationsParser extends AbstractParser<OperationsData> {
         for (AnnotationMirror mir : scOperations) {
             SingleOperationData opData = new SingleOperationParser(data, mir, true).parse(null, null);
             if (opData == null) {
-                data.addError(mir, ElementUtils.getAnnotationValue(mir, "name"), "Clould not proxy short circuit operation");
+                data.addError(mir, ElementUtils.getAnnotationValue(mir, "name"), "Error generating operation. Fix issues on the referenced boolean converter class first.");
                 continue;
             }
 
@@ -248,7 +249,7 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             isTracing = true;
             data.addWarning("Tracing compilation is forced. This should only be used during development.");
             if (decisionsFilePath == null) {
-                data.addError("Tracing forced, but no decisions file specified! Specify the tracing decisions file.");
+                data.addError("Tracing forced, but no decisions file specified. Specify the tracing decisions file.");
             }
         } else if (decisionsFilePath == null) {
             // decisions file not specified, can't trace no matter the options

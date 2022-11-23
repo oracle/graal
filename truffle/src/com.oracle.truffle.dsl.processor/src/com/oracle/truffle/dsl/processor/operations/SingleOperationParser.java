@@ -107,6 +107,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         SingleOperationData data;
 
         if (element == null) {
+            // proxied type or short-circuiting
             if (proxyMirror == null) {
                 throw new AssertionError();
             }
@@ -120,7 +121,9 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
             TypeMirror proxyType = (TypeMirror) proxyTypeValue.getValue();
             if (proxyType.getKind() != TypeKind.DECLARED) {
-                parentData.addError(proxyMirror, proxyTypeValue, "Type referenced by @OperationProxy must be a class, not %s.", proxyType);
+                parentData.addError(proxyMirror, proxyTypeValue, "Type referenced by @%s must be a class, not %s.",
+                                isShortCircuit ? "ShortCircuitOperation" : "OperationProxy",
+                                proxyType);
                 return null;
             }
 
@@ -168,19 +171,25 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
         List<ExecutableElement> operationFunctions = new ArrayList<>();
 
-        if (proxyMirror == null) {
-            // @Operation annotated type
+        if (!ElementUtils.isAssignable(te.asType(), types.NodeInterface)) {
+            // operation specification
 
-            if (!te.getModifiers().containsAll(Set.of(Modifier.STATIC, Modifier.FINAL))) {
-                data.addError("@Operation annotated class must be declared static and final.");
+            if (!te.getModifiers().contains(Modifier.FINAL)) {
+                data.addError("Operation class must be declared final. Inheritance in operation specifications is not supported.");
+            }
+
+            if (te.getEnclosingElement() != null && !te.getModifiers().contains(Modifier.STATIC)) {
+                data.addError("Operation class must not be an inner class (non-static nested class). Declare the class as static.");
             }
 
             if (te.getModifiers().contains(Modifier.PRIVATE)) {
-                data.addError("@Operation annotated class must not be declared private.");
+                data.addError("Operation class must not be declared private. Remove the private modifier to make it visible.");
             }
 
+            // TODO: Add cross-package visibility check
+
             if (!ElementUtils.isObject(te.getSuperclass()) || !te.getInterfaces().isEmpty()) {
-                data.addError("@Operation annotated class must not extend/implement anything. Inheritance is not supported.");
+                data.addError("Operation class must not extend any classes or implement any interfaces. Inheritance in operation specifications is not supported.");
             }
 
             for (Element el : te.getEnclosedElements()) {
@@ -189,22 +198,32 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                     continue;
                 }
 
-                if (el.getKind() != ElementKind.CONSTRUCTOR && !el.getModifiers().contains(Modifier.STATIC)) {
+                if (!el.getModifiers().contains(Modifier.STATIC)) {
+                    if (el.getKind() == ElementKind.CONSTRUCTOR && ((ExecutableElement) el).getParameters().size() == 0) {
+                        // we need to explicitly allow the implicit 0-argument non-static
+                        // constructor.
+                        continue;
+                    }
                     data.addError(el, "@Operation annotated class must not contain non-static members.");
                 }
-
-                operationFunctions.addAll(findSpecializations(te.getEnclosedElements()));
             }
+
+            operationFunctions.addAll(findSpecializations(te.getEnclosedElements()));
         } else {
             // proxied node
 
-            for (ExecutableElement cel : findSpecializations(te.getEnclosedElements())) {
+            for (ExecutableElement cel : findSpecializations(te)) {
+                // todo: also check supertypes
                 if (!cel.getModifiers().contains(Modifier.STATIC)) {
                     data.addError("Class referenced by @OperationProxy must have all its specializations static. Use @Bind(\"this\") parameter if you need a Node instance.");
                 }
 
                 operationFunctions.add(cel);
             }
+        }
+
+        if (data.hasErrors()) {
+            return data;
         }
 
         if (operationFunctions.isEmpty()) {
@@ -546,7 +565,23 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         return result;
     }
 
+    private List<ExecutableElement> findSpecializations(TypeElement te) {
+        if (ElementUtils.isObject(te.asType())) {
+            return new ArrayList<>();
+        }
+
+        List<ExecutableElement> els = findSpecializations(context.getTypeElement((DeclaredType) te.getSuperclass()));
+        els.addAll(findSpecializations(te.getEnclosedElements()));
+        return els;
+    }
+
     private List<ExecutableElement> findSpecializations(Collection<? extends Element> elements) {
-        return elements.stream().filter(x -> x instanceof ExecutableElement).map(x -> (ExecutableElement) x).filter(this::isSpecializationFunction).collect(Collectors.toUnmodifiableList());
+        // @formatter:off
+        return elements.stream().
+                        filter(x -> x instanceof ExecutableElement).
+                        map(x -> (ExecutableElement) x).
+                        filter(this::isSpecializationFunction).
+                        collect(Collectors.toUnmodifiableList());
+        // @formatter:on
     }
 }
