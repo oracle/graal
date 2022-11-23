@@ -67,6 +67,8 @@ class VmGateTasks:
     libgraal = 'libgraal'
     svm_sl_tck = 'svm_sl_tck'
     svm_truffle_tck_js = 'svm-truffle-tck-js'
+    svm_truffle_tck_python = 'svm-truffle-tck-python'
+
 
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
@@ -423,6 +425,7 @@ def gate_body(args, tasks):
     gate_python(tasks)
     gate_svm_sl_tck(tasks)
     gate_svm_truffle_tck_js(tasks)
+    gate_svm_truffle_tck_python(tasks)
 
 def graalvm_svm():
     """
@@ -556,6 +559,19 @@ def gate_svm_truffle_tck_js(tasks):
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 _svm_truffle_tck(native_image, svm.suite, js_suite, 'js')
+
+
+
+def gate_svm_truffle_tck_python(tasks):
+    with Task('Python SVM Truffle TCK', tasks, tags=[VmGateTasks.svm_truffle_tck_python]) as t:
+        if t:
+            py_suite = mx.suite('graalpython')
+            if not py_suite:
+                mx.abort("Cannot resolve graalpython suite.")
+            native_image_context, svm = graalvm_svm()
+            with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
+                _svm_truffle_tck(native_image, svm.suite, py_suite, 'python')
+
 
 def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None, shared_lib=False):
     native_image_context, svm = graalvm_svm()
