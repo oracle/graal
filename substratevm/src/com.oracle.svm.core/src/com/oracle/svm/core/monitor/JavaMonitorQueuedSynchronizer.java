@@ -53,6 +53,7 @@ import jdk.internal.misc.Unsafe;
  * 
  * Main differences to the JDK implementation:
  * <ul>
+ * <li>No need to store an owner {@linkplain Thread thread object}.</li>
  * <li>There is no need to support any locking modes besides the non-fair exclusive one.</li>
  * <li>The visibility of methods and fields is reduced to hide implementation details.</li>
  * <li>We explicitly treat ForkJoinPool threads in the same way as any other threads because
@@ -135,20 +136,6 @@ abstract class JavaMonitorQueuedSynchronizer {
     private transient volatile Node head;
     private transient volatile Node tail;
     private volatile long state;
-    // see AbstractOwnableSynchronizer.exclusiveOwnerThread
-    private transient Thread exclusiveOwnerThread;
-
-    // see AbstractOwnableSynchronizer.setExclusiveOwnerThread(Thread)
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected final void setExclusiveOwnerThread(Thread thread) {
-        exclusiveOwnerThread = thread;
-    }
-
-    // see AbstractOwnableSynchronizer.getExclusiveOwnerThread()
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected final Thread getExclusiveOwnerThread() {
-        return exclusiveOwnerThread;
-    }
 
     // see AbstractQueuedLongSynchronizer.getState()
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -161,7 +148,17 @@ abstract class JavaMonitorQueuedSynchronizer {
         this.state = newState;
     }
 
+    /**
+     * For {@linkplain JavaMonitorConditionObject#await conditional waiting}, returns the number of
+     * acquisitions, which is subsequently passed to {@link #tryRelease} to entirely release
+     * ownership, and later to {@link #tryAcquire} to regain ownership after waiting.
+     */
+    protected long getAcquisitions() {
+        return getState();
+    }
+
     // see AbstractQueuedLongSynchronizer.compareAndSetState(long, long)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected final boolean compareAndSetState(long expect, long update) {
         return U.compareAndSetLong(this, STATE, expect, update);
     }
@@ -422,9 +419,9 @@ abstract class JavaMonitorQueuedSynchronizer {
                     last.nextWaiter = node;
                 }
                 lastWaiter = node;
-                long savedState = getState();
-                if (release(savedState)) {
-                    return savedState;
+                long savedAcquisitions = getAcquisitions();
+                if (release(savedAcquisitions)) {
+                    return savedAcquisitions;
                 }
             }
             node.status = CANCELLED; // lock not held or inconsistent
@@ -473,7 +470,7 @@ abstract class JavaMonitorQueuedSynchronizer {
                 throw new InterruptedException();
             }
             ConditionNode node = new ConditionNode();
-            long savedState = enableWait(node);
+            long savedAcquisitions = enableWait(node);
             setCurrentBlocker(this);
             boolean interrupted = false;
             boolean cancelled = false;
@@ -492,7 +489,7 @@ abstract class JavaMonitorQueuedSynchronizer {
             node.clearStatus();
             // waiting is done, emit wait event
             JavaMonitorWaitEvent.emit(startTicks, obj, node.notifierJfrTid, 0L, false);
-            acquire(node, savedState);
+            acquire(node, savedAcquisitions);
             if (interrupted) {
                 if (cancelled) {
                     unlinkCancelledWaiters(node);
@@ -512,7 +509,7 @@ abstract class JavaMonitorQueuedSynchronizer {
                 throw new InterruptedException();
             }
             ConditionNode node = new ConditionNode();
-            long savedState = enableWait(node);
+            long savedAcquisitions = enableWait(node);
             long nanos = (nanosTimeout < 0L) ? 0L : nanosTimeout;
             long deadline = System.nanoTime() + nanos;
             boolean cancelled = false;
@@ -529,7 +526,7 @@ abstract class JavaMonitorQueuedSynchronizer {
             node.clearStatus();
             // waiting is done, emit wait event
             JavaMonitorWaitEvent.emit(startTicks, obj, node.notifierJfrTid, time, cancelled);
-            acquire(node, savedState);
+            acquire(node, savedAcquisitions);
             if (cancelled) {
                 unlinkCancelledWaiters(node);
                 if (interrupted) {
