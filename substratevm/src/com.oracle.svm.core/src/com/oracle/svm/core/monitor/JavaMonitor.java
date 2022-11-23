@@ -97,11 +97,11 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
          * Since this code must be uninterruptible, we cannot just call lock.tryLock() but instead
          * replicate that logic here by using only direct field accesses.
          */
-        int oldState = getState();
-        int newState = oldState + 1;
+        long oldState = getState();
+        long newState = oldState + 1;
         VMError.guarantee(newState > 0, "Maximum lock count exceeded");
 
-        boolean success = U.compareAndSetInt(this, JavaMonitorQueuedSynchronizer.STATE, oldState, newState);
+        boolean success = U.compareAndSetLong(this, JavaMonitorQueuedSynchronizer.STATE, oldState, newState);
         VMError.guarantee(success, "Could not re-lock object during deoptimization");
         setExclusiveOwnerThread(currentThread);
     }
@@ -119,7 +119,7 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
 
     // see ReentrantLock.NonFairSync.tryAcquire(int)
     @Override
-    protected boolean tryAcquire(int acquires) {
+    protected boolean tryAcquire(long acquires) {
         if (getState() == 0 && compareAndSetState(0, acquires)) {
             setExclusiveOwnerThread(Thread.currentThread());
             return true;
@@ -130,7 +130,7 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
     // see ReentrantLock.Sync.tryLock()
     boolean tryLock() {
         Thread current = Thread.currentThread();
-        int c = getState();
+        long c = getState();
         if (c == 0) {
             if (compareAndSetState(0, 1)) {
                 setExclusiveOwnerThread(current);
@@ -148,8 +148,8 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
 
     // see ReentrantLock.Sync.tryRelease()
     @Override
-    protected boolean tryRelease(int releases) {
-        int c = getState() - releases; // state must be 0 here
+    protected boolean tryRelease(long releases) {
+        long c = getState() - releases; // state must be 0 here
         if (getExclusiveOwnerThread() != Thread.currentThread()) {
             throw new IllegalMonitorStateException(); // owner is null and c =-1
         }

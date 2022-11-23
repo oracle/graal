@@ -43,7 +43,7 @@ import jdk.internal.misc.Unsafe;
 
 /**
  * {@link JavaMonitorQueuedSynchronizer} is based on the code of
- * {@link java.util.concurrent.locks.AbstractQueuedSynchronizer} as of JDK 19 (git commit hash:
+ * {@link java.util.concurrent.locks.AbstractQueuedLongSynchronizer} as of JDK 19 (git commit hash:
  * f640fc5a1eb876a657d0de011dcd9b9a42b88eec, JDK tag: jdk-19+30). This class could be merged with
  * {@link JavaMonitor} but we keep it separate because that way diffing against the JDK sources is
  * easier.
@@ -65,39 +65,39 @@ abstract class JavaMonitorQueuedSynchronizer {
     static final int CANCELLED = 0x80000000; // must be negative
     static final int COND = 2; // in a condition wait
 
-    // see AbstractQueuedSynchronizer.Node
+    // see AbstractQueuedLongSynchronizer.Node
     abstract static class Node {
         volatile Node prev;
         volatile Node next;
         Thread waiter;
         volatile int status;
 
-        // see AbstractQueuedSynchronizer.Node.casPrev(Node, Node)
+        // see AbstractQueuedLongSynchronizer.Node.casPrev(Node, Node)
         final boolean casPrev(Node c, Node v) {
             return weakCompareAndSetReference(this, PREV, c, v);
         }
 
-        // see AbstractQueuedSynchronizer.Node.casNext(Node, Node)
+        // see AbstractQueuedLongSynchronizer.Node.casNext(Node, Node)
         final boolean casNext(Node c, Node v) {
             return weakCompareAndSetReference(this, NEXT, c, v);
         }
 
-        // see AbstractQueuedSynchronizer.Node.getAndUnsetStatus(int)
+        // see AbstractQueuedLongSynchronizer.Node.getAndUnsetStatus(int)
         final int getAndUnsetStatus(int v) {
             return U.getAndBitwiseAndInt(this, STATUS, ~v);
         }
 
-        // see AbstractQueuedSynchronizer.Node.setPrevRelaxed(Node)
+        // see AbstractQueuedLongSynchronizer.Node.setPrevRelaxed(Node)
         final void setPrevRelaxed(Node p) {
             putReference(this, PREV, p);
         }
 
-        // see AbstractQueuedSynchronizer.Node.setStatusRelaxed(int)
+        // see AbstractQueuedLongSynchronizer.Node.setStatusRelaxed(int)
         final void setStatusRelaxed(int s) {
             U.putInt(this, STATUS, s);
         }
 
-        // see AbstractQueuedSynchronizer.Node.clearStatus()
+        // see AbstractQueuedLongSynchronizer.Node.clearStatus()
         final void clearStatus() {
             U.putIntOpaque(this, STATUS, 0);
         }
@@ -107,23 +107,23 @@ abstract class JavaMonitorQueuedSynchronizer {
         private static final long PREV = U.objectFieldOffset(Node.class, "prev");
     }
 
-    // see AbstractQueuedSynchronizer.ExclusiveNode
+    // see AbstractQueuedLongSynchronizer.ExclusiveNode
     static final class ExclusiveNode extends Node {
     }
 
-    // see AbstractQueuedSynchronizer.ConditionNode
+    // see AbstractQueuedLongSynchronizer.ConditionNode
     static final class ConditionNode extends Node {
         ConditionNode nextWaiter;
         long notifierJfrTid;
 
-        // see AbstractQueuedSynchronizer.ConditionNode.isReleasable()
+        // see AbstractQueuedLongSynchronizer.ConditionNode.isReleasable()
         public boolean isReleasable() {
             // Checkstyle: allow Thread.isInterrupted"
             return status <= 1 || Thread.currentThread().isInterrupted();
             // Checkstyle: disallow Thread.isInterrupted"
         }
 
-        // see AbstractQueuedSynchronizer.ConditionNode.block()
+        // see AbstractQueuedLongSynchronizer.ConditionNode.block()
         public boolean block() {
             while (!isReleasable()) {
                 LockSupport.park();
@@ -134,7 +134,7 @@ abstract class JavaMonitorQueuedSynchronizer {
 
     private transient volatile Node head;
     private transient volatile Node tail;
-    private volatile int state;
+    private volatile long state;
     // see AbstractOwnableSynchronizer.exclusiveOwnerThread
     private transient Thread exclusiveOwnerThread;
 
@@ -150,28 +150,28 @@ abstract class JavaMonitorQueuedSynchronizer {
         return exclusiveOwnerThread;
     }
 
-    // see AbstractQueuedSynchronizer.getState()
+    // see AbstractQueuedLongSynchronizer.getState()
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected final int getState() {
+    protected final long getState() {
         return state;
     }
 
-    // see AbstractQueuedSynchronizer.setState(int)
-    protected final void setState(int newState) {
+    // see AbstractQueuedLongSynchronizer.setState(long)
+    protected final void setState(long newState) {
         this.state = newState;
     }
 
-    // see AbstractQueuedSynchronizer.compareAndSetState(int, int)
-    protected final boolean compareAndSetState(int expect, int update) {
-        return U.compareAndSetInt(this, STATE, expect, update);
+    // see AbstractQueuedLongSynchronizer.compareAndSetState(long, long)
+    protected final boolean compareAndSetState(long expect, long update) {
+        return U.compareAndSetLong(this, STATE, expect, update);
     }
 
-    // see AbstractQueuedSynchronizer.casTail(Node, Node)
+    // see AbstractQueuedLongSynchronizer.casTail(Node, Node)
     private boolean casTail(Node c, Node v) {
         return compareAndSetReference(this, TAIL, c, v);
     }
 
-    // see AbstractQueuedSynchronizer.tryInitializeHead()
+    // see AbstractQueuedLongSynchronizer.tryInitializeHead()
     private void tryInitializeHead() {
         Node h = new ExclusiveNode();
         if (compareAndSetReference(this, HEAD, null, h)) {
@@ -179,7 +179,7 @@ abstract class JavaMonitorQueuedSynchronizer {
         }
     }
 
-    // see AbstractQueuedSynchronizer.enqueue(Node)
+    // see AbstractQueuedLongSynchronizer.enqueue(Node)
     final void enqueue(Node node) {
         if (node != null) {
             for (;;) {
@@ -198,7 +198,7 @@ abstract class JavaMonitorQueuedSynchronizer {
         }
     }
 
-    // see AbstractQueuedSynchronizer.isEnqueued(Node)
+    // see AbstractQueuedLongSynchronizer.isEnqueued(Node)
     final boolean isEnqueued(Node node) {
         for (Node t = tail; t != null; t = t.prev) {
             if (t == node) {
@@ -208,7 +208,7 @@ abstract class JavaMonitorQueuedSynchronizer {
         return false;
     }
 
-    // see AbstractQueuedSynchronizer.signalNext(Node)
+    // see AbstractQueuedLongSynchronizer.signalNext(Node)
     private static void signalNext(Node h) {
         Node s;
         if (h != null && (s = h.next) != null && s.status != 0) {
@@ -230,9 +230,9 @@ abstract class JavaMonitorQueuedSynchronizer {
         signalNext(head);
     }
 
-    // see AbstractQueuedSynchronizer.acquire(Node, int, boolean, boolean, boolean, long)
+    // see AbstractQueuedLongSynchronizer.acquire(Node, long, boolean, boolean, boolean, long)
     @SuppressWarnings("all")
-    final int acquire(Node node, int arg) {
+    final int acquire(Node node, long arg) {
         Thread current = Thread.currentThread();
         byte spins = 0;
         byte postSpins = 0;
@@ -293,7 +293,7 @@ abstract class JavaMonitorQueuedSynchronizer {
         }
     }
 
-    // see AbstractQueuedSynchronizer.cleanQueue()
+    // see AbstractQueuedLongSynchronizer.cleanQueue()
     private void cleanQueue() {
         for (;;) { // restart point
             for (Node q = tail, s = null, p, n;;) { // (p, q, s) triples
@@ -327,7 +327,7 @@ abstract class JavaMonitorQueuedSynchronizer {
         }
     }
 
-    // see AbstractQueuedSynchronizer.cancelAcquire(Node, boolean, boolean)
+    // see AbstractQueuedLongSynchronizer.cancelAcquire(Node, boolean, boolean)
     private int cancelAcquire(Node node) {
         if (node != null) {
             node.waiter = null;
@@ -339,24 +339,24 @@ abstract class JavaMonitorQueuedSynchronizer {
         return 0;
     }
 
-    // see AbstractQueuedSynchronizer.tryAcquire(int)
-    protected abstract boolean tryAcquire(int arg);
+    // see AbstractQueuedLongSynchronizer.tryAcquire(long)
+    protected abstract boolean tryAcquire(long arg);
 
-    // see AbstractQueuedSynchronizer.tryRelease(int)
-    protected abstract boolean tryRelease(int releases);
+    // see AbstractQueuedLongSynchronizer.tryRelease(long)
+    protected abstract boolean tryRelease(long releases);
 
-    // see AbstractQueuedSynchronizer.isHeldExclusively()
+    // see AbstractQueuedLongSynchronizer.isHeldExclusively()
     protected abstract boolean isHeldExclusively();
 
-    // see AbstractQueuedSynchronizer.acquire(int)
-    protected final void acquire(int arg) {
+    // see AbstractQueuedLongSynchronizer.acquire(long)
+    protected final void acquire(long arg) {
         if (!tryAcquire(arg)) {
             acquire(null, arg);
         }
     }
 
-    // see AbstractQueuedSynchronizer.release(int)
-    protected final boolean release(int arg) {
+    // see AbstractQueuedLongSynchronizer.release(long)
+    protected final boolean release(long arg) {
         if (tryRelease(arg)) {
             signalNext(head);
             return true;
@@ -364,12 +364,12 @@ abstract class JavaMonitorQueuedSynchronizer {
         return false;
     }
 
-    // see AbstractQueuedSynchronizer.ConditionObject
+    // see AbstractQueuedLongSynchronizer.ConditionObject
     public final class JavaMonitorConditionObject {
         private transient ConditionNode firstWaiter;
         private transient ConditionNode lastWaiter;
 
-        // see AbstractQueuedSynchronizer.ConditionObject.doSignal(ConditionNode, boolean)
+        // see AbstractQueuedLongSynchronizer.ConditionObject.doSignal(ConditionNode, boolean)
         @SuppressWarnings("all")
         private void doSignal(ConditionNode first, boolean all) {
             while (first != null) {
@@ -388,7 +388,7 @@ abstract class JavaMonitorQueuedSynchronizer {
             }
         }
 
-        // see AbstractQueuedSynchronizer.ConditionObject.signal()
+        // see AbstractQueuedLongSynchronizer.ConditionObject.signal()
         public void signal() {
             ConditionNode first = firstWaiter;
             if (!isHeldExclusively()) {
@@ -399,7 +399,7 @@ abstract class JavaMonitorQueuedSynchronizer {
             }
         }
 
-        // see AbstractQueuedSynchronizer.ConditionObject.signalAll()
+        // see AbstractQueuedLongSynchronizer.ConditionObject.signalAll()
         public void signalAll() {
             ConditionNode first = firstWaiter;
             if (!isHeldExclusively()) {
@@ -410,8 +410,8 @@ abstract class JavaMonitorQueuedSynchronizer {
             }
         }
 
-        // see AbstractQueuedSynchronizer.ConditionObject.enableWait()
-        private int enableWait(ConditionNode node) {
+        // see AbstractQueuedLongSynchronizer.ConditionObject.enableWait()
+        private long enableWait(ConditionNode node) {
             if (isHeldExclusively()) {
                 node.waiter = Thread.currentThread();
                 node.setStatusRelaxed(COND | WAITING);
@@ -422,7 +422,7 @@ abstract class JavaMonitorQueuedSynchronizer {
                     last.nextWaiter = node;
                 }
                 lastWaiter = node;
-                int savedState = getState();
+                long savedState = getState();
                 if (release(savedState)) {
                     return savedState;
                 }
@@ -431,7 +431,7 @@ abstract class JavaMonitorQueuedSynchronizer {
             throw new IllegalMonitorStateException();
         }
 
-        // see AbstractQueuedSynchronizer.ConditionObject.canReacquire(ConditionNode)
+        // see AbstractQueuedLongSynchronizer.ConditionObject.canReacquire(ConditionNode)
         private boolean canReacquire(ConditionNode node) {
             // check links, not status to avoid enqueue race
             Node p; // traverse unless known to be bidirectionally linked
@@ -439,7 +439,7 @@ abstract class JavaMonitorQueuedSynchronizer {
                             (p.next == node || isEnqueued(node));
         }
 
-        // see AbstractQueuedSynchronizer.ConditionObject.unlinkCancelledWaiters(ConditionNode)
+        // see AbstractQueuedLongSynchronizer.ConditionObject.unlinkCancelledWaiters(ConditionNode)
         private void unlinkCancelledWaiters(ConditionNode node) {
             if (node == null || node.nextWaiter != null || node == lastWaiter) {
                 ConditionNode w = firstWaiter;
@@ -464,7 +464,7 @@ abstract class JavaMonitorQueuedSynchronizer {
             }
         }
 
-        // see AbstractQueuedSynchronizer.ConditionObject.await()
+        // see AbstractQueuedLongSynchronizer.ConditionObject.await()
         @SuppressWarnings("all")
         public void await(Object obj) throws InterruptedException {
             long startTicks = JfrTicks.elapsedTicks();
@@ -473,7 +473,7 @@ abstract class JavaMonitorQueuedSynchronizer {
                 throw new InterruptedException();
             }
             ConditionNode node = new ConditionNode();
-            int savedState = enableWait(node);
+            long savedState = enableWait(node);
             setCurrentBlocker(this);
             boolean interrupted = false;
             boolean cancelled = false;
@@ -502,7 +502,7 @@ abstract class JavaMonitorQueuedSynchronizer {
             }
         }
 
-        // see AbstractQueuedSynchronizer.ConditionObject.await(long, TimeUnit)
+        // see AbstractQueuedLongSynchronizer.ConditionObject.await(long, TimeUnit)
         @SuppressWarnings("all")
         public boolean await(Object obj, long time, TimeUnit unit) throws InterruptedException {
             long startTicks = JfrTicks.elapsedTicks();
@@ -512,7 +512,7 @@ abstract class JavaMonitorQueuedSynchronizer {
                 throw new InterruptedException();
             }
             ConditionNode node = new ConditionNode();
-            int savedState = enableWait(node);
+            long savedState = enableWait(node);
             long nanos = (nanosTimeout < 0L) ? 0L : nanosTimeout;
             long deadline = System.nanoTime() + nanos;
             boolean cancelled = false;
