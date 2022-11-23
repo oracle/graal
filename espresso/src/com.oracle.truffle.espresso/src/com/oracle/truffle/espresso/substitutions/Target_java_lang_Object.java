@@ -59,7 +59,7 @@ public final class Target_java_lang_Object {
         @Override
         public boolean isValid(EspressoContext context, Method.MethodVersion version, VirtualFrame frame, InlinedMethodNode node) {
             StaticObject receiver = node.peekReceiver(frame);
-            return !Init.hasFinalizer(receiver);
+            return !Init.hasFinalizer(receiver, context);
         }
     }
 
@@ -69,11 +69,11 @@ public final class Target_java_lang_Object {
 
         abstract void execute(@JavaType(Object.class) StaticObject self);
 
-        static boolean hasFinalizer(StaticObject self) {
-            return ((ObjectKlass) self.getKlass()).hasFinalizer();
+        static boolean hasFinalizer(StaticObject self, EspressoContext context) {
+            return ((ObjectKlass) self.getKlass()).hasFinalizer(context);
         }
 
-        @Specialization(guards = "!hasFinalizer(self)")
+        @Specialization(guards = "!hasFinalizer(self, getContext())")
         void noFinalizer(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject self) {
             // nop
         }

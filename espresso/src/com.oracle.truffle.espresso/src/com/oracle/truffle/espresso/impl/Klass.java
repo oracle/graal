@@ -1421,7 +1421,11 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
      */
     @Override
     public final int getModifiers() {
-        if (this instanceof ObjectKlass && getContext().advancedRedefinitionEnabled()) {
+        return getModifiers(getContext());
+    }
+
+    public final int getModifiers(EspressoContext context) {
+        if (this instanceof ObjectKlass && context.advancedRedefinitionEnabled()) {
             // getKlassVersion().getModifiers() introduces a ~10%
             // perf hit on some benchmarks, so put behind a check
             return this.getClassModifiers();
