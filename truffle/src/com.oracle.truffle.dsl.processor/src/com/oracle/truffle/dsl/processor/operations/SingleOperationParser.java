@@ -570,7 +570,9 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             return new ArrayList<>();
         }
 
-        List<ExecutableElement> els = findSpecializations(context.getTypeElement((DeclaredType) te.getSuperclass()));
+        List<ExecutableElement> els = te.getSuperclass() == null
+                        ? new ArrayList<>()
+                        : findSpecializations(context.getTypeElement((DeclaredType) te.getSuperclass()));
         els.addAll(findSpecializations(te.getEnclosedElements()));
         return els;
     }

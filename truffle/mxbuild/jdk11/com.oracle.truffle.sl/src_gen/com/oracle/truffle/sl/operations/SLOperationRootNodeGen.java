@@ -15173,6 +15173,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
     @GeneratedBy(SLOperationRootNode.class)
     public static final class Builder extends OperationBuilder {
 
+        private static final String[] OPERATION_NAMES = new String[] {null, "Block", "Root", "IfThen", "IfThenElse", "Conditional", "While", "TryCatch", "FinallyTry", "FinallyTryNoExcept", "Label", "Branch", "LoadConstant", "LoadArgument", "LoadLocal", "StoreLocal", "Return", "LoadLocalMaterialized", "StoreLocalMaterialized", "Source", "SourceSection", "Tag", "SLAdd", "SLDiv", "SLEqual", "SLLessOrEqual", "SLLessThan", "SLLogicalNot", "SLMul", "SLReadProperty", "SLSub", "SLWriteProperty", "SLUnbox", "SLFunctionLiteral", "SLToBoolean", "SLInvoke", "SLAnd", "SLOr"};
         private static final int OP_BLOCK = 1;
         private static final int OP_ROOT = 2;
         private static final int OP_IF_THEN = 3;
@@ -15215,7 +15216,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         private final boolean isReparse;
         private final boolean withSource;
         private final boolean withInstrumentation;
-        private final SourceInfoBuilder sourceBuilder;
+        private SourceInfoBuilder sourceBuilder;
         private short[] bc = new short[65535];
         private int bci;
         private int curStack;
@@ -15258,7 +15259,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
             this.withSource = config.isWithSource();
             this.withInstrumentation = config.isWithInstrumentation();
-            this.sourceBuilder = withSource ? new SourceInfoBuilder() : null;
+            this.sourceBuilder = withSource ? new SourceInfoBuilder(new ArrayList<>()) : null;
         }
 
         private void finish() {
@@ -15284,7 +15285,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             Arrays.fill(instructionHistory, -1);
             instructionHistoryIndex = 0;
             if (sourceBuilder != null) {
-                sourceBuilder.reset();
+                sourceBuilder = new SourceInfoBuilder(sourceBuilder.sourceList);
             }
             metadata_MethodName = null;
         }
@@ -15850,7 +15851,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_BLOCK) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endBlock");
             }
             int numChildren = operationData.numChildren;
             if (numChildren < 0) {
@@ -15892,7 +15893,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return publish(null);
             }
             if (operationData.operationId != OP_ROOT) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endRoot");
             }
             int numChildren = operationData.numChildren;
             if (numChildren < 0) {
@@ -15916,6 +15917,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             this.exceptionHandlers = parentData.exceptionHandlers;
             this.currentFinallyTry = parentData.currentFinallyTry;
             this.stackSourceBci = parentData.stackSourceBci;
+            this.sourceBuilder = parentData.sourceBuilder;
             this.parentData = parentData.parentData;
             return endCodeResult;
         }
@@ -15945,7 +15947,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_IF_THEN) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endIfThen");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 2) {
@@ -15981,7 +15983,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_IF_THEN_ELSE) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endIfThenElse");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 3) {
@@ -16017,7 +16019,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_CONDITIONAL) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endConditional");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 3) {
@@ -16056,7 +16058,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_WHILE) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endWhile");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 2) {
@@ -16101,7 +16103,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_TRY_CATCH) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endTryCatch");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 2) {
@@ -16147,7 +16149,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_FINALLY_TRY) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endFinallyTry");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 2) {
@@ -16214,7 +16216,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_FINALLY_TRY_NO_EXCEPT) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endFinallyTryNoExcept");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 2) {
@@ -16371,7 +16373,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_STORE_LOCAL) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endStoreLocal");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 1) {
@@ -16413,7 +16415,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_RETURN) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endReturn");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 1) {
@@ -16455,7 +16457,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_LOAD_LOCAL_MATERIALIZED) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endLoadLocalMaterialized");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 1) {
@@ -16497,7 +16499,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_STORE_LOCAL_MATERIALIZED) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endStoreLocalMaterialized");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 2) {
@@ -16550,7 +16552,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
             if (withSource) {
                 if (operationData.operationId != OP_SOURCE) {
-                    throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                    throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endSource");
                 }
                 int numChildren = operationData.numChildren;
                 if (numChildren < 0) {
@@ -16593,7 +16595,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
             if (withSource) {
                 if (operationData.operationId != OP_SOURCE_SECTION) {
-                    throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                    throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endSourceSection");
                 }
                 int numChildren = operationData.numChildren;
                 if (numChildren < 0) {
@@ -16653,7 +16655,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
             if (withInstrumentation) {
                 if (operationData.operationId != OP_TAG) {
-                    throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                    throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endTag");
                 }
                 int numChildren = operationData.numChildren;
                 if (numChildren < 0) {
@@ -16700,7 +16702,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_SL_ADD) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endSLAdd");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 2) {
@@ -16756,7 +16758,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_SL_DIV) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endSLDiv");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 2) {
@@ -16805,7 +16807,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_SL_EQUAL) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endSLEqual");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 2) {
@@ -16851,7 +16853,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_SL_LESS_OR_EQUAL) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endSLLessOrEqual");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 2) {
@@ -16899,7 +16901,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_SL_LESS_THAN) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endSLLessThan");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 2) {
@@ -16947,7 +16949,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_SL_LOGICAL_NOT) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endSLLogicalNot");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 1) {
@@ -16994,7 +16996,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_SL_MUL) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endSLMul");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 2) {
@@ -17043,7 +17045,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_SL_READ_PROPERTY) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endSLReadProperty");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 2) {
@@ -17097,7 +17099,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_SL_SUB) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endSLSub");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 2) {
@@ -17146,7 +17148,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_SL_WRITE_PROPERTY) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endSLWriteProperty");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 3) {
@@ -17197,7 +17199,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_SL_UNBOX) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endSLUnbox");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 1) {
@@ -17277,7 +17279,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_SL_FUNCTION_LITERAL) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endSLFunctionLiteral");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 1) {
@@ -17324,7 +17326,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_SL_TO_BOOLEAN) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endSLToBoolean");
             }
             int numChildren = operationData.numChildren;
             if (numChildren != 1) {
@@ -17371,7 +17373,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_SL_INVOKE) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endSLInvoke");
             }
             int numChildren = operationData.numChildren;
             if (numChildren < 0) {
@@ -17420,7 +17422,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_SL_AND) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endSLAnd");
             }
             int numChildren = operationData.numChildren;
             if (numChildren < 1) {
@@ -17458,7 +17460,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 return;
             }
             if (operationData.operationId != OP_SL_OR) {
-                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+                throw new IllegalStateException("Mismatched begin/end, expected end" + OPERATION_NAMES[operationData.operationId] + ", got endSLOr");
             }
             int numChildren = operationData.numChildren;
             if (numChildren < 1) {
@@ -17984,12 +17986,16 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         @GeneratedBy(SLOperationRootNode.class)
         private static final class SourceInfoBuilder {
 
+            private final ArrayList<Source> sourceList;
             private final ArrayList<Integer> sourceStack = new ArrayList<>();
-            private final ArrayList<Source> sourceList = new ArrayList<>();
             private int currentSource = -1;
             private final ArrayList<Integer> bciList = new ArrayList<>();
             private final ArrayList<SourceData> sourceDataList = new ArrayList<>();
             private final ArrayList<SourceData> sourceDataStack = new ArrayList<>();
+
+            SourceInfoBuilder(ArrayList<Source> sourceList) {
+                this.sourceList = sourceList;
+            }
 
             void reset() {
                 sourceStack.clear();
@@ -18128,6 +18134,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             private ArrayList<ExceptionHandler> exceptionHandlers = new ArrayList<>();
             private BuilderFinallyTryContext currentFinallyTry;
             private int[] stackSourceBci = new int[1024];
+            private SourceInfoBuilder sourceBuilder;
 
             BuilderState(com.oracle.truffle.sl.operations.SLOperationRootNodeGen.Builder p) {
                 this.bc = p.bc;
@@ -18145,6 +18152,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 this.exceptionHandlers = p.exceptionHandlers;
                 this.currentFinallyTry = p.currentFinallyTry;
                 this.stackSourceBci = p.stackSourceBci;
+                this.sourceBuilder = p.sourceBuilder;
                 this.parentData = p.parentData;
             }
 

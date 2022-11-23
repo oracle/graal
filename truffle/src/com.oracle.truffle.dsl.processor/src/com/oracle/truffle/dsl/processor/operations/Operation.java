@@ -448,6 +448,7 @@ public abstract class Operation {
             b.statement("this.exceptionHandlers = parentData.exceptionHandlers");
             b.statement("this.currentFinallyTry = parentData.currentFinallyTry");
             b.statement("this.stackSourceBci = parentData.stackSourceBci");
+            b.statement("this.sourceBuilder = parentData.sourceBuilder");
 
             b.statement("this.parentData = parentData.parentData");
 

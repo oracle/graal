@@ -57,6 +57,7 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -1011,7 +1012,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE_FINAL, context.getType(boolean.class), "isReparse"));
         typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE_FINAL, context.getType(boolean.class), "withSource"));
         typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE_FINAL, context.getType(boolean.class), "withInstrumentation"));
-        typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE_FINAL, typSourceBuilder.asType(), "sourceBuilder"));
+        typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, typSourceBuilder.asType(), "sourceBuilder"));
 
         typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(short[].class), "bc = new short[65535]"));
         typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "bci"));
@@ -1058,7 +1059,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typBuilderImpl.add(createBuilderImplDoBeforeEmitInstruction());
 
         CodeTypeElement typBuilderState = typBuilderImpl.add(createBuilderState(typBuilderImpl, "bc", "bci", "curStack", "maxStack", "numLocals", "numLabels", "yieldCount", "yieldLocations",
-                        "constPool", "operationData", "labels", "labelFills", "numChildNodes", "numConditionProfiles", "exceptionHandlers", "currentFinallyTry", "stackSourceBci"));
+                        "constPool", "operationData", "labels", "labelFills", "numChildNodes", "numConditionProfiles", "exceptionHandlers", "currentFinallyTry", "stackSourceBci", "sourceBuilder"));
         typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, typBuilderState.asType(), "parentData"));
 
         typBuilderImpl.add(createDoLeaveFinallyTry(opDataImpl));
@@ -1072,6 +1073,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typBuilderImpl.add(createBuilderImplVerifyNesting(opDataImpl));
         typBuilderImpl.add(createBuilderImplPublish(typOperationNodeImpl));
         typBuilderImpl.add(createBuilderImplLabelPass(typFinallyTryContext));
+
+        typBuilderImpl.add(createBuilderImplOperationNames());
 
         // operation IDs
         for (Operation op : m.getOperationsContext().operations) {
@@ -1142,6 +1145,28 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         }
 
         return typBuilderImpl;
+    }
+
+    private CodeVariableElement createBuilderImplOperationNames() {
+        CodeVariableElement el = new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, context.getType(String[].class), "OPERATION_NAMES");
+        CodeTreeBuilder b = el.createInitBuilder();
+
+        b.startNewArray((ArrayType) context.getType(String[].class), null);
+
+        b.string("null");
+
+        int idx = 1;
+        for (Operation data : m.getOperations()) {
+            if (idx != data.id) {
+                throw new AssertionError();
+            }
+            b.doubleQuote(data.name);
+            idx++;
+        }
+
+        b.end();
+
+        return el;
     }
 
     private CodeTypeElement createBuilderState(CodeTypeElement typBuilder, String... fields) {
@@ -1629,6 +1654,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeTypeElement typSourceBuilder = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, "SourceInfoBuilder", null);
         typSourceBuilder.setEnclosingElement(typBuilderImpl);
 
+        typSourceBuilder.add(new CodeVariableElement(MOD_PRIVATE_FINAL, generic(ArrayList.class, types.Source), "sourceList"));
+
+        typSourceBuilder.add(GeneratorUtils.createConstructorUsingFields(Set.of(), typSourceBuilder));
+
         CodeTypeElement typSourceData = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, "SourceData", null);
         typSourceBuilder.add(typSourceData);
         typSourceData.add(new CodeVariableElement(MOD_FINAL, context.getType(int.class), "start"));
@@ -1637,7 +1666,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typSourceData.add(GeneratorUtils.createConstructorUsingFields(Set.of(), typSourceData));
 
         typSourceBuilder.add(new CodeVariableElement(MOD_PRIVATE_FINAL, generic(ArrayList.class, context.getType(Integer.class)), "sourceStack = new ArrayList<>()"));
-        typSourceBuilder.add(new CodeVariableElement(MOD_PRIVATE_FINAL, generic(ArrayList.class, types.Source), "sourceList = new ArrayList<>()"));
         typSourceBuilder.add(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "currentSource = -1"));
         typSourceBuilder.add(new CodeVariableElement(MOD_PRIVATE_FINAL, generic(ArrayList.class, context.getType(Integer.class)), "bciList = new ArrayList<>()"));
         typSourceBuilder.add(new CodeVariableElement(MOD_PRIVATE_FINAL, generic(ArrayList.class, typSourceData.asType()), "sourceDataList = new ArrayList<>()"));
@@ -2083,7 +2111,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         b.startIf().string("operationData.operationId != ").variable(op.idConstantField).end();
         b.startBlock();
-        b.startThrow().startNew(context.getType(IllegalStateException.class)).startGroup().doubleQuote("Mismatched begin/end, expected ").string(" + operationData.operationId").end(3);
+        b.startThrow().startNew(context.getType(IllegalStateException.class)).startGroup().doubleQuote("Mismatched begin/end, expected end").string(
+                        " + OPERATION_NAMES[operationData.operationId] + ").doubleQuote(", got end" + op.name).end(3);
         b.end();
 
         vars.numChildren = new CodeVariableElement(context.getType(int.class), "numChildren");
@@ -2712,7 +2741,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.statement("this.withSource = config.isWithSource()");
         b.statement("this.withInstrumentation = config.isWithInstrumentation()");
 
-        b.statement("this.sourceBuilder = withSource ? new SourceInfoBuilder() : null");
+        b.statement("this.sourceBuilder = withSource ? new SourceInfoBuilder(new ArrayList<>()) : null");
 
         return ctor;
     }
@@ -2753,7 +2782,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.statement("instructionHistoryIndex = 0");
 
         b.startIf().string("sourceBuilder != null").end().startBlock();
-        b.statement("sourceBuilder.reset()");
+        b.statement("sourceBuilder = new SourceInfoBuilder(sourceBuilder.sourceList)");
         b.end();
 
         if (m.enableYield) {
