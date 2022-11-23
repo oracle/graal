@@ -231,12 +231,12 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             opData.setShortCircuitContinueWhen((boolean) ElementUtils.getAnnotationValue(mir, "continueWhen").getValue());
         }
 
-        if (opProxies.isEmpty() && operationTypes.isEmpty()) {
-            data.addWarning("No operations found.");
-        }
-
         if (data.hasErrors()) {
             return data;
+        }
+
+        if (opProxies.isEmpty() && operationTypes.isEmpty()) {
+            data.addWarning("No operations found.");
         }
 
         String decisionsFilePath = getMainDecisionsFilePath(typeElement, generateOperationsMirror);

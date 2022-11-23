@@ -6178,7 +6178,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             return SLReadProperty_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
         }
 
-        private static int instructionGroup_1_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_1_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // pop
@@ -6196,7 +6197,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_2_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_2_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // load.constant
@@ -6303,7 +6305,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_3_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_3_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // store.local
@@ -6346,7 +6349,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_5_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_5_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // c.SLEqual
@@ -6621,7 +6625,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_6_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_6_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // c.SLAdd
@@ -6820,7 +6825,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_7_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_7_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // c.SLWriteProperty
@@ -6934,7 +6940,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_14_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_14_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.constant.c.SLFunctionLiteral.load.local.c.SLUnbox
@@ -6995,7 +7002,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_15_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_15_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox
@@ -7116,7 +7124,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_19_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_19_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox
@@ -7208,7 +7217,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_22_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_22_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox
@@ -7407,7 +7417,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_23_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_23_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox
@@ -7607,7 +7618,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_24_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_24_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.argument.store.local.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox
@@ -7901,7 +7913,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_25_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_25_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd.c.SLUnbox
@@ -8035,7 +8048,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_26_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_26_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox
@@ -8253,7 +8267,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_27_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_27_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty
@@ -8348,7 +8363,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_28_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_28_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.store.local.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd
@@ -8526,7 +8542,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_30_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_30_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd.c.SLUnbox
@@ -8889,7 +8906,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_32_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_32_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox
@@ -9031,7 +9049,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_33_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_33_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox
@@ -9150,7 +9169,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_34_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_34_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox.c.SLAdd
@@ -9251,7 +9271,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_37_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_37_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox.c.SLAdd.c.SLUnbox
@@ -12248,7 +12269,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             throw new UnsupportedSpecializationException($this, new Node[] {null, null}, $child0Value, $child1Value);
         }
 
-        private static int instructionGroup_1_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_1_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // pop
@@ -12266,7 +12288,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_2_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_2_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // load.constant
@@ -12343,7 +12366,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_3_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_3_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // store.local
@@ -12365,7 +12389,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_5_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_5_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // c.SLEqual
@@ -12494,7 +12519,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_6_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_6_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // c.SLAdd
@@ -12611,7 +12637,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_7_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_7_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // c.SLWriteProperty
@@ -12690,7 +12717,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_14_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_14_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.constant.c.SLFunctionLiteral.load.local.c.SLUnbox
@@ -12723,7 +12751,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_15_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_15_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox
@@ -12787,7 +12816,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_19_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_19_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox
@@ -12832,7 +12862,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_22_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_22_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox
@@ -12916,7 +12947,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_23_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_23_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox
@@ -13000,7 +13032,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_24_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_24_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.argument.store.local.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox
@@ -13091,7 +13124,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_25_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_25_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd.c.SLUnbox
@@ -13134,7 +13168,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_26_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_26_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox
@@ -13227,7 +13262,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_27_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_27_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty
@@ -13282,7 +13318,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_28_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_28_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.store.local.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd
@@ -13338,7 +13375,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_30_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_30_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd.c.SLUnbox
@@ -13483,7 +13521,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_32_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_32_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox
@@ -13536,7 +13575,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_33_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_33_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox
@@ -13588,7 +13628,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_34_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_34_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox.c.SLAdd
@@ -13641,7 +13682,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
-        private static int instructionGroup_37_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $bci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+        private static int instructionGroup_37_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
             int $sp = $startSp;
             switch (curOpcode) {
                 // si.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox.c.SLAdd.c.SLUnbox
@@ -15030,34 +15072,6 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             bc[bci] = (short) (targetType | (bc[bci] & 0xfff8));
         }
 
-        protected static long expectLong(VirtualFrame frame, int slot, short[] bc, int bci, int bciOffset) throws UnexpectedResultException {
-            if (bciOffset == 0) {
-                Object value = UFA.unsafeUncheckedGetObject(frame, slot);
-                if (value instanceof Long) {
-                    return (long) value;
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw new UnexpectedResultException(value);
-                }
-            } else {
-                switch (UFA.unsafeGetTag(frame, slot)) {
-                    case 1 /* LONG */ :
-                        return UFA.unsafeUncheckedGetLong(frame, slot);
-                    case 0 /* OBJECT */ :
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        Object value = UFA.unsafeUncheckedGetObject(frame, slot);
-                        if (value instanceof Long) {
-                            setResultBoxedImpl(bc, bci - bciOffset, 1 /* LONG */);
-                            return (long) value;
-                        }
-                        break;
-                }
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                setResultBoxedImpl(bc, bci - bciOffset, 0);
-                throw new UnexpectedResultException(frame.getValue(slot));
-            }
-        }
-
         protected static boolean expectBoolean(VirtualFrame frame, int slot, short[] bc, int bci, int bciOffset) throws UnexpectedResultException {
             if (bciOffset == 0) {
                 Object value = UFA.unsafeUncheckedGetObject(frame, slot);
@@ -15077,6 +15091,34 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                         if (value instanceof Boolean) {
                             setResultBoxedImpl(bc, bci - bciOffset, 5 /* BOOLEAN */);
                             return (boolean) value;
+                        }
+                        break;
+                }
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                setResultBoxedImpl(bc, bci - bciOffset, 0);
+                throw new UnexpectedResultException(frame.getValue(slot));
+            }
+        }
+
+        protected static long expectLong(VirtualFrame frame, int slot, short[] bc, int bci, int bciOffset) throws UnexpectedResultException {
+            if (bciOffset == 0) {
+                Object value = UFA.unsafeUncheckedGetObject(frame, slot);
+                if (value instanceof Long) {
+                    return (long) value;
+                } else {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw new UnexpectedResultException(value);
+                }
+            } else {
+                switch (UFA.unsafeGetTag(frame, slot)) {
+                    case 1 /* LONG */ :
+                        return UFA.unsafeUncheckedGetLong(frame, slot);
+                    case 0 /* OBJECT */ :
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        Object value = UFA.unsafeUncheckedGetObject(frame, slot);
+                        if (value instanceof Long) {
+                            setResultBoxedImpl(bc, bci - bciOffset, 1 /* LONG */);
+                            return (long) value;
                         }
                         break;
                 }

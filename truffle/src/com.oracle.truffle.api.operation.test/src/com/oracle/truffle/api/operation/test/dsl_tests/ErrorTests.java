@@ -1,9 +1,46 @@
+/*
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * The Universal Permissive License (UPL), Version 1.0
+ *
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
+ *
+ * (a) the Software, and
+ *
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 package com.oracle.truffle.api.operation.test.dsl_tests;
 
-import java.io.Serializable;
-
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
@@ -67,7 +104,7 @@ public class ErrorTests {
         }
     }
 
-    @ExpectError("Invalid constructor declaration, expected (TruffleLanguage, FrameDescriptor) or (TruffleLanguage, FrameDescriptor.Builder).")
+    @ExpectError("Invalid constructor declaration, expected (TruffleLanguage, FrameDescriptor) or (TruffleLanguage, FrameDescriptor.Builder). Remove this constructor.")
     @GenerateOperations(languageClass = ErrorLanguage.class)
     public abstract class InvalidConstructor extends RootNode implements OperationRootNode {
         protected InvalidConstructor(TruffleLanguage<?> language, FrameDescriptor builder) {
@@ -88,7 +125,7 @@ public class ErrorTests {
         }
     }
 
-    @ExpectError({"Cannot perform boxing elimination on java.lang.String. Remove this type from the boxing eliminated types list.", "No operations found."})
+    @ExpectError("Cannot perform boxing elimination on java.lang.String. Remove this type from the boxing eliminated types list. Only primitive types boolean, byte, int, float, long, and double are supported.")
     @GenerateOperations(languageClass = ErrorLanguage.class, boxingEliminationTypes = {String.class})
     public abstract class BadBoxingElimination extends RootNode implements OperationRootNode {
         protected BadBoxingElimination(TruffleLanguage<?> language, FrameDescriptor builder) {
@@ -96,16 +133,7 @@ public class ErrorTests {
         }
     }
 
-    @ExpectError("Could not parse invalid node: ErroredNode. Fix errors in the node first.")
-    @GenerateOperations(languageClass = ErrorLanguage.class)
-    @OperationProxy(ErroredNode.class)
-    public abstract class BadNodeProxy extends RootNode implements OperationRootNode {
-        protected BadNodeProxy(TruffleLanguage<?> language, FrameDescriptor builder) {
-            super(language, builder);
-        }
-    }
-
-    @ExpectError({"Type referenced by @OperationProxy must be a class, not int.", "Could not proxy operation"})
+    @ExpectError({"Type referenced by @OperationProxy must be a class, not int.", "Error generating operation. Fix issues on the referenced class first."})
     @GenerateOperations(languageClass = ErrorLanguage.class)
     @OperationProxy(int.class)
     public abstract class BadProxyType extends RootNode implements OperationRootNode {
@@ -117,28 +145,32 @@ public class ErrorTests {
     @ExpectError("Class referenced by @OperationProxy must have all its specializations static. Use @Bind(\"this\") parameter if you need a Node instance.")
     @GenerateOperations(languageClass = ErrorLanguage.class)
     @OperationProxy(TestNode.class)
-    public static abstract class OperationErrorTests extends RootNode implements OperationRootNode {
+    public abstract static class OperationErrorTests extends RootNode implements OperationRootNode {
         protected OperationErrorTests(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
         }
 
-        @ExpectError({"@Operation annotated class must be declared static and final.", "Operation contains no specializations."})
+        @ExpectError("Operation class must be declared final. Inheritance in operation specifications is not supported.")
         @Operation
-        public class TestOperation1 {
+        public static class TestOperation1 {
         }
 
-        @ExpectError({"@Operation annotated class must not be declared private.", "Operation contains no specializations."})
+        @ExpectError("Operation class must not be an inner class (non-static nested class). Declare the class as static.")
+        @Operation
+        public final class TestOperation1a {
+        }
+
+        @ExpectError("Operation class must not be declared private. Remove the private modifier to make it visible.")
         @Operation
         private static final class TestOperation2 {
         }
 
-        @ExpectError({"@Operation annotated class must not extend/implement anything. Inheritance is not supported.", "Operation contains no specializations."})
+        @ExpectError("Operation class must not extend any classes or implement any interfaces. Inheritance in operation specifications is not supported.")
         @Operation
-        public static final class TestOperation3 extends Exception {
-            private static final long serialVersionUID = 1L;
+        public static final class TestOperation3 implements Cloneable {
         }
 
-        @ExpectError({"@Operation annotated class must not contain non-static members.", "Operation contains no specializations."})
+        @ExpectError("@Operation annotated class must not contain non-static members.")
         @Operation
         public static final class TestOperation4 {
             public void doSomething() {
@@ -198,7 +230,7 @@ public class ErrorTests {
         }
     }
 
-    public static abstract class TestNode extends Node {
+    public abstract static class TestNode extends Node {
         public abstract int execute(int x, int y);
 
         @Specialization

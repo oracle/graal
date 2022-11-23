@@ -40,11 +40,17 @@
  */
 package com.oracle.truffle.api.operation;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public final class ContinuationResult {
-    private final ContinuationLocation location;
-    private final MaterializedFrame frame;
+    final ContinuationLocation location;
+    final MaterializedFrame frame;
     private final Object result;
 
     ContinuationResult(ContinuationLocation location, MaterializedFrame frame, Object result) {
@@ -59,5 +65,25 @@ public final class ContinuationResult {
 
     public Object getResult() {
         return result;
+    }
+
+    public abstract static class ContinueNode extends Node {
+        public abstract Object execute(ContinuationResult result, Object value);
+
+        public static final int LIMIT = 3;
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"result.location.getRootNode() == rootNode"}, limit = "LIMIT")
+        public static Object invokeDirect(ContinuationResult result, Object value,
+                        @Cached("result.location.getRootNode()") RootNode rootNode,
+                        @Cached("create(rootNode.getCallTarget())") DirectCallNode callNode) {
+            return callNode.call(result.frame, value);
+        }
+
+        @Specialization(replaces = "invokeDirect")
+        public static Object invokeIndirect(ContinuationResult result, Object value,
+                        @Cached IndirectCallNode callNode) {
+            return callNode.call(result.location.getRootNode().getCallTarget(), result.frame, value);
+        }
     }
 }

@@ -407,7 +407,7 @@ public class OperationsBytecodeCodeGenerator {
                         met.addParameter(vars.localFrame);
                     }
                     met.addParameter(vars.bc);
-                    met.addParameter(vars.bci);
+                    met.addParameter(new CodeVariableElement(context.getType(int.class), "$startBci"));
                     met.addParameter(new CodeVariableElement(context.getType(int.class), "$startSp"));
                     met.addParameter(vars.consts);
                     met.addParameter(vars.children);
@@ -422,6 +422,7 @@ public class OperationsBytecodeCodeGenerator {
 
                     CodeTreeBuilder b2 = met.createBuilder();
 
+                    b2.statement("int $bci = $startBci");
                     b2.statement("int $sp = $startSp");
 
                     b2.startSwitch().string("curOpcode").end().startBlock();
