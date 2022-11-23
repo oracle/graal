@@ -116,13 +116,7 @@ public class ParallelGCImpl extends ParallelGC {
 
     @Override
     public void startWorkerThreadsImpl() {
-        // Allocate buffer large enough to store maximum possible number of heap chunks
-        long maxHeapSize = GCImpl.getPolicy().getMaximumHeapSize().rawValue();
-        long alignedChunkSize = HeapParameters.getAlignedHeapChunkSize().rawValue();
-        long unalignedChunkSize = HeapParameters.getLargeArrayThreshold().rawValue();
-        long maxChunks = maxHeapSize / Math.min(alignedChunkSize, unalignedChunkSize) + 1;
-        buffer = new ChunkBuffer((int) maxChunks);
-
+        buffer = new ChunkBuffer();
         workerCount = getWorkerCount();
         // We reuse the gc thread as the last worker
         workers = IntStream.range(0, workerCount).mapToObj(this::startWorkerThread).toList();
@@ -184,6 +178,7 @@ public class ParallelGCImpl extends ParallelGC {
 
     @Uninterruptible(reason = "Tear-down in progress.", calleeMustBe = false)
     public void tearDown() {
+        buffer.release();
         workers.forEach(PlatformThreads::exit);
     }
 

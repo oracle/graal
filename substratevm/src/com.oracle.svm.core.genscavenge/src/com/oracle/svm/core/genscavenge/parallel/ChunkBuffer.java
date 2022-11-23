@@ -26,9 +26,11 @@
 
 package com.oracle.svm.core.genscavenge.parallel;
 
+import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -36,26 +38,38 @@ import org.graalvm.word.WordFactory;
  * Synchronized buffer that stores "grey" heap chunks to be scanned.
  */
 public class ChunkBuffer {
+    private static final int INITIAL_SIZE = 1024 * wordSize();
+
     private Pointer buffer;
     private int size, top;
 
-    ChunkBuffer(int maxChunks) {
-        this.size = maxChunks * ConfigurationValues.getTarget().wordSize;
-        this.buffer = UnmanagedMemory.malloc(this.size);
+    @Fold
+    static int wordSize() {
+        return ConfigurationValues.getTarget().wordSize;
+    }
+
+    ChunkBuffer() {
+        this.size = INITIAL_SIZE;
+        this.buffer = malloc(this.size);
     }
 
     void push(Pointer ptr) {
-        ParallelGCImpl.mutex.assertIsOwner("Must hold ParallelGCImpl.mutex");
-        assert top < size;
+        assert !ParallelGCImpl.isInParallelPhase() || ParallelGCImpl.mutex.isOwner();
+        if (top >= size) {
+            int oldSize = size;
+            size *= 2;
+            assert top < size;
+            buffer = realloc(buffer, oldSize, size);
+        }
         buffer.writeWord(top, ptr);
-        top += ConfigurationValues.getTarget().wordSize;
+        top += wordSize();
     }
 
     Pointer pop() {
         ParallelGCImpl.mutex.lock();
         try {
             if (top > 0) {
-                top -= ConfigurationValues.getTarget().wordSize;
+                top -= wordSize();
                 return buffer.readWord(top);
             } else {
                 return WordFactory.nullPointer();
@@ -63,5 +77,27 @@ public class ChunkBuffer {
         } finally {
             ParallelGCImpl.mutex.unlock();
         }
+    }
+
+    void release() {
+        free(buffer, size);
+    }
+
+    @AlwaysInline("GC performance")
+    private Pointer malloc(int size) {
+        return CommittedMemoryProvider.get().allocateUnalignedChunk(WordFactory.unsigned(size));
+    }
+
+    @AlwaysInline("GC performance")
+    private Pointer realloc(Pointer orig, int origSize, int newSize) {
+        Pointer ptr = malloc(newSize);
+        UnmanagedMemoryUtil.copyLongsForward(orig, ptr, WordFactory.unsigned(origSize));
+        free(orig, origSize);
+        return ptr;
+    }
+
+    @AlwaysInline("GC performance")
+    private void free(Pointer ptr, int size) {
+        CommittedMemoryProvider.get().freeUnalignedChunk(ptr, WordFactory.unsigned(size));
     }
 }
