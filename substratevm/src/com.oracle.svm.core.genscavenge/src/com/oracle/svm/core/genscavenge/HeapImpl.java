@@ -28,6 +28,8 @@ import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
+import com.oracle.svm.core.heap.ParallelGC;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
@@ -200,6 +202,9 @@ public final class HeapImpl extends Heap {
     @Override
     @Uninterruptible(reason = "Tear-down in progress.")
     public boolean tearDown() {
+        if (ParallelGC.isEnabled()) {
+            ParallelGCImpl.singleton().tearDown();
+        }
         youngGeneration.tearDown();
         oldGeneration.tearDown();
         getChunkProvider().tearDown();

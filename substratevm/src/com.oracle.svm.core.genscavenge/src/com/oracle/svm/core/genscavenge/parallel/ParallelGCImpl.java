@@ -27,7 +27,7 @@
 package com.oracle.svm.core.genscavenge.parallel;
 
 import com.oracle.svm.core.SubstrateGCOptions;
-import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
@@ -40,6 +40,7 @@ import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
@@ -51,7 +52,9 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 
 public class ParallelGCImpl extends ParallelGC {
 
@@ -64,6 +67,7 @@ public class ParallelGCImpl extends ParallelGC {
      */
     private int workerCount = 1;
     private int allWorkersBusy;
+    private List<Thread> workers;
     private final AtomicInteger busyWorkers = new AtomicInteger(0);
 
     /**
@@ -120,11 +124,9 @@ public class ParallelGCImpl extends ParallelGC {
         buffer = new ChunkBuffer((int) maxChunks);
 
         workerCount = getWorkerCount();
-        allWorkersBusy = ~(-1 << workerCount) & (-1 << 1);
-        // We reuse the gc thread for worker #0
-        for (int i = 1; i < workerCount; i++) {
-            startWorkerThread(i);
-        }
+        // We reuse the gc thread as the last worker
+        workers = IntStream.range(0, workerCount).mapToObj(this::startWorkerThread).toList();
+        allWorkersBusy = ~(-1 << (workerCount - 1));
     }
 
     private int getWorkerCount() {
@@ -141,7 +143,7 @@ public class ParallelGCImpl extends ParallelGC {
         return cpus <= 8 ? cpus : 8 + (cpus - 8) * 5 / 8;
     }
 
-    private void startWorkerThread(int n) {
+    private Thread startWorkerThread(int n) {
         Thread t = new Thread(() -> {
                 VMThreads.SafepointBehavior.markThreadAsCrashed();
                 debugLog().string("WW start ").unsigned(n).newline();
@@ -177,6 +179,12 @@ public class ParallelGCImpl extends ParallelGC {
         t.setName("ParallelGCWorker-" + n);
         t.setDaemon(true);
         t.start();
+        return t;
+    }
+
+    @Uninterruptible(reason = "Tear-down in progress.", calleeMustBe = false)
+    public void tearDown() {
+        workers.forEach(PlatformThreads::exit);
     }
 
     private void waitForIdleImpl() {
