@@ -87,11 +87,7 @@ public class Linker {
         failed,
     }
 
-    private final ResolutionDag resolutionDag;
-
-    Linker() {
-        this.resolutionDag = new ResolutionDag();
-    }
+    private ResolutionDag resolutionDag;
 
     public void tryLink(WasmInstance instance) {
         // The first execution of a WebAssembly call target will trigger the linking of the modules
@@ -117,6 +113,9 @@ public class Linker {
         // Some Truffle configurations allow that the code gets compiled before executing the code.
         // We therefore check the link state again.
         if (entryPointInstance.isNonLinked()) {
+            if (resolutionDag == null) {
+                resolutionDag = new ResolutionDag();
+            }
             final WasmContext context = WasmContext.get(null);
             Map<String, WasmInstance> instances = context.moduleInstances();
             ArrayList<Throwable> failures = new ArrayList<>();
@@ -128,7 +127,7 @@ public class Linker {
                     instance.module().setParsed();
                 }
             }
-            resolutionDag.clear();
+            resolutionDag = null;
             runStartFunctions(instances, failures);
             checkFailures(failures);
         }
@@ -331,6 +330,9 @@ public class Linker {
     }
 
     void resolveCodeEntry(WasmModule module, int functionIndex) {
+        if (resolutionDag == null) {
+            resolutionDag = new ResolutionDag();
+        }
         resolutionDag.resolveLater(new CodeEntrySym(module.name(), functionIndex), ResolutionDag.NO_DEPENDENCIES, NO_RESOLVE_ACTION);
     }
 
@@ -1172,10 +1174,6 @@ public class Linker {
                 toposort(sym, marks, sorted, new ArrayList<>());
             }
             return sorted.toArray(new Resolver[0]);
-        }
-
-        void clear() {
-            resolutions.clear();
         }
     }
 }

@@ -103,7 +103,7 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
     }
 
     public void addLinkAction(BiConsumer<WasmContext, WasmInstance> action) {
-        if(linkActions == null) {
+        if (linkActions == null) {
             linkActions = new ArrayList<>();
         }
         linkActions.add(action);
@@ -160,17 +160,8 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
         this.codeEntries = codeEntries;
     }
 
-    public void removeCodeEntryCallNodes() {
-        if (codeEntries == null) {
-            return;
-        }
-        for (CodeEntry entry : codeEntries) {
-            entry.setCallNodes(null);
-        }
-    }
-
-    public boolean hasCodeEntryCallNodes() {
-        return (codeEntries == null) || (codeEntries.length == 0) || (codeEntries[0].hasCallNodes());
+    public boolean hasCodeEntries() {
+        return codeEntries != null;
     }
 
     public void setParsed() {

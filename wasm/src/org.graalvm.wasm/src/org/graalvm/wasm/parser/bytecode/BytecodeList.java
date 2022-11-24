@@ -41,9 +41,12 @@
 
 package org.graalvm.wasm.parser.bytecode;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.collection.ByteArrayList;
 
 import org.graalvm.wasm.constants.Bytecode;
+import org.graalvm.wasm.constants.SegmentMode;
 
 public class BytecodeList {
     private final ByteArrayList bytecode;
@@ -444,6 +447,121 @@ public class BytecodeList {
         }
     }
 
+    private int addDataHeader(int mode, int length, int globalIndex, int offsetAddress) {
+        int location = bytecode.size();
+        add1(0);
+        int flags = mode;
+        if (fitsIntoUnsignedByte(length)) {
+            flags |= 0b0100_0000;
+            add1(length);
+        } else if (fitsIntoUnsignedShort(length)) {
+            flags |= 0b1000_0000;
+            add2(length);
+        } else {
+            flags |= 0b1100_0000;
+            add4(length);
+        }
+        if (globalIndex != -1) {
+            if (fitsIntoUnsignedByte(globalIndex)) {
+                flags |= 0b0001_0000;
+                add1(globalIndex);
+            } else if (fitsIntoUnsignedShort(globalIndex)) {
+                flags |= 0b0010_0000;
+                add2(globalIndex);
+            } else {
+                flags |= 0b0011_0000;
+                add4(globalIndex);
+            }
+        }
+        if (offsetAddress != -1) {
+            if (fitsIntoUnsignedByte(offsetAddress)) {
+                flags |= 0b0000_0100;
+                add1(offsetAddress);
+            } else if (fitsIntoUnsignedShort(offsetAddress)) {
+                flags |= 0b0000_1000;
+                add2(offsetAddress);
+            } else {
+                flags |= 0b0000_1100;
+                add4(offsetAddress);
+            }
+        }
+        bytecode.set(location, (byte) flags);
+        return bytecode.size();
+    }
+
+    public int addDataHeader(int length, int globalIndex, int offsetAddress) {
+        return addDataHeader(SegmentMode.ACTIVE, length, globalIndex, offsetAddress);
+    }
+
+    public int addDataHeader(int mode, int length) {
+        return addDataHeader(mode, length, -1, -1);
+    }
+
+    public int addElemHeader(int mode, int count, byte elemType, int tableIndex, int globalIndex, int offsetAddress) {
+        int location = bytecode.size();
+        add2(0);
+        int flags = mode;
+        if (fitsIntoUnsignedByte(count)) {
+            flags |= 0b0100_0000;
+            add1(count);
+        } else if (fitsIntoUnsignedShort(count)) {
+            flags |= 0b1000_0000;
+            add2(count);
+        } else {
+            flags |= 0b1100_0000;
+            add4(count);
+        }
+        int elemTypeInfo = 0;
+        switch (elemType) {
+            case WasmType.FUNCREF_TYPE:
+                break;
+            case WasmType.EXTERNREF_TYPE:
+                elemTypeInfo |= 1;
+                break;
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+        if (tableIndex != 0) {
+            if (fitsIntoUnsignedByte(tableIndex)) {
+                elemTypeInfo |= 0b0100_0000;
+                add1(tableIndex);
+            } else if (fitsIntoUnsignedShort(tableIndex)) {
+                elemTypeInfo |= 0b1000_0000;
+                add2(tableIndex);
+            } else {
+                elemTypeInfo |= 0b1100_0000;
+                add4(tableIndex);
+            }
+        }
+        bytecode.set(location + 1, (byte) elemTypeInfo);
+        if (globalIndex != -1) {
+            if (fitsIntoUnsignedByte(globalIndex)) {
+                flags |= 0b0001_0000;
+                add1(globalIndex);
+            } else if (fitsIntoUnsignedShort(globalIndex)) {
+                flags |= 0b0010_0000;
+                add2(globalIndex);
+            } else {
+                flags |= 0b0011_0000;
+                add4(globalIndex);
+            }
+        }
+        if (offsetAddress != -1) {
+            if (fitsIntoUnsignedByte(offsetAddress)) {
+                flags |= 0b0000_0100;
+                add1(offsetAddress);
+            } else if (fitsIntoUnsignedShort(offsetAddress)) {
+                flags |= 0b0000_1000;
+                add2(offsetAddress);
+            } else {
+                flags |= 0b0000_1100;
+                add4(offsetAddress);
+            }
+        }
+        bytecode.set(location, (byte) flags);
+        return bytecode.size();
+    }
+
     public void addByte(byte value) {
         bytecode.add(value);
     }
@@ -480,6 +598,53 @@ public class BytecodeList {
             add1(0b1100_0100);
             add4(globalIndex);
         }
+    }
+
+    public void addCodeEntryHeader(int functionIndex, int maxStackSize, int bytecodeStartOffset, int bytecodeEndOffset) {
+        final int location = bytecode.size();
+        add1(0);
+        int flags = 0;
+        if (fitsIntoUnsignedByte(functionIndex)) {
+            flags |= 0b0100_0000;
+            add1(functionIndex);
+        } else if (fitsIntoUnsignedShort(functionIndex)) {
+            flags |= 0b1000_0000;
+            add2(functionIndex);
+        } else {
+            flags |= 0b1100_0000;
+            add4(functionIndex);
+        }
+        if (fitsIntoUnsignedByte(maxStackSize)) {
+            flags |= 0b0001_0000;
+            add1(maxStackSize);
+        } else if (fitsIntoUnsignedShort(maxStackSize)) {
+            flags |= 0b0010_0000;
+            add2(maxStackSize);
+        } else {
+            flags |= 0b0011_0000;
+            add4(maxStackSize);
+        }
+        if (fitsIntoUnsignedByte(bytecodeStartOffset)) {
+            flags |= 0b0000_0100;
+            add1(bytecodeStartOffset);
+        } else if (fitsIntoUnsignedShort(bytecodeStartOffset)) {
+            flags |= 0b0000_1000;
+            add2(bytecodeStartOffset);
+        } else {
+            flags |= 0b0000_1100;
+            add4(bytecodeStartOffset);
+        }
+        if (fitsIntoUnsignedByte(bytecodeEndOffset)) {
+            flags |= 0b0000_0001;
+            add1(bytecodeEndOffset);
+        } else if (fitsIntoUnsignedShort(bytecodeEndOffset)) {
+            flags |= 0b0000_0010;
+            add2(bytecodeEndOffset);
+        } else {
+            flags |= 0b0000_0011;
+            add4(bytecodeEndOffset);
+        }
+        bytecode.set(location, (byte) flags);
     }
 
     /**

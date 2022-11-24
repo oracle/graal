@@ -269,7 +269,7 @@ public class RuntimeState {
     }
 
     public void dropDataInstance(int index) {
-        if(dataInstances == null) {
+        if (dataInstances == null) {
             return;
         }
         assert index < dataInstances.length;
