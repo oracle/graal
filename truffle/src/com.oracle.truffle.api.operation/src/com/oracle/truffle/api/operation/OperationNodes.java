@@ -111,10 +111,17 @@ public abstract class OperationNodes<NodeType extends RootNode & OperationRootNo
     /**
      * Checks if the sources are present, and if not tries to reparse to get them.
      */
-    final void ensureSources() {
+    protected final void ensureSources() {
         if (sources == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             reparse(OperationConfig.WITH_SOURCE);
+        }
+    }
+
+    protected final void ensureInstrumentation() {
+        if (!hasInstrumentation) {
+            CompilerDirectives.transferToInterpreter();
+            reparse(OperationConfig.COMPLETE);
         }
     }
 

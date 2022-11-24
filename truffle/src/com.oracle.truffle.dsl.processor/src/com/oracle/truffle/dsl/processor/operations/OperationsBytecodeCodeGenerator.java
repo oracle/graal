@@ -603,8 +603,6 @@ public class OperationsBytecodeCodeGenerator {
             vars.specializedKind = null;
             b.end();
         }
-        vars.inputs = null;
-        vars.results = null;
     }
 
     private void generateAllCasesForInstruction(OperationsContext ctx, CodeTreeBuilder b, Instruction op) {

@@ -20,6 +20,10 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.UnsafeFrameAccess;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
@@ -41,6 +45,8 @@ import com.oracle.truffle.api.operation.OperationLocal;
 import com.oracle.truffle.api.operation.OperationNodes;
 import com.oracle.truffle.api.operation.OperationParser;
 import com.oracle.truffle.api.operation.OperationRootNode;
+import com.oracle.truffle.api.operation.instrumentation.InstrumentRootNode;
+import com.oracle.truffle.api.operation.instrumentation.InstrumentTreeNode;
 import com.oracle.truffle.api.operation.introspection.OperationIntrospection;
 import com.oracle.truffle.api.operation.introspection.Argument.ArgumentKind;
 import com.oracle.truffle.api.operation.serialization.OperationDeserializer;
@@ -85,6 +91,7 @@ import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Set;
 import java.util.concurrent.locks.Lock;
 
 @GeneratedBy(SLOperationRootNode.class)
@@ -13940,6 +13947,9616 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
 
         }
     }
+    @GeneratedBy(SLOperationRootNode.class)
+    private static final class InstrumentableBytecodeNode extends BytecodeLoopBase {
+
+        private static final LibraryFactory<InteropLibrary> INTEROP_LIBRARY_ = LibraryFactory.resolve(InteropLibrary.class);
+        private static final LibraryFactory<DynamicObjectLibrary> DYNAMIC_OBJECT_LIBRARY_ = LibraryFactory.resolve(DynamicObjectLibrary.class);
+
+        @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+        @BytecodeInterpreterSwitch
+        @Override
+        int continueAt(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, ExceptionHandler[] $handlers, int[] $conditionProfiles, int maxLocals) {
+            int $sp = $startSp;
+            int $bci = $startBci;
+            Counter loopCounter = new Counter();
+            $frame.getArguments();
+            loop: while (true) {
+                CompilerAsserts.partialEvaluationConstant($bci);
+                CompilerAsserts.partialEvaluationConstant($sp);
+                int curOpcode = unsafeFromBytecode($bc, $bci) & 0xffff;
+                CompilerAsserts.partialEvaluationConstant(curOpcode);
+                try {
+                    assert $sp >= maxLocals : "stack underflow @ " + $bci;
+                    switch (curOpcode) {
+                        // branch
+                        //   Pushed Values: 0
+                        //   Branch Targets:
+                        //     [ 0] target
+                        case ((INSTR_BRANCH << 3) | 0) :
+                        {
+                            int targetBci = unsafeFromBytecode($bc, $bci + BRANCH_BRANCH_TARGET_OFFSET + 0);
+                            if (targetBci <= $bci) {
+                                if (CompilerDirectives.hasNextTier() && ++loopCounter.count >= 256) {
+                                    TruffleSafepoint.poll($this);
+                                    LoopNode.reportLoopCount($this, 256);
+                                    loopCounter.count = 0;
+                                    if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge($this)) {
+                                        Object osrResult = BytecodeOSRNode.tryOSR($this, ($sp << 16) | targetBci, $frame, null, $frame);
+                                        if (osrResult != null) {
+                                            $frame.setObject(0, osrResult);
+                                            return 0x0000ffff;
+                                        }
+                                    }
+                                }
+                            }
+                            $bci = targetBci;
+                            continue loop;
+                        }
+                        // branch.false
+                        //   Simple Pops:
+                        //     [ 0] condition
+                        //   Pushed Values: 0
+                        //   Branch Targets:
+                        //     [ 0] target
+                        //   Branch Profiles:
+                        //     [ 0] profile
+                        case ((INSTR_BRANCH_FALSE << 3) | 0) :
+                        {
+                            boolean cond = UFA.unsafeGetObject($frame, $sp - 1) == Boolean.TRUE;
+                            $sp = $sp - 1;
+                            if (do_profileCondition($this, cond, $conditionProfiles, unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_PROFILE_OFFSET + 0))) {
+                                $bci = $bci + BRANCH_FALSE_LENGTH;
+                                continue loop;
+                            } else {
+                                $bci = unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_TARGET_OFFSET + 0);
+                                continue loop;
+                            }
+                        }
+                        // throw
+                        //   Locals:
+                        //     [ 0] exception
+                        //   Pushed Values: 0
+                        case ((INSTR_THROW << 3) | 0) :
+                        {
+                            int slot = unsafeFromBytecode($bc, $bci + THROW_LOCALS_OFFSET + 0);
+                            throw (AbstractTruffleException) UFA.unsafeUncheckedGetObject($frame, slot);
+                        }
+                        // return
+                        //   Simple Pops:
+                        //     [ 0] value
+                        //   Pushed Values: 0
+                        case ((INSTR_RETURN << 3) | 0) :
+                        {
+                            return (($sp - 1) << 16) | 0xffff;
+                        }
+                        // instrument.leave
+                        //   Pushed Values: 0
+                        //   Branch Targets:
+                        //     [ 0] startBranch
+                        //     [ 1] endBranch
+                        case ((INSTR_INSTRUMENT_LEAVE << 3) | 0) :
+                        {
+                            ProbeNode probe = getProbeNodeImpl($this, unsafeFromBytecode($bc, $bci + INSTRUMENT_LEAVE_INSTRUMENT_OFFSET) + 0);
+                            if (probe != null) {
+                                Object result = probe.onReturnExceptionalOrUnwind($frame, null, false);
+                                if (result == ProbeNode.UNWIND_ACTION_REENTER) {
+                                    $bci = unsafeFromBytecode($bc, $bci + INSTRUMENT_LEAVE_BRANCH_TARGET_OFFSET + 0);
+                                    continue loop;
+                                } else if (result != null) {
+                                    UFA.unsafeSetObject($frame, $sp - 1, result);
+                                    $bci = unsafeFromBytecode($bc, $bci + INSTRUMENT_LEAVE_BRANCH_TARGET_OFFSET + 1);
+                                    continue loop;
+                                }
+                            }
+                            $bci = $bci + INSTRUMENT_LEAVE_LENGTH;
+                            continue loop;
+                        }
+                        // sc.SLAnd
+                        //   Constants:
+                        //     [ 0] CacheExpression [sourceParameter = bci]
+                        //   Children:
+                        //     [ 0] CacheExpression [sourceParameter = node]
+                        //   Indexed Pops:
+                        //     [ 0] value
+                        //   Split on Boxing Elimination
+                        //   Pushed Values: 0
+                        //   Branch Targets:
+                        //     [ 0] end
+                        //   State Bitsets:
+                        //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
+                        case ((INSTR_SC_SL_AND << 3) | 0 /* OBJECT */) :
+                        {
+                            if (InstrumentableBytecodeNode.SLAnd_execute_($frame, $this, $bc, $bci, $sp, $consts, $children)) {
+                                $sp = $sp - 1;
+                                $bci = $bci + SC_SL_AND_LENGTH;
+                                continue loop;
+                            } else {
+                                $bci = unsafeFromBytecode($bc, $bci + SC_SL_AND_BRANCH_TARGET_OFFSET + 0);
+                                continue loop;
+                            }
+                        }
+                        case ((INSTR_SC_SL_AND << 3) | 5 /* BOOLEAN */) :
+                        {
+                            if (InstrumentableBytecodeNode.SLAnd_execute_($frame, $this, $bc, $bci, $sp, $consts, $children)) {
+                                $sp = $sp - 1;
+                                $bci = $bci + SC_SL_AND_LENGTH;
+                                continue loop;
+                            } else {
+                                $bci = unsafeFromBytecode($bc, $bci + SC_SL_AND_BRANCH_TARGET_OFFSET + 0);
+                                continue loop;
+                            }
+                        }
+                        // sc.SLOr
+                        //   Constants:
+                        //     [ 0] CacheExpression [sourceParameter = bci]
+                        //   Children:
+                        //     [ 0] CacheExpression [sourceParameter = node]
+                        //   Indexed Pops:
+                        //     [ 0] value
+                        //   Split on Boxing Elimination
+                        //   Pushed Values: 0
+                        //   Branch Targets:
+                        //     [ 0] end
+                        //   State Bitsets:
+                        //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
+                        case ((INSTR_SC_SL_OR << 3) | 0 /* OBJECT */) :
+                        {
+                            if (!InstrumentableBytecodeNode.SLOr_execute_($frame, $this, $bc, $bci, $sp, $consts, $children)) {
+                                $sp = $sp - 1;
+                                $bci = $bci + SC_SL_OR_LENGTH;
+                                continue loop;
+                            } else {
+                                $bci = unsafeFromBytecode($bc, $bci + SC_SL_OR_BRANCH_TARGET_OFFSET + 0);
+                                continue loop;
+                            }
+                        }
+                        case ((INSTR_SC_SL_OR << 3) | 5 /* BOOLEAN */) :
+                        {
+                            if (!InstrumentableBytecodeNode.SLOr_execute_($frame, $this, $bc, $bci, $sp, $consts, $children)) {
+                                $sp = $sp - 1;
+                                $bci = $bci + SC_SL_OR_LENGTH;
+                                continue loop;
+                            } else {
+                                $bci = unsafeFromBytecode($bc, $bci + SC_SL_OR_BRANCH_TARGET_OFFSET + 0);
+                                continue loop;
+                            }
+                        }
+                        // si.c.SLToBoolean.branch.false
+                        //   Pushed Values: 0
+                        case ((INSTR_SI_C_SL_TO_BOOLEAN_BRANCH_FALSE << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_C_SL_TO_BOOLEAN_BRANCH_FALSE << 3) | 5 /* BOOLEAN */) :
+                        {
+                            short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                            switch (unsafeFromBytecode($bc, $bci) & 7) {
+                                case 0 /* OBJECT */ :
+                                {
+                                    SLToBoolean_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                                    break;
+                                }
+                                case 5 /* BOOLEAN */ :
+                                {
+                                    SLToBoolean_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                                    break;
+                                }
+                            }
+                            $bci = $bci + C_SL_TO_BOOLEAN_LENGTH;
+                            boolean cond = UFA.unsafeGetObject($frame, $sp - 1) == Boolean.TRUE;
+                            $sp = $sp - 1;
+                            if (do_profileCondition($this, cond, $conditionProfiles, unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_PROFILE_OFFSET + 0))) {
+                                $bci = $bci + BRANCH_FALSE_LENGTH;
+                                continue loop;
+                            } else {
+                                $bci = unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_TARGET_OFFSET + 0);
+                                continue loop;
+                            }
+                        }
+                        // length group 1 (1 / 1)
+                        case ((INSTR_POP << 3) | 0) :
+                            $sp = instructionGroup_1_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 1;
+                            continue loop;
+                        // length group 2 (1 / 1)
+                        case ((INSTR_LOAD_CONSTANT << 3) | 0) :
+                        case ((INSTR_LOAD_ARGUMENT << 3) | 0) :
+                        case ((INSTR_LOAD_LOCAL << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_LOAD_LOCAL << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_LOAD_LOCAL << 3) | 1 /* LONG */) :
+                        case ((INSTR_LOAD_LOCAL_BOXED << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_LOAD_LOCAL_BOXED << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_LOAD_LOCAL_BOXED << 3) | 1 /* LONG */) :
+                        case ((INSTR_LOAD_LOCAL_MAT << 3) | 0) :
+                        case ((INSTR_STORE_LOCAL_MAT << 3) | 0) :
+                        case ((INSTR_INSTRUMENT_ENTER << 3) | 0) :
+                        case ((INSTR_INSTRUMENT_EXIT_VOID << 3) | 0) :
+                            $sp = instructionGroup_2_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 2;
+                            continue loop;
+                        // length group 3 (1 / 1)
+                        case ((INSTR_STORE_LOCAL << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_STORE_LOCAL << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_STORE_LOCAL << 3) | 1 /* LONG */) :
+                        case ((INSTR_STORE_LOCAL << 3) | 7) :
+                        case ((INSTR_INSTRUMENT_EXIT << 3) | 0) :
+                            $sp = instructionGroup_3_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 3;
+                            continue loop;
+                        // length group 5 (1 / 1)
+                        case ((INSTR_C_SL_EQUAL << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_EQUAL << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_C_SL_LESS_OR_EQUAL << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_LESS_OR_EQUAL << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_C_SL_LESS_THAN << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_LESS_THAN << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_C_SL_LOGICAL_NOT << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_LOGICAL_NOT << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                        case ((INSTR_C_SL_FUNCTION_LITERAL << 3) | 0) :
+                        case ((INSTR_C_SL_TO_BOOLEAN << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_TO_BOOLEAN << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER << 3) | 1 /* LONG */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG << 3) | 1 /* LONG */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_LONG << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_LONG << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_LONG << 3) | 1 /* LONG */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN << 3) | 1 /* LONG */) :
+                            $sp = instructionGroup_5_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 5;
+                            continue loop;
+                        // length group 6 (1 / 1)
+                        case ((INSTR_C_SL_ADD << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_ADD << 3) | 1 /* LONG */) :
+                        case ((INSTR_C_SL_DIV << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_DIV << 3) | 1 /* LONG */) :
+                        case ((INSTR_C_SL_MUL << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_MUL << 3) | 1 /* LONG */) :
+                        case ((INSTR_C_SL_READ_PROPERTY << 3) | 0) :
+                        case ((INSTR_C_SL_SUB << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_SUB << 3) | 1 /* LONG */) :
+                        case ((INSTR_C_SL_ADD_Q_ADD0 << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_C_SL_ADD_Q_ADD0 << 3) | 1 /* LONG */) :
+                        case ((INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0 << 3) | 0) :
+                            $sp = instructionGroup_6_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 6;
+                            continue loop;
+                        // length group 7 (1 / 1)
+                        case ((INSTR_C_SL_WRITE_PROPERTY << 3) | 0) :
+                        case ((INSTR_C_SL_INVOKE << 3) | 0) :
+                        case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                            $sp = instructionGroup_7_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 7;
+                            continue loop;
+                        // length group 14 (1 / 1)
+                        case ((INSTR_SI_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX << 3) | 0) :
+                            $sp = instructionGroup_14_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 14;
+                            continue loop;
+                        // length group 15 (1 / 1)
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                        case ((INSTR_SI_POP_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX << 3) | 0) :
+                            $sp = instructionGroup_15_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 15;
+                            continue loop;
+                        // length group 19 (1 / 1)
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                            $sp = instructionGroup_19_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 19;
+                            continue loop;
+                        // length group 22 (1 / 1)
+                        case ((INSTR_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                        case ((INSTR_SI_POP_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT << 3) | 0) :
+                            $sp = instructionGroup_22_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 22;
+                            continue loop;
+                        // length group 23 (1 / 1)
+                        case ((INSTR_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT << 3) | 1 /* LONG */) :
+                            $sp = instructionGroup_23_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 23;
+                            continue loop;
+                        // length group 24 (1 / 1)
+                        case ((INSTR_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX << 3) | 0) :
+                        case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                            $sp = instructionGroup_24_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 24;
+                            continue loop;
+                        // length group 25 (1 / 1)
+                        case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                            $sp = instructionGroup_25_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 25;
+                            continue loop;
+                        // length group 26 (1 / 1)
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                        case ((INSTR_SI_POP_LOAD_LOCAL_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0) :
+                            $sp = instructionGroup_26_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 26;
+                            continue loop;
+                        // length group 27 (1 / 1)
+                        case ((INSTR_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY << 3) | 0) :
+                            $sp = instructionGroup_27_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 27;
+                            continue loop;
+                        // length group 28 (1 / 1)
+                        case ((INSTR_SI_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD << 3) | 0) :
+                            $sp = instructionGroup_28_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 28;
+                            continue loop;
+                        // length group 30 (1 / 1)
+                        case ((INSTR_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0) :
+                        case ((INSTR_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD << 3) | 0) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                            $sp = instructionGroup_30_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 30;
+                            continue loop;
+                        // length group 32 (1 / 1)
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                            $sp = instructionGroup_32_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 32;
+                            continue loop;
+                        // length group 33 (1 / 1)
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                        case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                            $sp = instructionGroup_33_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 33;
+                            continue loop;
+                        // length group 34 (1 / 1)
+                        case ((INSTR_SI_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD << 3) | 0) :
+                            $sp = instructionGroup_34_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 34;
+                            continue loop;
+                        // length group 37 (1 / 1)
+                        case ((INSTR_SI_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0) :
+                            $sp = instructionGroup_37_0($this, $frame, $bc, $bci, $sp, $consts, $children, $localTags, $conditionProfiles, curOpcode);
+                            $bci = $bci + 37;
+                            continue loop;
+                        default :
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            throw CompilerDirectives.shouldNotReachHere("unknown opcode encountered: " + curOpcode + " @ " + $bci + "");
+                    }
+                } catch (AbstractTruffleException ex) {
+                    CompilerAsserts.partialEvaluationConstant($bci);
+                    for (int handlerIndex = $handlers.length - 1; handlerIndex >= 0; handlerIndex--) {
+                        CompilerAsserts.partialEvaluationConstant(handlerIndex);
+                        ExceptionHandler handler = $handlers[handlerIndex];
+                        if (handler.startBci > $bci || handler.endBci <= $bci) continue;
+                        $sp = handler.startStack + maxLocals;
+                        $frame.setObject(handler.exceptionIndex, ex);
+                        $bci = handler.handlerBci;
+                        continue loop;
+                    }
+                    throw ex;
+                }
+            }
+        }
+
+        @Override
+        void prepareForAOT(SLOperationRootNodeGen $this, short[] $bc, Object[] $consts, Node[] $children, TruffleLanguage<?> language, RootNode root) {
+            int $bci = 0;
+            while ($bci < $bc.length) {
+                switch ((unsafeFromBytecode($bc, $bci) >> 3) & 8191) {
+                    case INSTR_POP :
+                    {
+                        $bci = $bci + POP_LENGTH;
+                        break;
+                    }
+                    case INSTR_BRANCH :
+                    {
+                        $bci = $bci + BRANCH_LENGTH;
+                        break;
+                    }
+                    case INSTR_BRANCH_FALSE :
+                    {
+                        $bci = $bci + BRANCH_FALSE_LENGTH;
+                        break;
+                    }
+                    case INSTR_THROW :
+                    {
+                        $bci = $bci + THROW_LENGTH;
+                        break;
+                    }
+                    case INSTR_LOAD_CONSTANT :
+                    {
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                        break;
+                    }
+                    case INSTR_LOAD_ARGUMENT :
+                    {
+                        $bci = $bci + LOAD_ARGUMENT_LENGTH;
+                        break;
+                    }
+                    case INSTR_LOAD_LOCAL :
+                    {
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                        break;
+                    }
+                    case INSTR_LOAD_LOCAL_BOXED :
+                    {
+                        $bci = $bci + LOAD_LOCAL_BOXED_LENGTH;
+                        break;
+                    }
+                    case INSTR_STORE_LOCAL :
+                    {
+                        $bci = $bci + STORE_LOCAL_LENGTH;
+                        break;
+                    }
+                    case INSTR_RETURN :
+                    {
+                        $bci = $bci + RETURN_LENGTH;
+                        break;
+                    }
+                    case INSTR_LOAD_LOCAL_MAT :
+                    {
+                        $bci = $bci + LOAD_LOCAL_MAT_LENGTH;
+                        break;
+                    }
+                    case INSTR_STORE_LOCAL_MAT :
+                    {
+                        $bci = $bci + STORE_LOCAL_MAT_LENGTH;
+                        break;
+                    }
+                    case INSTR_INSTRUMENT_ENTER :
+                    {
+                        $bci = $bci + INSTRUMENT_ENTER_LENGTH;
+                        break;
+                    }
+                    case INSTR_INSTRUMENT_EXIT_VOID :
+                    {
+                        $bci = $bci + INSTRUMENT_EXIT_VOID_LENGTH;
+                        break;
+                    }
+                    case INSTR_INSTRUMENT_EXIT :
+                    {
+                        $bci = $bci + INSTRUMENT_EXIT_LENGTH;
+                        break;
+                    }
+                    case INSTR_INSTRUMENT_LEAVE :
+                    {
+                        $bci = $bci + INSTRUMENT_LEAVE_LENGTH;
+                        break;
+                    }
+                    case INSTR_C_SL_ADD :
+                    {
+                        $bci = $bci + C_SL_ADD_LENGTH;
+                        break;
+                    }
+                    case INSTR_C_SL_DIV :
+                    {
+                        $bci = $bci + C_SL_DIV_LENGTH;
+                        break;
+                    }
+                    case INSTR_C_SL_EQUAL :
+                    {
+                        $bci = $bci + C_SL_EQUAL_LENGTH;
+                        break;
+                    }
+                    case INSTR_C_SL_LESS_OR_EQUAL :
+                    {
+                        $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
+                        break;
+                    }
+                    case INSTR_C_SL_LESS_THAN :
+                    {
+                        $bci = $bci + C_SL_LESS_THAN_LENGTH;
+                        break;
+                    }
+                    case INSTR_C_SL_LOGICAL_NOT :
+                    {
+                        $bci = $bci + C_SL_LOGICAL_NOT_LENGTH;
+                        break;
+                    }
+                    case INSTR_C_SL_MUL :
+                    {
+                        $bci = $bci + C_SL_MUL_LENGTH;
+                        break;
+                    }
+                    case INSTR_C_SL_READ_PROPERTY :
+                    {
+                        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                        break;
+                    }
+                    case INSTR_C_SL_SUB :
+                    {
+                        $bci = $bci + C_SL_SUB_LENGTH;
+                        break;
+                    }
+                    case INSTR_C_SL_WRITE_PROPERTY :
+                    {
+                        $bci = $bci + C_SL_WRITE_PROPERTY_LENGTH;
+                        break;
+                    }
+                    case INSTR_C_SL_UNBOX :
+                    {
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                        break;
+                    }
+                    case INSTR_C_SL_FUNCTION_LITERAL :
+                    {
+                        $bci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
+                        break;
+                    }
+                    case INSTR_C_SL_TO_BOOLEAN :
+                    {
+                        $bci = $bci + C_SL_TO_BOOLEAN_LENGTH;
+                        break;
+                    }
+                    case INSTR_C_SL_INVOKE :
+                    {
+                        $bci = $bci + C_SL_INVOKE_LENGTH;
+                        break;
+                    }
+                    case INSTR_SC_SL_AND :
+                    {
+                        $bci = $bci + SC_SL_AND_LENGTH;
+                        break;
+                    }
+                    case INSTR_SC_SL_OR :
+                    {
+                        $bci = $bci + SC_SL_OR_LENGTH;
+                        break;
+                    }
+                    case INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER :
+                    {
+                        $bci = $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_LENGTH;
+                        break;
+                    }
+                    case INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG :
+                    {
+                        $bci = $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_LENGTH;
+                        break;
+                    }
+                    case INSTR_C_SL_UNBOX_Q_FROM_LONG :
+                    {
+                        $bci = $bci + C_SL_UNBOX_Q_FROM_LONG_LENGTH;
+                        break;
+                    }
+                    case INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN :
+                    {
+                        $bci = $bci + C_SL_UNBOX_Q_FROM_BOOLEAN_LENGTH;
+                        break;
+                    }
+                    case INSTR_C_SL_ADD_Q_ADD0 :
+                    {
+                        $bci = $bci + C_SL_ADD_Q_ADD0_LENGTH;
+                        break;
+                    }
+                    case INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0 :
+                    {
+                        $bci = $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_LOAD_LOCAL_C_SL_UNBOX :
+                    {
+                        $bci = $bci + SI_LOAD_LOCAL_C_SL_UNBOX_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                    {
+                        $bci = $bci + SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX :
+                    {
+                        $bci = $bci + SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                    {
+                        $bci = $bci + SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD :
+                    {
+                        $bci = $bci + SI_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX :
+                    {
+                        $bci = $bci + SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX :
+                    {
+                        $bci = $bci + SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX :
+                    {
+                        $bci = $bci + SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                    {
+                        $bci = $bci + SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX :
+                    {
+                        $bci = $bci + SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX :
+                    {
+                        $bci = $bci + SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                    {
+                        $bci = $bci + SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD :
+                    {
+                        $bci = $bci + SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX :
+                    {
+                        $bci = $bci + SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY :
+                    {
+                        $bci = $bci + SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD :
+                    {
+                        $bci = $bci + SI_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT :
+                    {
+                        $bci = $bci + SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_POP_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT :
+                    {
+                        $bci = $bci + SI_POP_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                    {
+                        $bci = $bci + SI_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX :
+                    {
+                        $bci = $bci + SI_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX :
+                    {
+                        $bci = $bci + SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_POP_LOAD_LOCAL_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                    {
+                        $bci = $bci + SI_POP_LOAD_LOCAL_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_POP_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX :
+                    {
+                        $bci = $bci + SI_POP_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX_LENGTH;
+                        break;
+                    }
+                    case INSTR_SI_C_SL_TO_BOOLEAN_BRANCH_FALSE :
+                    {
+                        $bci = $bci + SI_C_SL_TO_BOOLEAN_BRANCH_FALSE_LENGTH;
+                        break;
+                    }
+                }
+            }
+        }
+
+        @Override
+        OperationIntrospection getIntrospectionData(short[] $bc, ExceptionHandler[] $handlers, Object[] $consts, OperationNodesImpl nodes, int[] sourceInfo) {
+            int $bci = 0;
+            ArrayList<Object[]> target = new ArrayList<>();
+            while ($bci < $bc.length) {
+                switch ((unsafeFromBytecode($bc, $bci) >> 3) & 8191) {
+                    default :
+                    {
+                        Object[] dec = new Object[]{$bci, "unknown", Arrays.copyOfRange($bc, $bci, $bci + 1), null};
+                        $bci++;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_POP :
+                    {
+                        Object[] dec = new Object[] {$bci, "pop", Arrays.copyOfRange($bc, $bci, $bci + POP_LENGTH), new Object[] {}};
+                        $bci = $bci + POP_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_BRANCH :
+                    {
+                        Object[] dec = new Object[] {$bci, "branch", Arrays.copyOfRange($bc, $bci, $bci + BRANCH_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.BRANCH_OFFSET, (int) unsafeFromBytecode($bc, $bci + BRANCH_BRANCH_TARGET_OFFSET + 0)}}};
+                        $bci = $bci + BRANCH_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_BRANCH_FALSE :
+                    {
+                        Object[] dec = new Object[] {$bci, "branch.false", Arrays.copyOfRange($bc, $bci, $bci + BRANCH_FALSE_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.BRANCH_OFFSET, (int) unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_TARGET_OFFSET + 0)}}};
+                        $bci = $bci + BRANCH_FALSE_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_THROW :
+                    {
+                        Object[] dec = new Object[] {$bci, "throw", Arrays.copyOfRange($bc, $bci, $bci + THROW_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + THROW_LOCALS_OFFSET + 0)}}};
+                        $bci = $bci + THROW_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_LOAD_CONSTANT :
+                    {
+                        Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                        $bci = $bci + LOAD_CONSTANT_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_LOAD_ARGUMENT :
+                    {
+                        Object[] dec = new Object[] {$bci, "load.argument", Arrays.copyOfRange($bc, $bci, $bci + LOAD_ARGUMENT_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.ARGUMENT, (int) unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)}}};
+                        $bci = $bci + LOAD_ARGUMENT_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_LOAD_LOCAL :
+                    {
+                        Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                        $bci = $bci + LOAD_LOCAL_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_LOAD_LOCAL_BOXED :
+                    {
+                        Object[] dec = new Object[] {$bci, "load.local.boxed", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_BOXED_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0)}}};
+                        $bci = $bci + LOAD_LOCAL_BOXED_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_STORE_LOCAL :
+                    {
+                        Object[] dec = new Object[] {$bci, "store.local", Arrays.copyOfRange($bc, $bci, $bci + STORE_LOCAL_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0)},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + STORE_LOCAL_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                        $bci = $bci + STORE_LOCAL_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_RETURN :
+                    {
+                        Object[] dec = new Object[] {$bci, "return", Arrays.copyOfRange($bc, $bci, $bci + RETURN_LENGTH), new Object[] {}};
+                        $bci = $bci + RETURN_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_LOAD_LOCAL_MAT :
+                    {
+                        Object[] dec = new Object[] {$bci, "load.local.mat", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_MAT_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.ARGUMENT, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_MAT_ARGUMENT_OFFSET + 0)}}};
+                        $bci = $bci + LOAD_LOCAL_MAT_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_STORE_LOCAL_MAT :
+                    {
+                        Object[] dec = new Object[] {$bci, "store.local.mat", Arrays.copyOfRange($bc, $bci, $bci + STORE_LOCAL_MAT_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.ARGUMENT, (int) unsafeFromBytecode($bc, $bci + STORE_LOCAL_MAT_ARGUMENT_OFFSET + 0)}}};
+                        $bci = $bci + STORE_LOCAL_MAT_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_INSTRUMENT_ENTER :
+                    {
+                        Object[] dec = new Object[] {$bci, "instrument.enter", Arrays.copyOfRange($bc, $bci, $bci + INSTRUMENT_ENTER_LENGTH), new Object[] {}};
+                        $bci = $bci + INSTRUMENT_ENTER_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_INSTRUMENT_EXIT_VOID :
+                    {
+                        Object[] dec = new Object[] {$bci, "instrument.exit.void", Arrays.copyOfRange($bc, $bci, $bci + INSTRUMENT_EXIT_VOID_LENGTH), new Object[] {}};
+                        $bci = $bci + INSTRUMENT_EXIT_VOID_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_INSTRUMENT_EXIT :
+                    {
+                        Object[] dec = new Object[] {$bci, "instrument.exit", Arrays.copyOfRange($bc, $bci, $bci + INSTRUMENT_EXIT_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + INSTRUMENT_EXIT_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                        $bci = $bci + INSTRUMENT_EXIT_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_INSTRUMENT_LEAVE :
+                    {
+                        Object[] dec = new Object[] {$bci, "instrument.leave", Arrays.copyOfRange($bc, $bci, $bci + INSTRUMENT_LEAVE_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.BRANCH_OFFSET, (int) unsafeFromBytecode($bc, $bci + INSTRUMENT_LEAVE_BRANCH_TARGET_OFFSET + 0)},
+                            new Object[] {ArgumentKind.BRANCH_OFFSET, (int) unsafeFromBytecode($bc, $bci + INSTRUMENT_LEAVE_BRANCH_TARGET_OFFSET + 1)}}};
+                        $bci = $bci + INSTRUMENT_LEAVE_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_C_SL_ADD :
+                    {
+                        Object[] dec = new Object[] {$bci, "c.SLAdd", Arrays.copyOfRange($bc, $bci, $bci + C_SL_ADD_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_ADD_CONSTANT_OFFSET) + 0]},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) & 0xff)},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                        $bci = $bci + C_SL_ADD_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_C_SL_DIV :
+                    {
+                        Object[] dec = new Object[] {$bci, "c.SLDiv", Arrays.copyOfRange($bc, $bci, $bci + C_SL_DIV_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_DIV_CONSTANT_OFFSET) + 0]},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_DIV_POP_INDEXED_OFFSET + 0) & 0xff)},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_DIV_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                        $bci = $bci + C_SL_DIV_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_C_SL_EQUAL :
+                    {
+                        Object[] dec = new Object[] {$bci, "c.SLEqual", Arrays.copyOfRange($bc, $bci, $bci + C_SL_EQUAL_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_EQUAL_POP_INDEXED_OFFSET + 0) & 0xff)},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_EQUAL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                        $bci = $bci + C_SL_EQUAL_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_C_SL_LESS_OR_EQUAL :
+                    {
+                        Object[] dec = new Object[] {$bci, "c.SLLessOrEqual", Arrays.copyOfRange($bc, $bci, $bci + C_SL_LESS_OR_EQUAL_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_CONSTANT_OFFSET) + 0]},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_POP_INDEXED_OFFSET + 0) & 0xff)},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                        $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_C_SL_LESS_THAN :
+                    {
+                        Object[] dec = new Object[] {$bci, "c.SLLessThan", Arrays.copyOfRange($bc, $bci, $bci + C_SL_LESS_THAN_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_LESS_THAN_CONSTANT_OFFSET) + 0]},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_LESS_THAN_POP_INDEXED_OFFSET + 0) & 0xff)},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_LESS_THAN_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                        $bci = $bci + C_SL_LESS_THAN_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_C_SL_LOGICAL_NOT :
+                    {
+                        Object[] dec = new Object[] {$bci, "c.SLLogicalNot", Arrays.copyOfRange($bc, $bci, $bci + C_SL_LOGICAL_NOT_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_LOGICAL_NOT_CONSTANT_OFFSET) + 0]},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_LOGICAL_NOT_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                        $bci = $bci + C_SL_LOGICAL_NOT_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_C_SL_MUL :
+                    {
+                        Object[] dec = new Object[] {$bci, "c.SLMul", Arrays.copyOfRange($bc, $bci, $bci + C_SL_MUL_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_MUL_CONSTANT_OFFSET) + 0]},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_MUL_POP_INDEXED_OFFSET + 0) & 0xff)},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_MUL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                        $bci = $bci + C_SL_MUL_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_C_SL_READ_PROPERTY :
+                    {
+                        Object[] dec = new Object[] {$bci, "c.SLReadProperty", Arrays.copyOfRange($bc, $bci, $bci + C_SL_READ_PROPERTY_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 0]},
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 1]},
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 2]},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) & 0xff)},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                        $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_C_SL_SUB :
+                    {
+                        Object[] dec = new Object[] {$bci, "c.SLSub", Arrays.copyOfRange($bc, $bci, $bci + C_SL_SUB_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_SUB_CONSTANT_OFFSET) + 0]},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_SUB_POP_INDEXED_OFFSET + 0) & 0xff)},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_SUB_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                        $bci = $bci + C_SL_SUB_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_C_SL_WRITE_PROPERTY :
+                    {
+                        Object[] dec = new Object[] {$bci, "c.SLWriteProperty", Arrays.copyOfRange($bc, $bci, $bci + C_SL_WRITE_PROPERTY_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CONSTANT_OFFSET) + 0]},
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CONSTANT_OFFSET) + 1]},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_POP_INDEXED_OFFSET + 0) & 0xff)},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_POP_INDEXED_OFFSET + 1) & 0xff)}}};
+                        $bci = $bci + C_SL_WRITE_PROPERTY_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_C_SL_UNBOX :
+                    {
+                        Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                        $bci = $bci + C_SL_UNBOX_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_C_SL_FUNCTION_LITERAL :
+                    {
+                        Object[] dec = new Object[] {$bci, "c.SLFunctionLiteral", Arrays.copyOfRange($bc, $bci, $bci + C_SL_FUNCTION_LITERAL_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_FUNCTION_LITERAL_CONSTANT_OFFSET) + 0]},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_FUNCTION_LITERAL_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                        $bci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_C_SL_TO_BOOLEAN :
+                    {
+                        Object[] dec = new Object[] {$bci, "c.SLToBoolean", Arrays.copyOfRange($bc, $bci, $bci + C_SL_TO_BOOLEAN_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_TO_BOOLEAN_CONSTANT_OFFSET) + 0]},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_TO_BOOLEAN_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                        $bci = $bci + C_SL_TO_BOOLEAN_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_C_SL_INVOKE :
+                    {
+                        Object[] dec = new Object[] {$bci, "c.SLInvoke", Arrays.copyOfRange($bc, $bci, $bci + C_SL_INVOKE_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_INVOKE_CONSTANT_OFFSET) + 0]},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_INVOKE_POP_INDEXED_OFFSET + 0) & 0xff)},
+                            new Object[] {ArgumentKind.VARIADIC, (int) unsafeFromBytecode($bc, $bci + C_SL_INVOKE_VARIADIC_OFFSET + 0)}}};
+                        $bci = $bci + C_SL_INVOKE_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SC_SL_AND :
+                    {
+                        Object[] dec = new Object[] {$bci, "sc.SLAnd", Arrays.copyOfRange($bc, $bci, $bci + SC_SL_AND_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + SC_SL_AND_CONSTANT_OFFSET) + 0]},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + SC_SL_AND_POP_INDEXED_OFFSET + 0) & 0xff)},
+                            new Object[] {ArgumentKind.BRANCH_OFFSET, (int) unsafeFromBytecode($bc, $bci + SC_SL_AND_BRANCH_TARGET_OFFSET + 0)}}};
+                        $bci = $bci + SC_SL_AND_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SC_SL_OR :
+                    {
+                        Object[] dec = new Object[] {$bci, "sc.SLOr", Arrays.copyOfRange($bc, $bci, $bci + SC_SL_OR_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + SC_SL_OR_CONSTANT_OFFSET) + 0]},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + SC_SL_OR_POP_INDEXED_OFFSET + 0) & 0xff)},
+                            new Object[] {ArgumentKind.BRANCH_OFFSET, (int) unsafeFromBytecode($bc, $bci + SC_SL_OR_BRANCH_TARGET_OFFSET + 0)}}};
+                        $bci = $bci + SC_SL_OR_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER :
+                    {
+                        Object[] dec = new Object[] {$bci, "c.SLUnbox.q.FromBigNumber", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                        $bci = $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG :
+                    {
+                        Object[] dec = new Object[] {$bci, "c.SLUnbox.q.FromBigNumber.FromLong", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                        $bci = $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_C_SL_UNBOX_Q_FROM_LONG :
+                    {
+                        Object[] dec = new Object[] {$bci, "c.SLUnbox.q.FromLong", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_Q_FROM_LONG_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_LONG_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                        $bci = $bci + C_SL_UNBOX_Q_FROM_LONG_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN :
+                    {
+                        Object[] dec = new Object[] {$bci, "c.SLUnbox.q.FromBoolean", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_Q_FROM_BOOLEAN_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BOOLEAN_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                        $bci = $bci + C_SL_UNBOX_Q_FROM_BOOLEAN_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_C_SL_ADD_Q_ADD0 :
+                    {
+                        Object[] dec = new Object[] {$bci, "c.SLAdd.q.Add0", Arrays.copyOfRange($bc, $bci, $bci + C_SL_ADD_Q_ADD0_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_ADD_Q_ADD0_CONSTANT_OFFSET) + 0]},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_ADD_Q_ADD0_POP_INDEXED_OFFSET + 0) & 0xff)},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_ADD_Q_ADD0_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                        $bci = $bci + C_SL_ADD_Q_ADD0_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0 :
+                    {
+                        Object[] dec = new Object[] {$bci, "c.SLReadProperty.q.ReadSLObject0", Arrays.copyOfRange($bc, $bci, $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_LENGTH), new Object[] {
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_CONSTANT_OFFSET) + 0]},
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_CONSTANT_OFFSET) + 1]},
+                            new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_CONSTANT_OFFSET) + 2]},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_POP_INDEXED_OFFSET + 0) & 0xff)},
+                            new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                        $bci = $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_LOAD_LOCAL_C_SL_UNBOX :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.load.local.c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + SI_LOAD_LOCAL_C_SL_UNBOX_LENGTH), new Object[] {}, new Object[2]};
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_LOAD_LOCAL_C_SL_UNBOX_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd.c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX_LENGTH), new Object[] {}, new Object[6]};
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLAdd", Arrays.copyOfRange($bc, $bci, $bci + C_SL_ADD_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_ADD_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[4] = dec;
+                        }
+                        $bci += C_SL_ADD_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[5] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.load.argument.store.local.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_LENGTH), new Object[] {}, new Object[8]};
+                        {
+                            Object[] dec = new Object[] {$bci, "load.argument", Arrays.copyOfRange($bc, $bci, $bci + LOAD_ARGUMENT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.ARGUMENT, (int) unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += LOAD_ARGUMENT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "store.local", Arrays.copyOfRange($bc, $bci, $bci + STORE_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + STORE_LOCAL_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += STORE_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.argument", Arrays.copyOfRange($bc, $bci, $bci + LOAD_ARGUMENT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.ARGUMENT, (int) unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += LOAD_ARGUMENT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "store.local", Arrays.copyOfRange($bc, $bci, $bci + STORE_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + STORE_LOCAL_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += STORE_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[4] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[5] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[6] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[7] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd.c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX_LENGTH), new Object[] {}, new Object[8]};
+                        {
+                            Object[] dec = new Object[] {$bci, "load.argument", Arrays.copyOfRange($bc, $bci, $bci + LOAD_ARGUMENT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.ARGUMENT, (int) unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += LOAD_ARGUMENT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "store.local", Arrays.copyOfRange($bc, $bci, $bci + STORE_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + STORE_LOCAL_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += STORE_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[4] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[5] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLAdd", Arrays.copyOfRange($bc, $bci, $bci + C_SL_ADD_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_ADD_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[6] = dec;
+                        }
+                        $bci += C_SL_ADD_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[7] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.store.local.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd", Arrays.copyOfRange($bc, $bci, $bci + SI_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_LENGTH), new Object[] {}, new Object[8]};
+                        {
+                            Object[] dec = new Object[] {$bci, "store.local", Arrays.copyOfRange($bc, $bci, $bci + STORE_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + STORE_LOCAL_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += STORE_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.argument", Arrays.copyOfRange($bc, $bci, $bci + LOAD_ARGUMENT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.ARGUMENT, (int) unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += LOAD_ARGUMENT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "store.local", Arrays.copyOfRange($bc, $bci, $bci + STORE_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + STORE_LOCAL_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += STORE_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[4] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[5] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[6] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLAdd", Arrays.copyOfRange($bc, $bci, $bci + C_SL_ADD_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_ADD_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[7] = dec;
+                        }
+                        $bci += C_SL_ADD_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.load.local.load.constant.c.SLReadProperty.c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LENGTH), new Object[] {}, new Object[4]};
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLReadProperty", Arrays.copyOfRange($bc, $bci, $bci + C_SL_READ_PROPERTY_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 1]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 2]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += C_SL_READ_PROPERTY_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX_LENGTH), new Object[] {}, new Object[5]};
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local.boxed", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_BOXED_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += LOAD_LOCAL_BOXED_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLLessOrEqual", Arrays.copyOfRange($bc, $bci, $bci + C_SL_LESS_OR_EQUAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += C_SL_LESS_OR_EQUAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[4] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LENGTH), new Object[] {}, new Object[6]};
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLReadProperty", Arrays.copyOfRange($bc, $bci, $bci + C_SL_READ_PROPERTY_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 1]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 2]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[4] = dec;
+                        }
+                        $bci += C_SL_READ_PROPERTY_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[5] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX_LENGTH), new Object[] {}, new Object[5]};
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLAdd", Arrays.copyOfRange($bc, $bci, $bci + C_SL_ADD_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_ADD_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += C_SL_ADD_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[4] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.load.local.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX_LENGTH), new Object[] {}, new Object[6]};
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local.boxed", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_BOXED_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += LOAD_LOCAL_BOXED_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLLessOrEqual", Arrays.copyOfRange($bc, $bci, $bci + C_SL_LESS_OR_EQUAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[4] = dec;
+                        }
+                        $bci += C_SL_LESS_OR_EQUAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[5] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_LENGTH), new Object[] {}, new Object[8]};
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLReadProperty", Arrays.copyOfRange($bc, $bci, $bci + C_SL_READ_PROPERTY_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 1]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 2]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[4] = dec;
+                        }
+                        $bci += C_SL_READ_PROPERTY_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[5] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[6] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[7] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX_LENGTH), new Object[] {}, new Object[8]};
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLReadProperty", Arrays.copyOfRange($bc, $bci, $bci + C_SL_READ_PROPERTY_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 1]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 2]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += C_SL_READ_PROPERTY_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[4] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[5] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLAdd", Arrays.copyOfRange($bc, $bci, $bci + C_SL_ADD_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_ADD_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[6] = dec;
+                        }
+                        $bci += C_SL_ADD_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[7] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd", Arrays.copyOfRange($bc, $bci, $bci + SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_LENGTH), new Object[] {}, new Object[8]};
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLReadProperty", Arrays.copyOfRange($bc, $bci, $bci + C_SL_READ_PROPERTY_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 1]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 2]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += C_SL_READ_PROPERTY_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[4] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[5] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[6] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLAdd", Arrays.copyOfRange($bc, $bci, $bci + C_SL_ADD_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_ADD_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[7] = dec;
+                        }
+                        $bci += C_SL_ADD_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LENGTH), new Object[] {}, new Object[8]};
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLReadProperty", Arrays.copyOfRange($bc, $bci, $bci + C_SL_READ_PROPERTY_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 1]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 2]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += C_SL_READ_PROPERTY_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[4] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[5] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLReadProperty", Arrays.copyOfRange($bc, $bci, $bci + C_SL_READ_PROPERTY_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 1]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 2]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[6] = dec;
+                        }
+                        $bci += C_SL_READ_PROPERTY_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[7] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty", Arrays.copyOfRange($bc, $bci, $bci + SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_LENGTH), new Object[] {}, new Object[8]};
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLReadProperty", Arrays.copyOfRange($bc, $bci, $bci + C_SL_READ_PROPERTY_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 1]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 2]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += C_SL_READ_PROPERTY_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[4] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[5] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[6] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLReadProperty", Arrays.copyOfRange($bc, $bci, $bci + C_SL_READ_PROPERTY_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 1]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 2]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[7] = dec;
+                        }
+                        $bci += C_SL_READ_PROPERTY_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox.c.SLAdd", Arrays.copyOfRange($bc, $bci, $bci + SI_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD_LENGTH), new Object[] {}, new Object[8]};
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLReadProperty", Arrays.copyOfRange($bc, $bci, $bci + C_SL_READ_PROPERTY_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 1]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 2]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += C_SL_READ_PROPERTY_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[4] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLReadProperty", Arrays.copyOfRange($bc, $bci, $bci + C_SL_READ_PROPERTY_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 1]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 2]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[5] = dec;
+                        }
+                        $bci += C_SL_READ_PROPERTY_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[6] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLAdd", Arrays.copyOfRange($bc, $bci, $bci + C_SL_ADD_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_ADD_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[7] = dec;
+                        }
+                        $bci += C_SL_ADD_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant", Arrays.copyOfRange($bc, $bci, $bci + SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_LENGTH), new Object[] {}, new Object[8]};
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLReadProperty", Arrays.copyOfRange($bc, $bci, $bci + C_SL_READ_PROPERTY_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 1]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 2]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[4] = dec;
+                        }
+                        $bci += C_SL_READ_PROPERTY_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[5] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[6] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[7] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_POP_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.pop.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant", Arrays.copyOfRange($bc, $bci, $bci + SI_POP_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_LENGTH), new Object[] {}, new Object[8]};
+                        {
+                            Object[] dec = new Object[] {$bci, "pop", Arrays.copyOfRange($bc, $bci, $bci + POP_LENGTH), new Object[] {}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += POP_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[4] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLReadProperty", Arrays.copyOfRange($bc, $bci, $bci + C_SL_READ_PROPERTY_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 1]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 2]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[5] = dec;
+                        }
+                        $bci += C_SL_READ_PROPERTY_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[6] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[7] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_POP_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox.c.SLAdd.c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + SI_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX_LENGTH), new Object[] {}, new Object[8]};
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLReadProperty", Arrays.copyOfRange($bc, $bci, $bci + C_SL_READ_PROPERTY_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 1]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 2]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += C_SL_READ_PROPERTY_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLReadProperty", Arrays.copyOfRange($bc, $bci, $bci + C_SL_READ_PROPERTY_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 1]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 2]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[4] = dec;
+                        }
+                        $bci += C_SL_READ_PROPERTY_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[5] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLAdd", Arrays.copyOfRange($bc, $bci, $bci + C_SL_ADD_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_ADD_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[6] = dec;
+                        }
+                        $bci += C_SL_ADD_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[7] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.load.constant.c.SLFunctionLiteral.load.local.c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + SI_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX_LENGTH), new Object[] {}, new Object[4]};
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLFunctionLiteral", Arrays.copyOfRange($bc, $bci, $bci + C_SL_FUNCTION_LITERAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_FUNCTION_LITERAL_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_FUNCTION_LITERAL_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += C_SL_FUNCTION_LITERAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX_LENGTH), new Object[] {}, new Object[8]};
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLReadProperty", Arrays.copyOfRange($bc, $bci, $bci + C_SL_READ_PROPERTY_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 1]},
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CONSTANT_OFFSET) + 2]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += C_SL_READ_PROPERTY_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local.boxed", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_BOXED_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[4] = dec;
+                        }
+                        $bci += LOAD_LOCAL_BOXED_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[5] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLLessOrEqual", Arrays.copyOfRange($bc, $bci, $bci + C_SL_LESS_OR_EQUAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[6] = dec;
+                        }
+                        $bci += C_SL_LESS_OR_EQUAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[7] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_POP_LOAD_LOCAL_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.pop.load.local.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + SI_POP_LOAD_LOCAL_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX_LENGTH), new Object[] {}, new Object[7]};
+                        {
+                            Object[] dec = new Object[] {$bci, "pop", Arrays.copyOfRange($bc, $bci, $bci + POP_LENGTH), new Object[] {}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += POP_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[4] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLAdd", Arrays.copyOfRange($bc, $bci, $bci + C_SL_ADD_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_ADD_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) & 0xff)},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) ((unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) >> 8) & 0xff)}}};
+                            ((Object[]) decSuper[4])[5] = dec;
+                        }
+                        $bci += C_SL_ADD_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[6] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_POP_LOAD_LOCAL_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_POP_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.pop.load.constant.c.SLFunctionLiteral.load.local.c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + SI_POP_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX_LENGTH), new Object[] {}, new Object[5]};
+                        {
+                            Object[] dec = new Object[] {$bci, "pop", Arrays.copyOfRange($bc, $bci, $bci + POP_LENGTH), new Object[] {}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += POP_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.constant", Arrays.copyOfRange($bc, $bci, $bci + LOAD_CONSTANT_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0]}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += LOAD_CONSTANT_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLFunctionLiteral", Arrays.copyOfRange($bc, $bci, $bci + C_SL_FUNCTION_LITERAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_FUNCTION_LITERAL_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_FUNCTION_LITERAL_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[2] = dec;
+                        }
+                        $bci += C_SL_FUNCTION_LITERAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "load.local", Arrays.copyOfRange($bc, $bci, $bci + LOAD_LOCAL_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.LOCAL, (int) unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[3] = dec;
+                        }
+                        $bci += LOAD_LOCAL_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLUnbox", Arrays.copyOfRange($bc, $bci, $bci + C_SL_UNBOX_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[4] = dec;
+                        }
+                        $bci += C_SL_UNBOX_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_POP_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                    case INSTR_SI_C_SL_TO_BOOLEAN_BRANCH_FALSE :
+                    {
+                        int oldBci = $bci;
+                        Object[] decSuper = new Object[] {$bci, "si.c.SLToBoolean.branch.false", Arrays.copyOfRange($bc, $bci, $bci + SI_C_SL_TO_BOOLEAN_BRANCH_FALSE_LENGTH), new Object[] {}, new Object[2]};
+                        {
+                            Object[] dec = new Object[] {$bci, "c.SLToBoolean", Arrays.copyOfRange($bc, $bci, $bci + C_SL_TO_BOOLEAN_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.CONSTANT, $consts[unsafeFromBytecode($bc, $bci + C_SL_TO_BOOLEAN_CONSTANT_OFFSET) + 0]},
+                                new Object[] {ArgumentKind.CHILD_OFFSET, (int) (unsafeFromBytecode($bc, $bci + C_SL_TO_BOOLEAN_POP_INDEXED_OFFSET + 0) & 0xff)}}};
+                            ((Object[]) decSuper[4])[0] = dec;
+                        }
+                        $bci += C_SL_TO_BOOLEAN_LENGTH;
+                        {
+                            Object[] dec = new Object[] {$bci, "branch.false", Arrays.copyOfRange($bc, $bci, $bci + BRANCH_FALSE_LENGTH), new Object[] {
+                                new Object[] {ArgumentKind.BRANCH_OFFSET, (int) unsafeFromBytecode($bc, $bci + BRANCH_FALSE_BRANCH_TARGET_OFFSET + 0)}}};
+                            ((Object[]) decSuper[4])[1] = dec;
+                        }
+                        $bci += BRANCH_FALSE_LENGTH;
+                        Object[] dec = decSuper;
+                        $bci = oldBci;
+                        $bci = $bci + SI_C_SL_TO_BOOLEAN_BRANCH_FALSE_LENGTH;
+                        target.add(dec);
+                        break;
+                    }
+                }
+            }
+            ArrayList<Object[]> ehTarget = new ArrayList<>();
+            for (int i = 0; i < $handlers.length; i++) {
+                ehTarget.add(new Object[] {$handlers[i].startBci, $handlers[i].endBci, $handlers[i].handlerBci});
+            }
+            Object[] si = null;
+            if (nodes != null && nodes.getSources() != null && sourceInfo != null) {
+                ArrayList<Object[]> siTarget = new ArrayList<>();
+                for (int i = 0; i < sourceInfo.length; i += 3) {
+                    int startBci = sourceInfo[i] & 0xffff;
+                    int endBci = i + 3 == sourceInfo.length ? $bc.length : sourceInfo[i + 3] & 0xffff;
+                    if (startBci == endBci) {
+                        continue;
+                    }
+                    int sourceIndex = sourceInfo[i] >> 16;
+                    int sourceStart = sourceInfo[i + 1];
+                    int sourceLength = sourceInfo[i + 2];
+                    siTarget.add(new Object[] {startBci, endBci, sourceIndex < 0 || sourceStart < 0 ? null : nodes.getSources()[sourceIndex].createSection(sourceStart, sourceLength)});
+                }
+                si = siTarget.toArray();
+            }
+            return OperationIntrospection.Provider.create(new Object[]{0, target.toArray(), ehTarget.toArray(), si});
+        }
+
+        private static boolean SLAdd_fallbackGuard__(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value, Object $child1Value) {
+            if (SLTypesGen.isImplicitSLBigNumber($child0Value) && SLTypesGen.isImplicitSLBigNumber($child1Value)) {
+                return false;
+            }
+            if (((state_0 & 0b100)) == 0 /* is-not-state_0 add(Object, Object, SLToTruffleStringNode, SLToTruffleStringNode, ConcatNode) */ && (SLAddNode.isString($child0Value, $child1Value))) {
+                return false;
+            }
+            return true;
+        }
+
+        private static Object SLAdd_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_ADD_STATE_BITS_OFFSET + 0);
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b1110) == 0 /* only-active addLong(long, long) */ && ((state_0 & 0b1111) != 0  /* is-not addLong(long, long) && add(SLBigNumber, SLBigNumber) && add(Object, Object, SLToTruffleStringNode, SLToTruffleStringNode, ConcatNode) && typeError(Object, Object, Node, int) */)) {
+                return SLAdd_SLAdd_execute__long_long0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else {
+                return SLAdd_SLAdd_execute__generic1_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            }
+        }
+
+        private static Object SLAdd_SLAdd_execute__long_long0_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Object $child1Value = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+                return SLAdd_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult(), $child1Value);
+            }
+            long $child1Value_;
+            try {
+                $child1Value_ = expectLong($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLAdd_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, ex.getResult());
+            }
+            assert (state_0 & 0b1) != 0 /* is-state_0 addLong(long, long) */;
+            try {
+                return SLAddNode.addLong($child0Value_, $child1Value_);
+            } catch (ArithmeticException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Lock lock = $this.getLockAccessor();
+                lock.lock();
+                try {
+                    $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude addLong(long, long) */);
+                    $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] & 0xfffffffe /* remove-state_0 addLong(long, long) */);
+                } finally {
+                    lock.unlock();
+                }
+                return SLAdd_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
+            }
+        }
+
+        private static Object SLAdd_SLAdd_execute__generic1_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) & 0xff));
+            Object $child1Value_ = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            if ((state_0 & 0b1) != 0 /* is-state_0 addLong(long, long) */ && $child0Value_ instanceof Long) {
+                long $child0Value__ = (long) $child0Value_;
+                if ($child1Value_ instanceof Long) {
+                    long $child1Value__ = (long) $child1Value_;
+                    try {
+                        return SLAddNode.addLong($child0Value__, $child1Value__);
+                    } catch (ArithmeticException ex) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        Lock lock = $this.getLockAccessor();
+                        lock.lock();
+                        try {
+                            $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude addLong(long, long) */);
+                            $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] & 0xfffffffe /* remove-state_0 addLong(long, long) */);
+                        } finally {
+                            lock.unlock();
+                        }
+                        return SLAdd_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value__, $child1Value__);
+                    }
+                }
+            }
+            if ((state_0 & 0b10) != 0 /* is-state_0 add(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_)) {
+                    SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_);
+                    return SLAddNode.add($child0Value__, $child1Value__);
+                }
+            }
+            if ((state_0 & 0b1100) != 0 /* is-state_0 add(Object, Object, SLToTruffleStringNode, SLToTruffleStringNode, ConcatNode) || typeError(Object, Object, Node, int) */) {
+                if ((state_0 & 0b100) != 0 /* is-state_0 add(Object, Object, SLToTruffleStringNode, SLToTruffleStringNode, ConcatNode) */) {
+                    SLAdd_Add1Data s2_ = ((SLAdd_Add1Data) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_ADD_CHILDREN_OFFSET) + 0) + 0));
+                    if (s2_ != null) {
+                        if ((SLAddNode.isString($child0Value_, $child1Value_))) {
+                            return SLAddNode.add($child0Value_, $child1Value_, s2_.toTruffleStringNodeLeft_, s2_.toTruffleStringNodeRight_, s2_.concatNode_);
+                        }
+                    }
+                }
+                if ((state_0 & 0b1000) != 0 /* is-state_0 typeError(Object, Object, Node, int) */) {
+                    {
+                        Node fallback_node__ = ($this);
+                        int fallback_bci__ = ($bci);
+                        if (SLAdd_fallbackGuard__($frame, $this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value_, $child1Value_)) {
+                            return SLAddNode.typeError($child0Value_, $child1Value_, fallback_node__, fallback_bci__);
+                        }
+                    }
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLAdd_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
+        }
+
+        private static long SLAdd_executeLong_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) throws UnexpectedResultException {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_ADD_STATE_BITS_OFFSET + 0);
+            if ((state_0 & 0b1000) != 0 /* is-state_0 typeError(Object, Object, Node, int) */) {
+                return SLTypesGen.expectLong(SLAdd_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            }
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Object $child1Value = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+                return SLTypesGen.expectLong(SLAdd_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult(), $child1Value));
+            }
+            long $child1Value_;
+            try {
+                $child1Value_ = expectLong($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_ADD_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLTypesGen.expectLong(SLAdd_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, ex.getResult()));
+            }
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b1) != 0 /* is-state_0 addLong(long, long) */) {
+                try {
+                    return SLAddNode.addLong($child0Value_, $child1Value_);
+                } catch (ArithmeticException ex) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    Lock lock = $this.getLockAccessor();
+                    lock.lock();
+                    try {
+                        $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude addLong(long, long) */);
+                        $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] & 0xfffffffe /* remove-state_0 addLong(long, long) */);
+                    } finally {
+                        lock.unlock();
+                    }
+                    return SLTypesGen.expectLong(SLAdd_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_));
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLTypesGen.expectLong(SLAdd_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_));
+        }
+
+        private static Object SLAdd_executeAndSpecialize_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Lock lock = $this.getLockAccessor();
+            boolean hasLock = true;
+            lock.lock();
+            try {
+                short state_0 = unsafeFromBytecode($bc, $bci + C_SL_ADD_STATE_BITS_OFFSET + 0);
+                short exclude = unsafeFromBytecode($bc, $bci + C_SL_ADD_STATE_BITS_OFFSET + 1);
+                if ((exclude) == 0 /* is-not-exclude addLong(long, long) */ && $child0Value instanceof Long) {
+                    long $child0Value_ = (long) $child0Value;
+                    if ($child1Value instanceof Long) {
+                        long $child1Value_ = (long) $child1Value;
+                        $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1 /* add-state_0 addLong(long, long) */);
+                        short primitiveTagBits = (short) (unsafeFromBytecode($bc, $bci) & 7 & 0xe000);
+                        unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_ADD << 3) | primitiveTagBits));
+                        try {
+                            lock.unlock();
+                            hasLock = false;
+                            return SLAddNode.addLong($child0Value_, $child1Value_);
+                        } catch (ArithmeticException ex) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            lock.lock();
+                            try {
+                                $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude addLong(long, long) */);
+                                $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] & 0xfffffffe /* remove-state_0 addLong(long, long) */);
+                            } finally {
+                                lock.unlock();
+                            }
+                            return SLAdd_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
+                        }
+                    }
+                }
+                {
+                    int sLBigNumberCast0;
+                    if ((sLBigNumberCast0 = SLTypesGen.specializeImplicitSLBigNumber($child0Value)) != 0) {
+                        SLBigNumber $child0Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast0, $child0Value);
+                        int sLBigNumberCast1;
+                        if ((sLBigNumberCast1 = SLTypesGen.specializeImplicitSLBigNumber($child1Value)) != 0) {
+                            SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast1, $child1Value);
+                            $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /* add-exclude addLong(long, long) */);
+                            state_0 = (short) (state_0 & 0xfffffffe /* remove-state_0 addLong(long, long) */);
+                            state_0 = (short) (state_0 | (sLBigNumberCast0 << 4) /* set-implicit-state_0 0:SLBigNumber */);
+                            state_0 = (short) (state_0 | (sLBigNumberCast1 << 6) /* set-implicit-state_0 1:SLBigNumber */);
+                            $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 add(SLBigNumber, SLBigNumber) */);
+                            short primitiveTagBits = (short) (unsafeFromBytecode($bc, $bci) & 7 & 0xe000);
+                            if ((state_0 & 0b1111) == 0b10/* is-exact-state_0 add(SLBigNumber, SLBigNumber) */) {
+                                unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_ADD_Q_ADD0 << 3) | primitiveTagBits));
+                            } else {
+                                unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_ADD << 3) | primitiveTagBits));
+                            }
+                            lock.unlock();
+                            hasLock = false;
+                            return SLAddNode.add($child0Value_, $child1Value_);
+                        }
+                    }
+                }
+                if ((SLAddNode.isString($child0Value, $child1Value))) {
+                    SLAdd_Add1Data s2_ = $this.insertAccessor(new SLAdd_Add1Data());
+                    s2_.toTruffleStringNodeLeft_ = s2_.insertAccessor((SLToTruffleStringNodeGen.create()));
+                    s2_.toTruffleStringNodeRight_ = s2_.insertAccessor((SLToTruffleStringNodeGen.create()));
+                    s2_.concatNode_ = s2_.insertAccessor((ConcatNode.create()));
+                    VarHandle.storeStoreFence();
+                    $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_ADD_CHILDREN_OFFSET) + 0) + 0] = s2_;
+                    $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 add(Object, Object, SLToTruffleStringNode, SLToTruffleStringNode, ConcatNode) */);
+                    short primitiveTagBits = (short) (unsafeFromBytecode($bc, $bci) & 7 & 0xe000);
+                    unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_ADD << 3) | primitiveTagBits));
+                    lock.unlock();
+                    hasLock = false;
+                    return SLAddNode.add($child0Value, $child1Value, s2_.toTruffleStringNodeLeft_, s2_.toTruffleStringNodeRight_, s2_.concatNode_);
+                }
+                {
+                    int fallback_bci__ = 0;
+                    Node fallback_node__ = null;
+                    fallback_node__ = ($this);
+                    fallback_bci__ = ($bci);
+                    $bc[$bci + C_SL_ADD_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /* add-state_0 typeError(Object, Object, Node, int) */);
+                    short primitiveTagBits = (short) (unsafeFromBytecode($bc, $bci) & 7 & 0xe000);
+                    unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_ADD << 3) | primitiveTagBits));
+                    lock.unlock();
+                    hasLock = false;
+                    return SLAddNode.typeError($child0Value, $child1Value, fallback_node__, fallback_bci__);
+                }
+            } finally {
+                if (hasLock) {
+                    lock.unlock();
+                }
+            }
+        }
+
+        private static boolean SLDiv_fallbackGuard__(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+            if (SLTypesGen.isImplicitSLBigNumber($child0Value) && SLTypesGen.isImplicitSLBigNumber($child1Value)) {
+                return false;
+            }
+            return true;
+        }
+
+        private static Object SLDiv_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_DIV_STATE_BITS_OFFSET + 0);
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b110) == 0 /* only-active divLong(long, long) */ && ((state_0 & 0b111) != 0  /* is-not divLong(long, long) && div(SLBigNumber, SLBigNumber) && typeError(Object, Object, Node, int) */)) {
+                return SLDiv_SLDiv_execute__long_long0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else {
+                return SLDiv_SLDiv_execute__generic1_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            }
+        }
+
+        private static Object SLDiv_SLDiv_execute__long_long0_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_DIV_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Object $child1Value = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_DIV_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+                return SLDiv_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult(), $child1Value);
+            }
+            long $child1Value_;
+            try {
+                $child1Value_ = expectLong($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_DIV_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLDiv_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, ex.getResult());
+            }
+            assert (state_0 & 0b1) != 0 /* is-state_0 divLong(long, long) */;
+            try {
+                return SLDivNode.divLong($child0Value_, $child1Value_);
+            } catch (ArithmeticException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Lock lock = $this.getLockAccessor();
+                lock.lock();
+                try {
+                    $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude divLong(long, long) */);
+                    $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] & 0xfffffffe /* remove-state_0 divLong(long, long) */);
+                } finally {
+                    lock.unlock();
+                }
+                return SLDiv_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
+            }
+        }
+
+        private static Object SLDiv_SLDiv_execute__generic1_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_DIV_POP_INDEXED_OFFSET + 0) & 0xff));
+            Object $child1Value_ = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_DIV_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            if ((state_0 & 0b1) != 0 /* is-state_0 divLong(long, long) */ && $child0Value_ instanceof Long) {
+                long $child0Value__ = (long) $child0Value_;
+                if ($child1Value_ instanceof Long) {
+                    long $child1Value__ = (long) $child1Value_;
+                    try {
+                        return SLDivNode.divLong($child0Value__, $child1Value__);
+                    } catch (ArithmeticException ex) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        Lock lock = $this.getLockAccessor();
+                        lock.lock();
+                        try {
+                            $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude divLong(long, long) */);
+                            $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] & 0xfffffffe /* remove-state_0 divLong(long, long) */);
+                        } finally {
+                            lock.unlock();
+                        }
+                        return SLDiv_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value__, $child1Value__);
+                    }
+                }
+            }
+            if ((state_0 & 0b10) != 0 /* is-state_0 div(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000) >>> 3 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000) >>> 3 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b1100000) >>> 5 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_)) {
+                    SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b1100000) >>> 5 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_);
+                    return SLDivNode.div($child0Value__, $child1Value__);
+                }
+            }
+            if ((state_0 & 0b100) != 0 /* is-state_0 typeError(Object, Object, Node, int) */) {
+                {
+                    Node fallback_node__ = ($this);
+                    int fallback_bci__ = ($bci);
+                    if (SLDiv_fallbackGuard__($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_)) {
+                        return SLDivNode.typeError($child0Value_, $child1Value_, fallback_node__, fallback_bci__);
+                    }
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLDiv_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
+        }
+
+        private static long SLDiv_executeLong_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) throws UnexpectedResultException {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_DIV_STATE_BITS_OFFSET + 0);
+            if ((state_0 & 0b100) != 0 /* is-state_0 typeError(Object, Object, Node, int) */) {
+                return SLTypesGen.expectLong(SLDiv_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            }
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_DIV_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Object $child1Value = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_DIV_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+                return SLTypesGen.expectLong(SLDiv_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult(), $child1Value));
+            }
+            long $child1Value_;
+            try {
+                $child1Value_ = expectLong($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_DIV_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLTypesGen.expectLong(SLDiv_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, ex.getResult()));
+            }
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b1) != 0 /* is-state_0 divLong(long, long) */) {
+                try {
+                    return SLDivNode.divLong($child0Value_, $child1Value_);
+                } catch (ArithmeticException ex) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    Lock lock = $this.getLockAccessor();
+                    lock.lock();
+                    try {
+                        $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude divLong(long, long) */);
+                        $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] & 0xfffffffe /* remove-state_0 divLong(long, long) */);
+                    } finally {
+                        lock.unlock();
+                    }
+                    return SLTypesGen.expectLong(SLDiv_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_));
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLTypesGen.expectLong(SLDiv_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_));
+        }
+
+        private static Object SLDiv_executeAndSpecialize_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Lock lock = $this.getLockAccessor();
+            boolean hasLock = true;
+            lock.lock();
+            try {
+                short state_0 = unsafeFromBytecode($bc, $bci + C_SL_DIV_STATE_BITS_OFFSET + 0);
+                short exclude = unsafeFromBytecode($bc, $bci + C_SL_DIV_STATE_BITS_OFFSET + 1);
+                if ((exclude) == 0 /* is-not-exclude divLong(long, long) */ && $child0Value instanceof Long) {
+                    long $child0Value_ = (long) $child0Value;
+                    if ($child1Value instanceof Long) {
+                        long $child1Value_ = (long) $child1Value;
+                        $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1 /* add-state_0 divLong(long, long) */);
+                        try {
+                            lock.unlock();
+                            hasLock = false;
+                            return SLDivNode.divLong($child0Value_, $child1Value_);
+                        } catch (ArithmeticException ex) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            lock.lock();
+                            try {
+                                $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude divLong(long, long) */);
+                                $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] & 0xfffffffe /* remove-state_0 divLong(long, long) */);
+                            } finally {
+                                lock.unlock();
+                            }
+                            return SLDiv_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
+                        }
+                    }
+                }
+                {
+                    int sLBigNumberCast0;
+                    if ((sLBigNumberCast0 = SLTypesGen.specializeImplicitSLBigNumber($child0Value)) != 0) {
+                        SLBigNumber $child0Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast0, $child0Value);
+                        int sLBigNumberCast1;
+                        if ((sLBigNumberCast1 = SLTypesGen.specializeImplicitSLBigNumber($child1Value)) != 0) {
+                            SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast1, $child1Value);
+                            $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /* add-exclude divLong(long, long) */);
+                            state_0 = (short) (state_0 & 0xfffffffe /* remove-state_0 divLong(long, long) */);
+                            state_0 = (short) (state_0 | (sLBigNumberCast0 << 3) /* set-implicit-state_0 0:SLBigNumber */);
+                            state_0 = (short) (state_0 | (sLBigNumberCast1 << 5) /* set-implicit-state_0 1:SLBigNumber */);
+                            $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 div(SLBigNumber, SLBigNumber) */);
+                            lock.unlock();
+                            hasLock = false;
+                            return SLDivNode.div($child0Value_, $child1Value_);
+                        }
+                    }
+                }
+                {
+                    int fallback_bci__ = 0;
+                    Node fallback_node__ = null;
+                    fallback_node__ = ($this);
+                    fallback_bci__ = ($bci);
+                    $bc[$bci + C_SL_DIV_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 typeError(Object, Object, Node, int) */);
+                    lock.unlock();
+                    hasLock = false;
+                    return SLDivNode.typeError($child0Value, $child1Value, fallback_node__, fallback_bci__);
+                }
+            } finally {
+                if (hasLock) {
+                    lock.unlock();
+                }
+            }
+        }
+
+        @SuppressWarnings("static-method")
+        @TruffleBoundary
+        private static Object SLEqual_generic1Boundary_(SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value, Object $child1Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
+            Node prev_ = encapsulating_.set($this);
+            try {
+                {
+                    InteropLibrary generic1_leftInterop__ = (INTEROP_LIBRARY_.getUncached($child0Value));
+                    InteropLibrary generic1_rightInterop__ = (INTEROP_LIBRARY_.getUncached($child1Value));
+                    return SLEqualNode.doGeneric($child0Value, $child1Value, generic1_leftInterop__, generic1_rightInterop__);
+                }
+            } finally {
+                encapsulating_.set(prev_);
+            }
+        }
+
+        private static Object SLEqual_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0);
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b111111110) == 0 /* only-active doLong(long, long) */ && ((state_0 & 0b111111111) != 0  /* is-not doLong(long, long) && doBigNumber(SLBigNumber, SLBigNumber) && doBoolean(boolean, boolean) && doString(String, String) && doTruffleString(TruffleString, TruffleString, EqualNode) && doNull(SLNull, SLNull) && doFunction(SLFunction, Object) && doGeneric(Object, Object, InteropLibrary, InteropLibrary) && doGeneric(Object, Object, InteropLibrary, InteropLibrary) */)) {
+                return SLEqual_SLEqual_execute__long_long0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else if ((state_0 & 0b111111011) == 0 /* only-active doBoolean(boolean, boolean) */ && ((state_0 & 0b111111111) != 0  /* is-not doLong(long, long) && doBigNumber(SLBigNumber, SLBigNumber) && doBoolean(boolean, boolean) && doString(String, String) && doTruffleString(TruffleString, TruffleString, EqualNode) && doNull(SLNull, SLNull) && doFunction(SLFunction, Object) && doGeneric(Object, Object, InteropLibrary, InteropLibrary) && doGeneric(Object, Object, InteropLibrary, InteropLibrary) */)) {
+                return SLEqual_SLEqual_execute__boolean_boolean1_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else {
+                return SLEqual_SLEqual_execute__generic2_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            }
+        }
+
+        private static Object SLEqual_SLEqual_execute__long_long0_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_EQUAL_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Object $child1Value = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_EQUAL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+                return SLEqual_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult(), $child1Value);
+            }
+            long $child1Value_;
+            try {
+                $child1Value_ = expectLong($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_EQUAL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLEqual_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, ex.getResult());
+            }
+            assert (state_0 & 0b1) != 0 /* is-state_0 doLong(long, long) */;
+            return SLEqualNode.doLong($child0Value_, $child1Value_);
+        }
+
+        private static Object SLEqual_SLEqual_execute__boolean_boolean1_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            boolean $child0Value_;
+            try {
+                $child0Value_ = expectBoolean($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_EQUAL_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Object $child1Value = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_EQUAL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+                return SLEqual_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult(), $child1Value);
+            }
+            boolean $child1Value_;
+            try {
+                $child1Value_ = expectBoolean($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_EQUAL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLEqual_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, ex.getResult());
+            }
+            assert (state_0 & 0b100) != 0 /* is-state_0 doBoolean(boolean, boolean) */;
+            return SLEqualNode.doBoolean($child0Value_, $child1Value_);
+        }
+
+        @SuppressWarnings("static-method")
+        @TruffleBoundary
+        private static Object SLEqual_generic1Boundary0_(SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value_, Object $child1Value_) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
+            Node prev_ = encapsulating_.set($this);
+            try {
+                {
+                    InteropLibrary generic1_leftInterop__ = (INTEROP_LIBRARY_.getUncached($child0Value_));
+                    InteropLibrary generic1_rightInterop__ = (INTEROP_LIBRARY_.getUncached($child1Value_));
+                    return SLEqualNode.doGeneric($child0Value_, $child1Value_, generic1_leftInterop__, generic1_rightInterop__);
+                }
+            } finally {
+                encapsulating_.set(prev_);
+            }
+        }
+
+        @ExplodeLoop
+        private static Object SLEqual_SLEqual_execute__generic2_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_EQUAL_POP_INDEXED_OFFSET + 0) & 0xff));
+            Object $child1Value_ = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_EQUAL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            if ((state_0 & 0b1) != 0 /* is-state_0 doLong(long, long) */ && $child0Value_ instanceof Long) {
+                long $child0Value__ = (long) $child0Value_;
+                if ($child1Value_ instanceof Long) {
+                    long $child1Value__ = (long) $child1Value_;
+                    return SLEqualNode.doLong($child0Value__, $child1Value__);
+                }
+            }
+            if ((state_0 & 0b10) != 0 /* is-state_0 doBigNumber(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000000) >>> 9 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000000) >>> 9 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b1100000000000) >>> 11 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_)) {
+                    SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b1100000000000) >>> 11 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_);
+                    return SLEqualNode.doBigNumber($child0Value__, $child1Value__);
+                }
+            }
+            if ((state_0 & 0b100) != 0 /* is-state_0 doBoolean(boolean, boolean) */ && $child0Value_ instanceof Boolean) {
+                boolean $child0Value__ = (boolean) $child0Value_;
+                if ($child1Value_ instanceof Boolean) {
+                    boolean $child1Value__ = (boolean) $child1Value_;
+                    return SLEqualNode.doBoolean($child0Value__, $child1Value__);
+                }
+            }
+            if ((state_0 & 0b1000) != 0 /* is-state_0 doString(String, String) */ && $child0Value_ instanceof String) {
+                String $child0Value__ = (String) $child0Value_;
+                if ($child1Value_ instanceof String) {
+                    String $child1Value__ = (String) $child1Value_;
+                    return SLEqualNode.doString($child0Value__, $child1Value__);
+                }
+            }
+            if ((state_0 & 0b10000) != 0 /* is-state_0 doTruffleString(TruffleString, TruffleString, EqualNode) */ && $child0Value_ instanceof TruffleString) {
+                TruffleString $child0Value__ = (TruffleString) $child0Value_;
+                if ($child1Value_ instanceof TruffleString) {
+                    TruffleString $child1Value__ = (TruffleString) $child1Value_;
+                    EqualNode truffleString_equalNode__ = ((EqualNode) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_EQUAL_CHILDREN_OFFSET) + 0) + 0));
+                    if (truffleString_equalNode__ != null) {
+                        return SLEqualNode.doTruffleString($child0Value__, $child1Value__, truffleString_equalNode__);
+                    }
+                }
+            }
+            if ((state_0 & 0b100000) != 0 /* is-state_0 doNull(SLNull, SLNull) */ && SLTypes.isSLNull($child0Value_)) {
+                SLNull $child0Value__ = SLTypes.asSLNull($child0Value_);
+                if (SLTypes.isSLNull($child1Value_)) {
+                    SLNull $child1Value__ = SLTypes.asSLNull($child1Value_);
+                    return SLEqualNode.doNull($child0Value__, $child1Value__);
+                }
+            }
+            if ((state_0 & 0b111000000) != 0 /* is-state_0 doFunction(SLFunction, Object) || doGeneric(Object, Object, InteropLibrary, InteropLibrary) || doGeneric(Object, Object, InteropLibrary, InteropLibrary) */) {
+                if ((state_0 & 0b1000000) != 0 /* is-state_0 doFunction(SLFunction, Object) */ && $child0Value_ instanceof SLFunction) {
+                    SLFunction $child0Value__ = (SLFunction) $child0Value_;
+                    return SLEqualNode.doFunction($child0Value__, $child1Value_);
+                }
+                if ((state_0 & 0b110000000) != 0 /* is-state_0 doGeneric(Object, Object, InteropLibrary, InteropLibrary) || doGeneric(Object, Object, InteropLibrary, InteropLibrary) */) {
+                    if ((state_0 & 0b10000000) != 0 /* is-state_0 doGeneric(Object, Object, InteropLibrary, InteropLibrary) */) {
+                        SLEqual_Generic0Data s7_ = ((SLEqual_Generic0Data) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_EQUAL_CHILDREN_OFFSET) + 0) + 1));
+                        while (s7_ != null) {
+                            if ((s7_.leftInterop_.accepts($child0Value_)) && (s7_.rightInterop_.accepts($child1Value_))) {
+                                return SLEqualNode.doGeneric($child0Value_, $child1Value_, s7_.leftInterop_, s7_.rightInterop_);
+                            }
+                            s7_ = s7_.next_;
+                        }
+                    }
+                    if ((state_0 & 0b100000000) != 0 /* is-state_0 doGeneric(Object, Object, InteropLibrary, InteropLibrary) */) {
+                        try {
+                            return SLEqual_generic1Boundary0_($this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value_, $child1Value_);
+                        } catch (BoundaryCallFailedException ex) {
+                        }
+                    }
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLEqual_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
+        }
+
+        private static boolean SLEqual_executeBoolean_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0);
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b111111110) == 0 /* only-active doLong(long, long) */ && ((state_0 & 0b111111111) != 0  /* is-not doLong(long, long) && doBigNumber(SLBigNumber, SLBigNumber) && doBoolean(boolean, boolean) && doString(String, String) && doTruffleString(TruffleString, TruffleString, EqualNode) && doNull(SLNull, SLNull) && doFunction(SLFunction, Object) && doGeneric(Object, Object, InteropLibrary, InteropLibrary) && doGeneric(Object, Object, InteropLibrary, InteropLibrary) */)) {
+                return SLEqual_SLEqual_executeBoolean__long_long3_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else if ((state_0 & 0b111111011) == 0 /* only-active doBoolean(boolean, boolean) */ && ((state_0 & 0b111111111) != 0  /* is-not doLong(long, long) && doBigNumber(SLBigNumber, SLBigNumber) && doBoolean(boolean, boolean) && doString(String, String) && doTruffleString(TruffleString, TruffleString, EqualNode) && doNull(SLNull, SLNull) && doFunction(SLFunction, Object) && doGeneric(Object, Object, InteropLibrary, InteropLibrary) && doGeneric(Object, Object, InteropLibrary, InteropLibrary) */)) {
+                return SLEqual_SLEqual_executeBoolean__boolean_boolean4_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else {
+                return SLEqual_SLEqual_executeBoolean__generic5_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            }
+        }
+
+        private static boolean SLEqual_SLEqual_executeBoolean__long_long3_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_EQUAL_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Object $child1Value = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_EQUAL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+                return SLEqual_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult(), $child1Value);
+            }
+            long $child1Value_;
+            try {
+                $child1Value_ = expectLong($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_EQUAL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLEqual_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, ex.getResult());
+            }
+            assert (state_0 & 0b1) != 0 /* is-state_0 doLong(long, long) */;
+            return SLEqualNode.doLong($child0Value_, $child1Value_);
+        }
+
+        private static boolean SLEqual_SLEqual_executeBoolean__boolean_boolean4_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            boolean $child0Value_;
+            try {
+                $child0Value_ = expectBoolean($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_EQUAL_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Object $child1Value = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_EQUAL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+                return SLEqual_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult(), $child1Value);
+            }
+            boolean $child1Value_;
+            try {
+                $child1Value_ = expectBoolean($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_EQUAL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLEqual_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, ex.getResult());
+            }
+            assert (state_0 & 0b100) != 0 /* is-state_0 doBoolean(boolean, boolean) */;
+            return SLEqualNode.doBoolean($child0Value_, $child1Value_);
+        }
+
+        @SuppressWarnings("static-method")
+        @TruffleBoundary
+        private static boolean SLEqual_generic1Boundary1_(SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value_, Object $child1Value_) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
+            Node prev_ = encapsulating_.set($this);
+            try {
+                {
+                    InteropLibrary generic1_leftInterop__ = (INTEROP_LIBRARY_.getUncached($child0Value_));
+                    InteropLibrary generic1_rightInterop__ = (INTEROP_LIBRARY_.getUncached($child1Value_));
+                    return SLEqualNode.doGeneric($child0Value_, $child1Value_, generic1_leftInterop__, generic1_rightInterop__);
+                }
+            } finally {
+                encapsulating_.set(prev_);
+            }
+        }
+
+        @ExplodeLoop
+        private static boolean SLEqual_SLEqual_executeBoolean__generic5_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_EQUAL_POP_INDEXED_OFFSET + 0) & 0xff));
+            Object $child1Value_ = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_EQUAL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            if ((state_0 & 0b1) != 0 /* is-state_0 doLong(long, long) */ && $child0Value_ instanceof Long) {
+                long $child0Value__ = (long) $child0Value_;
+                if ($child1Value_ instanceof Long) {
+                    long $child1Value__ = (long) $child1Value_;
+                    return SLEqualNode.doLong($child0Value__, $child1Value__);
+                }
+            }
+            if ((state_0 & 0b10) != 0 /* is-state_0 doBigNumber(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000000) >>> 9 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000000) >>> 9 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b1100000000000) >>> 11 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_)) {
+                    SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b1100000000000) >>> 11 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_);
+                    return SLEqualNode.doBigNumber($child0Value__, $child1Value__);
+                }
+            }
+            if ((state_0 & 0b100) != 0 /* is-state_0 doBoolean(boolean, boolean) */ && $child0Value_ instanceof Boolean) {
+                boolean $child0Value__ = (boolean) $child0Value_;
+                if ($child1Value_ instanceof Boolean) {
+                    boolean $child1Value__ = (boolean) $child1Value_;
+                    return SLEqualNode.doBoolean($child0Value__, $child1Value__);
+                }
+            }
+            if ((state_0 & 0b1000) != 0 /* is-state_0 doString(String, String) */ && $child0Value_ instanceof String) {
+                String $child0Value__ = (String) $child0Value_;
+                if ($child1Value_ instanceof String) {
+                    String $child1Value__ = (String) $child1Value_;
+                    return SLEqualNode.doString($child0Value__, $child1Value__);
+                }
+            }
+            if ((state_0 & 0b10000) != 0 /* is-state_0 doTruffleString(TruffleString, TruffleString, EqualNode) */ && $child0Value_ instanceof TruffleString) {
+                TruffleString $child0Value__ = (TruffleString) $child0Value_;
+                if ($child1Value_ instanceof TruffleString) {
+                    TruffleString $child1Value__ = (TruffleString) $child1Value_;
+                    EqualNode truffleString_equalNode__ = ((EqualNode) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_EQUAL_CHILDREN_OFFSET) + 0) + 0));
+                    if (truffleString_equalNode__ != null) {
+                        return SLEqualNode.doTruffleString($child0Value__, $child1Value__, truffleString_equalNode__);
+                    }
+                }
+            }
+            if ((state_0 & 0b100000) != 0 /* is-state_0 doNull(SLNull, SLNull) */ && SLTypes.isSLNull($child0Value_)) {
+                SLNull $child0Value__ = SLTypes.asSLNull($child0Value_);
+                if (SLTypes.isSLNull($child1Value_)) {
+                    SLNull $child1Value__ = SLTypes.asSLNull($child1Value_);
+                    return SLEqualNode.doNull($child0Value__, $child1Value__);
+                }
+            }
+            if ((state_0 & 0b111000000) != 0 /* is-state_0 doFunction(SLFunction, Object) || doGeneric(Object, Object, InteropLibrary, InteropLibrary) || doGeneric(Object, Object, InteropLibrary, InteropLibrary) */) {
+                if ((state_0 & 0b1000000) != 0 /* is-state_0 doFunction(SLFunction, Object) */ && $child0Value_ instanceof SLFunction) {
+                    SLFunction $child0Value__ = (SLFunction) $child0Value_;
+                    return SLEqualNode.doFunction($child0Value__, $child1Value_);
+                }
+                if ((state_0 & 0b110000000) != 0 /* is-state_0 doGeneric(Object, Object, InteropLibrary, InteropLibrary) || doGeneric(Object, Object, InteropLibrary, InteropLibrary) */) {
+                    if ((state_0 & 0b10000000) != 0 /* is-state_0 doGeneric(Object, Object, InteropLibrary, InteropLibrary) */) {
+                        SLEqual_Generic0Data s7_ = ((SLEqual_Generic0Data) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_EQUAL_CHILDREN_OFFSET) + 0) + 1));
+                        while (s7_ != null) {
+                            if ((s7_.leftInterop_.accepts($child0Value_)) && (s7_.rightInterop_.accepts($child1Value_))) {
+                                return SLEqualNode.doGeneric($child0Value_, $child1Value_, s7_.leftInterop_, s7_.rightInterop_);
+                            }
+                            s7_ = s7_.next_;
+                        }
+                    }
+                    if ((state_0 & 0b100000000) != 0 /* is-state_0 doGeneric(Object, Object, InteropLibrary, InteropLibrary) */) {
+                        try {
+                            return SLEqual_generic1Boundary1_($this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value_, $child1Value_);
+                        } catch (BoundaryCallFailedException ex) {
+                        }
+                    }
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLEqual_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
+        }
+
+        private static boolean SLEqual_executeAndSpecialize_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Lock lock = $this.getLockAccessor();
+            boolean hasLock = true;
+            lock.lock();
+            try {
+                short state_0 = unsafeFromBytecode($bc, $bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0);
+                short exclude = unsafeFromBytecode($bc, $bci + C_SL_EQUAL_STATE_BITS_OFFSET + 1);
+                if ($child0Value instanceof Long) {
+                    long $child0Value_ = (long) $child0Value;
+                    if ($child1Value instanceof Long) {
+                        long $child1Value_ = (long) $child1Value;
+                        $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1 /* add-state_0 doLong(long, long) */);
+                        lock.unlock();
+                        hasLock = false;
+                        return SLEqualNode.doLong($child0Value_, $child1Value_);
+                    }
+                }
+                {
+                    int sLBigNumberCast0;
+                    if ((sLBigNumberCast0 = SLTypesGen.specializeImplicitSLBigNumber($child0Value)) != 0) {
+                        SLBigNumber $child0Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast0, $child0Value);
+                        int sLBigNumberCast1;
+                        if ((sLBigNumberCast1 = SLTypesGen.specializeImplicitSLBigNumber($child1Value)) != 0) {
+                            SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast1, $child1Value);
+                            state_0 = (short) (state_0 | (sLBigNumberCast0 << 9) /* set-implicit-state_0 0:SLBigNumber */);
+                            state_0 = (short) (state_0 | (sLBigNumberCast1 << 11) /* set-implicit-state_0 1:SLBigNumber */);
+                            $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 doBigNumber(SLBigNumber, SLBigNumber) */);
+                            lock.unlock();
+                            hasLock = false;
+                            return SLEqualNode.doBigNumber($child0Value_, $child1Value_);
+                        }
+                    }
+                }
+                if ($child0Value instanceof Boolean) {
+                    boolean $child0Value_ = (boolean) $child0Value;
+                    if ($child1Value instanceof Boolean) {
+                        boolean $child1Value_ = (boolean) $child1Value;
+                        $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 doBoolean(boolean, boolean) */);
+                        lock.unlock();
+                        hasLock = false;
+                        return SLEqualNode.doBoolean($child0Value_, $child1Value_);
+                    }
+                }
+                if ($child0Value instanceof String) {
+                    String $child0Value_ = (String) $child0Value;
+                    if ($child1Value instanceof String) {
+                        String $child1Value_ = (String) $child1Value;
+                        $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /* add-state_0 doString(String, String) */);
+                        lock.unlock();
+                        hasLock = false;
+                        return SLEqualNode.doString($child0Value_, $child1Value_);
+                    }
+                }
+                if ($child0Value instanceof TruffleString) {
+                    TruffleString $child0Value_ = (TruffleString) $child0Value;
+                    if ($child1Value instanceof TruffleString) {
+                        TruffleString $child1Value_ = (TruffleString) $child1Value;
+                        $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_EQUAL_CHILDREN_OFFSET) + 0) + 0] = $this.insertAccessor((EqualNode.create()));
+                        $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10000 /* add-state_0 doTruffleString(TruffleString, TruffleString, EqualNode) */);
+                        lock.unlock();
+                        hasLock = false;
+                        return SLEqualNode.doTruffleString($child0Value_, $child1Value_, ((EqualNode) UFA.unsafeObjectArrayRead($children, childArrayOffset_ + 0)));
+                    }
+                }
+                if (SLTypes.isSLNull($child0Value)) {
+                    SLNull $child0Value_ = SLTypes.asSLNull($child0Value);
+                    if (SLTypes.isSLNull($child1Value)) {
+                        SLNull $child1Value_ = SLTypes.asSLNull($child1Value);
+                        $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100000 /* add-state_0 doNull(SLNull, SLNull) */);
+                        lock.unlock();
+                        hasLock = false;
+                        return SLEqualNode.doNull($child0Value_, $child1Value_);
+                    }
+                }
+                if ($child0Value instanceof SLFunction) {
+                    SLFunction $child0Value_ = (SLFunction) $child0Value;
+                    $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000000 /* add-state_0 doFunction(SLFunction, Object) */);
+                    lock.unlock();
+                    hasLock = false;
+                    return SLEqualNode.doFunction($child0Value_, $child1Value);
+                }
+                if ((exclude) == 0 /* is-not-exclude doGeneric(Object, Object, InteropLibrary, InteropLibrary) */) {
+                    int count7_ = 0;
+                    SLEqual_Generic0Data s7_ = ((SLEqual_Generic0Data) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_EQUAL_CHILDREN_OFFSET) + 0) + 1));
+                    if ((state_0 & 0b10000000) != 0 /* is-state_0 doGeneric(Object, Object, InteropLibrary, InteropLibrary) */) {
+                        while (s7_ != null) {
+                            if ((s7_.leftInterop_.accepts($child0Value)) && (s7_.rightInterop_.accepts($child1Value))) {
+                                break;
+                            }
+                            s7_ = s7_.next_;
+                            count7_++;
+                        }
+                    }
+                    if (s7_ == null) {
+                        // assert (s7_.leftInterop_.accepts($child0Value));
+                        // assert (s7_.rightInterop_.accepts($child1Value));
+                        if (count7_ < (4)) {
+                            s7_ = $this.insertAccessor(new SLEqual_Generic0Data(((SLEqual_Generic0Data) UFA.unsafeObjectArrayRead($children, childArrayOffset_ + 1))));
+                            s7_.leftInterop_ = s7_.insertAccessor((INTEROP_LIBRARY_.create($child0Value)));
+                            s7_.rightInterop_ = s7_.insertAccessor((INTEROP_LIBRARY_.create($child1Value)));
+                            VarHandle.storeStoreFence();
+                            $children[childArrayOffset_ + 1] = s7_;
+                            $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10000000 /* add-state_0 doGeneric(Object, Object, InteropLibrary, InteropLibrary) */);
+                        }
+                    }
+                    if (s7_ != null) {
+                        lock.unlock();
+                        hasLock = false;
+                        return SLEqualNode.doGeneric($child0Value, $child1Value, s7_.leftInterop_, s7_.rightInterop_);
+                    }
+                }
+                {
+                    InteropLibrary generic1_rightInterop__ = null;
+                    InteropLibrary generic1_leftInterop__ = null;
+                    {
+                        EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
+                        Node prev_ = encapsulating_.set($this);
+                        try {
+                            generic1_leftInterop__ = (INTEROP_LIBRARY_.getUncached($child0Value));
+                            generic1_rightInterop__ = (INTEROP_LIBRARY_.getUncached($child1Value));
+                            $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /* add-exclude doGeneric(Object, Object, InteropLibrary, InteropLibrary) */);
+                            $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_EQUAL_CHILDREN_OFFSET) + 0) + 1] = null;
+                            state_0 = (short) (state_0 & 0xffffff7f /* remove-state_0 doGeneric(Object, Object, InteropLibrary, InteropLibrary) */);
+                            $bc[$bci + C_SL_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100000000 /* add-state_0 doGeneric(Object, Object, InteropLibrary, InteropLibrary) */);
+                            lock.unlock();
+                            hasLock = false;
+                            return SLEqualNode.doGeneric($child0Value, $child1Value, generic1_leftInterop__, generic1_rightInterop__);
+                        } finally {
+                            encapsulating_.set(prev_);
+                        }
+                    }
+                }
+            } finally {
+                if (hasLock) {
+                    lock.unlock();
+                }
+            }
+        }
+
+        private static boolean SLLessOrEqual_fallbackGuard__(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+            if (SLTypesGen.isImplicitSLBigNumber($child0Value) && SLTypesGen.isImplicitSLBigNumber($child1Value)) {
+                return false;
+            }
+            return true;
+        }
+
+        private static Object SLLessOrEqual_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0);
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b110) == 0 /* only-active lessOrEqual(long, long) */ && ((state_0 & 0b111) != 0  /* is-not lessOrEqual(long, long) && lessOrEqual(SLBigNumber, SLBigNumber) && typeError(Object, Object, Node, int) */)) {
+                return SLLessOrEqual_SLLessOrEqual_execute__long_long0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else {
+                return SLLessOrEqual_SLLessOrEqual_execute__generic1_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            }
+        }
+
+        private static Object SLLessOrEqual_SLLessOrEqual_execute__long_long0_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Object $child1Value = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+                return SLLessOrEqual_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult(), $child1Value);
+            }
+            long $child1Value_;
+            try {
+                $child1Value_ = expectLong($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLLessOrEqual_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, ex.getResult());
+            }
+            assert (state_0 & 0b1) != 0 /* is-state_0 lessOrEqual(long, long) */;
+            return SLLessOrEqualNode.lessOrEqual($child0Value_, $child1Value_);
+        }
+
+        private static Object SLLessOrEqual_SLLessOrEqual_execute__generic1_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_POP_INDEXED_OFFSET + 0) & 0xff));
+            Object $child1Value_ = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            if ((state_0 & 0b1) != 0 /* is-state_0 lessOrEqual(long, long) */ && $child0Value_ instanceof Long) {
+                long $child0Value__ = (long) $child0Value_;
+                if ($child1Value_ instanceof Long) {
+                    long $child1Value__ = (long) $child1Value_;
+                    return SLLessOrEqualNode.lessOrEqual($child0Value__, $child1Value__);
+                }
+            }
+            if ((state_0 & 0b10) != 0 /* is-state_0 lessOrEqual(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000) >>> 3 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000) >>> 3 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b1100000) >>> 5 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_)) {
+                    SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b1100000) >>> 5 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_);
+                    return SLLessOrEqualNode.lessOrEqual($child0Value__, $child1Value__);
+                }
+            }
+            if ((state_0 & 0b100) != 0 /* is-state_0 typeError(Object, Object, Node, int) */) {
+                {
+                    Node fallback_node__ = ($this);
+                    int fallback_bci__ = ($bci);
+                    if (SLLessOrEqual_fallbackGuard__($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_)) {
+                        return SLLessOrEqualNode.typeError($child0Value_, $child1Value_, fallback_node__, fallback_bci__);
+                    }
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLLessOrEqual_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
+        }
+
+        private static boolean SLLessOrEqual_executeBoolean_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) throws UnexpectedResultException {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0);
+            if ((state_0 & 0b100) != 0 /* is-state_0 typeError(Object, Object, Node, int) */) {
+                return SLTypesGen.expectBoolean(SLLessOrEqual_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            }
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b10) == 0 /* only-active lessOrEqual(long, long) */ && ((state_0 & 0b11) != 0  /* is-not lessOrEqual(long, long) && lessOrEqual(SLBigNumber, SLBigNumber) */)) {
+                return SLLessOrEqual_SLLessOrEqual_executeBoolean__long_long2_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else {
+                return SLLessOrEqual_SLLessOrEqual_executeBoolean__generic3_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            }
+        }
+
+        private static boolean SLLessOrEqual_SLLessOrEqual_executeBoolean__long_long2_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) throws UnexpectedResultException {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Object $child1Value = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+                return SLTypesGen.expectBoolean(SLLessOrEqual_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult(), $child1Value));
+            }
+            long $child1Value_;
+            try {
+                $child1Value_ = expectLong($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLTypesGen.expectBoolean(SLLessOrEqual_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, ex.getResult()));
+            }
+            assert (state_0 & 0b1) != 0 /* is-state_0 lessOrEqual(long, long) */;
+            return SLLessOrEqualNode.lessOrEqual($child0Value_, $child1Value_);
+        }
+
+        private static boolean SLLessOrEqual_SLLessOrEqual_executeBoolean__generic3_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) throws UnexpectedResultException {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_POP_INDEXED_OFFSET + 0) & 0xff));
+            Object $child1Value_ = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            if ((state_0 & 0b1) != 0 /* is-state_0 lessOrEqual(long, long) */ && $child0Value_ instanceof Long) {
+                long $child0Value__ = (long) $child0Value_;
+                if ($child1Value_ instanceof Long) {
+                    long $child1Value__ = (long) $child1Value_;
+                    return SLLessOrEqualNode.lessOrEqual($child0Value__, $child1Value__);
+                }
+            }
+            if ((state_0 & 0b10) != 0 /* is-state_0 lessOrEqual(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000) >>> 3 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000) >>> 3 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b1100000) >>> 5 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_)) {
+                    SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b1100000) >>> 5 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_);
+                    return SLLessOrEqualNode.lessOrEqual($child0Value__, $child1Value__);
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLTypesGen.expectBoolean(SLLessOrEqual_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_));
+        }
+
+        private static Object SLLessOrEqual_executeAndSpecialize_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Lock lock = $this.getLockAccessor();
+            boolean hasLock = true;
+            lock.lock();
+            try {
+                short state_0 = unsafeFromBytecode($bc, $bci + C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0);
+                if ($child0Value instanceof Long) {
+                    long $child0Value_ = (long) $child0Value;
+                    if ($child1Value instanceof Long) {
+                        long $child1Value_ = (long) $child1Value;
+                        $bc[$bci + C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1 /* add-state_0 lessOrEqual(long, long) */);
+                        lock.unlock();
+                        hasLock = false;
+                        return SLLessOrEqualNode.lessOrEqual($child0Value_, $child1Value_);
+                    }
+                }
+                {
+                    int sLBigNumberCast0;
+                    if ((sLBigNumberCast0 = SLTypesGen.specializeImplicitSLBigNumber($child0Value)) != 0) {
+                        SLBigNumber $child0Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast0, $child0Value);
+                        int sLBigNumberCast1;
+                        if ((sLBigNumberCast1 = SLTypesGen.specializeImplicitSLBigNumber($child1Value)) != 0) {
+                            SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast1, $child1Value);
+                            state_0 = (short) (state_0 | (sLBigNumberCast0 << 3) /* set-implicit-state_0 0:SLBigNumber */);
+                            state_0 = (short) (state_0 | (sLBigNumberCast1 << 5) /* set-implicit-state_0 1:SLBigNumber */);
+                            $bc[$bci + C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 lessOrEqual(SLBigNumber, SLBigNumber) */);
+                            lock.unlock();
+                            hasLock = false;
+                            return SLLessOrEqualNode.lessOrEqual($child0Value_, $child1Value_);
+                        }
+                    }
+                }
+                {
+                    int fallback_bci__ = 0;
+                    Node fallback_node__ = null;
+                    fallback_node__ = ($this);
+                    fallback_bci__ = ($bci);
+                    $bc[$bci + C_SL_LESS_OR_EQUAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 typeError(Object, Object, Node, int) */);
+                    lock.unlock();
+                    hasLock = false;
+                    return SLLessOrEqualNode.typeError($child0Value, $child1Value, fallback_node__, fallback_bci__);
+                }
+            } finally {
+                if (hasLock) {
+                    lock.unlock();
+                }
+            }
+        }
+
+        private static boolean SLLessThan_fallbackGuard__(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+            if (SLTypesGen.isImplicitSLBigNumber($child0Value) && SLTypesGen.isImplicitSLBigNumber($child1Value)) {
+                return false;
+            }
+            return true;
+        }
+
+        private static Object SLLessThan_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_LESS_THAN_STATE_BITS_OFFSET + 0);
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b110) == 0 /* only-active lessThan(long, long) */ && ((state_0 & 0b111) != 0  /* is-not lessThan(long, long) && lessThan(SLBigNumber, SLBigNumber) && typeError(Object, Object, Node, int) */)) {
+                return SLLessThan_SLLessThan_execute__long_long0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else {
+                return SLLessThan_SLLessThan_execute__generic1_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            }
+        }
+
+        private static Object SLLessThan_SLLessThan_execute__long_long0_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_LESS_THAN_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Object $child1Value = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_LESS_THAN_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+                return SLLessThan_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult(), $child1Value);
+            }
+            long $child1Value_;
+            try {
+                $child1Value_ = expectLong($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_LESS_THAN_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLLessThan_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, ex.getResult());
+            }
+            assert (state_0 & 0b1) != 0 /* is-state_0 lessThan(long, long) */;
+            return SLLessThanNode.lessThan($child0Value_, $child1Value_);
+        }
+
+        private static Object SLLessThan_SLLessThan_execute__generic1_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_LESS_THAN_POP_INDEXED_OFFSET + 0) & 0xff));
+            Object $child1Value_ = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_LESS_THAN_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            if ((state_0 & 0b1) != 0 /* is-state_0 lessThan(long, long) */ && $child0Value_ instanceof Long) {
+                long $child0Value__ = (long) $child0Value_;
+                if ($child1Value_ instanceof Long) {
+                    long $child1Value__ = (long) $child1Value_;
+                    return SLLessThanNode.lessThan($child0Value__, $child1Value__);
+                }
+            }
+            if ((state_0 & 0b10) != 0 /* is-state_0 lessThan(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000) >>> 3 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000) >>> 3 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b1100000) >>> 5 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_)) {
+                    SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b1100000) >>> 5 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_);
+                    return SLLessThanNode.lessThan($child0Value__, $child1Value__);
+                }
+            }
+            if ((state_0 & 0b100) != 0 /* is-state_0 typeError(Object, Object, Node, int) */) {
+                {
+                    Node fallback_node__ = ($this);
+                    int fallback_bci__ = ($bci);
+                    if (SLLessThan_fallbackGuard__($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_)) {
+                        return SLLessThanNode.typeError($child0Value_, $child1Value_, fallback_node__, fallback_bci__);
+                    }
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLLessThan_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
+        }
+
+        private static boolean SLLessThan_executeBoolean_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) throws UnexpectedResultException {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_LESS_THAN_STATE_BITS_OFFSET + 0);
+            if ((state_0 & 0b100) != 0 /* is-state_0 typeError(Object, Object, Node, int) */) {
+                return SLTypesGen.expectBoolean(SLLessThan_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            }
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b10) == 0 /* only-active lessThan(long, long) */ && ((state_0 & 0b11) != 0  /* is-not lessThan(long, long) && lessThan(SLBigNumber, SLBigNumber) */)) {
+                return SLLessThan_SLLessThan_executeBoolean__long_long2_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else {
+                return SLLessThan_SLLessThan_executeBoolean__generic3_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            }
+        }
+
+        private static boolean SLLessThan_SLLessThan_executeBoolean__long_long2_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) throws UnexpectedResultException {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_LESS_THAN_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Object $child1Value = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_LESS_THAN_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+                return SLTypesGen.expectBoolean(SLLessThan_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult(), $child1Value));
+            }
+            long $child1Value_;
+            try {
+                $child1Value_ = expectLong($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_LESS_THAN_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLTypesGen.expectBoolean(SLLessThan_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, ex.getResult()));
+            }
+            assert (state_0 & 0b1) != 0 /* is-state_0 lessThan(long, long) */;
+            return SLLessThanNode.lessThan($child0Value_, $child1Value_);
+        }
+
+        private static boolean SLLessThan_SLLessThan_executeBoolean__generic3_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) throws UnexpectedResultException {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_LESS_THAN_POP_INDEXED_OFFSET + 0) & 0xff));
+            Object $child1Value_ = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_LESS_THAN_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            if ((state_0 & 0b1) != 0 /* is-state_0 lessThan(long, long) */ && $child0Value_ instanceof Long) {
+                long $child0Value__ = (long) $child0Value_;
+                if ($child1Value_ instanceof Long) {
+                    long $child1Value__ = (long) $child1Value_;
+                    return SLLessThanNode.lessThan($child0Value__, $child1Value__);
+                }
+            }
+            if ((state_0 & 0b10) != 0 /* is-state_0 lessThan(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000) >>> 3 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000) >>> 3 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b1100000) >>> 5 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_)) {
+                    SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b1100000) >>> 5 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_);
+                    return SLLessThanNode.lessThan($child0Value__, $child1Value__);
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLTypesGen.expectBoolean(SLLessThan_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_));
+        }
+
+        private static Object SLLessThan_executeAndSpecialize_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Lock lock = $this.getLockAccessor();
+            boolean hasLock = true;
+            lock.lock();
+            try {
+                short state_0 = unsafeFromBytecode($bc, $bci + C_SL_LESS_THAN_STATE_BITS_OFFSET + 0);
+                if ($child0Value instanceof Long) {
+                    long $child0Value_ = (long) $child0Value;
+                    if ($child1Value instanceof Long) {
+                        long $child1Value_ = (long) $child1Value;
+                        $bc[$bci + C_SL_LESS_THAN_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1 /* add-state_0 lessThan(long, long) */);
+                        lock.unlock();
+                        hasLock = false;
+                        return SLLessThanNode.lessThan($child0Value_, $child1Value_);
+                    }
+                }
+                {
+                    int sLBigNumberCast0;
+                    if ((sLBigNumberCast0 = SLTypesGen.specializeImplicitSLBigNumber($child0Value)) != 0) {
+                        SLBigNumber $child0Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast0, $child0Value);
+                        int sLBigNumberCast1;
+                        if ((sLBigNumberCast1 = SLTypesGen.specializeImplicitSLBigNumber($child1Value)) != 0) {
+                            SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast1, $child1Value);
+                            state_0 = (short) (state_0 | (sLBigNumberCast0 << 3) /* set-implicit-state_0 0:SLBigNumber */);
+                            state_0 = (short) (state_0 | (sLBigNumberCast1 << 5) /* set-implicit-state_0 1:SLBigNumber */);
+                            $bc[$bci + C_SL_LESS_THAN_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 lessThan(SLBigNumber, SLBigNumber) */);
+                            lock.unlock();
+                            hasLock = false;
+                            return SLLessThanNode.lessThan($child0Value_, $child1Value_);
+                        }
+                    }
+                }
+                {
+                    int fallback_bci__ = 0;
+                    Node fallback_node__ = null;
+                    fallback_node__ = ($this);
+                    fallback_bci__ = ($bci);
+                    $bc[$bci + C_SL_LESS_THAN_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 typeError(Object, Object, Node, int) */);
+                    lock.unlock();
+                    hasLock = false;
+                    return SLLessThanNode.typeError($child0Value, $child1Value, fallback_node__, fallback_bci__);
+                }
+            } finally {
+                if (hasLock) {
+                    lock.unlock();
+                }
+            }
+        }
+
+        private static boolean SLLogicalNot_fallbackGuard__(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value) {
+            if (((state_0 & 0b1)) == 0 /* is-not-state_0 doBoolean(boolean) */ && $child0Value instanceof Boolean) {
+                return false;
+            }
+            return true;
+        }
+
+        private static Object SLLogicalNot_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0);
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b10) == 0 /* only-active doBoolean(boolean) */ && (state_0 != 0  /* is-not doBoolean(boolean) && typeError(Object, Node, int) */)) {
+                return SLLogicalNot_SLLogicalNot_execute__boolean0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else {
+                return SLLogicalNot_SLLogicalNot_execute__generic1_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            }
+        }
+
+        private static Object SLLogicalNot_SLLogicalNot_execute__boolean0_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            boolean $child0Value_;
+            try {
+                $child0Value_ = expectBoolean($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_LOGICAL_NOT_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLLogicalNot_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult());
+            }
+            assert (state_0 & 0b1) != 0 /* is-state_0 doBoolean(boolean) */;
+            return SLLogicalNotNode.doBoolean($child0Value_);
+        }
+
+        private static Object SLLogicalNot_SLLogicalNot_execute__generic1_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_LOGICAL_NOT_POP_INDEXED_OFFSET + 0) & 0xff));
+            if ((state_0 & 0b1) != 0 /* is-state_0 doBoolean(boolean) */ && $child0Value_ instanceof Boolean) {
+                boolean $child0Value__ = (boolean) $child0Value_;
+                return SLLogicalNotNode.doBoolean($child0Value__);
+            }
+            if ((state_0 & 0b10) != 0 /* is-state_0 typeError(Object, Node, int) */) {
+                {
+                    Node fallback_node__ = ($this);
+                    int fallback_bci__ = ($bci);
+                    if (SLLogicalNot_fallbackGuard__($frame, $this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value_)) {
+                        return SLLogicalNotNode.typeError($child0Value_, fallback_node__, fallback_bci__);
+                    }
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLLogicalNot_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_);
+        }
+
+        private static boolean SLLogicalNot_executeBoolean_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) throws UnexpectedResultException {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0);
+            if ((state_0 & 0b10) != 0 /* is-state_0 typeError(Object, Node, int) */) {
+                return SLTypesGen.expectBoolean(SLLogicalNot_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            }
+            boolean $child0Value_;
+            try {
+                $child0Value_ = expectBoolean($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_LOGICAL_NOT_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLTypesGen.expectBoolean(SLLogicalNot_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult()));
+            }
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b1) != 0 /* is-state_0 doBoolean(boolean) */) {
+                return SLLogicalNotNode.doBoolean($child0Value_);
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLTypesGen.expectBoolean(SLLogicalNot_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_));
+        }
+
+        private static Object SLLogicalNot_executeAndSpecialize_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Lock lock = $this.getLockAccessor();
+            boolean hasLock = true;
+            lock.lock();
+            try {
+                short state_0 = unsafeFromBytecode($bc, $bci + C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0);
+                if ($child0Value instanceof Boolean) {
+                    boolean $child0Value_ = (boolean) $child0Value;
+                    $bc[$bci + C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1 /* add-state_0 doBoolean(boolean) */);
+                    lock.unlock();
+                    hasLock = false;
+                    return SLLogicalNotNode.doBoolean($child0Value_);
+                }
+                {
+                    int fallback_bci__ = 0;
+                    Node fallback_node__ = null;
+                    fallback_node__ = ($this);
+                    fallback_bci__ = ($bci);
+                    $bc[$bci + C_SL_LOGICAL_NOT_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 typeError(Object, Node, int) */);
+                    lock.unlock();
+                    hasLock = false;
+                    return SLLogicalNotNode.typeError($child0Value, fallback_node__, fallback_bci__);
+                }
+            } finally {
+                if (hasLock) {
+                    lock.unlock();
+                }
+            }
+        }
+
+        private static boolean SLMul_fallbackGuard__(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+            if (SLTypesGen.isImplicitSLBigNumber($child0Value) && SLTypesGen.isImplicitSLBigNumber($child1Value)) {
+                return false;
+            }
+            return true;
+        }
+
+        private static Object SLMul_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_MUL_STATE_BITS_OFFSET + 0);
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b110) == 0 /* only-active mulLong(long, long) */ && ((state_0 & 0b111) != 0  /* is-not mulLong(long, long) && mul(SLBigNumber, SLBigNumber) && typeError(Object, Object, Node, int) */)) {
+                return SLMul_SLMul_execute__long_long0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else {
+                return SLMul_SLMul_execute__generic1_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            }
+        }
+
+        private static Object SLMul_SLMul_execute__long_long0_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_MUL_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Object $child1Value = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_MUL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+                return SLMul_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult(), $child1Value);
+            }
+            long $child1Value_;
+            try {
+                $child1Value_ = expectLong($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_MUL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLMul_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, ex.getResult());
+            }
+            assert (state_0 & 0b1) != 0 /* is-state_0 mulLong(long, long) */;
+            try {
+                return SLMulNode.mulLong($child0Value_, $child1Value_);
+            } catch (ArithmeticException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Lock lock = $this.getLockAccessor();
+                lock.lock();
+                try {
+                    $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude mulLong(long, long) */);
+                    $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] & 0xfffffffe /* remove-state_0 mulLong(long, long) */);
+                } finally {
+                    lock.unlock();
+                }
+                return SLMul_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
+            }
+        }
+
+        private static Object SLMul_SLMul_execute__generic1_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_MUL_POP_INDEXED_OFFSET + 0) & 0xff));
+            Object $child1Value_ = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_MUL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            if ((state_0 & 0b1) != 0 /* is-state_0 mulLong(long, long) */ && $child0Value_ instanceof Long) {
+                long $child0Value__ = (long) $child0Value_;
+                if ($child1Value_ instanceof Long) {
+                    long $child1Value__ = (long) $child1Value_;
+                    try {
+                        return SLMulNode.mulLong($child0Value__, $child1Value__);
+                    } catch (ArithmeticException ex) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        Lock lock = $this.getLockAccessor();
+                        lock.lock();
+                        try {
+                            $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude mulLong(long, long) */);
+                            $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] & 0xfffffffe /* remove-state_0 mulLong(long, long) */);
+                        } finally {
+                            lock.unlock();
+                        }
+                        return SLMul_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value__, $child1Value__);
+                    }
+                }
+            }
+            if ((state_0 & 0b10) != 0 /* is-state_0 mul(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000) >>> 3 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000) >>> 3 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b1100000) >>> 5 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_)) {
+                    SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b1100000) >>> 5 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_);
+                    return SLMulNode.mul($child0Value__, $child1Value__);
+                }
+            }
+            if ((state_0 & 0b100) != 0 /* is-state_0 typeError(Object, Object, Node, int) */) {
+                {
+                    Node fallback_node__ = ($this);
+                    int fallback_bci__ = ($bci);
+                    if (SLMul_fallbackGuard__($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_)) {
+                        return SLMulNode.typeError($child0Value_, $child1Value_, fallback_node__, fallback_bci__);
+                    }
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLMul_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
+        }
+
+        private static long SLMul_executeLong_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) throws UnexpectedResultException {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_MUL_STATE_BITS_OFFSET + 0);
+            if ((state_0 & 0b100) != 0 /* is-state_0 typeError(Object, Object, Node, int) */) {
+                return SLTypesGen.expectLong(SLMul_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            }
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_MUL_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Object $child1Value = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_MUL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+                return SLTypesGen.expectLong(SLMul_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult(), $child1Value));
+            }
+            long $child1Value_;
+            try {
+                $child1Value_ = expectLong($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_MUL_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLTypesGen.expectLong(SLMul_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, ex.getResult()));
+            }
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b1) != 0 /* is-state_0 mulLong(long, long) */) {
+                try {
+                    return SLMulNode.mulLong($child0Value_, $child1Value_);
+                } catch (ArithmeticException ex) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    Lock lock = $this.getLockAccessor();
+                    lock.lock();
+                    try {
+                        $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude mulLong(long, long) */);
+                        $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] & 0xfffffffe /* remove-state_0 mulLong(long, long) */);
+                    } finally {
+                        lock.unlock();
+                    }
+                    return SLTypesGen.expectLong(SLMul_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_));
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLTypesGen.expectLong(SLMul_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_));
+        }
+
+        private static Object SLMul_executeAndSpecialize_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Lock lock = $this.getLockAccessor();
+            boolean hasLock = true;
+            lock.lock();
+            try {
+                short state_0 = unsafeFromBytecode($bc, $bci + C_SL_MUL_STATE_BITS_OFFSET + 0);
+                short exclude = unsafeFromBytecode($bc, $bci + C_SL_MUL_STATE_BITS_OFFSET + 1);
+                if ((exclude) == 0 /* is-not-exclude mulLong(long, long) */ && $child0Value instanceof Long) {
+                    long $child0Value_ = (long) $child0Value;
+                    if ($child1Value instanceof Long) {
+                        long $child1Value_ = (long) $child1Value;
+                        $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1 /* add-state_0 mulLong(long, long) */);
+                        try {
+                            lock.unlock();
+                            hasLock = false;
+                            return SLMulNode.mulLong($child0Value_, $child1Value_);
+                        } catch (ArithmeticException ex) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            lock.lock();
+                            try {
+                                $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude mulLong(long, long) */);
+                                $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] & 0xfffffffe /* remove-state_0 mulLong(long, long) */);
+                            } finally {
+                                lock.unlock();
+                            }
+                            return SLMul_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
+                        }
+                    }
+                }
+                {
+                    int sLBigNumberCast0;
+                    if ((sLBigNumberCast0 = SLTypesGen.specializeImplicitSLBigNumber($child0Value)) != 0) {
+                        SLBigNumber $child0Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast0, $child0Value);
+                        int sLBigNumberCast1;
+                        if ((sLBigNumberCast1 = SLTypesGen.specializeImplicitSLBigNumber($child1Value)) != 0) {
+                            SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast1, $child1Value);
+                            $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /* add-exclude mulLong(long, long) */);
+                            state_0 = (short) (state_0 & 0xfffffffe /* remove-state_0 mulLong(long, long) */);
+                            state_0 = (short) (state_0 | (sLBigNumberCast0 << 3) /* set-implicit-state_0 0:SLBigNumber */);
+                            state_0 = (short) (state_0 | (sLBigNumberCast1 << 5) /* set-implicit-state_0 1:SLBigNumber */);
+                            $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 mul(SLBigNumber, SLBigNumber) */);
+                            lock.unlock();
+                            hasLock = false;
+                            return SLMulNode.mul($child0Value_, $child1Value_);
+                        }
+                    }
+                }
+                {
+                    int fallback_bci__ = 0;
+                    Node fallback_node__ = null;
+                    fallback_node__ = ($this);
+                    fallback_bci__ = ($bci);
+                    $bc[$bci + C_SL_MUL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 typeError(Object, Object, Node, int) */);
+                    lock.unlock();
+                    hasLock = false;
+                    return SLMulNode.typeError($child0Value, $child1Value, fallback_node__, fallback_bci__);
+                }
+            } finally {
+                if (hasLock) {
+                    lock.unlock();
+                }
+            }
+        }
+
+        @SuppressWarnings("static-method")
+        @TruffleBoundary
+        private static Object SLReadProperty_readArray1Boundary_(SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value, Object $child1Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            {
+                Node readArray1_node__ = ($this);
+                int readArray1_bci__ = ($bci);
+                InteropLibrary readArray1_arrays__ = (INTEROP_LIBRARY_.getUncached());
+                InteropLibrary readArray1_numbers__ = (INTEROP_LIBRARY_.getUncached());
+                return SLReadPropertyNode.readArray($child0Value, $child1Value, readArray1_node__, readArray1_bci__, readArray1_arrays__, readArray1_numbers__);
+            }
+        }
+
+        @SuppressWarnings("static-method")
+        @TruffleBoundary
+        private static Object SLReadProperty_readSLObject1Boundary_(SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, SLObject $child0Value_, Object $child1Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            {
+                Node readSLObject1_node__ = ($this);
+                int readSLObject1_bci__ = ($bci);
+                DynamicObjectLibrary readSLObject1_objectLibrary__ = (DYNAMIC_OBJECT_LIBRARY_.getUncached($child0Value_));
+                SLToTruffleStringNode readSLObject1_toTruffleStringNode__ = ((SLToTruffleStringNode) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 7));
+                if (readSLObject1_toTruffleStringNode__ != null) {
+                    return SLReadPropertyNode.readSLObject($child0Value_, $child1Value, readSLObject1_node__, readSLObject1_bci__, readSLObject1_objectLibrary__, readSLObject1_toTruffleStringNode__);
+                }
+                throw BoundaryCallFailedException.INSTANCE;
+            }
+        }
+
+        @SuppressWarnings("static-method")
+        @TruffleBoundary
+        private static Object SLReadProperty_readObject1Boundary_(SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value, Object $child1Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            {
+                Node readObject1_node__ = ($this);
+                int readObject1_bci__ = ($bci);
+                InteropLibrary readObject1_objects__ = (INTEROP_LIBRARY_.getUncached());
+                SLToMemberNode readObject1_asMember__ = ((SLToMemberNode) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 11));
+                if (readObject1_asMember__ != null) {
+                    return SLReadPropertyNode.readObject($child0Value, $child1Value, readObject1_node__, readObject1_bci__, readObject1_objects__, readObject1_asMember__);
+                }
+                throw BoundaryCallFailedException.INSTANCE;
+            }
+        }
+
+        @ExplodeLoop
+        private static Object SLReadProperty_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0);
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) & 0xff));
+            Object $child1Value_ = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            if (state_0 != 0 /* is-state_0 readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) || readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) || readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) || readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) || readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) || readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
+                if ((state_0 & 0b11) != 0 /* is-state_0 readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) || readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) */) {
+                    if ((state_0 & 0b1) != 0 /* is-state_0 readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) */) {
+                        SLReadProperty_ReadArray0Data s0_ = ((SLReadProperty_ReadArray0Data) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 0));
+                        while (s0_ != null) {
+                            if ((s0_.arrays_.accepts($child0Value_)) && (s0_.numbers_.accepts($child1Value_)) && (s0_.arrays_.hasArrayElements($child0Value_))) {
+                                Node node__ = ($this);
+                                int bci__ = ($bci);
+                                return SLReadPropertyNode.readArray($child0Value_, $child1Value_, node__, bci__, s0_.arrays_, s0_.numbers_);
+                            }
+                            s0_ = s0_.next_;
+                        }
+                    }
+                    if ((state_0 & 0b10) != 0 /* is-state_0 readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) */) {
+                        EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
+                        Node prev_ = encapsulating_.set($this);
+                        try {
+                            {
+                                InteropLibrary readArray1_arrays__ = (INTEROP_LIBRARY_.getUncached());
+                                if ((readArray1_arrays__.hasArrayElements($child0Value_))) {
+                                    try {
+                                        return SLReadProperty_readArray1Boundary0_($this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value_, $child1Value_);
+                                    } catch (BoundaryCallFailedException ex) {
+                                    }
+                                }
+                            }
+                        } finally {
+                            encapsulating_.set(prev_);
+                        }
+                    }
+                }
+                if ((state_0 & 0b1100) != 0 /* is-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) || readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */ && $child0Value_ instanceof SLObject) {
+                    SLObject $child0Value__ = (SLObject) $child0Value_;
+                    if ((state_0 & 0b100) != 0 /* is-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */) {
+                        SLReadProperty_ReadSLObject0Data s2_ = ((SLReadProperty_ReadSLObject0Data) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 4));
+                        while (s2_ != null) {
+                            if ((s2_.objectLibrary_.accepts($child0Value__))) {
+                                Node node__1 = ($this);
+                                int bci__1 = ($bci);
+                                return SLReadPropertyNode.readSLObject($child0Value__, $child1Value_, node__1, bci__1, s2_.objectLibrary_, s2_.toTruffleStringNode_);
+                            }
+                            s2_ = s2_.next_;
+                        }
+                    }
+                    if ((state_0 & 0b1000) != 0 /* is-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */) {
+                        try {
+                            return SLReadProperty_readSLObject1Boundary1_($this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value__, $child1Value_);
+                        } catch (BoundaryCallFailedException ex) {
+                        }
+                    }
+                }
+                if ((state_0 & 0b110000) != 0 /* is-state_0 readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) || readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
+                    if ((state_0 & 0b10000) != 0 /* is-state_0 readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
+                        SLReadProperty_ReadObject0Data s4_ = ((SLReadProperty_ReadObject0Data) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 8));
+                        while (s4_ != null) {
+                            if ((s4_.objects_.accepts($child0Value_)) && (!(SLReadPropertyNode.isSLObject($child0Value_))) && (s4_.objects_.hasMembers($child0Value_))) {
+                                Node node__2 = ($this);
+                                int bci__2 = ($bci);
+                                return SLReadPropertyNode.readObject($child0Value_, $child1Value_, node__2, bci__2, s4_.objects_, s4_.asMember_);
+                            }
+                            s4_ = s4_.next_;
+                        }
+                    }
+                    if ((state_0 & 0b100000) != 0 /* is-state_0 readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
+                        EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
+                        Node prev_ = encapsulating_.set($this);
+                        try {
+                            if ((!(SLReadPropertyNode.isSLObject($child0Value_)))) {
+                                InteropLibrary readObject1_objects__ = (INTEROP_LIBRARY_.getUncached());
+                                if ((readObject1_objects__.hasMembers($child0Value_))) {
+                                    try {
+                                        return SLReadProperty_readObject1Boundary2_($this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value_, $child1Value_);
+                                    } catch (BoundaryCallFailedException ex) {
+                                    }
+                                }
+                            }
+                        } finally {
+                            encapsulating_.set(prev_);
+                        }
+                    }
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLReadProperty_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
+        }
+
+        @SuppressWarnings("static-method")
+        @TruffleBoundary
+        private static Object SLReadProperty_readArray1Boundary0_(SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value_, Object $child1Value_) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            {
+                Node readArray1_node__ = ($this);
+                int readArray1_bci__ = ($bci);
+                InteropLibrary readArray1_arrays__ = (INTEROP_LIBRARY_.getUncached());
+                InteropLibrary readArray1_numbers__ = (INTEROP_LIBRARY_.getUncached());
+                return SLReadPropertyNode.readArray($child0Value_, $child1Value_, readArray1_node__, readArray1_bci__, readArray1_arrays__, readArray1_numbers__);
+            }
+        }
+
+        @SuppressWarnings("static-method")
+        @TruffleBoundary
+        private static Object SLReadProperty_readSLObject1Boundary1_(SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, SLObject $child0Value__, Object $child1Value_) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            {
+                Node readSLObject1_node__ = ($this);
+                int readSLObject1_bci__ = ($bci);
+                DynamicObjectLibrary readSLObject1_objectLibrary__ = (DYNAMIC_OBJECT_LIBRARY_.getUncached($child0Value__));
+                SLToTruffleStringNode readSLObject1_toTruffleStringNode__ = ((SLToTruffleStringNode) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 7));
+                if (readSLObject1_toTruffleStringNode__ != null) {
+                    return SLReadPropertyNode.readSLObject($child0Value__, $child1Value_, readSLObject1_node__, readSLObject1_bci__, readSLObject1_objectLibrary__, readSLObject1_toTruffleStringNode__);
+                }
+                throw BoundaryCallFailedException.INSTANCE;
+            }
+        }
+
+        @SuppressWarnings("static-method")
+        @TruffleBoundary
+        private static Object SLReadProperty_readObject1Boundary2_(SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value_, Object $child1Value_) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            {
+                Node readObject1_node__ = ($this);
+                int readObject1_bci__ = ($bci);
+                InteropLibrary readObject1_objects__ = (INTEROP_LIBRARY_.getUncached());
+                SLToMemberNode readObject1_asMember__ = ((SLToMemberNode) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 11));
+                if (readObject1_asMember__ != null) {
+                    return SLReadPropertyNode.readObject($child0Value_, $child1Value_, readObject1_node__, readObject1_bci__, readObject1_objects__, readObject1_asMember__);
+                }
+                throw BoundaryCallFailedException.INSTANCE;
+            }
+        }
+
+        private static Object SLReadProperty_executeAndSpecialize_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Lock lock = $this.getLockAccessor();
+            boolean hasLock = true;
+            lock.lock();
+            try {
+                short state_0 = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0);
+                short exclude = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 1);
+                {
+                    int bci__ = 0;
+                    Node node__ = null;
+                    if (((exclude & 0b1)) == 0 /* is-not-exclude readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) */) {
+                        int count0_ = 0;
+                        SLReadProperty_ReadArray0Data s0_ = ((SLReadProperty_ReadArray0Data) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 0));
+                        if ((state_0 & 0b1) != 0 /* is-state_0 readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) */) {
+                            while (s0_ != null) {
+                                if ((s0_.arrays_.accepts($child0Value)) && (s0_.numbers_.accepts($child1Value)) && (s0_.arrays_.hasArrayElements($child0Value))) {
+                                    node__ = ($this);
+                                    bci__ = ($bci);
+                                    break;
+                                }
+                                s0_ = s0_.next_;
+                                count0_++;
+                            }
+                        }
+                        if (s0_ == null) {
+                            {
+                                InteropLibrary arrays__ = $this.insertAccessor((INTEROP_LIBRARY_.create($child0Value)));
+                                // assert (s0_.arrays_.accepts($child0Value));
+                                // assert (s0_.numbers_.accepts($child1Value));
+                                if ((arrays__.hasArrayElements($child0Value)) && count0_ < (SLReadPropertyNode.LIBRARY_LIMIT)) {
+                                    s0_ = $this.insertAccessor(new SLReadProperty_ReadArray0Data(((SLReadProperty_ReadArray0Data) UFA.unsafeObjectArrayRead($children, childArrayOffset_ + 0))));
+                                    node__ = ($this);
+                                    bci__ = ($bci);
+                                    s0_.arrays_ = s0_.insertAccessor(arrays__);
+                                    s0_.numbers_ = s0_.insertAccessor((INTEROP_LIBRARY_.create($child1Value)));
+                                    VarHandle.storeStoreFence();
+                                    $children[childArrayOffset_ + 0] = s0_;
+                                    $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1 /* add-state_0 readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
+                                    short primitiveTagBits = (short) (unsafeFromBytecode($bc, $bci) & 7 & 0xe000);
+                                    unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_READ_PROPERTY << 3) | primitiveTagBits));
+                                }
+                            }
+                        }
+                        if (s0_ != null) {
+                            lock.unlock();
+                            hasLock = false;
+                            return SLReadPropertyNode.readArray($child0Value, $child1Value, node__, bci__, s0_.arrays_, s0_.numbers_);
+                        }
+                    }
+                }
+                {
+                    InteropLibrary readArray1_numbers__ = null;
+                    InteropLibrary readArray1_arrays__ = null;
+                    int readArray1_bci__ = 0;
+                    Node readArray1_node__ = null;
+                    {
+                        EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
+                        Node prev_ = encapsulating_.set($this);
+                        try {
+                            {
+                                readArray1_arrays__ = (INTEROP_LIBRARY_.getUncached());
+                                if ((readArray1_arrays__.hasArrayElements($child0Value))) {
+                                    readArray1_node__ = ($this);
+                                    readArray1_bci__ = ($bci);
+                                    readArray1_numbers__ = (INTEROP_LIBRARY_.getUncached());
+                                    $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /* add-exclude readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
+                                    $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 0] = null;
+                                    state_0 = (short) (state_0 & 0xfffffffe /* remove-state_0 readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
+                                    $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
+                                    short primitiveTagBits = (short) (unsafeFromBytecode($bc, $bci) & 7 & 0xe000);
+                                    unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_READ_PROPERTY << 3) | primitiveTagBits));
+                                    lock.unlock();
+                                    hasLock = false;
+                                    return SLReadPropertyNode.readArray($child0Value, $child1Value, readArray1_node__, readArray1_bci__, readArray1_arrays__, readArray1_numbers__);
+                                }
+                            }
+                        } finally {
+                            encapsulating_.set(prev_);
+                        }
+                    }
+                }
+                if ($child0Value instanceof SLObject) {
+                    SLObject $child0Value_ = (SLObject) $child0Value;
+                    {
+                        int bci__1 = 0;
+                        Node node__1 = null;
+                        if (((exclude & 0b10)) == 0 /* is-not-exclude readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */) {
+                            int count2_ = 0;
+                            SLReadProperty_ReadSLObject0Data s2_ = ((SLReadProperty_ReadSLObject0Data) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 4));
+                            if ((state_0 & 0b100) != 0 /* is-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */) {
+                                while (s2_ != null) {
+                                    if ((s2_.objectLibrary_.accepts($child0Value_))) {
+                                        node__1 = ($this);
+                                        bci__1 = ($bci);
+                                        break;
+                                    }
+                                    s2_ = s2_.next_;
+                                    count2_++;
+                                }
+                            }
+                            if (s2_ == null) {
+                                // assert (s2_.objectLibrary_.accepts($child0Value_));
+                                if (count2_ < (SLReadPropertyNode.LIBRARY_LIMIT)) {
+                                    s2_ = $this.insertAccessor(new SLReadProperty_ReadSLObject0Data(((SLReadProperty_ReadSLObject0Data) UFA.unsafeObjectArrayRead($children, childArrayOffset_ + 4))));
+                                    node__1 = ($this);
+                                    bci__1 = ($bci);
+                                    s2_.objectLibrary_ = s2_.insertAccessor((DYNAMIC_OBJECT_LIBRARY_.create($child0Value_)));
+                                    s2_.toTruffleStringNode_ = s2_.insertAccessor((SLToTruffleStringNodeGen.create()));
+                                    VarHandle.storeStoreFence();
+                                    $children[childArrayOffset_ + 4] = s2_;
+                                    $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */);
+                                    short primitiveTagBits = (short) (unsafeFromBytecode($bc, $bci) & 7 & 0xe000);
+                                    if (state_0 == 0b100/* is-exact-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */) {
+                                        unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0 << 3) | primitiveTagBits));
+                                    } else {
+                                        unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_READ_PROPERTY << 3) | primitiveTagBits));
+                                    }
+                                }
+                            }
+                            if (s2_ != null) {
+                                lock.unlock();
+                                hasLock = false;
+                                return SLReadPropertyNode.readSLObject($child0Value_, $child1Value, node__1, bci__1, s2_.objectLibrary_, s2_.toTruffleStringNode_);
+                            }
+                        }
+                    }
+                    {
+                        DynamicObjectLibrary readSLObject1_objectLibrary__ = null;
+                        int readSLObject1_bci__ = 0;
+                        Node readSLObject1_node__ = null;
+                        readSLObject1_node__ = ($this);
+                        readSLObject1_bci__ = ($bci);
+                        readSLObject1_objectLibrary__ = (DYNAMIC_OBJECT_LIBRARY_.getUncached($child0Value_));
+                        $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 7] = $this.insertAccessor((SLToTruffleStringNodeGen.create()));
+                        $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b10 /* add-exclude readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */);
+                        $children[childArrayOffset_ + 4] = null;
+                        state_0 = (short) (state_0 & 0xfffffffb /* remove-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */);
+                        $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /* add-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */);
+                        short primitiveTagBits = (short) (unsafeFromBytecode($bc, $bci) & 7 & 0xe000);
+                        unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_READ_PROPERTY << 3) | primitiveTagBits));
+                        lock.unlock();
+                        hasLock = false;
+                        return SLReadPropertyNode.readSLObject($child0Value_, $child1Value, readSLObject1_node__, readSLObject1_bci__, readSLObject1_objectLibrary__, ((SLToTruffleStringNode) UFA.unsafeObjectArrayRead($children, childArrayOffset_ + 7)));
+                    }
+                }
+                {
+                    int bci__2 = 0;
+                    Node node__2 = null;
+                    if (((exclude & 0b100)) == 0 /* is-not-exclude readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
+                        int count4_ = 0;
+                        SLReadProperty_ReadObject0Data s4_ = ((SLReadProperty_ReadObject0Data) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 8));
+                        if ((state_0 & 0b10000) != 0 /* is-state_0 readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
+                            while (s4_ != null) {
+                                if ((s4_.objects_.accepts($child0Value)) && (!(SLReadPropertyNode.isSLObject($child0Value))) && (s4_.objects_.hasMembers($child0Value))) {
+                                    node__2 = ($this);
+                                    bci__2 = ($bci);
+                                    break;
+                                }
+                                s4_ = s4_.next_;
+                                count4_++;
+                            }
+                        }
+                        if (s4_ == null) {
+                            if ((!(SLReadPropertyNode.isSLObject($child0Value)))) {
+                                // assert (s4_.objects_.accepts($child0Value));
+                                InteropLibrary objects__ = $this.insertAccessor((INTEROP_LIBRARY_.create($child0Value)));
+                                if ((objects__.hasMembers($child0Value)) && count4_ < (SLReadPropertyNode.LIBRARY_LIMIT)) {
+                                    s4_ = $this.insertAccessor(new SLReadProperty_ReadObject0Data(((SLReadProperty_ReadObject0Data) UFA.unsafeObjectArrayRead($children, childArrayOffset_ + 8))));
+                                    node__2 = ($this);
+                                    bci__2 = ($bci);
+                                    s4_.objects_ = s4_.insertAccessor(objects__);
+                                    s4_.asMember_ = s4_.insertAccessor((SLToMemberNodeGen.create()));
+                                    VarHandle.storeStoreFence();
+                                    $children[childArrayOffset_ + 8] = s4_;
+                                    $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10000 /* add-state_0 readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
+                                    short primitiveTagBits = (short) (unsafeFromBytecode($bc, $bci) & 7 & 0xe000);
+                                    unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_READ_PROPERTY << 3) | primitiveTagBits));
+                                }
+                            }
+                        }
+                        if (s4_ != null) {
+                            lock.unlock();
+                            hasLock = false;
+                            return SLReadPropertyNode.readObject($child0Value, $child1Value, node__2, bci__2, s4_.objects_, s4_.asMember_);
+                        }
+                    }
+                }
+                {
+                    InteropLibrary readObject1_objects__ = null;
+                    int readObject1_bci__ = 0;
+                    Node readObject1_node__ = null;
+                    {
+                        EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
+                        Node prev_ = encapsulating_.set($this);
+                        try {
+                            if ((!(SLReadPropertyNode.isSLObject($child0Value)))) {
+                                readObject1_objects__ = (INTEROP_LIBRARY_.getUncached());
+                                if ((readObject1_objects__.hasMembers($child0Value))) {
+                                    readObject1_node__ = ($this);
+                                    readObject1_bci__ = ($bci);
+                                    $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_CHILDREN_OFFSET) + 0) + 11] = $this.insertAccessor((SLToMemberNodeGen.create()));
+                                    $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b100 /* add-exclude readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
+                                    $children[childArrayOffset_ + 8] = null;
+                                    state_0 = (short) (state_0 & 0xffffffef /* remove-state_0 readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
+                                    $bc[$bci + C_SL_READ_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100000 /* add-state_0 readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
+                                    short primitiveTagBits = (short) (unsafeFromBytecode($bc, $bci) & 7 & 0xe000);
+                                    unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_READ_PROPERTY << 3) | primitiveTagBits));
+                                    lock.unlock();
+                                    hasLock = false;
+                                    return SLReadPropertyNode.readObject($child0Value, $child1Value, readObject1_node__, readObject1_bci__, readObject1_objects__, ((SLToMemberNode) UFA.unsafeObjectArrayRead($children, childArrayOffset_ + 11)));
+                                }
+                            }
+                        } finally {
+                            encapsulating_.set(prev_);
+                        }
+                    }
+                }
+                throw new UnsupportedSpecializationException($this, new Node[] {null, null}, $child0Value, $child1Value);
+            } finally {
+                if (hasLock) {
+                    lock.unlock();
+                }
+            }
+        }
+
+        private static boolean SLSub_fallbackGuard__(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+            if (SLTypesGen.isImplicitSLBigNumber($child0Value) && SLTypesGen.isImplicitSLBigNumber($child1Value)) {
+                return false;
+            }
+            return true;
+        }
+
+        private static Object SLSub_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_SUB_STATE_BITS_OFFSET + 0);
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b110) == 0 /* only-active subLong(long, long) */ && ((state_0 & 0b111) != 0  /* is-not subLong(long, long) && sub(SLBigNumber, SLBigNumber) && typeError(Object, Object, Node, int) */)) {
+                return SLSub_SLSub_execute__long_long0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else {
+                return SLSub_SLSub_execute__generic1_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            }
+        }
+
+        private static Object SLSub_SLSub_execute__long_long0_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_SUB_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Object $child1Value = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_SUB_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+                return SLSub_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult(), $child1Value);
+            }
+            long $child1Value_;
+            try {
+                $child1Value_ = expectLong($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_SUB_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLSub_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, ex.getResult());
+            }
+            assert (state_0 & 0b1) != 0 /* is-state_0 subLong(long, long) */;
+            try {
+                return SLSubNode.subLong($child0Value_, $child1Value_);
+            } catch (ArithmeticException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Lock lock = $this.getLockAccessor();
+                lock.lock();
+                try {
+                    $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude subLong(long, long) */);
+                    $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] & 0xfffffffe /* remove-state_0 subLong(long, long) */);
+                } finally {
+                    lock.unlock();
+                }
+                return SLSub_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
+            }
+        }
+
+        private static Object SLSub_SLSub_execute__generic1_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_SUB_POP_INDEXED_OFFSET + 0) & 0xff));
+            Object $child1Value_ = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_SUB_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            if ((state_0 & 0b1) != 0 /* is-state_0 subLong(long, long) */ && $child0Value_ instanceof Long) {
+                long $child0Value__ = (long) $child0Value_;
+                if ($child1Value_ instanceof Long) {
+                    long $child1Value__ = (long) $child1Value_;
+                    try {
+                        return SLSubNode.subLong($child0Value__, $child1Value__);
+                    } catch (ArithmeticException ex) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        Lock lock = $this.getLockAccessor();
+                        lock.lock();
+                        try {
+                            $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude subLong(long, long) */);
+                            $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] & 0xfffffffe /* remove-state_0 subLong(long, long) */);
+                        } finally {
+                            lock.unlock();
+                        }
+                        return SLSub_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value__, $child1Value__);
+                    }
+                }
+            }
+            if ((state_0 & 0b10) != 0 /* is-state_0 sub(SLBigNumber, SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000) >>> 3 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000) >>> 3 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b1100000) >>> 5 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_)) {
+                    SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b1100000) >>> 5 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_);
+                    return SLSubNode.sub($child0Value__, $child1Value__);
+                }
+            }
+            if ((state_0 & 0b100) != 0 /* is-state_0 typeError(Object, Object, Node, int) */) {
+                {
+                    Node fallback_node__ = ($this);
+                    int fallback_bci__ = ($bci);
+                    if (SLSub_fallbackGuard__($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_)) {
+                        return SLSubNode.typeError($child0Value_, $child1Value_, fallback_node__, fallback_bci__);
+                    }
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLSub_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
+        }
+
+        private static long SLSub_executeLong_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) throws UnexpectedResultException {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_SUB_STATE_BITS_OFFSET + 0);
+            if ((state_0 & 0b100) != 0 /* is-state_0 typeError(Object, Object, Node, int) */) {
+                return SLTypesGen.expectLong(SLSub_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            }
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_SUB_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Object $child1Value = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_SUB_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+                return SLTypesGen.expectLong(SLSub_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult(), $child1Value));
+            }
+            long $child1Value_;
+            try {
+                $child1Value_ = expectLong($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_SUB_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLTypesGen.expectLong(SLSub_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, ex.getResult()));
+            }
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b1) != 0 /* is-state_0 subLong(long, long) */) {
+                try {
+                    return SLSubNode.subLong($child0Value_, $child1Value_);
+                } catch (ArithmeticException ex) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    Lock lock = $this.getLockAccessor();
+                    lock.lock();
+                    try {
+                        $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude subLong(long, long) */);
+                        $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] & 0xfffffffe /* remove-state_0 subLong(long, long) */);
+                    } finally {
+                        lock.unlock();
+                    }
+                    return SLTypesGen.expectLong(SLSub_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_));
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLTypesGen.expectLong(SLSub_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_));
+        }
+
+        private static Object SLSub_executeAndSpecialize_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Lock lock = $this.getLockAccessor();
+            boolean hasLock = true;
+            lock.lock();
+            try {
+                short state_0 = unsafeFromBytecode($bc, $bci + C_SL_SUB_STATE_BITS_OFFSET + 0);
+                short exclude = unsafeFromBytecode($bc, $bci + C_SL_SUB_STATE_BITS_OFFSET + 1);
+                if ((exclude) == 0 /* is-not-exclude subLong(long, long) */ && $child0Value instanceof Long) {
+                    long $child0Value_ = (long) $child0Value;
+                    if ($child1Value instanceof Long) {
+                        long $child1Value_ = (long) $child1Value;
+                        $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1 /* add-state_0 subLong(long, long) */);
+                        try {
+                            lock.unlock();
+                            hasLock = false;
+                            return SLSubNode.subLong($child0Value_, $child1Value_);
+                        } catch (ArithmeticException ex) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            lock.lock();
+                            try {
+                                $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] = (short) ($bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] | 0b1 /* add-exclude subLong(long, long) */);
+                                $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] & 0xfffffffe /* remove-state_0 subLong(long, long) */);
+                            } finally {
+                                lock.unlock();
+                            }
+                            return SLSub_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
+                        }
+                    }
+                }
+                {
+                    int sLBigNumberCast0;
+                    if ((sLBigNumberCast0 = SLTypesGen.specializeImplicitSLBigNumber($child0Value)) != 0) {
+                        SLBigNumber $child0Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast0, $child0Value);
+                        int sLBigNumberCast1;
+                        if ((sLBigNumberCast1 = SLTypesGen.specializeImplicitSLBigNumber($child1Value)) != 0) {
+                            SLBigNumber $child1Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast1, $child1Value);
+                            $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /* add-exclude subLong(long, long) */);
+                            state_0 = (short) (state_0 & 0xfffffffe /* remove-state_0 subLong(long, long) */);
+                            state_0 = (short) (state_0 | (sLBigNumberCast0 << 3) /* set-implicit-state_0 0:SLBigNumber */);
+                            state_0 = (short) (state_0 | (sLBigNumberCast1 << 5) /* set-implicit-state_0 1:SLBigNumber */);
+                            $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 sub(SLBigNumber, SLBigNumber) */);
+                            lock.unlock();
+                            hasLock = false;
+                            return SLSubNode.sub($child0Value_, $child1Value_);
+                        }
+                    }
+                }
+                {
+                    int fallback_bci__ = 0;
+                    Node fallback_node__ = null;
+                    fallback_node__ = ($this);
+                    fallback_bci__ = ($bci);
+                    $bc[$bci + C_SL_SUB_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 typeError(Object, Object, Node, int) */);
+                    lock.unlock();
+                    hasLock = false;
+                    return SLSubNode.typeError($child0Value, $child1Value, fallback_node__, fallback_bci__);
+                }
+            } finally {
+                if (hasLock) {
+                    lock.unlock();
+                }
+            }
+        }
+
+        @SuppressWarnings("static-method")
+        @TruffleBoundary
+        private static Object SLWriteProperty_writeArray1Boundary_(SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value, Object $child1Value, Object $child2Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            {
+                Node writeArray1_node__ = ($this);
+                int writeArray1_bci__ = ($bci);
+                InteropLibrary writeArray1_arrays__ = (INTEROP_LIBRARY_.getUncached());
+                InteropLibrary writeArray1_numbers__ = (INTEROP_LIBRARY_.getUncached());
+                return SLWritePropertyNode.writeArray($child0Value, $child1Value, $child2Value, writeArray1_node__, writeArray1_bci__, writeArray1_arrays__, writeArray1_numbers__);
+            }
+        }
+
+        @SuppressWarnings("static-method")
+        @TruffleBoundary
+        private static Object SLWriteProperty_writeSLObject1Boundary_(SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, SLObject $child0Value_, Object $child1Value, Object $child2Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            {
+                DynamicObjectLibrary writeSLObject1_objectLibrary__ = (DYNAMIC_OBJECT_LIBRARY_.getUncached($child0Value_));
+                SLToTruffleStringNode writeSLObject1_toTruffleStringNode__ = ((SLToTruffleStringNode) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 6));
+                if (writeSLObject1_toTruffleStringNode__ != null) {
+                    return SLWritePropertyNode.writeSLObject($child0Value_, $child1Value, $child2Value, writeSLObject1_objectLibrary__, writeSLObject1_toTruffleStringNode__);
+                }
+                throw BoundaryCallFailedException.INSTANCE;
+            }
+        }
+
+        @SuppressWarnings("static-method")
+        @TruffleBoundary
+        private static Object SLWriteProperty_writeObject1Boundary_(SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value, Object $child1Value, Object $child2Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
+            Node prev_ = encapsulating_.set($this);
+            try {
+                {
+                    Node writeObject1_node__ = ($this);
+                    int writeObject1_bci__ = ($bci);
+                    InteropLibrary writeObject1_objectLibrary__ = (INTEROP_LIBRARY_.getUncached($child0Value));
+                    SLToMemberNode writeObject1_asMember__ = ((SLToMemberNode) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 10));
+                    if (writeObject1_asMember__ != null) {
+                        return SLWritePropertyNode.writeObject($child0Value, $child1Value, $child2Value, writeObject1_node__, writeObject1_bci__, writeObject1_objectLibrary__, writeObject1_asMember__);
+                    }
+                    throw BoundaryCallFailedException.INSTANCE;
+                }
+            } finally {
+                encapsulating_.set(prev_);
+            }
+        }
+
+        @ExplodeLoop
+        private static Object SLWriteProperty_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0);
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 3, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_POP_INDEXED_OFFSET + 0) & 0xff));
+            Object $child1Value_ = expectObject($frame, $sp - 2, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            Object $child2Value_ = expectObject($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_POP_INDEXED_OFFSET + 1) & 0xff));
+            if (state_0 != 0 /* is-state_0 writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) || writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) || writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) || writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) || writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) || writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
+                if ((state_0 & 0b11) != 0 /* is-state_0 writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) || writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) */) {
+                    if ((state_0 & 0b1) != 0 /* is-state_0 writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) */) {
+                        SLWriteProperty_WriteArray0Data s0_ = ((SLWriteProperty_WriteArray0Data) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 0));
+                        while (s0_ != null) {
+                            if ((s0_.arrays_.accepts($child0Value_)) && (s0_.numbers_.accepts($child1Value_)) && (s0_.arrays_.hasArrayElements($child0Value_))) {
+                                Node node__ = ($this);
+                                int bci__ = ($bci);
+                                return SLWritePropertyNode.writeArray($child0Value_, $child1Value_, $child2Value_, node__, bci__, s0_.arrays_, s0_.numbers_);
+                            }
+                            s0_ = s0_.next_;
+                        }
+                    }
+                    if ((state_0 & 0b10) != 0 /* is-state_0 writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) */) {
+                        EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
+                        Node prev_ = encapsulating_.set($this);
+                        try {
+                            {
+                                InteropLibrary writeArray1_arrays__ = (INTEROP_LIBRARY_.getUncached());
+                                if ((writeArray1_arrays__.hasArrayElements($child0Value_))) {
+                                    try {
+                                        return SLWriteProperty_writeArray1Boundary0_($this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value_, $child1Value_, $child2Value_);
+                                    } catch (BoundaryCallFailedException ex) {
+                                    }
+                                }
+                            }
+                        } finally {
+                            encapsulating_.set(prev_);
+                        }
+                    }
+                }
+                if ((state_0 & 0b1100) != 0 /* is-state_0 writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) || writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */ && $child0Value_ instanceof SLObject) {
+                    SLObject $child0Value__ = (SLObject) $child0Value_;
+                    if ((state_0 & 0b100) != 0 /* is-state_0 writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */) {
+                        SLWriteProperty_WriteSLObject0Data s2_ = ((SLWriteProperty_WriteSLObject0Data) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 4));
+                        while (s2_ != null) {
+                            if ((s2_.objectLibrary_.accepts($child0Value__))) {
+                                return SLWritePropertyNode.writeSLObject($child0Value__, $child1Value_, $child2Value_, s2_.objectLibrary_, s2_.toTruffleStringNode_);
+                            }
+                            s2_ = s2_.next_;
+                        }
+                    }
+                    if ((state_0 & 0b1000) != 0 /* is-state_0 writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */) {
+                        try {
+                            return SLWriteProperty_writeSLObject1Boundary1_($this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value__, $child1Value_, $child2Value_);
+                        } catch (BoundaryCallFailedException ex) {
+                        }
+                    }
+                }
+                if ((state_0 & 0b110000) != 0 /* is-state_0 writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) || writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
+                    if ((state_0 & 0b10000) != 0 /* is-state_0 writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
+                        SLWriteProperty_WriteObject0Data s4_ = ((SLWriteProperty_WriteObject0Data) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 7));
+                        while (s4_ != null) {
+                            if ((s4_.objectLibrary_.accepts($child0Value_)) && (!(SLWritePropertyNode.isSLObject($child0Value_)))) {
+                                Node node__1 = ($this);
+                                int bci__1 = ($bci);
+                                return SLWritePropertyNode.writeObject($child0Value_, $child1Value_, $child2Value_, node__1, bci__1, s4_.objectLibrary_, s4_.asMember_);
+                            }
+                            s4_ = s4_.next_;
+                        }
+                    }
+                    if ((state_0 & 0b100000) != 0 /* is-state_0 writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
+                        if ((!(SLWritePropertyNode.isSLObject($child0Value_)))) {
+                            try {
+                                return SLWriteProperty_writeObject1Boundary2_($this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value_, $child1Value_, $child2Value_);
+                            } catch (BoundaryCallFailedException ex) {
+                            }
+                        }
+                    }
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLWriteProperty_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_, $child2Value_);
+        }
+
+        @SuppressWarnings("static-method")
+        @TruffleBoundary
+        private static Object SLWriteProperty_writeArray1Boundary0_(SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value_, Object $child1Value_, Object $child2Value_) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            {
+                Node writeArray1_node__ = ($this);
+                int writeArray1_bci__ = ($bci);
+                InteropLibrary writeArray1_arrays__ = (INTEROP_LIBRARY_.getUncached());
+                InteropLibrary writeArray1_numbers__ = (INTEROP_LIBRARY_.getUncached());
+                return SLWritePropertyNode.writeArray($child0Value_, $child1Value_, $child2Value_, writeArray1_node__, writeArray1_bci__, writeArray1_arrays__, writeArray1_numbers__);
+            }
+        }
+
+        @SuppressWarnings("static-method")
+        @TruffleBoundary
+        private static Object SLWriteProperty_writeSLObject1Boundary1_(SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, SLObject $child0Value__, Object $child1Value_, Object $child2Value_) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            {
+                DynamicObjectLibrary writeSLObject1_objectLibrary__ = (DYNAMIC_OBJECT_LIBRARY_.getUncached($child0Value__));
+                SLToTruffleStringNode writeSLObject1_toTruffleStringNode__ = ((SLToTruffleStringNode) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 6));
+                if (writeSLObject1_toTruffleStringNode__ != null) {
+                    return SLWritePropertyNode.writeSLObject($child0Value__, $child1Value_, $child2Value_, writeSLObject1_objectLibrary__, writeSLObject1_toTruffleStringNode__);
+                }
+                throw BoundaryCallFailedException.INSTANCE;
+            }
+        }
+
+        @SuppressWarnings("static-method")
+        @TruffleBoundary
+        private static Object SLWriteProperty_writeObject1Boundary2_(SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value_, Object $child1Value_, Object $child2Value_) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
+            Node prev_ = encapsulating_.set($this);
+            try {
+                {
+                    Node writeObject1_node__ = ($this);
+                    int writeObject1_bci__ = ($bci);
+                    InteropLibrary writeObject1_objectLibrary__ = (INTEROP_LIBRARY_.getUncached($child0Value_));
+                    SLToMemberNode writeObject1_asMember__ = ((SLToMemberNode) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 10));
+                    if (writeObject1_asMember__ != null) {
+                        return SLWritePropertyNode.writeObject($child0Value_, $child1Value_, $child2Value_, writeObject1_node__, writeObject1_bci__, writeObject1_objectLibrary__, writeObject1_asMember__);
+                    }
+                    throw BoundaryCallFailedException.INSTANCE;
+                }
+            } finally {
+                encapsulating_.set(prev_);
+            }
+        }
+
+        private static Object SLWriteProperty_executeAndSpecialize_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value, Object $child1Value, Object $child2Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Lock lock = $this.getLockAccessor();
+            boolean hasLock = true;
+            lock.lock();
+            try {
+                short state_0 = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0);
+                short exclude = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 1);
+                {
+                    int bci__ = 0;
+                    Node node__ = null;
+                    if (((exclude & 0b1)) == 0 /* is-not-exclude writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) */) {
+                        int count0_ = 0;
+                        SLWriteProperty_WriteArray0Data s0_ = ((SLWriteProperty_WriteArray0Data) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 0));
+                        if ((state_0 & 0b1) != 0 /* is-state_0 writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) */) {
+                            while (s0_ != null) {
+                                if ((s0_.arrays_.accepts($child0Value)) && (s0_.numbers_.accepts($child1Value)) && (s0_.arrays_.hasArrayElements($child0Value))) {
+                                    node__ = ($this);
+                                    bci__ = ($bci);
+                                    break;
+                                }
+                                s0_ = s0_.next_;
+                                count0_++;
+                            }
+                        }
+                        if (s0_ == null) {
+                            {
+                                InteropLibrary arrays__ = $this.insertAccessor((INTEROP_LIBRARY_.create($child0Value)));
+                                // assert (s0_.arrays_.accepts($child0Value));
+                                // assert (s0_.numbers_.accepts($child1Value));
+                                if ((arrays__.hasArrayElements($child0Value)) && count0_ < (SLWritePropertyNode.LIBRARY_LIMIT)) {
+                                    s0_ = $this.insertAccessor(new SLWriteProperty_WriteArray0Data(((SLWriteProperty_WriteArray0Data) UFA.unsafeObjectArrayRead($children, childArrayOffset_ + 0))));
+                                    node__ = ($this);
+                                    bci__ = ($bci);
+                                    s0_.arrays_ = s0_.insertAccessor(arrays__);
+                                    s0_.numbers_ = s0_.insertAccessor((INTEROP_LIBRARY_.create($child1Value)));
+                                    VarHandle.storeStoreFence();
+                                    $children[childArrayOffset_ + 0] = s0_;
+                                    $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1 /* add-state_0 writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
+                                }
+                            }
+                        }
+                        if (s0_ != null) {
+                            lock.unlock();
+                            hasLock = false;
+                            return SLWritePropertyNode.writeArray($child0Value, $child1Value, $child2Value, node__, bci__, s0_.arrays_, s0_.numbers_);
+                        }
+                    }
+                }
+                {
+                    InteropLibrary writeArray1_numbers__ = null;
+                    InteropLibrary writeArray1_arrays__ = null;
+                    int writeArray1_bci__ = 0;
+                    Node writeArray1_node__ = null;
+                    {
+                        EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
+                        Node prev_ = encapsulating_.set($this);
+                        try {
+                            {
+                                writeArray1_arrays__ = (INTEROP_LIBRARY_.getUncached());
+                                if ((writeArray1_arrays__.hasArrayElements($child0Value))) {
+                                    writeArray1_node__ = ($this);
+                                    writeArray1_bci__ = ($bci);
+                                    writeArray1_numbers__ = (INTEROP_LIBRARY_.getUncached());
+                                    $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /* add-exclude writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
+                                    $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 0] = null;
+                                    state_0 = (short) (state_0 & 0xfffffffe /* remove-state_0 writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
+                                    $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
+                                    lock.unlock();
+                                    hasLock = false;
+                                    return SLWritePropertyNode.writeArray($child0Value, $child1Value, $child2Value, writeArray1_node__, writeArray1_bci__, writeArray1_arrays__, writeArray1_numbers__);
+                                }
+                            }
+                        } finally {
+                            encapsulating_.set(prev_);
+                        }
+                    }
+                }
+                if ($child0Value instanceof SLObject) {
+                    SLObject $child0Value_ = (SLObject) $child0Value;
+                    if (((exclude & 0b10)) == 0 /* is-not-exclude writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */) {
+                        int count2_ = 0;
+                        SLWriteProperty_WriteSLObject0Data s2_ = ((SLWriteProperty_WriteSLObject0Data) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 4));
+                        if ((state_0 & 0b100) != 0 /* is-state_0 writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */) {
+                            while (s2_ != null) {
+                                if ((s2_.objectLibrary_.accepts($child0Value_))) {
+                                    break;
+                                }
+                                s2_ = s2_.next_;
+                                count2_++;
+                            }
+                        }
+                        if (s2_ == null) {
+                            // assert (s2_.objectLibrary_.accepts($child0Value_));
+                            if (count2_ < (SLWritePropertyNode.LIBRARY_LIMIT)) {
+                                s2_ = $this.insertAccessor(new SLWriteProperty_WriteSLObject0Data(((SLWriteProperty_WriteSLObject0Data) UFA.unsafeObjectArrayRead($children, childArrayOffset_ + 4))));
+                                s2_.objectLibrary_ = s2_.insertAccessor((DYNAMIC_OBJECT_LIBRARY_.create($child0Value_)));
+                                s2_.toTruffleStringNode_ = s2_.insertAccessor((SLToTruffleStringNodeGen.create()));
+                                VarHandle.storeStoreFence();
+                                $children[childArrayOffset_ + 4] = s2_;
+                                $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */);
+                            }
+                        }
+                        if (s2_ != null) {
+                            lock.unlock();
+                            hasLock = false;
+                            return SLWritePropertyNode.writeSLObject($child0Value_, $child1Value, $child2Value, s2_.objectLibrary_, s2_.toTruffleStringNode_);
+                        }
+                    }
+                    {
+                        DynamicObjectLibrary writeSLObject1_objectLibrary__ = null;
+                        writeSLObject1_objectLibrary__ = (DYNAMIC_OBJECT_LIBRARY_.getUncached($child0Value_));
+                        $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 6] = $this.insertAccessor((SLToTruffleStringNodeGen.create()));
+                        $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b10 /* add-exclude writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */);
+                        $children[childArrayOffset_ + 4] = null;
+                        state_0 = (short) (state_0 & 0xfffffffb /* remove-state_0 writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */);
+                        $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /* add-state_0 writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */);
+                        lock.unlock();
+                        hasLock = false;
+                        return SLWritePropertyNode.writeSLObject($child0Value_, $child1Value, $child2Value, writeSLObject1_objectLibrary__, ((SLToTruffleStringNode) UFA.unsafeObjectArrayRead($children, childArrayOffset_ + 6)));
+                    }
+                }
+                {
+                    int bci__1 = 0;
+                    Node node__1 = null;
+                    if (((exclude & 0b100)) == 0 /* is-not-exclude writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
+                        int count4_ = 0;
+                        SLWriteProperty_WriteObject0Data s4_ = ((SLWriteProperty_WriteObject0Data) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 7));
+                        if ((state_0 & 0b10000) != 0 /* is-state_0 writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */) {
+                            while (s4_ != null) {
+                                if ((s4_.objectLibrary_.accepts($child0Value)) && (!(SLWritePropertyNode.isSLObject($child0Value)))) {
+                                    node__1 = ($this);
+                                    bci__1 = ($bci);
+                                    break;
+                                }
+                                s4_ = s4_.next_;
+                                count4_++;
+                            }
+                        }
+                        if (s4_ == null) {
+                            if ((!(SLWritePropertyNode.isSLObject($child0Value))) && count4_ < (SLWritePropertyNode.LIBRARY_LIMIT)) {
+                                // assert (s4_.objectLibrary_.accepts($child0Value));
+                                s4_ = $this.insertAccessor(new SLWriteProperty_WriteObject0Data(((SLWriteProperty_WriteObject0Data) UFA.unsafeObjectArrayRead($children, childArrayOffset_ + 7))));
+                                node__1 = ($this);
+                                bci__1 = ($bci);
+                                s4_.objectLibrary_ = s4_.insertAccessor((INTEROP_LIBRARY_.create($child0Value)));
+                                s4_.asMember_ = s4_.insertAccessor((SLToMemberNodeGen.create()));
+                                VarHandle.storeStoreFence();
+                                $children[childArrayOffset_ + 7] = s4_;
+                                $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10000 /* add-state_0 writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
+                            }
+                        }
+                        if (s4_ != null) {
+                            lock.unlock();
+                            hasLock = false;
+                            return SLWritePropertyNode.writeObject($child0Value, $child1Value, $child2Value, node__1, bci__1, s4_.objectLibrary_, s4_.asMember_);
+                        }
+                    }
+                }
+                {
+                    InteropLibrary writeObject1_objectLibrary__ = null;
+                    int writeObject1_bci__ = 0;
+                    Node writeObject1_node__ = null;
+                    {
+                        EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
+                        Node prev_ = encapsulating_.set($this);
+                        try {
+                            if ((!(SLWritePropertyNode.isSLObject($child0Value)))) {
+                                writeObject1_node__ = ($this);
+                                writeObject1_bci__ = ($bci);
+                                writeObject1_objectLibrary__ = (INTEROP_LIBRARY_.getUncached($child0Value));
+                                $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_WRITE_PROPERTY_CHILDREN_OFFSET) + 0) + 10] = $this.insertAccessor((SLToMemberNodeGen.create()));
+                                $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b100 /* add-exclude writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
+                                $children[childArrayOffset_ + 7] = null;
+                                state_0 = (short) (state_0 & 0xffffffef /* remove-state_0 writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
+                                $bc[$bci + C_SL_WRITE_PROPERTY_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100000 /* add-state_0 writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
+                                lock.unlock();
+                                hasLock = false;
+                                return SLWritePropertyNode.writeObject($child0Value, $child1Value, $child2Value, writeObject1_node__, writeObject1_bci__, writeObject1_objectLibrary__, ((SLToMemberNode) UFA.unsafeObjectArrayRead($children, childArrayOffset_ + 10)));
+                            }
+                        } finally {
+                            encapsulating_.set(prev_);
+                        }
+                    }
+                }
+                throw new UnsupportedSpecializationException($this, new Node[] {null, null, null}, $child0Value, $child1Value, $child2Value);
+            } finally {
+                if (hasLock) {
+                    lock.unlock();
+                }
+            }
+        }
+
+        @SuppressWarnings("static-method")
+        @TruffleBoundary
+        private static Object SLUnbox_fromForeign1Boundary_(SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
+            Node prev_ = encapsulating_.set($this);
+            try {
+                {
+                    InteropLibrary fromForeign1_interop__ = (INTEROP_LIBRARY_.getUncached($child0Value));
+                    return SLUnboxNode.fromForeign($child0Value, fromForeign1_interop__);
+                }
+            } finally {
+                encapsulating_.set(prev_);
+            }
+        }
+
+        private static Object SLUnbox_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0);
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b111111011) == 0 /* only-active fromBoolean(boolean) */ && ((state_0 & 0b111111111) != 0  /* is-not fromString(String, FromJavaStringNode) && fromTruffleString(TruffleString) && fromBoolean(boolean) && fromLong(long) && fromBigNumber(SLBigNumber) && fromFunction(SLFunction) && fromFunction(SLNull) && fromForeign(Object, InteropLibrary) && fromForeign(Object, InteropLibrary) */)) {
+                return SLUnbox_SLUnbox_execute__boolean0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else if ((state_0 & 0b111110111) == 0 /* only-active fromLong(long) */ && ((state_0 & 0b111111111) != 0  /* is-not fromString(String, FromJavaStringNode) && fromTruffleString(TruffleString) && fromBoolean(boolean) && fromLong(long) && fromBigNumber(SLBigNumber) && fromFunction(SLFunction) && fromFunction(SLNull) && fromForeign(Object, InteropLibrary) && fromForeign(Object, InteropLibrary) */)) {
+                return SLUnbox_SLUnbox_execute__long1_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else {
+                return SLUnbox_SLUnbox_execute__generic2_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            }
+        }
+
+        private static Object SLUnbox_SLUnbox_execute__boolean0_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            boolean $child0Value_;
+            try {
+                $child0Value_ = expectBoolean($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult());
+            }
+            assert (state_0 & 0b100) != 0 /* is-state_0 fromBoolean(boolean) */;
+            return SLUnboxNode.fromBoolean($child0Value_);
+        }
+
+        private static Object SLUnbox_SLUnbox_execute__long1_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult());
+            }
+            assert (state_0 & 0b1000) != 0 /* is-state_0 fromLong(long) */;
+            return SLUnboxNode.fromLong($child0Value_);
+        }
+
+        @SuppressWarnings("static-method")
+        @TruffleBoundary
+        private static Object SLUnbox_fromForeign1Boundary0_(SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value_) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
+            Node prev_ = encapsulating_.set($this);
+            try {
+                {
+                    InteropLibrary fromForeign1_interop__ = (INTEROP_LIBRARY_.getUncached($child0Value_));
+                    return SLUnboxNode.fromForeign($child0Value_, fromForeign1_interop__);
+                }
+            } finally {
+                encapsulating_.set(prev_);
+            }
+        }
+
+        @ExplodeLoop
+        private static Object SLUnbox_SLUnbox_execute__generic2_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff));
+            if ((state_0 & 0b1) != 0 /* is-state_0 fromString(String, FromJavaStringNode) */ && $child0Value_ instanceof String) {
+                String $child0Value__ = (String) $child0Value_;
+                FromJavaStringNode fromString_fromJavaStringNode__ = ((FromJavaStringNode) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_CHILDREN_OFFSET) + 0) + 0));
+                if (fromString_fromJavaStringNode__ != null) {
+                    return SLUnboxNode.fromString($child0Value__, fromString_fromJavaStringNode__);
+                }
+            }
+            if ((state_0 & 0b10) != 0 /* is-state_0 fromTruffleString(TruffleString) */ && $child0Value_ instanceof TruffleString) {
+                TruffleString $child0Value__ = (TruffleString) $child0Value_;
+                return SLUnboxNode.fromTruffleString($child0Value__);
+            }
+            if ((state_0 & 0b100) != 0 /* is-state_0 fromBoolean(boolean) */ && $child0Value_ instanceof Boolean) {
+                boolean $child0Value__ = (boolean) $child0Value_;
+                return SLUnboxNode.fromBoolean($child0Value__);
+            }
+            if ((state_0 & 0b1000) != 0 /* is-state_0 fromLong(long) */ && $child0Value_ instanceof Long) {
+                long $child0Value__ = (long) $child0Value_;
+                return SLUnboxNode.fromLong($child0Value__);
+            }
+            if ((state_0 & 0b10000) != 0 /* is-state_0 fromBigNumber(SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000000) >>> 9 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000000) >>> 9 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                return SLUnboxNode.fromBigNumber($child0Value__);
+            }
+            if ((state_0 & 0b100000) != 0 /* is-state_0 fromFunction(SLFunction) */ && $child0Value_ instanceof SLFunction) {
+                SLFunction $child0Value__ = (SLFunction) $child0Value_;
+                return SLUnboxNode.fromFunction($child0Value__);
+            }
+            if ((state_0 & 0b1000000) != 0 /* is-state_0 fromFunction(SLNull) */ && SLTypes.isSLNull($child0Value_)) {
+                SLNull $child0Value__ = SLTypes.asSLNull($child0Value_);
+                return SLUnboxNode.fromFunction($child0Value__);
+            }
+            if ((state_0 & 0b110000000) != 0 /* is-state_0 fromForeign(Object, InteropLibrary) || fromForeign(Object, InteropLibrary) */) {
+                if ((state_0 & 0b10000000) != 0 /* is-state_0 fromForeign(Object, InteropLibrary) */) {
+                    SLUnbox_FromForeign0Data s7_ = ((SLUnbox_FromForeign0Data) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_CHILDREN_OFFSET) + 0) + 1));
+                    while (s7_ != null) {
+                        if ((s7_.interop_.accepts($child0Value_))) {
+                            return SLUnboxNode.fromForeign($child0Value_, s7_.interop_);
+                        }
+                        s7_ = s7_.next_;
+                    }
+                }
+                if ((state_0 & 0b100000000) != 0 /* is-state_0 fromForeign(Object, InteropLibrary) */) {
+                    try {
+                        return SLUnbox_fromForeign1Boundary0_($this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value_);
+                    } catch (BoundaryCallFailedException ex) {
+                    }
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_);
+        }
+
+        private static boolean SLUnbox_executeBoolean_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) throws UnexpectedResultException {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0);
+            if ((state_0 & 0b110000000) != 0 /* is-state_0 fromForeign(Object, InteropLibrary) || fromForeign(Object, InteropLibrary) */) {
+                return SLTypesGen.expectBoolean(SLUnbox_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            }
+            boolean $child0Value_;
+            try {
+                $child0Value_ = expectBoolean($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLTypesGen.expectBoolean(SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult()));
+            }
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b100) != 0 /* is-state_0 fromBoolean(boolean) */) {
+                return SLUnboxNode.fromBoolean($child0Value_);
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLTypesGen.expectBoolean(SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_));
+        }
+
+        private static long SLUnbox_executeLong_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) throws UnexpectedResultException {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0);
+            if ((state_0 & 0b110000000) != 0 /* is-state_0 fromForeign(Object, InteropLibrary) || fromForeign(Object, InteropLibrary) */) {
+                return SLTypesGen.expectLong(SLUnbox_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            }
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLTypesGen.expectLong(SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult()));
+            }
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b1000) != 0 /* is-state_0 fromLong(long) */) {
+                return SLUnboxNode.fromLong($child0Value_);
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLTypesGen.expectLong(SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_));
+        }
+
+        private static Object SLUnbox_executeAndSpecialize_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Lock lock = $this.getLockAccessor();
+            boolean hasLock = true;
+            lock.lock();
+            try {
+                short state_0 = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0);
+                short exclude = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_STATE_BITS_OFFSET + 1);
+                if ($child0Value instanceof String) {
+                    String $child0Value_ = (String) $child0Value;
+                    $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_CHILDREN_OFFSET) + 0) + 0] = $this.insertAccessor((FromJavaStringNode.create()));
+                    $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1 /* add-state_0 fromString(String, FromJavaStringNode) */);
+                    short primitiveTagBits = (short) (unsafeFromBytecode($bc, $bci) & 7 & 0xe000);
+                    unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | primitiveTagBits));
+                    lock.unlock();
+                    hasLock = false;
+                    return SLUnboxNode.fromString($child0Value_, ((FromJavaStringNode) UFA.unsafeObjectArrayRead($children, childArrayOffset_ + 0)));
+                }
+                if ($child0Value instanceof TruffleString) {
+                    TruffleString $child0Value_ = (TruffleString) $child0Value;
+                    $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 fromTruffleString(TruffleString) */);
+                    short primitiveTagBits = (short) (unsafeFromBytecode($bc, $bci) & 7 & 0xe000);
+                    unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | primitiveTagBits));
+                    lock.unlock();
+                    hasLock = false;
+                    return SLUnboxNode.fromTruffleString($child0Value_);
+                }
+                if ($child0Value instanceof Boolean) {
+                    boolean $child0Value_ = (boolean) $child0Value;
+                    $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 fromBoolean(boolean) */);
+                    short primitiveTagBits = (short) (unsafeFromBytecode($bc, $bci) & 7 & 0xe000);
+                    if ((state_0 & 0b111111111) == 0b100/* is-exact-state_0 fromBoolean(boolean) */) {
+                        unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN << 3) | primitiveTagBits));
+                    } else {
+                        unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | primitiveTagBits));
+                    }
+                    lock.unlock();
+                    hasLock = false;
+                    return SLUnboxNode.fromBoolean($child0Value_);
+                }
+                if ($child0Value instanceof Long) {
+                    long $child0Value_ = (long) $child0Value;
+                    $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000 /* add-state_0 fromLong(long) */);
+                    short primitiveTagBits = (short) (unsafeFromBytecode($bc, $bci) & 7 & 0xe000);
+                    if ((state_0 & 0b111111111) == 0b11000/* is-exact-state_0 fromLong(long)&&fromBigNumber(SLBigNumber) */) {
+                        unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG << 3) | primitiveTagBits));
+                    } else if ((state_0 & 0b111111111) == 0b1000/* is-exact-state_0 fromLong(long) */) {
+                        unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX_Q_FROM_LONG << 3) | primitiveTagBits));
+                    } else {
+                        unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | primitiveTagBits));
+                    }
+                    lock.unlock();
+                    hasLock = false;
+                    return SLUnboxNode.fromLong($child0Value_);
+                }
+                {
+                    int sLBigNumberCast0;
+                    if ((sLBigNumberCast0 = SLTypesGen.specializeImplicitSLBigNumber($child0Value)) != 0) {
+                        SLBigNumber $child0Value_ = SLTypesGen.asImplicitSLBigNumber(sLBigNumberCast0, $child0Value);
+                        state_0 = (short) (state_0 | (sLBigNumberCast0 << 9) /* set-implicit-state_0 0:SLBigNumber */);
+                        $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10000 /* add-state_0 fromBigNumber(SLBigNumber) */);
+                        short primitiveTagBits = (short) (unsafeFromBytecode($bc, $bci) & 7 & 0xe000);
+                        if ((state_0 & 0b111111111) == 0b10000/* is-exact-state_0 fromBigNumber(SLBigNumber) */) {
+                            unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER << 3) | primitiveTagBits));
+                        } else if ((state_0 & 0b111111111) == 0b11000/* is-exact-state_0 fromLong(long)&&fromBigNumber(SLBigNumber) */) {
+                            unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG << 3) | primitiveTagBits));
+                        } else {
+                            unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | primitiveTagBits));
+                        }
+                        lock.unlock();
+                        hasLock = false;
+                        return SLUnboxNode.fromBigNumber($child0Value_);
+                    }
+                }
+                if ($child0Value instanceof SLFunction) {
+                    SLFunction $child0Value_ = (SLFunction) $child0Value;
+                    $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100000 /* add-state_0 fromFunction(SLFunction) */);
+                    short primitiveTagBits = (short) (unsafeFromBytecode($bc, $bci) & 7 & 0xe000);
+                    unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | primitiveTagBits));
+                    lock.unlock();
+                    hasLock = false;
+                    return SLUnboxNode.fromFunction($child0Value_);
+                }
+                if (SLTypes.isSLNull($child0Value)) {
+                    SLNull $child0Value_ = SLTypes.asSLNull($child0Value);
+                    $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1000000 /* add-state_0 fromFunction(SLNull) */);
+                    short primitiveTagBits = (short) (unsafeFromBytecode($bc, $bci) & 7 & 0xe000);
+                    unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | primitiveTagBits));
+                    lock.unlock();
+                    hasLock = false;
+                    return SLUnboxNode.fromFunction($child0Value_);
+                }
+                if ((exclude) == 0 /* is-not-exclude fromForeign(Object, InteropLibrary) */) {
+                    int count7_ = 0;
+                    SLUnbox_FromForeign0Data s7_ = ((SLUnbox_FromForeign0Data) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_CHILDREN_OFFSET) + 0) + 1));
+                    if ((state_0 & 0b10000000) != 0 /* is-state_0 fromForeign(Object, InteropLibrary) */) {
+                        while (s7_ != null) {
+                            if ((s7_.interop_.accepts($child0Value))) {
+                                break;
+                            }
+                            s7_ = s7_.next_;
+                            count7_++;
+                        }
+                    }
+                    if (s7_ == null) {
+                        // assert (s7_.interop_.accepts($child0Value));
+                        if (count7_ < (SLUnboxNode.LIMIT)) {
+                            s7_ = $this.insertAccessor(new SLUnbox_FromForeign0Data(((SLUnbox_FromForeign0Data) UFA.unsafeObjectArrayRead($children, childArrayOffset_ + 1))));
+                            s7_.interop_ = s7_.insertAccessor((INTEROP_LIBRARY_.create($child0Value)));
+                            VarHandle.storeStoreFence();
+                            $children[childArrayOffset_ + 1] = s7_;
+                            $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10000000 /* add-state_0 fromForeign(Object, InteropLibrary) */);
+                            short primitiveTagBits = (short) (unsafeFromBytecode($bc, $bci) & 7 & 0xe000);
+                            unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | primitiveTagBits));
+                        }
+                    }
+                    if (s7_ != null) {
+                        lock.unlock();
+                        hasLock = false;
+                        return SLUnboxNode.fromForeign($child0Value, s7_.interop_);
+                    }
+                }
+                {
+                    InteropLibrary fromForeign1_interop__ = null;
+                    {
+                        EncapsulatingNodeReference encapsulating_ = EncapsulatingNodeReference.getCurrent();
+                        Node prev_ = encapsulating_.set($this);
+                        try {
+                            fromForeign1_interop__ = (INTEROP_LIBRARY_.getUncached($child0Value));
+                            $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /* add-exclude fromForeign(Object, InteropLibrary) */);
+                            $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_CHILDREN_OFFSET) + 0) + 1] = null;
+                            state_0 = (short) (state_0 & 0xffffff7f /* remove-state_0 fromForeign(Object, InteropLibrary) */);
+                            $bc[$bci + C_SL_UNBOX_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100000000 /* add-state_0 fromForeign(Object, InteropLibrary) */);
+                            short primitiveTagBits = (short) (unsafeFromBytecode($bc, $bci) & 7 & 0xe000);
+                            unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | primitiveTagBits));
+                            lock.unlock();
+                            hasLock = false;
+                            return SLUnboxNode.fromForeign($child0Value, fromForeign1_interop__);
+                        } finally {
+                            encapsulating_.set(prev_);
+                        }
+                    }
+                }
+            } finally {
+                if (hasLock) {
+                    lock.unlock();
+                }
+            }
+        }
+
+        private static Object SLFunctionLiteral_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0);
+            Object $child0Value_ = expectObject($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_FUNCTION_LITERAL_POP_INDEXED_OFFSET + 0) & 0xff));
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if (state_0 != 0 /* is-state_0 perform(TruffleString, SLFunction, Node) */ && $child0Value_ instanceof TruffleString) {
+                TruffleString $child0Value__ = (TruffleString) $child0Value_;
+                {
+                    Node node__ = ($this);
+                    SLFunction result__ = ((SLFunction) UFA.unsafeObjectArrayRead($consts, (constArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_FUNCTION_LITERAL_CONSTANT_OFFSET) + 0) + 0));
+                    if (result__ != null) {
+                        return SLFunctionLiteralNode.perform($child0Value__, result__, node__);
+                    }
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLFunctionLiteral_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_);
+        }
+
+        private static SLFunction SLFunctionLiteral_executeAndSpecialize_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Lock lock = $this.getLockAccessor();
+            boolean hasLock = true;
+            lock.lock();
+            try {
+                short state_0 = unsafeFromBytecode($bc, $bci + C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0);
+                {
+                    Node node__ = null;
+                    if ($child0Value instanceof TruffleString) {
+                        TruffleString $child0Value_ = (TruffleString) $child0Value;
+                        $consts[(constArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_FUNCTION_LITERAL_CONSTANT_OFFSET) + 0) + 0] = (SLFunctionLiteralNode.lookupFunctionCached($child0Value_, $this));
+                        node__ = ($this);
+                        $bc[$bci + C_SL_FUNCTION_LITERAL_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1 /* add-state_0 perform(TruffleString, SLFunction, Node) */);
+                        lock.unlock();
+                        hasLock = false;
+                        return SLFunctionLiteralNode.perform($child0Value_, ((SLFunction) UFA.unsafeObjectArrayRead($consts, constArrayOffset_ + 0)), node__);
+                    }
+                }
+                throw new UnsupportedSpecializationException($this, new Node[] {null}, $child0Value);
+            } finally {
+                if (hasLock) {
+                    lock.unlock();
+                }
+            }
+        }
+
+        private static boolean SLToBoolean_fallbackGuard__(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value) {
+            if (((state_0 & 0b1)) == 0 /* is-not-state_0 doBoolean(boolean) */ && $child0Value instanceof Boolean) {
+                return false;
+            }
+            return true;
+        }
+
+        private static Object SLToBoolean_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0);
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b10) == 0 /* only-active doBoolean(boolean) */ && (state_0 != 0  /* is-not doBoolean(boolean) && doFallback(Object, Node, int) */)) {
+                return SLToBoolean_SLToBoolean_execute__boolean0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else {
+                return SLToBoolean_SLToBoolean_execute__generic1_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            }
+        }
+
+        private static Object SLToBoolean_SLToBoolean_execute__boolean0_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            boolean $child0Value_;
+            try {
+                $child0Value_ = expectBoolean($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_TO_BOOLEAN_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLToBoolean_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult());
+            }
+            assert (state_0 & 0b1) != 0 /* is-state_0 doBoolean(boolean) */;
+            return SLToBooleanNode.doBoolean($child0Value_);
+        }
+
+        private static Object SLToBoolean_SLToBoolean_execute__generic1_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_TO_BOOLEAN_POP_INDEXED_OFFSET + 0) & 0xff));
+            if ((state_0 & 0b1) != 0 /* is-state_0 doBoolean(boolean) */ && $child0Value_ instanceof Boolean) {
+                boolean $child0Value__ = (boolean) $child0Value_;
+                return SLToBooleanNode.doBoolean($child0Value__);
+            }
+            if ((state_0 & 0b10) != 0 /* is-state_0 doFallback(Object, Node, int) */) {
+                {
+                    Node fallback_node__ = ($this);
+                    int fallback_bci__ = ($bci);
+                    if (SLToBoolean_fallbackGuard__($frame, $this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value_)) {
+                        return SLToBooleanNode.doFallback($child0Value_, fallback_node__, fallback_bci__);
+                    }
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLToBoolean_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_);
+        }
+
+        private static boolean SLToBoolean_executeBoolean_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0);
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b10) == 0 /* only-active doBoolean(boolean) */ && (state_0 != 0  /* is-not doBoolean(boolean) && doFallback(Object, Node, int) */)) {
+                return SLToBoolean_SLToBoolean_executeBoolean__boolean2_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else {
+                return SLToBoolean_SLToBoolean_executeBoolean__generic3_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            }
+        }
+
+        private static boolean SLToBoolean_SLToBoolean_executeBoolean__boolean2_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            boolean $child0Value_;
+            try {
+                $child0Value_ = expectBoolean($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_TO_BOOLEAN_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLToBoolean_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult());
+            }
+            assert (state_0 & 0b1) != 0 /* is-state_0 doBoolean(boolean) */;
+            return SLToBooleanNode.doBoolean($child0Value_);
+        }
+
+        private static boolean SLToBoolean_SLToBoolean_executeBoolean__generic3_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_TO_BOOLEAN_POP_INDEXED_OFFSET + 0) & 0xff));
+            if ((state_0 & 0b1) != 0 /* is-state_0 doBoolean(boolean) */ && $child0Value_ instanceof Boolean) {
+                boolean $child0Value__ = (boolean) $child0Value_;
+                return SLToBooleanNode.doBoolean($child0Value__);
+            }
+            if ((state_0 & 0b10) != 0 /* is-state_0 doFallback(Object, Node, int) */) {
+                {
+                    Node fallback_node__ = ($this);
+                    int fallback_bci__ = ($bci);
+                    if (SLToBoolean_fallbackGuard__($frame, $this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value_)) {
+                        return SLToBooleanNode.doFallback($child0Value_, fallback_node__, fallback_bci__);
+                    }
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLToBoolean_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_);
+        }
+
+        private static boolean SLToBoolean_executeAndSpecialize_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Lock lock = $this.getLockAccessor();
+            boolean hasLock = true;
+            lock.lock();
+            try {
+                short state_0 = unsafeFromBytecode($bc, $bci + C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0);
+                if ($child0Value instanceof Boolean) {
+                    boolean $child0Value_ = (boolean) $child0Value;
+                    $bc[$bci + C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1 /* add-state_0 doBoolean(boolean) */);
+                    lock.unlock();
+                    hasLock = false;
+                    return SLToBooleanNode.doBoolean($child0Value_);
+                }
+                {
+                    int fallback_bci__ = 0;
+                    Node fallback_node__ = null;
+                    fallback_node__ = ($this);
+                    fallback_bci__ = ($bci);
+                    $bc[$bci + C_SL_TO_BOOLEAN_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 doFallback(Object, Node, int) */);
+                    lock.unlock();
+                    hasLock = false;
+                    return SLToBooleanNode.doFallback($child0Value, fallback_node__, fallback_bci__);
+                }
+            } finally {
+                if (hasLock) {
+                    lock.unlock();
+                }
+            }
+        }
+
+        @ExplodeLoop
+        private static Object SLInvoke_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, int $numVariadics) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_INVOKE_STATE_BITS_OFFSET + 0);
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 1 - $numVariadics, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_INVOKE_POP_INDEXED_OFFSET + 0) & 0xff));
+            Object[] $variadicChildValue_ = do_loadVariadicArguments($frame, $sp, $numVariadics);
+            if (state_0 != 0 /* is-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) || doIndirect(SLFunction, Object[], IndirectCallNode) || doInterop(Object, Object[], InteropLibrary, Node, int) */) {
+                if ((state_0 & 0b11) != 0 /* is-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) || doIndirect(SLFunction, Object[], IndirectCallNode) */ && $child0Value_ instanceof SLFunction) {
+                    SLFunction $child0Value__ = (SLFunction) $child0Value_;
+                    if ((state_0 & 0b1) != 0 /* is-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */) {
+                        SLInvoke_DirectData s0_ = ((SLInvoke_DirectData) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_INVOKE_CHILDREN_OFFSET) + 0) + 0));
+                        while (s0_ != null) {
+                            if (!Assumption.isValidAssumption((s0_.callTargetStable_))) {
+                                CompilerDirectives.transferToInterpreterAndInvalidate();
+                                SLInvoke_removeDirect__($frame, $this, $bc, $bci, $sp, $consts, $children, $numVariadics, s0_);
+                                return SLInvoke_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $numVariadics, $child0Value__, $variadicChildValue_);
+                            }
+                            if (($child0Value__.getCallTarget() == s0_.cachedTarget_)) {
+                                return SLInvoke.doDirect($child0Value__, $variadicChildValue_, s0_.callTargetStable_, s0_.cachedTarget_, s0_.callNode_);
+                            }
+                            s0_ = s0_.next_;
+                        }
+                    }
+                    if ((state_0 & 0b10) != 0 /* is-state_0 doIndirect(SLFunction, Object[], IndirectCallNode) */) {
+                        IndirectCallNode indirect_callNode__ = ((IndirectCallNode) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_INVOKE_CHILDREN_OFFSET) + 0) + 1));
+                        if (indirect_callNode__ != null) {
+                            return SLInvoke.doIndirect($child0Value__, $variadicChildValue_, indirect_callNode__);
+                        }
+                    }
+                }
+                if ((state_0 & 0b100) != 0 /* is-state_0 doInterop(Object, Object[], InteropLibrary, Node, int) */) {
+                    {
+                        Node interop_node__ = ($this);
+                        int interop_bci__ = ($bci);
+                        InteropLibrary interop_library__ = ((InteropLibrary) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_INVOKE_CHILDREN_OFFSET) + 0) + 2));
+                        if (interop_library__ != null) {
+                            return SLInvoke.doInterop($child0Value_, $variadicChildValue_, interop_library__, interop_node__, interop_bci__);
+                        }
+                    }
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLInvoke_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $numVariadics, $child0Value_, $variadicChildValue_);
+        }
+
+        private static Object SLInvoke_executeAndSpecialize_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, int $numVariadics, Object $child0Value, Object[] $variadicChildValue) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Lock lock = $this.getLockAccessor();
+            boolean hasLock = true;
+            lock.lock();
+            try {
+                short state_0 = unsafeFromBytecode($bc, $bci + C_SL_INVOKE_STATE_BITS_OFFSET + 0);
+                short exclude = unsafeFromBytecode($bc, $bci + C_SL_INVOKE_STATE_BITS_OFFSET + 1);
+                if ($child0Value instanceof SLFunction) {
+                    SLFunction $child0Value_ = (SLFunction) $child0Value;
+                    if ((exclude) == 0 /* is-not-exclude doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */) {
+                        int count0_ = 0;
+                        SLInvoke_DirectData s0_ = ((SLInvoke_DirectData) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_INVOKE_CHILDREN_OFFSET) + 0) + 0));
+                        if ((state_0 & 0b1) != 0 /* is-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */) {
+                            while (s0_ != null) {
+                                if (($child0Value_.getCallTarget() == s0_.cachedTarget_) && Assumption.isValidAssumption((s0_.callTargetStable_))) {
+                                    break;
+                                }
+                                s0_ = s0_.next_;
+                                count0_++;
+                            }
+                        }
+                        if (s0_ == null) {
+                            {
+                                RootCallTarget cachedTarget__ = ($child0Value_.getCallTarget());
+                                if (($child0Value_.getCallTarget() == cachedTarget__)) {
+                                    Assumption callTargetStable__ = ($child0Value_.getCallTargetStable());
+                                    Assumption assumption0 = (callTargetStable__);
+                                    if (Assumption.isValidAssumption(assumption0)) {
+                                        if (count0_ < (3)) {
+                                            s0_ = $this.insertAccessor(new SLInvoke_DirectData(((SLInvoke_DirectData) UFA.unsafeObjectArrayRead($children, childArrayOffset_ + 0))));
+                                            s0_.callTargetStable_ = callTargetStable__;
+                                            s0_.cachedTarget_ = cachedTarget__;
+                                            s0_.callNode_ = s0_.insertAccessor((DirectCallNode.create(cachedTarget__)));
+                                            VarHandle.storeStoreFence();
+                                            $children[childArrayOffset_ + 0] = s0_;
+                                            $bc[$bci + C_SL_INVOKE_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1 /* add-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (s0_ != null) {
+                            lock.unlock();
+                            hasLock = false;
+                            return SLInvoke.doDirect($child0Value_, $variadicChildValue, s0_.callTargetStable_, s0_.cachedTarget_, s0_.callNode_);
+                        }
+                    }
+                    $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_INVOKE_CHILDREN_OFFSET) + 0) + 1] = $this.insertAccessor((IndirectCallNode.create()));
+                    $bc[$bci + C_SL_INVOKE_STATE_BITS_OFFSET + 1] = exclude = (short) (exclude | 0b1 /* add-exclude doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */);
+                    $children[childArrayOffset_ + 0] = null;
+                    state_0 = (short) (state_0 & 0xfffffffe /* remove-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */);
+                    $bc[$bci + C_SL_INVOKE_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 doIndirect(SLFunction, Object[], IndirectCallNode) */);
+                    lock.unlock();
+                    hasLock = false;
+                    return SLInvoke.doIndirect($child0Value_, $variadicChildValue, ((IndirectCallNode) UFA.unsafeObjectArrayRead($children, childArrayOffset_ + 1)));
+                }
+                {
+                    int interop_bci__ = 0;
+                    Node interop_node__ = null;
+                    $children[(childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_INVOKE_CHILDREN_OFFSET) + 0) + 2] = $this.insertAccessor((INTEROP_LIBRARY_.createDispatched(3)));
+                    interop_node__ = ($this);
+                    interop_bci__ = ($bci);
+                    $bc[$bci + C_SL_INVOKE_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b100 /* add-state_0 doInterop(Object, Object[], InteropLibrary, Node, int) */);
+                    lock.unlock();
+                    hasLock = false;
+                    return SLInvoke.doInterop($child0Value, $variadicChildValue, ((InteropLibrary) UFA.unsafeObjectArrayRead($children, childArrayOffset_ + 2)), interop_node__, interop_bci__);
+                }
+            } finally {
+                if (hasLock) {
+                    lock.unlock();
+                }
+            }
+        }
+
+        private static void SLInvoke_removeDirect__(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, int $numVariadics, Object s0_) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Lock lock = $this.getLockAccessor();
+            lock.lock();
+            try {
+                SLInvoke_DirectData prev = null;
+                SLInvoke_DirectData cur = ((SLInvoke_DirectData) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_INVOKE_CHILDREN_OFFSET) + 0) + 0));
+                while (cur != null) {
+                    if (cur == s0_) {
+                        if (prev == null) {
+                            $children[childArrayOffset_ + 0] = $this.insertAccessor(cur.next_);
+                        } else {
+                            prev.next_ = prev.insertAccessor(cur.next_);
+                        }
+                        break;
+                    }
+                    prev = cur;
+                    cur = cur.next_;
+                }
+                if ($children[childArrayOffset_ + 0] == null) {
+                    $bc[$bci + C_SL_INVOKE_STATE_BITS_OFFSET + 0] = (short) ($bc[$bci + C_SL_INVOKE_STATE_BITS_OFFSET + 0] & 0xfffffffe /* remove-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */);
+                }
+            } finally {
+                lock.unlock();
+            }
+        }
+
+        private static boolean SLAnd_fallbackGuard__(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value) {
+            if (((state_0 & 0b1)) == 0 /* is-not-state_0 doBoolean(boolean) */ && $child0Value instanceof Boolean) {
+                return false;
+            }
+            return true;
+        }
+
+        private static boolean SLAnd_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + SC_SL_AND_STATE_BITS_OFFSET + 0);
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b10) == 0 /* only-active doBoolean(boolean) */ && (state_0 != 0  /* is-not doBoolean(boolean) && doFallback(Object, Node, int) */)) {
+                return SLAnd_SLAnd_execute__boolean0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else {
+                return SLAnd_SLAnd_execute__generic1_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            }
+        }
+
+        private static boolean SLAnd_SLAnd_execute__boolean0_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            boolean $child0Value_;
+            try {
+                $child0Value_ = expectBoolean($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + SC_SL_AND_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLAnd_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult());
+            }
+            assert (state_0 & 0b1) != 0 /* is-state_0 doBoolean(boolean) */;
+            return SLToBooleanNode.doBoolean($child0Value_);
+        }
+
+        private static boolean SLAnd_SLAnd_execute__generic1_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + SC_SL_AND_POP_INDEXED_OFFSET + 0) & 0xff));
+            if ((state_0 & 0b1) != 0 /* is-state_0 doBoolean(boolean) */ && $child0Value_ instanceof Boolean) {
+                boolean $child0Value__ = (boolean) $child0Value_;
+                return SLToBooleanNode.doBoolean($child0Value__);
+            }
+            if ((state_0 & 0b10) != 0 /* is-state_0 doFallback(Object, Node, int) */) {
+                {
+                    Node fallback_node__ = ($this);
+                    int fallback_bci__ = ($bci);
+                    if (SLAnd_fallbackGuard__($frame, $this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value_)) {
+                        return SLToBooleanNode.doFallback($child0Value_, fallback_node__, fallback_bci__);
+                    }
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLAnd_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_);
+        }
+
+        private static boolean SLAnd_executeAndSpecialize_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Lock lock = $this.getLockAccessor();
+            boolean hasLock = true;
+            lock.lock();
+            try {
+                short state_0 = unsafeFromBytecode($bc, $bci + SC_SL_AND_STATE_BITS_OFFSET + 0);
+                if ($child0Value instanceof Boolean) {
+                    boolean $child0Value_ = (boolean) $child0Value;
+                    $bc[$bci + SC_SL_AND_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1 /* add-state_0 doBoolean(boolean) */);
+                    lock.unlock();
+                    hasLock = false;
+                    return SLToBooleanNode.doBoolean($child0Value_);
+                }
+                {
+                    int fallback_bci__ = 0;
+                    Node fallback_node__ = null;
+                    fallback_node__ = ($this);
+                    fallback_bci__ = ($bci);
+                    $bc[$bci + SC_SL_AND_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 doFallback(Object, Node, int) */);
+                    lock.unlock();
+                    hasLock = false;
+                    return SLToBooleanNode.doFallback($child0Value, fallback_node__, fallback_bci__);
+                }
+            } finally {
+                if (hasLock) {
+                    lock.unlock();
+                }
+            }
+        }
+
+        private static boolean SLOr_fallbackGuard__(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value) {
+            if (((state_0 & 0b1)) == 0 /* is-not-state_0 doBoolean(boolean) */ && $child0Value instanceof Boolean) {
+                return false;
+            }
+            return true;
+        }
+
+        private static boolean SLOr_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + SC_SL_OR_STATE_BITS_OFFSET + 0);
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b10) == 0 /* only-active doBoolean(boolean) */ && (state_0 != 0  /* is-not doBoolean(boolean) && doFallback(Object, Node, int) */)) {
+                return SLOr_SLOr_execute__boolean0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else {
+                return SLOr_SLOr_execute__generic1_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            }
+        }
+
+        private static boolean SLOr_SLOr_execute__boolean0_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            boolean $child0Value_;
+            try {
+                $child0Value_ = expectBoolean($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + SC_SL_OR_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLOr_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult());
+            }
+            assert (state_0 & 0b1) != 0 /* is-state_0 doBoolean(boolean) */;
+            return SLToBooleanNode.doBoolean($child0Value_);
+        }
+
+        private static boolean SLOr_SLOr_execute__generic1_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + SC_SL_OR_POP_INDEXED_OFFSET + 0) & 0xff));
+            if ((state_0 & 0b1) != 0 /* is-state_0 doBoolean(boolean) */ && $child0Value_ instanceof Boolean) {
+                boolean $child0Value__ = (boolean) $child0Value_;
+                return SLToBooleanNode.doBoolean($child0Value__);
+            }
+            if ((state_0 & 0b10) != 0 /* is-state_0 doFallback(Object, Node, int) */) {
+                {
+                    Node fallback_node__ = ($this);
+                    int fallback_bci__ = ($bci);
+                    if (SLOr_fallbackGuard__($frame, $this, $bc, $bci, $sp, $consts, $children, state_0, $child0Value_)) {
+                        return SLToBooleanNode.doFallback($child0Value_, fallback_node__, fallback_bci__);
+                    }
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            return SLOr_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_);
+        }
+
+        private static boolean SLOr_executeAndSpecialize_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, Object $child0Value) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Lock lock = $this.getLockAccessor();
+            boolean hasLock = true;
+            lock.lock();
+            try {
+                short state_0 = unsafeFromBytecode($bc, $bci + SC_SL_OR_STATE_BITS_OFFSET + 0);
+                if ($child0Value instanceof Boolean) {
+                    boolean $child0Value_ = (boolean) $child0Value;
+                    $bc[$bci + SC_SL_OR_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b1 /* add-state_0 doBoolean(boolean) */);
+                    lock.unlock();
+                    hasLock = false;
+                    return SLToBooleanNode.doBoolean($child0Value_);
+                }
+                {
+                    int fallback_bci__ = 0;
+                    Node fallback_node__ = null;
+                    fallback_node__ = ($this);
+                    fallback_bci__ = ($bci);
+                    $bc[$bci + SC_SL_OR_STATE_BITS_OFFSET + 0] = state_0 = (short) (state_0 | 0b10 /* add-state_0 doFallback(Object, Node, int) */);
+                    lock.unlock();
+                    hasLock = false;
+                    return SLToBooleanNode.doFallback($child0Value, fallback_node__, fallback_bci__);
+                }
+            } finally {
+                if (hasLock) {
+                    lock.unlock();
+                }
+            }
+        }
+
+        private static Object SLUnbox_q_FromBigNumber_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_STATE_BITS_OFFSET + 0);
+            Object $child0Value_ = expectObject($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_POP_INDEXED_OFFSET + 0) & 0xff));
+            int childArrayOffset_;
+            int constArrayOffset_;
+            assert (state_0 & 0b10000) != 0 /* is-state_0 fromBigNumber(SLBigNumber) */;
+            if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000000) >>> 9 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000000) >>> 9 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                return SLUnboxNode.fromBigNumber($child0Value__);
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | 0));
+            return SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_);
+        }
+
+        private static boolean SLUnbox_q_FromBigNumber_executeBoolean_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) throws UnexpectedResultException {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_STATE_BITS_OFFSET + 0);
+            if ((state_0 & 0b110000000) != 0 /* is-state_0 fromForeign(Object, InteropLibrary) || fromForeign(Object, InteropLibrary) */) {
+                return SLTypesGen.expectBoolean(SLUnbox_q_FromBigNumber_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            }
+            Object $child0Value_ = expectObject($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_POP_INDEXED_OFFSET + 0) & 0xff));
+            int childArrayOffset_;
+            int constArrayOffset_;
+            assert (state_0 & 0b10000) != 0 /* is-state_0 fromBigNumber(SLBigNumber) */;
+            if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000000) >>> 9 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000000) >>> 9 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                return SLTypesGen.expectBoolean(SLUnboxNode.fromBigNumber($child0Value__));
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | 0));
+            return SLTypesGen.expectBoolean(SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_));
+        }
+
+        private static long SLUnbox_q_FromBigNumber_executeLong_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) throws UnexpectedResultException {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_STATE_BITS_OFFSET + 0);
+            if ((state_0 & 0b110000000) != 0 /* is-state_0 fromForeign(Object, InteropLibrary) || fromForeign(Object, InteropLibrary) */) {
+                return SLTypesGen.expectLong(SLUnbox_q_FromBigNumber_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            }
+            Object $child0Value_ = expectObject($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_POP_INDEXED_OFFSET + 0) & 0xff));
+            int childArrayOffset_;
+            int constArrayOffset_;
+            assert (state_0 & 0b10000) != 0 /* is-state_0 fromBigNumber(SLBigNumber) */;
+            if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000000) >>> 9 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000000) >>> 9 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                return SLTypesGen.expectLong(SLUnboxNode.fromBigNumber($child0Value__));
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | 0));
+            return SLTypesGen.expectLong(SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_));
+        }
+
+        private static Object SLUnbox_q_FromBigNumber_FromLong_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_STATE_BITS_OFFSET + 0);
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b10000) == 0 /* only-active fromLong(long) */ && ((state_0 & 0b11000) != 0  /* is-not fromLong(long) && fromBigNumber(SLBigNumber) */)) {
+                return SLUnbox_q_FromBigNumber_FromLong_SLUnbox_q_FromBigNumber_FromLong_execute__long0_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else {
+                return SLUnbox_q_FromBigNumber_FromLong_SLUnbox_q_FromBigNumber_FromLong_execute__generic1_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            }
+        }
+
+        private static Object SLUnbox_q_FromBigNumber_FromLong_SLUnbox_q_FromBigNumber_FromLong_execute__long0_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | 0));
+                return SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult());
+            }
+            assert (state_0 & 0b1000) != 0 /* is-state_0 fromLong(long) */;
+            return SLUnboxNode.fromLong($child0Value_);
+        }
+
+        private static Object SLUnbox_q_FromBigNumber_FromLong_SLUnbox_q_FromBigNumber_FromLong_execute__generic1_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_POP_INDEXED_OFFSET + 0) & 0xff));
+            if ((state_0 & 0b1000) != 0 /* is-state_0 fromLong(long) */ && $child0Value_ instanceof Long) {
+                long $child0Value__ = (long) $child0Value_;
+                return SLUnboxNode.fromLong($child0Value__);
+            }
+            if ((state_0 & 0b10000) != 0 /* is-state_0 fromBigNumber(SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000000) >>> 9 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000000) >>> 9 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                return SLUnboxNode.fromBigNumber($child0Value__);
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | 0));
+            return SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_);
+        }
+
+        private static boolean SLUnbox_q_FromBigNumber_FromLong_executeBoolean_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) throws UnexpectedResultException {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_STATE_BITS_OFFSET + 0);
+            if ((state_0 & 0b110000000) != 0 /* is-state_0 fromForeign(Object, InteropLibrary) || fromForeign(Object, InteropLibrary) */) {
+                return SLTypesGen.expectBoolean(SLUnbox_q_FromBigNumber_FromLong_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            }
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b10000) == 0 /* only-active fromLong(long) */ && ((state_0 & 0b11000) != 0  /* is-not fromLong(long) && fromBigNumber(SLBigNumber) */)) {
+                return SLUnbox_q_FromBigNumber_FromLong_SLUnbox_q_FromBigNumber_FromLong_executeBoolean__long2_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else {
+                return SLUnbox_q_FromBigNumber_FromLong_SLUnbox_q_FromBigNumber_FromLong_executeBoolean__generic3_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            }
+        }
+
+        private static boolean SLUnbox_q_FromBigNumber_FromLong_SLUnbox_q_FromBigNumber_FromLong_executeBoolean__long2_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) throws UnexpectedResultException {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | 0));
+                return SLTypesGen.expectBoolean(SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult()));
+            }
+            assert (state_0 & 0b1000) != 0 /* is-state_0 fromLong(long) */;
+            return SLTypesGen.expectBoolean(SLUnboxNode.fromLong($child0Value_));
+        }
+
+        private static boolean SLUnbox_q_FromBigNumber_FromLong_SLUnbox_q_FromBigNumber_FromLong_executeBoolean__generic3_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) throws UnexpectedResultException {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_POP_INDEXED_OFFSET + 0) & 0xff));
+            if ((state_0 & 0b1000) != 0 /* is-state_0 fromLong(long) */ && $child0Value_ instanceof Long) {
+                long $child0Value__ = (long) $child0Value_;
+                return SLTypesGen.expectBoolean(SLUnboxNode.fromLong($child0Value__));
+            }
+            if ((state_0 & 0b10000) != 0 /* is-state_0 fromBigNumber(SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000000) >>> 9 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000000) >>> 9 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                return SLTypesGen.expectBoolean(SLUnboxNode.fromBigNumber($child0Value__));
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | 0));
+            return SLTypesGen.expectBoolean(SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_));
+        }
+
+        private static long SLUnbox_q_FromBigNumber_FromLong_executeLong_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) throws UnexpectedResultException {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_STATE_BITS_OFFSET + 0);
+            if ((state_0 & 0b110000000) != 0 /* is-state_0 fromForeign(Object, InteropLibrary) || fromForeign(Object, InteropLibrary) */) {
+                return SLTypesGen.expectLong(SLUnbox_q_FromBigNumber_FromLong_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            }
+            int childArrayOffset_;
+            int constArrayOffset_;
+            if ((state_0 & 0b10000) == 0 /* only-active fromLong(long) */ && ((state_0 & 0b11000) != 0  /* is-not fromLong(long) && fromBigNumber(SLBigNumber) */)) {
+                return SLUnbox_q_FromBigNumber_FromLong_SLUnbox_q_FromBigNumber_FromLong_executeLong__long4_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            } else {
+                return SLUnbox_q_FromBigNumber_FromLong_SLUnbox_q_FromBigNumber_FromLong_executeLong__generic5_($frame, $this, $bc, $bci, $sp, $consts, $children, state_0);
+            }
+        }
+
+        private static long SLUnbox_q_FromBigNumber_FromLong_SLUnbox_q_FromBigNumber_FromLong_executeLong__long4_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) throws UnexpectedResultException {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | 0));
+                return SLTypesGen.expectLong(SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult()));
+            }
+            assert (state_0 & 0b1000) != 0 /* is-state_0 fromLong(long) */;
+            return SLUnboxNode.fromLong($child0Value_);
+        }
+
+        private static long SLUnbox_q_FromBigNumber_FromLong_SLUnbox_q_FromBigNumber_FromLong_executeLong__generic5_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0) throws UnexpectedResultException {
+            int childArrayOffset_;
+            int constArrayOffset_;
+            Object $child0Value_ = expectObject($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG_POP_INDEXED_OFFSET + 0) & 0xff));
+            if ((state_0 & 0b1000) != 0 /* is-state_0 fromLong(long) */ && $child0Value_ instanceof Long) {
+                long $child0Value__ = (long) $child0Value_;
+                return SLUnboxNode.fromLong($child0Value__);
+            }
+            if ((state_0 & 0b10000) != 0 /* is-state_0 fromBigNumber(SLBigNumber) */ && SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000000) >>> 9 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000000) >>> 9 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                return SLTypesGen.expectLong(SLUnboxNode.fromBigNumber($child0Value__));
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | 0));
+            return SLTypesGen.expectLong(SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_));
+        }
+
+        private static Object SLUnbox_q_FromLong_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_LONG_STATE_BITS_OFFSET + 0);
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_LONG_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | 0));
+                return SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult());
+            }
+            int childArrayOffset_;
+            int constArrayOffset_;
+            assert (state_0 & 0b1000) != 0 /* is-state_0 fromLong(long) */;
+            return SLUnboxNode.fromLong($child0Value_);
+        }
+
+        private static boolean SLUnbox_q_FromLong_executeBoolean_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) throws UnexpectedResultException {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_LONG_STATE_BITS_OFFSET + 0);
+            if ((state_0 & 0b110000000) != 0 /* is-state_0 fromForeign(Object, InteropLibrary) || fromForeign(Object, InteropLibrary) */) {
+                return SLTypesGen.expectBoolean(SLUnbox_q_FromLong_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            }
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_LONG_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | 0));
+                return SLTypesGen.expectBoolean(SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult()));
+            }
+            int childArrayOffset_;
+            int constArrayOffset_;
+            assert (state_0 & 0b1000) != 0 /* is-state_0 fromLong(long) */;
+            return SLTypesGen.expectBoolean(SLUnboxNode.fromLong($child0Value_));
+        }
+
+        private static long SLUnbox_q_FromLong_executeLong_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) throws UnexpectedResultException {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_LONG_STATE_BITS_OFFSET + 0);
+            if ((state_0 & 0b110000000) != 0 /* is-state_0 fromForeign(Object, InteropLibrary) || fromForeign(Object, InteropLibrary) */) {
+                return SLTypesGen.expectLong(SLUnbox_q_FromLong_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            }
+            long $child0Value_;
+            try {
+                $child0Value_ = expectLong($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_LONG_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | 0));
+                return SLTypesGen.expectLong(SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult()));
+            }
+            int childArrayOffset_;
+            int constArrayOffset_;
+            assert (state_0 & 0b1000) != 0 /* is-state_0 fromLong(long) */;
+            return SLUnboxNode.fromLong($child0Value_);
+        }
+
+        private static Object SLUnbox_q_FromBoolean_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BOOLEAN_STATE_BITS_OFFSET + 0);
+            boolean $child0Value_;
+            try {
+                $child0Value_ = expectBoolean($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BOOLEAN_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | 0));
+                return SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult());
+            }
+            int childArrayOffset_;
+            int constArrayOffset_;
+            assert (state_0 & 0b100) != 0 /* is-state_0 fromBoolean(boolean) */;
+            return SLUnboxNode.fromBoolean($child0Value_);
+        }
+
+        private static boolean SLUnbox_q_FromBoolean_executeBoolean_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) throws UnexpectedResultException {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BOOLEAN_STATE_BITS_OFFSET + 0);
+            if ((state_0 & 0b110000000) != 0 /* is-state_0 fromForeign(Object, InteropLibrary) || fromForeign(Object, InteropLibrary) */) {
+                return SLTypesGen.expectBoolean(SLUnbox_q_FromBoolean_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            }
+            boolean $child0Value_;
+            try {
+                $child0Value_ = expectBoolean($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BOOLEAN_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | 0));
+                return SLTypesGen.expectBoolean(SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult()));
+            }
+            int childArrayOffset_;
+            int constArrayOffset_;
+            assert (state_0 & 0b100) != 0 /* is-state_0 fromBoolean(boolean) */;
+            return SLUnboxNode.fromBoolean($child0Value_);
+        }
+
+        private static long SLUnbox_q_FromBoolean_executeLong_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) throws UnexpectedResultException {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BOOLEAN_STATE_BITS_OFFSET + 0);
+            if ((state_0 & 0b110000000) != 0 /* is-state_0 fromForeign(Object, InteropLibrary) || fromForeign(Object, InteropLibrary) */) {
+                return SLTypesGen.expectLong(SLUnbox_q_FromBoolean_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            }
+            boolean $child0Value_;
+            try {
+                $child0Value_ = expectBoolean($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_UNBOX_Q_FROM_BOOLEAN_POP_INDEXED_OFFSET + 0) & 0xff));
+            } catch (UnexpectedResultException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_UNBOX << 3) | 0));
+                return SLTypesGen.expectLong(SLUnbox_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, ex.getResult()));
+            }
+            int childArrayOffset_;
+            int constArrayOffset_;
+            assert (state_0 & 0b100) != 0 /* is-state_0 fromBoolean(boolean) */;
+            return SLTypesGen.expectLong(SLUnboxNode.fromBoolean($child0Value_));
+        }
+
+        private static boolean SLAdd_q_Add0_fallbackGuard__(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children, short state_0, Object $child0Value, Object $child1Value) {
+            if (SLTypesGen.isImplicitSLBigNumber($child0Value) && SLTypesGen.isImplicitSLBigNumber($child1Value)) {
+                return false;
+            }
+            if (((state_0 & 0b100)) == 0 /* is-not-state_0 add(Object, Object, SLToTruffleStringNode, SLToTruffleStringNode, ConcatNode) */ && (SLAddNode.isString($child0Value, $child1Value))) {
+                return false;
+            }
+            return true;
+        }
+
+        private static Object SLAdd_q_Add0_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_ADD_Q_ADD0_STATE_BITS_OFFSET + 0);
+            Object $child0Value_ = expectObject($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_ADD_Q_ADD0_POP_INDEXED_OFFSET + 0) & 0xff));
+            Object $child1Value_ = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_ADD_Q_ADD0_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            int childArrayOffset_;
+            int constArrayOffset_;
+            assert (state_0 & 0b10) != 0 /* is-state_0 add(SLBigNumber, SLBigNumber) */;
+            if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_)) {
+                    SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_);
+                    return SLAddNode.add($child0Value__, $child1Value__);
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_ADD << 3) | 0));
+            return SLAdd_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
+        }
+
+        private static long SLAdd_q_Add0_executeLong_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) throws UnexpectedResultException {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_ADD_Q_ADD0_STATE_BITS_OFFSET + 0);
+            if ((state_0 & 0b1000) != 0 /* is-state_0 typeError(Object, Object, Node, int) */) {
+                return SLTypesGen.expectLong(SLAdd_q_Add0_execute_($frame, $this, $bc, $bci, $sp, $consts, $children));
+            }
+            Object $child0Value_ = expectObject($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_ADD_Q_ADD0_POP_INDEXED_OFFSET + 0) & 0xff));
+            Object $child1Value_ = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_ADD_Q_ADD0_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            int childArrayOffset_;
+            int constArrayOffset_;
+            assert (state_0 & 0b10) != 0 /* is-state_0 add(SLBigNumber, SLBigNumber) */;
+            if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_)) {
+                SLBigNumber $child0Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b110000) >>> 4 /* extract-implicit-state_0 0:SLBigNumber */, $child0Value_);
+                if (SLTypesGen.isImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_)) {
+                    SLBigNumber $child1Value__ = SLTypesGen.asImplicitSLBigNumber((state_0 & 0b11000000) >>> 6 /* extract-implicit-state_0 1:SLBigNumber */, $child1Value_);
+                    return SLTypesGen.expectLong(SLAddNode.add($child0Value__, $child1Value__));
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_ADD << 3) | 0));
+            return SLTypesGen.expectLong(SLAdd_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_));
+        }
+
+        @ExplodeLoop
+        private static Object SLReadProperty_q_ReadSLObject0_execute_(VirtualFrame $frame, SLOperationRootNodeGen $this, short[] $bc, int $bci, int $sp, Object[] $consts, Node[] $children) {
+            short state_0 = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_STATE_BITS_OFFSET + 0);
+            Object $child0Value_ = expectObject($frame, $sp - 2, $bc, $bci, (unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_POP_INDEXED_OFFSET + 0) & 0xff));
+            Object $child1Value_ = expectObject($frame, $sp - 1, $bc, $bci, ((unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_POP_INDEXED_OFFSET + 0) >> 8) & 0xff));
+            int childArrayOffset_;
+            int constArrayOffset_;
+            assert (state_0 & 0b100) != 0 /* is-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */;
+            if ($child0Value_ instanceof SLObject) {
+                SLObject $child0Value__ = (SLObject) $child0Value_;
+                SLReadProperty_ReadSLObject0Data s2_ = ((SLReadProperty_ReadSLObject0Data) UFA.unsafeObjectArrayRead($children, (childArrayOffset_ = unsafeFromBytecode($bc, $bci + C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0_CHILDREN_OFFSET) + 0) + 4));
+                while (s2_ != null) {
+                    if ((s2_.objectLibrary_.accepts($child0Value__))) {
+                        Node node__ = ($this);
+                        int bci__ = ($bci);
+                        return SLReadPropertyNode.readSLObject($child0Value__, $child1Value_, node__, bci__, s2_.objectLibrary_, s2_.toTruffleStringNode_);
+                    }
+                    s2_ = s2_.next_;
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            unsafeWriteBytecode($bc, $bci, (short) ((INSTR_C_SL_READ_PROPERTY << 3) | 0));
+            return SLReadProperty_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
+        }
+
+        private static int instructionGroup_1_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // pop
+                //   Simple Pops:
+                //     [ 0] value
+                //   Pushed Values: 0
+                case ((INSTR_POP << 3) | 0) :
+                {
+                    $sp = $sp - 1;
+                    $frame.clear($sp);
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_2_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // load.constant
+                //   Constants:
+                //     [ 0] constant
+                //   Always Boxed
+                //   Pushed Values: 1
+                case ((INSTR_LOAD_CONSTANT << 3) | 0) :
+                {
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    return $sp;
+                }
+                // load.argument
+                //   Always Boxed
+                //   Pushed Values: 1
+                case ((INSTR_LOAD_ARGUMENT << 3) | 0) :
+                {
+                    UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
+                    $sp = $sp + 1;
+                    return $sp;
+                }
+                // load.local
+                //   Locals:
+                //     [ 0] local
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                case ((INSTR_LOAD_LOCAL << 3) | 0 /* OBJECT */) :
+                {
+                    int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                    do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                    $sp++;
+                    return $sp;
+                }
+                case ((INSTR_LOAD_LOCAL << 3) | 5 /* BOOLEAN */) :
+                {
+                    int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                    do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                    $sp++;
+                    return $sp;
+                }
+                case ((INSTR_LOAD_LOCAL << 3) | 1 /* LONG */) :
+                {
+                    int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                    do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                    $sp++;
+                    return $sp;
+                }
+                // load.local.boxed
+                //   Locals:
+                //     [ 0] local
+                //   Always Boxed
+                //   Pushed Values: 1
+                case ((INSTR_LOAD_LOCAL_BOXED << 3) | 0 /* OBJECT */) :
+                {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    unsafeWriteBytecode($bc, $bci, (short) ((INSTR_LOAD_LOCAL << 3) | 0));
+                    int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                    do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                    $sp++;
+                    return $sp;
+                }
+                case ((INSTR_LOAD_LOCAL_BOXED << 3) | 5 /* BOOLEAN */) :
+                {
+                    int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                    do_loadLocalBoxed_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                    $sp++;
+                    return $sp;
+                }
+                case ((INSTR_LOAD_LOCAL_BOXED << 3) | 1 /* LONG */) :
+                {
+                    int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                    do_loadLocalBoxed_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                    $sp++;
+                    return $sp;
+                }
+                // load.local.mat
+                //   Simple Pops:
+                //     [ 0] frame
+                //   Always Boxed
+                //   Pushed Values: 1
+                case ((INSTR_LOAD_LOCAL_MAT << 3) | 0) :
+                {
+                    Frame outerFrame;
+                    outerFrame = (Frame) UFA.unsafeGetObject($frame, $sp - 1);
+                    UFA.unsafeSetObject($frame, $sp - 1, outerFrame.getObject(unsafeFromBytecode($bc, $bci + LOAD_LOCAL_MAT_ARGUMENT_OFFSET + 0)));
+                    return $sp;
+                }
+                // store.local.mat
+                //   Simple Pops:
+                //     [ 0] frame
+                //     [ 1] value
+                //   Pushed Values: 0
+                case ((INSTR_STORE_LOCAL_MAT << 3) | 0) :
+                {
+                    Frame outerFrame;
+                    outerFrame = (Frame) UFA.unsafeGetObject($frame, $sp - 2);
+                    outerFrame.setObject(unsafeFromBytecode($bc, $bci + STORE_LOCAL_MAT_ARGUMENT_OFFSET + 0), UFA.unsafeGetObject($frame, $sp - 1));
+                    $sp -= 2;
+                    return $sp;
+                }
+                // instrument.enter
+                //   Pushed Values: 0
+                case ((INSTR_INSTRUMENT_ENTER << 3) | 0) :
+                {
+                    ProbeNode probe = getProbeNodeImpl($this, unsafeFromBytecode($bc, $bci + INSTRUMENT_ENTER_INSTRUMENT_OFFSET) + 0);
+                    if (probe != null) {
+                        probe.onEnter($frame);
+                    }
+                    return $sp;
+                }
+                // instrument.exit.void
+                //   Pushed Values: 0
+                case ((INSTR_INSTRUMENT_EXIT_VOID << 3) | 0) :
+                {
+                    ProbeNode probe = getProbeNodeImpl($this, unsafeFromBytecode($bc, $bci + INSTRUMENT_EXIT_VOID_INSTRUMENT_OFFSET) + 0);
+                    if (probe != null) {
+                        probe.onReturnValue($frame, null);
+                    }
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_3_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // store.local
+                //   Locals:
+                //     [ 0] target
+                //   Indexed Pops:
+                //     [ 0] value
+                //   Split on Boxing Elimination
+                //   Pushed Values: 0
+                case ((INSTR_STORE_LOCAL << 3) | 0 /* OBJECT */) :
+                {
+                    int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                    do_storeLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                    $sp--;
+                    return $sp;
+                }
+                case ((INSTR_STORE_LOCAL << 3) | 5 /* BOOLEAN */) :
+                {
+                    int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                    do_storeLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                    $sp--;
+                    return $sp;
+                }
+                case ((INSTR_STORE_LOCAL << 3) | 1 /* LONG */) :
+                {
+                    int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                    do_storeLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                    $sp--;
+                    return $sp;
+                }
+                case ((INSTR_STORE_LOCAL << 3) | 7) :
+                {
+                    int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                    do_storeLocal_null($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                    $sp--;
+                    return $sp;
+                }
+                // instrument.exit
+                //   Indexed Pops:
+                //     [ 0] value
+                //   Pushed Values: 0
+                case ((INSTR_INSTRUMENT_EXIT << 3) | 0) :
+                {
+                    ProbeNode probe = getProbeNodeImpl($this, unsafeFromBytecode($bc, $bci + INSTRUMENT_EXIT_INSTRUMENT_OFFSET) + 0);
+                    if (probe != null) {
+                        probe.onReturnValue($frame, expectObject($frame, $sp - 1, $bc, $bci, (unsafeFromBytecode($bc, $bci + INSTRUMENT_EXIT_POP_INDEXED_OFFSET + 0) & 0xff)));
+                    }
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_5_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // c.SLEqual
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = equalNode]
+                //     [ 1] SpecializationData [id = Generic0]
+                //     [ 2] CacheExpression [sourceParameter = leftInterop]
+                //     [ 3] CacheExpression [sourceParameter = rightInterop]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = Long], SpecializationData [id = BigNumber], SpecializationData [id = Boolean], SpecializationData [id = String], SpecializationData [id = TruffleString], SpecializationData [id = Null], SpecializationData [id = Function], SpecializationData [id = Generic0], SpecializationData [id = Generic1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = Long], SpecializationData [id = BigNumber], SpecializationData [id = Boolean], SpecializationData [id = String], SpecializationData [id = TruffleString], SpecializationData [id = Null], SpecializationData [id = Function], SpecializationData [id = Generic0], SpecializationData [id = Generic1]]
+                case ((INSTR_C_SL_EQUAL << 3) | 0 /* OBJECT */) :
+                {
+                    SLEqual_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                case ((INSTR_C_SL_EQUAL << 3) | 5 /* BOOLEAN */) :
+                {
+                    SLEqual_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLLessOrEqual
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = LessOrEqual0], SpecializationData [id = LessOrEqual1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                case ((INSTR_C_SL_LESS_OR_EQUAL << 3) | 0 /* OBJECT */) :
+                {
+                    SLLessOrEqual_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                case ((INSTR_C_SL_LESS_OR_EQUAL << 3) | 5 /* BOOLEAN */) :
+                {
+                    SLLessOrEqual_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLLessThan
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = LessThan0], SpecializationData [id = LessThan1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                case ((INSTR_C_SL_LESS_THAN << 3) | 0 /* OBJECT */) :
+                {
+                    SLLessThan_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                case ((INSTR_C_SL_LESS_THAN << 3) | 5 /* BOOLEAN */) :
+                {
+                    SLLessThan_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLLogicalNot
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
+                case ((INSTR_C_SL_LOGICAL_NOT << 3) | 0 /* OBJECT */) :
+                {
+                    SLLogicalNot_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_LOGICAL_NOT << 3) | 5 /* BOOLEAN */) :
+                {
+                    SLLogicalNot_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                // c.SLUnbox
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
+                //     [ 1] SpecializationData [id = FromForeign0]
+                //     [ 2] CacheExpression [sourceParameter = interop]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1]]
+                case ((INSTR_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                {
+                    SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                {
+                    SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                // c.SLFunctionLiteral
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = result]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Always Boxed
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = Perform]]
+                case ((INSTR_C_SL_FUNCTION_LITERAL << 3) | 0) :
+                {
+                    SLFunctionLiteral_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                // c.SLToBoolean
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = Boolean], SpecializationData [id = Fallback]]
+                case ((INSTR_C_SL_TO_BOOLEAN << 3) | 0 /* OBJECT */) :
+                {
+                    SLToBoolean_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_TO_BOOLEAN << 3) | 5 /* BOOLEAN */) :
+                {
+                    SLToBoolean_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                // c.SLUnbox.q.FromBigNumber
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
+                //     [ 1] SpecializationData [id = FromForeign0]
+                //     [ 2] CacheExpression [sourceParameter = interop]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1]]
+                case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER << 3) | 0 /* OBJECT */) :
+                {
+                    SLUnbox_q_FromBigNumber_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER << 3) | 5 /* BOOLEAN */) :
+                {
+                    SLUnbox_q_FromBigNumber_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER << 3) | 1 /* LONG */) :
+                {
+                    SLUnbox_q_FromBigNumber_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                // c.SLUnbox.q.FromBigNumber.FromLong
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
+                //     [ 1] SpecializationData [id = FromForeign0]
+                //     [ 2] CacheExpression [sourceParameter = interop]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1]]
+                case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG << 3) | 0 /* OBJECT */) :
+                {
+                    SLUnbox_q_FromBigNumber_FromLong_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG << 3) | 5 /* BOOLEAN */) :
+                {
+                    SLUnbox_q_FromBigNumber_FromLong_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX_Q_FROM_BIG_NUMBER_FROM_LONG << 3) | 1 /* LONG */) :
+                {
+                    SLUnbox_q_FromBigNumber_FromLong_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                // c.SLUnbox.q.FromLong
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
+                //     [ 1] SpecializationData [id = FromForeign0]
+                //     [ 2] CacheExpression [sourceParameter = interop]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1]]
+                case ((INSTR_C_SL_UNBOX_Q_FROM_LONG << 3) | 0 /* OBJECT */) :
+                {
+                    SLUnbox_q_FromLong_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX_Q_FROM_LONG << 3) | 5 /* BOOLEAN */) :
+                {
+                    SLUnbox_q_FromLong_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX_Q_FROM_LONG << 3) | 1 /* LONG */) :
+                {
+                    SLUnbox_q_FromLong_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                // c.SLUnbox.q.FromBoolean
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = fromJavaStringNode]
+                //     [ 1] SpecializationData [id = FromForeign0]
+                //     [ 2] CacheExpression [sourceParameter = interop]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = FromString], SpecializationData [id = FromTruffleString], SpecializationData [id = FromBoolean], SpecializationData [id = FromLong], SpecializationData [id = FromBigNumber], SpecializationData [id = FromFunction0], SpecializationData [id = FromFunction1], SpecializationData [id = FromForeign0], SpecializationData [id = FromForeign1]]
+                case ((INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN << 3) | 0 /* OBJECT */) :
+                {
+                    SLUnbox_q_FromBoolean_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN << 3) | 5 /* BOOLEAN */) :
+                {
+                    SLUnbox_q_FromBoolean_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                case ((INSTR_C_SL_UNBOX_Q_FROM_BOOLEAN << 3) | 1 /* LONG */) :
+                {
+                    SLUnbox_q_FromBoolean_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_6_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // c.SLAdd
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] SpecializationData [id = Add1]
+                //     [ 1] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback]]
+                case ((INSTR_C_SL_ADD << 3) | 0 /* OBJECT */) :
+                {
+                    SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                case ((INSTR_C_SL_ADD << 3) | 1 /* LONG */) :
+                {
+                    SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLDiv
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = DivLong], SpecializationData [id = Div], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = DivLong], SpecializationData [id = Div], SpecializationData [id = Fallback]]
+                case ((INSTR_C_SL_DIV << 3) | 0 /* OBJECT */) :
+                {
+                    SLDiv_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                case ((INSTR_C_SL_DIV << 3) | 1 /* LONG */) :
+                {
+                    SLDiv_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLMul
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = MulLong], SpecializationData [id = Mul], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = MulLong], SpecializationData [id = Mul], SpecializationData [id = Fallback]]
+                case ((INSTR_C_SL_MUL << 3) | 0 /* OBJECT */) :
+                {
+                    SLMul_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                case ((INSTR_C_SL_MUL << 3) | 1 /* LONG */) :
+                {
+                    SLMul_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLReadProperty
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //     [ 1] CacheExpression [sourceParameter = bci]
+                //     [ 2] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] SpecializationData [id = ReadArray0]
+                //     [ 1] CacheExpression [sourceParameter = node]
+                //     [ 2] CacheExpression [sourceParameter = arrays]
+                //     [ 3] CacheExpression [sourceParameter = numbers]
+                //     [ 4] SpecializationData [id = ReadSLObject0]
+                //     [ 5] CacheExpression [sourceParameter = node]
+                //     [ 6] CacheExpression [sourceParameter = objectLibrary]
+                //     [ 7] CacheExpression [sourceParameter = toTruffleStringNode]
+                //     [ 8] SpecializationData [id = ReadObject0]
+                //     [ 9] CacheExpression [sourceParameter = node]
+                //     [10] CacheExpression [sourceParameter = objects]
+                //     [11] CacheExpression [sourceParameter = asMember]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Always Boxed
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
+                case ((INSTR_C_SL_READ_PROPERTY << 3) | 0) :
+                {
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLSub
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = SubLong], SpecializationData [id = Sub], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = SubLong], SpecializationData [id = Sub], SpecializationData [id = Fallback]]
+                case ((INSTR_C_SL_SUB << 3) | 0 /* OBJECT */) :
+                {
+                    SLSub_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                case ((INSTR_C_SL_SUB << 3) | 1 /* LONG */) :
+                {
+                    SLSub_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLAdd.q.Add0
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] SpecializationData [id = Add1]
+                //     [ 1] CacheExpression [sourceParameter = node]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Split on Boxing Elimination
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback], com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d74f, com.oracle.truffle.dsl.processor.parser.SpecializationGroup$TypeGuard@7d04d76e]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = AddLong], SpecializationData [id = Add0], SpecializationData [id = Add1], SpecializationData [id = Fallback]]
+                case ((INSTR_C_SL_ADD_Q_ADD0 << 3) | 0 /* OBJECT */) :
+                {
+                    SLAdd_q_Add0_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                case ((INSTR_C_SL_ADD_Q_ADD0 << 3) | 1 /* LONG */) :
+                {
+                    SLAdd_q_Add0_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                // c.SLReadProperty.q.ReadSLObject0
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //     [ 1] CacheExpression [sourceParameter = bci]
+                //     [ 2] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] SpecializationData [id = ReadArray0]
+                //     [ 1] CacheExpression [sourceParameter = node]
+                //     [ 2] CacheExpression [sourceParameter = arrays]
+                //     [ 3] CacheExpression [sourceParameter = numbers]
+                //     [ 4] SpecializationData [id = ReadSLObject0]
+                //     [ 5] CacheExpression [sourceParameter = node]
+                //     [ 6] CacheExpression [sourceParameter = objectLibrary]
+                //     [ 7] CacheExpression [sourceParameter = toTruffleStringNode]
+                //     [ 8] SpecializationData [id = ReadObject0]
+                //     [ 9] CacheExpression [sourceParameter = node]
+                //     [10] CacheExpression [sourceParameter = objects]
+                //     [11] CacheExpression [sourceParameter = asMember]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //   Always Boxed
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = ReadArray0], SpecializationData [id = ReadArray1], SpecializationData [id = ReadSLObject0], SpecializationData [id = ReadSLObject1], SpecializationData [id = ReadObject0], SpecializationData [id = ReadObject1]]
+                case ((INSTR_C_SL_READ_PROPERTY_Q_READ_SL_OBJECT0 << 3) | 0) :
+                {
+                    SLReadProperty_q_ReadSLObject0_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_7_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // c.SLWriteProperty
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //     [ 1] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] SpecializationData [id = WriteArray0]
+                //     [ 1] CacheExpression [sourceParameter = node]
+                //     [ 2] CacheExpression [sourceParameter = arrays]
+                //     [ 3] CacheExpression [sourceParameter = numbers]
+                //     [ 4] SpecializationData [id = WriteSLObject0]
+                //     [ 5] CacheExpression [sourceParameter = objectLibrary]
+                //     [ 6] CacheExpression [sourceParameter = toTruffleStringNode]
+                //     [ 7] SpecializationData [id = WriteObject0]
+                //     [ 8] CacheExpression [sourceParameter = node]
+                //     [ 9] CacheExpression [sourceParameter = objectLibrary]
+                //     [10] CacheExpression [sourceParameter = asMember]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //     [ 1] arg1
+                //     [ 2] arg2
+                //   Always Boxed
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = WriteArray0], SpecializationData [id = WriteArray1], SpecializationData [id = WriteSLObject0], SpecializationData [id = WriteSLObject1], SpecializationData [id = WriteObject0], SpecializationData [id = WriteObject1]]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = WriteArray0], SpecializationData [id = WriteArray1], SpecializationData [id = WriteSLObject0], SpecializationData [id = WriteSLObject1], SpecializationData [id = WriteObject0], SpecializationData [id = WriteObject1]]
+                case ((INSTR_C_SL_WRITE_PROPERTY << 3) | 0) :
+                {
+                    SLWriteProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -2;
+                    return $sp;
+                }
+                // c.SLInvoke
+                //   Constants:
+                //     [ 0] CacheExpression [sourceParameter = bci]
+                //   Children:
+                //     [ 0] SpecializationData [id = Direct]
+                //     [ 1] CacheExpression [sourceParameter = callNode]
+                //     [ 2] CacheExpression [sourceParameter = library]
+                //     [ 3] CacheExpression [sourceParameter = node]
+                //     [ 4] NodeExecutionData[child=NodeFieldData[name=$variadicChild, kind=ONE, node=NodeData[C]], name=$variadicChild, index=1]
+                //   Indexed Pops:
+                //     [ 0] arg0
+                //   Variadic
+                //   Always Boxed
+                //   Pushed Values: 1
+                //   State Bitsets:
+                //     [ 0] StateBitSet state_0 [SpecializationData [id = Direct], SpecializationData [id = Indirect], SpecializationData [id = Interop]]
+                //     [ 1] ExcludeBitSet exclude [SpecializationData [id = Direct], SpecializationData [id = Indirect], SpecializationData [id = Interop]]
+                case ((INSTR_C_SL_INVOKE << 3) | 0) :
+                {
+                    int numVariadics = unsafeFromBytecode($bc, $bci + C_SL_INVOKE_VARIADIC_OFFSET + 0);
+                    SLInvoke_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children, numVariadics);
+                    $sp +=  - numVariadics;
+                    return $sp;
+                }
+                // si.load.local.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_14_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.constant.c.SLFunctionLiteral.load.local.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX << 3) | 0) :
+                {
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLFunctionLiteral_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $bci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_15_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                // si.pop.load.constant.c.SLFunctionLiteral.load.local.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_POP_LOAD_CONSTANT_C_SL_FUNCTION_LITERAL_LOAD_LOCAL_C_SL_UNBOX << 3) | 0) :
+                {
+                    $sp = $sp - 1;
+                    $frame.clear($sp);
+                    $bci = $bci + POP_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLFunctionLiteral_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $bci = $bci + C_SL_FUNCTION_LITERAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_19_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_22_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            unsafeWriteBytecode($bc, $bci, (short) ((INSTR_LOAD_LOCAL << 3) | 0));
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                            do_loadLocalBoxed_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                            do_loadLocalBoxed_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_BOXED_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLLessOrEqual_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLLessOrEqual_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                // si.pop.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant
+                //   Pushed Values: 0
+                case ((INSTR_SI_POP_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT << 3) | 0) :
+                {
+                    $sp = $sp - 1;
+                    $frame.clear($sp);
+                    $bci = $bci + POP_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_23_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_ADD_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                // si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_24_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.argument.store.local.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX << 3) | 0) :
+                {
+                    UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_ARGUMENT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 7 /* generic */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_null($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                    }
+                    $bci = $bci + STORE_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_ARGUMENT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 7 /* generic */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_null($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                    }
+                    $bci = $bci + STORE_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                // si.load.local.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            unsafeWriteBytecode($bc, $bci, (short) ((INSTR_LOAD_LOCAL << 3) | 0));
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                            do_loadLocalBoxed_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                            do_loadLocalBoxed_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_BOXED_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLLessOrEqual_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLLessOrEqual_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_25_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_ADD_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_26_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.local.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                // si.pop.load.local.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_POP_LOAD_LOCAL_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0) :
+                {
+                    $sp = $sp - 1;
+                    $frame.clear($sp);
+                    $bci = $bci + POP_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_ADD_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_27_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY << 3) | 0) :
+                {
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_28_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.store.local.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd
+                //   Pushed Values: 0
+                case ((INSTR_SI_STORE_LOCAL_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD << 3) | 0) :
+                {
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 7 /* generic */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_null($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                    }
+                    $bci = $bci + STORE_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_ARGUMENT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 7 /* generic */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_null($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                    }
+                    $bci = $bci + STORE_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_ADD_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_30_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.argument.store.local.load.local.c.SLUnbox.load.local.c.SLUnbox.c.SLAdd.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_ARGUMENT_STORE_LOCAL_LOAD_LOCAL_C_SL_UNBOX_LOAD_LOCAL_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0) :
+                {
+                    UFA.unsafeSetObject($frame, $sp, $frame.getArguments()[unsafeFromBytecode($bc, $bci + LOAD_ARGUMENT_ARGUMENT_OFFSET + 0)]);
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_ARGUMENT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                        case 7 /* generic */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + STORE_LOCAL_LOCALS_OFFSET + 0);
+                            do_storeLocal_null($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp--;
+                            break;
+                        }
+                    }
+                    $bci = $bci + STORE_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_ADD_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                // si.load.constant.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_CONSTANT_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD << 3) | 0) :
+                {
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_ADD_LENGTH;
+                    return $sp;
+                }
+                // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_32_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.local.boxed.c.SLUnbox.c.SLLessOrEqual.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_BOXED_C_SL_UNBOX_C_SL_LESS_OR_EQUAL_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            unsafeWriteBytecode($bc, $bci, (short) ((INSTR_LOAD_LOCAL << 3) | 0));
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                            do_loadLocalBoxed_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_BOXED_LOCALS_OFFSET + 0);
+                            do_loadLocalBoxed_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_BOXED_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLLessOrEqual_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLLessOrEqual_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_LESS_OR_EQUAL_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_33_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.local.load.constant.c.SLReadProperty.c.SLUnbox.load.constant.c.SLUnbox.c.SLAdd.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0 /* OBJECT */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 5 /* BOOLEAN */) :
+                case ((INSTR_SI_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_CONSTANT_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 1 /* LONG */) :
+                {
+                    short primitiveTag = (short) ((curOpcode >> 13) & 0x0007);
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_ADD_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_34_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.load.constant.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox.c.SLAdd
+                //   Pushed Values: 0
+                case ((INSTR_SI_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD << 3) | 0) :
+                {
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_ADD_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static int instructionGroup_37_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
+            int $bci = $startBci;
+            int $sp = $startSp;
+            switch (curOpcode) {
+                // si.c.SLReadProperty.c.SLUnbox.load.local.load.constant.c.SLReadProperty.c.SLUnbox.c.SLAdd.c.SLUnbox
+                //   Pushed Values: 0
+                case ((INSTR_SI_C_SL_READ_PROPERTY_C_SL_UNBOX_LOAD_LOCAL_LOAD_CONSTANT_C_SL_READ_PROPERTY_C_SL_UNBOX_C_SL_ADD_C_SL_UNBOX << 3) | 0) :
+                {
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_OBJECT($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_BOOLEAN($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            int localIdx = unsafeFromBytecode($bc, $bci + LOAD_LOCAL_LOCALS_OFFSET + 0);
+                            do_loadLocal_LONG($this, $frame, $bc, $bci, $sp, $localTags, localIdx);
+                            $sp++;
+                            break;
+                        }
+                    }
+                    $bci = $bci + LOAD_LOCAL_LENGTH;
+                    UFA.unsafeSetObject($frame, $sp, UFA.unsafeObjectArrayRead($consts, unsafeFromBytecode($bc, $bci + LOAD_CONSTANT_CONSTANT_OFFSET) + 0));
+                    $sp = $sp + 1;
+                    $bci = $bci + LOAD_CONSTANT_LENGTH;
+                    SLReadProperty_entryPoint_($frame, $this, $bc, $bci, $sp, $consts, $children);
+                    $sp += -1;
+                    $bci = $bci + C_SL_READ_PROPERTY_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLAdd_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLAdd_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            $sp += -1;
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_ADD_LENGTH;
+                    switch (unsafeFromBytecode($bc, $bci) & 7) {
+                        case 0 /* OBJECT */ :
+                        {
+                            SLUnbox_entryPoint_OBJECT($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 5 /* BOOLEAN */ :
+                        {
+                            SLUnbox_entryPoint_BOOLEAN($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                        case 1 /* LONG */ :
+                        {
+                            SLUnbox_entryPoint_LONG($frame, $this, $bc, $bci, $sp, $consts, $children);
+                            break;
+                        }
+                    }
+                    $bci = $bci + C_SL_UNBOX_LENGTH;
+                    return $sp;
+                }
+                default :
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        private static boolean isAdoptable() {
+            return true;
+        }
+
+        private static final class SLAdd_Add1Data extends Node {
+
+            @Child SLToTruffleStringNode toTruffleStringNodeLeft_;
+            @Child SLToTruffleStringNode toTruffleStringNodeRight_;
+            @Child ConcatNode concatNode_;
+
+            SLAdd_Add1Data() {
+            }
+
+            @Override
+            public NodeCost getCost() {
+                return NodeCost.NONE;
+            }
+
+            <T extends Node> T insertAccessor(T node) {
+                return super.insert(node);
+            }
+
+        }
+        private static final class SLEqual_Generic0Data extends Node {
+
+            @Child SLEqual_Generic0Data next_;
+            @Child InteropLibrary leftInterop_;
+            @Child InteropLibrary rightInterop_;
+
+            SLEqual_Generic0Data(SLEqual_Generic0Data next_) {
+                this.next_ = next_;
+            }
+
+            @Override
+            public NodeCost getCost() {
+                return NodeCost.NONE;
+            }
+
+            <T extends Node> T insertAccessor(T node) {
+                return super.insert(node);
+            }
+
+        }
+        private static final class SLReadProperty_ReadArray0Data extends Node {
+
+            @Child SLReadProperty_ReadArray0Data next_;
+            @Child InteropLibrary arrays_;
+            @Child InteropLibrary numbers_;
+
+            SLReadProperty_ReadArray0Data(SLReadProperty_ReadArray0Data next_) {
+                this.next_ = next_;
+            }
+
+            @Override
+            public NodeCost getCost() {
+                return NodeCost.NONE;
+            }
+
+            <T extends Node> T insertAccessor(T node) {
+                return super.insert(node);
+            }
+
+        }
+        private static final class SLReadProperty_ReadSLObject0Data extends Node {
+
+            @Child SLReadProperty_ReadSLObject0Data next_;
+            @Child DynamicObjectLibrary objectLibrary_;
+            @Child SLToTruffleStringNode toTruffleStringNode_;
+
+            SLReadProperty_ReadSLObject0Data(SLReadProperty_ReadSLObject0Data next_) {
+                this.next_ = next_;
+            }
+
+            @Override
+            public NodeCost getCost() {
+                return NodeCost.NONE;
+            }
+
+            <T extends Node> T insertAccessor(T node) {
+                return super.insert(node);
+            }
+
+        }
+        private static final class SLReadProperty_ReadObject0Data extends Node {
+
+            @Child SLReadProperty_ReadObject0Data next_;
+            @Child InteropLibrary objects_;
+            @Child SLToMemberNode asMember_;
+
+            SLReadProperty_ReadObject0Data(SLReadProperty_ReadObject0Data next_) {
+                this.next_ = next_;
+            }
+
+            @Override
+            public NodeCost getCost() {
+                return NodeCost.NONE;
+            }
+
+            <T extends Node> T insertAccessor(T node) {
+                return super.insert(node);
+            }
+
+        }
+        private static final class SLWriteProperty_WriteArray0Data extends Node {
+
+            @Child SLWriteProperty_WriteArray0Data next_;
+            @Child InteropLibrary arrays_;
+            @Child InteropLibrary numbers_;
+
+            SLWriteProperty_WriteArray0Data(SLWriteProperty_WriteArray0Data next_) {
+                this.next_ = next_;
+            }
+
+            @Override
+            public NodeCost getCost() {
+                return NodeCost.NONE;
+            }
+
+            <T extends Node> T insertAccessor(T node) {
+                return super.insert(node);
+            }
+
+        }
+        private static final class SLWriteProperty_WriteSLObject0Data extends Node {
+
+            @Child SLWriteProperty_WriteSLObject0Data next_;
+            @Child DynamicObjectLibrary objectLibrary_;
+            @Child SLToTruffleStringNode toTruffleStringNode_;
+
+            SLWriteProperty_WriteSLObject0Data(SLWriteProperty_WriteSLObject0Data next_) {
+                this.next_ = next_;
+            }
+
+            @Override
+            public NodeCost getCost() {
+                return NodeCost.NONE;
+            }
+
+            <T extends Node> T insertAccessor(T node) {
+                return super.insert(node);
+            }
+
+        }
+        private static final class SLWriteProperty_WriteObject0Data extends Node {
+
+            @Child SLWriteProperty_WriteObject0Data next_;
+            @Child InteropLibrary objectLibrary_;
+            @Child SLToMemberNode asMember_;
+
+            SLWriteProperty_WriteObject0Data(SLWriteProperty_WriteObject0Data next_) {
+                this.next_ = next_;
+            }
+
+            @Override
+            public NodeCost getCost() {
+                return NodeCost.NONE;
+            }
+
+            <T extends Node> T insertAccessor(T node) {
+                return super.insert(node);
+            }
+
+        }
+        private static final class SLUnbox_FromForeign0Data extends Node {
+
+            @Child SLUnbox_FromForeign0Data next_;
+            @Child InteropLibrary interop_;
+
+            SLUnbox_FromForeign0Data(SLUnbox_FromForeign0Data next_) {
+                this.next_ = next_;
+            }
+
+            @Override
+            public NodeCost getCost() {
+                return NodeCost.NONE;
+            }
+
+            <T extends Node> T insertAccessor(T node) {
+                return super.insert(node);
+            }
+
+        }
+        @GeneratedBy(SLOperationRootNode.class)
+        private static final class SLInvoke_DirectData extends Node {
+
+            @Child SLInvoke_DirectData next_;
+            @CompilationFinal Assumption callTargetStable_;
+            @CompilationFinal RootCallTarget cachedTarget_;
+            @Child DirectCallNode callNode_;
+
+            SLInvoke_DirectData(SLInvoke_DirectData next_) {
+                this.next_ = next_;
+            }
+
+            @Override
+            public NodeCost getCost() {
+                return NodeCost.NONE;
+            }
+
+            <T extends Node> T insertAccessor(T node) {
+                return super.insert(node);
+            }
+
+        }
+    }
     private static final UnsafeFrameAccess UFA = UnsafeFrameAccess.lookup();
     private static final BytecodeLoopBase UNCOMMON_EXECUTE = new BytecodeNode();
     private static final BytecodeLoopBase COMMON_EXECUTE = UNCOMMON_EXECUTE;
@@ -13982,13 +23599,18 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
     private static final int STORE_LOCAL_MAT_ARGUMENT_OFFSET = 1;
     private static final int STORE_LOCAL_MAT_LENGTH = 2;
     private static final short INSTR_INSTRUMENT_ENTER = 13;
+    private static final int INSTRUMENT_ENTER_INSTRUMENT_OFFSET = 1;
     private static final int INSTRUMENT_ENTER_LENGTH = 2;
     private static final short INSTR_INSTRUMENT_EXIT_VOID = 14;
+    private static final int INSTRUMENT_EXIT_VOID_INSTRUMENT_OFFSET = 1;
     private static final int INSTRUMENT_EXIT_VOID_LENGTH = 2;
     private static final short INSTR_INSTRUMENT_EXIT = 15;
-    private static final int INSTRUMENT_EXIT_LENGTH = 2;
+    private static final int INSTRUMENT_EXIT_POP_INDEXED_OFFSET = 1;
+    private static final int INSTRUMENT_EXIT_INSTRUMENT_OFFSET = 2;
+    private static final int INSTRUMENT_EXIT_LENGTH = 3;
     private static final short INSTR_INSTRUMENT_LEAVE = 16;
     private static final int INSTRUMENT_LEAVE_BRANCH_TARGET_OFFSET = 1;
+    private static final int INSTRUMENT_LEAVE_INSTRUMENT_OFFSET = 3;
     private static final int INSTRUMENT_LEAVE_LENGTH = 4;
     private static final short INSTR_C_SL_ADD = 17;
     private static final int C_SL_ADD_CONSTANT_OFFSET = 1;
@@ -14178,6 +23800,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
     @CompilationFinal private int _maxLocals;
     @CompilationFinal private int _maxStack;
     @CompilationFinal(dimensions = 1) private int[] sourceInfo;
+    @CompilationFinal private InstrumentRootNode instrumentRoot;
+    @CompilationFinal(dimensions = 1) private InstrumentTreeNode[] instruments;
     @CompilationFinal private BytecodeLoopBase switchImpl = INITIAL_EXECUTE;
     @CompilationFinal private int uncachedExecuteCount = 16;
     @CompilationFinal private Object _osrMetadata;
@@ -14336,6 +23960,12 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         result.sourceInfo = sourceInfo;
         result._metadata_MethodName = _metadata_MethodName;
         return result;
+    }
+
+    @Override
+    public InstrumentableNode materializeInstrumentTree(Set<Class<? extends Tag>> materializedTags) {
+        nodes.ensureInstrumentationAccessor();
+        return instrumentRoot;
     }
 
     private void changeInterpreters(BytecodeLoopBase impl) {
@@ -14978,6 +24608,14 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         }
     }
 
+    private static ProbeNode getProbeNodeImpl(SLOperationRootNodeGen $this, int index) {
+        InstrumentTreeNode node = $this.instruments[index];
+        if (!(node instanceof WrapperNode)) {
+            return null;
+        }
+        return ((WrapperNode)  node).getProbeNode();
+    }
+
     public static OperationNodes<SLOperationRootNode> create(OperationConfig config, OperationParser<com.oracle.truffle.sl.operations.SLOperationRootNodeGen.Builder> generator) {
         OperationNodesImpl nodes = new OperationNodesImpl(generator);
         Builder builder = new com.oracle.truffle.sl.operations.SLOperationRootNodeGen.Builder(nodes, false, config);
@@ -15072,34 +24710,6 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             bc[bci] = (short) (targetType | (bc[bci] & 0xfff8));
         }
 
-        protected static boolean expectBoolean(VirtualFrame frame, int slot, short[] bc, int bci, int bciOffset) throws UnexpectedResultException {
-            if (bciOffset == 0) {
-                Object value = UFA.unsafeUncheckedGetObject(frame, slot);
-                if (value instanceof Boolean) {
-                    return (boolean) value;
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw new UnexpectedResultException(value);
-                }
-            } else {
-                switch (UFA.unsafeGetTag(frame, slot)) {
-                    case 5 /* BOOLEAN */ :
-                        return UFA.unsafeUncheckedGetBoolean(frame, slot);
-                    case 0 /* OBJECT */ :
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        Object value = UFA.unsafeUncheckedGetObject(frame, slot);
-                        if (value instanceof Boolean) {
-                            setResultBoxedImpl(bc, bci - bciOffset, 5 /* BOOLEAN */);
-                            return (boolean) value;
-                        }
-                        break;
-                }
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                setResultBoxedImpl(bc, bci - bciOffset, 0);
-                throw new UnexpectedResultException(frame.getValue(slot));
-            }
-        }
-
         protected static long expectLong(VirtualFrame frame, int slot, short[] bc, int bci, int bciOffset) throws UnexpectedResultException {
             if (bciOffset == 0) {
                 Object value = UFA.unsafeUncheckedGetObject(frame, slot);
@@ -15119,6 +24729,34 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                         if (value instanceof Long) {
                             setResultBoxedImpl(bc, bci - bciOffset, 1 /* LONG */);
                             return (long) value;
+                        }
+                        break;
+                }
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                setResultBoxedImpl(bc, bci - bciOffset, 0);
+                throw new UnexpectedResultException(frame.getValue(slot));
+            }
+        }
+
+        protected static boolean expectBoolean(VirtualFrame frame, int slot, short[] bc, int bci, int bciOffset) throws UnexpectedResultException {
+            if (bciOffset == 0) {
+                Object value = UFA.unsafeUncheckedGetObject(frame, slot);
+                if (value instanceof Boolean) {
+                    return (boolean) value;
+                } else {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw new UnexpectedResultException(value);
+                }
+            } else {
+                switch (UFA.unsafeGetTag(frame, slot)) {
+                    case 5 /* BOOLEAN */ :
+                        return UFA.unsafeUncheckedGetBoolean(frame, slot);
+                    case 0 /* OBJECT */ :
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        Object value = UFA.unsafeUncheckedGetObject(frame, slot);
+                        if (value instanceof Boolean) {
+                            setResultBoxedImpl(bc, bci - bciOffset, 5 /* BOOLEAN */);
+                            return (boolean) value;
                         }
                         break;
                 }
@@ -15153,6 +24791,14 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
 
         void setNodes(SLOperationRootNode[] nodes) {
             this.nodes = nodes;
+        }
+
+        protected void ensureSourcesAccessor() {
+            ensureSources();
+        }
+
+        protected void ensureInstrumentationAccessor() {
+            ensureInstrumentation();
         }
 
         @Override
@@ -15225,6 +24871,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
         private int[] instructionHistory = new int[8];
         private int instructionHistoryIndex = 0;
         private int numLabels;
+        private int numInstrumentNodes;
         private ArrayList<Object> constPool = new ArrayList<>();
         private BuilderOperationData operationData;
         private ArrayList<OperationLabelImpl> labels = new ArrayList<>();
@@ -15287,6 +24934,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             if (sourceBuilder != null) {
                 sourceBuilder = new SourceInfoBuilder(sourceBuilder.sourceList);
             }
+            numInstrumentNodes = 0;
             metadata_MethodName = null;
         }
 
@@ -16637,6 +26285,8 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 operationData.aux[2] = endLabel;
                 doBeforeEmitInstruction(0, false, false);
                 unsafeWriteBytecode(bc, bci, (short) ((INSTR_INSTRUMENT_ENTER << 3) | 0));
+                bc[bci + 1] = (short) numInstrumentNodes;
+                numInstrumentNodes += 1;
                 instructionHistory[++instructionHistoryIndex % 8] = INSTR_INSTRUMENT_ENTER;
                 bci = bci + INSTRUMENT_ENTER_LENGTH;
                 lastChildPush = 0;
@@ -16664,11 +26314,16 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
                 if (lastChildPush != 0) {
                     doBeforeEmitInstruction(0, false, false);
                     unsafeWriteBytecode(bc, bci, (short) ((INSTR_INSTRUMENT_EXIT_VOID << 3) | 0));
+                    bc[bci + 1] = (short) numInstrumentNodes;
+                    numInstrumentNodes += 1;
                     instructionHistory[++instructionHistoryIndex % 8] = INSTR_INSTRUMENT_EXIT_VOID;
                     bci = bci + INSTRUMENT_EXIT_VOID_LENGTH;
                 } else {
-                    doBeforeEmitInstruction(0, false, false);
+                    int[] predecessorBcis = doBeforeEmitInstruction(1, false, false);
                     unsafeWriteBytecode(bc, bci, (short) ((INSTR_INSTRUMENT_EXIT << 3) | 0));
+                    bc[bci + 1 + 0] = (short) ((bci - predecessorBcis[0] < 256 ? bci - predecessorBcis[0] : 0));
+                    bc[bci + 1] = (short) numInstrumentNodes;
+                    numInstrumentNodes += 1;
                     instructionHistory[++instructionHistoryIndex % 8] = INSTR_INSTRUMENT_EXIT;
                     bci = bci + INSTRUMENT_EXIT_LENGTH;
                 }
@@ -18174,6 +27829,11 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
 
             @Override
             public SourceSection getSourceSectionAtBci(int bci) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public InstrumentableNode materializeInstrumentTree(Set<Class<? extends Tag>> materializedTags) {
                 throw new UnsupportedOperationException();
             }
 

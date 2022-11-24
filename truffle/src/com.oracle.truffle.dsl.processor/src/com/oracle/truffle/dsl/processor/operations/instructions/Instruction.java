@@ -71,10 +71,6 @@ public abstract class Instruction {
         public CodeVariableElement sp;
         public CodeVariableElement consts;
         public CodeVariableElement children;
-        public CodeVariableElement[] inputs;
-        public CodeVariableElement[] results;
-
-        public CodeVariableElement probeNodes;
         public CodeVariableElement tracer;
 
         public FrameKind specializedKind;
@@ -129,6 +125,7 @@ public abstract class Instruction {
     private static final String BRANCH_TARGET_OFFSET_SUFFIX = "_BRANCH_TARGET_OFFSET";
     private static final String BRANCH_PROFILE_OFFSET_SUFFIX = "_BRANCH_PROFILE_OFFSET";
     private static final String STATE_BITS_OFFSET_SUFFIX = "_STATE_BITS_OFFSET";
+    private static final String INSTRUMENT_OFFSET_SUFFIX = "_INSTRUMENT_OFFSET";
     private static final String LENGTH_SUFFIX = "_LENGTH";
 
     private int addInstructionArgument(List<Object> holder, Object marker) {
@@ -318,6 +315,9 @@ public abstract class Instruction {
             throw new AssertionError("there is no boxing elimination");
             // return CodeTreeBuilder.singleString("0 /* XXXXXXXXXXX */");
         }
+        if (write) {
+            throw new AssertionError("cannot write to indexed pops");
+        }
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         b.startParantheses();
@@ -325,7 +325,7 @@ public abstract class Instruction {
             b.startParantheses();
         }
 
-        b.tree(createDirectIndex(vars, POP_INDEXED_OFFSET_SUFFIX, index / 2, write));
+        b.tree(createDirectIndex(vars, POP_INDEXED_OFFSET_SUFFIX, index / 2, false));
 
         if (index % 2 == 1) {
             b.string(" >> 8").end();
@@ -350,6 +350,10 @@ public abstract class Instruction {
 
     public CodeTree createStateBitsIndex(ExecutionVariables vars, int index, boolean write) {
         return createDirectIndex(vars, STATE_BITS_OFFSET_SUFFIX, index, write);
+    }
+
+    public CodeTree createInstrument(ExecutionVariables vars, int index) {
+        return createIndirectIndex(vars, INSTRUMENT_OFFSET_SUFFIX, index);
     }
 
     public CodeTree createLength() {
@@ -558,7 +562,13 @@ public abstract class Instruction {
             b.end();
         }
 
-        // todo: instruments
+        if (!instruments.isEmpty()) {
+            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getChildrenOffset() + "] = (short) ");
+            b.string("numInstrumentNodes");
+            b.end();
+
+            b.statement("numInstrumentNodes += " + instruments.size());
+        }
 
         // superinstructions
 
@@ -801,6 +811,9 @@ public abstract class Instruction {
         }
         if (!stateBits.isEmpty()) {
             result.add(createConstant(internalName + STATE_BITS_OFFSET_SUFFIX, getStateBitsOffset()));
+        }
+        if (!instruments.isEmpty()) {
+            result.add(createConstant(internalName + INSTRUMENT_OFFSET_SUFFIX, getInstrumentsOffset()));
         }
         result.add(createConstant(internalName + LENGTH_SUFFIX, length()));
 

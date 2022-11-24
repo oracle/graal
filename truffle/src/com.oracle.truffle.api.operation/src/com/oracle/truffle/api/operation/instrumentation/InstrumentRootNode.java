@@ -38,72 +38,71 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.dsl.processor.operations.instructions;
+package com.oracle.truffle.api.operation.instrumentation;
 
-import com.oracle.truffle.dsl.processor.java.model.CodeTree;
-import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
-import com.oracle.truffle.dsl.processor.operations.OperationsContext;
+import java.util.Set;
 
-public class InstrumentationExitInstruction extends Instruction {
-    private final boolean returnsValue;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.operation.OperationRootNode;
 
-    public InstrumentationExitInstruction(OperationsContext ctx, int id) {
-        super(ctx, "instrument.exit.void", id, 0);
-        this.returnsValue = false;
-        addInstrument("instrument");
+public class InstrumentRootNode extends Node implements InstrumentableNode {
+
+    private static final InstrumentTreeNode[] EMPTY_NODE_ARRAY = new InstrumentTreeNode[0];
+
+    public static InstrumentRootNode create() {
+        return new InstrumentRootNode(EMPTY_NODE_ARRAY);
     }
 
-    public InstrumentationExitInstruction(OperationsContext ctx, int id, boolean returnsValue) {
-        super(ctx, "instrument.exit", id, 0);
-        assert returnsValue;
-        this.returnsValue = true;
-        addInstrument("instrument");
-        addPopIndexed("value");
+    public static InstrumentRootNode create(InstrumentTreeNode... nodes) {
+        return new InstrumentRootNode(nodes);
     }
 
-    @Override
-    public CodeTree createExecuteCode(ExecutionVariables vars) {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+    @Children private final InstrumentTreeNode[] children;
 
-        b.startAssign("ProbeNode probe");
-        b.startCall("getProbeNodeImpl");
-        b.string("$this");
-        b.tree(createInstrument(vars, 0));
-        b.end(2);
-
-        b.startIf().string("probe != null").end();
-        b.startBlock();
-
-        b.startStatement();
-        b.startCall("probe", "onReturnValue");
-        b.variable(vars.localFrame);
-        if (returnsValue) {
-            b.startCall("expectObject");
-            b.variable(vars.stackFrame);
-            b.string("$sp - 1");
-            if (ctx.hasBoxingElimination()) {
-                b.variable(vars.bc);
-                b.variable(vars.bci);
-                b.tree(createPopIndexedIndex(vars, 0, false));
-            }
-            b.end();
-        } else {
-            b.string("null");
-        }
-        b.end(2);
-
-        b.end();
-
-        return b.build();
+    private InstrumentRootNode(InstrumentTreeNode[] children) {
+        this.children = children;
     }
 
-    @Override
-    public boolean isInstrumentationOnly() {
+    public boolean isInstrumentable() {
         return true;
     }
 
-    @Override
-    public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
-        return null;
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new Wrapper(this, probe);
     }
+
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        return ((OperationRootNode) getParent()).materializeInstrumentTree(materializedTags);
+    }
+
+    static final class Wrapper extends InstrumentRootNode implements WrapperNode {
+        @Child private InstrumentRootNode delegateNode;
+        @Child private ProbeNode probeNode;
+
+        Wrapper(InstrumentRootNode delegateNode, ProbeNode probeNode) {
+            super(EMPTY_NODE_ARRAY);
+            this.delegateNode = delegateNode;
+            this.probeNode = probeNode;
+        }
+
+        @Override
+        public InstrumentRootNode getDelegateNode() {
+            return delegateNode;
+        }
+
+        @Override
+        public ProbeNode getProbeNode() {
+            return probeNode;
+        }
+
+        @Override
+        public NodeCost getCost() {
+            return NodeCost.NONE;
+        }
+    }
+
 }

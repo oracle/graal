@@ -56,8 +56,9 @@ public class InstrumentationEnterInstruction extends Instruction {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         b.startAssign("ProbeNode probe");
-        b.variable(vars.probeNodes).string("[").variable(vars.inputs[0]).string("].");
-        b.startCall("getTreeProbeNode");
+        b.startCall("getProbeNodeImpl");
+        b.string("$this");
+        b.tree(createInstrument(vars, 0));
         b.end(2);
 
         b.startIf().string("probe != null").end();

@@ -145,6 +145,13 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         mSetNodes.createBuilder().statement("this.nodes = nodes");
         typOperationNodes.add(mSetNodes);
 
+        for (String name : new String[]{"ensureSources", "ensureInstrumentation"}) {
+            CodeExecutableElement m = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.OperationNodes, name));
+            m.setSimpleName(CodeNames.of(name + "Accessor"));
+            m.createBuilder().startStatement().startCall(name).variables(m.getParameters()).end(2);
+            typOperationNodes.add(m);
+        }
+
         if (OperationGeneratorFlags.ENABLE_SERIALIZATION) {
             typOperationNodes.add(createOperationNodesSerialize());
         }
@@ -303,7 +310,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(context.getType(int.class), "buildOrder")));
         typOperationNodeImpl.add(GeneratorUtils.createConstructorUsingFields(MOD_PRIVATE, typOperationNodeImpl, m.fdConstructor));
 
-        for (String methodName : new String[]{"execute", "getSourceSectionAtBci"}) {
+        for (String methodName : new String[]{"execute", "getSourceSectionAtBci", "materializeInstrumentTree"}) {
             CodeExecutableElement met = GeneratorUtils.overrideImplement(types.OperationRootNode, methodName);
             met.createBuilder().startThrow().startNew(context.getType(UnsupportedOperationException.class)).end(2);
             typOperationNodeImpl.add(met);
@@ -395,6 +402,11 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         if (m.isTracing()) {
             typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(boolean[].class), "isBbStart")));
+        }
+
+        if (OperationGeneratorFlags.ENABLE_INSTRUMENTATION) {
+            typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, types.InstrumentRootNode, "instrumentRoot")));
+            typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, arrayOf(types.InstrumentTreeNode), "instruments")));
         }
 
         CodeVariableElement fldSwitchImpl = new CodeVariableElement(MOD_PRIVATE, typBytecodeBase.asType(), "switchImpl");
@@ -522,6 +534,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             builderInstrBytecodeNodeType = null;
         }
 
+        typOperationNodeImpl.add(createMaterializeInstrumentTree());
+
         CodeTypeElement typBuilderImpl = createBuilderImpl(typOperationNodeImpl, typOpNodesImpl, typExceptionHandler);
         typOperationNodeImpl.add(typBuilderImpl);
         typOperationNodeImpl.add(createChangeInterpreter(typBytecodeBase));
@@ -543,6 +557,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typOperationNodeImpl.add(createUnsafeWriteBytecode());
         typOperationNodeImpl.add(createConditionProfile());
 
+        if (OperationGeneratorFlags.ENABLE_INSTRUMENTATION) {
+            typOperationNodeImpl.add(createGetTreeProbeNode(typOperationNodeImpl.asType()));
+        }
+
         typOperationNodeImpl.add(createCreateMethod(typBuilderImpl, typBuilderImpl));
         typOperationNodeImpl.add(createDeserializeMethod());
         typOperationNodeImpl.add(createSerializeMethod(typBuilderImpl, typBuilderImpl));
@@ -552,6 +570,34 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         }
 
         return typOperationNodeImpl;
+    }
+
+    private CodeExecutableElement createGetTreeProbeNode(TypeMirror thisType) {
+        CodeExecutableElement met = new CodeExecutableElement(MOD_PRIVATE_STATIC, types.ProbeNode, "getProbeNodeImpl");
+        met.addParameter(new CodeVariableElement(thisType, "$this"));
+        met.addParameter(new CodeVariableElement(context.getType(int.class), "index"));
+        CodeTreeBuilder b = met.createBuilder();
+
+        b.statement("InstrumentTreeNode node = $this.instruments[index]");
+        b.startIf().string("!(node").instanceOf(types.InstrumentableNode_WrapperNode).string(")").end().startBlock();
+        b.returnNull();
+        b.end();
+
+        b.startReturn().string("(").cast(types.InstrumentableNode_WrapperNode).string(" node).getProbeNode()").end();
+
+        return met;
+    }
+
+    private CodeExecutableElement createMaterializeInstrumentTree() {
+        CodeExecutableElement met = GeneratorUtils.overrideImplement(types.OperationRootNode, "materializeInstrumentTree");
+        CodeTreeBuilder b = met.createBuilder();
+
+        if (OperationGeneratorFlags.ENABLE_INSTRUMENTATION) {
+            b.statement("nodes.ensureInstrumentationAccessor()");
+        }
+
+        b.startReturn().string("instrumentRoot").end();
+        return met;
     }
 
     private CodeExecutableElement createHookTransferToInterpreterAndInvalidate() {
@@ -1030,6 +1076,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         }
         if (m.isTracing()) {
             typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(boolean[].class), "isBbStart = new boolean[65535]"));
+        }
+        if (OperationGeneratorFlags.ENABLE_INSTRUMENTATION) {
+            typBuilderImpl.add(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "numInstrumentNodes"));
         }
 
         CodeVariableElement fldConstPool = typBuilderImpl.add(
@@ -2787,6 +2836,10 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         if (m.enableYield) {
             b.statement("yieldCount = 0");
+        }
+
+        if (OperationGeneratorFlags.ENABLE_INSTRUMENTATION) {
+            b.statement("numInstrumentNodes = 0");
         }
 
         for (OperationMetadataData metadata : m.getMetadatas()) {

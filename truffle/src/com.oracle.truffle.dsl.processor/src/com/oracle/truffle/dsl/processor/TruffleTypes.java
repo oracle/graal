@@ -259,6 +259,8 @@ public class TruffleTypes {
     public static final String OperationsInstrumentTreeNode_Name = "com.oracle.truffle.api.operation.OperationsInstrumentTreeNode";
     public static final String Variadic_Name = "com.oracle.truffle.api.operation.Variadic";
     public static final String ShortCircuitOperation_Name = "com.oracle.truffle.api.operation.ShortCircuitOperation";
+    public static final String InstrumentRootNode_Name = "com.oracle.truffle.api.operation.instrumentation.InstrumentRootNode";
+    public static final String InstrumentTreeNode_Name = "com.oracle.truffle.api.operation.instrumentation.InstrumentTreeNode";
     public static final String ExecutionTracer_Name = "com.oracle.truffle.api.operation.tracing.ExecutionTracer";
 
     public final DeclaredType BuilderSourceInfo = c.getDeclaredTypeOptional(BuilderSourceInfo_Name);
@@ -283,6 +285,8 @@ public class TruffleTypes {
     public final DeclaredType OperationsInstrumentTreeNode = c.getDeclaredTypeOptional(OperationsInstrumentTreeNode_Name);
     public final DeclaredType ShortCircuitOperation = c.getDeclaredTypeOptional(ShortCircuitOperation_Name);
     public final DeclaredType Variadic = c.getDeclaredTypeOptional(Variadic_Name);
+    public final DeclaredType InstrumentRootNode = c.getDeclaredTypeOptional(InstrumentRootNode_Name);
+    public final DeclaredType InstrumentTreeNode = c.getDeclaredTypeOptional(InstrumentTreeNode_Name);
     public final DeclaredType ExecutionTracer = c.getDeclaredTypeOptional(ExecutionTracer_Name);
 
     // Library API

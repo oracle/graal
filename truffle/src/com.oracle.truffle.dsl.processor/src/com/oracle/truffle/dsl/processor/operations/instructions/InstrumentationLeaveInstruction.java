@@ -57,8 +57,9 @@ public class InstrumentationLeaveInstruction extends Instruction {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         b.startAssign("ProbeNode probe");
-        b.variable(vars.probeNodes).string("[").variable(vars.inputs[0]).string("].");
-        b.startCall("getTreeProbeNode");
+        b.startCall("getProbeNodeImpl");
+        b.string("$this");
+        b.tree(createInstrument(vars, 0));
         b.end(2);
 
         b.startIf().string("probe != null").end();
@@ -71,34 +72,40 @@ public class InstrumentationLeaveInstruction extends Instruction {
         b.string("false");
         b.end(2);
 
-        b.startIf().string("result == ProbeNode.UNWIND_ACTION_REENTER").end();
-        b.startBlock();
+        b.startIf().string("result == ProbeNode.UNWIND_ACTION_REENTER").end().startBlock();
 
-        b.startAssign(vars.results[0]).variable(vars.inputs[1]).end();
+        b.startAssign(vars.bci).tree(createBranchTargetIndex(vars, 0, false)).end();
+        b.statement("continue loop");
 
-        b.end().startElseIf().string("result != null").end();
-        b.startBlock();
+        b.end().startElseIf().string("result != null").end().startBlock();
 
-        // HACK, refactor this push somehow
-        b.startStatement().startCall(vars.stackFrame, "setObject").string("sp++").string("result").end(2);
-        b.startAssign(vars.results[0]).variable(vars.inputs[2]).end();
+        b.startStatement().startCall("UFA", "unsafeSetObject");
+        b.variable(vars.stackFrame);
+        b.string("$sp - 1");
+        b.string("result");
+        b.end(2);
 
-        b.end().startElseBlock();
+        b.startAssign(vars.bci).tree(createBranchTargetIndex(vars, 1, false)).end();
 
-        b.startAssign(vars.results[0]).variable(vars.bci).string(" + ").tree(createLength()).end();
+        b.statement("continue loop");
 
-        b.end();
-        b.end().startElseBlock();
+        b.end(); // result != null
 
-        b.startAssign(vars.results[0]).variable(vars.bci).string(" + ").tree(createLength()).end();
+        b.end(); // probe != null
 
-        b.end();
+        b.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(createLength()).end();
+        b.statement("continue loop");
 
         return b.build();
     }
 
     @Override
     public boolean isInstrumentationOnly() {
+        return true;
+    }
+
+    @Override
+    public boolean isExplicitFlowControl() {
         return true;
     }
 

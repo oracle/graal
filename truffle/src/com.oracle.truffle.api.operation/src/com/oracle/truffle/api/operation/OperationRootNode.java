@@ -41,9 +41,12 @@
 package com.oracle.truffle.api.operation;
 
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.operation.introspection.ExceptionHandler;
 import com.oracle.truffle.api.operation.introspection.Instruction;
@@ -75,14 +78,6 @@ public interface OperationRootNode extends NodeInterface, OperationIntrospection
             }
         }
 
-// List<SourceInformation> sourceInfo = id.getSourceInformation();
-// if (sourceInfo != null) {
-// sb.append("Source Information:\n");
-// for (SourceInformation si : sourceInfo) {
-// sb.append(" ").append(si.toString()).append('\n');
-// }
-// }
-
         return sb.toString();
     }
 
@@ -97,4 +92,6 @@ public interface OperationRootNode extends NodeInterface, OperationIntrospection
     @SuppressWarnings("unused")
     default void executeEpilog(VirtualFrame frame, Object returnValue, Throwable throwable) {
     }
+
+    InstrumentableNode materializeInstrumentTree(Set<Class<? extends Tag>> materializedTags);
 }

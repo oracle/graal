@@ -38,72 +38,61 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.dsl.processor.operations.instructions;
+package com.oracle.truffle.api.operation.instrumentation;
 
-import com.oracle.truffle.dsl.processor.java.model.CodeTree;
-import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
-import com.oracle.truffle.dsl.processor.operations.OperationsContext;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeCost;
 
-public class InstrumentationExitInstruction extends Instruction {
-    private final boolean returnsValue;
+public class InstrumentTreeNode extends Node implements InstrumentableNode {
 
-    public InstrumentationExitInstruction(OperationsContext ctx, int id) {
-        super(ctx, "instrument.exit.void", id, 0);
-        this.returnsValue = false;
-        addInstrument("instrument");
+    private static final InstrumentTreeNode[] EMPTY_NODE_ARRAY = new InstrumentTreeNode[0];
+
+    private final Class<? extends Tag> tag;
+    @Children private final InstrumentTreeNode[] children;
+
+    public InstrumentTreeNode(Class<? extends Tag> tag, InstrumentTreeNode[] children) {
+        this.tag = tag;
+        this.children = children;
     }
 
-    public InstrumentationExitInstruction(OperationsContext ctx, int id, boolean returnsValue) {
-        super(ctx, "instrument.exit", id, 0);
-        assert returnsValue;
-        this.returnsValue = true;
-        addInstrument("instrument");
-        addPopIndexed("value");
+    public boolean hasTag(Class<? extends Tag> which) {
+        return tag == which;
     }
 
-    @Override
-    public CodeTree createExecuteCode(ExecutionVariables vars) {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-
-        b.startAssign("ProbeNode probe");
-        b.startCall("getProbeNodeImpl");
-        b.string("$this");
-        b.tree(createInstrument(vars, 0));
-        b.end(2);
-
-        b.startIf().string("probe != null").end();
-        b.startBlock();
-
-        b.startStatement();
-        b.startCall("probe", "onReturnValue");
-        b.variable(vars.localFrame);
-        if (returnsValue) {
-            b.startCall("expectObject");
-            b.variable(vars.stackFrame);
-            b.string("$sp - 1");
-            if (ctx.hasBoxingElimination()) {
-                b.variable(vars.bc);
-                b.variable(vars.bci);
-                b.tree(createPopIndexedIndex(vars, 0, false));
-            }
-            b.end();
-        } else {
-            b.string("null");
-        }
-        b.end(2);
-
-        b.end();
-
-        return b.build();
-    }
-
-    @Override
-    public boolean isInstrumentationOnly() {
+    public boolean isInstrumentable() {
         return true;
     }
 
-    @Override
-    public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
-        return null;
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new Wrapper(this, probe);
+    }
+
+    static final class Wrapper extends InstrumentTreeNode implements WrapperNode {
+        @Child private InstrumentTreeNode delegateNode;
+        @Child private ProbeNode probeNode;
+
+        Wrapper(InstrumentTreeNode delegateNode, ProbeNode probeNode) {
+            super(delegateNode.tag, EMPTY_NODE_ARRAY);
+            this.delegateNode = delegateNode;
+            this.probeNode = probeNode;
+        }
+
+        @Override
+        public InstrumentTreeNode getDelegateNode() {
+            return delegateNode;
+        }
+
+        @Override
+        public ProbeNode getProbeNode() {
+            return probeNode;
+        }
+
+        @Override
+        public NodeCost getCost() {
+            return NodeCost.NONE;
+        }
     }
 }

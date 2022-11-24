@@ -50,8 +50,9 @@ public class OperationGeneratorFlags {
     public static final boolean LOG_EXECUTE_AND_SPECIALIZE_CALLS = false;
     public static final boolean LOG_STACK_READS = false;
 
+    public static final boolean ENABLE_INSTRUMENTATION = true;
+
     public static final boolean FLAG_NODE_AST_PRINTING = false;
-    public static final boolean ENABLE_INSTRUMENTATION = false;
     public static final boolean INTERPRETER_ONLY_BOXING_ELIMINATION = false;
 
     public static final boolean ENABLE_SERIALIZATION = true;
