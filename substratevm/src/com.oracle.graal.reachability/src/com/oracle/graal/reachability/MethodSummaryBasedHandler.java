@@ -77,10 +77,10 @@ public class MethodSummaryBasedHandler implements ReachabilityMethodProcessingHa
      */
     private static void processSummary(ReachabilityAnalysisEngine bb, ReachabilityAnalysisMethod method, MethodSummary summary) {
         for (AnalysisMethod invokedMethod : summary.invokedMethods) {
-            bb.markMethodInvoked((ReachabilityAnalysisMethod) invokedMethod);
+            bb.markMethodInvoked((ReachabilityAnalysisMethod) invokedMethod, method);
         }
         for (AnalysisMethod invokedMethod : summary.implementationInvokedMethods) {
-            bb.markMethodImplementationInvoked((ReachabilityAnalysisMethod) invokedMethod);
+            bb.markMethodImplementationInvoked((ReachabilityAnalysisMethod) invokedMethod, method);
         }
         for (AnalysisType type : summary.accessedTypes) {
             bb.registerTypeAsReachable(type, method);

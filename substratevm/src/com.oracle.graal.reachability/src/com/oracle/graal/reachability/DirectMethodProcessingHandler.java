@@ -27,6 +27,7 @@ package com.oracle.graal.reachability;
 import java.lang.reflect.Modifier;
 import java.util.Optional;
 
+import jdk.vm.ci.code.BytecodePosition;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.graph.Node;
@@ -135,13 +136,14 @@ public class DirectMethodProcessingHandler implements ReachabilityMethodProcessi
                 if (targetMethod == null || AnnotationAccess.isAnnotationPresent(targetMethod, Node.NodeIntrinsic.class)) {
                     continue;
                 }
+                BytecodePosition reason = AbstractAnalysisEngine.sourcePosition(node.asNode());
                 if (method != null) {
-                    method.addInvoke(new ReachabilityInvokeInfo(targetMethod, AbstractAnalysisEngine.sourcePosition(node.asNode()), kind.isDirect()));
+                    method.addInvoke(new ReachabilityInvokeInfo(targetMethod, reason, kind.isDirect()));
                 }
                 if (kind.isDirect()) {
-                    bb.markMethodImplementationInvoked(targetMethod);
+                    bb.markMethodImplementationInvoked(targetMethod, reason);
                 } else {
-                    bb.markMethodInvoked(targetMethod);
+                    bb.markMethodInvoked(targetMethod, reason);
                 }
             } else if (n instanceof FrameState) {
                 FrameState node = (FrameState) n;
@@ -159,10 +161,11 @@ public class DirectMethodProcessingHandler implements ReachabilityMethodProcessi
             } else if (n instanceof MacroInvokable) {
                 MacroInvokable node = (MacroInvokable) n;
                 ReachabilityAnalysisMethod targetMethod = (ReachabilityAnalysisMethod) node.getTargetMethod();
+                BytecodePosition reason = AbstractAnalysisEngine.syntheticSourcePosition(node.asNode(), method);
                 if (node.getInvokeKind().isDirect()) {
-                    bb.markMethodImplementationInvoked(targetMethod);
+                    bb.markMethodImplementationInvoked(targetMethod, reason);
                 } else {
-                    bb.markMethodInvoked(targetMethod);
+                    bb.markMethodInvoked(targetMethod, reason);
                 }
             } else if (n instanceof ForeignCall) {
                 handleForeignCall(bb, ((ForeignCall) n).getDescriptor());

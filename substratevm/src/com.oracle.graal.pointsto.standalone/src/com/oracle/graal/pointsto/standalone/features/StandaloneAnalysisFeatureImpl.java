@@ -241,11 +241,11 @@ public class StandaloneAnalysisFeatureImpl {
         }
 
         public void registerAsInvoked(Executable method, boolean invokeSpecial) {
-            registerAsInvoked(getMetaAccess().lookupJavaMethod(method), invokeSpecial);
+            registerAsInvoked(getMetaAccess().lookupJavaMethod(method), invokeSpecial, "registered from standalone feature");
         }
 
-        public void registerAsInvoked(AnalysisMethod aMethod, boolean invokeSpecial) {
-            bb.addRootMethod(aMethod, invokeSpecial).registerAsImplementationInvoked();
+        public void registerAsInvoked(AnalysisMethod aMethod, boolean invokeSpecial, Object reason) {
+            bb.addRootMethod(aMethod, invokeSpecial).registerAsImplementationInvoked(reason);
         }
 
         public void registerUnsafeFieldsRecomputed(Class<?> clazz) {

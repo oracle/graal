@@ -104,8 +104,8 @@ public class ReachabilityAnalysisMethod extends AnalysisMethod {
     }
 
     @Override
-    public boolean registerAsInvoked() {
-        if (super.registerAsInvoked()) {
+    public boolean registerAsInvoked(Object invokeReason) {
+        if (super.registerAsInvoked(invokeReason)) {
             if (!isStatic()) {
                 getDeclaringClass().addInvokedVirtualMethod(this);
             }
