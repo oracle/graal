@@ -33,7 +33,7 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Address.createPairBaseRegi
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.createRegisterOffsetAddress;
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT;
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT;
-import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.asElementSize;
+import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize.fromStride;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
@@ -46,7 +46,6 @@ import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ShiftType;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
-import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.debug.GraalError;
@@ -87,9 +86,10 @@ public final class AArch64ArrayCopyWithConversionsOp extends AArch64ComplexVecto
         this.argStrideDst = strideDst;
 
         GraalError.guarantee(arrayDst.getPlatformKind() == AArch64Kind.QWORD && arrayDst.getPlatformKind() == arraySrc.getPlatformKind(), "64 bit array pointers expected");
-        GraalError.guarantee(offsetDst == null || offsetDst.getPlatformKind() == AArch64Kind.QWORD, "long value expected");
-        GraalError.guarantee(offsetSrc == null || offsetSrc.getPlatformKind() == AArch64Kind.QWORD, "long value expected");
+        GraalError.guarantee(offsetDst.getPlatformKind() == AArch64Kind.QWORD, "long value expected");
+        GraalError.guarantee(offsetSrc.getPlatformKind() == AArch64Kind.QWORD, "long value expected");
         GraalError.guarantee(length.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
+        GraalError.guarantee(strideSrc != Stride.S8 && strideDst != Stride.S8, "8 byte stride is not supported");
 
         this.arrayDstValue = arrayDst;
         this.offsetDstValue = offsetDst;
@@ -99,7 +99,7 @@ public final class AArch64ArrayCopyWithConversionsOp extends AArch64ComplexVecto
         this.dynamicStridesValue = dynamicStrides == null ? Value.ILLEGAL : dynamicStrides;
 
         temp = allocateTempRegisters(tool, withDynamicStrides() ? 3 : 2);
-        vectorTemp = allocateVectorRegisters(tool, dynamicStrides != null || (strideDst.log2 - strideSrc.log2) == 2 ? 8 : 4);
+        vectorTemp = allocateVectorRegisters(tool, 4);
     }
 
     @Override
@@ -138,22 +138,22 @@ public final class AArch64ArrayCopyWithConversionsOp extends AArch64ComplexVecto
                 masm.lsl(64, length, length, 1);
                 masm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
                 masm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S1, Stride.S1)]);
-                emitArrayCopy(crb, masm, Stride.S1, Stride.S1, arrayDst, arraySrc, length, tmp, end);
+                emitArrayCopy(masm, Stride.S1, Stride.S1, arrayDst, arraySrc, length, tmp, end);
                 masm.jmp(end);
 
                 for (Stride strideSrc : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
                     for (Stride strideDst : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
-                        if (strideSrc.log2 == strideDst.log2) {
+                        if (strideSrc == strideDst) {
                             continue;
                         }
                         masm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
                         masm.bind(variants[StrideUtil.getDirectStubCallIndex(strideSrc, strideDst)]);
-                        emitArrayCopy(crb, masm, strideDst, strideSrc, arrayDst, arraySrc, length, tmp, end);
+                        emitArrayCopy(masm, strideDst, strideSrc, arrayDst, arraySrc, length, tmp, end);
                         masm.jmp(end);
                     }
                 }
             } else {
-                emitArrayCopy(crb, masm, argStrideDst, argStrideSrc, arrayDst, arraySrc, length, tmp, end);
+                emitArrayCopy(masm, argStrideDst, argStrideSrc, arrayDst, arraySrc, length, tmp, end);
             }
             masm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
             masm.bind(end);
@@ -164,8 +164,7 @@ public final class AArch64ArrayCopyWithConversionsOp extends AArch64ComplexVecto
         return !isIllegal(dynamicStridesValue);
     }
 
-    private void emitArrayCopy(CompilationResultBuilder crb, AArch64MacroAssembler asm, Stride strideDst, Stride strideSrc, Register arrayDst, Register arraySrc, Register len, Register tmp,
-                    Label end) {
+    private void emitArrayCopy(AArch64MacroAssembler asm, Stride strideDst, Stride strideSrc, Register arrayDst, Register arraySrc, Register len, Register tmp, Label end) {
         Label tailLessThan64 = new Label();
         Label tailLessThan32 = new Label();
         Label tailLessThan16 = new Label();
@@ -188,18 +187,6 @@ public final class AArch64ArrayCopyWithConversionsOp extends AArch64ComplexVecto
 
         Register refAddress = len;
         asm.add(64, refAddress, maxStrideArray, len, ShiftType.LSL, strideMax.log2);
-        if (strideDst.log2 - strideSrc.log2 == 2) {
-            byte[] maskIndices = new byte[64];
-            for (int i = 0; i < maskIndices.length; i++) {
-                maskIndices[i] = (byte) ((i & 3) == 0 ? (i >> 2) : 0xff);
-            }
-
-            DataSection.Data maskData = writeToDataSection(crb, maskIndices);
-            loadDataSectionAddress(crb, asm, tmp, maskData);
-            // prepare a mask vector containing ascending byte index values
-            asm.fldp(128, v(4), v(5), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, tmp, 32));
-            asm.fldp(128, v(6), v(7), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, tmp, 32));
-        }
         simdCopy64(asm, strideDst, strideSrc, arrayDst, arraySrc);
 
         asm.cmp(64, refAddress, maxStrideArray);
@@ -249,8 +236,8 @@ public final class AArch64ArrayCopyWithConversionsOp extends AArch64ComplexVecto
                     Stride strideSrc,
                     Register arrayDst,
                     Register arraySrc) {
-        ElementSize dstESize = asElementSize(strideDst);
-        ElementSize srcESize = asElementSize(strideSrc);
+        ElementSize dstESize = fromStride(strideDst);
+        ElementSize srcESize = fromStride(strideSrc);
         switch (strideDst.log2 - strideSrc.log2) {
             case -2:
                 // 4 -> 1 byte compression
@@ -289,10 +276,12 @@ public final class AArch64ArrayCopyWithConversionsOp extends AArch64ComplexVecto
             case 2:
                 // 1 -> 4 byte inflation
                 asm.fldr(128, v(0), createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, arraySrc, 16));
-                asm.neon.tblVVV(FullReg, v(1), v(0), v(5));
-                asm.neon.tblVVV(FullReg, v(2), v(0), v(6));
-                asm.neon.tblVVV(FullReg, v(3), v(0), v(7));
-                asm.neon.tblVVV(FullReg, v(0), v(0), v(4));
+                asm.neon.uxtl2VV(srcESize, v(2), v(0));
+                asm.neon.uxtlVV(srcESize, v(0), v(0));
+                asm.neon.uxtl2VV(srcESize.expand(), v(1), v(0));
+                asm.neon.uxtl2VV(srcESize.expand(), v(3), v(2));
+                asm.neon.uxtlVV(srcESize.expand(), v(0), v(0));
+                asm.neon.uxtlVV(srcESize.expand(), v(2), v(2));
                 asm.fstp(128, v(0), v(1), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayDst, 32));
                 asm.fstp(128, v(2), v(3), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayDst, 32));
                 break;
@@ -317,8 +306,8 @@ public final class AArch64ArrayCopyWithConversionsOp extends AArch64ComplexVecto
         asm.adds(64, len, len, 32 >> strideMax.log2);
         asm.branchConditionally(ConditionFlag.MI, nextTail);
 
-        ElementSize dstESize = asElementSize(strideDst);
-        ElementSize srcESize = asElementSize(strideSrc);
+        ElementSize dstESize = fromStride(strideDst);
+        ElementSize srcESize = fromStride(strideSrc);
         switch (strideDst.log2 - strideSrc.log2) {
             case -2:
                 // 4 -> 1 byte compression
@@ -405,8 +394,8 @@ public final class AArch64ArrayCopyWithConversionsOp extends AArch64ComplexVecto
         asm.adds(64, len, len, nBytes >> strideMax.log2);
         asm.branchConditionally(ConditionFlag.MI, strideMax.value == nBytes ? end : nextTail);
 
-        ElementSize dstESize = asElementSize(strideDst);
-        ElementSize srcESize = asElementSize(strideSrc);
+        ElementSize dstESize = fromStride(strideDst);
+        ElementSize srcESize = fromStride(strideSrc);
         int op = strideDst.log2 - strideSrc.log2;
         int bits = nBytes << 3;
         int loadBits = bits >> Math.max(0, op);

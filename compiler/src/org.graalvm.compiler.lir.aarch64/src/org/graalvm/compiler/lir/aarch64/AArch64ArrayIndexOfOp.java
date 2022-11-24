@@ -356,14 +356,8 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         }
         /* Determining if there was a match: combine two registers into 1 register */
         masm.neon.orrVVV(ASIMDSize.FullReg, tmpRegV1, firstChunkPart1RegV, firstChunkPart2RegV);
-        /* Reduce 128-bit value to 32/64-bit value */
-        if (stride == Stride.S1) {
-            masm.neon.umaxvSV(ASIMDSize.FullReg, ElementSize.Word, tmpRegV1, tmpRegV1);
-        } else {
-            masm.neon.xtnVV(eSize.narrow(), tmpRegV1, tmpRegV1);
-        }
         /* If value != 0, then there was a match somewhere. */
-        masm.fcmpZero(64, tmpRegV1);
+        vectorCheckZero(masm, ElementSize.fromStride(stride), tmpRegV1, tmpRegV1, true);
         masm.branchConditionally(ConditionFlag.NE, matchInChunk);
         /* No match; jump to next loop iteration. */
         // align address to 32-byte boundary

@@ -29,6 +29,7 @@ import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.LD2_MULTIPLE_2R;
 import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.LD4_MULTIPLE_4R;
 import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize.FullReg;
+import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize.fromStride;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.createBaseRegisterOnlyAddress;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.createImmediateAddress;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.createPairBaseRegisterOnlyAddress;
@@ -36,7 +37,6 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Address.createStructureImm
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.createStructureNoOffsetAddress;
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT;
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT;
-import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.asElementSize;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
@@ -291,7 +291,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                     Register arrayMax,
                     Register arrayMin,
                     Register arrayMask) {
-        ElementSize minESize = asElementSize(strideMin);
+        ElementSize minESize = fromStride(strideMin);
         switch (strideMax.log2 - strideMin.log2) {
             case 0:
                 // direct comparison
@@ -419,8 +419,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
             default:
                 throw GraalError.unimplemented("comparison of " + strideMin + " to " + strideMax + " not implemented");
         }
-        asm.neon.umaxvSV(FullReg, ElementSize.Word, v(0), v(0));
-        asm.fcmpZero(64, v(0));
+        vectorCheckZero(asm, v(0), v(0));
     }
 
     private void tail32(AArch64MacroAssembler asm,
@@ -440,7 +439,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
         asm.adds(64, len, len, 32 >> strideMax.log2);
         asm.branchConditionally(ConditionFlag.MI, nextTail);
 
-        ElementSize minESize = asElementSize(strideMin);
+        ElementSize minESize = fromStride(strideMin);
         switch (strideMax.log2 - strideMin.log2) {
             case 0:
                 // direct comparison
@@ -595,8 +594,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
             default:
                 throw GraalError.unimplemented("comparison of " + strideMin + " to " + strideMax + " not implemented");
         }
-        asm.neon.umaxvSV(FullReg, ElementSize.Word, v(0), v(0));
-        asm.fcmpZero(64, v(0));
+        vectorCheckZero(asm, v(0), v(0));
         asm.jmp(end);
     }
 
@@ -620,15 +618,15 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
         Register vecArrayM1 = withMask() ? v(4) : null;
         Register vecArrayM2 = withMask() ? v(5) : null;
         tailLoad(asm, strideA, strideB, strideM, strideMax, arrayA, arrayB, arrayM, len, vecArrayA1, vecArrayA2, vecArrayB1, vecArrayB2, vecArrayM1, vecArrayM2, entry, nextTail, 16);
-        ElementSize minESize = asElementSize(strideMin);
+        ElementSize minESize = fromStride(strideMin);
         Register vecArrayMin1 = strideA == strideMin ? vecArrayA1 : vecArrayB1;
         Register vecArrayMin2 = strideA == strideMin ? vecArrayA2 : vecArrayB2;
         switch (strideMax.log2 - strideMin.log2) {
             case 0:
                 // direct comparison
                 if (withMask() && strideM.value < strideMin.value) {
-                    asm.neon.uxtlVV(asElementSize(strideM), vecArrayM1, vecArrayM1);
-                    asm.neon.uxtlVV(asElementSize(strideM), vecArrayM2, vecArrayM2);
+                    asm.neon.uxtlVV(fromStride(strideM), vecArrayM1, vecArrayM1);
+                    asm.neon.uxtlVV(fromStride(strideM), vecArrayM2, vecArrayM2);
                 }
                 break;
             case 1:
@@ -664,8 +662,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
         asm.neon.eorVVV(FullReg, vecArrayA2, vecArrayA2, vecArrayB2);
         asm.neon.orrVVV(FullReg, vecArrayA1, vecArrayA1, vecArrayA2);
 
-        asm.neon.umaxvSV(FullReg, ElementSize.Word, vecArrayA1, vecArrayA1);
-        asm.fcmpZero(64, vecArrayA1);
+        vectorCheckZero(asm, vecArrayA1, vecArrayA1);
         asm.jmp(end);
     }
 
@@ -755,8 +752,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                 asm.neon.orrVVV(FullReg, vecArrayA1, vecArrayA1, vecArrayM1);
             }
             asm.neon.eorVVV(FullReg, vecArrayA1, vecArrayA1, vecArrayB1);
-            asm.neon.umaxvSV(FullReg, ElementSize.Word, vecArrayA1, vecArrayA1);
-            asm.fcmpZero(64, vecArrayA1);
+            vectorCheckZero(asm, vecArrayA1, vecArrayA1);
         } else if (strideMax.value == nBytes) {
             asm.bind(entry);
             // tail for length == 1
@@ -780,11 +776,11 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
             case 0:
                 break;
             case 1:
-                asm.neon.uxtlVV(asElementSize(stride), vecArray, vecArray);
+                asm.neon.uxtlVV(fromStride(stride), vecArray, vecArray);
                 break;
             case 2:
-                asm.neon.uxtlVV(asElementSize(stride), vecArray, vecArray);
-                asm.neon.uxtlVV(asElementSize(stride).expand(), vecArray, vecArray);
+                asm.neon.uxtlVV(fromStride(stride), vecArray, vecArray);
+                asm.neon.uxtlVV(fromStride(stride).expand(), vecArray, vecArray);
                 break;
             default:
                 throw GraalError.shouldNotReachHere();

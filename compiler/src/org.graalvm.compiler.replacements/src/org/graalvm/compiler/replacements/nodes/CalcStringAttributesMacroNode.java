@@ -66,12 +66,12 @@ public final class CalcStringAttributesMacroNode extends MacroNode {
     @Override
     public void lower(LoweringTool tool) {
         Architecture arch = tool.getLowerer().getTarget().arch;
-        if (arch instanceof AMD64 && !((AMD64) arch).getFeatures().containsAll(CalcStringAttributesNode.minFeaturesAMD64()) ||
-                        arch instanceof AArch64 && !((AArch64) arch).getFeatures().containsAll(CalcStringAttributesNode.minFeaturesAARCH64())) {
-            super.lower(tool);
-        } else {
+        if (arch instanceof AMD64 && ((AMD64) arch).getFeatures().containsAll(CalcStringAttributesNode.minFeaturesAMD64()) ||
+                        arch instanceof AArch64 && ((AArch64) arch).getFeatures().containsAll(CalcStringAttributesNode.minFeaturesAARCH64())) {
             CalcStringAttributesNode replacement = graph().addOrUnique(new CalcStringAttributesNode(getArgument(1), getArgument(2), getArgument(3), encoding, assumeValid, locationIdentity));
             graph().replaceFixedWithFixed(this, replacement);
+        } else {
+            super.lower(tool);
         }
     }
 }

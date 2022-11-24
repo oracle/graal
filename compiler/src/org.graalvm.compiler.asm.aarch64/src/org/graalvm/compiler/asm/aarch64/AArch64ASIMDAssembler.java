@@ -37,6 +37,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.aarch64.AArch64;
@@ -502,6 +503,21 @@ public abstract class AArch64ASIMDAssembler {
                     return DoubleWord;
                 default:
                     throw GraalError.shouldNotReachHere("Invalid ASIMD element size.");
+            }
+        }
+
+        public static ElementSize fromStride(Stride stride) {
+            switch (stride) {
+                case S1:
+                    return Byte;
+                case S2:
+                    return HalfWord;
+                case S4:
+                    return Word;
+                case S8:
+                    return DoubleWord;
+                default:
+                    throw GraalError.shouldNotReachHere();
             }
         }
 

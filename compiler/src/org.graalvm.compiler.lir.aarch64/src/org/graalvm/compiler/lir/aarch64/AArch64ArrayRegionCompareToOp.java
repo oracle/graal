@@ -24,13 +24,15 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
+import static jdk.vm.ci.aarch64.AArch64.CPU;
+import static jdk.vm.ci.aarch64.AArch64.SIMD;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize.FullReg;
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT;
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT;
-import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.asElementSize;
+import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize.fromStride;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
@@ -39,6 +41,7 @@ import java.util.Arrays;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
+import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ShiftType;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
@@ -57,8 +60,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 /**
- * Emits code which compares two arrays of the same length. If the CPU supports any vector
- * instructions specialized code is emitted to leverage these instructions.
+ * Finds the index {@code i} of the first differing elements of {@code arrayA} and {@code arrayB}
+ * and returns {@code arrayA[i] - arrayB[i]}. If no such index exists, returns {@code 0}.
  */
 @Opcode("ARRAY_REGION_COMPARE_TO")
 public final class AArch64ArrayRegionCompareToOp extends AArch64ComplexVectorOp {
@@ -193,14 +196,13 @@ public final class AArch64ArrayRegionCompareToOp extends AArch64ComplexVectorOp 
         asm.align(PREFERRED_LOOP_ALIGNMENT);
         asm.bind(vectorLoop);
         // load 2 vectors
-        asm.loadAndExtend(strideMax, strideA, arrayA, vecArrayA1, vecArrayA2);
-        asm.loadAndExtend(strideMax, strideB, arrayB, vecArrayB1, vecArrayB2);
+        loadAndExtend(asm, strideMax, strideA, arrayA, vecArrayA1, vecArrayA2);
+        loadAndExtend(asm, strideMax, strideB, arrayB, vecArrayB1, vecArrayB2);
         // check if they are equal
         asm.neon.eorVVV(FullReg, vecTmp1, vecArrayA1, vecArrayB1);
         asm.neon.eorVVV(FullReg, vecTmp2, vecArrayA2, vecArrayB2);
         asm.neon.orrVVV(FullReg, vecTmp2, vecTmp2, vecTmp1);
-        asm.neon.umaxvSV(FullReg, ElementSize.Word, vecTmp2, vecTmp2);
-        asm.fcmpZero(64, vecTmp2);
+        vectorCheckZero(asm, vecTmp2, vecTmp2);
         asm.branchConditionally(ConditionFlag.NE, diffFound);
         // if so, continue
         asm.cmp(64, maxStrideArray, refAddress);
@@ -211,13 +213,12 @@ public final class AArch64ArrayRegionCompareToOp extends AArch64ComplexVectorOp 
         asm.mov(64, maxStrideArray, refAddress);
         asm.sub(64, minStrideArray, minStrideArray, tmp, ShiftType.LSR, strideMax.log2 - strideMin.log2);
 
-        asm.loadAndExtend(strideMax, strideA, arrayA, vecArrayA1, vecArrayA2);
-        asm.loadAndExtend(strideMax, strideB, arrayB, vecArrayB1, vecArrayB2);
+        loadAndExtend(asm, strideMax, strideA, arrayA, vecArrayA1, vecArrayA2);
+        loadAndExtend(asm, strideMax, strideB, arrayB, vecArrayB1, vecArrayB2);
         asm.neon.eorVVV(FullReg, vecTmp1, vecArrayA1, vecArrayB1);
         asm.neon.eorVVV(FullReg, vecTmp2, vecArrayA2, vecArrayB2);
         asm.neon.orrVVV(FullReg, vecTmp2, vecTmp2, vecTmp1);
-        asm.neon.umaxvSV(FullReg, ElementSize.Word, vecTmp2, vecTmp2);
-        asm.fcmpZero(64, vecTmp2);
+        vectorCheckZero(asm, vecTmp2, vecTmp2);
         asm.branchConditionally(ConditionFlag.NE, diffFound);
         asm.mov(64, ret, zr);
         asm.jmp(end);
@@ -238,8 +239,7 @@ public final class AArch64ArrayRegionCompareToOp extends AArch64ComplexVectorOp 
         asm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
         asm.bind(diffFound);
         // check if vecArrayA1 and vecArrayB1 are equal
-        asm.neon.umaxvSV(FullReg, ElementSize.Word, vecTmp1, vecTmp1);
-        asm.fcmpZero(64, vecTmp1);
+        vectorCheckZero(asm, vecTmp1, vecTmp1);
         asm.branchConditionally(ConditionFlag.NE, returnV1);
         calcReturnValue(asm, ret, vecArrayA2, vecArrayB2, vecArrayA1, vecArrayB1, vecMask, strideMax);
         asm.jmp(end);
@@ -249,9 +249,52 @@ public final class AArch64ArrayRegionCompareToOp extends AArch64ComplexVectorOp 
         calcReturnValue(asm, ret, vecArrayA1, vecArrayB1, vecArrayA2, vecArrayB2, vecMask, strideMax);
     }
 
+    /**
+     * Load elements of size {@code strideSrc} from {@code arrayAddress} and zero-extend them to
+     * {@code strideDst} to fill vector registers {@code vectorLo} and {@code vectorHi}. After
+     * loading, {@code arrayAddress} is increased by the amount of bytes loaded.
+     * <p>
+     * For example: if both strides are {@link Stride#S1}, 32 bytes from {@code arrayAddress} are
+     * loaded into the vector registers and {@code arrayAddress} is increased by 32. If
+     * {@code strideSrc} is {@link Stride#S1} and {@code strideDst} is {@link Stride#S2}, 16 bytes
+     * are loaded, the lower 8 bytes are zero-extended (individually) to 16 bit width and stored in
+     * {@code vectorLo}, the upper 8 bytes are zero-extended and stored in {@code vectorHi}, and
+     * {@code arrayAddress} is increased by 16.
+     */
+    private static void loadAndExtend(AArch64MacroAssembler asm, Stride strideDst, Stride strideSrc, Register arrayAddress, Register vectorLo, Register vectorHi) {
+        assert arrayAddress.getRegisterCategory().equals(CPU);
+        assert vectorLo.getRegisterCategory().equals(SIMD);
+        assert vectorHi.getRegisterCategory().equals(SIMD);
+        switch (strideDst.log2 - strideSrc.log2) {
+            case 0:
+                // load 32 bytes into two 16-byte vector registers
+                asm.fldp(128, vectorLo, vectorHi, AArch64Address.createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayAddress, 32));
+                break;
+            case 1:
+                // load 16 bytes
+                asm.fldr(128, vectorLo, AArch64Address.createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, arrayAddress, 16));
+                // extend upper half and store in vectorHi
+                asm.neon.uxtl2VV(fromStride(strideSrc), vectorHi, vectorLo);
+                // extend lower half
+                asm.neon.uxtlVV(fromStride(strideSrc), vectorLo, vectorLo);
+                break;
+            case 2:
+                // load 8 bytes
+                asm.fldr(64, vectorLo, AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_POST_INDEXED, arrayAddress, 8));
+                // extend to 16 bytes
+                asm.neon.uxtlVV(fromStride(strideSrc), vectorLo, vectorLo);
+                // extend again
+                asm.neon.uxtl2VV(fromStride(strideSrc).expand(), vectorHi, vectorLo);
+                asm.neon.uxtlVV(fromStride(strideSrc).expand(), vectorLo, vectorLo);
+                break;
+            default:
+                throw GraalError.unimplemented("conversion from " + strideSrc + " to " + strideDst + " not implemented");
+        }
+    }
+
     private static void calcReturnValue(AArch64MacroAssembler asm, Register ret, Register vecArrayA, Register vecArrayB, Register vecTmp, Register vecIndex, Register vecMask, Stride strideMax) {
         // set all equal bytes to 0xff, others to 0x00
-        asm.neon.cmeqVVV(FullReg, asElementSize(strideMax), vecTmp, vecArrayA, vecArrayB);
+        asm.neon.cmeqVVV(FullReg, fromStride(strideMax), vecTmp, vecArrayA, vecArrayB);
         // BIC with the ascending index mask, this will replace all non-equal bytes with their
         // corresponding byte index
         asm.neon.bicVVV(FullReg, vecIndex, vecMask, vecTmp);
@@ -259,21 +302,21 @@ public final class AArch64ArrayRegionCompareToOp extends AArch64ComplexVectorOp 
         asm.neon.orrVVV(FullReg, vecIndex, vecIndex, vecTmp);
         // Get the unsigned minimum. This will yield the index of the first non-equal bytes, since
         // all equal ones are filled with 0xff
-        asm.neon.uminvSV(FullReg, asElementSize(strideMax), vecIndex, vecIndex);
+        asm.neon.uminvSV(FullReg, fromStride(strideMax), vecIndex, vecIndex);
         if (strideMax == Stride.S4) {
             // calculate the difference of array elements
-            asm.neon.subVVV(FullReg, asElementSize(strideMax), vecTmp, vecArrayA, vecArrayB);
+            asm.neon.subVVV(FullReg, fromStride(strideMax), vecTmp, vecArrayA, vecArrayB);
             // load the result for the previously calculated index
             asm.neon.tblVVV(FullReg, vecTmp, vecTmp, vecIndex);
             // return
-            asm.neon.moveFromIndex(ElementSize.Word, asElementSize(strideMax), ret, vecTmp, 0);
+            asm.neon.moveFromIndex(ElementSize.Word, fromStride(strideMax), ret, vecTmp, 0);
         } else {
             // if stride is not 4 bytes, we have to account for integer overflows, so we first get
             // the relevant array elements and subtract with USUBL
             asm.neon.tblVVV(FullReg, vecArrayA, vecArrayA, vecIndex);
             asm.neon.tblVVV(FullReg, vecArrayB, vecArrayB, vecIndex);
-            asm.neon.usublVVV(asElementSize(strideMax), vecTmp, vecArrayA, vecArrayB);
-            asm.neon.moveFromIndex(ElementSize.Word, asElementSize(strideMax).expand(), ret, vecTmp, 0);
+            asm.neon.usublVVV(fromStride(strideMax), vecTmp, vecArrayA, vecArrayB);
+            asm.neon.moveFromIndex(ElementSize.Word, fromStride(strideMax).expand(), ret, vecTmp, 0);
         }
     }
 
@@ -347,11 +390,11 @@ public final class AArch64ArrayRegionCompareToOp extends AArch64ComplexVectorOp 
     private static void tailExtend(AArch64MacroAssembler asm, Stride stride, Stride strideMax, Register vecArray) {
         switch (strideMax.log2 - stride.log2) {
             case 1:
-                asm.neon.uxtlVV(asElementSize(stride), vecArray, vecArray);
+                asm.neon.uxtlVV(fromStride(stride), vecArray, vecArray);
                 break;
             case 2:
-                asm.neon.uxtlVV(asElementSize(stride), vecArray, vecArray);
-                asm.neon.uxtlVV(asElementSize(stride), vecArray, vecArray);
+                asm.neon.uxtlVV(fromStride(stride), vecArray, vecArray);
+                asm.neon.uxtlVV(fromStride(stride), vecArray, vecArray);
                 break;
             default:
                 throw GraalError.shouldNotReachHere();

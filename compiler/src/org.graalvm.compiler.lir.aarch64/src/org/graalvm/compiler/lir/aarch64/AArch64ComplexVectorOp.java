@@ -25,14 +25,15 @@
 package org.graalvm.compiler.lir.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64.SIMD;
+import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize.FullReg;
+import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize.Word;
 
-import java.nio.ByteOrder;
 import java.util.Arrays;
 
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -114,6 +115,30 @@ public abstract class AArch64ComplexVectorOp extends AArch64LIRInstruction {
     }
 
     /**
+     * Check if vector register {@code src} is all zeros and set condition flags accordingly.
+     * Register {@code dst} is clobbered by this operation.
+     */
+    protected static void vectorCheckZero(AArch64MacroAssembler asm, Register dst, Register src) {
+        vectorCheckZero(asm, AArch64ASIMDAssembler.ElementSize.Byte, dst, src, false);
+    }
+
+    /**
+     * Check if vector register {@code src} is all zeros and set condition flags accordingly. If
+     * {@code allOnes} is true, assume that non-zero elements are always filled with ones, e.g.
+     * {@code 0xff} for byte elements, allowing a slightly faster check.
+     */
+    protected static void vectorCheckZero(AArch64MacroAssembler asm, AArch64ASIMDAssembler.ElementSize eSize, Register dst, Register src, boolean allOnes) {
+        assert src.getRegisterCategory().equals(SIMD);
+        assert dst.getRegisterCategory().equals(SIMD);
+        if (eSize == AArch64ASIMDAssembler.ElementSize.Byte || !allOnes) {
+            asm.neon.umaxvSV(FullReg, Word, dst, src);
+        } else {
+            asm.neon.xtnVV(eSize.narrow(), dst, src);
+        }
+        asm.fcmpZero(64, dst);
+    }
+
+    /**
      * Creates the following mask in the data section: {@code [ 0x00 <n times> 0xff <n times> ]}.
      *
      * With this mask, bytes loaded by a vector load aligned to the end of the array can be set to
@@ -132,11 +157,9 @@ public abstract class AArch64ComplexVectorOp extends AArch64LIRInstruction {
      *
      * {@code [0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0xff 0xff 0xff 0xff] }
      */
-    protected DataSection.Data createTailANDMask(CompilationResultBuilder crb, Stride stride, int n) {
+    protected DataSection.Data createTailANDMask(CompilationResultBuilder crb, int n) {
         byte[] mask = new byte[n << 1];
-        for (int i = n >> stride.log2; i < mask.length >> stride.log2; i++) {
-            writeValue(mask, stride, i, ~0);
-        }
+        Arrays.fill(mask, n, mask.length, (byte) ~0);
         return writeToDataSection(crb, mask);
     }
 
@@ -144,9 +167,9 @@ public abstract class AArch64ComplexVectorOp extends AArch64LIRInstruction {
      * Creates the following mask: {@code [0x00 0x01 0x02 ... 0x0f 0xff <n times>]}.
      *
      * This mask can be used with TBL to not only remove duplicate bytes in a vector tail load (see
-     * {@link #createTailANDMask(CompilationResultBuilder, Stride, int)}, but also move the
-     * remaining bytes to the beginning of the vector, as if the vector was right-shifted by
-     * {@code 16 - tailCount} bytes.
+     * {@link #createTailANDMask(CompilationResultBuilder, int)}, but also move the remaining bytes
+     * to the beginning of the vector, as if the vector was right-shifted by {@code 16 - tailCount}
+     * bytes.
      */
     protected static DataSection.Data createTailShuffleMask(CompilationResultBuilder crb, int n) {
         byte[] mask = new byte[n + 16];
@@ -161,34 +184,5 @@ public abstract class AArch64ComplexVectorOp extends AArch64LIRInstruction {
         int align = crb.dataBuilder.ensureValidDataAlignment((array.length & 15) == 0 ? array.length : (array.length & ~15) + 16);
         ArrayDataPointerConstant arrayConstant = new ArrayDataPointerConstant(array, align);
         return crb.dataBuilder.createSerializableData(arrayConstant, align);
-    }
-
-    private static void writeValue(byte[] array, Stride stride, int index, int value) {
-        int i = index << stride.log2;
-        if (stride == Stride.S1) {
-            array[i] = (byte) value;
-            return;
-        }
-        if (ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN)) {
-            if (stride == Stride.S2) {
-                array[i] = (byte) value;
-                array[i + 1] = (byte) (value >> 8);
-            } else {
-                array[i] = (byte) value;
-                array[i + 1] = (byte) (value >> 8);
-                array[i + 2] = (byte) (value >> 16);
-                array[i + 3] = (byte) (value >> 24);
-            }
-        } else {
-            if (stride == Stride.S2) {
-                array[i] = (byte) (value >> 8);
-                array[i + 1] = (byte) value;
-            } else {
-                array[i] = (byte) (value >> 24);
-                array[i + 1] = (byte) (value >> 16);
-                array[i + 2] = (byte) (value >> 8);
-                array[i + 3] = (byte) value;
-            }
-        }
     }
 }
