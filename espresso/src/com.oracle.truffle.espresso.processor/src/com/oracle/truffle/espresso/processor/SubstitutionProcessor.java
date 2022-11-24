@@ -656,7 +656,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         if (h.inlineInBytecode) {
             factoryBuilder.withMethod(generateInlinedInBytecode());
             if (h.guardValue != null) {
-                factoryBuilder.withMethod(generateGuard(h.guardValue, className));
+                factoryBuilder.withMethod(generateGuard(h.guardValue));
             }
         }
         return factoryBuilder;
@@ -696,7 +696,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     /**
      * Generates guard getter.
      */
-    private static MethodBuilder generateGuard(TypeMirror guardValue, String targetClassName) {
+    private static MethodBuilder generateGuard(TypeMirror guardValue) {
         MethodBuilder guardMethod = new MethodBuilder(GUARD) //
                         .withOverrideAnnotation() //
                         .withModifiers(new ModifierBuilder().asPublic()) //
@@ -803,22 +803,11 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         return classBuilder.withMethod(invoke);
     }
 
-    private String extractResultToPush(String invocation, SubstitutorHelper h) {
+    static private String extractResultToPush(String invocation, SubstitutorHelper h) {
         if (h.returnType.equals("Z")) {
             return "(" + invocation + ") ? 1 : 0";
         } else {
-            String cast;
-            switch (h.returnType) {
-                case "B":
-                case "C":
-                case "S":
-                    cast = "(int) ";
-                    break;
-                default:
-                    cast = "";
-                    break;
-            }
-            return cast + invocation;
+            return invocation;
         }
     }
 }
