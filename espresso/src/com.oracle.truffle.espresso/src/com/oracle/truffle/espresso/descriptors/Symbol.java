@@ -263,7 +263,6 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> priority = StaticSymbols.putName("priority");
         public static final Symbol<Name> remove = StaticSymbols.putName("remove");
         public static final Symbol<Name> stop = StaticSymbols.putName("stop");
-        public static final Symbol<Name> synchronizedAddStrong = StaticSymbols.putName("synchronizedAddStrong");
         public static final Symbol<Name> threadStatus = StaticSymbols.putName("threadStatus");
         public static final Symbol<Name> toThreadState = StaticSymbols.putName("toThreadState");
         public static final Symbol<Name> contextClassLoader = StaticSymbols.putName("contextClassLoader");
@@ -1033,7 +1032,6 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Field_Object_long_Class = StaticSymbols.putSignature(Type.java_lang_reflect_Field, Type.java_lang_Object, Type._long, Type.java_lang_Class);
 
         public static final Symbol<Signature> Thread$State_int = StaticSymbols.putSignature(Type.java_lang_Thread$State, Type._int);
-        public static final Symbol<Signature> _void_ThreadGroup = StaticSymbols.putSignature(Type._void, Type.java_lang_ThreadGroup);
         public static final Symbol<Signature> _void_ThreadGroup_String = StaticSymbols.putSignature(Type._void, Type.java_lang_ThreadGroup, Type.java_lang_String);
         public static final Symbol<Signature> _void_ThreadGroup_Runnable = StaticSymbols.putSignature(Type._void, Type.java_lang_ThreadGroup, Type.java_lang_Runnable);
         public static final Symbol<Signature> _void_Thread = StaticSymbols.putSignature(Type._void, Type.java_lang_Thread);

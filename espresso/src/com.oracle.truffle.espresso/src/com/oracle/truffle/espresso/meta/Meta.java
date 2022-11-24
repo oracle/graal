@@ -409,9 +409,9 @@ public final class Meta extends ContextAccessImpl {
 
         java_lang_ThreadGroup = knownKlass(Type.java_lang_ThreadGroup);
         if (!getJavaVersion().java19OrLater()) {
-            java_lang_ThreadGroup_add = java_lang_ThreadGroup.requireDeclaredMethod(Name.add, Signature._void_ThreadGroup);
+            java_lang_ThreadGroup_add = java_lang_ThreadGroup.requireDeclaredMethod(Name.add, Signature._void_Thread);
         } else {
-            java_lang_ThreadGroup_add = java_lang_ThreadGroup.requireDeclaredMethod(Name.synchronizedAddStrong, Signature._void_ThreadGroup);
+            java_lang_ThreadGroup_add = null;
         }
         java_lang_Thread_dispatchUncaughtException = java_lang_Thread.requireDeclaredMethod(Name.dispatchUncaughtException, Signature._void_Throwable);
         java_lang_Thread_init_ThreadGroup_Runnable = java_lang_Thread.requireDeclaredMethod(Name._init_, Signature._void_ThreadGroup_Runnable);
@@ -1506,6 +1506,15 @@ public final class Meta extends ContextAccessImpl {
         } else {
             StaticObject holder = java_lang_Thread_holder.getObject(self);
             return java_lang_Thread_FieldHolder_threadStatus.getInt(holder);
+        }
+    }
+
+    public void setJavaLangThreadGroup(StaticObject self, StaticObject threadGroup) {
+        if (!getJavaVersion().java19OrLater()) {
+            java_lang_ThreadGroup_add.invokeDirect(threadGroup, self);
+        } else {
+            StaticObject holder = java_lang_Thread_holder.getObject(self);
+            java_lang_Thread_FieldHolder_group.setObject(holder, threadGroup);
         }
     }
 

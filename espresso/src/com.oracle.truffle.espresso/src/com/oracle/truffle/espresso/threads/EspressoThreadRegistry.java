@@ -281,7 +281,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
             }
 
             // now add to the main thread group
-            meta.java_lang_ThreadGroup_add.invokeDirect(threadGroup, guestThread);
+            meta.setJavaLangThreadGroup(guestThread, threadGroup);
 
             logger.fine(() -> {
                 String guestName = getThreadAccess().getThreadName(guestThread);
