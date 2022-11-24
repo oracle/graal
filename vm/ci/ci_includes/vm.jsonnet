@@ -127,14 +127,14 @@ local jdks = common_json.jdks;
   local gu_guard = installer_guard + truffle_guard,
 
   local builds = [
-    self.vm_java_11 + vm_common.gate_vm_linux_amd64 + gu_guard +{
+    self.vm_java_17 + vm_common.gate_vm_linux_amd64 + gu_guard +{
      run: [
        ['mx', 'build'],
        ['mx', 'unittest', '--suite', 'vm'],
      ],
      name: 'gate-vm-unittest-linux-amd64',
     },
-    self.vm_java_11 + common_json.devkits['windows-jdk11'] + vm_common.gate_vm_windows_amd64 + gu_guard + {
+    self.vm_java_17 + common_json.devkits['windows-jdk17'] + vm_common.gate_vm_windows_amd64 + gu_guard + {
      run: [
          ['mx', 'build'],
          ['mx', 'unittest', '--suite', 'vm'],
