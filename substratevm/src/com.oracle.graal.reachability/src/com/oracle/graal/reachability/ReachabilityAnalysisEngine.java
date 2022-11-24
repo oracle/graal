@@ -109,7 +109,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
         type.registerAsReachable("root class");
         for (AnalysisField field : type.getInstanceFields(false)) {
             if (addFields) {
-                field.registerAsAccessed();
+                field.registerAsAccessed("field of root class");
             }
         }
 
@@ -128,7 +128,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
         AnalysisType type = addRootClass(clazz, false, false);
         for (AnalysisField field : type.getInstanceFields(true)) {
             if (field.getName().equals(fieldName)) {
-                field.registerAsAccessed();
+                field.registerAsAccessed("root field");
                 return field.getType();
             }
         }

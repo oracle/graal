@@ -504,7 +504,7 @@ public class TruffleFeature implements InternalFeature {
                     try {
                         Object value = field.get(knownTruffleFields);
                         if (value instanceof ResolvedJavaField) {
-                            config.registerAsAccessed((AnalysisField) value);
+                            config.registerAsAccessed((AnalysisField) value, "known truffle field");
                         }
                     } catch (IllegalAccessException ex) {
                         throw VMError.shouldNotReachHere(ex);

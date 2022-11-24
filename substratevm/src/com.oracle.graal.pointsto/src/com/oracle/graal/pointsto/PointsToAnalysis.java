@@ -396,7 +396,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         type.registerAsReachable("root class");
         for (AnalysisField field : type.getInstanceFields(false)) {
             if (addFields) {
-                field.registerAsAccessed();
+                field.registerAsAccessed("field of root class");
             }
             /*
              * For system classes any instantiated (sub)type of the declared field type can be
@@ -420,7 +420,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         AnalysisType type = addRootClass(clazz, false, false);
         for (AnalysisField field : type.getInstanceFields(true)) {
             if (field.getName().equals(fieldName)) {
-                field.registerAsAccessed();
+                field.registerAsAccessed("root field");
                 /*
                  * For system classes any instantiated (sub)type of the declared field type can be
                  * written to the field flow.
@@ -440,7 +440,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         try {
             reflectField = clazz.getField(fieldName);
             AnalysisField field = metaAccess.lookupJavaField(reflectField);
-            field.registerAsAccessed();
+            field.registerAsAccessed("static root field");
             TypeFlow<?> fieldFlow = field.getType().getTypeFlow(this, true);
             fieldFlow.addUse(this, field.getStaticFieldFlow());
             return field.getType();

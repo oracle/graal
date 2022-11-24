@@ -127,7 +127,7 @@ public class DirectMethodProcessingHandler implements ReachabilityMethodProcessi
                 bb.markFieldRead((ReachabilityAnalysisField) node.field(), AbstractAnalysisEngine.sourcePosition(node));
             } else if (n instanceof StoreFieldNode) {
                 StoreFieldNode node = (StoreFieldNode) n;
-                bb.markFieldWritten((ReachabilityAnalysisField) node.field());
+                bb.markFieldWritten((ReachabilityAnalysisField) node.field(), AbstractAnalysisEngine.sourcePosition(node));
             } else if (n instanceof Invoke) {
                 Invoke node = (Invoke) n;
                 CallTargetNode.InvokeKind kind = node.getInvokeKind();

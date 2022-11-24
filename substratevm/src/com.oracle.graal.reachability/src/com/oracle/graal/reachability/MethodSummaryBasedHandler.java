@@ -93,7 +93,7 @@ public class MethodSummaryBasedHandler implements ReachabilityMethodProcessingHa
             bb.registerTypeAsReachable(field.getType(), method);
         }
         for (AnalysisField field : summary.writtenFields) {
-            bb.markFieldWritten(field);
+            bb.markFieldWritten(field, method);
         }
         for (JavaConstant constant : summary.embeddedConstants) {
             bb.handleEmbeddedConstant(method, constant, method);

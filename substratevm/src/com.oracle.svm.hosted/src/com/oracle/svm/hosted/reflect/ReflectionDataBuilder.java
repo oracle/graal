@@ -475,7 +475,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * registered as unsafe-accessible, whether they have been explicitly registered or their
          * Field object is reachable in the image heap.
          */
-        access.registerAsUnsafeAccessed(analysisField);
+        access.registerAsUnsafeAccessed(analysisField, "is registered for reflection");
 
         /*
          * The generic signature is parsed at run time, so we need to make all the types necessary

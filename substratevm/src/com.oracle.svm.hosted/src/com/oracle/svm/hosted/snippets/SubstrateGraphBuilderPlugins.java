@@ -38,7 +38,6 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
@@ -47,6 +46,7 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeList;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -106,6 +106,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -486,7 +487,7 @@ public class SubstrateGraphBuilderPlugins {
         referenceUpdaterRegistration.register(new RequiredInvocationPlugin("newUpdater", Class.class, Class.class, String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode tclassNode, ValueNode vclassNode, ValueNode fieldNameNode) {
-                interceptUpdaterInvoke(metaAccess, snippetReflection, reason, tclassNode, fieldNameNode);
+                interceptUpdaterInvoke(b, metaAccess, snippetReflection, reason, tclassNode, fieldNameNode);
                 /* Always return false; the call is not replaced. */
                 return false;
             }
@@ -496,7 +497,7 @@ public class SubstrateGraphBuilderPlugins {
         integerUpdaterRegistration.register(new RequiredInvocationPlugin("newUpdater", Class.class, String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode tclassNode, ValueNode fieldNameNode) {
-                interceptUpdaterInvoke(metaAccess, snippetReflection, reason, tclassNode, fieldNameNode);
+                interceptUpdaterInvoke(b, metaAccess, snippetReflection, reason, tclassNode, fieldNameNode);
                 /* Always return false; the call is not replaced. */
                 return false;
             }
@@ -506,7 +507,7 @@ public class SubstrateGraphBuilderPlugins {
         longUpdaterRegistration.register(new RequiredInvocationPlugin("newUpdater", Class.class, String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode tclassNode, ValueNode fieldNameNode) {
-                interceptUpdaterInvoke(metaAccess, snippetReflection, reason, tclassNode, fieldNameNode);
+                interceptUpdaterInvoke(b, metaAccess, snippetReflection, reason, tclassNode, fieldNameNode);
                 /* Always return false; the call is not replaced. */
                 return false;
             }
@@ -517,7 +518,8 @@ public class SubstrateGraphBuilderPlugins {
      * Intercept the invoke to newUpdater. If the holder class and field name are constant register
      * them for reflection/unsafe access.
      */
-    private static void interceptUpdaterInvoke(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, ParsingReason reason, ValueNode tclassNode, ValueNode fieldNameNode) {
+    private static void interceptUpdaterInvoke(GraphBuilderContext b, MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, ParsingReason reason, ValueNode tclassNode,
+                    ValueNode fieldNameNode) {
         if (SubstrateOptions.parseOnce() || reason == ParsingReason.PointsToAnalysis) {
             if (tclassNode.isConstant() && fieldNameNode.isConstant()) {
                 Class<?> tclass = snippetReflection.asObject(Class.class, tclassNode.asJavaConstant());
@@ -529,7 +531,7 @@ public class SubstrateGraphBuilderPlugins {
                     RuntimeReflection.register(field);
 
                     // register the field for unsafe access
-                    registerAsUnsafeAccessed(metaAccess, field);
+                    registerAsUnsafeAccessed(b, metaAccess, field);
                 } catch (NoSuchFieldException e) {
                     /*
                      * Ignore the exception. : If the field does not exist, there will be an error
@@ -543,10 +545,11 @@ public class SubstrateGraphBuilderPlugins {
         }
     }
 
-    private static void registerAsUnsafeAccessed(MetaAccessProvider metaAccess, Field field) {
+    private static void registerAsUnsafeAccessed(GraphBuilderContext b, MetaAccessProvider metaAccess, Field field) {
         AnalysisField targetField = (AnalysisField) metaAccess.lookupJavaField(field);
-        targetField.registerAsAccessed();
-        targetField.registerAsUnsafeAccessed();
+        Object reason = nonNullReason(b.getGraph().currentNodeSourcePosition());
+        targetField.registerAsAccessed(reason);
+        targetField.registerAsUnsafeAccessed(reason);
     }
 
     private static void registerObjectPlugins(InvocationPlugins plugins) {
@@ -676,7 +679,7 @@ public class SubstrateGraphBuilderPlugins {
 
         if (SubstrateOptions.parseOnce() || reason == ParsingReason.PointsToAnalysis) {
             /* Register the field for unsafe access. */
-            registerAsUnsafeAccessed(metaAccess, targetField);
+            registerAsUnsafeAccessed(b, metaAccess, targetField);
 
         } else {
             HostedMetaAccess hostedMetaAccess = (HostedMetaAccess) metaAccess;
@@ -1114,6 +1117,10 @@ public class SubstrateGraphBuilderPlugins {
         }
     }
 
+    private static Object nonNullReason(NodeSourcePosition position) {
+        return position == null ? "Unknown graph builder location." : position;
+    }
+
     private static void registerAESPlugins(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
         Registration r = new Registration(plugins, "com.sun.crypto.provider.CounterMode", replacements);
         r.registerConditional(CounterModeAESNode.isSupported(arch), new CounterModeCryptPlugin() {
@@ -1125,7 +1132,7 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             protected ValueNode getFieldOffset(GraphBuilderContext b, ResolvedJavaField field) {
                 if (field instanceof AnalysisField) {
-                    ((AnalysisField) field).registerAsUnsafeAccessed();
+                    ((AnalysisField) field).registerAsUnsafeAccessed(nonNullReason(b.getGraph().currentNodeSourcePosition()));
                 }
                 return LazyConstantNode.create(StampFactory.forKind(JavaKind.Long), new FieldOffsetConstantProvider(((OriginalFieldProvider) field).getJavaField()), b);
             }

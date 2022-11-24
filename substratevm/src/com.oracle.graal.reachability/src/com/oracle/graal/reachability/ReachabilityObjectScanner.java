@@ -51,7 +51,7 @@ public class ReachabilityObjectScanner implements ObjectScanningObserver {
     @Override
     public boolean forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ObjectScanner.ScanReason reason) {
         if (!field.isWritten()) {
-            return field.registerAsWritten(null);
+            return field.registerAsWritten(reason);
         }
         return false;
     }

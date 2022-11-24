@@ -255,7 +255,7 @@ public class MethodTypeFlowBuilder {
                             ValueNode value = values.get(objectStartIndex + i);
                             if (!value.isJavaConstant() || !value.asJavaConstant().isDefaultForKind()) {
                                 AnalysisField field = (AnalysisField) ((VirtualInstanceNode) virtualObject).field(i);
-                                field.registerAsWritten(method);
+                                field.registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
                             }
                         }
                     }
@@ -288,7 +288,7 @@ public class MethodTypeFlowBuilder {
             } else if (n instanceof StoreFieldNode) {
                 StoreFieldNode node = (StoreFieldNode) n;
                 AnalysisField field = (AnalysisField) node.field();
-                field.registerAsWritten(method);
+                field.registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof ConstantNode) {
                 ConstantNode cn = (ConstantNode) n;

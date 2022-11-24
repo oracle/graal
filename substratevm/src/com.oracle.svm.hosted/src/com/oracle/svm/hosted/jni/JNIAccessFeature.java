@@ -253,7 +253,7 @@ public class JNIAccessFeature implements Feature {
     private static void registerJavaCallTrampoline(BeforeAnalysisAccessImpl access, CallVariant variant, boolean nonVirtual) {
         MetaAccessProvider originalMetaAccess = access.getMetaAccess().getWrapped();
         ResolvedJavaField field = JNIAccessibleMethod.getCallVariantWrapperField(originalMetaAccess, variant, nonVirtual);
-        access.registerAsAccessed(access.getUniverse().lookup(field));
+        access.registerAsAccessed(access.getUniverse().lookup(field), "it is registered for JNI accessed");
         String name = JNIJavaCallTrampolineHolder.getTrampolineName(variant, nonVirtual);
         Method method = ReflectionUtil.lookupMethod(JNIJavaCallTrampolineHolder.class, name);
         access.registerAsRoot(method, true);
@@ -416,9 +416,9 @@ public class JNIAccessFeature implements Feature {
         AnalysisField field = access.getMetaAccess().lookupJavaField(reflField);
         jniClass.addFieldIfAbsent(field.getName(), name -> new JNIAccessibleField(jniClass, field.getJavaKind(), field.getModifiers()));
         field.registerAsJNIAccessed();
-        field.registerAsRead("it is registered for JNI access");
+        field.registerAsRead("it is registered for as JNI accessed");
         if (writable) {
-            field.registerAsWritten(null);
+            field.registerAsWritten("it is registered as JNI writable");
             AnalysisType fieldType = field.getType();
             if (fieldType.isArray() && !access.isReachable(fieldType)) {
                 // For convenience, make the array type reachable if its elemental type becomes

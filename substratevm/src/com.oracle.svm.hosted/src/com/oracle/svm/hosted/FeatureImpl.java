@@ -341,7 +341,7 @@ public class FeatureImpl {
 
         @Override
         public void registerAsUsed(Class<?> clazz) {
-            registerAsUsed(getMetaAccess().lookupJavaType(clazz), "Registered from Feature API.");
+            registerAsUsed(getMetaAccess().lookupJavaType(clazz), "registered from Feature API");
         }
 
         public void registerAsUsed(Class<?> clazz, Object reason) {
@@ -354,7 +354,7 @@ public class FeatureImpl {
 
         @Override
         public void registerAsInHeap(Class<?> clazz) {
-            registerAsInHeap(getMetaAccess().lookupJavaType(clazz), "Registered from Feature API.");
+            registerAsInHeap(getMetaAccess().lookupJavaType(clazz), "registered from Feature API");
         }
 
         public void registerAsInHeap(Class<?> clazz, Object reason) {
@@ -367,11 +367,11 @@ public class FeatureImpl {
 
         @Override
         public void registerAsAccessed(Field field) {
-            registerAsAccessed(getMetaAccess().lookupJavaField(field));
+            registerAsAccessed(getMetaAccess().lookupJavaField(field), "registered from Feature API");
         }
 
-        public void registerAsAccessed(AnalysisField aField) {
-            bb.markFieldAccessed(aField);
+        public void registerAsAccessed(AnalysisField aField, Object reason) {
+            bb.markFieldAccessed(aField, reason);
         }
 
         public void registerAsRead(Field field, Object reason) {
@@ -384,29 +384,29 @@ public class FeatureImpl {
 
         @Override
         public void registerAsUnsafeAccessed(Field field) {
-            registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field));
+            registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), "registered from Feature API");
         }
 
-        public boolean registerAsUnsafeAccessed(AnalysisField aField) {
-            return registerAsUnsafeAccessed(aField, DefaultUnsafePartition.get());
+        public boolean registerAsUnsafeAccessed(AnalysisField aField, Object reason) {
+            return registerAsUnsafeAccessed(aField, DefaultUnsafePartition.get(), reason);
         }
 
-        public void registerAsUnsafeAccessed(Field field, UnsafePartitionKind partitionKind) {
-            registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), partitionKind);
+        public void registerAsUnsafeAccessed(Field field, UnsafePartitionKind partitionKind, Object reason) {
+            registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), partitionKind, reason);
         }
 
-        public boolean registerAsUnsafeAccessed(AnalysisField aField, UnsafePartitionKind partitionKind) {
+        public boolean registerAsUnsafeAccessed(AnalysisField aField, UnsafePartitionKind partitionKind, Object reason) {
             assert !AnnotationAccess.isAnnotationPresent(aField, Delete.class);
-            return bb.registerAsUnsafeAccessed(aField, partitionKind);
+            return bb.registerAsUnsafeAccessed(aField, partitionKind, reason);
         }
 
-        public void registerAsFrozenUnsafeAccessed(Field field) {
-            registerAsFrozenUnsafeAccessed(getMetaAccess().lookupJavaField(field));
+        public void registerAsFrozenUnsafeAccessed(Field field, Object reason) {
+            registerAsFrozenUnsafeAccessed(getMetaAccess().lookupJavaField(field), reason);
         }
 
-        public void registerAsFrozenUnsafeAccessed(AnalysisField aField) {
+        public void registerAsFrozenUnsafeAccessed(AnalysisField aField, Object reason) {
             bb.registerAsFrozenUnsafeAccessed(aField);
-            registerAsUnsafeAccessed(aField);
+            registerAsUnsafeAccessed(aField, reason);
         }
 
         public void registerAsRoot(Executable method, boolean invokeSpecial) {

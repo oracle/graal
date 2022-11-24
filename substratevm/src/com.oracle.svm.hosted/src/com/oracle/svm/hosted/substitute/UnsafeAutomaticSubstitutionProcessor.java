@@ -298,7 +298,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 switch (cvField.getRecomputeValueKind()) {
                     case FieldOffset:
                         Field targetField = cvField.getTargetField();
-                        if (access.registerAsUnsafeAccessed(access.getMetaAccess().lookupJavaField(targetField))) {
+                        if (access.registerAsUnsafeAccessed(access.getMetaAccess().lookupJavaField(targetField), cvField)) {
                             access.requireAnalysisIteration();
                         }
                         break;
