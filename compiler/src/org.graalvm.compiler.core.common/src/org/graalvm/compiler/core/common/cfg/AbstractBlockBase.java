@@ -33,39 +33,20 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     protected int id;
     protected int domDepth;
 
-    protected T[] rpo;
-    // the following fields are all indices into the PRO array
-    private int pred0 = -1;
-    private int[] extraPred;
-    private int succ0 = -1;
-    private int[] extraSucc;
     private int dominator = -1;
     private int firstDominated = -1;
     private int dominatedSibling = -1;
 
-    private double succ0Probability;
-    private double[] extraProbabilities;
-
     private int domNumber;
     private int maxChildDomNumber;
 
-    private boolean align;
-    private int linearScanNumber;
-
     protected AbstractBlockBase() {
         this.id = AbstractControlFlowGraph.BLOCK_ID_INITIAL;
-        this.linearScanNumber = -1;
         this.domNumber = -1;
         this.maxChildDomNumber = -1;
     }
 
-    public void setRpo(T[] rpo) {
-        this.rpo = rpo;
-    }
-
-    public T[] getRpo() {
-        return rpo;
-    }
+    public abstract T[] getRpo();
 
     public void setDominatorNumber(int domNumber) {
         this.domNumber = domNumber;
@@ -91,89 +72,36 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
         this.id = id;
     }
 
-    private static int getCount(int first, int[] extra) {
-        return first == -1 ? 0 : 1 + (extra == null ? 0 : extra.length);
-    }
+    public abstract int getPredecessorCount();
 
-    private static int getAtIndex(int first, int[] extra, int index) {
-        return index == 0 ? first : extra[index - 1];
-    }
+    public abstract int getSuccessorCount();
 
-    public int getPredecessorCount() {
-        return getCount(pred0, extraPred);
-    }
-
-    public int getSuccessorCount() {
-        return getCount(succ0, extraSucc);
-    }
-
-    private static <T extends AbstractBlockBase<T>> boolean contains(int key, int first, int[] extra) {
-        if (first == key) {
-            return true;
-        }
-        if (extra != null) {
-            for (int i = 0; i < extra.length; i++) {
-                if (extra[i] == key) {
-                    return true;
-                }
+    private boolean contains(T key, boolean usePred) {
+        for (int i = 0; i < (usePred ? getPredecessorCount() : getSuccessorCount()); i++) {
+            T b = usePred ? getPredecessorAt(i) : getSuccessorAt(i);
+            if (b == key) {
+                return true;
             }
         }
         return false;
     }
 
     public boolean containsPred(T key) {
-        return contains(key.getId(), pred0, extraPred);
+        return contains(key, true);
     }
 
     public boolean containsSucc(T key) {
-        return contains(key.getId(), succ0, extraSucc);
+        return contains(key, false);
     }
 
-    public T getPredecessorAt(int predIndex) {
-        assert predIndex < getPredecessorCount();
-        return rpo[getAtIndex(pred0, extraPred, predIndex)];
-    }
+    public abstract T getPredecessorAt(int predIndex);
 
-    public T getSuccessorAt(int succIndex) {
-        assert succIndex < getSuccessorCount();
-        return rpo[getAtIndex(succ0, extraSucc, succIndex)];
-    }
+    public abstract T getSuccessorAt(int succIndex);
 
-    public void setPredecessor(int p0) {
-        pred0 = p0;
-    }
-
-    @SuppressWarnings("unchecked")
-    public void setPredecessors(int p0, int[] rest) {
-        this.pred0 = p0;
-        this.extraPred = rest;
-    }
-
-    public void setSuccessor(int s0) {
-        succ0 = s0;
-        succ0Probability = 1.0D;
-    }
-
-    @SuppressWarnings("unchecked")
-    public void setSuccessors(int s0, int[] rest) {
-        this.succ0 = s0;
-        this.extraSucc = rest;
-    }
-
-    public double getSuccessorProbabilityAt(int succIndex) {
-        if (succIndex == 0) {
-            return succ0Probability;
-        }
-        return extraProbabilities[succIndex - 1];
-    }
-
-    public void setSuccessorProbabilities(double succ0Probability, double[] extraSuccProbabilities) {
-        this.succ0Probability = succ0Probability;
-        this.extraProbabilities = extraSuccProbabilities;
-    }
+    public abstract double getSuccessorProbabilityAt(int succIndex);
 
     public T getDominator() {
-        return dominator >= 0 ? rpo[dominator] : null;
+        return dominator >= 0 ? getRpo()[dominator] : null;
     }
 
     /**
@@ -221,7 +149,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     }
 
     public T getFirstDominated() {
-        return firstDominated >= 0 ? rpo[firstDominated] : null;
+        return firstDominated >= 0 ? getRpo()[firstDominated] : null;
     }
 
     public void setFirstDominated(T block) {
@@ -229,7 +157,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     }
 
     public T getDominatedSibling() {
-        return dominatedSibling >= 0 ? rpo[dominatedSibling] : null;
+        return dominatedSibling >= 0 ? getRpo()[dominatedSibling] : null;
     }
 
     public void setDominatedSibling(T block) {
@@ -243,21 +171,13 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
         return "B" + id;
     }
 
-    public int getLinearScanNumber() {
-        return linearScanNumber;
-    }
+    public abstract int getLinearScanNumber();
 
-    public void setLinearScanNumber(int linearScanNumber) {
-        this.linearScanNumber = linearScanNumber;
-    }
+    public abstract void setLinearScanNumber(int linearScanNumber);
 
-    public boolean isAligned() {
-        return align;
-    }
+    public abstract boolean isAligned();
 
-    public void setAlign(boolean align) {
-        this.align = align;
-    }
+    public abstract void setAlign(boolean align);
 
     public abstract boolean isExceptionEntry();
 

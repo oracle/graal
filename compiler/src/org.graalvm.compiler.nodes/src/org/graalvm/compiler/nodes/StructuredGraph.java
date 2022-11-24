@@ -48,6 +48,7 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.JavaMethodContext;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
@@ -356,6 +357,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     public void setLastSchedule(ScheduleResult result) {
+        GraalError.guarantee(result == null || result.cfg.getStartBlock() instanceof Block.ModifiableBasicBlock, "Schedule must use blocks that can be modified");
         lastSchedule = result;
     }
 

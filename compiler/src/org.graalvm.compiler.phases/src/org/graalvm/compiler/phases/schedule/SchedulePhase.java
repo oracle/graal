@@ -216,7 +216,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         @SuppressWarnings("try")
         public void run(StructuredGraph graph, SchedulingStrategy selectedStrategy, boolean immutableGraph) {
             if (this.cfg == null) {
-                this.cfg = ControlFlowGraph.compute(graph, true, true, true, false);
+                this.cfg = ControlFlowGraph.computeForSchedule(graph);
             }
 
             NodeMap<Block> currentNodeMap = graph.createNodeMap();

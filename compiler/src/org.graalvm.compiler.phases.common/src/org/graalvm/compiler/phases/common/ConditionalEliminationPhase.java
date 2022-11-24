@@ -189,8 +189,9 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
         try (DebugContext.Scope s = graph.getDebug().scope("DominatorConditionalElimination")) {
             BlockMap<List<Node>> blockToNodes = null;
             NodeMap<Block> nodeToBlock = null;
-            ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
+            ControlFlowGraph cfg = null;
             if (fullSchedule) {
+                cfg = ControlFlowGraph.compute(graph, true, true, true, true, true, true);
                 if (moveGuards && Options.MoveGuardsUpwards.getValue(graph.getOptions())) {
                     cfg.visitDominatorTree(new MoveGuardsUpwards(), graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL));
                 }
@@ -203,6 +204,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                 blockToNodes = r.getBlockToNodesMap();
                 nodeToBlock = r.getNodeToBlockMap();
             } else {
+                cfg = ControlFlowGraph.compute(graph, true, true, true, true);
                 nodeToBlock = cfg.getNodeToBlock();
                 blockToNodes = getBlockToNodes(cfg);
             }

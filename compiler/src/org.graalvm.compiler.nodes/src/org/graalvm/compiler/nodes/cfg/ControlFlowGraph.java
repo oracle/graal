@@ -116,7 +116,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     }
 
     public static ControlFlowGraph computeForSchedule(StructuredGraph graph) {
-        return compute(graph, true, true, true, false);
+        return compute(graph, true, true, true, true, true, false);
     }
 
     public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
@@ -125,13 +125,18 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
 
     private static final MemUseTrackerKey CFG_MEMORY = DebugContext.memUseTracker("CFGComputation");
 
-    @SuppressWarnings("try")
     public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeFrequency, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
+        return compute(graph, false, connectBlocks, computeFrequency, computeLoops, computeDominators, computePostdominators);
+    }
+
+    @SuppressWarnings("try")
+    public static ControlFlowGraph compute(StructuredGraph graph, boolean independentCFG, boolean connectBlocks, boolean computeFrequency, boolean computeLoops, boolean computeDominators,
+                    boolean computePostdominators) {
 
         try (DebugCloseable c = CFG_MEMORY.start(graph.getDebug())) {
             ControlFlowGraph cfg = new ControlFlowGraph(graph);
 
-            cfg.identifyBlocks();
+            cfg.identifyBlocks(independentCFG);
 
             boolean loopInfoComputed = false;
             if (CFGOptions.DumpEndVersusExitLoopFrequencies.getValue(graph.getOptions())) {
@@ -162,11 +167,11 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         }
     }
 
-    private void identifyBlocks() {
+    private void identifyBlocks(boolean independentBlocks) {
         int numBlocks = 0;
         for (AbstractBeginNode begin : graph.getNodes(AbstractBeginNode.TYPE)) {
             GraalError.guarantee(begin.predecessor() != null || (begin instanceof StartNode || begin instanceof AbstractMergeNode), "Disconnected control flow %s encountered", begin);
-            Block block = new Block(begin);
+            Block block = independentBlocks ? new Block.ModifiableBasicBlock(begin, this) : new Block.GraphBasedBasicBlock(begin, this);
             identifyBlock(block);
             numBlocks++;
         }

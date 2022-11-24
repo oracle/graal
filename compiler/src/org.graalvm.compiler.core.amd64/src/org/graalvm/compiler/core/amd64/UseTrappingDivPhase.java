@@ -86,6 +86,7 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, LowTierContext context) {
+        graph.clearLastSchedule();
         if (!GraalOptions.FloatingDivNodes.getValue(graph.getOptions())) {
             return;
         }
