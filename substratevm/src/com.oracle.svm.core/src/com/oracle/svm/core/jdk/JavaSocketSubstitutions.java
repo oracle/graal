@@ -44,6 +44,11 @@ import com.oracle.svm.core.SubstrateUtil;
 import jdk.jfr.events.SocketReadEvent;
 import jdk.jfr.events.SocketWriteEvent;
 
+/**
+ * This class essentially does what
+ * {@link jdk.jfr.internal.instrument.SocketInputStreamInstrumentor} does to emit jdk.SocketRead
+ * events.
+ */
 @TargetClass(className = "java.net.Socket$SocketInputStream", onlyWith = HasJfrSupport.class)
 final class Target_java_net_Socket_SocketInputStream {
     @Alias private InputStream in = null;
@@ -82,6 +87,11 @@ final class Target_java_net_Socket_SocketInputStream {
     }
 }
 
+/**
+ * This class essentially does what
+ * {@link jdk.jfr.internal.instrument.SocketOutputStreamInstrumentor} does to emit jdk.SocketWrite
+ * events.
+ */
 @TargetClass(className = "java.net.Socket$SocketOutputStream", onlyWith = HasJfrSupport.class)
 final class Target_java_net_Socket_SocketOutputStream {
     @Alias private OutputStream out = null;
