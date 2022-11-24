@@ -58,7 +58,7 @@ import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 @SuppressWarnings("static-method")
 public final class WasmModule extends SymbolTable implements TruffleObject {
     private final String name;
-    private final ArrayList<BiConsumer<WasmContext, WasmInstance>> linkActions;
+    private ArrayList<BiConsumer<WasmContext, WasmInstance>> linkActions;
     private final ModuleLimits limits;
 
     private Source source;
@@ -103,7 +103,18 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
     }
 
     public void addLinkAction(BiConsumer<WasmContext, WasmInstance> action) {
+        if(linkActions == null) {
+            linkActions = new ArrayList<>();
+        }
         linkActions.add(action);
+    }
+
+    public void removeLinkActions() {
+        this.linkActions = null;
+    }
+
+    public boolean hasLinkActions() {
+        return this.linkActions != null;
     }
 
     public ModuleLimits limits() {

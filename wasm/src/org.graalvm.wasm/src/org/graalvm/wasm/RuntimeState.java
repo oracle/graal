@@ -97,7 +97,7 @@ public class RuntimeState {
      * be dropped after using them. They can be set to null even in compiled code, therefore they
      * cannot be compilation final.
      */
-    @CompilationFinal(dimensions = 0) private Object[][] elemInstances;
+    @CompilationFinal(dimensions = 0) private Object[][] elementInstances;
 
     /**
      * The passive data instances that can be used to lazily initialize memory. They can potentially
@@ -132,8 +132,8 @@ public class RuntimeState {
         this.targets = new CallTarget[numberOfFunctions];
         this.functionInstances = new WasmFunctionInstance[numberOfFunctions];
         this.linkState = Linker.LinkState.nonLinked;
-        this.elemInstances = null;
         this.dataInstances = null;
+        this.elementInstances = null;
     }
 
     private void checkNotLinked() {
@@ -252,38 +252,6 @@ public class RuntimeState {
         functionInstances[index] = functionInstance;
     }
 
-    private void ensureElemInstanceCapacity(int index) {
-        if (elemInstances == null) {
-            elemInstances = new Object[Math.max(Integer.highestOneBit(index) << 1, 2)][];
-        } else if (index >= elemInstances.length) {
-            final Object[][] nElementInstances = new Object[Math.max(Integer.highestOneBit(index) << 1, 2 * elemInstances.length)][];
-            System.arraycopy(elemInstances, 0, nElementInstances, 0, elemInstances.length);
-            elemInstances = nElementInstances;
-        }
-    }
-
-    void setElemInstance(int index, Object[] elemInstance) {
-        assert elemInstance != null;
-        ensureElemInstanceCapacity(index);
-        elemInstances[index] = elemInstance;
-    }
-
-    public void dropElemInstance(int index) {
-        if (elemInstances == null) {
-            return;
-        }
-        assert index < elemInstances.length;
-        elemInstances[index] = null;
-    }
-
-    public Object[] elemInstance(int index) {
-        if (elemInstances == null) {
-            return null;
-        }
-        assert index < elemInstances.length;
-        return elemInstances[index];
-    }
-
     private void ensureDataInstanceCapacity(int index) {
         if (dataInstances == null) {
             dataInstances = new long[Math.max(Integer.highestOneBit(index) << 1, 2)];
@@ -301,7 +269,7 @@ public class RuntimeState {
     }
 
     public void dropDataInstance(int index) {
-        if (dataInstances == null) {
+        if(dataInstances == null) {
             return;
         }
         assert index < dataInstances.length;
@@ -321,6 +289,38 @@ public class RuntimeState {
             return 0;
         }
         assert index < dataInstances.length;
-        return (int) (dataInstances[index]);
+        return (int) dataInstances[index];
+    }
+
+    private void ensureElemInstanceCapacity(int index) {
+        if (elementInstances == null) {
+            elementInstances = new Object[Math.max(Integer.highestOneBit(index) << 1, 2)][];
+        } else if (index >= elementInstances.length) {
+            final Object[][] nElementInstanceData = new Object[Math.max(Integer.highestOneBit(index) << 1, 2 * elementInstances.length)][];
+            System.arraycopy(elementInstances, 0, nElementInstanceData, 0, elementInstances.length);
+            elementInstances = nElementInstanceData;
+        }
+    }
+
+    void setElemInstance(int index, Object[] data) {
+        assert data != null;
+        ensureElemInstanceCapacity(index);
+        elementInstances[index] = data;
+    }
+
+    public void dropElemInstance(int index) {
+        if (elementInstances == null) {
+            return;
+        }
+        assert index < elementInstances.length;
+        elementInstances[index] = null;
+    }
+
+    public Object[] elemInstance(int index) {
+        if (elementInstances == null) {
+            return null;
+        }
+        assert index < elementInstances.length;
+        return elementInstances[index];
     }
 }

@@ -45,8 +45,14 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.Node;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
+import org.graalvm.wasm.constants.SegmentMode;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.memory.ByteArrayWasmMemory;
+import org.graalvm.wasm.memory.UnsafeWasmMemory;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.nodes.WasmFunctionNode;
 import org.graalvm.wasm.nodes.WasmCallStubNode;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
@@ -86,6 +92,9 @@ public class WasmInstantiator {
 
     @TruffleBoundary
     public WasmInstance createInstance(WasmContext context, WasmModule module) {
+        if (!module.hasLinkActions()) {
+            recreateLinkActions(module);
+        }
         WasmInstance instance = new WasmInstance(context, module);
         int binarySize = instance.module().bytecodeLength();
         final int asyncParsingBinarySize = WasmOptions.AsyncParsingBinarySize.getValue(context.environment().getOptions());
@@ -111,6 +120,152 @@ public class WasmInstantiator {
             }
         }
         return instance;
+    }
+
+    private void recreateLinkActions(WasmModule module) {
+        for (int i = 0; i < module.numFunctions(); i++) {
+            final WasmFunction function = module.function(i);
+            if (function.isImported()) {
+                module.addLinkAction((context, instance) -> context.linker().resolveFunctionImport(context, instance, function));
+            }
+            final String exportName = module.exportedFunctionName(i);
+            if (exportName != null) {
+                final int functionIndex = i;
+                module.addLinkAction((context, instance) -> context.linker().resolveFunctionExport(instance.module(), functionIndex, exportName));
+            }
+        }
+
+        final EconomicMap<Integer, ImportDescriptor> importedGlobals = module.importedGlobals();
+        for (int i = 0; i < module.numGlobals(); i++) {
+            final int globalIndex = i;
+            final byte globalValueType = module.globalValueType(globalIndex);
+            final byte globalMutability = module.globalMutability(globalIndex);
+            if (importedGlobals.containsKey(globalIndex)) {
+                final ImportDescriptor globalDescriptor = importedGlobals.get(globalIndex);
+                module.addLinkAction((context, instance) -> instance.setGlobalAddress(globalIndex, SymbolTable.UNINITIALIZED_ADDRESS));
+                module.addLinkAction((context, instance) -> context.linker().resolveGlobalImport(context, instance, globalDescriptor, globalIndex, globalValueType, globalMutability));
+            } else {
+                final boolean initialized = module.globalInitialized(globalIndex);
+                final boolean functionOrNull = module.globalFunctionOrNull(globalIndex);
+                final int existingIndex = module.globalExistingIndex(globalIndex);
+                final long initialValue = module.globalInitialValue(globalIndex);
+                module.addLinkAction((context, instance) -> {
+                    final GlobalRegistry registry = context.globals();
+                    final int address = registry.allocateGlobal();
+                    instance.setGlobalAddress(globalIndex, address);
+                });
+                module.addLinkAction((context, instance) -> {
+                    final GlobalRegistry registry = context.globals();
+                    final int address = instance.globalAddress(globalIndex);
+                    if (initialized) {
+                        if (functionOrNull) {
+                            // Only null is possible
+                            registry.storeReference(address, WasmConstant.NULL);
+                        } else {
+                            registry.storeLong(address, initialValue);
+                        }
+                        context.linker().resolveGlobalInitialization(instance, globalIndex);
+                    } else {
+                        if (functionOrNull) {
+                            context.linker().resolveGlobalFunctionInitialization(context, instance, globalIndex, (int) initialValue);
+                        } else {
+                            context.linker().resolveGlobalInitialization(context, instance, globalIndex, existingIndex);
+                        }
+                    }
+                });
+            }
+        }
+        final MapCursor<String, Integer> exportedGlobals = module.exportedGlobals().getEntries();
+        while (exportedGlobals.advance()) {
+            final String globalName = exportedGlobals.getKey();
+            final int globalIndex = exportedGlobals.getValue();
+            module.addLinkAction((context, instance) -> context.linker().resolveGlobalExport(instance.module(), globalName, globalIndex));
+        }
+
+        for (int i = 0; i < module.tableCount(); i++) {
+            final int tableIndex = i;
+            final int tableMinSize = module.tableInitialSize(tableIndex);
+            final int tableMaxSize = module.tableMaximumSize(tableIndex);
+            final byte tableElemType = module.tableElementType(tableIndex);
+            final ImportDescriptor tableDescriptor = module.importedTable(tableIndex);
+            if (tableDescriptor != null) {
+                module.addLinkAction((context, instance) -> instance.setTableAddress(tableIndex, SymbolTable.UNINITIALIZED_ADDRESS));
+                module.addLinkAction((context, instance) -> context.linker().resolveTableImport(context, instance, tableDescriptor, tableIndex, tableMinSize, tableMaxSize, tableElemType));
+            } else {
+                module.addLinkAction((context, instance) -> {
+                    final ModuleLimits limits = instance.module().limits();
+                    final int maxAllowedSize = WasmMath.minUnsigned(tableMaxSize, limits.tableInstanceSizeLimit());
+                    limits.checkTableInstanceSize(tableMinSize);
+                    final WasmTable wasmTable = new WasmTable(tableMinSize, tableMaxSize, maxAllowedSize, tableElemType);
+                    final int address = context.tables().register(wasmTable);
+                    instance.setTableAddress(tableIndex, address);
+                });
+            }
+        }
+        final MapCursor<String, Integer> exportedTables = module.exportedTables().getEntries();
+        while (exportedTables.advance()) {
+            final String tableName = exportedTables.getKey();
+            final int tableIndex = exportedTables.getValue();
+            module.addLinkAction((context, instance) -> context.linker().resolveTableExport(instance.module(), tableIndex, tableName));
+        }
+
+        if (module.memoryExists()) {
+            final int memoryMinSize = module.memoryInitialSize();
+            final int memoryMaxSize = module.memoryMaximumSize();
+            final ImportDescriptor memoryDescriptor = module.importedMemory();
+            if (memoryDescriptor != null) {
+                module.addLinkAction((context, instance) -> context.linker().resolveMemoryImport(context, instance, memoryDescriptor, memoryMinSize, memoryMaxSize));
+            } else {
+                module.addLinkAction((context, instance) -> {
+                    final ModuleLimits limits = instance.module().limits();
+                    final int maxAllowedSize = WasmMath.minUnsigned(memoryMaxSize, limits.memoryInstanceSizeLimit());
+                    limits.checkMemoryInstanceSize(memoryMinSize);
+                    final WasmMemory wasmMemory;
+                    if (context.environment().getOptions().get(WasmOptions.UseUnsafeMemory)) {
+                        wasmMemory = new UnsafeWasmMemory(memoryMinSize, memoryMaxSize, maxAllowedSize);
+                    } else {
+                        wasmMemory = new ByteArrayWasmMemory(memoryMinSize, memoryMaxSize, maxAllowedSize);
+                    }
+                    final int address = context.memories().register(wasmMemory);
+                    final WasmMemory allocatedMemory = context.memories().memory(address);
+                    instance.setMemory(allocatedMemory);
+                });
+            }
+        }
+        for (String memoryName : module.exportedMemoryNames()) {
+            module.addLinkAction((context, instance) -> context.linker().resolveMemoryExport(instance, memoryName));
+        }
+
+        for (int i = 0; i < module.dataInstanceCount(); i++) {
+            final int dataIndex = i;
+            final int dataMode = module.dataInstanceMode(dataIndex);
+            final int dataOffset = module.dataInstanceOffset(dataIndex);
+            final int dataLength = module.dataInstanceLength(dataIndex);
+            if (dataMode == SegmentMode.ACTIVE) {
+                final int dataOffsetAddress = module.dataInstanceOffsetAddress(dataIndex);
+                final int dataGlobalIndex = module.dataInstanceGlobalIndex(dataIndex);
+                module.addLinkAction((context, instance) -> context.linker().resolveDataSegment(context, instance, dataIndex, dataOffsetAddress, dataGlobalIndex, dataLength,
+                                dataOffset));
+            } else {
+                module.addLinkAction((context, instance) -> context.linker().resolvePassiveDataSegment(context, instance, dataIndex, dataOffset, dataLength));
+            }
+        }
+
+        for (int i = 0; i < module.elemInstanceCount(); i++) {
+            final int elemIndex = i;
+            final int elemMode = module.elemInstanceMode(elemIndex);
+            final int elemOffset = module.elemInstanceOffset(elemIndex);
+            final int elemItemCount = module.elemInstanceItemCount(elemIndex);
+            if (elemMode == SegmentMode.ACTIVE) {
+                final int elemTableIndex = module.elemInstanceTableIndex(elemIndex);
+                final int elemGlobalIndex = module.elemInstanceGlobalIndex(elemIndex);
+                final int elemOffsetAddress = module.elemInstanceOffsetAddress(elemIndex);
+                module.addLinkAction((context, instance) -> context.linker().resolveElemSegment(context, instance, elemTableIndex, elemIndex, elemOffsetAddress, elemGlobalIndex, elemOffset,
+                                elemItemCount));
+            } else {
+                module.addLinkAction((context, instance) -> context.linker().resolvePassiveElemSegment(context, instance, elemIndex, elemOffset, elemItemCount));
+            }
+        }
     }
 
     private void instantiateCodeEntries(WasmContext context, WasmInstance instance) {

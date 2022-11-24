@@ -56,6 +56,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.constants.ImportIdentifier;
+import org.graalvm.wasm.constants.SegmentMode;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.globals.WasmGlobal;
@@ -75,9 +76,13 @@ public abstract class SymbolTable {
     private static final int INITIAL_DATA_SIZE = 512;
     private static final int INITIAL_TYPE_SIZE = 128;
     private static final int INITIAL_FUNCTION_TYPES_SIZE = 128;
-    private static final int GLOBAL_MUTABLE_BIT = 0x0100;
-    private static final int GLOBAL_EXPORT_BIT = 0x0200;
-    static final int UNINITIALIZED_ADDRESS = Integer.MIN_VALUE;
+    private static final byte GLOBAL_MUTABLE_BIT = 0x01;
+    private static final byte GLOBAL_EXPORT_BIT = 0x02;
+    private static final byte GLOBAL_INITIALIZED_BIT = 0x04;
+    private static final byte GLOBAL_FUNCTION_OR_NULL_BIT = 0x08;
+
+    private static final byte GLOBAL_IMPORTED_BIT = 0x10;
+    public static final int UNINITIALIZED_ADDRESS = Integer.MIN_VALUE;
     private static final int NO_EQUIVALENCE_CLASS = 0;
     static final int FIRST_EQUIVALENCE_CLASS = NO_EQUIVALENCE_CLASS + 1;
 
@@ -194,6 +199,56 @@ public abstract class SymbolTable {
         }
     }
 
+    public static class GlobalInfo {
+        public final byte valueType;
+        public byte flags;
+        public final int existingIndex;
+        public final long initialValue;
+
+        public GlobalInfo(byte valueType, byte flags, int existingIndex, long initialValue) {
+            this.valueType = valueType;
+            this.flags = flags;
+            this.existingIndex = existingIndex;
+            this.initialValue = initialValue;
+        }
+    }
+
+    public static class DataSegmentInfo {
+        public final byte mode;
+        public final int offset;
+        public final int length;
+        public final int globalIndex;
+        public final int offsetAddress;
+
+        public DataSegmentInfo(byte mode, int offset, int length, int globalIndex, int offsetAddress) {
+            this.mode = mode;
+            this.offset = offset;
+            this.length = length;
+            this.globalIndex = globalIndex;
+            this.offsetAddress = offsetAddress;
+        }
+    }
+
+    public static final class ElemSegmentInfo {
+        public final byte mode;
+        public final int offset;
+        public final int itemCount;
+        public final int tableIndex;
+        public final int globalIndex;
+        public final int offsetAddress;
+        public final byte elemType;
+
+        public ElemSegmentInfo(byte mode, int offset, int itemCount, int tableIndex, int globalIndex, int offsetAddress, byte elemType) {
+            this.mode = mode;
+            this.offset = offset;
+            this.itemCount = itemCount;
+            this.tableIndex = tableIndex;
+            this.globalIndex = globalIndex;
+            this.offsetAddress = offsetAddress;
+            this.elemType = elemType;
+        }
+    }
+
     /**
      * Encodes the parameter and result types of each function type.
      * <p>
@@ -284,7 +339,7 @@ public abstract class SymbolTable {
      * | . | . | . | . | . | initialized flag | exported flag | mutable flag |
      * </code>
      */
-    @CompilationFinal(dimensions = 1) short[] globalTypes;
+    @CompilationFinal(dimensions = 1) GlobalInfo[] globals;
 
     /**
      * A mapping between the indices of the imported globals and their import specifiers.
@@ -346,11 +401,8 @@ public abstract class SymbolTable {
 
     @CompilationFinal private int elemSegmentCount;
 
-    /**
-     * The types of the elem segments ({@link WasmType#FUNCREF_TYPE} or
-     * {@link WasmType#EXTERNREF_TYPE}).
-     */
-    @CompilationFinal(dimensions = 1) private byte[] elemSegmentTypes;
+    @CompilationFinal(dimensions = 1) private DataSegmentInfo[] dataInstances;
+    @CompilationFinal(dimensions = 1) private ElemSegmentInfo[] elemInstances;
     @CompilationFinal private boolean dataCountExists;
     @CompilationFinal private int dataSegmentCount;
 
@@ -375,7 +427,7 @@ public abstract class SymbolTable {
         this.exportedFunctions = EconomicMap.create();
         this.exportedFunctionsByIndex = EconomicMap.create();
         this.startFunctionIndex = -1;
-        this.globalTypes = new short[INITIAL_GLOBALS_SIZE];
+        this.globals = new GlobalInfo[INITIAL_GLOBALS_SIZE];
         this.importedGlobals = EconomicMap.create();
         this.exportedGlobals = EconomicMap.create();
         this.numGlobals = 0;
@@ -388,10 +440,10 @@ public abstract class SymbolTable {
         this.exportedMemoryNames = new ArrayList<>();
         this.customSections = new ArrayList<>();
         this.elemSegmentCount = 0;
-        this.elemSegmentTypes = null;
         this.dataCountExists = false;
         this.dataSegmentCount = 0;
         this.functionReferences = EconomicSet.create();
+        this.dataInstances = null;
     }
 
     private void checkNotParsed() {
@@ -693,10 +745,10 @@ public abstract class SymbolTable {
     }
 
     private void ensureGlobalsCapacity(int index) {
-        while (index >= globalTypes.length) {
-            final short[] nGlobalTypes = new short[globalTypes.length * 2];
-            System.arraycopy(globalTypes, 0, nGlobalTypes, 0, globalTypes.length);
-            globalTypes = nGlobalTypes;
+        while (index >= globals.length) {
+            final GlobalInfo[] nGlobalTypes = new GlobalInfo[globals.length * 2];
+            System.arraycopy(globals, 0, nGlobalTypes, 0, globals.length);
+            globals = nGlobalTypes;
         }
     }
 
@@ -704,27 +756,35 @@ public abstract class SymbolTable {
      * Allocates a global index in the symbol table, for a global variable that was already
      * allocated.
      */
-    void allocateGlobal(int index, byte valueType, byte mutability) {
+    void allocateGlobal(int index, byte valueType, byte mutability, boolean initialized, boolean functionOrNull, boolean imported, int existingIndex, long initialValue) {
         assert (valueType & 0xff) == valueType;
         checkNotParsed();
         ensureGlobalsCapacity(index);
         numGlobals = maxUnsigned(index + 1, numGlobals);
-        final int mutabilityBit;
+        byte flags;
         if (mutability == GlobalModifier.CONSTANT) {
-            mutabilityBit = 0;
+            flags = 0;
         } else if (mutability == GlobalModifier.MUTABLE) {
-            mutabilityBit = GLOBAL_MUTABLE_BIT;
+            flags = GLOBAL_MUTABLE_BIT;
         } else {
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Invalid mutability: " + mutability);
         }
-        short globalType = (short) (mutabilityBit | valueType);
-        globalTypes[index] = globalType;
+        if (initialized) {
+            flags |= GLOBAL_INITIALIZED_BIT;
+        }
+        if (functionOrNull) {
+            flags |= GLOBAL_FUNCTION_OR_NULL_BIT;
+        }
+        if (imported) {
+            flags |= GLOBAL_IMPORTED_BIT;
+        }
+        globals[index] = new GlobalInfo(valueType, flags, existingIndex, initialValue);
     }
 
     void declareExternalGlobal(int index, WasmGlobal global) {
         final byte valueType = global.getValueType().byteValue();
         final byte mutability = global.isMutable() ? GlobalModifier.MUTABLE : GlobalModifier.CONSTANT;
-        allocateGlobal(index, valueType, mutability);
+        allocateGlobal(index, valueType, mutability, false, false, false, 0, 0);
         module().addLinkAction((context, instance) -> {
             final GlobalRegistry globals = context.globals();
             final int address = globals.allocateExternalGlobal(global);
@@ -732,8 +792,8 @@ public abstract class SymbolTable {
         });
     }
 
-    void declareGlobal(int index, byte valueType, byte mutability) {
-        allocateGlobal(index, valueType, mutability);
+    void declareGlobal(int index, byte valueType, byte mutability, boolean initialized, boolean functionOrNull, int existingIndex, long initialValue) {
+        allocateGlobal(index, valueType, mutability, initialized, functionOrNull, false, existingIndex, initialValue);
         module().addLinkAction((context, instance) -> {
             final GlobalRegistry globals = context.globals();
             final int address = globals.allocateGlobal();
@@ -745,7 +805,7 @@ public abstract class SymbolTable {
         final ImportDescriptor descriptor = new ImportDescriptor(moduleName, globalName, ImportIdentifier.GLOBAL);
         importedGlobals.put(index, descriptor);
         importSymbol(descriptor);
-        allocateGlobal(index, valueType, mutability);
+        allocateGlobal(index, valueType, mutability, false, false, true, 0, 0);
         module().addLinkAction((context, instance) -> instance.setGlobalAddress(index, UNINITIALIZED_ADDRESS));
         module().addLinkAction((context, instance) -> context.linker().resolveGlobalImport(context, instance, descriptor, index, valueType, mutability));
     }
@@ -769,13 +829,12 @@ public abstract class SymbolTable {
 
     @SuppressWarnings("unused")
     private boolean globalExported(int index) {
-        final int exportStatus = globalTypes[index] & GLOBAL_EXPORT_BIT;
+        final int exportStatus = globals[index].flags & GLOBAL_EXPORT_BIT;
         return exportStatus != 0;
     }
 
     byte globalMutability(int index) {
-        final short globalType = globalTypes[index];
-        if ((globalType & GLOBAL_MUTABLE_BIT) != 0) {
+        if ((globals[index].flags & GLOBAL_MUTABLE_BIT) != 0) {
             return GlobalModifier.MUTABLE;
         } else {
             return GlobalModifier.CONSTANT;
@@ -787,7 +846,27 @@ public abstract class SymbolTable {
     }
 
     public byte globalValueType(int index) {
-        return (byte) (globalTypes[index] & 0xff);
+        return globals[index].valueType;
+    }
+
+    public boolean globalInitialized(int index) {
+        return (globals[index].flags & GLOBAL_INITIALIZED_BIT) != 0;
+    }
+
+    public boolean globalFunctionOrNull(int index) {
+        return (globals[index].flags & GLOBAL_FUNCTION_OR_NULL_BIT) != 0;
+    }
+
+    public int globalExistingIndex(int index) {
+        return globals[index].existingIndex;
+    }
+
+    public long globalInitialValue(int index) {
+        return globals[index].initialValue;
+    }
+
+    public boolean globalImported(int index) {
+        return (globals[index].flags & GLOBAL_IMPORTED_BIT) != 0;
     }
 
     public EconomicMap<String, Integer> exportedGlobals() {
@@ -808,7 +887,7 @@ public abstract class SymbolTable {
     void exportGlobal(String name, int index) {
         checkNotParsed();
         exportSymbol(name);
-        globalTypes[index] |= GLOBAL_EXPORT_BIT;
+        globals[index].flags |= GLOBAL_EXPORT_BIT;
         exportedGlobals.put(name, index);
         module().addLinkAction((context, instance) -> context.linker().resolveGlobalExport(instance.module(), name, index));
     }
@@ -821,7 +900,7 @@ public abstract class SymbolTable {
 
     public void declareExportedGlobalWithValue(String name, int index, byte valueType, byte mutability, long value) {
         checkNotParsed();
-        declareGlobal(index, valueType, mutability);
+        declareGlobal(index, valueType, mutability, true, false, 0, 0);
         exportGlobal(name, index);
         module().addLinkAction((context, instance) -> {
             final int address = instance.globalAddress(index);
@@ -920,6 +999,18 @@ public abstract class SymbolTable {
         return exportedTables;
     }
 
+    public int tableInitialSize(int index) {
+        final TableInfo table = tables[index];
+        assert table != null;
+        return table.initialSize;
+    }
+
+    public int tableMaximumSize(int index) {
+        final TableInfo table = tables[index];
+        assert table != null;
+        return table.maximumSize;
+    }
+
     public byte tableElementType(int index) {
         final TableInfo table = tables[index];
         assert table != null;
@@ -979,6 +1070,14 @@ public abstract class SymbolTable {
         return memory != null && memory.indexType64;
     }
 
+    public int memoryInitialSize() {
+        return memory.initialSize;
+    }
+
+    public int memoryMaximumSize() {
+        return memory.maximumSize;
+    }
+
     public void exportMemory(String name) {
         checkNotParsed();
         exportSymbol(name);
@@ -1006,29 +1105,6 @@ public abstract class SymbolTable {
         return customSections;
     }
 
-    private void ensureElemCapacity(int index) {
-        if (elemSegmentTypes == null) {
-            elemSegmentTypes = new byte[Math.max(Integer.highestOneBit(index) << 1, 2)];
-        } else if (elemSegmentTypes.length <= index) {
-            int newLength = Math.max(Integer.highestOneBit(index) << 1, 2 * elemSegmentTypes.length);
-            elemSegmentTypes = reallocate(elemSegmentTypes, elemSegmentCount, newLength);
-        }
-    }
-
-    public void addElemSegment(byte elemType) {
-        ensureElemCapacity(elemSegmentCount);
-        elemSegmentTypes[elemSegmentCount] = elemType;
-        elemSegmentCount++;
-    }
-
-    public void checkElemIndex(int elemIndex) {
-        assertUnsignedIntLess(elemIndex, elemSegmentCount, Failure.UNKNOWN_ELEM_SEGMENT);
-    }
-
-    public void checkElemType(int elemIndex, byte expectedType) {
-        assertByteEqual(expectedType, elemSegmentTypes[elemIndex], Failure.TYPE_MISMATCH);
-    }
-
     public void checkDataSegmentIndex(int dataIndex) {
         assertTrue(dataCountExists, Failure.DATA_COUNT_SECTION_REQUIRED);
         assertUnsignedIntLess(dataIndex, dataSegmentCount, Failure.UNKNOWN_DATA_SEGMENT);
@@ -1040,7 +1116,7 @@ public abstract class SymbolTable {
     }
 
     /**
-     * Checks whether the actual number of data segments corresponds with the number defied in the
+     * Checks whether the actual number of data segments corresponds with the number defined in the
      * data count section.
      */
     public void checkDataSegmentCount(int numberOfDataSegments) {
@@ -1055,5 +1131,146 @@ public abstract class SymbolTable {
 
     public void checkFunctionReference(int functionIndex) {
         assertTrue(functionReferences.contains(functionIndex), Failure.UNDECLARED_FUNCTION_REFERENCE);
+    }
+
+    private void ensureDataInstanceCapacity(int index) {
+        if (dataInstances == null) {
+            dataInstances = new DataSegmentInfo[Math.max(Integer.highestOneBit(index) << 1, 2)];
+        } else if (index >= dataInstances.length) {
+            final DataSegmentInfo[] nDataInstances = new DataSegmentInfo[Math.max(Integer.highestOneBit(index) << 1, 2 * dataInstances.length)];
+            System.arraycopy(dataInstances, 0, nDataInstances, 0, dataInstances.length);
+            dataInstances = nDataInstances;
+        }
+    }
+
+    void setDataInstance(int index, int mode, int bytecodeOffset, int length, int globalIndex, int offsetAddress) {
+        assert bytecodeOffset >= 0 && length >= 0;
+        assert mode == SegmentMode.ACTIVE || mode == SegmentMode.PASSIVE || mode == SegmentMode.DECLARATIVE;
+        ensureDataInstanceCapacity(index);
+        dataInstances[index] = new DataSegmentInfo((byte) mode, bytecodeOffset, length, globalIndex, offsetAddress);
+        if (!dataCountExists) {
+            dataSegmentCount++;
+        }
+    }
+
+    public int dataInstanceMode(int index) {
+        if (dataInstances == null) {
+            return -1;
+        }
+        assert index < dataInstances.length;
+        return dataInstances[index].mode;
+    }
+
+    public int dataInstanceOffset(int index) {
+        if (dataInstances == null) {
+            return 0;
+        }
+        assert index < dataInstances.length;
+        return dataInstances[index].offset;
+    }
+
+    public int dataInstanceLength(int index) {
+        if (dataInstances == null) {
+            return 0;
+        }
+        assert index < dataInstances.length;
+        return dataInstances[index].length;
+    }
+
+    public int dataInstanceGlobalIndex(int index) {
+        if (dataInstances == null) {
+            return -1;
+        }
+        assert index < dataInstances.length;
+        return dataInstances[index].globalIndex;
+    }
+
+    public int dataInstanceOffsetAddress(int index) {
+        if (dataInstances == null) {
+            return -1;
+        }
+        assert index < dataInstances.length;
+        return dataInstances[index].offsetAddress;
+    }
+
+    public int dataInstanceCount() {
+        return dataSegmentCount;
+    }
+
+    public void checkElemIndex(int elemIndex) {
+        assertUnsignedIntLess(elemIndex, elemSegmentCount, Failure.UNKNOWN_ELEM_SEGMENT);
+    }
+
+    public void checkElemType(int elemIndex, byte expectedType) {
+        assertByteEqual(expectedType, elemInstances[elemIndex].elemType, Failure.TYPE_MISMATCH);
+    }
+
+    private void ensureElemInstanceCapacity(int index) {
+        if (elemInstances == null) {
+            elemInstances = new ElemSegmentInfo[Math.max(Integer.highestOneBit(index) << 1, 2)];
+        } else if (index >= elemInstances.length) {
+            final ElemSegmentInfo[] nElementInstances = new ElemSegmentInfo[Math.max(Integer.highestOneBit(index) << 1, 2 * elemInstances.length)];
+            System.arraycopy(elemInstances, 0, nElementInstances, 0, elemInstances.length);
+            elemInstances = nElementInstances;
+        }
+    }
+
+    void setElemInstance(int index, int mode, int bytecodeOffset, int elementItem, int tableIndex, int globalIndex, int offsetAddress, byte elemType) {
+        assert bytecodeOffset != -1;
+        ensureElemInstanceCapacity(index);
+        elemInstances[index] = new ElemSegmentInfo((byte) mode, bytecodeOffset, elementItem, tableIndex, globalIndex, offsetAddress, elemType);
+        elemSegmentCount++;
+    }
+
+    public int elemInstanceMode(int index) {
+        if (elemInstances == null) {
+            return -1;
+        }
+        assert index < elemInstances.length;
+        return elemInstances[index].mode;
+    }
+
+    public int elemInstanceOffset(int index) {
+        if (elemInstances == null) {
+            return 0;
+        }
+        assert index < elemInstances.length;
+        return elemInstances[index].offset;
+    }
+
+    public int elemInstanceItemCount(int index) {
+        if (elemInstances == null) {
+            return 0;
+        }
+        assert index < elemInstances.length;
+        return elemInstances[index].itemCount;
+    }
+
+    public int elemInstanceTableIndex(int index) {
+        if (elemInstances == null) {
+            return 0;
+        }
+        assert index < elemInstances.length;
+        return elemInstances[index].tableIndex;
+    }
+
+    public int elemInstanceGlobalIndex(int index) {
+        if (elemInstances == null) {
+            return 0;
+        }
+        assert index < elemInstances.length;
+        return elemInstances[index].globalIndex;
+    }
+
+    public int elemInstanceOffsetAddress(int index) {
+        if (elemInstances == null) {
+            return -1;
+        }
+        assert index < elemInstances.length;
+        return elemInstances[index].offsetAddress;
+    }
+
+    public int elemInstanceCount() {
+        return elemSegmentCount;
     }
 }

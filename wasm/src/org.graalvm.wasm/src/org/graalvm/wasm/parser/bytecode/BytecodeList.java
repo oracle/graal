@@ -64,6 +64,10 @@ public class BytecodeList {
         return Integer.compareUnsigned(value, 255) <= 0;
     }
 
+    private static boolean fitsIntoUnsignedShort(int value) {
+        return Integer.compareUnsigned(value, 65535) <= 0;
+    }
+
     private void add1(int value) {
         bytecode.add((byte) value);
     }
@@ -75,6 +79,11 @@ public class BytecodeList {
     private void addProfile() {
         bytecode.add((byte) 0);
         bytecode.add((byte) 0);
+    }
+
+    private void add2(int value) {
+        bytecode.add((byte) (value & 0x0000_00FF));
+        bytecode.add((byte) ((value >>> 8) & 0x0000_00FF));
     }
 
     private void add4(int value) {
@@ -438,6 +447,41 @@ public class BytecodeList {
     public void addByte(byte value) {
         bytecode.add(value);
     }
+
+    public void addElemNull() {
+        add1(0b0100_1000);
+    }
+
+    public void addElemFunctionIndex(int functionIndex) {
+        if (functionIndex >= 0 && functionIndex <= 63) {
+            add1(functionIndex);
+        } else if (fitsIntoUnsignedByte(functionIndex)) {
+            add1(0b0100_0001);
+            add1(functionIndex);
+        } else if (fitsIntoUnsignedShort(functionIndex)) {
+            add1(0b0100_0010);
+            add2(functionIndex);
+        } else {
+            add1(0b0100_0100);
+            add4(functionIndex);
+        }
+    }
+
+    public void addElemGlobalIndex(int globalIndex) {
+        if (globalIndex >= 0 && globalIndex <= 63) {
+            add1(0b1000_0000 | globalIndex);
+        } else if (fitsIntoUnsignedByte(globalIndex)) {
+            add1(0b1100_0001);
+            add1(globalIndex);
+        } else if (fitsIntoUnsignedShort(globalIndex)) {
+            add1(0b1100_0010);
+            add2(globalIndex);
+        } else {
+            add1(0b1100_0100);
+            add4(globalIndex);
+        }
+    }
+
     /**
      * @return A byte array representation of the bytecode.
      */

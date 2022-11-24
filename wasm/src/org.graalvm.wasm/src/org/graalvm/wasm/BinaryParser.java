@@ -182,7 +182,7 @@ public class BinaryParser extends BinaryStreamParser {
                     readStartSection();
                     break;
                 case Section.ELEMENT:
-                    readElementSection(null, null);
+                    readElementSection(bytecode);
                     break;
                 case Section.DATA_COUNT:
                     if (bulkMemoryAndRefTypes) {
@@ -196,7 +196,7 @@ public class BinaryParser extends BinaryStreamParser {
                     hasCodeSection = true;
                     break;
                 case Section.DATA:
-                    readDataSection(null, null, bytecode);
+                    readDataSection(bytecode);
                     break;
             }
             assertIntEqual(offset - startOffset, size, String.format("Declared section (0x%02X) size is incorrect", sectionID), Failure.SECTION_SIZE_MISMATCH);
@@ -1509,7 +1509,7 @@ public class BinaryParser extends BinaryStreamParser {
         return functionIndices;
     }
 
-    private void readElementSection(WasmContext linkedContext, WasmInstance linkedInstance) {
+    private void readElementSection(BytecodeList bytecode) {
         int elemSegmentCount = readLength();
         module.limits().checkElementSegmentCount(elemSegmentCount);
         for (int elemSegmentIndex = 0; elemSegmentIndex != elemSegmentCount; elemSegmentIndex++) {
@@ -1564,41 +1564,35 @@ public class BinaryParser extends BinaryStreamParser {
                 elements = readFunctionIndices();
                 elemType = FUNCREF_TYPE;
             }
-            module.addElemSegment(elemType);
 
             // Copy the contents, or schedule a linker task for this.
             final int currentElemSegmentId = elemSegmentIndex;
+            final int elementCount = elements.length;
+            final int bytecodeOffset = bytecode.location();
+            for (long element : elements) {
+                final int initType = (int) (element >> 32);
+                switch (initType) {
+                    case NULL_TYPE:
+                        bytecode.addElemNull();
+                        break;
+                    case FUNCREF_TYPE:
+                        final int functionIndex = (int) element;
+                        bytecode.addElemFunctionIndex(functionIndex);
+                        break;
+                    case I32_TYPE:
+                        final int globalIndex = (int) element;
+                        bytecode.addElemGlobalIndex(globalIndex);
+                        break;
+                }
+            }
             if (mode == SegmentMode.ACTIVE) {
                 assertTrue(module.checkTableIndex(tableIndex), Failure.UNKNOWN_TABLE);
-
-                // We don't need to check the table type yet, since there is only funcref. This will
-                // change in a future update.
-
-                if (linkedContext == null || linkedInstance == null) {
-                    // Reading of the elements segment occurs during parsing, so add a linker
-                    // action.
-                    module.addLinkAction(
-                                    (context, instance) -> context.linker().resolveElemSegment(context, instance, tableIndex, currentElemSegmentId, currentOffsetAddress, currentOffsetGlobalIndex,
-                                                    elements));
-                } else {
-                    // Reading of the elements segment is called after linking (this happens when
-                    // this method is called from #resetTableState()), so initialize the table
-                    // directly.
-                    final Linker linker = Objects.requireNonNull(linkedContext.linker());
-                    linker.immediatelyResolveElemSegment(linkedContext, linkedInstance, tableIndex, currentElemSegmentId, currentOffsetAddress, currentOffsetGlobalIndex, elements);
-                }
+                module.setElemInstance(currentElemSegmentId, mode, bytecodeOffset, elementCount, tableIndex, currentOffsetGlobalIndex, currentOffsetAddress, elemType);
+                module.addLinkAction(((context, instance) -> context.linker().resolveElemSegment(context, instance, tableIndex, currentElemSegmentId, currentOffsetAddress,
+                                currentOffsetGlobalIndex, bytecodeOffset, elementCount)));
             } else if (mode == SegmentMode.PASSIVE) {
-                if (linkedContext == null || linkedInstance == null) {
-                    // Reading of the elements segment occurs during parsing, so add a linker
-                    // action.
-                    module.addLinkAction(((context, instance) -> context.linker().resolvePassiveElemSegment(context, instance, currentElemSegmentId, elements)));
-                } else {
-                    // Reading of the elements segment is called after linking (this happens when
-                    // this method is called from #resetTableState()), so initialize the element
-                    // instance directly.
-                    final Linker linker = Objects.requireNonNull(linkedContext.linker());
-                    linker.immediatelyResolvePassiveElementSegment(linkedContext, linkedInstance, currentElemSegmentId, elements);
-                }
+                module.setElemInstance(currentElemSegmentId, mode, bytecodeOffset, elementCount, 0, 0, 0, elemType);
+                module.addLinkAction(((context, instance) -> context.linker().resolvePassiveElemSegment(context, instance, currentElemSegmentId, bytecodeOffset, elementCount)));
             }
         }
     }
@@ -1720,7 +1714,7 @@ public class BinaryParser extends BinaryStreamParser {
             }
             readEnd();
 
-            module.symbolTable().declareGlobal(globalIndex, type, mutability);
+            module.symbolTable().declareGlobal(globalIndex, type, mutability, isInitialized, isFunctionOrNull, existingIndex, value);
             final int currentGlobalIndex = globalIndex;
             final int currentExistingIndex = existingIndex;
             final long currentValue = value;
@@ -1762,7 +1756,7 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private void readDataSection(WasmContext linkedContext, WasmInstance linkedInstance, BytecodeList bytecode) {
+    private void readDataSection(BytecodeList bytecode) {
         final int dataSegmentCount = readLength();
         module.limits().checkDataSegmentCount(dataSegmentCount);
         if (bulkMemoryAndRefTypes && dataSegmentCount != 0) {
@@ -1811,40 +1805,21 @@ public class BinaryParser extends BinaryStreamParser {
             final int byteLength = readLength();
             final int currentDataSegmentId = dataSegmentIndex;
 
-            if(linkedInstance != null) {
-                final int bytecodeOffset = linkedInstance.dataInstanceOffset(dataSegmentIndex);
-                offset += byteLength;
-                if(mode == SegmentMode.ACTIVE) {
-                    if (offsetGlobalIndex != -1) {
-                        int offsetGlobalAddress = linkedInstance.globalAddress(offsetGlobalIndex);
-                        offsetAddress = linkedContext.globals().loadAsInt(offsetGlobalAddress);
-                    }
-
-                    // Reading of the data segment is called after linking, so initialize the memory
-                    // directly.
-                    final WasmMemory memory = linkedInstance.memory();
-
-                    Assert.assertUnsignedLongLessOrEqual(offsetAddress, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-                    Assert.assertUnsignedLongLessOrEqual(offsetAddress + byteLength, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-                    memory.initialize(linkedInstance.module().bytecode(), bytecodeOffset, offsetAddress, byteLength);
-                } else {
-                    linkedInstance.setDataInstance(dataSegmentIndex, bytecodeOffset, byteLength);
-                }
+            // Add the data section to the bytecode.
+            final int bytecodeOffset = bytecode.location();
+            for (int i = 0; i < byteLength; i++) {
+                bytecode.addByte(read1());
+            }
+            if (mode == SegmentMode.ACTIVE) {
+                assertTrue(module.memoryExists(), Failure.UNKNOWN_MEMORY);
+                final long currentOffsetAddress = offsetAddress;
+                final int currentOffsetGlobalIndex = offsetGlobalIndex;
+                module.setDataInstance(currentDataSegmentId, mode, bytecodeOffset, byteLength, currentOffsetGlobalIndex, currentOffsetAddress);
+                module.addLinkAction((context, instance) -> context.linker().resolveDataSegment(context, instance, currentDataSegmentId, currentOffsetAddress, currentOffsetGlobalIndex, byteLength,
+                                bytecodeOffset));
             } else {
-                // Add the data section to the bytecode.
-                final int bytecodeOffset = bytecode.location();
-                for (int i = 0; i < byteLength; i++) {
-                    bytecode.addByte(read1());
-                }
-                if (mode == SegmentMode.ACTIVE) {
-                    assertTrue(module.memoryExists(), Failure.UNKNOWN_MEMORY);
-                    final long currentOffsetAddress = offsetAddress;
-                    final int currentOffsetGlobalIndex = offsetGlobalIndex;
-                    module.addLinkAction((context, instance) -> context.linker().resolveDataSegment(context, instance, currentDataSegmentId, currentOffsetAddress, currentOffsetGlobalIndex, byteLength,
-                            bytecodeOffset));
-                } else {
-                    module.addLinkAction(((context, instance) -> context.linker().resolvePassiveDataSegment(context, instance, currentDataSegmentId, bytecodeOffset, byteLength)));
-                }
+                module.setDataInstance(currentDataSegmentId, mode, bytecodeOffset, byteLength, 0, 0);
+                module.addLinkAction(((context, instance) -> context.linker().resolvePassiveDataSegment(context, instance, currentDataSegmentId, bytecodeOffset, byteLength)));
             }
         }
     }
@@ -2099,109 +2074,74 @@ public class BinaryParser extends BinaryStreamParser {
     /**
      * Reset the state of the globals in a module that had already been parsed and linked.
      */
-    @SuppressWarnings("unused")
     public void resetGlobalState(WasmContext context, WasmInstance instance) {
-        int globalIndex = 0;
-        if (tryJumpToSection(Section.IMPORT)) {
-            int numImports = readLength();
-            for (int i = 0; i != numImports; ++i) {
-                String moduleName = readName();
-                String memberName = readName();
-                byte importType = readImportType();
-                switch (importType) {
-                    case ImportIdentifier.FUNCTION: {
-                        readFunctionIndex();
-                        break;
-                    }
-                    case ImportIdentifier.TABLE: {
-                        readRefType();
-                        readTableLimits(multiResult);
-                        break;
-                    }
-                    case ImportIdentifier.MEMORY: {
-                        readMemoryLimits(longMultiResult);
-                        break;
-                    }
-                    case ImportIdentifier.GLOBAL: {
-                        readValueType(bulkMemoryAndRefTypes);
-                        readMutability();
-                        globalIndex++;
-                        break;
-                    }
-                    default: {
-                        // The module should have been parsed already.
-                    }
-                }
+        final GlobalRegistry globals = context.globals();
+        for (int i = 0; i < module.numGlobals(); i++) {
+            if (module.globalImported(i)) {
+                continue;
             }
-        }
-        if (tryJumpToSection(Section.GLOBAL)) {
-            final GlobalRegistry globals = context.globals();
-            int numGlobals = readLength();
-            int startingGlobalIndex = globalIndex;
-            for (; globalIndex != startingGlobalIndex + numGlobals; globalIndex++) {
-                readValueType(bulkMemoryAndRefTypes);
-                // Read mutability;
-                read1();
-                int instruction = read1() & 0xFF;
-                long value = 0;
-                Object refValue = null;
-                switch (instruction) {
-                    case Instructions.I32_CONST: {
-                        value = readSignedInt32();
-                        break;
-                    }
-                    case Instructions.I64_CONST: {
-                        value = readSignedInt64();
-                        break;
-                    }
-                    case Instructions.F32_CONST: {
-                        value = readFloatAsInt32();
-                        break;
-                    }
-                    case Instructions.F64_CONST: {
-                        value = readFloatAsInt64();
-                        break;
-                    }
-                    case Instructions.REF_NULL: {
-                        checkBulkMemoryAndRefTypesSupport(instruction);
-                        readRefType();
-                        refValue = WasmConstant.NULL;
-                        break;
-                    }
-                    case Instructions.REF_FUNC: {
-                        checkBulkMemoryAndRefTypesSupport(instruction);
-                        final int functionIndex = readDeclaredFunctionIndex();
-                        refValue = instance.functionInstance(functionIndex);
-                        break;
-                    }
-                    case Instructions.GLOBAL_GET: {
-                        int existingIndex = readGlobalIndex();
-                        final int existingAddress = instance.globalAddress(existingIndex);
-                        value = globals.loadAsLong(existingAddress);
-                        break;
-                    }
-                }
-                // Read END.
-                read1();
-                final int address = instance.globalAddress(globalIndex);
-                if (refValue == null) {
-                    globals.storeLong(address, value);
+            final int address = instance.globalAddress(i);
+            final long value = module.globalInitialValue(i);
+            if (module.globalInitialized(i)) {
+                if (module.globalFunctionOrNull(i)) {
+                    final int functionIndex = (int) value;
+                    final WasmFunctionInstance function = instance.functionInstance(functionIndex);
+                    globals.storeReference(address, function);
                 } else {
-                    globals.storeReference(address, refValue);
+                    globals.storeLong(address, value);
+                }
+            } else {
+                if (module.globalFunctionOrNull(i)) {
+                    globals.storeReference(address, WasmConstant.NULL);
+                } else {
+                    final int existingAddress = instance.globalAddress(module.globalExistingIndex(i));
+                    globals.storeLong(address, globals.loadAsLong(existingAddress));
                 }
             }
         }
     }
 
     public void resetMemoryState(WasmContext context, WasmInstance instance) {
-        if (tryJumpToSection(Section.DATA)) {
-            readDataSection(context, instance, null);
+        for (int i = 0; i < module.dataInstanceCount(); i++) {
+            final int mode = module.dataInstanceMode(i);
+            final int offsetGlobalIndex = module.dataInstanceGlobalIndex(i);
+            int offsetAddress = module.dataInstanceOffsetAddress(i);
+            final int bytecodeOffset = module.dataInstanceOffset(i);
+            final int byteLength = module.dataInstanceLength(i);
+            if (mode == SegmentMode.ACTIVE) {
+                if (offsetGlobalIndex != -1) {
+                    int offsetGlobalAddress = instance.globalAddress(offsetGlobalIndex);
+                    offsetAddress = context.globals().loadAsInt(offsetGlobalAddress);
+                }
+
+                // Reading of the data segment is called after linking, so initialize the memory
+                // directly.
+                final WasmMemory memory = instance.memory();
+
+                Assert.assertUnsignedIntLessOrEqual(offsetAddress, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+                Assert.assertUnsignedIntLessOrEqual(offsetAddress + byteLength, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+                memory.initialize(module.bytecode(), bytecodeOffset, offsetAddress, byteLength);
+            } else {
+                instance.setDataInstance(i, bytecodeOffset, byteLength);
+            }
         }
     }
 
     public void resetTableState(WasmContext context, WasmInstance instance) {
-        if (tryJumpToSection(Section.ELEMENT)) {
-            readElementSection(context, instance);
+        for (int i = 0; i < module.elemInstanceCount(); i++) {
+            final int byteOffset = module.elemInstanceOffset(i);
+            final Linker linker = Objects.requireNonNull(context.linker());
+            final int mode = module.elemInstanceMode(i);
+            final int elementCount = module.elemInstanceItemCount(i);
+            if (mode == SegmentMode.ACTIVE) {
+                final int tableIndex = module.elemInstanceTableIndex(i);
+                final int offsetAddress = module.elemInstanceOffsetAddress(i);
+                final int offsetGlobalIndex = module.elemInstanceGlobalIndex(i);
+                assertTrue(module.checkTableIndex(tableIndex), Failure.UNKNOWN_TABLE);
+                linker.immediatelyResolveElemSegment(context, instance, tableIndex, i, offsetAddress, offsetGlobalIndex, byteOffset, elementCount);
+            } else {
+                linker.immediatelyResolvePassiveElementSegment(context, instance, i, byteOffset, elementCount);
+            }
         }
     }
 
