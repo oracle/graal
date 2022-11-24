@@ -497,7 +497,7 @@ public class Linker {
             int size = opcode & 0b0000_1111;
             final int index;
             if ((opcode & 0b0100_0000) == 0) {
-                index = size;
+                index = opcode & 0b0011_1111;
             } else {
                 if (size == 1) {
                     index = BinaryStreamParser.rawPeekU8(bytecode, elementOffset);
@@ -561,7 +561,7 @@ public class Linker {
             int size = opcode & 0b0000_1111;
             final int index;
             if ((opcode & 0b0100_0000) == 0) {
-                index = size;
+                index = opcode & 0b0011_1111;
             } else {
                 if (size == 1) {
                     index = BinaryStreamParser.rawPeekU8(bytecode, elementOffset);
@@ -604,7 +604,7 @@ public class Linker {
             int size = opcode & 0b0000_1111;
             final int index;
             if ((opcode & 0b0100_0000) == 0) {
-                index = size;
+                index = opcode & 0b0011_1111;
             } else {
                 if (size == 1) {
                     index = BinaryStreamParser.rawPeekU8(bytecode, elementOffset);
@@ -651,7 +651,7 @@ public class Linker {
             int size = opcode & 0b0000_1111;
             final int index;
             if ((opcode & 0b0100_0000) == 0) {
-                index = size;
+                index = opcode & 0b0011_1111;
             } else {
                 if (size == 1) {
                     index = BinaryStreamParser.rawPeekU8(bytecode, elementOffset);
