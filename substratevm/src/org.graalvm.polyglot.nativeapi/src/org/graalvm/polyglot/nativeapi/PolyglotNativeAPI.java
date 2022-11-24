@@ -24,9 +24,7 @@
  */
 package org.graalvm.polyglot.nativeapi;
 
-import static org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotStatus.poly_array_expected;
 import static org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotStatus.poly_generic_failure;
-import static org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotStatus.poly_number_expected;
 import static org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotStatus.poly_ok;
 import static org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotStatus.poly_pending_exception;
 
@@ -1186,10 +1184,8 @@ public final class PolyglotNativeAPI {
                     "",
                     "@param value value that has array elements.",
                     "@param index index of the element starting from 0.",
-                    "@return the array element.",
-                    "@return poly_ok if all works, poly_generic_failure if the array index does not exist, if index is not readable, if the ",
-                    "         underlying context was closed, if guest language error occurred during execution, poly_array_expected if the ",
-                    "         value has no array elements.",
+                    "@param result the returned array element.",
+                    "@return poly_ok if the operation completed successfully, otherwise an error occurred.",
                     "",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#getArrayElement-long-",
                     "@since 19.0",
@@ -1199,9 +1195,6 @@ public final class PolyglotNativeAPI {
         nullCheck(value, "value");
         nullCheck(result, "result");
         Value jValue = fetchHandle(value);
-        if (!jValue.hasArrayElements()) {
-            throw reportError("Array expected but got " + jValue.getMetaObject().toString(), poly_array_expected);
-        }
         result.write(createHandle(jValue.getArrayElement(index)));
         return poly_ok;
     }
@@ -1216,8 +1209,7 @@ public final class PolyglotNativeAPI {
                     "@param index index of the element starting from 0.",
                     "@param element to be written into the array.",
                     "@param result true if the value has array elements.",
-                    "@return poly_ok if all works, poly_generic_failure if the array index does not exist, if index is not writeable, if the ",
-                    "         underlying context was closed, if guest language error occurred during execution, poly_array_expected if the value has no array elements..",
+                    "@return poly_ok if the operation completed successfully, otherwise an error occurred.",
                     "",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#setArrayElement-long-java.lang.Object-",
                     "@since 19.0",
@@ -1227,9 +1219,6 @@ public final class PolyglotNativeAPI {
         nullCheck(value, "value");
         nullCheck(element, "element");
         Value jValue = fetchHandle(value);
-        if (!jValue.hasArrayElements()) {
-            throw reportError("Array expected but got " + jValue.getMetaObject().toString(), poly_array_expected);
-        }
         Value jElement = fetchHandle(element);
         jValue.setArrayElement(index, jElement);
         return poly_ok;
@@ -1244,9 +1233,7 @@ public final class PolyglotNativeAPI {
                     "@param value value that we are checking.",
                     "@param index index of the element starting from 0.",
                     "@param result true if the underlying array element could be removed, otherwise false.",
-                    "@return poly_ok if all works, poly_generic_failure if the array index does not exist, if index is not removable, if the ",
-                    "         underlying context was closed, if guest language error occurred during execution, poly_array_expected if the ",
-                    "         value has no array elements.",
+                    "@return poly_ok if the operation completed successfully, otherwise an error occurred.",
                     "",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#removeArrayElement-long-",
                     "@since 19.0",
@@ -1256,9 +1243,6 @@ public final class PolyglotNativeAPI {
         nullCheck(value, "value");
         nullCheck(result, "result");
         Value jValue = fetchHandle(value);
-        if (!jValue.hasArrayElements()) {
-            throw reportError("Array expected but got " + jValue.getMetaObject().toString(), poly_array_expected);
-        }
         result.write(CTypeConversion.toCBoolean(jValue.removeArrayElement(index)));
         return poly_ok;
     }
@@ -1268,8 +1252,7 @@ public final class PolyglotNativeAPI {
                     "",
                     "@param value value that has array elements.",
                     "@param result number of elements in the value.",
-                    "@return poly_ok if all works, poly_generic_failure if the underlying context was closed, if guest language error occurred ",
-                    "         during execution, poly_array_expected if the value has no array elements.",
+                    "@return poly_ok if the operation completed successfully, otherwise an error occurred.",
                     "",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#getArraySize--",
                     "@since 19.0",
@@ -1279,9 +1262,6 @@ public final class PolyglotNativeAPI {
         nullCheck(value, "value");
         nullCheck(result, "result");
         Value jValue = fetchHandle(value);
-        if (!jValue.hasArrayElements()) {
-            throw reportError("Array expected but got " + jValue.getMetaObject().toString(), poly_array_expected);
-        }
         result.write(jValue.getArraySize());
         return poly_ok;
     }
@@ -1289,8 +1269,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_is_null", exceptionHandler = ExceptionHandler.class, documentation = {
                     "Returns `true` if this value is `null` like.",
                     "",
-                    "@return poly_ok if all works, poly_generic_failure if the underlying context was closed, if guest language error occurred ",
-                    "        during execution.",
+                    "@return poly_ok if the operation completed successfully, otherwise an error occurred.",
                     "",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#isNull--",
                     "@since 19.0"
@@ -1307,8 +1286,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_is_boolean", exceptionHandler = ExceptionHandler.class, documentation = {
                     "Returns `true` if this value represents a boolean value.",
                     "",
-                    "@return poly_ok if all works, poly_generic_failure if value is null, if a guest language error occurred during execution, ",
-                    "        if the underlying context was closed, if value could not be converted. ",
+                    "@return poly_ok if the operation completed successfully, otherwise an error occurred.",
                     "",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#isBoolean--",
                     "@since 19.0",
@@ -1546,22 +1524,17 @@ public final class PolyglotNativeAPI {
                     "@param buffer Where to write the UTF-8 string representing the polyglot value. Can be NULL.",
                     "@param buffer_size Size of the user-supplied buffer.",
                     "@param result If buffer is NULL, this will contain the byte size of the string, otherwise, it will contain the number of bytes written. Note in either case this length does not contain the 0 terminator written to the end of the buffer",
-                    "@return poly_ok if everything went ok, otherwise an error occurred.",
+                    "@return poly_ok if the operation completed successfully, otherwise an error occurred.",
                     "",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#asString--", "@since 19.0",
 
     })
-
     public static PolyglotStatus poly_value_as_string_utf8(PolyglotIsolateThread thread, PolyglotValue value, CCharPointer buffer, UnsignedWord buffer_size, SizeTPointer result) {
         resetErrorState();
         nullCheck(value, "value");
         nullCheck(result, "result");
         Value jValue = fetchHandle(value);
-        if (jValue.isString()) {
-            writeUTF8String(jValue.asString(), buffer, buffer_size, result);
-        } else {
-            throw reportError("Expected type String but got " + jValue.getMetaObject().toString(), PolyglotStatus.poly_string_expected);
-        }
+        writeUTF8String(jValue.asString(), buffer, buffer_size, result);
         return poly_ok;
     }
 
@@ -1588,8 +1561,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_as_boolean", exceptionHandler = ExceptionHandler.class, documentation = {
                     "Returns a boolean representation of the value.",
                     "",
-                    "@return poly_ok if all works, poly_generic_failure if value is null, if a guest language error occurred during execution, ",
-                    "         if the underlying context was closed, if value could not be converted. ",
+                    "@return poly_ok if the operation completed successfully, otherwise an error occurred.",
                     "",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#asBoolean--",
                     "@since 19.0",
@@ -1599,11 +1571,7 @@ public final class PolyglotNativeAPI {
         nullCheck(value, "value");
         nullCheck(result, "result");
         Value jValue = fetchHandle(value);
-        if (jValue.isBoolean()) {
-            result.write(CTypeConversion.toCBoolean(jValue.asBoolean()));
-        } else {
-            throw reportError("Expected type Boolean but got " + jValue.getMetaObject().toString(), PolyglotStatus.poly_boolean_expected);
-        }
+        result.write(CTypeConversion.toCBoolean(jValue.asBoolean()));
         return poly_ok;
     }
 
@@ -1769,8 +1737,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_as_double", exceptionHandler = ExceptionHandler.class, documentation = {
                     "Returns a double representation of the value.",
                     "",
-                    "@return poly_ok if all works, poly_generic_failure if value is <code>null</code>, if a guest language error occurred during execution, ",
-                    "        if the underlying context was closed, if value could not be converted.",
+                    "@return poly_ok if the operation completed successfully, otherwise an error occurred.",
                     "",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#asDouble--",
                     "@since 19.0",
@@ -1780,11 +1747,7 @@ public final class PolyglotNativeAPI {
         nullCheck(value, "value");
         nullCheck(result, "result");
         Value dataObject = fetchHandle(value);
-        if (dataObject.isNumber()) {
-            result.write(dataObject.asDouble());
-        } else {
-            throw reportError("Value is not a number.", poly_number_expected);
-        }
+        result.write(dataObject.asDouble());
         return poly_ok;
     }
 
