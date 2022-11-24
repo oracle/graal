@@ -2093,6 +2093,63 @@ public final class PolyglotNativeAPI {
         return poly_ok;
     }
 
+    @CEntryPoint(name = "poly_exception_is_resource_exhausted", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Checks if this exception indicates that a resource limit was exceeded.",
+                    "",
+                    "@param exception Handle to the exception object.",
+                    "@param result The result of the check.",
+                    "@return poly_ok if everything went ok, otherwise an error occurred.",
+                    "",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException.html#isResourceExhausted--",
+                    "@since 23.0",
+    })
+    public static PolyglotStatus poly_exception_is_resource_exhausted(PolyglotIsolateThread thread, PolyglotExceptionHandle exception, CBoolPointer result) {
+        resetErrorState();
+        nullCheck(exception, "exception");
+        nullCheck(result, "result");
+        PolyglotException e = fetchHandle(exception);
+        result.write(CTypeConversion.toCBoolean(e.isResourceExhausted()));
+        return poly_ok;
+    }
+
+    @CEntryPoint(name = "poly_exception_is_host_exception", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Checks if this exception originates from the Java host language.",
+                    "",
+                    "@param exception Handle to the exception object.",
+                    "@param result The result of the check.",
+                    "@return poly_ok if everything went ok, otherwise an error occurred.",
+                    "",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException.html#isHostException--",
+                    "@since 23.0",
+    })
+    public static PolyglotStatus poly_exception_is_host_exception(PolyglotIsolateThread thread, PolyglotExceptionHandle exception, CBoolPointer result) {
+        resetErrorState();
+        nullCheck(exception, "exception");
+        nullCheck(result, "result");
+        PolyglotException e = fetchHandle(exception);
+        result.write(CTypeConversion.toCBoolean(e.isHostException()));
+        return poly_ok;
+    }
+
+    @CEntryPoint(name = "poly_exception_is_guest_exception", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Checks if this exception originates from a Graal guest language.",
+                    "",
+                    "@param exception Handle to the exception object.",
+                    "@param result The result of the check.",
+                    "@return poly_ok if everything went ok, otherwise an error occurred.",
+                    "",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException.html#isGuestException--",
+                    "@since 23.0",
+    })
+    public static PolyglotStatus poly_exception_is_guest_exception(PolyglotIsolateThread thread, PolyglotExceptionHandle exception, CBoolPointer result) {
+        resetErrorState();
+        nullCheck(exception, "exception");
+        nullCheck(result, "result");
+        PolyglotException e = fetchHandle(exception);
+        result.write(CTypeConversion.toCBoolean(e.isGuestException()));
+        return poly_ok;
+    }
+
     @CEntryPoint(name = "poly_exception_has_object", exceptionHandler = ExceptionHandler.class, documentation = {
                     "Checks if this exception has a guest language exception object attached to it.",
                     "",
