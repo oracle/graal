@@ -401,6 +401,8 @@ public class OperationsBytecodeCodeGenerator {
 
                 OperationGeneratorUtils.createHelperMethod(bytecodeType, groupMethodName, () -> {
                     CodeExecutableElement met = new CodeExecutableElement(MOD_PRIVATE_STATIC, context.getType(int.class), groupMethodName);
+                    met.addAnnotationMirror(new CodeAnnotationMirror(context.getDeclaredType("com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch")));
+
                     met.addParameter(mContinueAt.getParameters().get(0)); // $this
                     met.addParameter(vars.stackFrame);
                     if (m.enableYield) {

@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.Frame;
 
 import sun.misc.Unsafe;
@@ -158,133 +157,129 @@ public abstract class UnsafeFrameAccess {
             return (T) FrameWithoutBoxing.UNSAFE.getObject(arr, Unsafe.ARRAY_OBJECT_BASE_OFFSET + index * Unsafe.ARRAY_OBJECT_INDEX_SCALE);
         }
 
-        private static FrameWithoutBoxing castFrame(Frame frame) {
-            return CompilerDirectives.castExact(frame, FrameWithoutBoxing.class);
-        }
-
         @Override
         public byte unsafeGetTag(Frame frame, int slot) {
-            return castFrame(frame).unsafeGetTag(slot);
+            return ((FrameWithoutBoxing) frame).unsafeGetTag(slot);
         }
 
         @Override
         public Object unsafeGetObject(Frame frame, int slot) {
-            return castFrame(frame).unsafeGetObject(slot);
+            return ((FrameWithoutBoxing) frame).unsafeGetObject(slot);
         }
 
         @Override
         public int unsafeGetInt(Frame frame, int slot) {
-            return castFrame(frame).unsafeGetInt(slot);
+            return ((FrameWithoutBoxing) frame).unsafeGetInt(slot);
         }
 
         @Override
         public boolean unsafeGetBoolean(Frame frame, int slot) {
-            return castFrame(frame).unsafeGetBoolean(slot);
+            return ((FrameWithoutBoxing) frame).unsafeGetBoolean(slot);
         }
 
         @Override
         public long unsafeGetLong(Frame frame, int slot) {
-            return castFrame(frame).unsafeGetLong(slot);
+            return ((FrameWithoutBoxing) frame).unsafeGetLong(slot);
         }
 
         @Override
         public double unsafeGetDouble(Frame frame, int slot) {
-            return castFrame(frame).unsafeGetDouble(slot);
+            return ((FrameWithoutBoxing) frame).unsafeGetDouble(slot);
         }
 
         @Override
         public Object unsafeUncheckedGetObject(Frame frame, int slot) {
-            return castFrame(frame).unsafeUncheckedGetObject(slot);
+            return ((FrameWithoutBoxing) frame).unsafeUncheckedGetObject(slot);
         }
 
         @Override
         public int unsafeUncheckedGetInt(Frame frame, int slot) {
-            return castFrame(frame).unsafeUncheckedGetInt(slot);
+            return ((FrameWithoutBoxing) frame).unsafeUncheckedGetInt(slot);
         }
 
         @Override
         public boolean unsafeUncheckedGetBoolean(Frame frame, int slot) {
-            return castFrame(frame).unsafeUncheckedGetBoolean(slot);
+            return ((FrameWithoutBoxing) frame).unsafeUncheckedGetBoolean(slot);
         }
 
         @Override
         public long unsafeUncheckedGetLong(Frame frame, int slot) {
-            return castFrame(frame).unsafeUncheckedGetLong(slot);
+            return ((FrameWithoutBoxing) frame).unsafeUncheckedGetLong(slot);
         }
 
         @Override
         public double unsafeUncheckedGetDouble(Frame frame, int slot) {
-            return castFrame(frame).unsafeUncheckedGetDouble(slot);
+            return ((FrameWithoutBoxing) frame).unsafeUncheckedGetDouble(slot);
         }
 
         @Override
         public void unsafeSetObject(Frame frame, int slot, Object value) {
-            castFrame(frame).unsafeSetObject(slot, value);
+            ((FrameWithoutBoxing) frame).unsafeSetObject(slot, value);
         }
 
         @Override
         public void unsafeSetInt(Frame frame, int slot, int value) {
-            castFrame(frame).unsafeSetInt(slot, value);
+            ((FrameWithoutBoxing) frame).unsafeSetInt(slot, value);
         }
 
         @Override
         public void unsafeSetBoolean(Frame frame, int slot, boolean value) {
-            castFrame(frame).unsafeSetBoolean(slot, value);
+            ((FrameWithoutBoxing) frame).unsafeSetBoolean(slot, value);
         }
 
         @Override
         public void unsafeSetLong(Frame frame, int slot, long value) {
-            castFrame(frame).unsafeSetLong(slot, value);
+            ((FrameWithoutBoxing) frame).unsafeSetLong(slot, value);
         }
 
         @Override
         public void unsafeSetDouble(Frame frame, int slot, double value) {
-            castFrame(frame).unsafeSetDouble(slot, value);
+            ((FrameWithoutBoxing) frame).unsafeSetDouble(slot, value);
         }
 
         @Override
         public boolean unsafeIsObject(Frame frame, int slot) {
-            return castFrame(frame).unsafeIsObject(slot);
+            return ((FrameWithoutBoxing) frame).unsafeIsObject(slot);
         }
 
         @Override
         public boolean unsafeIsBoolean(Frame frame, int slot) {
-            return castFrame(frame).unsafeIsBoolean(slot);
+            return ((FrameWithoutBoxing) frame).unsafeIsBoolean(slot);
         }
 
         @Override
         public boolean unsafeIsInt(Frame frame, int slot) {
-            return castFrame(frame).unsafeIsInt(slot);
+            return ((FrameWithoutBoxing) frame).unsafeIsInt(slot);
         }
 
         @Override
         public boolean unsafeIsLong(Frame frame, int slot) {
-            return castFrame(frame).unsafeIsLong(slot);
+            return ((FrameWithoutBoxing) frame).unsafeIsLong(slot);
         }
 
         @Override
         public boolean unsafeIsDouble(Frame frame, int slot) {
-            return castFrame(frame).unsafeIsDouble(slot);
+            return ((FrameWithoutBoxing) frame).unsafeIsDouble(slot);
         }
 
         @Override
         public void unsafeCopy(Frame frame, int srcSlot, int dstSlot) {
-            castFrame(frame).unsafeCopy(srcSlot, dstSlot);
+            ((FrameWithoutBoxing) frame).unsafeCopy(srcSlot, dstSlot);
         }
 
         @Override
         public void unsafeCopyTo(Frame srcFrame, int srcOffset, Frame dstFrame, int dstOffset, int length) {
-            castFrame(srcFrame).unsafeCopyTo(srcOffset, castFrame(dstFrame), dstOffset, length);
+            ((FrameWithoutBoxing) srcFrame).unsafeCopyTo(srcOffset, ((FrameWithoutBoxing) dstFrame), dstOffset, length);
         }
 
         @Override
         public void unsafeCopyObject(Frame frame, int srcSlot, int dstSlot) {
-            castFrame(frame).unsafeCopyObject(srcSlot, dstSlot);
+            ((FrameWithoutBoxing) frame).unsafeCopyObject(srcSlot, dstSlot);
         }
 
         @Override
         public void unsafeCopyPrimitive(Frame frame, int srcSlot, int dstSlot) {
-            castFrame(frame).unsafeCopyPrimitive(srcSlot, dstSlot);
+            ((FrameWithoutBoxing) frame).unsafeCopyPrimitive(srcSlot, dstSlot);
         }
     }
 

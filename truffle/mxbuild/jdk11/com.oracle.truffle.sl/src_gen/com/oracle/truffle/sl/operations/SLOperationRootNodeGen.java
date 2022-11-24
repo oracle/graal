@@ -6185,6 +6185,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             return SLReadProperty_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_1_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -6204,6 +6205,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_2_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -6312,6 +6314,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_3_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -6356,6 +6359,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_5_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -6632,6 +6636,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_6_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -6832,6 +6837,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_7_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -6947,6 +6953,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_14_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -7009,6 +7016,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_15_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -7131,6 +7139,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_19_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -7224,6 +7233,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_22_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -7424,6 +7434,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_23_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -7625,6 +7636,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_24_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -7920,6 +7932,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_25_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -8055,6 +8068,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_26_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -8274,6 +8288,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_27_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -8370,6 +8385,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_28_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -8549,6 +8565,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_30_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -8913,6 +8930,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_32_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -9056,6 +9074,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_33_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -9176,6 +9195,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_34_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -9278,6 +9298,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_37_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -12276,6 +12297,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             throw new UnsupportedSpecializationException($this, new Node[] {null, null}, $child0Value, $child1Value);
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_1_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -12295,6 +12317,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_2_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -12373,6 +12396,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_3_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -12396,6 +12420,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_5_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -12526,6 +12551,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_6_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -12644,6 +12670,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_7_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -12724,6 +12751,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_14_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -12758,6 +12786,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_15_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -12823,6 +12852,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_19_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -12869,6 +12899,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_22_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -12954,6 +12985,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_23_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -13039,6 +13071,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_24_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -13131,6 +13164,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_25_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -13175,6 +13209,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_26_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -13269,6 +13304,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_27_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -13325,6 +13361,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_28_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -13382,6 +13419,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_30_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -13528,6 +13566,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_32_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -13582,6 +13621,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_33_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -13635,6 +13675,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_34_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -13689,6 +13730,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_37_0_uncached(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -20110,6 +20152,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             return SLReadProperty_executeAndSpecialize_($frame, $this, $bc, $bci, $sp, $consts, $children, $child0Value_, $child1Value_);
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_1_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -20129,6 +20172,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_2_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -20257,6 +20301,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_3_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -20313,6 +20358,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_5_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -20589,6 +20635,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_6_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -20789,6 +20836,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_7_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -20904,6 +20952,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_14_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -20966,6 +21015,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_15_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -21088,6 +21138,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_19_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -21181,6 +21232,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_22_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -21381,6 +21433,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_23_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -21582,6 +21635,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_24_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -21877,6 +21931,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_25_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -22012,6 +22067,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_26_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -22231,6 +22287,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_27_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -22327,6 +22384,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_28_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -22506,6 +22564,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_30_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -22870,6 +22929,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_32_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -23013,6 +23073,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_33_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -23133,6 +23194,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_34_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;
@@ -23235,6 +23297,7 @@ public final class SLOperationRootNodeGen extends SLOperationRootNode implements
             }
         }
 
+        @BytecodeInterpreterSwitch
         private static int instructionGroup_37_0(SLOperationRootNodeGen $this, VirtualFrame $frame, short[] $bc, int $startBci, int $startSp, Object[] $consts, Node[] $children, byte[] $localTags, int[] $conditionProfiles, int curOpcode) {
             int $bci = $startBci;
             int $sp = $startSp;

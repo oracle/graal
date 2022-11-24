@@ -40,12 +40,16 @@
  */
 package com.oracle.truffle.api.operation.test.dsl_tests;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.GenerateOperations;
@@ -67,16 +71,20 @@ public class ErrorTests {
             super(language, frameDescriptor);
         }
 
-        public String dump() {
-            return null;
-        }
-
         @Override
         public Object execute(VirtualFrame frame) {
             return null;
         }
 
+        public String dump() {
+            return null;
+        }
+
         public SourceSection getSourceSectionAtBci(int bci) {
+            return null;
+        }
+
+        public InstrumentableNode materializeInstrumentTree(Set<Class<? extends Tag>> materializedTags) {
             return null;
         }
     }
