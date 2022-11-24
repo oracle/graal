@@ -24,7 +24,7 @@
  * questions.
  */
 
-package scom.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,53 +36,56 @@ import com.oracle.svm.core.annotate.Alias;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jfr.HasJfrSupport;
-import com.oracle.svm.core.jfr.events.SocketReadEvent;
-import com.oracle.svm.core.jfr.events.SocketWriteEvent;
+import com.oracle.svm.core.jfr.JfrTicks;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import com.oracle.svm.core.SubstrateUtil;
+import jdk.jfr.events.SocketReadEvent;
+import jdk.jfr.events.SocketWriteEvent;
 
 @TargetClass(className = "java.net.Socket$SocketInputStream", onlyWith = HasJfrSupport.class)
 final class Target_java_net_Socket_SocketInputStream {
-    @Alias
-    private InputStream in = null;
-    @Alias
-    private Socket parent = null;
+    @Alias private InputStream in = null;
+    @Alias private Socket parent = null;
 
     @Substitute
     public int read(byte[] b, int off, int len) throws IOException {
         SocketReadEvent event = new SocketReadEvent();
         if (!event.isEnabled()) {
-            return in.read(b, off, len);
+            return read(b, off, len);
         }
         int bytesRead = 0;
+        InetAddress remote = parent.getInetAddress();
+
+        long startTicks = JfrTicks.elapsedTicks();
         event.begin();
         try {
             bytesRead = in.read(b, off, len);
         } finally {
-            event.end();
-            if (bytesRead < 0) {
-                event.bytesRead = 0;
-                event.endOfStream = true;
+            if (JavaVersionUtil.JAVA_SPEC >= 19) {
+                Target_jdk_jfr_events_SocketReadEvent sre = SubstrateUtil.cast(event, Target_jdk_jfr_events_SocketReadEvent.class);
+                sre.commit(startTicks, JfrTicks.elapsedTicks() - startTicks, remote.getHostName(), remote.getHostAddress(), parent.getPort(),
+                                parent.getSoTimeout(), bytesRead < 0 ? 0L : bytesRead, bytesRead < 0);
             } else {
-                event.bytesRead = bytesRead;
-                event.endOfStream = false;
+                event.end();
+                event.bytesRead = bytesRead < 0 ? 0L : bytesRead;
+                event.endOfStream = bytesRead < 0;
+                event.host = remote.getHostName();
+                event.address = remote.getHostAddress();
+                event.port = parent.getPort();
+                event.timeout = parent.getSoTimeout();
+                event.commit();
             }
-            InetAddress remote = parent.getInetAddress();
-            event.host = remote.getHostName();
-            event.address = remote.getHostAddress();
-            event.port = parent.getPort();
-            event.timeout = parent.getSoTimeout();
-            event.commit();
-            return bytesRead;
         }
+        return bytesRead;
     }
 }
 
 @TargetClass(className = "java.net.Socket$SocketOutputStream", onlyWith = HasJfrSupport.class)
 final class Target_java_net_Socket_SocketOutputStream {
-    @Alias
-    private OutputStream out = null;
-    @Alias
-    private Socket parent = null;
+    @Alias private OutputStream out = null;
+    @Alias private Socket parent = null;
 
     @Substitute
     public void write(byte[] b, int off, int len) throws IOException {
@@ -92,20 +95,41 @@ final class Target_java_net_Socket_SocketOutputStream {
             return;
         }
         int bytesWritten = 0;
+        long startTicks = JfrTicks.elapsedTicks();
+        InetAddress remote = parent.getInetAddress();
         event.begin();
         try {
             out.write(b, off, len);
             bytesWritten = len;
         } finally {
-            event.end();
-            InetAddress remote = parent.getInetAddress();
-            event.host = remote.getHostName();
-            event.address = remote.getHostAddress();
-            event.port = parent.getPort();
-            event.bytesWritten = bytesWritten;
-            event.commit();
+
+            if (JavaVersionUtil.JAVA_SPEC >= 19) {
+                Target_jdk_jfr_events_SocketWriteEvent swe = SubstrateUtil.cast(event, Target_jdk_jfr_events_SocketWriteEvent.class);
+                swe.commit(startTicks, JfrTicks.elapsedTicks() - startTicks, remote.getHostName(), remote.getHostAddress(), parent.getPort(), bytesWritten);
+            } else {
+                event.end();
+                event.host = remote.getHostName();
+                event.address = remote.getHostAddress();
+                event.port = parent.getPort();
+                event.bytesWritten = bytesWritten;
+                event.commit();
+            }
         }
     }
+}
+
+@TargetClass(className = "jdk.jfr.events.SocketWriteEvent", onlyWith = HasJfrSupport.class)
+final class Target_jdk_jfr_events_SocketWriteEvent {
+    @Alias
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    public static native void commit(long start, long duration, String host, String address, int port, long bytes);
+}
+
+@TargetClass(className = "jdk.jfr.events.SocketReadEvent", onlyWith = HasJfrSupport.class)
+final class Target_jdk_jfr_events_SocketReadEvent {
+    @Alias
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    public static native void commit(long start, long duration, String host, String address, int port, long timeout, long byteRead, boolean endOfStream);
 }
 
 /** Dummy class to have a class with the file's name. */
