@@ -40,7 +40,6 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrTicks;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import com.oracle.svm.core.SubstrateUtil;
 import jdk.jfr.events.SocketReadEvent;
 import jdk.jfr.events.SocketWriteEvent;
 
@@ -69,8 +68,7 @@ final class Target_java_net_Socket_SocketInputStream {
             bytesRead = in.read(b, off, len);
         } finally {
             if (JavaVersionUtil.JAVA_SPEC >= 19) {
-                Target_jdk_jfr_events_SocketReadEvent sre = SubstrateUtil.cast(event, Target_jdk_jfr_events_SocketReadEvent.class);
-                sre.commit(startTicks, JfrTicks.elapsedTicks() - startTicks, remote.getHostName(), remote.getHostAddress(), parent.getPort(),
+                Target_jdk_jfr_events_SocketReadEvent.commit(startTicks, JfrTicks.elapsedTicks() - startTicks, remote.getHostName(), remote.getHostAddress(), parent.getPort(),
                                 parent.getSoTimeout(), bytesRead < 0 ? 0L : bytesRead, bytesRead < 0);
             } else {
                 event.end();
@@ -114,8 +112,7 @@ final class Target_java_net_Socket_SocketOutputStream {
         } finally {
 
             if (JavaVersionUtil.JAVA_SPEC >= 19) {
-                Target_jdk_jfr_events_SocketWriteEvent swe = SubstrateUtil.cast(event, Target_jdk_jfr_events_SocketWriteEvent.class);
-                swe.commit(startTicks, JfrTicks.elapsedTicks() - startTicks, remote.getHostName(), remote.getHostAddress(), parent.getPort(), bytesWritten);
+                Target_jdk_jfr_events_SocketWriteEvent.commit(startTicks, JfrTicks.elapsedTicks() - startTicks, remote.getHostName(), remote.getHostAddress(), parent.getPort(), bytesWritten);
             } else {
                 event.end();
                 event.host = remote.getHostName();
