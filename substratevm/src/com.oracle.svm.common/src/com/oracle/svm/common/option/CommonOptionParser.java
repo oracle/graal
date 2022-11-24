@@ -332,7 +332,15 @@ public class CommonOptionParser {
                 value = valueStrings != null ? valueStrings : valueString;
             } else {
                 assert optionType == Path.class;
-                value = valueStrings != null ? Arrays.stream(valueStrings).map(Path::of).toArray(Path[]::new) : Path.of(valueString);
+                if (valueStrings != null) {
+                    Path[] valuePaths = new Path[valueStrings.length];
+                    for (int i = 0; i < valueStrings.length; i++) {
+                        valuePaths[i] = Path.of(valueStrings[i]);
+                    }
+                    value = valuePaths;
+                } else {
+                    value = Path.of(valueString);
+                }
             }
         } else if (optionType.isEnum()) {
             value = Enum.valueOf(optionType.asSubclass(Enum.class), valueString);
