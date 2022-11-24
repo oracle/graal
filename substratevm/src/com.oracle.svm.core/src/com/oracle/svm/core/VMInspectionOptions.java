@@ -55,7 +55,7 @@ public final class VMInspectionOptions {
     @APIOption(name = ENABLE_MONITORING_OPTION, defaultValue = MONITORING_ALL_NAME) //
     @Option(help = "Enable monitoring features that allow the VM to be inspected at run time. Comma-separated list can contain " + MONITORING_ALLOWED_VALUES + ". " +
                     "For example: `--" + ENABLE_MONITORING_OPTION + "=" + MONITORING_HEAPDUMP_NAME + "," + MONITORING_JVMSTAT_NAME + "`.", type = OptionType.User) //
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableMonitoringFeatures = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings(),
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableMonitoringFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated(),
                     VMInspectionOptions::validateEnableMonitoringFeatures);
 
     public static void validateEnableMonitoringFeatures(OptionKey<?> optionKey) {
@@ -72,7 +72,7 @@ public final class VMInspectionOptions {
     }
 
     public static Set<String> getEnabledMonitoringFeatures() {
-        return new HashSet<>(OptionUtils.flatten(",", EnableMonitoringFeatures.getValue()));
+        return new HashSet<>(EnableMonitoringFeatures.getValue().values());
     }
 
     private static boolean hasAllOrKeywordMonitoringSupport(String keyword) {

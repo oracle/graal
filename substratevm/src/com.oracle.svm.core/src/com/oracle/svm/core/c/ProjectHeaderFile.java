@@ -37,10 +37,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.VMError;
 
 @AutomaticallyRegisteredFeature
@@ -170,7 +169,7 @@ public final class ProjectHeaderFile {
         @Override
         public HeaderSearchResult resolveHeader(String projectName, String headerFile) {
             List<String> locations = new ArrayList<>();
-            for (String clibPathComponent : OptionUtils.flatten(",", SubstrateOptions.CLibraryPath.getValue())) {
+            for (String clibPathComponent : SubstrateOptions.CLibraryPath.getValue().values()) {
                 Path clibPathHeaderFile = Paths.get(clibPathComponent).resolve(headerFile).normalize().toAbsolutePath();
                 locations.add(clibPathHeaderFile.toString());
                 if (Files.exists(clibPathHeaderFile)) {

@@ -137,7 +137,7 @@ class JavaNetFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        Set<String> disabledURLProtocols = new HashSet<>(OptionUtils.flatten(",", SubstrateOptions.DisableURLProtocols.getValue()));
+        Set<String> disabledURLProtocols = new HashSet<>(SubstrateOptions.DisableURLProtocols.getValue().values());
 
         JavaNetSubstitutions.defaultProtocols.forEach(protocol -> {
             if (!disabledURLProtocols.contains(protocol)) {
@@ -146,7 +146,7 @@ class JavaNetFeature implements InternalFeature {
             }
         });
 
-        for (String protocol : OptionUtils.flatten(",", SubstrateOptions.EnableURLProtocols.getValue())) {
+        for (String protocol : SubstrateOptions.EnableURLProtocols.getValue().values()) {
             if (disabledURLProtocols.contains(protocol)) {
                 continue;
             }

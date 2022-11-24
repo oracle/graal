@@ -252,7 +252,7 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
     }
 
     static boolean isClassListedInStringOption(LocatableMultiOptionValue.Strings option, Class<?> clazz) {
-        return OptionUtils.flatten(",", option).contains(clazz.getName());
+        return option.values().contains(clazz.getName());
     }
 
     private static boolean isObjectInstantiationForClassTracked(Class<?> clazz) {

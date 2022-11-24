@@ -546,7 +546,7 @@ public final class NativeLibraries {
     }
 
     public void finish() {
-        libraryPaths.addAll(OptionUtils.flatten(",", SubstrateOptions.CLibraryPath.getValue()));
+        libraryPaths.addAll(SubstrateOptions.CLibraryPath.getValue().values());
         for (NativeCodeContext context : compilationUnitToContext.values()) {
             if (context.isInConfiguration()) {
                 libraries.addAll(context.getDirectives().getLibraries());

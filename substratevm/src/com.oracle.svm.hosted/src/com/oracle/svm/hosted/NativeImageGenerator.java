@@ -222,7 +222,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -1889,7 +1888,7 @@ public class NativeImageGenerator {
 
     private static <T extends Enum<T>> Set<T> parseCSVtoEnum(Class<T> enumType, List<String> csvEnumValues, T[] availValues) {
         EnumSet<T> result = EnumSet.noneOf(enumType);
-        for (String enumValue : OptionUtils.flatten(",", csvEnumValues)) {
+        for (String enumValue : csvEnumValues) {
             try {
                 result.add(Enum.valueOf(enumType, enumValue));
             } catch (IllegalArgumentException iae) {
