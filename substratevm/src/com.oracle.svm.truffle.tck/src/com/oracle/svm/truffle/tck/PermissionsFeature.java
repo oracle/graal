@@ -49,6 +49,7 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.Invoke;
@@ -58,6 +59,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.polyglot.io.FileSystem;
@@ -219,7 +221,7 @@ public class PermissionsFeature implements Feature {
                 List<List<AnalysisMethod>> report = new ArrayList<>();
                 Set<CallGraphFilter> contextFilters = new HashSet<>();
                 Collections.addAll(contextFilters, new SafeInterruptRecognizer(bb), new SafePrivilegedRecognizer(bb),
-                                new SafeServiceLoaderRecognizer(bb, accessImpl.getImageClassLoader()));
+                                new SafeServiceLoaderRecognizer(bb, accessImpl.getImageClassLoader()), new SafeSetThreadNameRecognizer(bb));
                 int maxStackDepth = Options.TruffleTCKPermissionsMaxStackTraceDepth.getValue();
                 maxStackDepth = maxStackDepth == -1 ? Integer.MAX_VALUE : maxStackDepth;
                 for (AnalysisMethod deniedMethod : deniedMethods) {
@@ -273,11 +275,9 @@ public class PermissionsFeature implements Feature {
                     DebugContext debugContext) {
         Deque<AnalysisMethod> todo = new LinkedList<>();
         Map<AnalysisMethod, Set<AnalysisMethod>> visited = new HashMap<>();
-        for (AnalysisMethod m : bb.getUniverse().getMethods()) {
-            if (m.isEntryPoint()) {
-                visited.put(m, new HashSet<>());
-                todo.offer(m);
-            }
+        for (AnalysisMethod m : findMethods(bb, OptimizedCallTarget.class, (m) -> "profiledPERoot".equals(m.getName()))) {
+            visited.put(m, new HashSet<>());
+            todo.offer(m);
         }
         Deque<AnalysisMethod> path = new LinkedList<>();
         for (AnalysisMethod m : todo) {
@@ -299,7 +299,7 @@ public class PermissionsFeature implements Feature {
             debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Entered method: %s.", mName);
             for (InvokeInfo invoke : m.getInvokes()) {
                 for (AnalysisMethod callee : invoke.getCallees()) {
-                    if (callee.isInvoked()) {
+                    if (callee.isInvoked() || !(isSystemClass(callee) || isCompilerClass(callee))) {
                         Set<AnalysisMethod> parents = visited.get(callee);
                         String calleeName = getMethodName(callee);
                         debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Callee: %s, new: %b.", calleeName, parents == null);
@@ -743,6 +743,56 @@ public class PermissionsFeature implements Feature {
                 return isRegisteredInServiceLoader(superClz);
             }
             return false;
+        }
+    }
+
+    private static final class SafeSetThreadNameRecognizer implements CallGraphFilter {
+
+        private final SVMHost hostVM;
+        private final AnalysisMethod threadSetName;
+        private final Set<AnalysisMethod> envCreateThread;
+        private final Set<AnalysisMethod> envCreateSystemThread;
+
+        SafeSetThreadNameRecognizer(BigBang bb) {
+            hostVM = (SVMHost) bb.getHostVM();
+            Set<AnalysisMethod> methods = findMethods(bb, Thread.class, (m) -> m.getName().equals("setName"));
+            if (methods.size() != 1) {
+                throw new IllegalStateException("Failed to lookup Thread.setName().");
+            }
+            threadSetName = methods.iterator().next();
+            envCreateThread = findMethods(bb, TruffleLanguage.Env.class, (m) -> m.getName().equals("createThread"));
+            if (envCreateThread.isEmpty()) {
+                throw new IllegalStateException("Failed to lookup TruffleLanguage.Env.createThread().");
+            }
+            envCreateSystemThread = findMethods(bb, TruffleLanguage.Env.class, (m) -> m.getName().equals("createSystemThread"));
+            if (envCreateSystemThread.isEmpty()) {
+                throw new IllegalStateException("Failed to lookup TruffleLanguage.Env.createSystemThread().");
+            }
+        }
+
+        @Override
+        public boolean test(AnalysisMethod method, AnalysisMethod caller, LinkedHashSet<AnalysisMethod> trace) {
+            if (!threadSetName.equals(method)) {
+                return false;
+            }
+            StructuredGraph graph = hostVM.getAnalysisGraph(caller);
+            Boolean res = null;
+            for (Invoke invoke : graph.getInvokes()) {
+                if (method.equals(invoke.callTarget().targetMethod())) {
+                    NodeInputList<ValueNode> args = invoke.callTarget().arguments();
+                    ValueNode arg0 = args.get(0);
+                    boolean isTruffleThread = false;
+                    if (arg0 instanceof PiNode) {
+                        arg0 = ((PiNode) arg0).getOriginalNode();
+                        if (arg0 instanceof Invoke) {
+                            ResolvedJavaMethod target = ((Invoke) arg0).callTarget().targetMethod();
+                            isTruffleThread = envCreateThread.contains(target) || envCreateSystemThread.contains(target);
+                        }
+                    }
+                    res = res == null ? isTruffleThread : (res && isTruffleThread);
+                }
+            }
+            return res != null && res;
         }
     }
 
