@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +23,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package scom.oracle.svm.core.jdk;
 
 import java.io.IOException;
@@ -35,8 +37,8 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jfr.HasJfrSupport;
-import jdk.jfr.events.SocketReadEvent;
-import jdk.jfr.events.SocketWriteEvent;
+import com.oracle.svm.core.jfr.events.SocketReadEvent;
+import com.oracle.svm.core.jfr.events.SocketWriteEvent;
 
 @TargetClass(className = "java.net.Socket$SocketInputStream", onlyWith = HasJfrSupport.class)
 final class Target_java_net_Socket_SocketInputStream {
@@ -48,6 +50,9 @@ final class Target_java_net_Socket_SocketInputStream {
     @Substitute
     public int read(byte[] b, int off, int len) throws IOException {
         SocketReadEvent event = new SocketReadEvent();
+        if (!event.isEnabled()) {
+            return in.read(b, off, len);
+        }
         int bytesRead = 0;
         event.begin();
         try {
@@ -82,6 +87,10 @@ final class Target_java_net_Socket_SocketOutputStream {
     @Substitute
     public void write(byte[] b, int off, int len) throws IOException {
         SocketWriteEvent event = new SocketWriteEvent();
+        if (!event.isEnabled()) {
+            out.write(b, off, len);
+            return;
+        }
         int bytesWritten = 0;
         event.begin();
         try {
