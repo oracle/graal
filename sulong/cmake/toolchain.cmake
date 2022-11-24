@@ -68,7 +68,6 @@ set_ifndef(SULONG_TOOLCHAIN_BIN ${SULONG_TOOLCHAIN_PATH}/bin)
 if(WIN32)
   set_ifndef(SULONG_CMD_SUFFIX ".cmd" ".exe")
   set_ifndef(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
-  find_tc_ifndef(CMAKE_LINKER ${SULONG_TOOLCHAIN_BIN}/lld-link)
   set_ifndef(CMAKE_RC_COMPILER ${GRAAL_HOME}/lib/llvm/llvm-rc.exe)
 
   # Set the build profile to sulong. This prevents CMake from adding additional
@@ -80,10 +79,6 @@ if(WIN32)
     set(CMAKE_C_FLAGS_SULONG_INIT "-D_DLL -D_MT -Xclang --dependent-lib=msvcrt")
     set(CMAKE_CXX_FLAGS_SULONG_INIT "-D_DLL -D_MT -Xclang --dependent-lib=msvcrt")
   endif()
-elseif(APPLE)
-  find_tc_ifndef(CMAKE_LINKER ${SULONG_TOOLCHAIN_BIN}/ld64.lld)
-else()
-  find_tc_ifndef(CMAKE_LINKER ${SULONG_TOOLCHAIN_BIN}/ld.lld)
 endif()
 
 find_tc_ifndef(CMAKE_C_COMPILER ${SULONG_TOOLCHAIN_BIN}/clang)
