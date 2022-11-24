@@ -231,13 +231,13 @@ class WindowsParkEvent extends ParkEvent {
     }
 
     @Override
-    protected void condTimedWait(long delayNanos) {
+    protected void condTimedWait(long durationNanos) {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
             final int maxTimeout = 0x10_000_000;
-            long delayMillis = Math.max(0, TimeUtils.roundUpNanosToMillis(delayNanos));
+            long durationMillis = Math.max(0, TimeUtils.roundUpNanosToMillis(durationNanos));
             do { // at least once to consume potential unpark
-                int timeout = (delayMillis < maxTimeout) ? (int) delayMillis : maxTimeout;
+                int timeout = (durationMillis < maxTimeout) ? (int) durationMillis : maxTimeout;
                 int status = SynchAPI.WaitForSingleObject(eventHandle, timeout);
                 if (status == SynchAPI.WAIT_OBJECT_0()) {
                     break; // unparked
@@ -246,8 +246,8 @@ class WindowsParkEvent extends ParkEvent {
                     Log.log().newline().string("GetLastError returned:  ").hex(WinBase.GetLastError()).newline();
                     throw VMError.shouldNotReachHere("WaitForSingleObject failed");
                 }
-                delayMillis -= timeout;
-            } while (delayMillis > 0);
+                durationMillis -= timeout;
+            } while (durationMillis > 0);
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
         }
@@ -278,10 +278,5 @@ class WindowsParkEventFactory implements ParkEventFactory {
     @Override
     public ParkEvent acquire() {
         return new WindowsParkEvent();
-    }
-
-    @Override
-    public boolean usesParkEventList() {
-        return false;
     }
 }

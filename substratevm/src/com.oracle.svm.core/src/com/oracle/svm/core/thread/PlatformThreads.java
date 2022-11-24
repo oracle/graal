@@ -852,46 +852,36 @@ public abstract class PlatformThreads {
 
     /** Interruptibly park the current thread. */
     static void parkCurrentPlatformOrCarrierThread() {
-        VMOperationControl.guaranteeOkayToBlock("[PlatformThreads.parkCurrentPlatformOrCarrierThread(): Should not park when it is not okay to block.]");
-        Thread thread = currentThread.get();
-        if (JavaThreads.isInterrupted(thread)) { // avoid state changes and synchronization
-            return;
-        }
-
-        ParkEvent parkEvent = getCurrentThreadData().ensureUnsafeParkEvent();
-        // Change the Java thread state while parking.
-        int oldStatus = getThreadStatus(thread);
-        int newStatus = MonitorSupport.singleton().getParkedThreadStatus(currentThread.get(), false);
-        setThreadStatus(thread, newStatus);
-        try {
-            /*
-             * If another thread interrupted this thread in the meanwhile, then the call below won't
-             * block because Thread.interrupt() modifies the ParkEvent.
-             */
-            parkEvent.condWait();
-        } finally {
-            setThreadStatus(thread, oldStatus);
-        }
+        parkCurrentPlatformOrCarrierThread(false, 0);
     }
 
-    /** Interruptibly park the current thread for the given number of nanoseconds. */
-    static void parkCurrentPlatformOrCarrierThread(long delayNanos) {
-        VMOperationControl.guaranteeOkayToBlock("[PlatformThreads.parkCurrentPlatformOrCarrierThread(long): Should not park when it is not okay to block.]");
+    /** Interruptibly park the current thread, indefinitely or with a timeout. */
+    static void parkCurrentPlatformOrCarrierThread(boolean isAbsolute, long time) {
+        VMOperationControl.guaranteeOkayToBlock("[PlatformThreads.parkCurrentPlatformOrCarrierThread: Should not park when it is not okay to block.]");
+
+        if (time < 0 || (isAbsolute && time == 0)) {
+            return; // don't wait at all
+        }
+        boolean timed = (time != 0);
+
         Thread thread = currentThread.get();
         if (JavaThreads.isInterrupted(thread)) { // avoid state changes and synchronization
             return;
         }
 
         ParkEvent parkEvent = getCurrentThreadData().ensureUnsafeParkEvent();
+        if (parkEvent.tryFastPark()) {
+            return;
+        }
         int oldStatus = getThreadStatus(thread);
-        int newStatus = MonitorSupport.singleton().getParkedThreadStatus(currentThread.get(), true);
+        int newStatus = MonitorSupport.singleton().getParkedThreadStatus(currentThread.get(), timed);
         setThreadStatus(thread, newStatus);
         try {
             /*
              * If another thread interrupted this thread in the meanwhile, then the call below won't
              * block because Thread.interrupt() modifies the ParkEvent.
              */
-            parkEvent.condTimedWait(delayNanos);
+            parkEvent.park(isAbsolute, time);
         } finally {
             setThreadStatus(thread, oldStatus);
         }
@@ -901,7 +891,7 @@ public abstract class PlatformThreads {
      * Unpark a Thread.
      *
      * @see #parkCurrentPlatformOrCarrierThread()
-     * @see #parkCurrentPlatformOrCarrierThread(long)
+     * @see #parkCurrentPlatformOrCarrierThread(boolean, long)
      */
     static void unpark(Thread thread) {
         assert !isVirtual(thread);
@@ -927,7 +917,7 @@ public abstract class PlatformThreads {
         }
     }
 
-    private static void sleep0(long delayNanos) {
+    private static void sleep0(long durationNanos) {
         VMOperationControl.guaranteeOkayToBlock("[PlatformThreads.sleep(long): Should not sleep when it is not okay to block.]");
         Thread thread = currentThread.get();
         ParkEvent sleepEvent = getCurrentThreadData().ensureSleepParkEvent();
@@ -950,11 +940,19 @@ public abstract class PlatformThreads {
         final int oldStatus = getThreadStatus(thread);
         setThreadStatus(thread, ThreadStatus.SLEEPING);
         try {
-            /*
-             * If another thread interrupted this thread in the meanwhile, then the call below won't
-             * block because Thread.interrupt() modifies the ParkEvent.
-             */
-            sleepEvent.condTimedWait(delayNanos);
+            long remainingNanos = durationNanos;
+            long startNanos = System.nanoTime();
+            while (remainingNanos > 0) {
+                /*
+                 * If another thread interrupted this thread in the meanwhile, then the call below
+                 * won't block because Thread.interrupt() modifies the ParkEvent.
+                 */
+                sleepEvent.condTimedWait(remainingNanos);
+                if (JavaThreads.isInterrupted(thread)) {
+                    return;
+                }
+                remainingNanos = durationNanos - (System.nanoTime() - startNanos);
+            }
         } finally {
             setThreadStatus(thread, oldStatus);
         }
