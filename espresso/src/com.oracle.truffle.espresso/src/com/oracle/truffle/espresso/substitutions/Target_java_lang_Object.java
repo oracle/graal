@@ -63,8 +63,9 @@ public final class Target_java_lang_Object {
         }
     }
 
+    // TODO: Allow inlining this in bytecode
+    // @InlineInBytecode(guard = InitGuard.class)
     @Substitution(hasReceiver = true, methodName = "<init>", isTrivial = true)
-    @InlineInBytecode(guard = InitGuard.class)
     abstract static class Init extends SubstitutionNode {
 
         abstract void execute(@JavaType(Object.class) StaticObject self);
