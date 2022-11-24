@@ -104,7 +104,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
     private final ResolvedJavaMethod targetMethod;
 
     private CEntryPointCallStubMethod(CEntryPointData entryPointData, ResolvedJavaMethod targetMethod, ResolvedJavaType holderClass, ConstantPool holderConstantPool) {
-        super(SubstrateUtil.uniqueShortName(targetMethod), holderClass, targetMethod.getSignature(), holderConstantPool);
+        super(SubstrateUtil.uniqueStubName(targetMethod), holderClass, targetMethod.getSignature(), holderConstantPool);
         this.entryPointData = entryPointData;
         this.targetMethod = targetMethod;
     }

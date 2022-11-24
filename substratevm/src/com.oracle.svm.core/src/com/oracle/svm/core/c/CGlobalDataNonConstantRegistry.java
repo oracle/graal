@@ -35,11 +35,11 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.util.ImageHeapMap;
+import com.oracle.svm.core.util.VMError;
 
-/*
- * The following class is a helper registry, that contains only CGlobalDataInfo for
- * non-constant symbols defining during image generation. This object will be burned
- * into a native image.
+/**
+ * The following class is a helper registry, that contains only CGlobalDataInfo for non-constant
+ * symbols defining during image generation. This object will be burned into a native image.
  */
 public class CGlobalDataNonConstantRegistry {
 
@@ -53,7 +53,11 @@ public class CGlobalDataNonConstantRegistry {
      */
     @NeverInline("CGlobalDataFeature expects that this call is not inlined")
     public CGlobalDataInfo getCGlobalDataInfo(CGlobalDataImpl<?> cGlobalData) {
-        return cGlobalDataInfos.get(cGlobalData);
+        CGlobalDataInfo res = cGlobalDataInfos.get(cGlobalData);
+        if (res == null) {
+            throw VMError.shouldNotReachHere("Non-constant C global data must be registered via a factory method with a parameter named \"nonConstant\" whose value must be true");
+        }
+        return res;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
