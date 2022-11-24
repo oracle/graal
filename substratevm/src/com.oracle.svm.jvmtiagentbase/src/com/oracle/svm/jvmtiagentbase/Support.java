@@ -59,7 +59,7 @@ public final class Support {
 
     public static boolean isInitialized() {
         boolean initialized = jvmtiEnv.isNonNull();
-        assert initialized == jniFunctions.isNonNull() && initialized == (jvmtiVersion == 0);
+        assert initialized == jniFunctions.isNonNull() && initialized == (jvmtiVersion != 0);
         return initialized;
     }
 
