@@ -325,7 +325,7 @@ public class CommonOptionParser {
             }
         } else if (optionType == String.class || optionType == Path.class) {
             Object defaultValue = optionKey.getDefaultValue();
-            String delimiter = defaultValue instanceof MultiOptionValue ? ((MultiOptionValue) defaultValue).getDelimiter() : "";
+            String delimiter = defaultValue instanceof MultiOptionValue ? ((MultiOptionValue<?>) defaultValue).getDelimiter() : "";
             boolean multipleValues = !delimiter.isEmpty() && valueString.contains(delimiter);
             String[] valueStrings = multipleValues ? StringUtil.split(valueString, delimiter) : null;
             if (optionType == String.class) {
