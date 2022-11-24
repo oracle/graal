@@ -140,5 +140,5 @@ final class Target_jdk_jfr_events_SocketReadEvent {
 }
 
 /** Dummy class to have a class with the file's name. */
-public final class JavaSocketSubstitutions {
+public final class JavaNetSocketSubstitutions {
 }
