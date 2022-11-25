@@ -130,4 +130,3 @@ Read more about Native Image debugging support from the [reference documentation
 
 - [Debug Info Feature](../DebugInfo.md)
 - [Debug a running native image process from VS Code](../../../tools/vscode/graalvm/native-image-debugging.md)
-- [GraalVM Native Image Debugging](https://luna.oracle.com/lab/cbe9d331-5dbc-4300-a5ca-20b88346cbcf)
