@@ -2,6 +2,10 @@
 
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
+## Version 22.3.1
+* (GR-42079): The `-Dgraal.PrintCompilation=true` output now includes stub compilations. For example:
+`StubCompilation-57   <stub>    exceptionHandler  (Object,Word)void  |  166us     0B bytecodes    88B codesize   137kB allocated`
+
 ## Version 22.3.0
 * (GR-19840): An image produced by GraalVM's jlink now includes and uses libgraal by default and its `java -version` output includes GraalVM branding.
 * (GR-32382): Added a dedicated Native Image GC policy for libgraal that will adjust the eden space aggressively to
