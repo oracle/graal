@@ -258,19 +258,18 @@ public final class Target_sun_misc_Unsafe {
         StaticObject resolvedHolder = holder;
         try {
             if (isStatic) {
-                if (holder.getKlass().getType() == Type.java_lang_Class) {
+                if (holder.isMirrorKlass()) {
                     // This is needed to support:
                     // > int off = U.objectFieldOffset(SomeClass.class, "staticField")
                     // > U.getInt(SomeClass.class, off);
                     // HotSpot supports it, although it is a questionable usage.
                     resolvedHolder = holder.getMirrorKlass().getStatics();
-                    field = holder.getMirrorKlass().lookupStaticFieldTable(slot);
                 } else {
                     assert holder.isStaticStorage();
-                    field = holder.getKlass().lookupStaticFieldTable(slot);
                 }
+                field = resolvedHolder.getKlass().lookupStaticFieldTable(slot);
             } else {
-                field = holder.getKlass().lookupFieldTable(slot);
+                field = resolvedHolder.getKlass().lookupFieldTable(slot);
             }
         } catch (IndexOutOfBoundsException ex) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
