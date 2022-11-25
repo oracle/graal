@@ -24,42 +24,37 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.ReservedRegisters;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
-public class WriteStackPointerNode extends FixedWithNextNode implements LIRLowerable {
-    public static final NodeClass<WriteStackPointerNode> TYPE = NodeClass.create(WriteStackPointerNode.class);
+import jdk.vm.ci.code.Register;
 
-    @Input protected ValueNode value;
+@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+public final class ReadReservedRegisterFloatingNode extends FloatingNode implements LIRLowerable {
+    public static final NodeClass<ReadReservedRegisterFloatingNode> TYPE = NodeClass.create(ReadReservedRegisterFloatingNode.class);
 
-    protected WriteStackPointerNode(ValueNode value) {
-        super(TYPE, StampFactory.forVoid());
-        this.value = value;
+    private final Register register;
+
+    protected ReadReservedRegisterFloatingNode(Register register) {
+        super(TYPE, FrameAccess.getWordStamp());
+        this.register = register;
     }
 
-    public ValueNode value() {
-        return value;
+    public Register register() {
+        return register;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        LIRGeneratorTool tool = gen.getLIRGeneratorTool();
-        gen.getLIRGeneratorTool().emitWriteRegister(ReservedRegisters.singleton().getFrameRegister(), gen.operand(value), tool.getLIRKind(FrameAccess.getWordStamp()));
+        LIRKind lirKind = gen.getLIRGeneratorTool().getLIRKind(stamp);
+        gen.setResult(this, register.asValue(lirKind));
     }
-
-    @NodeIntrinsic
-    public static native void write(WordBase value);
 }
