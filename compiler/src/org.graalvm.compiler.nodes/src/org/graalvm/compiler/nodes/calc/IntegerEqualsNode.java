@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,19 +69,25 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
         }
         if (x instanceof ConditionalNode) {
             ConditionalNode conditionalNode = (ConditionalNode) x;
-            if (conditionalNode.trueValue() == y) {
-                return conditionalNode.condition();
-            }
-            if (conditionalNode.falseValue() == y) {
-                return LogicNegationNode.create(conditionalNode.condition());
+            // (x op y ? x : y) == x <==> only for op = ==
+            if (conditionalNode.condition().getNodeClass() == IntegerEqualsNode.TYPE) {
+                if (conditionalNode.trueValue() == y) {
+                    return conditionalNode.condition();
+                }
+                if (conditionalNode.falseValue() == y) {
+                    return LogicNegationNode.create(conditionalNode.condition());
+                }
             }
         } else if (y instanceof ConditionalNode) {
             ConditionalNode conditionalNode = (ConditionalNode) y;
-            if (conditionalNode.trueValue() == x) {
-                return conditionalNode.condition();
-            }
-            if (conditionalNode.falseValue() == x) {
-                return LogicNegationNode.create(conditionalNode.condition());
+            // x == (x op y ? x : y) <==> only for op = ==
+            if (conditionalNode.condition().getNodeClass() == IntegerEqualsNode.TYPE) {
+                if (conditionalNode.trueValue() == x) {
+                    return conditionalNode.condition();
+                }
+                if (conditionalNode.falseValue() == x) {
+                    return LogicNegationNode.create(conditionalNode.condition());
+                }
             }
         }
         return new IntegerEqualsNode(x, y).maybeCommuteInputs();
