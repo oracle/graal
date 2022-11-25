@@ -90,16 +90,31 @@ public class InliningLog {
     }
 
     public static final class Callsite {
+        /**
+         * A special bci for the root method's callsite.
+         */
+        private static final int ROOT_CALLSITE_BCI = -1;
+
         private final List<Decision> decisions;
         private final List<Callsite> children;
         private final Callsite parent;
         private final Invokable invoke;
         private ResolvedJavaMethod target;
 
-        private Callsite(Callsite parent, Invokable invoke, ResolvedJavaMethod target) {
+        /**
+         * The bci of the invoke. The value is {@link #ROOT_CALLSITE_BCI} for the root method's
+         * callsite. For other callsites, we remember their {@link Invokable#bci() invoke's bci}
+         * because the invoke might be lost when it is removed.
+         *
+         * @see #copyTree(Callsite, Callsite, UnmodifiableEconomicMap, EconomicMap)
+         */
+        private final int bci;
+
+        private Callsite(Callsite parent, Invokable invoke, ResolvedJavaMethod target, int bci) {
             this.parent = parent;
-            this.decisions = new ArrayList<>();
-            this.children = new ArrayList<>();
+            this.bci = bci;
+            decisions = new ArrayList<>();
+            children = new ArrayList<>();
             this.invoke = invoke;
             this.target = target;
             if (parent != null) {
@@ -108,7 +123,7 @@ public class InliningLog {
         }
 
         private Callsite addChild(Invokable childInvoke) {
-            return new Callsite(this, childInvoke, childInvoke.getTargetMethod());
+            return new Callsite(this, childInvoke, childInvoke.getTargetMethod(), childInvoke.bci());
         }
 
         public String positionString() {
@@ -153,7 +168,7 @@ public class InliningLog {
         }
 
         public int getBci() {
-            return invoke != null ? invoke.bci() : -1;
+            return bci;
         }
     }
 
@@ -162,8 +177,8 @@ public class InliningLog {
     private final EconomicMap<Invokable, Callsite> leaves;
 
     public InliningLog(ResolvedJavaMethod rootMethod) {
-        this.root = new Callsite(null, null, rootMethod);
-        this.leaves = EconomicMap.create();
+        root = new Callsite(null, null, rootMethod, Callsite.ROOT_CALLSITE_BCI);
+        leaves = EconomicMap.create();
     }
 
     /**
@@ -268,7 +283,7 @@ public class InliningLog {
      * @param mapping the mapping from original call-tree nodes to copies
      * @return the root of the copied subtree
      */
-    private Callsite copyTree(Callsite parent, Callsite replacementSite, UnmodifiableEconomicMap<Node, Node> replacements, EconomicMap<Callsite, Callsite> mapping) {
+    private static Callsite copyTree(Callsite parent, Callsite replacementSite, UnmodifiableEconomicMap<Node, Node> replacements, EconomicMap<Callsite, Callsite> mapping) {
         Invokable invoke = null;
         if (replacementSite.invoke != null) {
             FixedNode replacementSiteInvoke = replacementSite.invoke.asFixedNodeOrNull();
@@ -276,7 +291,7 @@ public class InliningLog {
                 invoke = (Invokable) replacements.get(replacementSiteInvoke);
             }
         }
-        Callsite site = new Callsite(parent, invoke, replacementSite.target);
+        Callsite site = new Callsite(parent, invoke, replacementSite.target, replacementSite.bci);
         site.decisions.addAll(replacementSite.decisions);
         mapping.put(replacementSite, site);
         for (Callsite replacementChild : replacementSite.children) {
@@ -293,7 +308,7 @@ public class InliningLog {
         checkTreeInvariants(root);
     }
 
-    private void checkTreeInvariants(Callsite site) {
+    private static void checkTreeInvariants(Callsite site) {
         for (Callsite child : site.children) {
             assert site == child.parent : "Callsite " + site + " with child " + child + " has an invalid parent pointer " + site;
             checkTreeInvariants(child);
@@ -479,7 +494,7 @@ public class InliningLog {
         public boolean equals(Object obj) {
             if (obj instanceof PlaceholderInvokable) {
                 final PlaceholderInvokable that = (PlaceholderInvokable) obj;
-                return that.bci == this.bci && that.method.equals(this.method) && that.callerMethod.equals(this.callerMethod);
+                return that.bci == bci && that.method.equals(method) && that.callerMethod.equals(callerMethod);
             }
             return false;
         }
@@ -555,7 +570,7 @@ public class InliningLog {
         return builder.toString();
     }
 
-    private void formatAsTree(Callsite site, String indent, StringBuilder builder) {
+    private static void formatAsTree(Callsite site, String indent, StringBuilder builder) {
         String position = site.positionString();
         builder.append(indent).append(position).append(": ");
         if (site.decisions.isEmpty()) {
