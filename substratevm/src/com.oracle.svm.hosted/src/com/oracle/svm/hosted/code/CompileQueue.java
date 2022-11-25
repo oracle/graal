@@ -173,8 +173,8 @@ public class CompileQueue {
     private LIRSuites deoptTargetLIRSuites = null;
     private final ConcurrentMap<Constant, DataSection.Data> dataCache;
 
-    private SnippetReflectionProvider snippetReflection;
-    private final FeatureHandler featureHandler;
+    protected SnippetReflectionProvider snippetReflection;
+    protected final FeatureHandler featureHandler;
     protected final GlobalMetrics metricValues = new GlobalMetrics();
     private final AnalysisToHostedGraphTransplanter graphTransplanter;
 
