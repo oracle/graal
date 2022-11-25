@@ -23,7 +23,7 @@ The GraalVM Tools for Java in combination with the [GraalVM Tools for Micronaut]
 ### Prerequisites
 
 - [Extension Pack for Java from Microsoft](https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-java-pack)
-
+- [Apache NetBeans Language Server](https://marketplace.visualstudio.com/items?itemName=asf.apache-netbeans-java)
 ## Extension Installation
 
 To install the GraalVM Tools for Java extension in VS Code, do the following:
