@@ -350,20 +350,10 @@ public final class AArch64ArrayCompareToOp extends AArch64ComplexVectorOp {
          */
         masm.bind(mismatchInChunk);
         try (AArch64MacroAssembler.ScratchRegister scratchReg = masm.getScratchRegister()) {
-            int magicConstant = 0xc030_0c03;
-            Register magicConstantReg = scratchReg.getRegister();
-            masm.mov(magicConstantReg, magicConstant);
-            masm.neon.dupVG(AArch64ASIMDAssembler.ASIMDSize.FullReg, AArch64ASIMDAssembler.ElementSize.Word, tmpRegV1, magicConstantReg);
+            Register tmp = scratchReg.getRegister();
+            initCalcIndexOfFirstMatchMask(masm, tmpRegV1, tmp);
+            calcIndexOfFirstMatch(masm, result, array1LowV, array1HighV, tmpRegV1, true);
         }
-        masm.neon.bicVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, array1LowV, tmpRegV1, array1LowV);
-        masm.neon.bicVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, array1HighV, tmpRegV1, array1HighV);
-        /* Reduce from 256 -> 128 bits. */
-        masm.neon.addpVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, AArch64ASIMDAssembler.ElementSize.Byte, array1LowV, array1LowV, array1HighV);
-        /* Reduce from 128 -> 64 bits. */
-        masm.neon.addpVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, AArch64ASIMDAssembler.ElementSize.Byte, array1LowV, array1LowV, array1HighV);
-        masm.neon.moveFromIndex(AArch64ASIMDAssembler.ElementSize.DoubleWord, AArch64ASIMDAssembler.ElementSize.DoubleWord, result, array1LowV, 0);
-        masm.rbit(64, result, result);
-        masm.clz(64, result, result);
         masm.asr(64, result, result, 1);
         // subtract chunkSizeBytes to account for the post index of each of the array addresses
         masm.sub(64, result, result, chunkByteSize);

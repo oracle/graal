@@ -32,6 +32,7 @@ import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize
 import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize.HalfWord;
 import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize.Word;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.createImmediateAddress;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.createPairBaseRegisterOnlyAddress;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.createRegisterOffsetAddress;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.createStructureImmediatePostIndexAddress;
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT;
@@ -104,7 +105,6 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
         this.stride = encoding.stride;
 
-        GraalError.guarantee(result.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
         GraalError.guarantee(array.getPlatformKind() == AArch64Kind.QWORD, "pointer value expected");
         GraalError.guarantee(offset.getPlatformKind() == AArch64Kind.QWORD, "long value expected");
         GraalError.guarantee(length.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
@@ -224,22 +224,15 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.bind(vectorLoop);
         // load 2 vectors from the string
         asm.fldp(128, vecArray1, vecArray2, createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arr, 32));
-        // OR them
-        asm.neon.orrVVV(FullReg, vecArray1, vecArray1, vecArray2);
-        // AND with 0x80
-        asm.neon.andVVV(FullReg, vecArray1, vecArray1, vecMask);
-        // check if any bytes are non-zero with umax + fcmpZero
-        vectorCheckZero(asm, vecArray1, vecArray1);
+        vectorTest(asm, vecArray1, vecArray2, vecMask);
         asm.branchConditionally(ConditionFlag.NE, end);
         asm.cmp(64, arr, refAddress);
         asm.branchConditionally(ConditionFlag.LO, vectorLoop);
 
         // 32 byte loop tail
         asm.mov(64, arr, refAddress);
-        asm.fldp(128, vecArray1, vecArray2, createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arr, 32));
-        asm.neon.orrVVV(FullReg, vecArray1, vecArray1, vecArray2);
-        asm.neon.andVVV(FullReg, vecArray1, vecArray1, vecMask);
-        vectorCheckZero(asm, vecArray1, vecArray1);
+        asm.fldp(128, vecArray1, vecArray2, createPairBaseRegisterOnlyAddress(128, arr));
+        vectorTest(asm, vecArray1, vecArray2, vecMask);
         asm.cset(64, ret, ConditionFlag.NE);
         asm.jmp(end);
 
@@ -253,9 +246,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.fldr(128, vecArray1, AArch64Address.createBaseRegisterOnlyAddress(128, arr));
         // load arr[arrayLength-16:arrayLength]
         asm.fldr(128, vecArray2, AArch64Address.createRegisterOffsetAddress(128, arr, len, false));
-        asm.neon.orrVVV(FullReg, vecArray1, vecArray1, vecArray2);
-        asm.neon.andVVV(FullReg, vecArray1, vecArray1, vecMask);
-        vectorCheckZero(asm, vecArray1, vecArray1);
+        vectorTest(asm, vecArray1, vecArray2, vecMask);
         assert returnValueAssertions();
         // use the fact that CR_7BIT is 0 and CR_8BIT is 1 for setting the return value via cset
         asm.cset(64, ret, ConditionFlag.NE);
@@ -341,11 +332,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.align(PREFERRED_LOOP_ALIGNMENT);
         asm.bind(asciiLoop);
         asm.fldp(128, vecArray1, vecArray2, createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arr, 32));
-        asm.neon.orrVVV(FullReg, vecTmp1, vecArray1, vecArray2);
-        // Check if characters are ascii by CMTST with 0xFF80. Using CMTST allows us to do the zero
-        // check with the cheaper XTN instruction + fcmpZero instead of UMAX + fcmpZero
-        asm.neon.cmtstVVV(FullReg, HalfWord, vecTmp1, vecTmp1, vecMask);
-        vectorCheckZero(asm, HalfWord, vecTmp1, vecTmp1, true);
+        vectorTest(asm, HalfWord, vecTmp1, vecTmp1, vecArray1, vecArray2, vecMask);
         asm.branchConditionally(ConditionFlag.NE, latinFound);
         asm.cmp(64, arr, refAddress);
         asm.branchConditionally(ConditionFlag.LO, asciiLoop);
@@ -353,9 +340,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         // 32 byte ascii loop tail
         asm.mov(64, arr, refAddress);
         asm.fldp(128, vecArray1, vecArray2, createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arr, 32));
-        asm.neon.orrVVV(FullReg, vecTmp1, vecArray1, vecArray2);
-        asm.neon.cmtstVVV(FullReg, HalfWord, vecTmp1, vecTmp1, vecMask);
-        vectorCheckZero(asm, HalfWord, vecTmp1, vecTmp1, true);
+        vectorTest(asm, HalfWord, vecTmp1, vecTmp1, vecArray1, vecArray2, vecMask);
         assert returnValueAssertions();
         asm.cset(64, ret, ConditionFlag.NE);
         asm.neon.uzp2VVV(FullReg, ElementSize.Byte, vecTmp1, vecArray1, vecArray2);
@@ -398,9 +383,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.branchConditionally(ConditionFlag.MI, tailLessThan16);
         asm.fldr(128, vecArray1, AArch64Address.createBaseRegisterOnlyAddress(128, arr));
         asm.fldr(128, vecArray2, AArch64Address.createRegisterOffsetAddress(128, arr, len, false));
-        asm.neon.orrVVV(FullReg, vecTmp1, vecArray1, vecArray2);
-        asm.neon.cmtstVVV(FullReg, HalfWord, vecTmp1, vecTmp1, vecMask);
-        vectorCheckZero(asm, HalfWord, vecTmp1, vecTmp1, true);
+        vectorTest(asm, HalfWord, vecTmp1, vecTmp1, vecArray1, vecArray2, vecMask);
         asm.cset(64, ret, ConditionFlag.NE);
         asm.neon.uzp2VVV(FullReg, ElementSize.Byte, vecTmp1, vecArray1, vecArray2);
         vectorCheckZero(asm, vecTmp1, vecTmp1);
@@ -430,6 +413,22 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.cset(64, ret, ConditionFlag.NE);
         asm.tst(64, tmp, maskLatin);
         asm.csinc(64, ret, ret, ret, ConditionFlag.EQ);
+    }
+
+    private static void vectorTest(AArch64MacroAssembler asm, Register vecArray1, Register vecArray2, Register vecMask) {
+        vectorTest(asm, vecArray1, vecArray1, vecArray1, vecArray2, vecMask);
+    }
+
+    private static void vectorTest(AArch64MacroAssembler asm, Register vecDstOrr, Register vecDstAnd, Register vecArray1, Register vecArray2, Register vecMask) {
+        asm.neon.orrVVV(FullReg, vecDstOrr, vecArray1, vecArray2);
+        asm.neon.andVVV(FullReg, vecDstAnd, vecDstOrr, vecMask);
+        vectorCheckZero(asm, vecDstAnd, vecDstAnd);
+    }
+
+    private static void vectorTest(AArch64MacroAssembler asm, ElementSize eSize, Register vecDstOrr, Register vecDstAnd, Register vecArray1, Register vecArray2, Register vecMask) {
+        asm.neon.orrVVV(FullReg, vecDstOrr, vecArray1, vecArray2);
+        asm.neon.cmtstVVV(FullReg, eSize, vecDstAnd, vecDstOrr, vecMask);
+        vectorCheckZero(asm, eSize, vecDstAnd, vecDstAnd, true);
     }
 
     private static final byte TOO_SHORT = 1 << 0;
@@ -564,8 +563,8 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         Register vecTmp1 = asRegister(vectorTemp[2]);
         Register vecTmp2 = asRegister(vectorTemp[3]);
         Register vecTmp3 = asRegister(vectorTemp[4]);
-        Register vecMask = asRegister(vectorTemp[5]);
-        Register vecMaskCB = asRegister(vectorTemp[6]);
+        Register vecMask0x80 = asRegister(vectorTemp[5]);
+        Register vecMask0xC0 = asRegister(vectorTemp[6]);
         Register vecNCB = asRegister(vectorTemp[7]);
 
         Register tmp2 = asRegister(temp[1]);
@@ -574,8 +573,8 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
         asm.mov(32, ret, len);
 
-        asm.neon.moveVI(FullReg, ElementSize.Byte, vecMaskCB, (byte) 0xc0);
-        asm.neon.moveVI(FullReg, ElementSize.Byte, vecMask, (byte) 0x80);
+        asm.neon.moveVI(FullReg, ElementSize.Byte, vecMask0xC0, (byte) 0xc0);
+        asm.neon.moveVI(FullReg, ElementSize.Byte, vecMask0x80, (byte) 0x80);
 
         // subtract 32 from len. if the result is negative, jump to branch for less than 32 bytes
         asm.subs(64, len, len, 32);
@@ -588,9 +587,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.align(PREFERRED_LOOP_ALIGNMENT);
         asm.bind(asciiLoop);
         asm.fldp(128, vecArray1, vecArray2, createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arr, 32));
-        asm.neon.orrVVV(FullReg, vecTmp1, vecArray1, vecArray2);
-        asm.neon.andVVV(FullReg, vecTmp2, vecTmp1, vecMask);
-        vectorCheckZero(asm, vecTmp2, vecTmp2);
+        vectorTest(asm, vecTmp1, vecTmp2, vecArray1, vecArray2, vecMask0x80);
         asm.branchConditionally(ConditionFlag.NE, multibyteFound);
         asm.cmp(64, arr, refAddress);
         asm.branchConditionally(ConditionFlag.LO, asciiLoop);
@@ -599,9 +596,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.mov(64, arr, refAddress);
         asm.fldp(128, vecArray1, vecArray2, createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arr, 32));
         asm.bind(tailLessThan32Continue);
-        asm.neon.orrVVV(FullReg, vecTmp1, vecArray1, vecArray2);
-        asm.neon.andVVV(FullReg, vecTmp2, vecTmp1, vecMask);
-        vectorCheckZero(asm, vecTmp2, vecTmp2);
+        vectorTest(asm, vecTmp1, vecTmp2, vecArray1, vecArray2, vecMask0x80);
         asm.branchConditionally(ConditionFlag.NE, assumeValid ? multibyteFoundTail : multibyteFound);
         assert returnValueAssertions();
         asm.lsl(64, ret, ret, 32);
@@ -615,13 +610,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             asm.bind(multibyteFoundTail);
             asm.neon.moveVI(FullReg, ElementSize.Byte, vecNCB, 0);
             // identify continuation bytes via ((b & 0xc0) == 0x80)
-            asm.neon.andVVV(FullReg, vecTmp1, vecArray1, vecMaskCB);
-            asm.neon.andVVV(FullReg, vecTmp2, vecArray2, vecMaskCB);
-            asm.neon.cmeqVVV(FullReg, ElementSize.Byte, vecTmp1, vecTmp1, vecMask);
-            asm.neon.cmeqVVV(FullReg, ElementSize.Byte, vecTmp2, vecTmp2, vecMask);
-            // sum up identified bytes
-            asm.neon.usraVVI(FullReg, ElementSize.Byte, vecNCB, vecTmp1, 7);
-            asm.neon.usraVVI(FullReg, ElementSize.Byte, vecNCB, vecTmp2, 7);
+            utf8CountContinuationBytes(asm, vecArray1, vecArray2, vecTmp1, vecTmp2, vecMask0xC0, vecMask0x80, vecNCB);
             asm.neon.uaddlvSV(FullReg, ElementSize.Byte, vecNCB, vecNCB);
             asm.neon.moveFromIndex(DoubleWord, DoubleWord, tmp, vecNCB, 0);
             // subtract continuation byte count from return value (== byte length)
@@ -632,10 +621,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
             asm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
             asm.bind(multibyteFound);
-            asm.adds(64, tmp2, arr, 254 * 16);
-            asm.csel(64, tmp2, refAddress, tmp2, ConditionFlag.VS);
-            asm.cmp(64, tmp2, refAddress);
-            asm.csel(64, tmp2, tmp2, refAddress, ConditionFlag.LO);
+            setCodepointCountOuterLoopRefAddress(asm, arr, refAddress, tmp2, 254 * 16);
             asm.neon.moveVI(FullReg, ElementSize.Byte, vecNCB, 0);
             asm.jmp(multibyteContinue);
 
@@ -646,13 +632,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             // cycles. The inner loop accumulates the continuation byte count in vecNCB as long as
             // it cannot overflow, and the outer loop processes the accumulated vector.
 
-            Label multibyteOuterLoop = new Label();
-            asm.align(PREFERRED_LOOP_ALIGNMENT);
-            asm.bind(multibyteOuterLoop);
-            asm.adds(64, tmp2, arr, 254 * 16);
-            asm.csel(64, tmp2, refAddress, tmp2, ConditionFlag.VS);
-            asm.cmp(64, tmp2, refAddress);
-            asm.csel(64, tmp2, tmp2, refAddress, ConditionFlag.LO);
+            Label multibyteOuterLoop = emitCodepointCountOuterLoopBegin(asm, arr, refAddress, tmp2, 254 * 16);
 
             // --- begin of inner loop ---
 
@@ -661,24 +641,13 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             asm.bind(multibyteLoop);
             asm.fldp(128, vecArray1, vecArray2, createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arr, 32));
             asm.bind(multibyteContinue);
-            asm.neon.andVVV(FullReg, vecTmp1, vecArray1, vecMaskCB);
-            asm.neon.andVVV(FullReg, vecTmp2, vecArray2, vecMaskCB);
-            asm.neon.cmeqVVV(FullReg, ElementSize.Byte, vecTmp1, vecTmp1, vecMask);
-            asm.neon.cmeqVVV(FullReg, ElementSize.Byte, vecTmp2, vecTmp2, vecMask);
-            asm.neon.usraVVI(FullReg, ElementSize.Byte, vecNCB, vecTmp1, 7);
-            asm.neon.usraVVI(FullReg, ElementSize.Byte, vecNCB, vecTmp2, 7);
+            utf8CountContinuationBytes(asm, vecArray1, vecArray2, vecTmp1, vecTmp2, vecMask0xC0, vecMask0x80, vecNCB);
             asm.cmp(64, arr, tmp2);
             asm.branchConditionally(ConditionFlag.LS, multibyteLoop);
 
             // --- end of inner loop ---
 
-            asm.neon.uaddlvSV(FullReg, ElementSize.Byte, vecNCB, vecNCB);
-            asm.neon.moveFromIndex(DoubleWord, DoubleWord, tmp, vecNCB, 0);
-            asm.neon.moveVI(FullReg, ElementSize.Byte, vecNCB, 0);
-            asm.sub(64, ret, ret, tmp);
-
-            asm.cmp(64, tmp2, refAddress);
-            asm.branchConditionally(ConditionFlag.NE, multibyteOuterLoop);
+            emitCodepointCountOuterLoopEnd(asm, tmp, ret, vecNCB, tmp2, refAddress, multibyteOuterLoop);
 
             // --- end of outer loop ---
 
@@ -693,12 +662,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             asm.fldp(128, vecTmp1, vecTmp2, AArch64Address.createPairBaseRegisterOnlyAddress(128, tmp));
             asm.neon.andVVV(FullReg, vecArray1, vecArray1, vecTmp1);
             asm.neon.andVVV(FullReg, vecArray2, vecArray2, vecTmp2);
-            asm.neon.andVVV(FullReg, vecTmp1, vecArray1, vecMaskCB);
-            asm.neon.andVVV(FullReg, vecTmp2, vecArray2, vecMaskCB);
-            asm.neon.cmeqVVV(FullReg, ElementSize.Byte, vecTmp1, vecTmp1, vecMask);
-            asm.neon.cmeqVVV(FullReg, ElementSize.Byte, vecTmp2, vecTmp2, vecMask);
-            asm.neon.usraVVI(FullReg, ElementSize.Byte, vecNCB, vecTmp1, 7);
-            asm.neon.usraVVI(FullReg, ElementSize.Byte, vecNCB, vecTmp2, 7);
+            utf8CountContinuationBytes(asm, vecArray1, vecArray2, vecTmp1, vecTmp2, vecMask0xC0, vecMask0x80, vecNCB);
             asm.neon.uaddlvSV(FullReg, ElementSize.Byte, vecNCB, vecNCB);
             asm.neon.moveFromIndex(DoubleWord, DoubleWord, tmp, vecNCB, 0);
             asm.sub(64, ret, ret, tmp);
@@ -752,35 +716,21 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             // load all data section masks at once
             asm.neon.ld1MultipleVVVV(FullReg, ElementSize.Byte, vecIsIncompleteMask, vecLUTByte1Lo, vecLUTByte1Hi, vecLUTByte2Hi,
                             createStructureImmediatePostIndexAddress(LD1_MULTIPLE_4R, FullReg, ElementSize.Byte, tmp, 64));
-            // fill with 0b11110000
-            asm.neon.sshrVVI(FullReg, ElementSize.Byte, vecMask4ByteSeq, vecMask, 3);
-            // fill with 0b11100000
-            asm.neon.sshrVVI(FullReg, ElementSize.Byte, vecMask3ByteSeq, vecMask, 2);
-            // fill with 0x0F
-            asm.neon.notVV(FullReg, vecMask0x0F, vecMask4ByteSeq);
-
-            // clear vecPrevIsIncomplete, vecPrev, vecResult and vecNCB
+            asm.neon.moveVI(FullReg, ElementSize.Byte, vecMask4ByteSeq, (byte) 0b11110000);
+            asm.neon.moveVI(FullReg, ElementSize.Byte, vecMask3ByteSeq, (byte) 0b11100000);
+            asm.neon.moveVI(FullReg, ElementSize.Byte, vecMask0x0F, 0x0F);
             asm.neon.moveVI(FullReg, ElementSize.Byte, vecPrevIsIncomplete, 0);
             asm.neon.moveVI(FullReg, ElementSize.Byte, vecPrev, 0);
             asm.neon.moveVI(FullReg, ElementSize.Byte, vecResult, 0);
             asm.neon.moveVI(FullReg, ElementSize.Byte, vecNCB, 0);
 
-            asm.adds(64, tmp2, arr, 254 * 16);
-            asm.csel(64, tmp2, refAddress, tmp2, ConditionFlag.VS);
-            asm.cmp(64, tmp2, refAddress);
-            asm.csel(64, tmp2, tmp2, refAddress, ConditionFlag.LO);
+            setCodepointCountOuterLoopRefAddress(asm, arr, refAddress, tmp2, 254 * 16);
             asm.jmp(multibyteContinue);
 
             // --- begin of outer loop ---
             // nested to avoid using uaddlvSV in the inner loop, see the "assumeValid" variant above
 
-            Label multibyteOuterLoop = new Label();
-            asm.align(PREFERRED_LOOP_ALIGNMENT);
-            asm.bind(multibyteOuterLoop);
-            asm.adds(64, tmp2, arr, 254 * 16);
-            asm.csel(64, tmp2, refAddress, tmp2, ConditionFlag.VS);
-            asm.cmp(64, tmp2, refAddress);
-            asm.csel(64, tmp2, tmp2, refAddress, ConditionFlag.LO);
+            Label multibyteOuterLoop = emitCodepointCountOuterLoopBegin(asm, arr, refAddress, tmp2, 254 * 16);
 
             // --- begin of inner loop ---
 
@@ -791,7 +741,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
             // fast path: check if current vector is ascii
             asm.bind(multibyteContinue);
-            asm.neon.andVVV(FullReg, vecTmp1, vecArray1, vecMask);
+            asm.neon.andVVV(FullReg, vecTmp1, vecArray1, vecMask0x80);
             vectorCheckZero(asm, vecTmp1, vecTmp1);
             asm.branchConditionally(ConditionFlag.NE, multibyteNoFastPath);
             // current vector is ascii, if the previous vector ended with an incomplete sequence, we
@@ -806,9 +756,9 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
             // codepoint counting logic:
             // AND the string's bytes with 0xc0
-            asm.neon.andVVV(FullReg, vecTmp1, vecArray1, vecMaskCB);
+            asm.neon.andVVV(FullReg, vecTmp1, vecArray1, vecMask0xC0);
             // check if the result is equal to 0x80, identifying continuation bytes
-            asm.neon.cmeqVVV(FullReg, ElementSize.Byte, vecTmp1, vecTmp1, vecMask);
+            asm.neon.cmeqVVV(FullReg, ElementSize.Byte, vecTmp1, vecTmp1, vecMask0x80);
             // add identified continuation bytes to accumulator
             asm.neon.usraVVI(FullReg, ElementSize.Byte, vecNCB, vecTmp1, 7);
 
@@ -840,7 +790,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             // combine result into vecTmp2
             asm.neon.orrVVV(FullReg, vecTmp2, vecTmp2, vecTmp3);
             // convert result to 0x80 for all matching bytes
-            asm.neon.andVVV(FullReg, vecTmp2, vecTmp2, vecMask);
+            asm.neon.andVVV(FullReg, vecTmp2, vecTmp2, vecMask0x80);
             // eor the result with the combined table lookup results
             asm.neon.eorVVV(FullReg, vecTmp1, vecTmp1, vecTmp2);
             // if the result of all this is non-zero, we found an error
@@ -857,20 +807,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             // --- end of inner loop ---
 
             asm.bind(multibyteTail);
-            // sum
-            asm.neon.uaddlvSV(FullReg, ElementSize.Byte, vecNCB, vecNCB);
-            // subtract the number of continuation bytes from the total byte length
-            asm.neon.moveFromIndex(DoubleWord, DoubleWord, tmp, vecNCB, 0);
-            asm.neon.moveVI(FullReg, ElementSize.Byte, vecNCB, 0);
-            asm.sub(64, ret, ret, tmp);
-
-            Label done = new Label();
-            asm.add(64, tmp, refAddress, 16);
-            asm.cmp(64, arr, tmp);
-            asm.branchConditionally(ConditionFlag.EQ, done);
-
-            asm.cmp(64, tmp2, refAddress);
-            asm.branchConditionally(ConditionFlag.NE, multibyteOuterLoop);
+            Label done = emitCodepointCountOuterLoopEnd(asm, tmp, ret, vecNCB, tmp2, refAddress, multibyteOuterLoop, arr, 16);
 
             // --- end of outer loop ---
 
@@ -917,9 +854,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         } else {
             asm.add(64, refAddress, arr, len);
             asm.add(64, arr, arr, 16);
-            asm.neon.orrVVV(FullReg, vecTmp1, vecArray1, vecArray2);
-            asm.neon.andVVV(FullReg, vecTmp2, vecTmp1, vecMask);
-            vectorCheckZero(asm, vecTmp2, vecTmp2);
+            vectorTest(asm, vecTmp1, vecTmp2, vecArray1, vecArray2, vecMask0x80);
             asm.branchConditionally(ConditionFlag.NE, multibyteFoundTail);
             assert returnValueAssertions();
             asm.lsl(64, ret, ret, 32);
@@ -945,7 +880,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             asm.neon.tblVVV(FullReg, vecArray2, vecArray2, vecTmp2);
             asm.neon.insXX(DoubleWord, vecArray1, 1, vecArray2, 0);
             asm.bind(tailLessThan16Continue);
-            asm.neon.andVVV(FullReg, vecTmp1, vecArray1, vecMask);
+            asm.neon.andVVV(FullReg, vecTmp1, vecArray1, vecMask0x80);
             asm.sub(64, refAddress, arr, 16);
             vectorCheckZero(asm, vecTmp1, vecTmp1);
             asm.branchConditionally(ConditionFlag.NE, multibyteFoundTail);
@@ -1050,6 +985,78 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
     }
 
     /**
+     * Accumulate the number of continuation bytes present in {@code vecArray1} and
+     * {@code vecArray2} to {@code vecNCB}.
+     */
+    private static void utf8CountContinuationBytes(AArch64MacroAssembler asm,
+                    Register vecArray1,
+                    Register vecArray2,
+                    Register vecTmp1,
+                    Register vecTmp2,
+                    Register vecMask0xC0,
+                    Register vecMask0x80,
+                    Register vecNCB) {
+        asm.neon.andVVV(FullReg, vecTmp1, vecArray1, vecMask0xC0);
+        asm.neon.andVVV(FullReg, vecTmp2, vecArray2, vecMask0xC0);
+        asm.neon.cmeqVVV(FullReg, ElementSize.Byte, vecTmp1, vecTmp1, vecMask0x80);
+        asm.neon.cmeqVVV(FullReg, ElementSize.Byte, vecTmp2, vecTmp2, vecMask0x80);
+        asm.neon.usraVVI(FullReg, ElementSize.Byte, vecNCB, vecTmp1, 7);
+        asm.neon.usraVVI(FullReg, ElementSize.Byte, vecNCB, vecTmp2, 7);
+    }
+
+    private static void setCodepointCountOuterLoopRefAddress(AArch64MacroAssembler asm, Register arr, Register refAddressTail, Register refAddressOuter, int blockSize) {
+        asm.adds(64, refAddressOuter, arr, blockSize);
+        asm.csel(64, refAddressOuter, refAddressTail, refAddressOuter, ConditionFlag.VS);
+        asm.cmp(64, refAddressOuter, refAddressTail);
+        asm.csel(64, refAddressOuter, refAddressOuter, refAddressTail, ConditionFlag.LO);
+    }
+
+    private static Label emitCodepointCountOuterLoopBegin(AArch64MacroAssembler asm, Register arr, Register refAddressTail, Register refAddressOuter, int blockSize) {
+        Label loopHead = new Label();
+        asm.align(PREFERRED_LOOP_ALIGNMENT);
+        asm.bind(loopHead);
+        // calculate new reference address
+        setCodepointCountOuterLoopRefAddress(asm, arr, refAddressTail, refAddressOuter, blockSize);
+        return loopHead;
+    }
+
+    private static void emitCodepointCountOuterLoopEnd(AArch64MacroAssembler asm, Register tmp, Register ret, Register vecNCB, Register refAddressOuter, Register refAddressTail, Label loopHead) {
+        // calculate sum
+        asm.neon.uaddlvSV(FullReg, ElementSize.Byte, vecNCB, vecNCB);
+        asm.neon.moveFromIndex(DoubleWord, DoubleWord, tmp, vecNCB, 0);
+        // reset
+        asm.neon.moveVI(FullReg, ElementSize.Byte, vecNCB, 0);
+        // subtract sum from total count
+        asm.sub(64, ret, ret, tmp);
+        // continue loop
+        asm.cmp(64, refAddressOuter, refAddressTail);
+        asm.branchConditionally(ConditionFlag.NE, loopHead);
+    }
+
+    private static Label emitCodepointCountOuterLoopEnd(AArch64MacroAssembler asm, Register tmp, Register ret, Register vecNCB, Register refAddressOuter, Register refAddressTail, Label loopHead,
+                    Register arr, int innerLoopBlockSize) {
+        // calculate sum
+        asm.neon.uaddlvSV(FullReg, ElementSize.Byte, vecNCB, vecNCB);
+        // subtract the number of continuation bytes from the total byte length
+        asm.neon.moveFromIndex(DoubleWord, DoubleWord, tmp, vecNCB, 0);
+        // reset
+        asm.neon.moveVI(FullReg, ElementSize.Byte, vecNCB, 0);
+        // subtract sum from total count
+        asm.sub(64, ret, ret, tmp);
+
+        // break if inner loop already processed the tail
+        Label breakLabel = new Label();
+        asm.add(64, tmp, refAddressTail, innerLoopBlockSize);
+        asm.cmp(64, arr, tmp);
+        asm.branchConditionally(ConditionFlag.EQ, breakLabel);
+
+        // continue loop
+        asm.cmp(64, refAddressOuter, refAddressTail);
+        asm.branchConditionally(ConditionFlag.NE, loopHead);
+        return breakLabel;
+    }
+
+    /**
      * Implements the operation described in {@link CalcStringAttributesEncoding#UTF_16}.
      */
     private void emitUTF16(CompilationResultBuilder crb, AArch64MacroAssembler asm, Register arr, Register len, Register tmp, Register ret, Label end) {
@@ -1106,9 +1113,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.align(PREFERRED_LOOP_ALIGNMENT);
         asm.bind(asciiLoop);
         asm.fldp(128, vecArray1, vecArray2, createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arr, 32));
-        asm.neon.orrVVV(FullReg, vecTmp1, vecArray1, vecArray2);
-        asm.neon.cmtstVVV(FullReg, HalfWord, vecTmp2, vecTmp1, vecMask);
-        vectorCheckZero(asm, HalfWord, vecTmp2, vecTmp2, true);
+        vectorTest(asm, HalfWord, vecTmp1, vecTmp2, vecArray1, vecArray2, vecMask);
         asm.branchConditionally(ConditionFlag.NE, latinContinue);
         asm.cmp(64, arr, refAddress);
         asm.branchConditionally(ConditionFlag.LO, asciiLoop);
@@ -1117,9 +1122,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.mov(64, arr, refAddress);
         asm.fldp(128, vecArray1, vecArray2, createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arr, 32));
         asm.bind(tailLessThan32Continue);
-        asm.neon.orrVVV(FullReg, vecTmp1, vecArray1, vecArray2);
-        asm.neon.cmtstVVV(FullReg, HalfWord, vecTmp2, vecTmp1, vecMask);
-        vectorCheckZero(asm, HalfWord, vecTmp2, vecTmp2, true);
+        vectorTest(asm, HalfWord, vecTmp1, vecTmp2, vecArray1, vecArray2, vecMask);
         asm.branchConditionally(ConditionFlag.NE, latinFoundTail);
         assert returnValueAssertions();
         asm.lsl(64, ret, ret, 32);
@@ -1179,22 +1182,13 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
             asm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
             asm.bind(surrogateFound);
-            asm.adds(64, tmp2, arr, 4096);
-            asm.csel(64, tmp2, refAddress, tmp2, ConditionFlag.VS);
-            asm.cmp(64, tmp2, refAddress);
-            asm.csel(64, tmp2, tmp2, refAddress, ConditionFlag.LO);
+            setCodepointCountOuterLoopRefAddress(asm, arr, refAddress, tmp2, 4096);
             asm.neon.moveVI(FullReg, ElementSize.Byte, vecNSurrogates, 0);
             asm.jmp(surrogateContinue);
 
             // --- begin of outer loop ---
 
-            Label surrogateOuterLoop = new Label();
-            asm.align(PREFERRED_LOOP_ALIGNMENT);
-            asm.bind(surrogateOuterLoop);
-            asm.adds(64, tmp2, arr, 4096);
-            asm.csel(64, tmp2, refAddress, tmp2, ConditionFlag.VS);
-            asm.cmp(64, tmp2, refAddress);
-            asm.csel(64, tmp2, tmp2, refAddress, ConditionFlag.LO);
+            Label surrogateOuterLoop = emitCodepointCountOuterLoopBegin(asm, arr, refAddress, tmp2, 4096);
 
             // --- begin of inner loop ---
             // surrogate loop: surrogates have been found, calculate the codepoint length
@@ -1218,13 +1212,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             // --- end of inner loop ---
 
             // subtract total number of high surrogates from char length
-            asm.neon.uaddlvSV(FullReg, ElementSize.Byte, vecNSurrogates, vecNSurrogates);
-            asm.neon.moveFromIndex(DoubleWord, DoubleWord, tmp, vecNSurrogates, 0);
-            asm.neon.moveVI(FullReg, ElementSize.Byte, vecNSurrogates, 0);
-            asm.sub(64, ret, ret, tmp);
-
-            asm.cmp(64, tmp2, refAddress);
-            asm.branchConditionally(ConditionFlag.NE, surrogateOuterLoop);
+            emitCodepointCountOuterLoopEnd(asm, tmp, ret, vecNSurrogates, tmp2, refAddress, surrogateOuterLoop);
 
             // --- end of outer loop ---
 
@@ -1258,33 +1246,21 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
             asm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
             asm.bind(surrogateFound);
-            // high surrogate mask: 0x1b << 1 == 0x36
-            asm.neon.shlVVI(FullReg, ElementSize.Byte, vecMaskSurrogates, vecMaskSurrogates, 1);
-            // mask 0xff80 >> 15 == 0x1
-            asm.neon.ushrVVI(FullReg, HalfWord, vecMask, vecMask, 15);
-            asm.neon.uzp1VVV(FullReg, ElementSize.Byte, vecMask, vecMask, vecMask);
-            // low surrogate mask: 0x1 | 0x36 == 0x37
-            asm.neon.orrVVV(FullReg, vecMask, vecMask, vecMaskSurrogates);
+            // high surrogate mask
+            asm.neon.moveVI(FullReg, ElementSize.Byte, vecMaskSurrogates, 0x36);
+            // low surrogate mask
+            asm.neon.moveVI(FullReg, ElementSize.Byte, vecMask, 0x37);
             // clear vecPrev and vecResult
             asm.neon.moveVI(FullReg, ElementSize.Byte, vecPrev, 0);
             asm.neon.moveVI(FullReg, ElementSize.Byte, vecResult, 0);
             asm.neon.moveVI(FullReg, ElementSize.Byte, vecNSurrogates, 0);
-            asm.adds(64, tmp2, arr, 4096);
-            asm.csel(64, tmp2, refAddress, tmp2, ConditionFlag.VS);
-            asm.cmp(64, tmp2, refAddress);
-            asm.csel(64, tmp2, tmp2, refAddress, ConditionFlag.LO);
+            setCodepointCountOuterLoopRefAddress(asm, arr, refAddress, tmp2, 4096);
             asm.jmp(surrogateContinue);
 
             // --- begin of outer loop ---
             // nested loop avoids uaddlvSV - see utf8 variant
 
-            Label surrogateOuterLoop = new Label();
-            asm.align(PREFERRED_LOOP_ALIGNMENT);
-            asm.bind(surrogateOuterLoop);
-            asm.adds(64, tmp2, arr, 4096);
-            asm.csel(64, tmp2, refAddress, tmp2, ConditionFlag.VS);
-            asm.cmp(64, tmp2, refAddress);
-            asm.csel(64, tmp2, tmp2, refAddress, ConditionFlag.LO);
+            Label surrogateOuterLoop = emitCodepointCountOuterLoopBegin(asm, arr, refAddress, tmp2, 4096);
 
             // --- begin of inner loop ---
 
@@ -1318,19 +1294,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
             // --- end of inner loop ---
 
-            asm.neon.uaddlvSV(FullReg, ElementSize.Byte, vecNSurrogates, vecNSurrogates);
-            // subtract the number of surrogate pairs from the total char length
-            asm.neon.moveFromIndex(DoubleWord, DoubleWord, tmp, vecNSurrogates, 0);
-            asm.neon.moveVI(FullReg, ElementSize.Byte, vecNSurrogates, 0);
-            asm.sub(64, ret, ret, tmp);
-
-            Label done = new Label();
-            asm.add(64, tmp, refAddress, 32);
-            asm.cmp(64, arr, tmp);
-            asm.branchConditionally(ConditionFlag.EQ, done);
-
-            asm.cmp(64, tmp2, refAddress);
-            asm.branchConditionally(ConditionFlag.NE, surrogateOuterLoop);
+            Label done = emitCodepointCountOuterLoopEnd(asm, tmp, ret, vecNSurrogates, tmp2, refAddress, surrogateOuterLoop, arr, 32);
 
             // --- end of outer loop ---
 
@@ -1519,9 +1483,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
                         createStructureImmediatePostIndexAddress(LD1_MULTIPLE_4R, FullReg, ElementSize.Byte, arr, 64));
         asm.neon.orrVVV(FullReg, vecTmp1, vecArray1, vecArray2);
         asm.neon.orrVVV(FullReg, vecTmp2, vecArray3, vecArray4);
-        asm.neon.orrVVV(FullReg, vecTmp1, vecTmp1, vecTmp2);
-        asm.neon.cmtstVVV(FullReg, Word, vecTmp2, vecTmp1, vecMask);
-        vectorCheckZero(asm, Word, vecTmp2, vecTmp2, true);
+        vectorTest(asm, Word, vecTmp1, vecTmp2, vecTmp1, vecTmp2, vecMask);
         asm.branchConditionally(ConditionFlag.NE, latinFound);
         asm.cmp(64, arr, refAddress);
         asm.branchConditionally(ConditionFlag.LO, asciiLoop);
@@ -1636,8 +1598,8 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
         // tail for 32 - 63 bytes
         asm.bind(tailLessThan64);
-        // len is original len - 32 and guaranteed negative. add 16. if result is still negative,
-        // jump to branch for less than 16 bytes
+        // len is original len - 64 and guaranteed negative. add 32. if result is still negative,
+        // jump to branch for less than 32 bytes
         asm.adds(64, len, len, 32);
         asm.branchConditionally(ConditionFlag.MI, tailLessThan32);
         asm.fldp(128, vecArray1, vecArray2, AArch64Address.createPairBaseRegisterOnlyAddress(128, arr));

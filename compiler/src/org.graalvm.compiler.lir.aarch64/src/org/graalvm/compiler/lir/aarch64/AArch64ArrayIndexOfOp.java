@@ -264,12 +264,6 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         Label end = new Label();
 
         ElementSize eSize = ElementSize.fromSize(stride.value * Byte.SIZE);
-        /*
-         * Magic constant is used to detect byte offset of the starting position of the search
-         * element in the matching chunk.
-         */
-        long magicConstant = 0xc030_0c03_c030_0c03L;
-
         /* 1. Duplicate the searchElement(s) to 16-bytes */
         for (int i = 0; i < searchValues.length; i++) {
             masm.neon.dupVG(ASIMDSize.FullReg, eSize, searchValuesRegV[i], asRegister(searchValues[i]));
@@ -381,39 +375,16 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         /* 4. If the element is found in a 32-byte chunk then find its position. */
         masm.align(AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT);
         masm.bind(matchInChunk);
-        /*
-         * 4.1 Using the magic constant set 2 bits in the matching byte(s) that represent its
-         * position in the chunk
-         */
         try (ScratchRegister scratchReg = masm.getScratchRegister()) {
-            Register magicConstantReg = scratchReg.getRegister();
-            masm.mov(magicConstantReg, magicConstant);
-            masm.neon.dupVG(ASIMDSize.FullReg, ElementSize.DoubleWord, tmpRegV1, magicConstantReg);
-        }
-        masm.neon.andVVV(ASIMDSize.FullReg, firstChunkPart1RegV, firstChunkPart1RegV, tmpRegV1);
-        masm.neon.andVVV(ASIMDSize.FullReg, firstChunkPart2RegV, firstChunkPart2RegV, tmpRegV1);
-        /* 4.2 Convert 32-byte to 8-byte representation, 2 bits per byte. */
-        /* Reduce from 256 -> 128 bits. */
-        masm.neon.addpVVV(ASIMDSize.FullReg, ElementSize.Byte, firstChunkPart1RegV, firstChunkPart1RegV, firstChunkPart2RegV);
-        /*
-         * Reduce from 128 -> 64 bits. Note tmpRegV1's value doesn't matter; only care about
-         * chunkPart1RegV.
-         */
-        masm.neon.addpVVV(ASIMDSize.FullReg, ElementSize.Byte, firstChunkPart1RegV, firstChunkPart1RegV, tmpRegV1);
-
-        try (ScratchRegister scratchReg = masm.getScratchRegister()) {
-            Register matchPositionReg = scratchReg.getRegister();
-            /* Detect the byte starting position of matching element in the chunk. */
-            masm.neon.moveFromIndex(ElementSize.DoubleWord, ElementSize.DoubleWord, matchPositionReg, firstChunkPart1RegV, 0);
-            masm.rbit(64, matchPositionReg, matchPositionReg);
-            masm.clz(64, matchPositionReg, matchPositionReg);
-            masm.add(64, result, currOffset, matchPositionReg, ShiftType.ASR, 1);
+            Register tmp = scratchReg.getRegister();
+            initCalcIndexOfFirstMatchMask(masm, tmpRegV1, tmp);
+            calcIndexOfFirstMatch(masm, tmp, firstChunkPart1RegV, firstChunkPart2RegV, tmpRegV1, false);
+            masm.add(64, result, currOffset, tmp, ShiftType.ASR, 1);
         }
         if (stride.log2 != 0) {
             /* Convert byte offset of searchElement to its array index */
             masm.asr(64, result, result, stride.log2);
         }
-
         masm.bind(end);
     }
 

@@ -127,8 +127,7 @@ public final class AArch64VectorizedMismatchOp extends AArch64ComplexVectorOp {
 
         asm.lsl(32, len, asRegister(lengthValue), asRegister(strideValue));
 
-        asm.mov(tmp, 0xc030_0c03);
-        asm.neon.dupVG(FullReg, ElementSize.Word, vecMask, tmp);
+        initCalcIndexOfFirstMatchMask(asm, vecMask, tmp);
 
         // subtract 32 from len. if the result is negative, jump to branch for less than 32 bytes
         asm.subs(64, len, len, 32);
@@ -182,15 +181,10 @@ public final class AArch64VectorizedMismatchOp extends AArch64ComplexVectorOp {
         // differing bytes found, calculate index
         asm.neon.cmtstVVV(FullReg, ElementSize.Byte, vecArrayA1, vecArrayA1, vecArrayA1);
         asm.neon.cmtstVVV(FullReg, ElementSize.Byte, vecArrayA2, vecArrayA2, vecArrayA2);
-        asm.neon.andVVV(FullReg, vecArrayA1, vecArrayA1, vecMask);
-        asm.neon.andVVV(FullReg, vecArrayA2, vecArrayA2, vecMask);
-        asm.neon.addpVVV(FullReg, ElementSize.Byte, vecArrayA1, vecArrayA1, vecArrayA2);
-        asm.neon.addpVVV(FullReg, ElementSize.Byte, vecArrayA1, vecArrayA1, vecArrayA2);
-        asm.neon.moveFromIndex(ElementSize.DoubleWord, ElementSize.DoubleWord, ret, vecArrayA1, 0);
-        asm.sub(64, tmp, arrayA, asRegister(arrayAValue));
-        asm.sub(64, tmp, tmp, 32);
-        asm.rbit(64, ret, ret);
-        asm.clz(64, ret, ret);
+        calcIndexOfFirstMatch(asm, ret, vecArrayA1, vecArrayA2, vecMask, false, () -> {
+            asm.sub(64, tmp, arrayA, asRegister(arrayAValue));
+            asm.sub(64, tmp, tmp, 32);
+        });
         asm.add(64, ret, tmp, ret, ShiftType.LSR, 1);
         asm.jmp(end);
 
@@ -276,14 +270,9 @@ public final class AArch64VectorizedMismatchOp extends AArch64ComplexVectorOp {
         asm.fldr(128, vecArrayB2, AArch64Address.createRegisterOffsetAddress(128, arrayB, len, false));
         asm.neon.cmeqVVV(FullReg, ElementSize.Byte, vecArrayA1, vecArrayA1, vecArrayB1);
         asm.neon.cmeqVVV(FullReg, ElementSize.Byte, vecArrayA2, vecArrayA2, vecArrayB2);
-        asm.neon.bicVVV(FullReg, vecArrayA1, vecMask, vecArrayA1);
-        asm.neon.bicVVV(FullReg, vecArrayA2, vecMask, vecArrayA2);
-        asm.neon.addpVVV(FullReg, ElementSize.Byte, vecArrayA1, vecArrayA1, vecArrayA2);
-        asm.neon.addpVVV(FullReg, ElementSize.Byte, vecArrayA1, vecArrayA1, vecArrayA2);
-        asm.neon.moveFromIndex(ElementSize.DoubleWord, ElementSize.DoubleWord, ret, vecArrayA1, 0);
-        asm.cbz(64, ret, retEqual);
-        asm.rbit(64, ret, ret);
-        asm.clz(64, ret, ret);
+        calcIndexOfFirstMatch(asm, ret, vecArrayA1, vecArrayA2, vecMask, true, () -> {
+            asm.cbz(64, ret, retEqual);
+        });
         asm.sub(64, tmp, len, 16);
         asm.lsr(64, ret, ret, 1);
         asm.add(64, tmp, ret, tmp);
