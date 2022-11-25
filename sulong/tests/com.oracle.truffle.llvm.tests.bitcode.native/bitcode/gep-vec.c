@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,8 +29,8 @@
  */
 
 /* The corresponding bitcode file was produced with:
- * clang -Wall -Wextra -mavx2 -mavx -fvectorize -O1 -c -emit-llvm gep-vec.c
-*/
+ * clang -Wall -Wextra -mavx2 -mavx -fvectorize -O1 -S -emit-llvm gep-vec.c
+ */
 // void doloop(float *a[512], float b[512], int c[512], int d[512]) {
 //   for (int i = 0; i < 512 / 4; ++i) {
 //     #pragma clang loop vectorize(enable)
