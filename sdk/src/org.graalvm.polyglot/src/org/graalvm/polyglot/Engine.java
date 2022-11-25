@@ -77,6 +77,7 @@ import org.graalvm.home.HomeFinder;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
@@ -811,6 +812,11 @@ public final class Engine implements AutoCloseable {
         @Override
         public boolean isMethodScoped(HostAccess access, Executable e) {
             return access.isMethodScoped(e);
+        }
+
+        @Override
+        public MutableTargetMapping[] getMutableTargetMappings(HostAccess access) {
+            return access.getMutableTargetMappings();
         }
 
         @Override
