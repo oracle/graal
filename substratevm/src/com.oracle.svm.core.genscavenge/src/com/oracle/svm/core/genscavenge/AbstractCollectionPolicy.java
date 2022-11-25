@@ -219,7 +219,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     public UnsignedWord getCurrentHeapCapacity() {
         assert VMOperation.isGCInProgress() : "use only during GC";
         guaranteeSizeParametersInitialized();
-        return edenSize.add(survivorSize.multiply(2)).add(oldSize);
+        return edenSize.add(survivorSize).add(oldSize);
     }
 
     @Override
@@ -227,6 +227,19 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         assert VMOperation.isGCInProgress() : "use only during GC";
         guaranteeSizeParametersInitialized();
         return survivorSize;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Ensure reading a consistent value.")
+    public UnsignedWord getYoungGenerationCapacity() {
+        guaranteeSizeParametersInitialized();
+        return edenSize.add(survivorSize);
+    }
+
+    @Override
+    public UnsignedWord getOldGenerationCapacity() {
+        guaranteeSizeParametersInitialized();
+        return oldSize;
     }
 
     @Override
