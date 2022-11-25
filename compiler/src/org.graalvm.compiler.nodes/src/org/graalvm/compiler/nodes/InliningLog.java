@@ -89,24 +89,26 @@ public class InliningLog {
         }
     }
 
-    class Callsite {
-        public final List<Decision> decisions;
-        public final List<Callsite> children;
-        public Callsite parent;
-        public ResolvedJavaMethod target;
-        public Invokable invoke;
+    public static final class Callsite {
+        private final List<Decision> decisions;
+        private final List<Callsite> children;
+        private final Callsite parent;
+        private final Invokable invoke;
+        private ResolvedJavaMethod target;
 
-        Callsite(Callsite parent, Invokable originalInvoke) {
+        private Callsite(Callsite parent, Invokable invoke, ResolvedJavaMethod target) {
             this.parent = parent;
             this.decisions = new ArrayList<>();
             this.children = new ArrayList<>();
-            this.invoke = originalInvoke;
+            this.invoke = invoke;
+            this.target = target;
+            if (parent != null) {
+                parent.children.add(this);
+            }
         }
 
-        public Callsite addChild(Invokable childInvoke) {
-            Callsite child = new Callsite(this, childInvoke);
-            children.add(child);
-            return child;
+        private Callsite addChild(Invokable childInvoke) {
+            return new Callsite(this, childInvoke, childInvoke.getTargetMethod());
         }
 
         public String positionString() {
@@ -130,17 +132,37 @@ public class InliningLog {
             return "at " + position;
         }
 
+        public List<Decision> getDecisions() {
+            return decisions;
+        }
+
+        public List<Callsite> getChildren() {
+            return children;
+        }
+
+        public Callsite getParent() {
+            return parent;
+        }
+
+        public Invokable getInvoke() {
+            return invoke;
+        }
+
+        public ResolvedJavaMethod getTarget() {
+            return target;
+        }
+
         public int getBci() {
             return invoke != null ? invoke.bci() : -1;
         }
     }
 
-    private final Callsite root;
+    private Callsite root;
+
     private final EconomicMap<Invokable, Callsite> leaves;
 
     public InliningLog(ResolvedJavaMethod rootMethod) {
-        this.root = new Callsite(null, null);
-        this.root.target = rootMethod;
+        this.root = new Callsite(null, null, rootMethod);
         this.leaves = EconomicMap.create();
     }
 
@@ -165,8 +187,7 @@ public class InliningLog {
             }
             EconomicMap<Callsite, Callsite> mapping = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
             for (Callsite calleeChild : calleeLog.root.children) {
-                Callsite child = callsite.addChild(calleeChild.invoke);
-                copyTree(child, calleeChild, replacements, mapping);
+                copyTree(callsite, calleeChild, replacements, mapping);
             }
             MapCursor<Invokable, Callsite> entries = calleeLog.leaves.getEntries();
             while (entries.advance()) {
@@ -195,8 +216,7 @@ public class InliningLog {
         if (replacementLog != null) {
             EconomicMap<Callsite, Callsite> mapping = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
             for (Callsite calleeChild : replacementLog.root.children) {
-                Callsite child = root.addChild(calleeChild.invoke);
-                copyTree(child, calleeChild, replacements, mapping);
+                copyTree(root, calleeChild, replacements, mapping);
             }
             MapCursor<Invokable, Callsite> entries = replacementLog.leaves.getEntries();
             while (entries.advance()) {
@@ -226,7 +246,7 @@ public class InliningLog {
         assert root.children.isEmpty();
         assert leaves.isEmpty();
         EconomicMap<Callsite, Callsite> mapping = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
-        copyTree(root, replacementLog.root, replacements, mapping);
+        root = copyTree(null, replacementLog.root, replacements, mapping);
         MapCursor<Invokable, Callsite> replacementEntries = replacementLog.leaves.getEntries();
         while (replacementEntries.advance()) {
             FixedNode replacementInvoke = replacementEntries.getKey().asFixedNodeOrNull();
@@ -239,16 +259,30 @@ public class InliningLog {
         }
     }
 
-    private void copyTree(Callsite site, Callsite replacementSite, UnmodifiableEconomicMap<Node, Node> replacements, EconomicMap<Callsite, Callsite> mapping) {
-        mapping.put(replacementSite, site);
-        site.target = replacementSite.target;
-        site.decisions.addAll(replacementSite.decisions);
-        FixedNode replacementSiteInvoke = replacementSite.invoke != null ? replacementSite.invoke.asFixedNodeOrNull() : null;
-        site.invoke = replacementSiteInvoke != null && replacementSiteInvoke.isAlive() ? (Invokable) replacements.get(replacementSiteInvoke) : null;
-        for (Callsite replacementChild : replacementSite.children) {
-            Callsite child = site.addChild(null);
-            copyTree(child, replacementChild, replacements, mapping);
+    /**
+     * Recursively copies a call tree and adds it to this call tree.
+     *
+     * @param parent the call-tree node which will hold the copy ({@code null} if the copy replaces the root)
+     * @param replacementSite the root of the call tree to be copied
+     * @param replacements the mapping from original graph nodes to replaced nodes
+     * @param mapping the mapping from original call-tree nodes to copies
+     * @return the root of the copied subtree
+     */
+    private Callsite copyTree(Callsite parent, Callsite replacementSite, UnmodifiableEconomicMap<Node, Node> replacements, EconomicMap<Callsite, Callsite> mapping) {
+        Invokable invoke = null;
+        if (replacementSite.invoke != null) {
+            FixedNode replacementSiteInvoke = replacementSite.invoke.asFixedNodeOrNull();
+            if (replacementSiteInvoke != null && replacementSiteInvoke.isAlive()) {
+                invoke = (Invokable) replacements.get(replacementSiteInvoke);
+            }
         }
+        Callsite site = new Callsite(parent, invoke, replacementSite.target);
+        site.decisions.addAll(replacementSite.decisions);
+        mapping.put(replacementSite, site);
+        for (Callsite replacementChild : replacementSite.children) {
+            copyTree(site, replacementChild, replacements, mapping);
+        }
+        return site;
     }
 
     public void checkInvariants(StructuredGraph graph) {
@@ -266,7 +300,7 @@ public class InliningLog {
         }
     }
 
-    private UpdateScope noUpdates = new UpdateScope((oldNode, newNode) -> {
+    private final UpdateScope noUpdates = new UpdateScope((oldNode, newNode) -> {
     });
 
     private UpdateScope currentUpdateScope = null;
@@ -276,7 +310,7 @@ public class InliningLog {
      * differently.
      */
     public final class UpdateScope implements AutoCloseable {
-        private BiConsumer<Invokable, Invokable> updater;
+        private final BiConsumer<Invokable, Invokable> updater;
 
         private UpdateScope(BiConsumer<Invokable, Invokable> updater) {
             this.updater = updater;
@@ -377,7 +411,7 @@ public class InliningLog {
      */
     public final class RootScope implements AutoCloseable {
         private final RootScope parent;
-        private Callsite replacementRoot;
+        private final Callsite replacementRoot;
 
         public RootScope(RootScope parent, Callsite replacementRoot) {
             this.parent = parent;
@@ -466,7 +500,6 @@ public class InliningLog {
             trackNewCallsite(invoke);
         }
         RootScope scope = new RootScope(currentRootScope, leaves.get(invoke));
-        scope.replacementRoot.target = invoke.getTargetMethod();
         scope.activate();
         return scope;
     }

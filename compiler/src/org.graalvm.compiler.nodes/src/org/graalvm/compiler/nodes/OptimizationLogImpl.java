@@ -744,11 +744,11 @@ public class OptimizationLogImpl implements OptimizationLog {
     private EconomicMap<String, Object> callsiteAsJSONMap(InliningLog.Callsite callsite, boolean isInlined, List<String> reason,
                     Function<ResolvedJavaMethod, String> methodNameFormatter) {
         EconomicMap<String, Object> map = EconomicMap.create();
-        map.put(METHOD_NAME_PROPERTY, callsite.target == null ? null : methodNameFormatter.apply(callsite.target));
+        map.put(METHOD_NAME_PROPERTY, callsite.getTarget() == null ? null : methodNameFormatter.apply(callsite.getTarget()));
         map.put(CALLSITE_BCI_PROPERTY, callsite.getBci());
         map.put(INLINED_PROPERTY, isInlined);
         map.put(REASON_PROPERTY, reason);
-        boolean isAbstract = callsite.target != null && callsite.target.isAbstract();
+        boolean isAbstract = callsite.getTarget() != null && callsite.getTarget().isAbstract();
         map.put(ABSTRACT_PROPERTY, isAbstract);
         if (isAbstract) {
             EconomicMap<String, Object> receiverTypeProfile = receiverTypeProfileAsJSONMap(callsite, methodNameFormatter);
@@ -757,10 +757,10 @@ public class OptimizationLogImpl implements OptimizationLog {
             }
         }
         List<Object> invokes = null;
-        for (InliningLog.Callsite child : callsite.children) {
+        for (InliningLog.Callsite child : callsite.getChildren()) {
             boolean childIsInlined = false;
             List<String> childReason = null;
-            for (InliningLog.Decision childDecision : child.decisions) {
+            for (InliningLog.Decision childDecision : child.getDecisions()) {
                 childIsInlined = childIsInlined || childDecision.isPositive();
                 if (childDecision.getReason() != null) {
                     if (childReason == null) {
@@ -786,10 +786,10 @@ public class OptimizationLogImpl implements OptimizationLog {
      * @return the type profile as a map or {@code null}
      */
     private EconomicMap<String, Object> receiverTypeProfileAsJSONMap(InliningLog.Callsite callsite, Function<ResolvedJavaMethod, String> methodNameFormatter) {
-        if (callsite.parent == null || callsite.parent.target == null || callsite.parent.target.getProfilingInfo() == null) {
+        if (callsite.getParent() == null || callsite.getParent().getTarget() == null || callsite.getParent().getTarget().getProfilingInfo() == null) {
             return null;
         }
-        ProfilingInfo profilingInfo = callsite.parent.target.getProfilingInfo();
+        ProfilingInfo profilingInfo = callsite.getParent().getTarget().getProfilingInfo();
         EconomicMap<String, Object> typeProfileMap = EconomicMap.create();
         typeProfileMap.put(MATURE_PROPERTY, profilingInfo.isMature());
         JavaTypeProfile typeProfile = profilingInfo.getTypeProfile(callsite.getBci());
@@ -797,10 +797,10 @@ public class OptimizationLogImpl implements OptimizationLog {
             List<EconomicMap<String, Object>> profiledTypes = new ArrayList<>();
             for (JavaTypeProfile.ProfiledType profiledType : typeProfile.getTypes()) {
                 EconomicMap<String, Object> profiledTypeMap = EconomicMap.create();
-                profiledTypeMap.put(TYPE_NAME_PROPERTY, profiledType.getType().getName());
+                profiledTypeMap.put(TYPE_NAME_PROPERTY, profiledType.getType().toJavaName(true));
                 profiledTypeMap.put(PROBABILITY_PROPERTY, profiledType.getProbability());
-                if (callsite.target != null) {
-                    ResolvedJavaMethod concreteMethod = profiledType.getType().resolveConcreteMethod(callsite.target, callsite.parent.target.getDeclaringClass());
+                if (callsite.getTarget() != null) {
+                    ResolvedJavaMethod concreteMethod = profiledType.getType().resolveConcreteMethod(callsite.getTarget(), callsite.getParent().getTarget().getDeclaringClass());
                     if (concreteMethod != null) {
                         profiledTypeMap.put(CONCRETE_METHOD_NAME_PROPERTY, methodNameFormatter.apply(concreteMethod));
                     }
