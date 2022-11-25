@@ -358,20 +358,6 @@ You can set breakpoints, inspect the state of your application, even attach the 
 
 Read more about this and find a demo application in the [Native Image Debugging guide](native-image-debugging.md).
 
-## Polyglot Programming and Debugging
-
-The GraalVM Tools for Java extension enables a polyglot environment in VS Code, providing necessary editing and debugging features for a number of popular languages such as Python, Ruby, R, JavaScript, and Node.JS.
-The extension allows for polyglot programming in a bidirectional way: you can embed JavaScript, Ruby, R, and Python in Java, or call Java from those languages.
-A host language and a guest language can directly interoperate with each other and pass data back and forth in the same memory space.
-
-![Supported Languages](images/supported_languages.png)
-
-The GraalVM Tools for Java extension comes with full **editing capabilities** for JavaScript, Node.js, and Python by default. For Ruby and R development in VS Code you will need to additionally install languages servers.
-Besides that, the extension comes with a built-in implementation of the [Language Server Protocol](https://microsoft.github.io/language-server-protocol) which adds more smart editing features such as code-completion, find usages, go to declaration, CodeLens, documentation on hover, and so on.
-The **debugging features** are provided for all supported languages by default.
-
-Proceed to the [dedicated guide](polyglot-runtime.md) to read about debugging JavaScript and Node.JS, Python, Ruby, R applications in VS Code, the Language Server Protocol implementation and editing features.
-
 ## Built-in Debug Adapter Protocol
 
 Thanks to the built-in implementation of the [Debug Adapter Protocol (DAP)](../../dap.md), a user can choose a debugging protocol in VS Code by selecting either `chromeDevTools` or `debugAdapter`.
