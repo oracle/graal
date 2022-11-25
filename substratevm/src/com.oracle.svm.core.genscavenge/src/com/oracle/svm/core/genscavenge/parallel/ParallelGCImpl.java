@@ -33,6 +33,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
+import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk;
 import com.oracle.svm.core.heap.ParallelGC;
@@ -59,16 +60,9 @@ import java.util.stream.IntStream;
 public class ParallelGCImpl extends ParallelGC {
 
     public static final int UNALIGNED_BIT = 0x01;
-    private static final int MAX_WORKERS_COUNT = 31;
 
-    /**
-     * Number of parallel GC workers. Default is 1 so that if GC happens before worker threads are started,
-     * it occurs on a single thread just like serial GC.
-     */
-    private int workerCount = 1;
-    private int allWorkersBusy;
     private List<Thread> workers;
-    private final AtomicInteger busyWorkers = new AtomicInteger(0);
+    private final AtomicInteger busyWorkers = new AtomicInteger();
 
     /**
      * Each GC worker allocates memory in its own thread local chunk, entering mutex only when new chunk needs to be allocated.
@@ -112,21 +106,22 @@ public class ParallelGCImpl extends ParallelGC {
 
     public void push(Pointer ptr) {
         buffer.push(ptr);
+        if (inParallelPhase) {
+            parPhase.signal();
+        }
     }
 
     @Override
     public void startWorkerThreadsImpl() {
         buffer = new ChunkBuffer();
-        workerCount = getWorkerCount();
-        // We reuse the gc thread as the last worker
+        int workerCount = getWorkerCount();
+        busyWorkers.set(workerCount);
         workers = IntStream.range(0, workerCount).mapToObj(this::startWorkerThread).toList();
-        allWorkersBusy = ~(-1 << (workerCount - 1));
     }
 
     private int getWorkerCount() {
         int setting = ParallelGCOptions.ParallelGCThreads.getValue();
         int workers = setting > 0 ? setting : getDefaultWorkerCount();
-        workers = Math.min(workers, MAX_WORKERS_COUNT);
         verboseGCLog().string("[Number of ParallelGC workers: ").unsigned(workers).string("]").newline();
         return workers;
     }
@@ -144,27 +139,24 @@ public class ParallelGCImpl extends ParallelGC {
 
                 while (true) {
                     try {
-                        do {
-                            debugLog().string("WW block ").unsigned(n).newline();
+                        Pointer ptr;
+                        while (!inParallelPhase || (ptr = buffer.pop()).isNull() && allocChunkTL.get().isNull()) {
+                            if (busyWorkers.decrementAndGet() == 0) {
+                                inParallelPhase = false;
+                                seqPhase.signal();
+                            }
+                            debugLog().string("WW idle ").unsigned(n).newline();
                             mutex.lock();
                             parPhase.block();
                             mutex.unlock();
-                        } while ((busyWorkers.get() & (1 << n)) == 0);
-
-                        debugLog().string("WW run ").unsigned(n).newline();
-                        drainBuffer();
-                        int witness = busyWorkers.get();
-                        int expected;
-                        do {
-                            expected = witness;
-                            witness = busyWorkers.compareAndExchange(expected, expected & ~(1 << n));
-                        } while (witness != expected);
-                        if (busyWorkers.get() == 0) {
-                            mutex.lock();
-                            seqPhase.signal();
-                            mutex.unlock();
+                            busyWorkers.incrementAndGet();
+                            debugLog().string("WW run ").unsigned(n).newline();
                         }
-                        debugLog().string("WW idle ").unsigned(n).newline();
+
+                        do {
+                            scanChunk(ptr);
+                        } while ((ptr = buffer.pop()).isNonNull());
+                        scanAllocChunk();
                     } catch (Throwable ex) {
                         VMError.shouldNotReachHere(ex);
                     }
@@ -176,53 +168,43 @@ public class ParallelGCImpl extends ParallelGC {
         return t;
     }
 
-    @Uninterruptible(reason = "Tear-down in progress.", calleeMustBe = false)
-    public void tearDown() {
-        buffer.release();
-        workers.forEach(PlatformThreads::exit);
-    }
-
     private void waitForIdleImpl() {
-        inParallelPhase = true;
+        assert allocChunkTL.get().isNonNull();
+        push(HeapChunk.asPointer(allocChunkTL.get()));
+        allocChunkTL.set(WordFactory.nullPointer());
 
         debugLog().string("PP start workers\n");
-        busyWorkers.set(allWorkersBusy);
+        inParallelPhase = true;
         parPhase.broadcast();     // let worker threads run
 
-        drainBuffer();
-
         mutex.lock();
-        while (busyWorkers.get() != 0) {
-            debugLog().string("PP wait busy=").unsigned(busyWorkers.get()).newline();
+        while (inParallelPhase) {
+            debugLog().string("PP wait\n");
             seqPhase.block();     // wait for them to become idle
         }
         mutex.unlock();
-
-        inParallelPhase = false;
     }
 
-    private void drainBuffer() {
-        while (true) {
-            Pointer ptr;
-            while ((ptr = buffer.pop()).notEqual(WordFactory.nullPointer())) {
-                debugLog().string("WW drain chunk=").zhex(ptr).newline();
-                if (ptr.and(UNALIGNED_BIT).notEqual(0)) {
-                    UnalignedHeapChunk.walkObjectsInline((UnalignedHeapChunk.UnalignedHeader) ptr.and(~UNALIGNED_BIT), getVisitor());
-                } else {
-                    AlignedHeapChunk.walkObjectsInline((AlignedHeapChunk.AlignedHeader) ptr, getVisitor());
-                }
-            }
-            AlignedHeapChunk.AlignedHeader allocChunk = allocChunkTL.get();
-            debugLog().string("WW drain allocChunk=").zhex(allocChunk).newline();
-            if (allocChunk.equal(WordFactory.nullPointer())) {
-                break;
+    private void scanChunk(Pointer ptr) {
+        if (ptr.isNonNull()) {
+            debugLog().string("WW scan chunk=").zhex(ptr).newline();
+            if (ptr.and(UNALIGNED_BIT).notEqual(0)) {
+                UnalignedHeapChunk.walkObjectsInline((UnalignedHeapChunk.UnalignedHeader) ptr.and(~UNALIGNED_BIT), getVisitor());
             } else {
-                scannedChunkTL.set(allocChunk);
-                AlignedHeapChunk.walkObjectsInline(allocChunk, getVisitor());
-                if (allocChunkTL.get().equal(allocChunk)) {
-                    // this allocation chunk is now black, retire it
-                    allocChunkTL.set(WordFactory.nullPointer());
-                }
+                AlignedHeapChunk.walkObjectsInline((AlignedHeapChunk.AlignedHeader) ptr, getVisitor());
+            }
+        }
+    }
+
+    private void scanAllocChunk() {
+        AlignedHeapChunk.AlignedHeader allocChunk = allocChunkTL.get();
+        if (allocChunk.isNonNull()) {
+            debugLog().string("WW scan alloc=").zhex(allocChunk).newline();
+            scannedChunkTL.set(allocChunk);
+            AlignedHeapChunk.walkObjectsInline(allocChunk, getVisitor());
+            if (allocChunkTL.get().equal(allocChunk)) {
+                // this allocation chunk is now black, retire it
+                allocChunkTL.set(WordFactory.nullPointer());
             }
         }
         scannedChunkTL.set(WordFactory.nullPointer());
@@ -230,6 +212,12 @@ public class ParallelGCImpl extends ParallelGC {
 
     private GreyToBlackObjectVisitor getVisitor() {
         return GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
+    }
+
+    @Uninterruptible(reason = "Tear-down in progress.", calleeMustBe = false)
+    public void tearDown() {
+        buffer.release();
+        workers.forEach(PlatformThreads::exit);
     }
 
     private static Log verboseGCLog() {
