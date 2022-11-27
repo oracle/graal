@@ -1,5 +1,5 @@
 {
-  local common = import '../../common.jsonnet',
+  local common = import '../../ci/ci_common/common.jsonnet',
 
   local regex_common = {
     setup+: [

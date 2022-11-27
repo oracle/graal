@@ -1,6 +1,6 @@
-local composable = (import '../../../common-utils.libsonnet').composable;
+local composable = (import '../../../ci/ci_common/common-utils.libsonnet').composable;
 local vm = import '../ci_includes/vm.jsonnet';
-local graal_common = import '../../../common.jsonnet';
+local graal_common = import '../../../ci/ci_common/common.jsonnet';
 local repo_config = import '../../../repo-configuration.libsonnet';
 local common_json = composable(import '../../../common.json');
 local devkits = common_json.devkits;

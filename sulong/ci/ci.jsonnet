@@ -2,7 +2,7 @@
 # `jsonnetfmt --indent 2 --max-blank-lines 2 --sort-imports --string-style d --comment-style h -i ci.jsonnet`
 local sc = (import "ci_common/sulong-common.jsonnet");
 {
-  local common = import "../../common.jsonnet",
+  local common = import "../../ci/ci_common/common.jsonnet",
 
   local linux_amd64 = common.linux_amd64,
 
