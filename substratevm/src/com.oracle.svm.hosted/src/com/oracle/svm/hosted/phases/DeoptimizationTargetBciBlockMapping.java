@@ -50,8 +50,8 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
      */
     private final Set<DeoptEntryInsertionPoint> insertedBlocks;
 
-    private DeoptimizationTargetBciBlockMapping(Bytecode code, DebugContext debug, int maxDuplicationBoost) {
-        super(code, debug, maxDuplicationBoost);
+    private DeoptimizationTargetBciBlockMapping(Bytecode code, DebugContext debug) {
+        super(code, debug);
         insertedBlocks = new HashSet<>();
     }
 
@@ -216,8 +216,8 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
      * Creates a BciBlockMapping with blocks explicitly representing where DeoptEntryNodes and
      * DeoptProxyAnchorNodes are to be inserted.
      */
-    public static BciBlockMapping create(BytecodeStream stream, Bytecode code, OptionValues options, DebugContext debug, boolean hasAsyncExceptions, int maxDuplicationBoost) {
-        BciBlockMapping map = new DeoptimizationTargetBciBlockMapping(code, debug, maxDuplicationBoost);
+    public static BciBlockMapping create(BytecodeStream stream, Bytecode code, OptionValues options, DebugContext debug, boolean hasAsyncExceptions) {
+        BciBlockMapping map = new DeoptimizationTargetBciBlockMapping(code, debug);
         buildMap(stream, code, options, debug, map, hasAsyncExceptions);
         return map;
     }

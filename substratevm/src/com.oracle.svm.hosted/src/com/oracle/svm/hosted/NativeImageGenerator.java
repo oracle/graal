@@ -77,6 +77,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.java.BciBlockMapping;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -346,6 +347,14 @@ public class NativeImageGenerator {
          */
         optionProvider.getHostedValues().put(GraalOptions.EagerSnippets, true);
         optionProvider.getRuntimeValues().put(GraalOptions.EagerSnippets, true);
+
+        if (!optionProvider.getHostedValues().containsKey(BciBlockMapping.Options.MaxDuplicationFactor)) {
+            /*
+             * Not being able to parse irreducible loops and jsr/ret structures means that image
+             * generation fails. We therefore allow a good bit of duplication.
+             */
+            optionProvider.getHostedValues().put(BciBlockMapping.Options.MaxDuplicationFactor, 10.0);
+        }
     }
 
     public static Platform loadPlatform(ClassLoader classLoader, String platformClassName) throws ClassNotFoundException {

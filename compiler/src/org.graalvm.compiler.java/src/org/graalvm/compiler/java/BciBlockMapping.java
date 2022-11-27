@@ -738,29 +738,13 @@ public class BciBlockMapping implements JavaMethodContext {
     private int duplicateBlocks;
 
     /**
-     * Amount by which {@link Options#MaxDuplicationFactor} is multiplied.
-     */
-    private final int maxDuplicationBoost;
-
-    /**
      * Creates a new BlockMap instance from {@code code}.
      */
     protected BciBlockMapping(Bytecode code, DebugContext debug) {
-        this(code, debug, 1);
-    }
-
-    /**
-     * Creates a new BlockMap instance from {@code code}.
-     *
-     * @param maxDuplicationBoost amount by which to multiply {@link Options#MaxDuplicationFactor}
-     */
-    protected BciBlockMapping(Bytecode code, DebugContext debug, int maxDuplicationBoost) {
         this.code = code;
         this.debug = debug;
         this.exceptionHandlers = code.getExceptionHandlers().length != 0 ? code.getExceptionHandlers() : null;
         this.blockMap = new BciBlock[code.getCodeSize()];
-        assert maxDuplicationBoost >= 1 : maxDuplicationBoost;
-        this.maxDuplicationBoost = maxDuplicationBoost;
     }
 
     public BciBlock[] getBlocks() {
@@ -1749,7 +1733,7 @@ public class BciBlockMapping implements JavaMethodContext {
                     OptionValues options = debug.getOptions();
                     double factor = MaxDuplicationFactor.getValue(options);
                     duplicateBlocks += newDuplicateBlocks;
-                    if (duplicateBlocks > postJsrBlockCount * factor * maxDuplicationBoost) {
+                    if (duplicateBlocks > postJsrBlockCount * factor) {
                         throw new PermanentBailoutException("Non-reducible loop requires too much duplication. " +
                                         "Setting " + MaxDuplicationFactor.getName() + " to a value higher than " + factor + " may resolve this.");
                     }
@@ -1792,11 +1776,7 @@ public class BciBlockMapping implements JavaMethodContext {
     }
 
     public static BciBlockMapping create(BytecodeStream stream, Bytecode code, OptionValues options, DebugContext debug, boolean hasAsyncExceptions) {
-        return create(stream, code, options, debug, hasAsyncExceptions, 1);
-    }
-
-    public static BciBlockMapping create(BytecodeStream stream, Bytecode code, OptionValues options, DebugContext debug, boolean hasAsyncExceptions, int maxDuplicationBoost) {
-        BciBlockMapping map = new BciBlockMapping(code, debug, maxDuplicationBoost);
+        BciBlockMapping map = new BciBlockMapping(code, debug);
         buildMap(stream, code, options, debug, map, hasAsyncExceptions);
         return map;
     }
