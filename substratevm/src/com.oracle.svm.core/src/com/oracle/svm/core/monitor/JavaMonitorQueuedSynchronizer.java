@@ -38,6 +38,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.JavaMonitorWaitEvent;
+import com.oracle.svm.core.thread.JavaThreads;
 
 import jdk.internal.misc.Unsafe;
 
@@ -119,9 +120,7 @@ abstract class JavaMonitorQueuedSynchronizer {
 
         // see AbstractQueuedLongSynchronizer.ConditionNode.isReleasable()
         public boolean isReleasable() {
-            // Checkstyle: allow Thread.isInterrupted"
-            return status <= 1 || Thread.currentThread().isInterrupted();
-            // Checkstyle: disallow Thread.isInterrupted"
+            return status <= 1 || JavaThreads.isInterrupted(Thread.currentThread());
         }
 
         // see AbstractQueuedLongSynchronizer.ConditionNode.block()

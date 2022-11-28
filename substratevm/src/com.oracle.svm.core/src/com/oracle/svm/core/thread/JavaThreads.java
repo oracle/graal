@@ -106,7 +106,7 @@ public final class JavaThreads {
      * overridden with code that does locking or performs other actions that are unsafe especially
      * in VM-internal contexts.
      */
-    static boolean isInterrupted(Thread thread) {
+    public static boolean isInterrupted(Thread thread) {
         return getInterruptedFlag(thread);
     }
 
