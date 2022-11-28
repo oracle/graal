@@ -251,7 +251,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             int constant = (int) value;
 
             if (!setFlags) {
-                AMD64MOp mop = getMOp(op, constant);
+                AMD64MOp mop = getMOp(op, size, constant);
                 if (mop != null) {
                     getLIRGen().append(new AMD64Unary.MOp(mop, size, result, a));
                     return result;
@@ -265,23 +265,27 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         }
     }
 
-    public static AMD64MOp getMOp(AMD64BinaryArithmetic op, int constant) {
+    public static AMD64MOp getMOp(AMD64BinaryArithmetic op, OperandSize size, int constant) {
+        AMD64MOp result = null;
         if (constant == 1) {
             if (op.equals(AMD64BinaryArithmetic.ADD)) {
-                return AMD64MOp.INC;
+                result = AMD64MOp.INC;
             }
             if (op.equals(AMD64BinaryArithmetic.SUB)) {
-                return AMD64MOp.DEC;
+                result = AMD64MOp.DEC;
             }
         } else if (constant == -1) {
             if (op.equals(AMD64BinaryArithmetic.ADD)) {
-                return AMD64MOp.DEC;
+                result = AMD64MOp.DEC;
             }
             if (op.equals(AMD64BinaryArithmetic.SUB)) {
-                return AMD64MOp.INC;
+                result = AMD64MOp.INC;
             }
         }
-        return null;
+        if (result != null && size == OperandSize.BYTE) {
+            result = (result == AMD64MOp.INC ? AMD64MOp.INCB : AMD64MOp.DECB);
+        }
+        return result;
     }
 
     private Variable emitBinaryConst(LIRKind resultKind, AMD64RMOp op, OperandSize size, AllocatableValue a, JavaConstant b) {
