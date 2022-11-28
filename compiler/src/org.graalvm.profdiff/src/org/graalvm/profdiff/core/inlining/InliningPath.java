@@ -53,7 +53,7 @@ import org.graalvm.profdiff.core.optimization.Optimization;
  * </pre>
  * @formatter:on
  *
- * As an example, the right-most path in the inlining tree is <pre>a() at bci -1, b() at bci 0</pre>.
+ * As an example, the right-most path in the inlining tree is {@code a() at bci -1, c() at bci 1, e() at bci 1}.
  */
 public final class InliningPath {
     /**

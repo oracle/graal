@@ -29,17 +29,21 @@ import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.util.Writer;
 
 /**
- * A node of an optimization-context tree. A non-root node is backend either by an
+ * A node of an optimization-context tree. A node might be an info node or backed either by an
  * {@link InliningTreeNode} or an {@link Optimization}.
  *
- * It is ordered by {@link #compareTo(OptimizationContextTreeNode)} in a way such that nodes backend
- * by an optimization come before nodes backend by an inlining-tree node. This is appropriate for
- * writing in pre-order, because nodes backend by an optimization do not have children.
+ * An info node uses its {@link TreeNode#getName() name} to convey some information, e.g. a warning.
+ * The root is always an info node.
+ *
+ * It is ordered by {@link #compareTo(OptimizationContextTreeNode)} in a way such that info nodes
+ * come before nodes backed by an optimization, and nodes backend by an optimization come before
+ * nodes backed by an inlining-tree node. This is appropriate for writing in pre-order, because info
+ * nodes and nodes backed by an optimization do not have children.
  */
 public class OptimizationContextTreeNode extends TreeNode<OptimizationContextTreeNode> implements Comparable<OptimizationContextTreeNode> {
     /**
-     * {@code null} for the root, or the original {@link InliningTreeNode}, or an
-     * {@link Optimization} which backs this node.
+     * {@code null} for an info node (including root), or the original {@link InliningTreeNode}, or
+     * an {@link Optimization} which backs this node.
      */
     private final TreeNode<?> originalNode;
 
@@ -48,6 +52,17 @@ public class OptimizationContextTreeNode extends TreeNode<OptimizationContextTre
      */
     public OptimizationContextTreeNode() {
         super("Optimization-context tree");
+        originalNode = null;
+    }
+
+    /**
+     * Creates an info node, which conveys some information in the tree. The
+     * {@link TreeNode#getName() name} of the node is set to the given info message.
+     *
+     * @param infoMessage the info message used in place of the info node's name
+     */
+    public OptimizationContextTreeNode(String infoMessage) {
+        super(infoMessage);
         originalNode = null;
     }
 
@@ -92,10 +107,12 @@ public class OptimizationContextTreeNode extends TreeNode<OptimizationContextTre
     }
 
     /**
-     * Returns {@code true} iff the node is a root, i.e., it is not backend by another original
-     * node.
+     * Returns {@code true} iff the node is an info node, i.e., it is not backed by an original
+     * node, but it only stores some information in its {@link TreeNode#getName()}.
+     *
+     * @return {@code true} iff the node is an info node
      */
-    public boolean isRoot() {
+    public boolean isInfoNode() {
         return originalNode == null;
     }
 

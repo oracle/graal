@@ -187,13 +187,14 @@ public class CompilationUnit {
 
     /**
      * Writes the header of the compilation unit (compilation ID, execution summary, experiment ID)
-     * and the optimization and inlining tree to the destination writer. The execution summary is
-     * omitted when proftool data is not {@link Experiment#isProfileAvailable() available} to the
-     * experiment.
+     * and either the optimization-context tree or the optimization and inlining tree to the
+     * destination writer. The execution summary is omitted when proftool data is not
+     * {@link Experiment#isProfileAvailable() available} to the experiment.
      *
      * @param writer the destination writer
+     * @param optimizationContextTreeEnabled writes the optimization-context tree iff {@code true}
      */
-    public void write(Writer writer) throws ExperimentParserError {
+    public void write(Writer writer, boolean optimizationContextTreeEnabled) throws ExperimentParserError {
         writer.write("Compilation " + compilationId);
         if (method.getExperiment().isProfileAvailable()) {
             writer.write(" (" + createExecutionSummary() + ")");
@@ -202,9 +203,13 @@ public class CompilationUnit {
         writer.increaseIndent();
         TreePair treePair = loader.load();
         treePair.getInliningTree().preprocess(writer.getVerbosityLevel());
-        treePair.getInliningTree().write(writer);
         treePair.getOptimizationTree().preprocess(writer.getVerbosityLevel());
-        treePair.getOptimizationTree().write(writer);
+        if (optimizationContextTreeEnabled) {
+            OptimizationContextTree.createFrom(treePair.getInliningTree(), treePair.getOptimizationTree()).getRoot().writeRecursive(writer);
+        } else {
+            treePair.getInliningTree().write(writer);
+            treePair.getOptimizationTree().write(writer);
+        }
         writer.decreaseIndent();
     }
 }

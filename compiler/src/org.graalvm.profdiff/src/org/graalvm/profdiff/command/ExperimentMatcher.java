@@ -24,10 +24,7 @@
  */
 package org.graalvm.profdiff.command;
 
-import java.util.Optional;
-
 import org.graalvm.profdiff.core.CompilationUnit;
-import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.OptimizationContextTree;
 import org.graalvm.profdiff.core.OptimizationContextTreeNode;
 import org.graalvm.profdiff.core.VerbosityLevel;
@@ -55,12 +52,6 @@ import org.graalvm.profdiff.util.Writer;
  * according to the given verbosity level to a {@link Writer}.
  */
 public class ExperimentMatcher {
-    /**
-     * A format string of the warning printed when the optimization-context tree cannot be created
-     * in an experiment for a specific reason.
-     */
-    public static final String OPTIMIZATION_CONTEXT_TREE_UNSUITABLE_FORMAT = "Warning: Optimization-context tree cannot be created for experiment %s: %s";
-
     /**
      * Matches optimization trees of two compilation units.
      */
@@ -109,10 +100,10 @@ public class ExperimentMatcher {
             writer.increaseIndent();
             if (verbosityLevel.shouldPrintOptimizationTree()) {
                 for (CompilationUnit compilationUnit : methodPair.getMethod1().getCompilationUnits()) {
-                    compilationUnit.write(writer);
+                    compilationUnit.write(writer, optimizationContextTreeEnabled);
                 }
                 for (CompilationUnit compilationUnit : methodPair.getMethod2().getCompilationUnits()) {
-                    compilationUnit.write(writer);
+                    compilationUnit.write(writer, optimizationContextTreeEnabled);
                 }
             }
             for (CompilationUnitPair compilationUnitPair : methodPair.getHotCompilationUnitPairsByDescendingPeriod()) {
@@ -128,7 +119,7 @@ public class ExperimentMatcher {
                         matchOptimizationTrees(treePair1.getOptimizationTree(), treePair2.getOptimizationTree());
                     }
                 } else if (!verbosityLevel.shouldShowOnlyDiff()) {
-                    compilationUnitPair.firstNonNull().write(writer);
+                    compilationUnitPair.firstNonNull().write(writer, optimizationContextTreeEnabled);
                 }
                 writer.decreaseIndent();
             }
@@ -182,17 +173,14 @@ public class ExperimentMatcher {
 
     /**
      * Creates an optimization-context tree for 2 tree pairs, matches them, and prints out the
-     * results. A warning is printed if the pairs are unsuitable for an optimization-context.
+     * results.
      *
      * @param treePair1 the tree pair from the first experiment
      * @param treePair2 the tree pair from the second experiment
      */
     private void createOptimizationContextTreeAndMatch(CompilationUnit.TreePair treePair1, CompilationUnit.TreePair treePair2) {
-        Optional<String> negativeReason1 = OptimizationContextTree.checkUnsuitability(treePair1.getInliningTree());
-        Optional<String> negativeReason2 = OptimizationContextTree.checkUnsuitability(treePair2.getInliningTree());
-        negativeReason1.ifPresent(reason -> writer.writeln(String.format(OPTIMIZATION_CONTEXT_TREE_UNSUITABLE_FORMAT, ExperimentId.ONE, reason)));
-        negativeReason2.ifPresent(reason -> writer.writeln(String.format(OPTIMIZATION_CONTEXT_TREE_UNSUITABLE_FORMAT, ExperimentId.TWO, reason)));
-        if (negativeReason1.isPresent() || negativeReason2.isPresent()) {
+        if (treePair1.getInliningTree().getRoot() == null || treePair2.getInliningTree().getRoot() == null) {
+            writer.writeln("Inlining trees are not available");
             return;
         }
         treePair1.getInliningTree().preprocess(writer.getVerbosityLevel());

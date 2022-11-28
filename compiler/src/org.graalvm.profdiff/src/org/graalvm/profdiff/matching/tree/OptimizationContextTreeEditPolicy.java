@@ -26,6 +26,8 @@ package org.graalvm.profdiff.matching.tree;
 
 import org.graalvm.profdiff.core.OptimizationContextTreeNode;
 
+import java.util.Objects;
+
 /**
  * Provides an equality test of two {@link OptimizationContextTreeNode} and determines the costs of
  * edit operations. Delegates to {@link InliningTreeEditPolicy} and
@@ -44,7 +46,7 @@ public class OptimizationContextTreeEditPolicy extends TreeEditPolicy<Optimizati
         } else if (node1.getOriginalInliningTreeNode() != null && node2.getOriginalInliningTreeNode() != null) {
             return inliningTreeEditPolicy.nodesEqual(node1.getOriginalInliningTreeNode(), node2.getOriginalInliningTreeNode());
         }
-        return node1.isRoot() && node2.isRoot();
+        return node1.isInfoNode() && node2.isInfoNode() && Objects.equals(node1.getName(), node2.getName());
     }
 
     @Override

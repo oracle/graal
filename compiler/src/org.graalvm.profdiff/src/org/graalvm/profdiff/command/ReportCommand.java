@@ -95,7 +95,7 @@ public class ReportCommand extends Command {
                     compilationUnits = method.getHotCompilationUnits();
                 }
                 for (CompilationUnit compilationUnit : compilationUnits) {
-                    compilationUnit.write(writer);
+                    compilationUnit.write(writer, getCommandParameters().isOptimizationContextTreeEnabled());
                 }
             }
             writer.decreaseIndent(2);

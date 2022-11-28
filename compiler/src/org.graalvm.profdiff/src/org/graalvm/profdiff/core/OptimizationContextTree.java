@@ -24,9 +24,9 @@
  */
 package org.graalvm.profdiff.core;
 
-import java.util.List;
-import java.util.Optional;
-
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.profdiff.core.inlining.InliningPath;
 import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
@@ -101,33 +101,32 @@ public final class OptimizationContextTree {
      * necessary, because a path element may match 2 different edges, and one of the edges may lead
      * to a dead-end.
      *
-     * @param node the last node on the path (initially {@code null})
+     * @param currentRoot the current root node to search from (initially the root of tree)
+     * @param lastNode the last non-abstract node seen on the path
      * @param path the path from root
      * @param pathIndex the index to the next path element in the path (initially 0)
      * @return the last node found on the path or {@code null}
      */
-    private OptimizationContextTreeNode findLastNodeAt(OptimizationContextTreeNode node, InliningPath path, int pathIndex) {
+    private static OptimizationContextTreeNode findLastNodeAt(OptimizationContextTreeNode currentRoot, OptimizationContextTreeNode lastNode, InliningPath path, int pathIndex) {
         if (pathIndex >= path.size()) {
-            return node;
+            return lastNode;
         }
-        InliningPath.PathElement element = path.get(pathIndex);
-        List<OptimizationContextTreeNode> children = node == null ? List.of(root) : node.getChildren();
-        for (OptimizationContextTreeNode child : children) {
+        for (OptimizationContextTreeNode child : currentRoot.getChildren()) {
             if (child.getOriginalInliningTreeNode() == null) {
                 continue;
             }
             InliningTreeNode inliningTreeNode = child.getOriginalInliningTreeNode();
             OptimizationContextTreeNode result = null;
             if (inliningTreeNode.isAbstract()) {
-                result = findLastNodeAt(child, path, pathIndex);
-            } else if (element.matches(inliningTreeNode.pathElement())) {
-                result = findLastNodeAt(child, path, pathIndex + 1);
+                result = findLastNodeAt(child, lastNode, path, pathIndex);
+            } else if (path.get(pathIndex).matches(inliningTreeNode.pathElement())) {
+                result = findLastNodeAt(child, child, path, pathIndex + 1);
             }
             if (result != null) {
                 return result;
             }
         }
-        return node;
+        return lastNode;
     }
 
     /**
@@ -173,44 +172,87 @@ public final class OptimizationContextTree {
             }
             Optimization optimization = (Optimization) node;
             InliningPath optimizationPath = InliningPath.ofEnclosingMethod(optimization);
-            OptimizationContextTreeNode lastNode = findLastNodeAt(null, optimizationPath, 0);
-            if (lastNode != null) {
-                lastNode.addChild(new OptimizationContextTreeNode(optimization));
-            }
+            OptimizationContextTreeNode lastNode = findLastNodeAt(root, root, optimizationPath, 0);
+            lastNode.addChild(new OptimizationContextTreeNode(optimization));
         });
     }
 
     /**
+     * Inserts info nodes to the inlining tree nodes whose path from root is duplicate. Duplicate paths
+     * make it impossible to correctly attribute optimizations.
+     *
+     * As an example, consider the following inlining tree:
+     *
+     * @formatter:off
+     * <pre>
+     * Inlining tree
+     *     a()
+     *         b() at bci 1
+     *             d() at bci 3
+     *         b() at bci 1
+     *             d() at bci 3
+     *         c() at bci 2
+     * </pre>
+     * @formatter:on
+     *
+     * Suppose that we have an optimization with a position like {@code {a(): 1, b(): x}} or
+     * {@code {a(): 1, b(): 3, d(): x}}. It is ambiguous to which branch of the tree it belongs. This
+     * method inserts a warning to each node which might have ambiguous optimizations.
+     *
+     * @formatter:off
+     * <pre>
+     * Optimization-context tree
+     *     a()
+     *         b() at bci 1
+     *             Warning
+     *             d() at bci 3
+     *                 Warning
+     *         b() at bci 1
+     *             Warning
+     *             d() at bci 3
+     *                 Warning
+     *         c() at bci 2
+     * </pre>
+     * @formatter:on
+     */
+    private void insertWarningNodesForDuplicatePaths() {
+        EconomicMap<OptimizationContextTreeNode, InliningPath> paths = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+        root.forEach(node -> {
+            InliningTreeNode inliningTreeNode = node.getOriginalInliningTreeNode();
+            if (inliningTreeNode == null || inliningTreeNode.isAbstract()) {
+                return;
+            }
+            paths.put(node, InliningPath.fromRootToNode(inliningTreeNode));
+        });
+        MapCursor<OptimizationContextTreeNode, InliningPath> cursor1 = paths.getEntries();
+        outer: while (cursor1.advance()) {
+            MapCursor<OptimizationContextTreeNode, InliningPath> cursor2 = paths.getEntries();
+            while (cursor2.advance()) {
+                if (cursor1.getKey() == cursor2.getKey()) {
+                    continue;
+                }
+                if (cursor1.getValue().equals(cursor2.getValue())) {
+                    cursor1.getKey().addChild(new OptimizationContextTreeNode("Warning: Optimizations cannot be unambiguously attributed (duplicate path)"));
+                    continue outer;
+                }
+            }
+        }
+    }
+
+    /**
      * Creates an optimization-context tree from an inlining and optimization tree. It is assumed
-     * that the inlining tree is {@link #checkUnsuitability(InliningTree) suitable}
+     * that the inlining tree is non-empty.
      *
      * @param inliningTree the inlining tree
      * @param optimizationTree the optimization tree
      * @return the created optimization-context tree
      */
     public static OptimizationContextTree createFrom(InliningTree inliningTree, OptimizationTree optimizationTree) {
+        assert inliningTree.getRoot() != null;
         OptimizationContextTree optimizationContextTree = fromInliningTree(inliningTree);
+        optimizationContextTree.insertWarningNodesForDuplicatePaths();
         optimizationContextTree.insertAllOptimizationNodes(optimizationTree);
         optimizationContextTree.root.forEach(node -> node.getChildren().sort(OptimizationContextTreeNode::compareTo));
         return optimizationContextTree;
-    }
-
-    /**
-     * Checks whether it is possible to turn the given inlining tree into an optimization-context
-     * tree. In particular, the inlining tree must not be empty and
-     * {@link InliningTree#allInliningPathsAreDistinct() all inlining paths must be distinct}. If
-     * the tree is unsuitable, the method returns the reason.
-     *
-     * @param inliningTree the inlining tree to be tested
-     * @return the reason for unsuitability or {@link Optional#empty()} if suitable
-     */
-    public static Optional<String> checkUnsuitability(InliningTree inliningTree) {
-        if (inliningTree.getRoot() == null) {
-            return Optional.of("Inlining tree is missing");
-        }
-        if (!inliningTree.allInliningPathsAreDistinct()) {
-            return Optional.of("Optimization cannot be attributed because there is a duplicate path in the inlining tree");
-        }
-        return Optional.empty();
     }
 }

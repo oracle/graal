@@ -50,7 +50,7 @@ public abstract class TreeNode<T extends TreeNode<T>> {
     /**
      * The parent node of this node in the tree.
      */
-    public T parent;
+    private T parent;
 
     /**
      * The children of this node in the tree.
@@ -102,12 +102,12 @@ public abstract class TreeNode<T extends TreeNode<T>> {
      *
      * @param child the child node to be added
      */
-    public void addChild(T child) {
+    public void addChild(TreeNode<T> child) {
         if (child.parent != null) {
             child.removeFromParent();
         }
         child.parent = asT();
-        children.add(child);
+        children.add(child.asT());
     }
 
     /**

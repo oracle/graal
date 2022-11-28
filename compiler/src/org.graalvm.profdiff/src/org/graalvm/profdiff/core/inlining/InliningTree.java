@@ -24,13 +24,11 @@
  */
 package org.graalvm.profdiff.core.inlining;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.profdiff.core.VerbosityLevel;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.util.Writer;
-import org.graalvm.util.CollectionsUtil;
 
 /**
  * The inlining tree of a compilation unit. Each {@link InliningTreeNode node} in the tree
@@ -52,6 +50,7 @@ import org.graalvm.util.CollectionsUtil;
  *
  * <pre>
  *          a()
+ *       at bci -1
  *      ___/  \_____
  *     /            \
  *    b()           c()
@@ -134,35 +133,6 @@ public class InliningTree {
             }, node -> writer.decreaseIndent());
             writer.decreaseIndent();
         }
-    }
-
-    /**
-     * Returns {@code true} iff all paths in the inlining tree are distinct. Formally, the method
-     * returns {@code true} iff there do not exist two different nodes A and B, where
-     * {@link InliningPath#fromRootToNode(InliningTreeNode) the path from root} to A
-     * {@link InliningPath#matches(InliningPath) matches} the path from root to B.
-     *
-     * In other words, we are asking whether we can unambiguously navigate to each node in the tree
-     * using {@link InliningPath inlining paths}. This is necessary to properly construct an
-     * {@link org.graalvm.profdiff.core.OptimizationContextTree optimization-context tree}.
-     *
-     * @return {@code true} iff all paths in the inlining tree are distinct
-     */
-    public boolean allInliningPathsAreDistinct() {
-        if (root == null) {
-            return true;
-        }
-        List<InliningTreeNode> nodes = new ArrayList<>();
-        root.forEach(nodes::add);
-        List<InliningPath> paths = new ArrayList<>();
-        for (InliningTreeNode node : nodes) {
-            InliningPath path = InliningPath.fromRootToNode(node);
-            if (CollectionsUtil.anyMatch(paths, otherPath -> otherPath.matches(path))) {
-                return false;
-            }
-            paths.add(path);
-        }
-        return true;
     }
 
     /**
