@@ -34,7 +34,6 @@ import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.JavaMonitorEnterEvent;
 import com.oracle.svm.core.thread.JavaThreads;
-import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
@@ -214,19 +213,10 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static long getCurrentThreadIdentity() {
-        if (VirtualThreads.isSupported()) {
-            return JavaThreads.getThreadId(Thread.currentThread());
-        } else {
-            return CurrentIsolate.getCurrentThread().rawValue();
-        }
+        return JavaThreads.getCurrentThreadId();
     }
 
-    protected static long getThreadIdentity(IsolateThread isolateThread, Thread thread) {
-        if (VirtualThreads.isSupported()) {
-            return JavaThreads.getThreadId(thread);
-        } else {
-            VMError.guarantee(isolateThread.isNonNull());
-            return isolateThread.rawValue();
-        }
+    protected static long getThreadIdentity(Thread thread) {
+        return JavaThreads.getThreadId(thread);
     }
 }
