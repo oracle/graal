@@ -711,7 +711,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         threadHeldMonitorCountIsWord = isWord;
     }
 
-    // This should by true when loom is enabled on 19 but that still needs to be exposed by JVMCI
+    // This should be true when loom is enabled on 19 but that still needs to be exposed by JVMCI
     public final boolean updateHeldMonitorCount = JDK >= 20;
 
     public final long throwAndPostJvmtiExceptionAddress = getAddress("JVMCIRuntime::throw_and_post_jvmti_exception");
