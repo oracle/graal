@@ -89,16 +89,49 @@ public class InliningLog {
         }
     }
 
+    /**
+     * A call-tree node with inlining decisions. The root callsite represents the root compiled
+     * method. Non-root nodes represent invokes in inlined methods' bodies.
+     */
     public static final class Callsite {
         /**
          * A special bci for the root method's callsite.
          */
         private static final int ROOT_CALLSITE_BCI = -1;
 
+        /**
+         * The list of inlining decisions made about this callsite.
+         */
         private final List<Decision> decisions;
+
+        /**
+         * The list of callsites in the inlined body of the target method.
+         */
         private final List<Callsite> children;
+
+        /**
+         * The callsite whose inlined body contains this callsite. The value is {@code null} for the
+         * root callsite.
+         */
         private final Callsite parent;
+
+        /**
+         * The invoke associated with the callsite. The value is {@code null} for the root callsite.
+         *
+         * For non-root nodes, {@link Invokable#getTargetMethod()} is used to obtain the
+         * {@link #target target method}. However, the target method might change in the lifetime of
+         * the node. Thus, the target method must be (1) initialized at the time the callsite is
+         * created and (2) updated at the time {@link #addDecision a decision is made}.
+         *
+         * The invoke is also lost (the value is {@code null}) when it is removed and
+         * {@link #copyTree copied}.
+         */
         private final Invokable invoke;
+
+        /**
+         * The target method of the callsite. This field should reflect the correct target method at
+         * the end of compilation.
+         */
         private ResolvedJavaMethod target;
 
         /**
@@ -147,26 +180,55 @@ public class InliningLog {
             return "at " + position;
         }
 
+        /**
+         * Gets the list of inlining decisions made about this callsite.
+         */
         public List<Decision> getDecisions() {
             return decisions;
         }
 
+        /**
+         * Gets the list of callsites in the inlined body of the target method.
+         */
         public List<Callsite> getChildren() {
             return children;
         }
 
+        /**
+         * Gets the callsite whose inlined body contains this callsite. Returns {@code null} for the
+         * root callsite.
+         *
+         * @return the parent callsite
+         */
         public Callsite getParent() {
             return parent;
         }
 
+        /**
+         * Gets the invoke associated with the callsite. Returns {@code null} for the root callsite.
+         * Might return {@code null} if the invoke was removed.
+         *
+         * @return the invoke associated with the callsite
+         */
         public Invokable getInvoke() {
             return invoke;
         }
 
+        /**
+         * Gets the target method of the callsite. The target is correct at the end of the
+         * compilation.
+         *
+         * @return the target method of the callsite
+         */
         public ResolvedJavaMethod getTarget() {
             return target;
         }
 
+        /**
+         * Gets the bci of the invoke. Returns {@link #ROOT_CALLSITE_BCI} for the root callsite.
+         *
+         * @return the bci of the invoke
+         */
         public int getBci() {
             return bci;
         }
