@@ -181,4 +181,12 @@ public class JsTests extends RegexTestBase {
         test("(?!(\\1)?[\\s\\w\\D])+?", "", "", 0, true, 0, 0, -1, -1);
         test("(?!(?=((?:[n-\u0e32]*?o+?[^])))*?\\w)", "yim", "_", 0, false);
     }
+
+    @Test
+    public void gr42266() {
+        // reduced
+        test("(?![^\\d\\D]$)[^]", "", "x", 0, true, 0, 1);
+        // original
+        test("((?:(?!([^\\d\\D\\W\\cU])\\b)(([^]\u11C2)))*?)", "gi", "x", 0, true, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1);
+    }
 }
