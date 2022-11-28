@@ -118,6 +118,7 @@ public class CounterModeAESNode extends MemoryKillStubIntrinsicNode {
         return AESNode.minFeaturesAARCH64();
     }
 
+    @SuppressWarnings("unlikely-arg-type")
     public static boolean isSupported(Architecture arch) {
         if (arch instanceof AMD64) {
             return ((AMD64) arch).getFeatures().containsAll(minFeaturesAMD64());

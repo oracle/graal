@@ -109,6 +109,6 @@ public class TStringOpsIndexOfTwoConsecutiveTest extends TStringOpsTest<ArrayInd
 
     @Test
     public void testIndexOfTwoConsecutive() {
-        test(getIndexOf2ConsecutiveWithStrideIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, v0, v1);
+        testWithNative(getIndexOf2ConsecutiveWithStrideIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, v0, v1);
     }
 }

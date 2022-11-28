@@ -449,9 +449,7 @@ public final class UnimplementedGraalIntrinsics {
 
         if (arch instanceof AArch64) {
             add(toBeInvestigated,
-                            "java/lang/StringCoding.hasNegatives([BII)Z",
-                            "java/lang/Thread.onSpinWait()V",
-                            "jdk/internal/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I");
+                            "java/lang/Thread.onSpinWait()V");
         }
 
         // These are known to be implemented down stream

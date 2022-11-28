@@ -22,54 +22,56 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.amd64;
+package org.graalvm.compiler.replacements.nodes;
 
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.lir.amd64.AMD64CalcStringAttributesOp;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.replacements.nodes.MacroNode;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 
 // JaCoCo Exclude
 
 /**
  * This intrinsic calculates properties of string contents in various encodings, see
- * {@link AMD64CalcStringAttributesOp} for details.
- *
- * @see AMD64CalcStringAttributesOp
+ * {@code AMD64CalcStringAttributesOp} for details.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
-public final class AMD64CalcStringAttributesMacroNode extends MacroNode {
+public final class CalcStringAttributesMacroNode extends MacroNode {
 
-    public static final NodeClass<AMD64CalcStringAttributesMacroNode> TYPE = NodeClass.create(AMD64CalcStringAttributesMacroNode.class);
+    public static final NodeClass<CalcStringAttributesMacroNode> TYPE = NodeClass.create(CalcStringAttributesMacroNode.class);
 
-    private final AMD64CalcStringAttributesOp.Op op;
+    private final LIRGeneratorTool.CalcStringAttributesEncoding encoding;
     private final boolean assumeValid;
     private final LocationIdentity locationIdentity;
 
-    public AMD64CalcStringAttributesMacroNode(MacroParams p, AMD64CalcStringAttributesOp.Op op, boolean assumeValid, LocationIdentity locationIdentity) {
-        this(TYPE, p, op, assumeValid, locationIdentity);
+    public CalcStringAttributesMacroNode(MacroParams p, LIRGeneratorTool.CalcStringAttributesEncoding encoding, boolean assumeValid, LocationIdentity locationIdentity) {
+        this(TYPE, p, encoding, assumeValid, locationIdentity);
     }
 
-    public AMD64CalcStringAttributesMacroNode(NodeClass<? extends MacroNode> c, MacroParams p, AMD64CalcStringAttributesOp.Op op, boolean assumeValid, LocationIdentity locationIdentity) {
+    public CalcStringAttributesMacroNode(NodeClass<? extends MacroNode> c, MacroParams p, LIRGeneratorTool.CalcStringAttributesEncoding encoding, boolean assumeValid,
+                    LocationIdentity locationIdentity) {
         super(c, p);
-        this.op = op;
+        this.encoding = encoding;
         this.assumeValid = assumeValid;
         this.locationIdentity = locationIdentity;
     }
 
     @Override
     public void lower(LoweringTool tool) {
-        if (!((AMD64) tool.getLowerer().getTarget().arch).getFeatures().containsAll(AMD64CalcStringAttributesNode.minFeaturesAMD64())) {
-            super.lower(tool);
-        } else {
-            AMD64CalcStringAttributesNode replacement = graph().addOrUnique(new AMD64CalcStringAttributesNode(getArgument(1), getArgument(2), getArgument(3), op, assumeValid, locationIdentity));
+        Architecture arch = tool.getLowerer().getTarget().arch;
+        if (arch instanceof AMD64 && ((AMD64) arch).getFeatures().containsAll(CalcStringAttributesNode.minFeaturesAMD64()) ||
+                        arch instanceof AArch64 && ((AArch64) arch).getFeatures().containsAll(CalcStringAttributesNode.minFeaturesAARCH64())) {
+            CalcStringAttributesNode replacement = graph().addOrUnique(new CalcStringAttributesNode(getArgument(1), getArgument(2), getArgument(3), encoding, assumeValid, locationIdentity));
             graph().replaceFixedWithFixed(this, replacement);
+        } else {
+            super.lower(tool);
         }
     }
 }

@@ -1556,21 +1556,13 @@ suite = {
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
       ],
-      "javaCompliance" : "11+",
-      "workingSets" : "Graal,Truffle",
-    },
-
-    "org.graalvm.compiler.truffle.compiler.amd64" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.replacements.amd64",
-        "truffle:TRUFFLE_API",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "annotationProcessors" : [
-        "GRAAL_PROCESSOR",
-      ],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.aarch64",
+          "jdk.vm.ci.amd64",
+          "jdk.vm.ci.code",
+        ],
+      },
       "javaCompliance" : "11+",
       "workingSets" : "Graal,Truffle",
     },
@@ -1646,7 +1638,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.hotspot",
         "org.graalvm.compiler.truffle.compiler",
-        "org.graalvm.compiler.truffle.compiler.amd64",
         "org.graalvm.compiler.truffle.runtime",
         "org.graalvm.compiler.core.test",
         "org.graalvm.compiler.replacements.test",
@@ -1657,6 +1648,13 @@ suite = {
         "jdk.unsupported", # sun.misc.Unsafe
         "java.logging"
       ],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.aarch64",
+          "jdk.vm.ci.amd64",
+          "jdk.vm.ci.code",
+        ],
+      },
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
         "truffle:TRUFFLE_DSL_PROCESSOR"
@@ -1840,7 +1838,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.truffle.compiler.amd64",
         "org.graalvm.compiler.truffle.compiler.hotspot",
         "org.graalvm.compiler.hotspot.amd64",
       ],
@@ -2110,7 +2107,6 @@ suite = {
         "org.graalvm.compiler.hotspot.amd64",
         "org.graalvm.compiler.hotspot",
         "org.graalvm.compiler.lir.aarch64",
-        "org.graalvm.compiler.truffle.compiler.amd64",
         "org.graalvm.compiler.truffle.runtime.serviceprovider",
         "org.graalvm.compiler.truffle.runtime.hotspot",
         "org.graalvm.compiler.truffle.runtime.hotspot.java",
