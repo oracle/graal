@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,41 +42,12 @@ package com.oracle.truffle.api.instrumentation;
 
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
+import java.util.Set;
 
 /**
- * Represents a source section load event from a {@link LoadSourceSectionListener}.
- *
- * Instances of {@link LoadSourceSectionEvent} should be neither stored, cached nor hashed. The
- * equality and hashing behavior is undefined.
- *
- * @see LoadSourceSectionListener
- * @since 0.15
+ * An event that provides post-visit source sections.
  */
-public final class LoadSourceSectionEvent {
+interface EventPostVisitSections {
 
-    private final SourceSection sourceSection;
-    private final Node node;
-
-    LoadSourceSectionEvent(SourceSection sourceSection, Node node) {
-        this.sourceSection = sourceSection;
-        this.node = node;
-    }
-
-    /**
-     * Returns the loaded source section that caused this event.
-     *
-     * @since 0.15
-     */
-    public SourceSection getSourceSection() {
-        return sourceSection;
-    }
-
-    /**
-     * Returns the instrumentable Truffle node that caused this event.
-     *
-     * @since 0.15
-     */
-    public Node getNode() {
-        return node;
-    }
+    void onPostVisit(Node node, SourceSection section, Set<SourceSection> resetSections);
 }
