@@ -35,7 +35,9 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
      * Returns the list blocks contained in this control flow graph.
      *
      * It is {@linkplain CFGVerifier guaranteed} that the blocks are numbered and ordered according
-     * to a reverse post order traversal of the control flow graph.
+     * to a reverse post order traversal of the control flow graph. The
+     * {@linkplain AbstractBlockBase#getId() id} of each block in the graph is an index into the
+     * returned array.
      *
      * @see CFGVerifier
      */

@@ -75,11 +75,9 @@ public abstract class Block extends AbstractBlockBase<Block> {
     private LocationSet killLocations;
     private LocationSet killLocationsBetweenThisAndDominator;
 
-    protected final ControlFlowGraph cfg;
-
-    public Block(AbstractBeginNode node, ControlFlowGraph cfg) {
+    Block(AbstractBeginNode node, ControlFlowGraph cfg) {
+        super(cfg);
         this.beginNode = node;
-        this.cfg = cfg;
     }
 
     public AbstractBeginNode getBeginNode() {
@@ -140,12 +138,14 @@ public abstract class Block extends AbstractBlockBase<Block> {
 
     @Override
     public Block getPostdominator() {
-        return postdominator >= 0 ? getRpo()[postdominator] : null;
+        return postdominator >= 0 ? getBlocks()[postdominator] : null;
     }
 
-    @Override
-    public Block[] getRpo() {
-        return cfg.reversePostOrder();
+    /**
+     * Determines if this block can have its edges edited.
+     */
+    public boolean isEditable() {
+        return this instanceof EditableBlock;
     }
 
     private class NodeIterator implements Iterator<FixedNode> {
@@ -463,23 +463,23 @@ public abstract class Block extends AbstractBlockBase<Block> {
         return false;
     }
 
-    public static void computeLoopPredecessors(NodeMap<Block> nodeMap, ModifiableBasicBlock block, LoopBeginNode loopBeginNode) {
+    public static void computeLoopPredecessors(NodeMap<Block> nodeMap, EditableBlock block, LoopBeginNode loopBeginNode) {
         int forwardEndCount = loopBeginNode.forwardEndCount();
         LoopEndNode[] loopEnds = loopBeginNode.orderedLoopEnds();
-        int firstPred = nodeMap.get(loopBeginNode.forwardEndAt(0)).getId();
-        int[] extraPred = new int[forwardEndCount + loopEnds.length - 1];
+        int firstPredecessor = nodeMap.get(loopBeginNode.forwardEndAt(0)).getId();
+        int[] extraPredecessors = new int[forwardEndCount + loopEnds.length - 1];
         for (int i = 1; i < forwardEndCount; ++i) {
-            extraPred[i - 1] = nodeMap.get(loopBeginNode.forwardEndAt(i)).getId();
+            extraPredecessors[i - 1] = nodeMap.get(loopBeginNode.forwardEndAt(i)).getId();
         }
         for (int i = 0; i < loopEnds.length; ++i) {
-            extraPred[i + forwardEndCount - 1] = nodeMap.get(loopEnds[i]).getId();
+            extraPredecessors[i + forwardEndCount - 1] = nodeMap.get(loopEnds[i]).getId();
         }
-        block.setPredecessors(firstPred, extraPred);
+        block.setPredecessors(firstPredecessor, extraPredecessors);
     }
 
     public static void assignPredecessorsAndSuccessors(Block[] blocks, ControlFlowGraph cfg) {
         for (int bI = 0; bI < blocks.length; bI++) {
-            ModifiableBasicBlock b = (ModifiableBasicBlock) blocks[bI];
+            EditableBlock b = (EditableBlock) blocks[bI];
             FixedNode blockEndNode = b.getEndNode();
             if (blockEndNode instanceof EndNode) {
                 EndNode endNode = (EndNode) blockEndNode;
@@ -491,7 +491,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
                 int succ0 = -1;
                 int[] extraSucc = new int[split.getSuccessorCount() - 1];
                 for (Node sux : blockEndNode.successors()) {
-                    ModifiableBasicBlock sucBlock = (ModifiableBasicBlock) cfg.getNodeToBlock().get(sux);
+                    EditableBlock sucBlock = (EditableBlock) cfg.getNodeToBlock().get(sux);
                     if (index == 0) {
                         succ0 = sucBlock.getId();
                     } else {
@@ -511,7 +511,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
             } else {
                 assert !(blockEndNode instanceof AbstractEndNode) : "Algorithm only supports EndNode and LoopEndNode.";
                 for (Node suxNode : blockEndNode.successors()) {
-                    ModifiableBasicBlock sux = (ModifiableBasicBlock) cfg.getNodeToBlock().get(suxNode);
+                    EditableBlock sux = (EditableBlock) cfg.getNodeToBlock().get(suxNode);
                     sux.setPredecessor(b.getId());
                 }
                 assert blockEndNode.successors().count() == 1 : "Node " + blockEndNode;
@@ -534,12 +534,15 @@ public abstract class Block extends AbstractBlockBase<Block> {
         }
     }
 
-    public static class ModifiableBasicBlock extends Block {
+    /**
+     * A basic block that can have its edges edited.
+     */
+    static class EditableBlock extends Block {
 
         private boolean align;
         private int linearScanNumber = -1;
 
-        public ModifiableBasicBlock(AbstractBeginNode node, ControlFlowGraph cfg) {
+        EditableBlock(AbstractBeginNode node, ControlFlowGraph cfg) {
             super(node, cfg);
         }
 
@@ -565,66 +568,85 @@ public abstract class Block extends AbstractBlockBase<Block> {
 
         @Override
         public int getPredecessorCount() {
-            return getCount(pred0, extraPred);
+            return getCount(firstPredecessor, extraPredecessors);
         }
 
         @Override
         public int getSuccessorCount() {
-            return getCount(succ0, extraSucc);
+            return getCount(firstSuccessor, extraSuccessors);
         }
 
-        // the following fields are all indices into the PRO array
-        private int pred0 = -1;
-        private int[] extraPred;
-        private int succ0 = -1;
-        private int[] extraSucc;
-        private double succ0Probability;
-        private double[] extraProbabilities;
+        /**
+         * Index into {@link #getBlocks} of this block's first predecessor.
+         */
+        private int firstPredecessor = -1;
+
+        /**
+         * Indexes into {@link #getBlocks} of this block's extra predecessors.
+         */
+        private int[] extraPredecessors;
+
+        /**
+         * Index into {@link #getBlocks} of this block's first successor.
+         */
+        private int firstSuccessor = -1;
+
+        /**
+         * Indexes into {@link #getBlocks} of this block's extra succecessors.
+         */
+        private int[] extraSuccessors;
+
+        private double firstSuccessorProbability;
+        private double[] extraSuccessorsProbabilities;
+
+        private Block getBlock(int id) {
+            return null;
+        }
 
         @Override
         public Block getPredecessorAt(int predIndex) {
             assert predIndex < getPredecessorCount();
-            return getRpo()[getAtIndex(pred0, extraPred, predIndex)];
+            return getBlocks()[getAtIndex(firstPredecessor, extraPredecessors, predIndex)];
         }
 
         @Override
         public Block getSuccessorAt(int succIndex) {
             assert succIndex < getSuccessorCount();
-            return getRpo()[getAtIndex(succ0, extraSucc, succIndex)];
+            return getBlocks()[getAtIndex(firstSuccessor, extraSuccessors, succIndex)];
         }
 
-        public void setPredecessor(int p0) {
-            pred0 = p0;
-        }
-
-        @SuppressWarnings("unchecked")
-        public void setPredecessors(int p0, int[] rest) {
-            this.pred0 = p0;
-            this.extraPred = rest;
-        }
-
-        public void setSuccessor(int s0) {
-            succ0 = s0;
-            succ0Probability = 1.0D;
+        public void setPredecessor(int firstPredecessor) {
+            this.firstPredecessor = firstPredecessor;
         }
 
         @SuppressWarnings("unchecked")
-        public void setSuccessors(int s0, int[] rest) {
-            this.succ0 = s0;
-            this.extraSucc = rest;
+        public void setPredecessors(int firstPredecessor, int[] extraPredecessors) {
+            this.firstPredecessor = firstPredecessor;
+            this.extraPredecessors = extraPredecessors;
+        }
+
+        public void setSuccessor(int firstSuccessor) {
+            this.firstSuccessor = firstSuccessor;
+            firstSuccessorProbability = 1.0D;
+        }
+
+        @SuppressWarnings("unchecked")
+        public void setSuccessors(int firstSuccessor, int[] extraSuccessors) {
+            this.firstSuccessor = firstSuccessor;
+            this.extraSuccessors = extraSuccessors;
         }
 
         @Override
         public double getSuccessorProbabilityAt(int succIndex) {
             if (succIndex == 0) {
-                return succ0Probability;
+                return firstSuccessorProbability;
             }
-            return extraProbabilities[succIndex - 1];
+            return extraSuccessorsProbabilities[succIndex - 1];
         }
 
         public void setSuccessorProbabilities(double succ0Probability, double[] extraSuccProbabilities) {
-            this.succ0Probability = succ0Probability;
-            this.extraProbabilities = extraSuccProbabilities;
+            this.firstSuccessorProbability = succ0Probability;
+            this.extraSuccessorsProbabilities = extraSuccProbabilities;
         }
 
         private static int getCount(int first, int[] extra) {
@@ -640,10 +662,10 @@ public abstract class Block extends AbstractBlockBase<Block> {
 
             // adjust successor and predecessor lists
             GraalError.guarantee(getSuccessorCount() == 1, "can only delete blocks with exactly one successor");
-            ModifiableBasicBlock next = (ModifiableBasicBlock) getSuccessorAt(0);
+            EditableBlock next = (EditableBlock) getSuccessorAt(0);
             int predecessorCount = getPredecessorCount();
             for (int i = 0; i < getPredecessorCount(); i++) {
-                ModifiableBasicBlock pred = (ModifiableBasicBlock) getPredecessorAt(i);
+                EditableBlock pred = (EditableBlock) getPredecessorAt(i);
                 int[] newPredSuccs = new int[pred.getSuccessorCount()];
                 for (int j = 0; j < pred.getSuccessorCount(); j++) {
                     Block predSuccAt = pred.getSuccessorAt(j);
@@ -699,9 +721,12 @@ public abstract class Block extends AbstractBlockBase<Block> {
         }
     }
 
-    public static class GraphBasedBasicBlock extends Block {
+    /**
+     * A basic block that cannot have its edges edited.
+     */
+    static class FixedBlock extends Block {
 
-        public GraphBasedBasicBlock(AbstractBeginNode node, ControlFlowGraph cfg) {
+        FixedBlock(AbstractBeginNode node, ControlFlowGraph cfg) {
             super(node, cfg);
         }
 
@@ -736,6 +761,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
 
         @Override
         public Block getPredecessorAt(int predIndex) {
+            ControlFlowGraph cfg = (ControlFlowGraph) this.cfg;
             if (beginNode instanceof AbstractMergeNode) {
                 if (beginNode instanceof LoopBeginNode) {
                     return cfg.blockFor((((LoopBeginNode) beginNode).phiPredecessorAt(predIndex)));
@@ -747,6 +773,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
 
         @Override
         public Block getSuccessorAt(int succIndex) {
+            ControlFlowGraph cfg = (ControlFlowGraph) this.cfg;
             if (endNode instanceof EndNode) {
                 return cfg.blockFor(((EndNode) endNode).merge());
             } else if (endNode instanceof ControlSplitNode) {
@@ -791,28 +818,27 @@ public abstract class Block extends AbstractBlockBase<Block> {
 
         @Override
         public void delete() {
-            throw GraalError.shouldNotReachHere("Do not delete graph based blocks");
+            throw GraalError.shouldNotReachHere("Cannot delete a fixed block");
         }
 
         @Override
         public int getLinearScanNumber() {
-            throw GraalError.shouldNotReachHere("Graph based blocks should not be used for backend operations");
+            throw GraalError.shouldNotReachHere("Fixed blocks have no linear scan properties");
         }
 
         @Override
         public void setLinearScanNumber(int linearScanNumber) {
-            throw GraalError.shouldNotReachHere("Graph based blocks should not be used for backend operations");
+            throw GraalError.shouldNotReachHere("Fixed blocks have no linear scan properties");
         }
 
         @Override
         public boolean isAligned() {
-            throw GraalError.shouldNotReachHere("Graph based blocks should not be used for backend operations");
+            throw GraalError.shouldNotReachHere("Fixed blocks have no alignment properties");
         }
 
         @Override
         public void setAlign(boolean align) {
-            throw GraalError.shouldNotReachHere("Graph based blocks should not be used for backend operations");
+            throw GraalError.shouldNotReachHere("Fixed blocks have no alignment properties");
         }
     }
-
 }

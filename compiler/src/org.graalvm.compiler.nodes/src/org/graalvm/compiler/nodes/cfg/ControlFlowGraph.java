@@ -59,6 +59,8 @@ import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.cfg.Block.EditableBlock;
+import org.graalvm.compiler.nodes.cfg.Block.FixedBlock;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -129,14 +131,24 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         return compute(graph, false, connectBlocks, computeFrequency, computeLoops, computeDominators, computePostdominators);
     }
 
+    /**
+     * Creates a control flow graph from the nodes in {@code graph}.
+     * 
+     * @param editable specifies if the blocks can have their edges edited
+     * @param connectBlocks
+     * @param computeFrequency
+     * @param computeLoops
+     * @param computeDominators
+     * @param computePostdominators
+     */
     @SuppressWarnings("try")
-    public static ControlFlowGraph compute(StructuredGraph graph, boolean independentCFG, boolean connectBlocks, boolean computeFrequency, boolean computeLoops, boolean computeDominators,
+    public static ControlFlowGraph compute(StructuredGraph graph, boolean editable, boolean connectBlocks, boolean computeFrequency, boolean computeLoops, boolean computeDominators,
                     boolean computePostdominators) {
 
         try (DebugCloseable c = CFG_MEMORY.start(graph.getDebug())) {
             ControlFlowGraph cfg = new ControlFlowGraph(graph);
 
-            cfg.identifyBlocks(independentCFG);
+            cfg.identifyBlocks(editable);
 
             boolean loopInfoComputed = false;
             if (CFGOptions.DumpEndVersusExitLoopFrequencies.getValue(graph.getOptions())) {
@@ -167,11 +179,11 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         }
     }
 
-    private void identifyBlocks(boolean independentBlocks) {
+    private void identifyBlocks(boolean makeEditable) {
         int numBlocks = 0;
         for (AbstractBeginNode begin : graph.getNodes(AbstractBeginNode.TYPE)) {
             GraalError.guarantee(begin.predecessor() != null || (begin instanceof StartNode || begin instanceof AbstractMergeNode), "Disconnected control flow %s encountered", begin);
-            Block block = independentBlocks ? new Block.ModifiableBasicBlock(begin, this) : new Block.GraphBasedBasicBlock(begin, this);
+            Block block = makeEditable ? new EditableBlock(begin, this) : new FixedBlock(begin, this);
             identifyBlock(block);
             numBlocks++;
         }

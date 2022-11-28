@@ -39,14 +39,14 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
 
     private int domNumber;
     private int maxChildDomNumber;
+    protected final AbstractControlFlowGraph<T> cfg;
 
-    protected AbstractBlockBase() {
+    protected AbstractBlockBase(AbstractControlFlowGraph<T> cfg) {
+        this.cfg = cfg;
         this.id = AbstractControlFlowGraph.BLOCK_ID_INITIAL;
         this.domNumber = -1;
         this.maxChildDomNumber = -1;
     }
-
-    public abstract T[] getRpo();
 
     public void setDominatorNumber(int domNumber) {
         this.domNumber = domNumber;
@@ -66,6 +66,14 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
 
     public int getId() {
         return id;
+    }
+
+    /**
+     * Gets the block ordering of the graph in which this block lies. The {@linkplain #getId() id}
+     * of each block in the graph is an index into the returned array.
+     */
+    public T[] getBlocks() {
+        return cfg.getBlocks();
     }
 
     public void setId(int id) {
@@ -101,7 +109,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     public abstract double getSuccessorProbabilityAt(int succIndex);
 
     public T getDominator() {
-        return dominator >= 0 ? getRpo()[dominator] : null;
+        return dominator >= 0 ? cfg.getBlocks()[dominator] : null;
     }
 
     /**
@@ -149,7 +157,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     }
 
     public T getFirstDominated() {
-        return firstDominated >= 0 ? getRpo()[firstDominated] : null;
+        return firstDominated >= 0 ? cfg.getBlocks()[firstDominated] : null;
     }
 
     public void setFirstDominated(T block) {
@@ -157,7 +165,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     }
 
     public T getDominatedSibling() {
-        return dominatedSibling >= 0 ? getRpo()[dominatedSibling] : null;
+        return dominatedSibling >= 0 ? cfg.getBlocks()[dominatedSibling] : null;
     }
 
     public void setDominatedSibling(T block) {
