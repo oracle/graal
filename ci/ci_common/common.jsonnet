@@ -128,6 +128,11 @@ local add_jdk_version(name) =
   labsjdk17LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-17-llvm"],
   labsjdk19LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-19-llvm"],
 
+  # Only CE exists for JDK 20 until JDK 20 GA.
+  labsjdk20::            self["labsjdk-ce-20"],
+  labsjdk20Debug::       self["labsjdk-ce-20Debug"],
+  labsjdk20LLVM::        self["labsjdk-ce-20-llvm"],
+
 
   // Hardware definitions
   // ********************
