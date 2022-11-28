@@ -425,10 +425,10 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         vectorCheckZero(asm, vecDstAnd, vecDstAnd);
     }
 
-    private static void vectorTest(AArch64MacroAssembler asm, ElementSize eSize, Register vecDstOrr, Register vecDstAnd, Register vecArray1, Register vecArray2, Register vecMask) {
+    private static void vectorTest(AArch64MacroAssembler asm, ElementSize eSize, Register vecDstOrr, Register vecDstCmtst, Register vecArray1, Register vecArray2, Register vecMask) {
         asm.neon.orrVVV(FullReg, vecDstOrr, vecArray1, vecArray2);
-        asm.neon.cmtstVVV(FullReg, eSize, vecDstAnd, vecDstOrr, vecMask);
-        vectorCheckZero(asm, eSize, vecDstAnd, vecDstAnd, true);
+        asm.neon.cmtstVVV(FullReg, eSize, vecDstCmtst, vecDstOrr, vecMask);
+        vectorCheckZero(asm, eSize, vecDstCmtst, vecDstCmtst, true);
     }
 
     private static final byte TOO_SHORT = 1 << 0;
