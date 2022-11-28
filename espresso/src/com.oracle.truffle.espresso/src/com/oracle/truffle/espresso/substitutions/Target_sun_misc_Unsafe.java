@@ -226,7 +226,7 @@ public final class Target_sun_misc_Unsafe {
         return ((long) (isStatic ? SAFETY_STATIC_FIELD_OFFSET : SAFETY_FIELD_OFFSET)) + slot;
     }
 
-    private static Field resolveUnsafeAccessField(StaticObject holder, long offset) {
+    private static Field resolveUnsafeAccessField(StaticObject holder, long offset, Meta meta) {
         int slot;
         int safetyOffset = Math.toIntExact(offset);
         boolean isStatic = false;
@@ -252,7 +252,7 @@ public final class Target_sun_misc_Unsafe {
                     // > int off = U.objectFieldOffset(SomeClass.class, "staticField")
                     // > U.getInt(SomeClass.class, off);
                     // HotSpot supports it, although it is a questionable usage.
-                    field = holder.getMirrorKlass().lookupStaticFieldTable(slot);
+                    field = holder.getMirrorKlass(meta).lookupStaticFieldTable(slot);
                 } else {
                     assert holder.isStaticStorage();
                 }
@@ -268,13 +268,13 @@ public final class Target_sun_misc_Unsafe {
         return field;
     }
 
-    private static StaticObject resolveUnsafeAccessHolder(Field f, StaticObject advertisedHolder) {
+    private static StaticObject resolveUnsafeAccessHolder(Field f, StaticObject advertisedHolder, Meta meta) {
         if (f.isStatic() && advertisedHolder.getKlass().getType() == Type.java_lang_Class) {
             // This is needed to support:
             // > int off = U.objectFieldOffset(SomeClass.class, "staticField")
             // > U.getInt(SomeClass.class, off);
             // HotSpot supports it, although it is a questionable usage.
-            return advertisedHolder.getMirrorKlass().getStatics();
+            return advertisedHolder.getMirrorKlass(meta).getStatics();
         }
         return advertisedHolder;
     }
@@ -797,7 +797,7 @@ public final class Target_sun_misc_Unsafe {
 
         @Specialization(replaces = "executeCached")
         protected Field executeGeneric(StaticObject holder, long slot) {
-            return resolveUnsafeAccessField(holder, slot);
+            return resolveUnsafeAccessField(holder, slot, getMeta());
         }
 
         public static GetFieldFromIndexNode create() {
@@ -932,7 +932,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            f.setByte(resolveUnsafeAccessHolder(f, holder), value);
+            f.setByte(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
     }
 
@@ -955,7 +955,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            f.setObject(resolveUnsafeAccessHolder(f, holder), value);
+            f.setObject(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
     }
 
@@ -976,7 +976,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            f.setBoolean(resolveUnsafeAccessHolder(f, holder), value);
+            f.setBoolean(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
     }
 
@@ -997,7 +997,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            f.setChar(resolveUnsafeAccessHolder(f, holder), value);
+            f.setChar(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
     }
 
@@ -1018,7 +1018,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            f.setShort(resolveUnsafeAccessHolder(f, holder), value);
+            f.setShort(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
     }
 
@@ -1039,7 +1039,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            f.setInt(resolveUnsafeAccessHolder(f, holder), value);
+            f.setInt(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
     }
 
@@ -1060,7 +1060,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            f.setFloat(resolveUnsafeAccessHolder(f, holder), value);
+            f.setFloat(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
     }
 
@@ -1081,7 +1081,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            f.setDouble(resolveUnsafeAccessHolder(f, holder), value);
+            f.setDouble(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
     }
 
@@ -1102,7 +1102,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            f.setLong(resolveUnsafeAccessHolder(f, holder), value);
+            f.setLong(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
     }
 
@@ -1129,7 +1129,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            f.setInt(resolveUnsafeAccessHolder(f, holder), value, true);
+            f.setInt(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
 
@@ -1150,7 +1150,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            f.setLong(resolveUnsafeAccessHolder(f, holder), value, true);
+            f.setLong(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
 
@@ -1174,7 +1174,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            f.setObject(resolveUnsafeAccessHolder(f, holder), value, true);
+            f.setObject(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
 
@@ -1206,9 +1206,9 @@ public final class Target_sun_misc_Unsafe {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
             if (f.getKind() == JavaKind.Byte) {
-                return f.getByte(resolveUnsafeAccessHolder(f, holder));
+                return f.getByte(resolveUnsafeAccessHolder(f, holder, getMeta()));
             }
-            return f.getAsByte(getMeta(), resolveUnsafeAccessHolder(f, holder), false);
+            return f.getAsByte(getMeta(), resolveUnsafeAccessHolder(f, holder, getMeta()), false);
         }
     }
 
@@ -1231,9 +1231,9 @@ public final class Target_sun_misc_Unsafe {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
             if (f.getKind() == JavaKind.Object) {
-                return f.getObject(resolveUnsafeAccessHolder(f, holder));
+                return f.getObject(resolveUnsafeAccessHolder(f, holder, getMeta()));
             }
-            return f.getAsObject(getMeta(), resolveUnsafeAccessHolder(f, holder));
+            return f.getAsObject(getMeta(), resolveUnsafeAccessHolder(f, holder, getMeta()));
         }
     }
 
@@ -1255,9 +1255,9 @@ public final class Target_sun_misc_Unsafe {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
             if (f.getKind() == JavaKind.Boolean) {
-                return f.getBoolean(resolveUnsafeAccessHolder(f, holder));
+                return f.getBoolean(resolveUnsafeAccessHolder(f, holder, getMeta()));
             }
-            return f.getAsBoolean(getMeta(), resolveUnsafeAccessHolder(f, holder), false);
+            return f.getAsBoolean(getMeta(), resolveUnsafeAccessHolder(f, holder, getMeta()), false);
         }
     }
 
@@ -1279,9 +1279,9 @@ public final class Target_sun_misc_Unsafe {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
             if (f.getKind() == JavaKind.Char) {
-                return f.getChar(resolveUnsafeAccessHolder(f, holder));
+                return f.getChar(resolveUnsafeAccessHolder(f, holder, getMeta()));
             }
-            return f.getAsChar(getMeta(), resolveUnsafeAccessHolder(f, holder), false);
+            return f.getAsChar(getMeta(), resolveUnsafeAccessHolder(f, holder, getMeta()), false);
         }
     }
 
@@ -1303,9 +1303,9 @@ public final class Target_sun_misc_Unsafe {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
             if (f.getKind() == JavaKind.Short) {
-                return f.getShort(resolveUnsafeAccessHolder(f, holder));
+                return f.getShort(resolveUnsafeAccessHolder(f, holder, getMeta()));
             }
-            return f.getAsShort(getMeta(), resolveUnsafeAccessHolder(f, holder), false);
+            return f.getAsShort(getMeta(), resolveUnsafeAccessHolder(f, holder, getMeta()), false);
         }
     }
 
@@ -1327,9 +1327,9 @@ public final class Target_sun_misc_Unsafe {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
             if (f.getKind() == JavaKind.Int) {
-                return f.getInt(resolveUnsafeAccessHolder(f, holder));
+                return f.getInt(resolveUnsafeAccessHolder(f, holder, getMeta()));
             }
-            return f.getAsInt(getMeta(), resolveUnsafeAccessHolder(f, holder), false);
+            return f.getAsInt(getMeta(), resolveUnsafeAccessHolder(f, holder, getMeta()), false);
         }
     }
 
@@ -1351,9 +1351,9 @@ public final class Target_sun_misc_Unsafe {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
             if (f.getKind() == JavaKind.Float) {
-                return f.getFloat(resolveUnsafeAccessHolder(f, holder));
+                return f.getFloat(resolveUnsafeAccessHolder(f, holder, getMeta()));
             }
-            return f.getAsFloat(getMeta(), resolveUnsafeAccessHolder(f, holder), false);
+            return f.getAsFloat(getMeta(), resolveUnsafeAccessHolder(f, holder, getMeta()), false);
         }
     }
 
@@ -1375,9 +1375,9 @@ public final class Target_sun_misc_Unsafe {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
             if (f.getKind() == JavaKind.Double) {
-                return f.getDouble(resolveUnsafeAccessHolder(f, holder));
+                return f.getDouble(resolveUnsafeAccessHolder(f, holder, getMeta()));
             }
-            return f.getAsDouble(getMeta(), resolveUnsafeAccessHolder(f, holder), false);
+            return f.getAsDouble(getMeta(), resolveUnsafeAccessHolder(f, holder, getMeta()), false);
         }
     }
 
@@ -1399,9 +1399,9 @@ public final class Target_sun_misc_Unsafe {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
             if (f.getKind() == JavaKind.Long) {
-                return f.getLong(resolveUnsafeAccessHolder(f, holder));
+                return f.getLong(resolveUnsafeAccessHolder(f, holder, getMeta()));
             }
-            return f.getAsLong(getMeta(), resolveUnsafeAccessHolder(f, holder), false);
+            return f.getAsLong(getMeta(), resolveUnsafeAccessHolder(f, holder, getMeta()), false);
         }
     }
 
@@ -1427,9 +1427,9 @@ public final class Target_sun_misc_Unsafe {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
             if (f.getKind() == JavaKind.Byte) {
-                return f.getByte(resolveUnsafeAccessHolder(f, holder), true);
+                return f.getByte(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
             }
-            return f.getAsByte(getMeta(), resolveUnsafeAccessHolder(f, holder), false, true);
+            return f.getAsByte(getMeta(), resolveUnsafeAccessHolder(f, holder, getMeta()), false, true);
         }
     }
 
@@ -1452,9 +1452,9 @@ public final class Target_sun_misc_Unsafe {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
             if (f.getKind() == JavaKind.Object) {
-                return f.getObject(resolveUnsafeAccessHolder(f, holder), true);
+                return f.getObject(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
             }
-            return f.getAsObject(getMeta(), resolveUnsafeAccessHolder(f, holder), true);
+            return f.getAsObject(getMeta(), resolveUnsafeAccessHolder(f, holder, getMeta()), true);
         }
     }
 
@@ -1476,9 +1476,9 @@ public final class Target_sun_misc_Unsafe {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
             if (f.getKind() == JavaKind.Boolean) {
-                return f.getBoolean(resolveUnsafeAccessHolder(f, holder), true);
+                return f.getBoolean(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
             }
-            return f.getAsBoolean(getMeta(), resolveUnsafeAccessHolder(f, holder), false, true);
+            return f.getAsBoolean(getMeta(), resolveUnsafeAccessHolder(f, holder, getMeta()), false, true);
         }
     }
 
@@ -1500,9 +1500,9 @@ public final class Target_sun_misc_Unsafe {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
             if (f.getKind() == JavaKind.Char) {
-                return f.getChar(resolveUnsafeAccessHolder(f, holder), true);
+                return f.getChar(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
             }
-            return f.getAsChar(getMeta(), resolveUnsafeAccessHolder(f, holder), false, true);
+            return f.getAsChar(getMeta(), resolveUnsafeAccessHolder(f, holder, getMeta()), false, true);
         }
     }
 
@@ -1524,9 +1524,9 @@ public final class Target_sun_misc_Unsafe {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
             if (f.getKind() == JavaKind.Short) {
-                return f.getShort(resolveUnsafeAccessHolder(f, holder), true);
+                return f.getShort(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
             }
-            return f.getAsShort(getMeta(), resolveUnsafeAccessHolder(f, holder), false, true);
+            return f.getAsShort(getMeta(), resolveUnsafeAccessHolder(f, holder, getMeta()), false, true);
         }
     }
 
@@ -1548,9 +1548,9 @@ public final class Target_sun_misc_Unsafe {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
             if (f.getKind() == JavaKind.Int) {
-                return f.getInt(resolveUnsafeAccessHolder(f, holder), true);
+                return f.getInt(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
             }
-            return f.getAsInt(getMeta(), resolveUnsafeAccessHolder(f, holder), false, true);
+            return f.getAsInt(getMeta(), resolveUnsafeAccessHolder(f, holder, getMeta()), false, true);
         }
     }
 
@@ -1572,9 +1572,9 @@ public final class Target_sun_misc_Unsafe {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
             if (f.getKind() == JavaKind.Float) {
-                return f.getFloat(resolveUnsafeAccessHolder(f, holder), true);
+                return f.getFloat(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
             }
-            return f.getAsFloat(getMeta(), resolveUnsafeAccessHolder(f, holder), false, true);
+            return f.getAsFloat(getMeta(), resolveUnsafeAccessHolder(f, holder, getMeta()), false, true);
         }
     }
 
@@ -1596,9 +1596,9 @@ public final class Target_sun_misc_Unsafe {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
             if (f.getKind() == JavaKind.Double) {
-                return f.getDouble(resolveUnsafeAccessHolder(f, holder), true);
+                return f.getDouble(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
             }
-            return f.getAsDouble(getMeta(), resolveUnsafeAccessHolder(f, holder), false, true);
+            return f.getAsDouble(getMeta(), resolveUnsafeAccessHolder(f, holder, getMeta()), false, true);
         }
     }
 
@@ -1620,9 +1620,9 @@ public final class Target_sun_misc_Unsafe {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
             if (f.getKind() == JavaKind.Long) {
-                return f.getLong(resolveUnsafeAccessHolder(f, holder), true);
+                return f.getLong(resolveUnsafeAccessHolder(f, holder, getMeta()), true);
             }
-            return f.getAsLong(getMeta(), resolveUnsafeAccessHolder(f, holder), false, true);
+            return f.getAsLong(getMeta(), resolveUnsafeAccessHolder(f, holder, getMeta()), false, true);
         }
     }
 
@@ -1729,7 +1729,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            f.setByte(resolveUnsafeAccessHolder(f, holder), value, true);
+            f.setByte(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
 
@@ -1752,7 +1752,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            f.setObject(resolveUnsafeAccessHolder(f, holder), value, true);
+            f.setObject(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
 
@@ -1773,7 +1773,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            f.setBoolean(resolveUnsafeAccessHolder(f, holder), value, true);
+            f.setBoolean(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
 
@@ -1794,7 +1794,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            f.setChar(resolveUnsafeAccessHolder(f, holder), value, true);
+            f.setChar(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
 
@@ -1815,7 +1815,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            f.setShort(resolveUnsafeAccessHolder(f, holder), value, true);
+            f.setShort(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
 
@@ -1836,7 +1836,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            f.setInt(resolveUnsafeAccessHolder(f, holder), value, true);
+            f.setInt(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
 
@@ -1857,7 +1857,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            f.setFloat(resolveUnsafeAccessHolder(f, holder), value, true);
+            f.setFloat(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
 
@@ -1878,7 +1878,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            f.setDouble(resolveUnsafeAccessHolder(f, holder), value, true);
+            f.setDouble(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
 
@@ -1899,7 +1899,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            f.setLong(resolveUnsafeAccessHolder(f, holder), value, true);
+            f.setLong(resolveUnsafeAccessHolder(f, holder, getMeta()), value, true);
         }
     }
 
@@ -1927,7 +1927,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            return f.compareAndSwapObject(resolveUnsafeAccessHolder(f, holder), before, after);
+            return f.compareAndSwapObject(resolveUnsafeAccessHolder(f, holder, getMeta()), before, after);
         }
     }
 
@@ -1953,9 +1953,9 @@ public final class Target_sun_misc_Unsafe {
             }
             switch (f.getKind()) {
                 case Int:
-                    return f.compareAndSwapInt(resolveUnsafeAccessHolder(f, holder), before, after);
+                    return f.compareAndSwapInt(resolveUnsafeAccessHolder(f, holder, getMeta()), before, after);
                 case Float:
-                    return f.compareAndSwapFloat(resolveUnsafeAccessHolder(f, holder), Float.intBitsToFloat(before), Float.intBitsToFloat(after));
+                    return f.compareAndSwapFloat(resolveUnsafeAccessHolder(f, holder, getMeta()), Float.intBitsToFloat(before), Float.intBitsToFloat(after));
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
@@ -1985,9 +1985,9 @@ public final class Target_sun_misc_Unsafe {
             }
             switch (f.getKind()) {
                 case Long:
-                    return f.compareAndSwapLong(resolveUnsafeAccessHolder(f, holder), before, after);
+                    return f.compareAndSwapLong(resolveUnsafeAccessHolder(f, holder, getMeta()), before, after);
                 case Double:
-                    return f.compareAndSwapDouble(resolveUnsafeAccessHolder(f, holder), Double.longBitsToDouble(before), Double.longBitsToDouble(after));
+                    return f.compareAndSwapDouble(resolveUnsafeAccessHolder(f, holder, getMeta()), Double.longBitsToDouble(before), Double.longBitsToDouble(after));
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
@@ -2036,7 +2036,7 @@ public final class Target_sun_misc_Unsafe {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
             }
-            return f.compareAndExchangeObject(resolveUnsafeAccessHolder(f, holder), before, after);
+            return f.compareAndExchangeObject(resolveUnsafeAccessHolder(f, holder, getMeta()), before, after);
         }
     }
 
@@ -2063,9 +2063,9 @@ public final class Target_sun_misc_Unsafe {
             }
             switch (f.getKind()) {
                 case Int:
-                    return f.compareAndExchangeInt(resolveUnsafeAccessHolder(f, holder), before, after);
+                    return f.compareAndExchangeInt(resolveUnsafeAccessHolder(f, holder, getMeta()), before, after);
                 case Float:
-                    return Float.floatToRawIntBits(f.compareAndExchangeFloat(resolveUnsafeAccessHolder(f, holder), Float.intBitsToFloat(before), Float.intBitsToFloat(after)));
+                    return Float.floatToRawIntBits(f.compareAndExchangeFloat(resolveUnsafeAccessHolder(f, holder, getMeta()), Float.intBitsToFloat(before), Float.intBitsToFloat(after)));
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
@@ -2095,9 +2095,9 @@ public final class Target_sun_misc_Unsafe {
             }
             switch (f.getKind()) {
                 case Boolean:
-                    return f.compareAndExchangeBoolean(resolveUnsafeAccessHolder(f, holder), before != 0, after != 0) ? (byte) 1 : (byte) 0;
+                    return f.compareAndExchangeBoolean(resolveUnsafeAccessHolder(f, holder, getMeta()), before != 0, after != 0) ? (byte) 1 : (byte) 0;
                 case Byte:
-                    return f.compareAndExchangeByte(resolveUnsafeAccessHolder(f, holder), before, after);
+                    return f.compareAndExchangeByte(resolveUnsafeAccessHolder(f, holder, getMeta()), before, after);
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
@@ -2127,9 +2127,9 @@ public final class Target_sun_misc_Unsafe {
             }
             switch (f.getKind()) {
                 case Short:
-                    return f.compareAndExchangeShort(resolveUnsafeAccessHolder(f, holder), before, after);
+                    return f.compareAndExchangeShort(resolveUnsafeAccessHolder(f, holder, getMeta()), before, after);
                 case Char:
-                    return (short) f.compareAndExchangeChar(resolveUnsafeAccessHolder(f, holder), (char) before, (char) after);
+                    return (short) f.compareAndExchangeChar(resolveUnsafeAccessHolder(f, holder, getMeta()), (char) before, (char) after);
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
@@ -2159,9 +2159,9 @@ public final class Target_sun_misc_Unsafe {
             }
             switch (f.getKind()) {
                 case Long:
-                    return f.compareAndExchangeLong(resolveUnsafeAccessHolder(f, holder), before, after);
+                    return f.compareAndExchangeLong(resolveUnsafeAccessHolder(f, holder, getMeta()), before, after);
                 case Double:
-                    return Double.doubleToRawLongBits(f.compareAndExchangeDouble(resolveUnsafeAccessHolder(f, holder), Double.longBitsToDouble(before), Double.longBitsToDouble(after)));
+                    return Double.doubleToRawLongBits(f.compareAndExchangeDouble(resolveUnsafeAccessHolder(f, holder, getMeta()), Double.longBitsToDouble(before), Double.longBitsToDouble(after)));
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
@@ -2193,7 +2193,7 @@ public final class Target_sun_misc_Unsafe {
             if (f == null) {
                 throwUnsupported(getMeta(), "Raw unaligned unsafe access.");
             }
-            return f.getAndSetObject(resolveUnsafeAccessHolder(f, holder), value);
+            return f.getAndSetObject(resolveUnsafeAccessHolder(f, holder, getMeta()), value);
         }
     }
 
