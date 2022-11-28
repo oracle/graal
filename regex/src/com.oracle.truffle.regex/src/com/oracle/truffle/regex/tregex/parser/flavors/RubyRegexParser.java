@@ -378,7 +378,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     }
 
     public static RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
-        return new RubyRegexParser(source, new RegexASTBuilder(language, source, makeTRegexFlags(false), compilationBuffer));
+        return new RubyRegexParser(source, new RegexASTBuilder(language, source, makeTRegexFlags(false), false, compilationBuffer));
     }
 
     @Override
@@ -546,7 +546,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
 
     private void addCharClass(CodePointSet charSet) {
         if (!silent) {
-            astBuilder.addCharClass(charSet);
+            astBuilder.addCharClass(charSet, false);
         }
     }
 
@@ -1189,57 +1189,16 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     // character is dependent on whether the Ruby regular expression is set to use the ASCII range
     // only.
     private void buildWordBoundaryAssertion(CodePointSet wordChars, CodePointSet nonWordChars) {
-        // (?:(?:^|(?<=\W))(?=\w)|(?<=\w)(?:(?=\W)|$))
-        pushGroup(); // (?:
-        pushGroup(); // (?:
-        addCaret(); // ^
-        nextSequence(); // |
-        pushLookBehindAssertion(false); // (?<=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        popGroup(); // )
-        pushLookAheadAssertion(false); // (?=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        nextSequence(); // |
-        pushLookBehindAssertion(false); // (?<=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        pushGroup(); // (?:
-        pushLookAheadAssertion(false); // (?=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        nextSequence(); // |
-        addDollar(); // $
-        popGroup(); // )
-        popGroup(); // )
+        if (!silent) {
+            astBuilder.addWordBoundaryAssertion(wordChars, nonWordChars);
+        }
     }
 
     private void buildWordNonBoundaryAssertion(CodePointSet wordChars, CodePointSet nonWordChars) {
         // (?:(?:^|(?<=\W))(?:(?=\W)|$)|(?<=\w)(?=\w))
-        pushGroup(); // (?:
-        pushGroup(); // (?:
-        addCaret(); // ^
-        nextSequence(); // |
-        pushLookBehindAssertion(false); // (?<=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        popGroup(); // )
-        pushGroup(); // (?:
-        pushLookAheadAssertion(false); // (?=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        nextSequence(); // |
-        addDollar(); // $
-        popGroup(); // )
-        nextSequence(); // |
-        pushLookBehindAssertion(false); // (?<=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        pushLookAheadAssertion(false); // (?=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        popGroup(); // )
+        if (!silent) {
+            astBuilder.addWordNonBoundaryAssertion(wordChars, nonWordChars);
+        }
     }
 
     /**

@@ -1088,7 +1088,7 @@ public final class PythonRegexParser implements RegexValidator, RegexParser {
             case 'x': {
                 String code = getUpTo(2, PythonRegexParser::isHexDigit);
                 if (code.length() < 2) {
-                    throw syntaxErrorAtRel(PyErrorMessages.incompleteEscapeX(code), 2 + code.length());
+                    throw syntaxErrorAtRel(PyErrorMessages.incompleteEscape(code), 2 + code.length());
                 }
                 int codepoint = Integer.parseInt(code, 16);
                 return codepoint;
@@ -1111,16 +1111,16 @@ public final class PythonRegexParser implements RegexValidator, RegexParser {
                     }
                     String code = getUpTo(escapeLength, PythonRegexParser::isHexDigit);
                     if (code.length() < escapeLength) {
-                        throw syntaxErrorAtRel(PyErrorMessages.incompleteEscapeU(escapeLead, code), 2 + code.length());
+                        throw syntaxErrorAtRel(PyErrorMessages.incompleteEscape(code), 2 + code.length());
                     }
                     try {
                         int codePoint = Integer.parseInt(code, 16);
                         if (codePoint > 0x10FFFF) {
-                            throw syntaxErrorAtRel(PyErrorMessages.invalidUnicodeEscape(escapeLead, code), 2 + code.length());
+                            throw syntaxErrorAtRel(PyErrorMessages.invalidUnicodeEscape(code), 2 + code.length());
                         }
                         return codePoint;
                     } catch (NumberFormatException e) {
-                        throw syntaxErrorAtRel(PyErrorMessages.incompleteEscapeU(escapeLead, code), 2 + code.length());
+                        throw syntaxErrorAtRel(PyErrorMessages.incompleteEscape(code), 2 + code.length());
                     }
                 } else {
                     // \\u or \\U in 'bytes' patterns
@@ -1145,7 +1145,7 @@ public final class PythonRegexParser implements RegexValidator, RegexParser {
                     retreat();
                     String code = getUpTo(3, PythonRegexParser::isOctDigit);
                     int codePoint = Integer.parseInt(code, 8);
-                    if (codePoint > 0377) {
+                    if (codePoint > 255) {
                         throw syntaxErrorAtRel(PyErrorMessages.invalidOctalEscape(code), 1 + code.length());
                     }
                     return codePoint;

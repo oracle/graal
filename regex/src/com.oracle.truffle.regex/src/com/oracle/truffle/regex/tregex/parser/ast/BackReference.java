@@ -108,6 +108,14 @@ public class BackReference extends QuantifiableTerm {
         return isFlagSet(FLAG_BACK_REFERENCE_IS_NESTED | FLAG_BACK_REFERENCE_IS_FORWARD);
     }
 
+    public boolean isIgnoreCaseReference() {
+        return isFlagSet(FLAG_BACK_REFERENCE_IS_IGNORE_CASE);
+    }
+
+    public void setIgnoreCaseReference() {
+        setFlag(FLAG_BACK_REFERENCE_IS_IGNORE_CASE, true);
+    }
+
     @Override
     public boolean isUnrollingCandidate() {
         return hasQuantifier() && getQuantifier().isUnrollTrivial();

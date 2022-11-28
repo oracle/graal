@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.regex.errors;
 
-public interface ErrorMessages {
+public interface JsErrorMessages {
 
     /* syntax errors */
 
@@ -52,6 +52,7 @@ public interface ErrorMessages {
     String INVALID_CHARACTER_CLASS = "Invalid character class";
     String INVALID_CONTROL_CHAR_ESCAPE = "Invalid control char escape";
     String INVALID_ESCAPE = "Invalid escape";
+    String INVALID_GROUP = "Invalid group";
     String INVALID_GROUP_NAME_PART = "Invalid character in group name";
     String INVALID_GROUP_NAME_START = "Invalid character at start of group name";
     String INVALID_UNICODE_ESCAPE = "Invalid Unicode escape";

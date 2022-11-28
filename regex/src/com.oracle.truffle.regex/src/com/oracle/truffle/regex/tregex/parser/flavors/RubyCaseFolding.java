@@ -207,7 +207,7 @@ public class RubyCaseFolding {
             }
             unfoldingsNextIndex++;
         }
-        astBuilder.addCharClass(acc.toCodePointSet());
+        astBuilder.addCharClass(acc.toCodePointSet(), false);
         unfoldSegment(astBuilder, caseFolded, unfoldings.subList(unfoldingsNextIndex, unfoldings.size()), start + 1, end, backtrackingDepth, dropAsciiOnStart);
     }
 }

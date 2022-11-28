@@ -116,16 +116,16 @@ public final class Group extends QuantifiableTerm implements RegexASTVisitorIter
     }
 
     /**
-     * Returns whether or not this group loops. A looping group differs from a non-looping one in
-     * that when you match one of the group's non-empty alternatives, instead of continuing to the
-     * next node after the group, the same group is attempted again.
+     * Returns whether this group loops. A looping group differs from a non-looping one in that when
+     * you match one of the group's non-empty alternatives, instead of continuing to the next node
+     * after the group, the same group is attempted again.
      */
     public boolean isLoop() {
         return isFlagSet(FLAG_GROUP_LOOP);
     }
 
     /**
-     * Sets whether or this group should loop. If the group is set to be looping, this updates the
+     * Sets whether this group should loop. If the group is set to be looping, this updates the
      * 'next' and 'prev' pointers on the non-empty alternatives to point to the group itself.
      *
      * @param loop true if this group should loop
@@ -133,6 +133,22 @@ public final class Group extends QuantifiableTerm implements RegexASTVisitorIter
      */
     public void setLoop(boolean loop) {
         setFlag(FLAG_GROUP_LOOP, loop);
+    }
+
+    /**
+     * Returns whether this group declares local flags, e.g. "(?i:...)".
+     */
+    public boolean isLocalFlags() {
+        return isFlagSet(FLAG_GROUP_LOCAL_FLAGS);
+    }
+
+    /**
+     * Sets whether this group declares local flags, e.g. "(?i:...)".
+     *
+     * @see #isLocalFlags()
+     */
+    public void setLocalFlags(boolean loop) {
+        setFlag(FLAG_GROUP_LOCAL_FLAGS, loop);
     }
 
     /**

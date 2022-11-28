@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
@@ -70,17 +74,12 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NodeCountVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.SetSourceSectionVisitor;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-
 /**
  * This class is used to generate regex ASTs. The provided methods append nodes to the AST.
  */
 public final class RegexASTBuilder {
 
     private final RegexParserGlobals globals;
-    private final RegexFlags flags;
     private final RegexOptions options;
     private final Encoding encoding;
     private final RegexAST ast;
@@ -88,6 +87,7 @@ public final class RegexASTBuilder {
     private final Counter.ThresholdCounter groupCount;
     private final NodeCountVisitor countVisitor;
     private final SetSourceSectionVisitor setSourceSectionVisitor;
+    private final boolean explodeUTF16;
     private final CompilationBuffer compilationBuffer;
 
     private Group curGroup;
@@ -95,11 +95,11 @@ public final class RegexASTBuilder {
     private Term curTerm;
 
     @TruffleBoundary
-    public RegexASTBuilder(RegexLanguage language, RegexSource source, RegexFlags flags, CompilationBuffer compilationBuffer) {
+    public RegexASTBuilder(RegexLanguage language, RegexSource source, RegexFlags flags, boolean explodeUTF16, CompilationBuffer compilationBuffer) {
         this.globals = language.parserGlobals;
-        this.flags = flags;
         this.options = source.getOptions();
         this.encoding = source.getEncoding();
+        this.explodeUTF16 = explodeUTF16;
         this.ast = new RegexAST(language, source, flags);
         this.properties = ast.getProperties();
         this.groupCount = ast.getGroupCount();
@@ -328,13 +328,8 @@ public final class RegexASTBuilder {
      */
     public void addCharClass(Token.CharacterClass token) {
         CodePointSet codePointSet = pruneCharClass(token.getCodePointSet());
-        if (flags.isUnicode()) {
-            if (codePointSet.matchesNothing()) {
-                // We need this branch because a Group with no alternatives is invalid
-                addTerm(createCharClass(CodePointSet.getEmpty(), token));
-            } else {
-                addTerm(translateUnicodeCharClass(codePointSet, token));
-            }
+        if (explodeUTF16) {
+            addTerm(translateUnicodeCharClass(codePointSet, token));
         } else {
             addTerm(createCharClass(codePointSet, token, token.wasSingleChar()));
         }
@@ -388,12 +383,12 @@ public final class RegexASTBuilder {
         if (loneLeadSurrogateRanges.matchesSomething()) {
             Sequence loneLeadSurrogateAlternative = group.addSequence(ast);
             loneLeadSurrogateAlternative.add(createCharClass(loneLeadSurrogateRanges, token));
-            loneLeadSurrogateAlternative.add(globals.noTrailSurrogateAhead.copyRecursive(ast, compilationBuffer));
+            loneLeadSurrogateAlternative.add(globals.getJsNoTrailSurrogateAhead().copyRecursive(ast, compilationBuffer));
         }
 
         if (loneTrailSurrogateRanges.matchesSomething()) {
             Sequence loneTrailSurrogateAlternative = group.addSequence(ast);
-            loneTrailSurrogateAlternative.add(globals.noLeadSurrogateBehind.copyRecursive(ast, compilationBuffer));
+            loneTrailSurrogateAlternative.add(globals.getJsNoLeadSurrogateBehind().copyRecursive(ast, compilationBuffer));
             loneTrailSurrogateAlternative.add(createCharClass(loneTrailSurrogateRanges, token));
         }
 
@@ -468,13 +463,17 @@ public final class RegexASTBuilder {
         return group;
     }
 
+    public void addBackReference(Token.BackReference token) {
+        addBackReference(token, false);
+    }
+
     /**
      * Adds a new {@link BackReference} to the current {@link Sequence}.
      * 
      * @param token aside from the source sections, this contains the number of the group being
      *            referenced
      */
-    public void addBackReference(Token.BackReference token) {
+    public void addBackReference(Token.BackReference token, boolean ignoreCase) {
         BackReference backReference = ast.createBackReference(token.getGroupNr());
         ast.addSourceSection(backReference, token);
         addTerm(backReference);
@@ -482,6 +481,9 @@ public final class RegexASTBuilder {
             backReference.setForwardReference();
         } else if (isNestedBackReference(backReference)) {
             backReference.setNestedBackReference();
+        }
+        if (ignoreCase) {
+            backReference.setIgnoreCaseReference();
         }
     }
 
@@ -519,12 +521,17 @@ public final class RegexASTBuilder {
      */
     public void addPositionAssertion(Token token) {
         PositionAssertion.Type type;
-        if (token.kind == Token.Kind.caret) {
-            type = PositionAssertion.Type.CARET;
-        } else if (token.kind == Token.Kind.dollar) {
-            type = PositionAssertion.Type.DOLLAR;
-        } else {
-            throw new IllegalArgumentException("unexpected token kind: " + token.kind);
+        switch (token.kind) {
+            case a:
+            case caret:
+                type = PositionAssertion.Type.CARET;
+                break;
+            case z:
+            case dollar:
+                type = PositionAssertion.Type.DOLLAR;
+                break;
+            default:
+                throw new IllegalArgumentException("unexpected token kind: " + token.kind);
         }
         PositionAssertion positionAssertion = ast.createPositionAssertion(type);
         ast.addSourceSection(positionAssertion, token);
@@ -694,6 +701,89 @@ public final class RegexASTBuilder {
         curSequence.replace(atomicGroupContents.getSeqIndex(), atomicGroup);
         atomicGroup.setGroup(atomicGroupContents);
         curTerm = atomicGroup;
+    }
+
+    public void addWordBoundaryAssertion(CodePointSet wordChars, CodePointSet nonWordChars) {
+        // (?:(?:^|(?<=\W))(?=\w)|(?<=\w)(?:(?=\W)|$))
+        pushGroup(); // (?:
+        pushGroup(); // (?:
+        addCaret(); // ^
+        nextSequence(); // |
+        pushLookBehindAssertion(false); // (?<=
+        addCharClass(nonWordChars); // \W
+        popGroup(); // )
+        popGroup(); // )
+        pushLookAheadAssertion(false); // (?=
+        addCharClass(wordChars); // \w
+        popGroup(); // )
+        nextSequence(); // |
+        pushLookBehindAssertion(false); // (?<=
+        addCharClass(wordChars); // \w
+        popGroup(); // )
+        pushGroup(); // (?:
+        pushLookAheadAssertion(false); // (?=
+        addCharClass(nonWordChars); // \W
+        popGroup(); // )
+        nextSequence(); // |
+        addDollar(); // $
+        popGroup(); // )
+        popGroup(); // )
+    }
+
+    public void addWordNonBoundaryAssertion(CodePointSet wordChars, CodePointSet nonWordChars) {
+        // (?:(?:^|(?<=\W))(?:(?=\W)|$)|(?<=\w)(?=\w))
+        pushGroup(); // (?:
+        pushGroup(); // (?:
+        addCaret(); // ^
+        nextSequence(); // |
+        pushLookBehindAssertion(false); // (?<=
+        addCharClass(nonWordChars); // \W
+        popGroup(); // )
+        popGroup(); // )
+        pushGroup(); // (?:
+        pushLookAheadAssertion(false); // (?=
+        addCharClass(nonWordChars); // \W
+        popGroup(); // )
+        nextSequence(); // |
+        addDollar(); // $
+        popGroup(); // )
+        nextSequence(); // |
+        pushLookBehindAssertion(false); // (?<=
+        addCharClass(wordChars); // \w
+        popGroup(); // )
+        pushLookAheadAssertion(false); // (?=
+        addCharClass(wordChars); // \w
+        popGroup(); // )
+        popGroup(); // )
+    }
+
+    public void addWordNonBoundaryAssertionPython(CodePointSet wordChars, CodePointSet nonWordChars) {
+        // (?:^(?=\W)|(?<=\W)$|(?<=\W)(?=\W)|(?<=\w)(?=\w))
+        pushGroup(); // (?:
+        addCaret(); // ^
+        pushLookAheadAssertion(false); // (?=
+        addCharClass(nonWordChars); // \W
+        popGroup(); // )
+        nextSequence(); // |
+        pushLookBehindAssertion(false); // (?<=
+        addCharClass(nonWordChars); // \W
+        popGroup(); // )
+        addDollar(); // $
+        nextSequence(); // |
+        pushLookBehindAssertion(false); // (?<=
+        addCharClass(nonWordChars); // \W
+        popGroup(); // )
+        pushLookAheadAssertion(false); // (?=
+        addCharClass(nonWordChars); // \W
+        popGroup(); // )
+        nextSequence(); // |
+        pushLookBehindAssertion(false); // (?<=
+        addCharClass(wordChars); // \W
+        popGroup(); // )
+        pushLookAheadAssertion(false); // (?=
+        addCharClass(wordChars); // \W
+        popGroup(); // )
+        popGroup(); // )
     }
 
     /* optimizations */
