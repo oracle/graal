@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,10 +27,25 @@ import java.util.concurrent.atomic.AtomicLong;
 
 @EspressoSubstitutions
 public final class Target_java_lang_Thread$ThreadIdentifiers {
-    private static volatile AtomicLong next_thread_id = new AtomicLong(2);
+    private static volatile AtomicLong nextThreadId = new AtomicLong(2);
 
     @Substitution
     public static long next() {
-        return next_thread_id.getAndIncrement();
+        return nextThreadId.getAndIncrement();
     }
+
+    /* It works with javac, but ECJ trips over '$' in the class name */
+    public static class ECJHack extends SubstitutionNamesProvider {
+        private static String[] NAMES = new String[]{
+                        TARGET_JAVA_LANG_THREAD_THREADIDENTIFIERS
+        };
+        public static SubstitutionNamesProvider INSTANCE = new ECJHack();
+
+        @Override
+        public String[] substitutionClassNames() {
+            return NAMES;
+        }
+    }
+
+    private static final String TARGET_JAVA_LANG_THREAD_THREADIDENTIFIERS = "Target_java_lang_Thread$ThreadIdentifiers";
 }

@@ -132,19 +132,19 @@ public interface DynamicConstant extends PoolConstant {
                 Object result = null;
                 if (!meta.getJavaVersion().java19OrLater()) {
                     meta.java_lang_invoke_MethodHandleNatives_linkDynamicConstant.invokeDirect(
-                            null,
-                            accessingKlass.mirror(),
-                            thisIndex,
-                            bootstrapmethodMethodHandle,
-                            fieldName, fieldType.mirror(),
-                            StaticObject.wrap(args, meta));
+                                    null,
+                                    accessingKlass.mirror(),
+                                    thisIndex,
+                                    bootstrapmethodMethodHandle,
+                                    fieldName, fieldType.mirror(),
+                                    StaticObject.wrap(args, meta));
                 } else {
                     meta.java_lang_invoke_MethodHandleNatives_linkDynamicConstant.invokeDirect(
-                            null,
-                            accessingKlass.mirror(),
-                            bootstrapmethodMethodHandle,
-                            fieldName, fieldType.mirror(),
-                            StaticObject.wrap(args, meta));
+                                    null,
+                                    accessingKlass.mirror(),
+                                    bootstrapmethodMethodHandle,
+                                    fieldName, fieldType.mirror(),
+                                    StaticObject.wrap(args, meta));
                 }
                 try {
                     return makeResolved(fieldType, (StaticObject) result);

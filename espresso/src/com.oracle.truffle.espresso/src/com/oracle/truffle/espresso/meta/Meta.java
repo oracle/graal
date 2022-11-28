@@ -529,8 +529,8 @@ public final class Meta extends ContextAccessImpl {
         java_lang_invoke_MethodHandleNatives = knownKlass(Type.java_lang_invoke_MethodHandleNatives);
         java_lang_invoke_MethodHandleNatives_linkMethod = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkMethod, Signature.MemberName_Class_int_Class_String_Object_Object_array);
         java_lang_invoke_MethodHandleNatives_linkCallSite = diff() //
-                        .method(VERSION_8_OR_LOWER, Name.linkCallSite,   Signature.MemberName_Object_Object_Object_Object_Object_Object_array) //
-                        .method(VERSION_9_OR_HIGHER, Name.linkCallSite,  Signature.MemberName_Object_int_Object_Object_Object_Object_Object_array) //
+                        .method(VERSION_8_OR_LOWER, Name.linkCallSite, Signature.MemberName_Object_Object_Object_Object_Object_Object_array) //
+                        .method(VERSION_9_OR_HIGHER, Name.linkCallSite, Signature.MemberName_Object_int_Object_Object_Object_Object_Object_array) //
                         .method(VERSION_19_OR_HIGHER, Name.linkCallSite, Signature.MemberName_Object_Object_Object_Object_Object_Object_array) //
                         .method(java_lang_invoke_MethodHandleNatives);
 
@@ -736,10 +736,10 @@ public final class Meta extends ContextAccessImpl {
         if (getJavaVersion().java11OrLater()) {
             if (!getJavaVersion().java19OrLater()) {
                 java_lang_invoke_MethodHandleNatives_linkDynamicConstant = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkDynamicConstant,
-                            Signature.Object_Object_int_Object_Object_Object_Object);
+                                Signature.Object_Object_int_Object_Object_Object_Object);
             } else {
                 java_lang_invoke_MethodHandleNatives_linkDynamicConstant = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkDynamicConstant,
-                            Signature.Object_Object_Object_Object_Object_Object);
+                                Signature.Object_Object_Object_Object_Object_Object);
             }
         } else {
             java_lang_invoke_MethodHandleNatives_linkDynamicConstant = null;
@@ -1492,12 +1492,12 @@ public final class Meta extends ContextAccessImpl {
 
     // JDK19 helpers
     public void setJavaLangThreadThreadStatus(StaticObject self, int state) {
-       if (!getJavaVersion().java19OrLater()) {
-           java_lang_Thread_threadStatus.setInt(self, state);
-       } else {
-           StaticObject holder = java_lang_Thread_holder.getObject(self);
-           java_lang_Thread_FieldHolder_threadStatus.setInt(holder, state);
-       }
+        if (!getJavaVersion().java19OrLater()) {
+            java_lang_Thread_threadStatus.setInt(self, state);
+        } else {
+            StaticObject holder = java_lang_Thread_holder.getObject(self);
+            java_lang_Thread_FieldHolder_threadStatus.setInt(holder, state);
+        }
     }
 
     public int getJavaLangThreadThreadStatus(StaticObject self) {
