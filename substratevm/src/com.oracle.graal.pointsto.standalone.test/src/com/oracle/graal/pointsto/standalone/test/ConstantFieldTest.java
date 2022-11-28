@@ -40,13 +40,13 @@ import org.junit.Test;
 public class ConstantFieldTest {
 
     @Test
-    public void testConstantField() {
+    public void testConstantField() throws NoSuchMethodException, NoSuchFieldException {
         PointstoAnalyzerTester tester = new PointstoAnalyzerTester(ConstantFieldCase.class);
         tester.setAnalysisArguments(tester.getTestClassName(),
                         "-H:AnalysisTargetAppCP=" + tester.getTestClassJar());
-        tester.setExpectedReachableMethods(ConstantFieldCase.ConstantType.class.getName() + ".foo()",
-                        ConstantFieldCase.class.getName() + ".<clinit>()");
-        tester.setExpectedReachableFields(ConstantFieldCase.class.getName() + ".constantField");
+        tester.setExpectedReachableMethods(ConstantFieldCase.ConstantType.class.getDeclaredMethod("foo"));
+        tester.setExpectedReachableClinits(ConstantFieldCase.class);
+        tester.setExpectedReachableFields(ConstantFieldCase.class.getDeclaredField("constantField"));
         tester.runAnalysisAndAssert();
     }
 }
