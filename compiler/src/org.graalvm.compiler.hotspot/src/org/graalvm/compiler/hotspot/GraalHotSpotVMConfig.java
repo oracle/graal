@@ -703,7 +703,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         if (JDK == 19) {
             offset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, "int");
             isWord = false;
-        } else if (JDK >= 19) {
+        } else if (JDK >= 20) {
             offset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, "int64_t");
             isWord = true;
         }
