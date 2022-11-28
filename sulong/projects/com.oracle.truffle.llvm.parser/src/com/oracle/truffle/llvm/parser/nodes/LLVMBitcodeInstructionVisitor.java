@@ -868,7 +868,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     @Override
     public void visit(GetElementPointerInstruction gep) {
-        createFrameWrite(symbols.resolveElementPointer(gep.getBasePointer(), gep.getIndices(), this::resolveOptimized), gep);
+        createFrameWrite(symbols.resolveElementPointer(gep.getBaseType(), gep.getBasePointer(), gep.getIndices(), this::resolveOptimized), gep);
     }
 
     @Override

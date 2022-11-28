@@ -957,20 +957,20 @@ public final class Function implements ParserListener {
 
     private void createGetElementPointer(RecordBuffer buffer) {
         boolean isInbounds = buffer.readBoolean();
-        buffer.read(); // we do not use this parameter
+        Type baseType = readType(buffer);
         int pointer = readIndex(buffer);
-        Type base = readValueType(buffer, pointer);
+        Type pointerType = readValueType(buffer, pointer);
         int[] indices = readIndices(buffer);
-        Type type = getElementPointerType(base, indices);
-        emit(GetElementPointerInstruction.fromSymbols(scope.getSymbols(), type, pointer, indices, isInbounds));
+        Type type = getElementPointerType(baseType, pointerType, indices);
+        emit(GetElementPointerInstruction.fromSymbols(scope.getSymbols(), type, baseType, pointer, indices, isInbounds));
     }
 
     private void createGetElementPointerOld(RecordBuffer buffer, boolean isInbounds) {
         int pointer = readIndex(buffer);
-        Type base = readValueType(buffer, pointer);
+        Type pointerType = readValueType(buffer, pointer);
         int[] indices = readIndices(buffer);
-        Type type = getElementPointerType(base, indices);
-        emit(GetElementPointerInstruction.fromSymbols(scope.getSymbols(), type, pointer, indices, isInbounds));
+        Type type = getElementPointerType(null, pointerType, indices);
+        emit(GetElementPointerInstruction.fromSymbols(scope.getSymbols(), type, null, pointer, indices, isInbounds));
     }
 
     private void createIndirectBranch(RecordBuffer buffer) {
@@ -1076,29 +1076,47 @@ public final class Function implements ParserListener {
         return (int) argument & (Long.SIZE - 1);
     }
 
-    private Type getElementPointerType(Type type, int[] indices) {
-        boolean vectorized = type instanceof VectorType;
-        int length = vectorized ? ((VectorType) type).getNumberOfElementsInt() : 0;
-        Type elementType = vectorized ? ((VectorType) type).getElementType() : type;
-        for (int indexIndex : indices) {
+    private Type getElementPointerType(Type baseType, Type ptrType, int[] indices) {
+        boolean vectorized = ptrType instanceof VectorType;
+        int length = vectorized ? ((VectorType) ptrType).getNumberOfElementsInt() : 0;
+
+        Type elementType;
+        if (baseType == null) {
+            // for the "old" variant
+            elementType = vectorized ? ((VectorType) ptrType).getElementType() : ptrType;
+            assert elementType instanceof PointerType;
+            elementType = ((PointerType) elementType).getPointeeType();
+        } else {
+            elementType = baseType;
+        }
+
+        for (int i = 0; i < indices.length; i++) {
+            int indexIndex = indices[i];
             Type indexType = scope.getValueType(indexIndex);
 
-            if (elementType instanceof PointerType) {
-                elementType = ((PointerType) elementType).getPointeeType();
-            } else if (elementType instanceof ArrayType) {
-                elementType = ((ArrayType) elementType).getElementType();
-            } else if (elementType instanceof VectorType) {
-                elementType = ((VectorType) elementType).getElementType();
-            } else if (elementType instanceof StructureType) {
-                StructureType structure = (StructureType) elementType;
-                if (!(indexType instanceof PrimitiveType)) {
-                    throw new LLVMParserException("Cannot infer structure element from " + indexType);
+            /*
+             * We need to skip the first index. In the getelementptr instruction, the first index
+             * does index over the "array" of the base type, only the second index goes into the
+             * base type.
+             */
+            if (i > 0) {
+                if (elementType instanceof PointerType) {
+                    elementType = ((PointerType) elementType).getPointeeType();
+                } else if (elementType instanceof ArrayType) {
+                    elementType = ((ArrayType) elementType).getElementType();
+                } else if (elementType instanceof VectorType) {
+                    elementType = ((VectorType) elementType).getElementType();
+                } else if (elementType instanceof StructureType) {
+                    StructureType structure = (StructureType) elementType;
+                    if (!(indexType instanceof PrimitiveType)) {
+                        throw new LLVMParserException("Cannot infer structure element from " + indexType);
+                    }
+                    Number indexNumber = (Number) ((PrimitiveType) indexType).getConstant();
+                    assert ((PrimitiveType) indexType).getPrimitiveKind() == PrimitiveKind.I32;
+                    elementType = structure.getElementType(indexNumber.intValue());
+                } else {
+                    throw new LLVMParserException("Cannot index type: " + elementType);
                 }
-                Number indexNumber = (Number) ((PrimitiveType) indexType).getConstant();
-                assert ((PrimitiveType) indexType).getPrimitiveKind() == PrimitiveKind.I32;
-                elementType = structure.getElementType(indexNumber.intValue());
-            } else {
-                throw new LLVMParserException("Cannot index type: " + elementType);
             }
 
             if (indexType instanceof VectorType) {
