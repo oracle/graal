@@ -24,8 +24,12 @@
  */
 package com.oracle.svm.core.option;
 
-public interface ValidatableOptionKey {
+public interface SubstrateOptionKey<T> {
     void validate();
 
     boolean hasBeenSet();
+
+    T getValue();
+
+    String getName();
 }

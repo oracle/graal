@@ -31,7 +31,6 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.InterruptImageBuilding;
@@ -109,8 +108,7 @@ public final class SerialGCOptions {
 
     private static void serialGCOnly(OptionKey<?> optionKey) {
         if (!SubstrateOptions.UseSerialGC.getValue()) {
-            throw new InterruptImageBuilding("The option " + optionKey.getName() + " is garbage collector specific and cannot be specified if the " +
-                            Heap.getHeap().getGC().getName() + " is used at runtime.");
+            throw new InterruptImageBuilding("The option '" + optionKey.getName() + "' can only be used together with the serial garbage collector ('--gc=serial').");
         }
     }
 }
