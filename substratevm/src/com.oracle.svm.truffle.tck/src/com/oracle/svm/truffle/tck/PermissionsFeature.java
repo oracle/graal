@@ -28,6 +28,8 @@ import static com.oracle.graal.pointsto.reports.ReportUtils.report;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.nio.file.Files;
@@ -50,6 +52,16 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantPool;
+import jdk.vm.ci.meta.ExceptionHandler;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.LineNumberTable;
+import jdk.vm.ci.meta.LocalVariableTable;
+import jdk.vm.ci.meta.ModifiersProvider;
+import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.Signature;
+import jdk.vm.ci.meta.SpeculationLog;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.Invoke;
@@ -84,6 +96,7 @@ import com.oracle.svm.util.ClassUtil;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import sun.misc.Unsafe;
 
 /**
  * A Truffle TCK {@code Feature} detecting privileged calls done by Truffle language. The
@@ -155,12 +168,14 @@ public class PermissionsFeature implements Feature {
     /**
      * Methods which are allowed to do privileged calls without being reported.
      */
-    private Set<AnalysisMethod> whiteList;
+    private Set<ResolvedJavaMethod> whiteList;
 
     /**
      * Classes for reflective accesses which are opaque for permission analysis.
      */
     private AnalysisType reflectionFieldAccessorFactory;
+
+    private ResolvedJavaMethod inlinedUnsafeCall;
 
     @Override
     public String getDescription() {
@@ -194,6 +209,7 @@ public class PermissionsFeature implements Feature {
         DebugContext debugContext = accessImpl.getDebugContext();
         try (DebugContext.Scope s = debugContext.scope(ClassUtil.getUnqualifiedName(getClass()))) {
             BigBang bb = accessImpl.getBigBang();
+            inlinedUnsafeCall = new InlinedUnsafeMethod(bb);
             WhiteListParser parser = new WhiteListParser(accessImpl.getImageClassLoader(), bb);
             ConfigurationParserUtils.parseAndRegisterConfigurations(parser,
                             accessImpl.getImageClassLoader(),
@@ -204,51 +220,51 @@ public class PermissionsFeature implements Feature {
             reflectionFieldAccessorFactory = bb.getMetaAccess().lookupJavaType(loadClassOrFail("jdk.internal.reflect.UnsafeFieldAccessorFactory"));
             VMError.guarantee(reflectionFieldAccessorFactory != null, "Cannot load one or several reflection types");
             whiteList = parser.getLoadedWhiteList();
-            Set<AnalysisMethod> deniedMethods = new HashSet<>();
+            Set<ResolvedJavaMethod> deniedMethods = new HashSet<>();
             deniedMethods.addAll(findMethods(bb, SecurityManager.class, (m) -> m.getName().startsWith("check")));
-            deniedMethods.addAll(findMethods(bb, sun.misc.Unsafe.class, (m) -> m.isPublic()));
+            deniedMethods.addAll(findMethods(bb, sun.misc.Unsafe.class, ModifiersProvider::isPublic));
             // The type of the host Java NIO FileSystem.
             // The FileSystem obtained from the FileSystem.newDefaultFileSystem() is in the Truffle
             // package but
             // can be directly used by a language. We need to include it into deniedMethods.
-            deniedMethods.addAll(findMethods(bb, FileSystem.newDefaultFileSystem().getClass(), (m) -> m.isPublic()));
+            deniedMethods.addAll(findMethods(bb, FileSystem.newDefaultFileSystem().getClass(), ModifiersProvider::isPublic));
             // JDK 19 introduced BigInteger.parallelMultiply that uses the ForkJoinPool.
             // We deny this method but explicitly allow non-parallel multiply (cf. jre.json).
             deniedMethods.addAll(findMethods(bb, BigInteger.class, (m) -> m.getName().startsWith("parallel")));
-
-            if (!deniedMethods.isEmpty()) {
-                Map<AnalysisMethod, Set<AnalysisMethod>> cg = callGraph(bb, deniedMethods, debugContext);
-                List<List<AnalysisMethod>> report = new ArrayList<>();
-                Set<CallGraphFilter> contextFilters = new HashSet<>();
-                Collections.addAll(contextFilters, new SafeInterruptRecognizer(bb), new SafePrivilegedRecognizer(bb),
-                                new SafeServiceLoaderRecognizer(bb, accessImpl.getImageClassLoader()), new SafeSetThreadNameRecognizer(bb));
-                int maxStackDepth = Options.TruffleTCKPermissionsMaxStackTraceDepth.getValue();
-                maxStackDepth = maxStackDepth == -1 ? Integer.MAX_VALUE : maxStackDepth;
-                for (AnalysisMethod deniedMethod : deniedMethods) {
-                    if (cg.containsKey(deniedMethod)) {
-                        collectViolations(report, deniedMethod,
-                                        maxStackDepth,
-                                        Options.TruffleTCKPermissionsMaxErrors.getValue(),
-                                        cg, contextFilters,
-                                        new LinkedHashSet<>(), 1, 0);
-                    }
-                }
-                if (!report.isEmpty()) {
-                    report(
-                                    "detected privileged calls originated in language packages ",
-                                    reportFilePath,
-                                    (pw) -> {
-                                        StringBuilder builder = new StringBuilder();
-                                        for (List<AnalysisMethod> callPath : report) {
-                                            for (AnalysisMethod call : callPath) {
-                                                builder.append(call.asStackTraceElement(0)).append('\n');
-                                            }
-                                            builder.append('\n');
-                                        }
-                                        pw.print(builder);
-                                    });
+            deniedMethods.add(inlinedUnsafeCall);
+            Map<ResolvedJavaMethod, Set<ResolvedJavaMethod>> cg = callGraph(bb, deniedMethods, debugContext, (SVMHost) bb.getHostVM());
+            List<List<ResolvedJavaMethod>> report = new ArrayList<>();
+            Set<CallGraphFilter> contextFilters = new HashSet<>();
+            Collections.addAll(contextFilters, new SafeInterruptRecognizer(bb), new SafePrivilegedRecognizer(bb),
+                            new SafeServiceLoaderRecognizer(bb, accessImpl.getImageClassLoader()), new SafeSetThreadNameRecognizer(bb));
+            int maxStackDepth = Options.TruffleTCKPermissionsMaxStackTraceDepth.getValue();
+            maxStackDepth = maxStackDepth == -1 ? Integer.MAX_VALUE : maxStackDepth;
+            for (ResolvedJavaMethod deniedMethod : deniedMethods) {
+                if (cg.containsKey(deniedMethod)) {
+                    collectViolations(report, deniedMethod,
+                                    maxStackDepth,
+                                    Options.TruffleTCKPermissionsMaxErrors.getValue(),
+                                    cg, contextFilters,
+                                    new LinkedHashSet<>(), 1, 0);
                 }
             }
+            if (!report.isEmpty()) {
+                report(
+                                "detected privileged calls originated in language packages ",
+                                reportFilePath,
+                                (pw) -> {
+                                    StringBuilder builder = new StringBuilder();
+                                    for (List<ResolvedJavaMethod> callPath : report) {
+                                        for (ResolvedJavaMethod call : callPath) {
+                                            builder.append(call.asStackTraceElement(0)).append('\n');
+                                        }
+                                        builder.append('\n');
+                                    }
+                                    pw.print(builder);
+                                });
+            }
+        } finally {
+            inlinedUnsafeCall = null;
         }
     }
 
@@ -269,38 +285,42 @@ public class PermissionsFeature implements Feature {
      * @param targets the target methods to build call graph for
      * @param debugContext the {@link DebugContext}
      */
-    private Map<AnalysisMethod, Set<AnalysisMethod>> callGraph(
-                    BigBang bb,
-                    Set<AnalysisMethod> targets,
-                    DebugContext debugContext) {
+    private Map<ResolvedJavaMethod, Set<ResolvedJavaMethod>> callGraph(BigBang bb, Set<ResolvedJavaMethod> targets,
+                    DebugContext debugContext, SVMHost hostVM) {
         Deque<AnalysisMethod> todo = new LinkedList<>();
-        Map<AnalysisMethod, Set<AnalysisMethod>> visited = new HashMap<>();
+        Map<ResolvedJavaMethod, Set<ResolvedJavaMethod>> visited = new HashMap<>();
         for (AnalysisMethod m : findMethods(bb, OptimizedCallTarget.class, (m) -> "profiledPERoot".equals(m.getName()))) {
             visited.put(m, new HashSet<>());
             todo.offer(m);
         }
         Deque<AnalysisMethod> path = new LinkedList<>();
         for (AnalysisMethod m : todo) {
-            callGraphImpl(m, targets, visited, path, debugContext);
+            callGraphImpl(m, targets, visited, path, debugContext, hostVM);
         }
         return visited;
     }
 
     private boolean callGraphImpl(
                     AnalysisMethod m,
-                    Set<AnalysisMethod> targets,
-                    Map<AnalysisMethod, Set<AnalysisMethod>> visited,
+                    Set<ResolvedJavaMethod> targets,
+                    Map<ResolvedJavaMethod, Set<ResolvedJavaMethod>> visited,
                     Deque<AnalysisMethod> path,
-                    DebugContext debugContext) {
+                    DebugContext debugContext,
+                    SVMHost hostVM) {
         String mName = getMethodName(m);
         path.addFirst(m);
+        StructuredGraph mGraph = hostVM.getAnalysisGraph(m);
+        if (mGraph.hasUnsafeAccess() && !(isSystemClass(m) || isCompilerClass(m))) {
+            debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Method: %s has unsafe access.", mName);
+            visited.computeIfAbsent(inlinedUnsafeCall, (e) -> new HashSet<>()).add(m);
+        }
         try {
             boolean callPathContainsTarget = false;
             debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Entered method: %s.", mName);
             for (InvokeInfo invoke : m.getInvokes()) {
                 for (AnalysisMethod callee : invoke.getCallees()) {
                     if (callee.isInvoked() || !(isSystemClass(callee) || isCompilerClass(callee))) {
-                        Set<AnalysisMethod> parents = visited.get(callee);
+                        Set<ResolvedJavaMethod> parents = visited.get(callee);
                         String calleeName = getMethodName(callee);
                         debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Callee: %s, new: %b.", calleeName, parents == null);
                         if (parents == null) {
@@ -311,7 +331,7 @@ public class PermissionsFeature implements Feature {
                                 callPathContainsTarget = true;
                                 continue;
                             }
-                            boolean add = callGraphImpl(callee, targets, visited, path, debugContext);
+                            boolean add = callGraphImpl(callee, targets, visited, path, debugContext, hostVM);
                             if (add) {
                                 parents.add(m);
                                 debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added callee: %s for %s.", calleeName, mName);
@@ -362,7 +382,7 @@ public class PermissionsFeature implements Feature {
      * @param path the current call path
      * @return {@code true} if the call of given method crosses some language method.
      */
-    private static boolean isBackTraceOverLanguageMethod(AnalysisMethod method, Deque<AnalysisMethod> path) {
+    private boolean isBackTraceOverLanguageMethod(AnalysisMethod method, Deque<AnalysisMethod> path) {
         if (!isCompilerClass(method) && !isSystemClass(method)) {
             return false;
         }
@@ -386,19 +406,19 @@ public class PermissionsFeature implements Feature {
      * @param maxDepth maximal call trace depth
      * @param maxReports maximal number of reports
      * @param callGraph call graph obtained from
-     *            {@link PermissionsFeature#callGraph(BigBang, java.util.Set, org.graalvm.compiler.debug.DebugContext)}
+     *            {@link PermissionsFeature#callGraph(BigBang, Set, DebugContext, SVMHost)}
      * @param contextFilters filters removing known valid calls
      * @param visited visited methods
      * @param depth current depth
      */
     private int collectViolations(
-                    List<? super List<AnalysisMethod>> report,
-                    AnalysisMethod m,
+                    List<? super List<ResolvedJavaMethod>> report,
+                    ResolvedJavaMethod m,
                     int maxDepth,
                     int maxReports,
-                    Map<AnalysisMethod, Set<AnalysisMethod>> callGraph,
+                    Map<ResolvedJavaMethod, Set<ResolvedJavaMethod>> callGraph,
                     Set<CallGraphFilter> contextFilters,
-                    LinkedHashSet<AnalysisMethod> visited,
+                    LinkedHashSet<ResolvedJavaMethod> visited,
                     int depth,
                     int noReports) {
         int useNoReports = noReports;
@@ -418,17 +438,17 @@ public class PermissionsFeature implements Feature {
         if (!visited.contains(m)) {
             visited.add(m);
             try {
-                Set<AnalysisMethod> callers = callGraph.get(m);
+                Set<ResolvedJavaMethod> callers = callGraph.get(m);
                 if (depth > maxDepth) {
                     if (!callers.isEmpty()) {
                         useNoReports = collectViolations(report, callers.iterator().next(), maxDepth, maxReports, callGraph, contextFilters, visited, depth + 1, useNoReports);
                     }
                 } else if (!isSystemClass(m)) {
-                    List<AnalysisMethod> callPath = new ArrayList<>(visited);
+                    List<ResolvedJavaMethod> callPath = new ArrayList<>(visited);
                     report.add(callPath);
                     useNoReports++;
                 } else {
-                    nextCaller: for (AnalysisMethod caller : callers) {
+                    nextCaller: for (ResolvedJavaMethod caller : callers) {
                         for (CallGraphFilter filter : contextFilters) {
                             if (isReflectionFieldAccessorFactory(caller) || filter.test(m, caller, visited)) {
                                 continue nextCaller;
@@ -445,19 +465,22 @@ public class PermissionsFeature implements Feature {
     }
 
     /**
-     * Tests if the given {@link AnalysisMethod} is part of the factory of field accessors.
+     * Tests if the given {@link ResolvedJavaMethod} is part of the factory of field accessors.
      */
-    private boolean isReflectionFieldAccessorFactory(AnalysisMethod method) {
+    private boolean isReflectionFieldAccessorFactory(ResolvedJavaMethod method) {
         return reflectionFieldAccessorFactory.isAssignableFrom(method.getDeclaringClass());
     }
 
     /**
-     * Tests if the given {@link AnalysisMethod} is from system {@link ClassLoader}.
+     * Tests if the given {@link ResolvedJavaMethod} is from system {@link ClassLoader}.
      *
-     * @param method the {@link AnalysisMethod} to check
+     * @param method the {@link ResolvedJavaMethod} to check
      */
-    private static boolean isSystemClass(AnalysisMethod method) {
-        Class<?> clz = method.getDeclaringClass().getJavaClass();
+    private boolean isSystemClass(ResolvedJavaMethod method) {
+        if (method == inlinedUnsafeCall) {
+            return true;
+        }
+        Class<?> clz = (method instanceof AnalysisMethod) ? ((AnalysisMethod) method).getDeclaringClass().getJavaClass() : null;
         if (clz == null) {
             return false;
         }
@@ -465,21 +488,21 @@ public class PermissionsFeature implements Feature {
     }
 
     /**
-     * Tests if the given {@link AnalysisMethod} is from Truffle library, GraalVM SDK or compiler
-     * package.
+     * Tests if the given {@link ResolvedJavaMethod} is from Truffle library, GraalVM SDK or
+     * compiler package.
      *
-     * @param method the {@link AnalysisMethod} to check
+     * @param method the {@link ResolvedJavaMethod} to check
      */
-    private static boolean isCompilerClass(AnalysisMethod method) {
+    private static boolean isCompilerClass(ResolvedJavaMethod method) {
         return isClassInPackage(getClassName(method), compilerPackages);
     }
 
     /**
-     * Tests if the given {@link AnalysisMethod} is excluded by white list.
+     * Tests if the given {@link ResolvedJavaMethod} is excluded by white list.
      *
-     * @param method the {@link AnalysisMethod} to check
+     * @param method the {@link ResolvedJavaMethod} to check
      */
-    private boolean isExcludedClass(AnalysisMethod method) {
+    private boolean isExcludedClass(ResolvedJavaMethod method) {
         return whiteList.contains(method);
     }
 
@@ -565,7 +588,7 @@ public class PermissionsFeature implements Feature {
      *
      * @param method to obtain an owner name for
      */
-    private static String getClassName(AnalysisMethod method) {
+    private static String getClassName(ResolvedJavaMethod method) {
         return method.getDeclaringClass().toJavaName();
     }
 
@@ -573,7 +596,7 @@ public class PermissionsFeature implements Feature {
      * Filter to filter out known valid calls, included by points to analysis, from the report.
      */
     private interface CallGraphFilter {
-        boolean test(AnalysisMethod method, AnalysisMethod caller, LinkedHashSet<AnalysisMethod> trace);
+        boolean test(ResolvedJavaMethod method, ResolvedJavaMethod caller, LinkedHashSet<ResolvedJavaMethod> trace);
     }
 
     /**
@@ -601,10 +624,10 @@ public class PermissionsFeature implements Feature {
         }
 
         @Override
-        public boolean test(AnalysisMethod method, AnalysisMethod caller, LinkedHashSet<AnalysisMethod> trace) {
+        public boolean test(ResolvedJavaMethod method, ResolvedJavaMethod caller, LinkedHashSet<ResolvedJavaMethod> trace) {
             Boolean res = null;
-            if (threadInterrupt.equals(method)) {
-                StructuredGraph graph = hostVM.getAnalysisGraph(caller);
+            if (threadInterrupt.equals(method) && (caller instanceof AnalysisMethod)) {
+                StructuredGraph graph = hostVM.getAnalysisGraph((AnalysisMethod) caller);
                 for (Invoke invoke : graph.getInvokes()) {
                     if (threadInterrupt.equals(invoke.callTarget().targetMethod())) {
                         ValueNode node = invoke.getReceiver();
@@ -618,8 +641,7 @@ public class PermissionsFeature implements Feature {
                     }
                 }
             }
-            res = res == null ? false : res;
-            return res;
+            return res != null && res;
         }
     }
 
@@ -629,7 +651,7 @@ public class PermissionsFeature implements Feature {
     private final class SafePrivilegedRecognizer implements CallGraphFilter {
 
         private final SVMHost hostVM;
-        private final Set<AnalysisMethod> doPrivileged;
+        private final Set<? extends ResolvedJavaMethod> doPrivileged;
 
         SafePrivilegedRecognizer(BigBang bb) {
             this.hostVM = (SVMHost) bb.getHostVM();
@@ -637,15 +659,15 @@ public class PermissionsFeature implements Feature {
         }
 
         @Override
-        public boolean test(AnalysisMethod method, AnalysisMethod caller, LinkedHashSet<AnalysisMethod> trace) {
-            if (!doPrivileged.contains(method)) {
+        public boolean test(ResolvedJavaMethod method, ResolvedJavaMethod caller, LinkedHashSet<ResolvedJavaMethod> trace) {
+            if (!doPrivileged.contains(method) || !(caller instanceof AnalysisMethod)) {
                 return false;
             }
             boolean safeClass = isCompilerClass(caller) || isSystemClass(caller);
             if (safeClass) {
                 return true;
             }
-            StructuredGraph graph = hostVM.getAnalysisGraph(caller);
+            StructuredGraph graph = hostVM.getAnalysisGraph((AnalysisMethod) caller);
             for (Invoke invoke : graph.getInvokes()) {
                 if (method.equals(invoke.callTarget().targetMethod())) {
                     NodeInputList<ValueNode> args = invoke.callTarget().arguments();
@@ -657,7 +679,7 @@ public class PermissionsFeature implements Feature {
                         return false;
                     }
                     ResolvedJavaType newType = ((NewInstanceNode) arg0).instanceClass();
-                    AnalysisMethod methodCalledByAccessController = findPrivilegedEntryPoint(method, trace);
+                    ResolvedJavaMethod methodCalledByAccessController = findPrivilegedEntryPoint(method, trace);
                     if (newType == null || methodCalledByAccessController == null) {
                         return false;
                     }
@@ -672,9 +694,9 @@ public class PermissionsFeature implements Feature {
         /**
          * Finds an entry point to {@code PrivilegedAction} called by {@code doPrivilegedMethod}.
          */
-        private AnalysisMethod findPrivilegedEntryPoint(AnalysisMethod doPrivilegedMethod, LinkedHashSet<AnalysisMethod> trace) {
-            AnalysisMethod ep = null;
-            for (AnalysisMethod m : trace) {
+        private ResolvedJavaMethod findPrivilegedEntryPoint(ResolvedJavaMethod doPrivilegedMethod, LinkedHashSet<ResolvedJavaMethod> trace) {
+            ResolvedJavaMethod ep = null;
+            for (ResolvedJavaMethod m : trace) {
                 if (doPrivilegedMethod.equals(m)) {
                     return ep;
                 }
@@ -684,7 +706,7 @@ public class PermissionsFeature implements Feature {
         }
     }
 
-    private final class SafeServiceLoaderRecognizer implements CallGraphFilter {
+    private static final class SafeServiceLoaderRecognizer implements CallGraphFilter {
 
         private final ResolvedJavaMethod providerImplGet;
         private final ImageClassLoader imageClassLoader;
@@ -700,13 +722,11 @@ public class PermissionsFeature implements Feature {
         }
 
         @Override
-        public boolean test(AnalysisMethod method, AnalysisMethod caller, LinkedHashSet<AnalysisMethod> trace) {
+        public boolean test(ResolvedJavaMethod method, ResolvedJavaMethod caller, LinkedHashSet<ResolvedJavaMethod> trace) {
             if (providerImplGet.equals(method)) {
-                AnalysisType instantiatedType = findInstantiatedType(trace);
-                if (instantiatedType != null) {
-                    if (!isRegisteredInServiceLoader(instantiatedType)) {
-                        return true;
-                    }
+                ResolvedJavaType instantiatedType = findInstantiatedType(trace);
+                if (instantiatedType != null && !isRegisteredInServiceLoader(instantiatedType)) {
+                    return true;
                 }
             }
             return false;
@@ -715,9 +735,9 @@ public class PermissionsFeature implements Feature {
         /**
          * Finds last constructor invocation.
          */
-        private AnalysisType findInstantiatedType(LinkedHashSet<AnalysisMethod> trace) {
-            AnalysisType res = null;
-            for (AnalysisMethod m : trace) {
+        private static ResolvedJavaType findInstantiatedType(LinkedHashSet<ResolvedJavaMethod> trace) {
+            ResolvedJavaType res = null;
+            for (ResolvedJavaMethod m : trace) {
                 if ("<init>".equals(m.getName())) {
                     res = m.getDeclaringClass();
                 }
@@ -728,17 +748,17 @@ public class PermissionsFeature implements Feature {
         /**
          * Finds if the given type may be instantiated by ServiceLoader.
          */
-        private boolean isRegisteredInServiceLoader(AnalysisType type) {
+        private boolean isRegisteredInServiceLoader(ResolvedJavaType type) {
             String resource = String.format("META-INF/services/%s", type.toClassName());
             if (imageClassLoader.getClassLoader().getResource(resource) != null) {
                 return true;
             }
-            for (AnalysisType ifc : type.getInterfaces()) {
+            for (ResolvedJavaType ifc : type.getInterfaces()) {
                 if (isRegisteredInServiceLoader(ifc)) {
                     return true;
                 }
             }
-            AnalysisType superClz = type.getSuperclass();
+            ResolvedJavaType superClz = type.getSuperclass();
             if (superClz != null) {
                 return isRegisteredInServiceLoader(superClz);
             }
@@ -750,8 +770,8 @@ public class PermissionsFeature implements Feature {
 
         private final SVMHost hostVM;
         private final AnalysisMethod threadSetName;
-        private final Set<AnalysisMethod> envCreateThread;
-        private final Set<AnalysisMethod> envCreateSystemThread;
+        private final Set<? extends ResolvedJavaMethod> envCreateThread;
+        private final Set<? extends ResolvedJavaMethod> envCreateSystemThread;
 
         SafeSetThreadNameRecognizer(BigBang bb) {
             hostVM = (SVMHost) bb.getHostVM();
@@ -771,11 +791,11 @@ public class PermissionsFeature implements Feature {
         }
 
         @Override
-        public boolean test(AnalysisMethod method, AnalysisMethod caller, LinkedHashSet<AnalysisMethod> trace) {
-            if (!threadSetName.equals(method)) {
+        public boolean test(ResolvedJavaMethod method, ResolvedJavaMethod caller, LinkedHashSet<ResolvedJavaMethod> trace) {
+            if (!threadSetName.equals(method) || !(caller instanceof AnalysisMethod)) {
                 return false;
             }
-            StructuredGraph graph = hostVM.getAnalysisGraph(caller);
+            StructuredGraph graph = hostVM.getAnalysisGraph((AnalysisMethod) caller);
             Boolean res = null;
             for (Invoke invoke : graph.getInvokes()) {
                 if (method.equals(invoke.callTarget().targetMethod())) {
@@ -803,6 +823,217 @@ public class PermissionsFeature implements Feature {
 
         ResourceAsOptionDecorator(String defaultValue) {
             super(new LocatableMultiOptionValue.Strings(Collections.singletonList(defaultValue)));
+        }
+    }
+
+    /**
+     * Represents a folded call to Unsafe. Unsafe methods are intrinsified and inlined within a
+     * structured graph, calls to these methods are not in the graph. But the method graph
+     * containing such calls is marked as {@link StructuredGraph#hasUnsafeAccess() unsafe}. For each
+     * such a method we add {@link InlinedUnsafeMethod} as a callee. We don't know what inlined
+     * unsafe method was called, but we know that the parsed method contains at least one unsafe
+     * call.
+     */
+    private static final class InlinedUnsafeMethod implements ResolvedJavaMethod {
+
+        private final ResolvedJavaType unsafe;
+        private final Signature signature;
+
+        InlinedUnsafeMethod(BigBang bb) {
+            this.unsafe = bb.getMetaAccess().lookupJavaType(Unsafe.class);
+            this.signature = new SignatureImpl(bb);
+        }
+
+        @Override
+        public byte[] getCode() {
+            return null;
+        }
+
+        @Override
+        public int getCodeSize() {
+            return 0;
+        }
+
+        @Override
+        public String getName() {
+            return "<inlined>";
+        }
+
+        @Override
+        public ResolvedJavaType getDeclaringClass() {
+            return unsafe;
+        }
+
+        @Override
+        public Signature getSignature() {
+            return signature;
+        }
+
+        @Override
+        public int getMaxLocals() {
+            return 0;
+        }
+
+        @Override
+        public int getMaxStackSize() {
+            return 0;
+        }
+
+        @Override
+        public boolean isSynthetic() {
+            return false;
+        }
+
+        @Override
+        public boolean isVarArgs() {
+            return false;
+        }
+
+        @Override
+        public boolean isBridge() {
+            return false;
+        }
+
+        @Override
+        public boolean isDefault() {
+            return false;
+        }
+
+        @Override
+        public boolean isClassInitializer() {
+            return false;
+        }
+
+        @Override
+        public boolean isConstructor() {
+            return false;
+        }
+
+        @Override
+        public boolean canBeStaticallyBound() {
+            return false;
+        }
+
+        @Override
+        public ExceptionHandler[] getExceptionHandlers() {
+            return new ExceptionHandler[0];
+        }
+
+        @Override
+        @SuppressWarnings("unused")
+        public StackTraceElement asStackTraceElement(int bci) {
+            return new StackTraceElement(unsafe.toJavaName(), getName(), unsafe.getSourceFileName(), -1);
+        }
+
+        @Override
+        @SuppressWarnings("unused")
+        public ProfilingInfo getProfilingInfo(boolean includeNormal, boolean includeOSR) {
+            return null;
+        }
+
+        @Override
+        public void reprofile() {
+        }
+
+        @Override
+        public ConstantPool getConstantPool() {
+            return null;
+        }
+
+        @Override
+        public Annotation[][] getParameterAnnotations() {
+            return new Annotation[0][];
+        }
+
+        @Override
+        public Type[] getGenericParameterTypes() {
+            return new Type[0];
+        }
+
+        @Override
+        public boolean canBeInlined() {
+            return false;
+        }
+
+        @Override
+        public boolean hasNeverInlineDirective() {
+            return false;
+        }
+
+        @Override
+        public boolean shouldBeInlined() {
+            return false;
+        }
+
+        @Override
+        public LineNumberTable getLineNumberTable() {
+            return null;
+        }
+
+        @Override
+        public LocalVariableTable getLocalVariableTable() {
+            return null;
+        }
+
+        @Override
+        public Constant getEncoding() {
+            return null;
+        }
+
+        @Override
+        @SuppressWarnings("unused")
+        public boolean isInVirtualMethodTable(ResolvedJavaType resolved) {
+            return false;
+        }
+
+        @Override
+        public SpeculationLog getSpeculationLog() {
+            return null;
+        }
+
+        @Override
+        @SuppressWarnings("unused")
+        public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+            return null;
+        }
+
+        @Override
+        public Annotation[] getAnnotations() {
+            return new Annotation[0];
+        }
+
+        @Override
+        public Annotation[] getDeclaredAnnotations() {
+            return new Annotation[0];
+        }
+
+        @Override
+        public int getModifiers() {
+            return 0;
+        }
+
+        private static final class SignatureImpl implements Signature {
+
+            private final ResolvedJavaType returnType;
+
+            SignatureImpl(BigBang bb) {
+                returnType = bb.getMetaAccess().lookupJavaType(Void.TYPE);
+            }
+
+            @Override
+            public int getParameterCount(boolean receiver) {
+                return receiver ? 1 : 0;
+            }
+
+            @Override
+            public JavaType getParameterType(int index, ResolvedJavaType accessingClass) {
+                throw new IndexOutOfBoundsException(index);
+            }
+
+            @Override
+            public JavaType getReturnType(ResolvedJavaType accessingClass) {
+                return returnType;
+            }
         }
     }
 }

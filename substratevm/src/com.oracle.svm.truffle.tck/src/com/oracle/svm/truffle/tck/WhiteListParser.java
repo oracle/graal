@@ -57,7 +57,7 @@ final class WhiteListParser extends ConfigurationParser {
 
     private final ImageClassLoader imageClassLoader;
     private final BigBang bb;
-    private Set<AnalysisMethod> whiteList;
+    private Set<ResolvedJavaMethod> whiteList;
 
     WhiteListParser(ImageClassLoader imageClassLoader, BigBang bb) {
         super(true);
@@ -65,7 +65,7 @@ final class WhiteListParser extends ConfigurationParser {
         this.bb = Objects.requireNonNull(bb, "BigBang must be non null");
     }
 
-    Set<AnalysisMethod> getLoadedWhiteList() {
+    Set<ResolvedJavaMethod> getLoadedWhiteList() {
         if (whiteList == null) {
             throw new IllegalStateException("Not parsed yet.");
         }
