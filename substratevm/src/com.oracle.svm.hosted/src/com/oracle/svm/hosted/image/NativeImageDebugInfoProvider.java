@@ -45,6 +45,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.svm.core.UniqueShortNameProvider;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
@@ -1750,7 +1751,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             for (DebugLocalValueInfo localInfo : toSplit.localInfoList) {
                 if (localInfo.localKind() == DebugLocalValueInfo.LocalKind.STACKSLOT) {
                     int newSlot = localInfo.stackSlot() + frameSize;
-                    NativeImageDebugLocalValue value = new NativeImageDebugStackValue(newSlot);
+                    NativeImageDebugLocalValue value = NativeImageDebugStackValue.create(newSlot);
                     NativeImageDebugLocalValueInfo nativeLocalInfo = (NativeImageDebugLocalValueInfo) localInfo;
                     NativeImageDebugLocalValueInfo newLocalinfo = new NativeImageDebugLocalValueInfo(nativeLocalInfo.name,
                                     value,
@@ -2124,7 +2125,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         public NativeImageDebugLocalValue nextFloatingLocation() {
             if (nextFPregIdx < fregs.length) {
-                return new NativeImageDebugRegisterValue(fregs[nextFPregIdx++].number);
+                return NativeImageDebugRegisterValue.create(fregs[nextFPregIdx++].number);
             } else {
                 return nextStackLocation();
             }
@@ -2132,7 +2133,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         public NativeImageDebugLocalValue nextIntegerLocation() {
             if (nextGPRegIdx < gpregs.length) {
-                return new NativeImageDebugRegisterValue(gpregs[nextGPRegIdx++].number);
+                return NativeImageDebugRegisterValue.create(gpregs[nextGPRegIdx++].number);
             } else {
                 return nextStackLocation();
             }
@@ -2143,7 +2144,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             // offset to adjust for any intervening return address and frame pointer
             assert nextStackIdx < stackParamCount : "encountered too many stack params";
             int stackIdx = nextStackIdx++;
-            return new NativeImageDebugStackValue((stackIdx * 8) + stackOffset);
+            return NativeImageDebugStackValue.create((stackIdx * 8) + stackOffset);
         }
 
         public boolean usesStack() {
@@ -2207,15 +2208,15 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             this.type = (resolvedType != null ? resolvedType : hostedTypeForKind(kind));
             if (value instanceof RegisterValue) {
                 this.localKind = LocalKind.REGISTER;
-                this.value = new NativeImageDebugRegisterValue((RegisterValue) value);
+                this.value = NativeImageDebugRegisterValue.create((RegisterValue) value);
             } else if (value instanceof StackSlot) {
                 this.localKind = LocalKind.STACKSLOT;
-                this.value = new NativeImageDebugStackValue((StackSlot) value, framesize);
+                this.value = NativeImageDebugStackValue.create((StackSlot) value, framesize);
             } else if (value instanceof JavaConstant) {
                 JavaConstant constant = (JavaConstant) value;
                 if (constant instanceof PrimitiveConstant || constant.isNull()) {
                     this.localKind = LocalKind.CONSTANT;
-                    this.value = new NativeImageDebugConstantValue(constant);
+                    this.value = NativeImageDebugConstantValue.create(constant);
                 } else {
                     long heapOffset = objectOffset(constant);
                     if (heapOffset >= 0) {
@@ -2363,18 +2364,28 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    public class NativeImageDebugLocalValue {
+    public abstract static class NativeImageDebugLocalValue {
     }
 
-    public class NativeImageDebugRegisterValue extends NativeImageDebugLocalValue {
+    public static class NativeImageDebugRegisterValue extends NativeImageDebugLocalValue {
+        private static EconomicMap<Integer, NativeImageDebugRegisterValue> registerValues = EconomicMap.create();
         private int number;
 
-        NativeImageDebugRegisterValue(RegisterValue value) {
-            number = value.getRegister().number;
+        private NativeImageDebugRegisterValue(int number) {
+            this.number = number;
         }
 
-        NativeImageDebugRegisterValue(int number) {
-            this.number = number;
+        static NativeImageDebugRegisterValue create(RegisterValue value) {
+            return create(value.getRegister().number);
+        }
+
+        static NativeImageDebugRegisterValue create(int number) {
+            NativeImageDebugRegisterValue value = registerValues.get(number);
+            if (value == null) {
+                value = new NativeImageDebugRegisterValue(number);
+                registerValues.put(number, value);
+            }
+            return value;
         }
 
         public int getNumber() {
@@ -2396,15 +2407,25 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    public class NativeImageDebugStackValue extends NativeImageDebugLocalValue {
+    public static class NativeImageDebugStackValue extends NativeImageDebugLocalValue {
+        private static EconomicMap<Integer, NativeImageDebugStackValue> stackValues = EconomicMap.create();
         private int offset;
 
-        NativeImageDebugStackValue(StackSlot value, int framesize) {
-            offset = value.getOffset(framesize);
+        private NativeImageDebugStackValue(int offset) {
+            this.offset = offset;
         }
 
-        NativeImageDebugStackValue(int offset) {
-            this.offset = offset;
+        private static NativeImageDebugStackValue create(StackSlot value, int framesize) {
+            return create(value.getOffset(framesize));
+        }
+
+        private static NativeImageDebugStackValue create(int offset) {
+            NativeImageDebugStackValue value = stackValues.get(offset);
+            if (value == null) {
+                value = new NativeImageDebugStackValue(offset);
+                stackValues.put(offset, value);
+            }
+            return value;
         }
 
         public int getOffset() {
@@ -2426,17 +2447,28 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    public class NativeImageDebugConstantValue extends NativeImageDebugLocalValue {
+    public static class NativeImageDebugConstantValue extends NativeImageDebugLocalValue {
+        private static EconomicMap<JavaConstant, NativeImageDebugConstantValue> constantValues = EconomicMap.create();
         private JavaConstant value;
         private long heapoffset;
 
-        NativeImageDebugConstantValue(JavaConstant value) {
-            this(value, -1);
-        }
-
-        NativeImageDebugConstantValue(JavaConstant value, long heapoffset) {
+        private NativeImageDebugConstantValue(JavaConstant value, long heapoffset) {
             this.value = value;
             this.heapoffset = heapoffset;
+        }
+
+        static NativeImageDebugConstantValue create(JavaConstant value) {
+            return create(value, -1);
+        }
+
+        static NativeImageDebugConstantValue create(JavaConstant value, long heapoffset) {
+            NativeImageDebugConstantValue c = constantValues.get(value);
+            if (c == null) {
+                c = new NativeImageDebugConstantValue(value, heapoffset);
+                constantValues.put(value, c);
+            }
+            assert c.heapoffset == heapoffset;
+            return c;
         }
 
         public JavaConstant getConstant() {
