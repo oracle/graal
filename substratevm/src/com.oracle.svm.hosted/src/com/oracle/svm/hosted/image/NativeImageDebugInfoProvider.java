@@ -1140,7 +1140,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             JavaKind kind = ownerType.getJavaKind();
             JavaKind storageKind = isPseudoObjectType(ownerType, ownerType) ? JavaKind.Long : kind;
             assert kind == JavaKind.Object : "must be an object";
-            paramInfos.add(new NativeImageDebugLocalValueInfo("this", storageKind, ownerType, slot, line));
+            paramInfos.add(new NativeImageDebugLocalInfo("this", storageKind, ownerType, slot, line));
             slot += kind.getSlotCount();
         }
         for (int i = 0; i < parameterCount; i++) {
@@ -1149,7 +1149,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             ResolvedJavaType paramType = (ResolvedJavaType) signature.getParameterType(i, null);
             JavaKind kind = paramType.getJavaKind();
             JavaKind storageKind = isPseudoObjectType(paramType, ownerType) ? JavaKind.Long : kind;
-            paramInfos.add(new NativeImageDebugLocalValueInfo(name, storageKind, paramType, slot, line));
+            paramInfos.add(new NativeImageDebugLocalInfo(name, storageKind, paramType, slot, line));
             slot += kind.getSlotCount();
         }
         return paramInfos;
@@ -2185,20 +2185,14 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    public class NativeImageDebugLocalValueInfo implements DebugLocalValueInfo {
-        private final String name;
-        private ResolvedJavaType type;
-        private final NativeImageDebugLocalValue value;
-        private final JavaKind kind;
-        private int slot;
-        private int line;
-        private LocalKind localKind;
+    public class NativeImageDebugLocalInfo implements DebugLocalInfo {
+        protected final String name;
+        protected ResolvedJavaType type;
+        protected final JavaKind kind;
+        protected int slot;
+        protected int line;
 
-        NativeImageDebugLocalValueInfo(String name, JavaKind kind, ResolvedJavaType type, int slot, int line) {
-            this(name, Value.ILLEGAL, 0, kind, type, slot, line);
-        }
-
-        NativeImageDebugLocalValueInfo(String name, JavaValue value, int framesize, JavaKind kind, ResolvedJavaType resolvedType, int slot, int line) {
+        NativeImageDebugLocalInfo(String name, JavaKind kind, ResolvedJavaType resolvedType, int slot, int line) {
             this.name = name;
             this.kind = kind;
             this.slot = slot;
@@ -2206,6 +2200,54 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             // if we don't have a type default it for the JavaKind
             // it may still end up null when kind is Undefined.
             this.type = (resolvedType != null ? resolvedType : hostedTypeForKind(kind));
+        }
+
+        @Override
+        public ResolvedJavaType valueType() {
+            if (type != null && type instanceof HostedType) {
+                return getOriginal((HostedType) type);
+            }
+            return type;
+        }
+
+        @Override
+        public String name() {
+            return name;
+        }
+
+        @Override
+        public String typeName() {
+            ResolvedJavaType valueType = valueType();
+            return (valueType == null ? "" : valueType().toJavaName());
+        }
+
+        @Override
+        public int slot() {
+            return slot;
+        }
+
+        @Override
+        public int slotCount() {
+            return kind.getSlotCount();
+        }
+
+
+        @Override
+        public JavaKind javaKind() {
+            return kind;
+        }
+
+        @Override
+        public int line() {
+            return line;
+        }
+    }
+    public class NativeImageDebugLocalValueInfo extends NativeImageDebugLocalInfo implements DebugLocalValueInfo {
+        private final NativeImageDebugLocalValue value;
+        private LocalKind localKind;
+
+        NativeImageDebugLocalValueInfo(String name, JavaValue value, int framesize, JavaKind kind, ResolvedJavaType resolvedType, int slot, int line) {
+            super(name, kind, resolvedType, slot, line);
             if (value instanceof RegisterValue) {
                 this.localKind = LocalKind.REGISTER;
                 this.value = NativeImageDebugRegisterValue.create((RegisterValue) value);
@@ -2234,11 +2276,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         NativeImageDebugLocalValueInfo(String name, NativeImageDebugLocalValue value, JavaKind kind, ResolvedJavaType type, int slot, int line) {
-            this.name = name;
-            this.kind = kind;
-            this.type = type;
-            this.slot = slot;
-            this.line = line;
+            super(name, kind, type, slot, line);
             if (value == null) {
                 this.localKind = LocalKind.UNDEFINED;
             } else if (value instanceof NativeImageDebugRegisterValue) {
@@ -2252,21 +2290,13 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public ResolvedJavaType valueType() {
-            if (type != null && type instanceof HostedType) {
-                return getOriginal((HostedType) type);
-            }
-            return type;
-        }
-
-        @Override
         public boolean equals(Object o) {
             if (!(o instanceof NativeImageDebugLocalValueInfo)) {
                 return false;
             }
             NativeImageDebugLocalValueInfo that = (NativeImageDebugLocalValueInfo) o;
             // values need to have the same name
-            if (!name.equals(that.name)) {
+            if (!name().equals(that.name())) {
                 return false;
             }
             // values need to be for the same line
@@ -2290,38 +2320,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public int hashCode() {
-            return Objects.hash(name, value) * 31 + line;
-        }
-
-        @Override
-        public String name() {
-            return name;
-        }
-
-        @Override
-        public String typeName() {
-            ResolvedJavaType valueType = valueType();
-            return (valueType == null ? "" : valueType().toJavaName());
-        }
-
-        @Override
-        public int slot() {
-            return slot;
-        }
-
-        @Override
-        public int slotCount() {
-            return kind.getSlotCount();
-        }
-
-        @Override
-        public JavaKind javaKind() {
-            return kind;
-        }
-
-        @Override
-        public int line() {
-            return line;
+            return Objects.hash(name(), value) * 31 + line;
         }
 
         @Override
