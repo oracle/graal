@@ -31,9 +31,6 @@ import java.util.concurrent.locks.LockSupport;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
@@ -126,7 +123,12 @@ abstract class JavaMonitorQueuedSynchronizer {
         // see AbstractQueuedLongSynchronizer.ConditionNode.block()
         public boolean block() {
             while (!isReleasable()) {
-                LockSupport.park();
+                /*
+                 * In AbstractQueuedLongSynchronizer, callers use LockSupport.setCurrentBlocker() to
+                 * stay compatible with the behavior of former code. We need the blocker object only
+                 * to set the correct thread state while parking and can pass it to park() here.
+                 */
+                LockSupport.park(this);
             }
             return true;
         }
@@ -470,7 +472,6 @@ abstract class JavaMonitorQueuedSynchronizer {
             }
             ConditionNode node = new ConditionNode();
             long savedAcquisitions = enableWait(node);
-            setCurrentBlocker(this);
             boolean interrupted = false;
             boolean cancelled = false;
             while (!canReacquire(node)) {
@@ -484,7 +485,6 @@ abstract class JavaMonitorQueuedSynchronizer {
                     Thread.onSpinWait(); // awoke while enqueuing
                 }
             }
-            setCurrentBlocker(null);
             node.clearStatus();
             // waiting is done, emit wait event
             JavaMonitorWaitEvent.emit(startTicks, obj, node.notifierJfrTid, 0L, false);
@@ -538,12 +538,6 @@ abstract class JavaMonitorQueuedSynchronizer {
         }
     }
 
-    static void setCurrentBlocker(JavaMonitorConditionObject condition) {
-        if (org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 17) {
-            Target_java_util_concurrent_locks_LockSupport.setCurrentBlocker(condition);
-        }
-    }
-
     @SuppressWarnings("deprecation")
     static boolean compareAndSetReference(Object object, long offset, Node expected, Node newValue) {
         return U.compareAndSetObject(object, offset, expected, newValue);
@@ -564,11 +558,4 @@ abstract class JavaMonitorQueuedSynchronizer {
     static final long STATE = U.objectFieldOffset(JavaMonitorQueuedSynchronizer.class, "state");
     private static final long HEAD = U.objectFieldOffset(JavaMonitorQueuedSynchronizer.class, "head");
     private static final long TAIL = U.objectFieldOffset(JavaMonitorQueuedSynchronizer.class, "tail");
-}
-
-@TargetClass(value = LockSupport.class)
-final class Target_java_util_concurrent_locks_LockSupport {
-    @Alias
-    @TargetElement(onlyWith = com.oracle.svm.core.jdk.JDK17OrLater.class)
-    public static native void setCurrentBlocker(Object blocker);
 }
