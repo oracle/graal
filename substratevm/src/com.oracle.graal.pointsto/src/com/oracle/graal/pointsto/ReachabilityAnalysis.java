@@ -93,8 +93,8 @@ public interface ReachabilityAnalysis {
         return false;
     }
 
-    default boolean markTypeAsReachable(AnalysisType type) {
-        return type.registerAsReachable();
+    default boolean registerTypeAsReachable(AnalysisType type, Object reason) {
+        return type.registerAsReachable(reason);
     }
 
     default boolean registerTypeAsAllocated(AnalysisType type, Object reason) {

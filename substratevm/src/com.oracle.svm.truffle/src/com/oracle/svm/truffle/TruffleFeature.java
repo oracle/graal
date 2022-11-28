@@ -340,7 +340,7 @@ public class TruffleFeature implements InternalFeature {
         ImageSingletons.lookup(TruffleBaseFeature.class).setProfilingEnabled(truffleRuntime.isProfilingEnabled());
 
         for (Class<?> initType : truffleRuntime.getLookupTypes()) {
-            access.registerAsUsed(initType);
+            config.registerAsUsed(initType, "Truffle runtime init type.");
         }
 
         // register thread local foreign poll as compiled otherwise the stub won't work

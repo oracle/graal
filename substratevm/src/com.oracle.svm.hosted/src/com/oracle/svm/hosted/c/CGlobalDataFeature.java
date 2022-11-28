@@ -75,11 +75,11 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.c.CGlobalDataNonConstantRegistry;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
 import com.oracle.svm.util.ReflectionUtil;
@@ -142,7 +142,7 @@ public class CGlobalDataFeature implements InternalFeature {
 
                     ResolvedJavaType infoType = b.getMetaAccess().lookupJavaType(CGlobalDataInfo.class);
                     if (infoType instanceof AnalysisType) {
-                        ((AnalysisType) infoType).registerAsReachable();
+                        ((AnalysisType) infoType).registerAsReachable("registered by " + CGlobalDataFeature.class.getName());
                     }
 
                     ValueNode offset = b.add(LoadFieldNode.create(b.getAssumptions(), info, b.getMetaAccess().lookupJavaField(offsetField)));

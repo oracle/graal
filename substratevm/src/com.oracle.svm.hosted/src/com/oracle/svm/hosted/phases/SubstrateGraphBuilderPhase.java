@@ -68,7 +68,7 @@ public class SubstrateGraphBuilderPhase extends SharedGraphBuilderPhase {
                  * InvocationPlugins.resolvedRegistrations map reachable from
                  * SubstrateReplacements.snippetInvocationPlugins.
                  */
-                ((AnalysisType) targetMethod.getDeclaringClass()).registerAsReachable();
+                ((AnalysisType) targetMethod.getDeclaringClass()).registerAsReachable("declared method " + targetMethod.format("%H.%n(%p)") + " is inlined");
             }
             return inlineInfo;
         }

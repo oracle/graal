@@ -341,11 +341,15 @@ public class FeatureImpl {
 
         @Override
         public void registerAsUsed(Class<?> clazz) {
-            registerAsUsed(getMetaAccess().lookupJavaType(clazz));
+            registerAsUsed(getMetaAccess().lookupJavaType(clazz), "Registered from Feature API.");
         }
 
-        public void registerAsUsed(AnalysisType aType) {
-            bb.markTypeAsReachable(aType);
+        public void registerAsUsed(Class<?> clazz, Object reason) {
+            registerAsUsed(getMetaAccess().lookupJavaType(clazz), reason);
+        }
+
+        public void registerAsUsed(AnalysisType aType, Object reason) {
+            bb.registerTypeAsReachable(aType, reason);
         }
 
         @Override
@@ -363,7 +367,6 @@ public class FeatureImpl {
 
         @Override
         public void registerAsAccessed(Field field) {
-            registerAsUsed(getMetaAccess().lookupJavaType(field.getDeclaringClass()));
             registerAsAccessed(getMetaAccess().lookupJavaField(field));
         }
 
@@ -372,7 +375,6 @@ public class FeatureImpl {
         }
 
         public void registerAsRead(Field field, Object reason) {
-            getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
             registerAsRead(getMetaAccess().lookupJavaField(field), reason);
         }
 
@@ -382,7 +384,6 @@ public class FeatureImpl {
 
         @Override
         public void registerAsUnsafeAccessed(Field field) {
-            registerAsUsed(getMetaAccess().lookupJavaType(field.getDeclaringClass()));
             registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field));
         }
 
@@ -400,7 +401,6 @@ public class FeatureImpl {
         }
 
         public void registerAsFrozenUnsafeAccessed(Field field) {
-            registerAsUsed(getMetaAccess().lookupJavaType(field.getDeclaringClass()));
             registerAsFrozenUnsafeAccessed(getMetaAccess().lookupJavaField(field));
         }
 

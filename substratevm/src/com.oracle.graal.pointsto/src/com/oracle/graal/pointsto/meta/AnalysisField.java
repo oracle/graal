@@ -69,8 +69,8 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     private static final AtomicIntegerFieldUpdater<AnalysisField> isWrittenUpdater = AtomicIntegerFieldUpdater
                     .newUpdater(AnalysisField.class, "isWritten");
 
-    private static final AtomicIntegerFieldUpdater<AnalysisField> isFoldedUpdater = AtomicIntegerFieldUpdater
-                    .newUpdater(AnalysisField.class, "isFolded");
+    private static final AtomicReferenceFieldUpdater<AnalysisField, Object> isFoldedUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisField.class, Object.class, "isFolded");
 
     private static final AtomicIntegerFieldUpdater<AnalysisField> isUnsafeAccessedUpdater = AtomicIntegerFieldUpdater
                     .newUpdater(AnalysisField.class, "isUnsafeAccessed");
@@ -98,7 +98,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     /** Contains the {@link BytecodePosition} of the read or a reason object. */
     @SuppressWarnings("unused") private volatile Object isRead;
     @SuppressWarnings("unused") private volatile int isWritten;
-    @SuppressWarnings("unused") private volatile int isFolded;
+    @SuppressWarnings("unused") private volatile Object isFolded;
 
     private boolean isJNIAccessed;
     private boolean isUsedInComparison;
@@ -190,7 +190,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         isAccessedUpdater.set(this, this.isAccessed & other.isAccessed);
         this.canBeNull = this.canBeNull && other.canBeNull;
         isWrittenUpdater.set(this, this.isWritten & other.isWritten);
-        isFoldedUpdater.set(this, this.isFolded & other.isFolded);
+        isFoldedUpdater.set(this, this.isFolded != null & other.isFolded != null ? this.isFolded : null);
         isReadUpdater.set(this, this.isRead != null & other.isRead != null ? this.isRead : null);
         notifyUpdateAccessInfo();
     }
@@ -278,7 +278,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
      *            {@link String} describing why this field was manually marked as read
      */
     public boolean registerAsRead(Object reason) {
-        assert reason != null && (!(reason instanceof String) || !reason.equals("")) : "Registering a field as read needs to provide a non-empty reason.";
+        assert isValidReason(reason) : "Registering a field as read needs to provide a non-empty reason.";
         boolean firstAttempt = AtomicUtils.atomicSet(this, reason, isReadUpdater);
         notifyUpdateAccessInfo();
         if (readBy != null) {
@@ -313,9 +313,10 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         return firstAttempt;
     }
 
-    public void markFolded() {
-        if (AtomicUtils.atomicMark(this, isFoldedUpdater)) {
-            getDeclaringClass().registerAsReachable();
+    public void registerAsFolded(Object reason) {
+        assert isValidReason(reason) : "Registering a field as folded needs to provide a non-empty reason.";
+        if (AtomicUtils.atomicSet(this, reason, isFoldedUpdater)) {
+            assert getDeclaringClass().isReachable();
             onReachable();
         }
     }

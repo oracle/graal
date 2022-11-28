@@ -680,7 +680,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private static void makeAnalysisTypeReachable(DuringAnalysisAccessImpl access, AnalysisType type) {
-        if (type.registerAsReachable()) {
+        if (type.registerAsReachable("registered as side effect of reflection registration")) {
             access.requireAnalysisIteration();
         }
     }
@@ -718,7 +718,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * Make sure the class is registered as reachable before its fields are accessed below to
          * build the reflection metadata.
          */
-        type.registerAsReachable();
+        type.registerAsReachable("is registered for reflection");
         if (unsafeInstantiatedClasses.contains(clazz)) {
             type.registerAsAllocated("Is registered for reflection.");
         }

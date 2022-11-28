@@ -95,7 +95,6 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     @Override
     public AnalysisType addRootClass(Class<?> clazz, boolean addFields, boolean addArrayClass) {
         AnalysisType type = metaAccess.lookupJavaType(clazz);
-        type.registerAsReachable();
         return addRootClass(type, addFields, addArrayClass);
     }
 
@@ -107,13 +106,12 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     @SuppressWarnings("try")
     @Override
     public AnalysisType addRootClass(AnalysisType type, boolean addFields, boolean addArrayClass) {
+        type.registerAsReachable("root class");
         for (AnalysisField field : type.getInstanceFields(false)) {
             if (addFields) {
                 field.registerAsAccessed();
             }
         }
-
-        markTypeAsReachable(type);
 
         if (type.getSuperclass() != null) {
             addRootClass(type.getSuperclass(), addFields, addArrayClass);

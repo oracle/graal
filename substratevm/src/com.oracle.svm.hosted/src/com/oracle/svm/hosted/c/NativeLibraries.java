@@ -268,7 +268,7 @@ public final class NativeLibraries {
 
     private ResolvedJavaType lookupAndRegisterType(Class<?> clazz) {
         AnalysisType type = (AnalysisType) metaAccess.lookupJavaType(clazz);
-        type.registerAsReachable();
+        type.registerAsReachable("is native library type");
         return type;
     }
 

@@ -253,7 +253,6 @@ public class JNIAccessFeature implements Feature {
     private static void registerJavaCallTrampoline(BeforeAnalysisAccessImpl access, CallVariant variant, boolean nonVirtual) {
         MetaAccessProvider originalMetaAccess = access.getMetaAccess().getWrapped();
         ResolvedJavaField field = JNIAccessibleMethod.getCallVariantWrapperField(originalMetaAccess, variant, nonVirtual);
-        access.getUniverse().lookup(field.getDeclaringClass()).registerAsReachable();
         access.registerAsAccessed(access.getUniverse().lookup(field));
         String name = JNIJavaCallTrampolineHolder.getTrampolineName(variant, nonVirtual);
         Method method = ReflectionUtil.lookupMethod(JNIJavaCallTrampolineHolder.class, name);
@@ -342,9 +341,9 @@ public class JNIAccessFeature implements Feature {
         return JNIReflectionDictionary.singleton().addClassIfAbsent(classObj, c -> {
             AnalysisType analysisClass = access.getMetaAccess().lookupJavaType(classObj);
             if (analysisClass.isInterface() || (analysisClass.isInstanceClass() && analysisClass.isAbstract())) {
-                analysisClass.registerAsReachable();
+                analysisClass.registerAsReachable("is accessed via JNI");
             } else {
-                access.getBigBang().registerTypeAsAllocated(analysisClass, "Is accessed via JNI.");
+                access.getBigBang().registerTypeAsAllocated(analysisClass, "is accessed via JNI");
             }
             return new JNIAccessibleClass(classObj);
         });
@@ -410,7 +409,6 @@ public class JNIAccessFeature implements Feature {
     }
 
     private static void addField(Field reflField, boolean writable, DuringAnalysisAccessImpl access) {
-        access.getMetaAccess().lookupJavaType(reflField.getDeclaringClass()).registerAsReachable();
         if (SubstitutionReflectivityFilter.shouldExclude(reflField, access.getMetaAccess(), access.getUniverse())) {
             return;
         }

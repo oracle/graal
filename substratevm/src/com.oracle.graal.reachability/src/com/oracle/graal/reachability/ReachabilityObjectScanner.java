@@ -60,9 +60,9 @@ public class ReachabilityObjectScanner implements ObjectScanningObserver {
     public boolean forNullFieldValue(JavaConstant receiver, AnalysisField field, ObjectScanner.ScanReason reason) {
         boolean modified = false;
         if (receiver != null) {
-            modified = bb.markTypeAsReachable(constantType(receiver));
+            modified = bb.registerTypeAsReachable(constantType(receiver), reason);
         }
-        return modified || bb.markTypeAsReachable(field.getType());
+        return modified || bb.registerTypeAsReachable(field.getType(), reason);
     }
 
     @Override
@@ -70,24 +70,24 @@ public class ReachabilityObjectScanner implements ObjectScanningObserver {
         boolean modified = false;
         if (receiver != null) {
             bb.registerTypeAsInHeap(constantType(receiver), reason);
-            modified = bb.markTypeAsReachable(constantType(receiver));
+            modified = bb.registerTypeAsReachable(constantType(receiver), reason);
         }
-        return modified || bb.markTypeAsReachable(field.getType());
+        return modified || bb.registerTypeAsReachable(field.getType(), reason);
     }
 
     @Override
     public boolean forNullArrayElement(JavaConstant array, AnalysisType arrayType, int elementIndex, ObjectScanner.ScanReason reason) {
-        return bb.markTypeAsReachable(arrayType);
+        return bb.registerTypeAsReachable(arrayType, reason);
     }
 
     @Override
     public boolean forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int elementIndex, ObjectScanner.ScanReason reason) {
-        return bb.markTypeAsReachable(arrayType) || bb.registerTypeAsInHeap(elementType, reason);
+        return bb.registerTypeAsReachable(arrayType, reason) || bb.registerTypeAsInHeap(elementType, reason);
     }
 
     @Override
     public void forEmbeddedRoot(JavaConstant root, ObjectScanner.ScanReason reason) {
-        bb.markTypeAsReachable(constantType(root));
+        bb.registerTypeAsReachable(constantType(root), reason);
         bb.registerTypeAsInHeap(constantType(root), reason);
     }
 

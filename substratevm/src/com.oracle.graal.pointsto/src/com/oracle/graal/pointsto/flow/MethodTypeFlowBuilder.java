@@ -231,7 +231,7 @@ public class MethodTypeFlowBuilder {
                 InstanceOfNode node = (InstanceOfNode) n;
                 AnalysisType type = (AnalysisType) node.type().getType();
                 if (!ignoreInstanceOfType(type)) {
-                    type.registerAsReachable();
+                    type.registerAsReachable(AbstractAnalysisEngine.sourcePosition(node));
                 }
 
             } else if (n instanceof NewInstanceNode) {
@@ -311,7 +311,7 @@ public class MethodTypeFlowBuilder {
                      * metadata is only constructed after AOT compilation, so the image heap
                      * scanning during static analysis does not see these classes.
                      */
-                    frameStateMethod.getDeclaringClass().registerAsReachable();
+                    frameStateMethod.getDeclaringClass().registerAsReachable(AbstractAnalysisEngine.syntheticSourcePosition(node, method));
                 }
 
             } else if (n instanceof ForeignCall) {

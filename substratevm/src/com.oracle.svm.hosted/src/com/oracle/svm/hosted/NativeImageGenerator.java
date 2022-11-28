@@ -32,7 +32,6 @@ import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.regi
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
-import java.lang.ref.Reference;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
@@ -132,7 +131,6 @@ import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.SizeOfSupport;
-import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.graal.pointsto.AnalysisObjectScanningObserver;
@@ -1045,17 +1043,17 @@ public class NativeImageGenerator {
          * good example.
          */
         try (Indent ignored = debug.logAndIndent("add initial classes/fields/methods")) {
-            bb.registerTypeAsInHeap(bb.addRootClass(Object.class, false, false), "Root class.");
+            bb.registerTypeAsInHeap(bb.addRootClass(Object.class, false, false), "root class");
             bb.addRootField(DynamicHub.class, "vtable");
-            bb.registerTypeAsInHeap(bb.addRootClass(String.class, false, false), "Root class.");
-            bb.registerTypeAsInHeap(bb.addRootClass(String[].class, false, false), "Root class.");
-            bb.registerTypeAsInHeap(bb.addRootField(String.class, "value"), "Root class.");
-            bb.registerTypeAsInHeap(bb.addRootClass(long[].class, false, false), "Root class.");
-            bb.registerTypeAsInHeap(bb.addRootClass(byte[].class, false, false), "Root class.");
-            bb.registerTypeAsInHeap(bb.addRootClass(byte[][].class, false, false), "Root class.");
-            bb.registerTypeAsInHeap(bb.addRootClass(Object[].class, false, false), "Root class.");
-            bb.registerTypeAsInHeap(bb.addRootClass(CFunctionPointer[].class, false, false), "Root class.");
-            bb.registerTypeAsInHeap(bb.addRootClass(PointerBase[].class, false, false), "Root class.");
+            bb.registerTypeAsInHeap(bb.addRootClass(String.class, false, false), "root class");
+            bb.registerTypeAsInHeap(bb.addRootClass(String[].class, false, false), "root class");
+            bb.registerTypeAsInHeap(bb.addRootField(String.class, "value"), "root class");
+            bb.registerTypeAsInHeap(bb.addRootClass(long[].class, false, false), "root class");
+            bb.registerTypeAsInHeap(bb.addRootClass(byte[].class, false, false), "root class");
+            bb.registerTypeAsInHeap(bb.addRootClass(byte[][].class, false, false), "root class");
+            bb.registerTypeAsInHeap(bb.addRootClass(Object[].class, false, false), "root class");
+            bb.registerTypeAsInHeap(bb.addRootClass(CFunctionPointer[].class, false, false), "root class");
+            bb.registerTypeAsInHeap(bb.addRootClass(PointerBase[].class, false, false), "root class");
 
             bb.addRootMethod(ReflectionUtil.lookupMethod(SubstrateArraycopySnippets.class, "doArraycopy", Object.class, int.class, Object.class, int.class, int.class), true);
             bb.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true);
@@ -1063,7 +1061,7 @@ public class NativeImageGenerator {
             for (JavaKind kind : JavaKind.values()) {
                 if (kind.isPrimitive() && kind != JavaKind.Void) {
                     bb.addRootClass(kind.toJavaClass(), false, true);
-                    bb.addRootClass(kind.toBoxedJavaClass(), false, true).registerAsInHeap("Root class.");
+                    bb.addRootClass(kind.toBoxedJavaClass(), false, true).registerAsInHeap("root class");
                     bb.addRootField(kind.toBoxedJavaClass(), "value");
                     bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), "valueOf", kind.toJavaClass()), true);
                     bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), kind.getJavaName() + "Value"), true);
@@ -1073,14 +1071,14 @@ public class NativeImageGenerator {
                      */
                     Class<?>[] innerClasses = kind.toBoxedJavaClass().getDeclaredClasses();
                     if (innerClasses != null && innerClasses.length > 0) {
-                        bb.getMetaAccess().lookupJavaType(innerClasses[0]).registerAsReachable();
+                        bb.getMetaAccess().lookupJavaType(innerClasses[0]).registerAsReachable("inner class of root class");
                     }
                 }
             }
             /* SubstrateTemplates#toLocationIdentity accesses the Counter.value field. */
-            bb.getMetaAccess().lookupJavaType(JavaKind.Void.toJavaClass()).registerAsReachable();
-            bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.util.Counter.class).registerAsReachable();
-            bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.allocationprofile.AllocationCounter.class).registerAsReachable();
+            bb.getMetaAccess().lookupJavaType(JavaKind.Void.toJavaClass()).registerAsReachable("root class");
+            bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.util.Counter.class).registerAsReachable("root class");
+            bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.allocationprofile.AllocationCounter.class).registerAsReachable("root class");
 
             NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, null, aProviders, aMetaAccess, aUniverse, null, null, nativeLibraries, loader, ParsingReason.PointsToAnalysis,
                             bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, ConfigurationValues.getTarget());
@@ -1108,13 +1106,11 @@ public class NativeImageGenerator {
                     SnippetReflectionProvider aSnippetReflection, AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ForeignCallsProvider aForeignCalls,
                     ClassInitializationSupport classInitializationSupport, Providers originalProviders, SubstratePlatformConfigurationProvider platformConfig) {
         assert aUniverse != null : "Analysis universe must be initialized.";
-        aMetaAccess.lookupJavaType(String.class).registerAsReachable();
         AnalysisConstantFieldProvider aConstantFieldProvider = new AnalysisConstantFieldProvider(aUniverse, aMetaAccess, aConstantReflection, classInitializationSupport);
         /*
          * Install all snippets so that the types, methods, and fields used in the snippets get
          * added to the universe.
          */
-        aMetaAccess.lookupJavaType(Reference.class).registerAsReachable();
         MetaAccessExtensionProvider aMetaAccessExtensionProvider = HostedConfiguration.instance().createAnalysisMetaAccessExtensionProvider();
         LoweringProvider aLoweringProvider = SubstrateLoweringProvider.createForHosted(aMetaAccess, null, platformConfig, aMetaAccessExtensionProvider);
         StampProvider aStampProvider = new SubstrateStampProvider(aMetaAccess);
@@ -1264,10 +1260,6 @@ public class NativeImageGenerator {
         plugins.appendNodePlugin(new IntrinsifyMethodHandlesInvocationPlugin(reason, providers, aUniverse, hUniverse));
         plugins.appendNodePlugin(new DeletedFieldsPlugin());
         plugins.appendNodePlugin(new InjectedAccessorsPlugin());
-        ResolvedJavaType resolvedJavaType = providers.getMetaAccess().lookupJavaType(ClassInitializationTracking.class);
-        if (resolvedJavaType instanceof AnalysisType) {
-            ((AnalysisType) resolvedJavaType).registerAsReachable();
-        }
         plugins.appendNodePlugin(new EarlyConstantFoldLoadFieldPlugin(providers.getMetaAccess(), providers.getSnippetReflection()));
         plugins.appendNodePlugin(new ConstantFoldLoadFieldPlugin(reason));
         plugins.appendNodePlugin(new CInterfaceInvocationPlugin(providers.getMetaAccess(), providers.getWordTypes(), nativeLibs));

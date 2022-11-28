@@ -167,16 +167,16 @@ public class StandaloneAnalysisFeatureImpl {
 
         @Override
         public void registerAsUsed(Class<?> clazz) {
-            registerAsUsed(getMetaAccess().lookupJavaType(clazz));
+            registerAsUsed(getMetaAccess().lookupJavaType(clazz), "registered from Feature API");
         }
 
-        public void registerAsUsed(AnalysisType aType) {
-            aType.registerAsReachable();
+        public void registerAsUsed(AnalysisType aType, Object reason) {
+            aType.registerAsReachable(reason);
         }
 
         @Override
         public void registerAsInHeap(Class<?> clazz) {
-            registerAsInHeap(getMetaAccess().lookupJavaType(clazz), "Registered from Feature API.");
+            registerAsInHeap(getMetaAccess().lookupJavaType(clazz), "registered from Feature API");
         }
 
         public void registerAsInHeap(AnalysisType aType, Object reason) {
@@ -185,7 +185,6 @@ public class StandaloneAnalysisFeatureImpl {
 
         @Override
         public void registerAsAccessed(Field field) {
-            getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
             registerAsAccessed(getMetaAccess().lookupJavaField(field));
         }
 
@@ -194,7 +193,6 @@ public class StandaloneAnalysisFeatureImpl {
         }
 
         public void registerAsRead(Field field) {
-            getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
             registerAsRead(getMetaAccess().lookupJavaField(field));
         }
 
@@ -204,7 +202,6 @@ public class StandaloneAnalysisFeatureImpl {
 
         @Override
         public void registerAsUnsafeAccessed(Field field) {
-            getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
             registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field));
         }
 
@@ -221,7 +218,6 @@ public class StandaloneAnalysisFeatureImpl {
         }
 
         public void registerAsFrozenUnsafeAccessed(Field field) {
-            getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
             registerAsFrozenUnsafeAccessed(getMetaAccess().lookupJavaField(field));
         }
 

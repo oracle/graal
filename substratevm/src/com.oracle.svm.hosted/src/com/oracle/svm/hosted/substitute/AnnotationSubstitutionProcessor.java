@@ -53,7 +53,6 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -320,8 +319,6 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
                 switch (cvField.getRecomputeValueKind()) {
                     case FieldOffset:
-                        AnalysisType targetFieldDeclaringType = bb.getMetaAccess().lookupJavaType(cvField.getTargetField().getDeclaringClass());
-                        targetFieldDeclaringType.registerAsReachable();
                         AnalysisField targetField = bb.getMetaAccess().lookupJavaField(cvField.getTargetField());
                         targetField.registerAsAccessed();
                         assert !AnnotationAccess.isAnnotationPresent(targetField, Delete.class);

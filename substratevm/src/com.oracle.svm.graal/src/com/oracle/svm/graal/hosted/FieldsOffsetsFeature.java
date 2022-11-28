@@ -215,7 +215,7 @@ public class FieldsOffsetsFeature implements Feature {
 
         for (int i = 0; i < fields.getCount(); i++) {
             AnalysisField aField = config.getMetaAccess().lookupJavaField(findField(fields, i));
-            aField.getType().registerAsReachable();
+            aField.getType().registerAsReachable(aField);
             config.registerAsUnsafeAccessed(aField, partitionKind);
         }
     }

@@ -42,6 +42,8 @@ public interface ConstantFieldProvider {
 
         JavaConstant getReceiver();
 
+        Object getReason();
+
         T foldConstant(JavaConstant ret);
 
         T foldStableArray(JavaConstant ret, int stableDimensions, boolean isDefaultStable);
