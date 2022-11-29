@@ -93,11 +93,11 @@ public class GHASHProcessBlocksNode extends MemoryKillStubIntrinsicNode {
         return KILLED_LOCATIONS;
     }
 
-    public static EnumSet<?> minFeaturesAMD64() {
+    public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64() {
         return EnumSet.of(SSSE3, CLMUL);
     }
 
-    public static EnumSet<?> minFeaturesAARCH64() {
+    public static EnumSet<AArch64.CPUFeature> minFeaturesAARCH64() {
         return EnumSet.of(AArch64.CPUFeature.PMULL);
     }
 
