@@ -47,7 +47,7 @@
     name: 'gate-truffle-sigtest-' + self.jdk_version,
     run: [
       ["mx", "build"],
-      ["mx", "sigtest", "--check", (if self.jdk_version == 11 then "all" else "bin")],
+      ["mx", "sigtest", "--check", (if self.jdk_version == 17 then "all" else "bin")],
     ],
   },
 
@@ -116,12 +116,12 @@
         linux_amd64  + jdk + simple_tool_maven_project_gate + common.mach5_target,
         linux_amd64  + jdk + simple_language_maven_project_gate,
         darwin_amd64 + jdk + truffle_weekly + gate_lite + guard,
-      ] for jdk in [common.oraclejdk11, common.oraclejdk17]
+      ] for jdk in [common.oraclejdk20, common.oraclejdk17]
     ]) + [
-    linux_amd64 + common.oraclejdk11 + truffle_gate + guard + {timelimit: "45:00"},
-    linux_amd64 + common.oraclejdk17 + truffle_gate + guard + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
+    linux_amd64 + common.oraclejdk17 + truffle_gate + guard + {timelimit: "45:00"},
+    linux_amd64 + common.oraclejdk20 + truffle_gate + guard + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
 
-    truffle_common + linux_amd64 + common.oraclejdk11 + guard {
+    truffle_common + linux_amd64 + common.oraclejdk17 + guard {
       name: "gate-truffle-javadoc",
       run: [
         ["mx", "build"],
@@ -129,7 +129,7 @@
       ],
     },
 
-    truffle_common + linux_amd64 + common.oraclejdk11 + guard {
+    truffle_common + linux_amd64 + common.oraclejdk17 + guard {
       name: "gate-truffle-slow-path-unittests",
       run: [
         ["mx", "build", "-n", "-c", "-A-Atruffle.dsl.GenerateSlowPathOnly=true"],
@@ -140,8 +140,8 @@
       ],
     },
 
-    truffle_common + windows_amd64 + common.oraclejdk11 + devkits["windows-jdk11"] + guard {
-      name: "gate-truffle-nfi-windows-11",
+    truffle_common + windows_amd64 + common.oraclejdk17 + devkits["windows-jdk17"] + guard {
+      name: "gate-truffle-nfi-windows-17",
       # TODO make that a full gate run
       # currently, some truffle unittests fail on windows
       run: [
@@ -150,8 +150,8 @@
       ],
     },
 
-    truffle_common + linux_amd64 + common.oraclejdk11 + common.eclipse + common.jdt + guard + {
-      name: "weekly-truffle-coverage-11-linux-amd64",
+    truffle_common + linux_amd64 + common.oraclejdk17 + common.eclipse + common.jdt + guard + {
+      name: "weekly-truffle-coverage-17-linux-amd64",
       run: [
         ["mx", "--strict-compliance", "gate", "--strict-mode", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
       ],
@@ -164,8 +164,8 @@
 
     # BENCHMARKS
 
-    bench_hw.x52 + common.oraclejdk11 + bench_common + {
-      name: "bench-truffle-jmh",
+    bench_hw.x52 + common.oraclejdk17 + bench_common + {
+      name: "bench-truffle-jmh-17",
       notify_groups:: ["truffle_bench"],
       run: [
         ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "truffle:*", "--", "--", "com.oracle.truffle"],
@@ -177,8 +177,8 @@
       ],
     },
 
-    linux_amd64 + common.oraclejdk11 + bench_common + {
-      name: "gate-truffle-test-benchmarks-11",
+    linux_amd64 + common.oraclejdk17 + bench_common + {
+      name: "gate-truffle-test-benchmarks-17",
       run: [
         ["mx", "benchmark", "truffle:*", "--", "--jvm", "server", "--jvm-config", "graal-core", "--", "com.oracle.truffle", "-f", "1", "-wi", "1", "-w", "1", "-i", "1", "-r", "1"],
       ],
