@@ -120,18 +120,14 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
         @Override
         protected BciBlockMapping generateBlockMap() {
-            // Double effort expended to handle irreducible loops in AOT compilation
-            // since failure means native-image fails.
-            int maxDuplicationBoost = 2;
-
             if (isDeoptimizationEnabled() && isMethodDeoptTarget()) {
                 /*
                  * Need to add blocks representing where deoptimization entrypoint nodes will be
                  * inserted.
                  */
-                return DeoptimizationTargetBciBlockMapping.create(stream, code, options, graph.getDebug(), false, maxDuplicationBoost);
+                return DeoptimizationTargetBciBlockMapping.create(stream, code, options, graph.getDebug(), false);
             } else {
-                return BciBlockMapping.create(stream, code, options, graph.getDebug(), asyncExceptionLiveness(), maxDuplicationBoost);
+                return BciBlockMapping.create(stream, code, options, graph.getDebug(), asyncExceptionLiveness());
             }
         }
 

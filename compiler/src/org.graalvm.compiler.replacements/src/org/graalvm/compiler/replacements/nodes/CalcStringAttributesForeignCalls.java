@@ -22,13 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.amd64;
+package org.graalvm.compiler.replacements.nodes;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.replacements.nodes.ForeignCalls;
 
-public final class AMD64CalcStringAttributesForeignCalls {
+public final class CalcStringAttributesForeignCalls {
     private static final ForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_LATIN1 = foreignCallDescriptor("calcStringAttributesLatin1", int.class);
     private static final ForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_BMP = foreignCallDescriptor("calcStringAttributesBMP", int.class);
     private static final ForeignCallDescriptor STUB_CALC_STRING_ATTRIBUTES_UTF8_VALID = foreignCallDescriptor("calcStringAttributesUTF8Valid", long.class);
@@ -49,7 +48,7 @@ public final class AMD64CalcStringAttributesForeignCalls {
         return ForeignCalls.pureFunctionForeignCallDescriptor(name, resultType, Object.class, long.class, int.class);
     }
 
-    public static ForeignCallDescriptor getStub(AMD64CalcStringAttributesNode node) {
+    public static ForeignCallDescriptor getStub(CalcStringAttributesNode node) {
         switch (node.getOp()) {
             case LATIN1:
                 return STUB_CALC_STRING_ATTRIBUTES_LATIN1;

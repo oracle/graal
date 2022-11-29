@@ -77,6 +77,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.java.BciBlockMapping;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -335,14 +336,9 @@ public class NativeImageGenerator {
     protected final Map<ArtifactType, List<Path>> buildArtifacts = new EnumMap<>(ArtifactType.class);
 
     public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint, ProgressReporter reporter) {
-        this(loader, optionProvider, mainEntryPoint, reporter, new FeatureHandler());
-    }
-
-    protected NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint, ProgressReporter reporter,
-                    FeatureHandler featureHandler) {
         this.loader = loader;
         this.mainEntryPoint = mainEntryPoint;
-        this.featureHandler = featureHandler;
+        this.featureHandler = new FeatureHandler();
         this.optionProvider = optionProvider;
         this.reporter = reporter;
         /*
@@ -351,6 +347,14 @@ public class NativeImageGenerator {
          */
         optionProvider.getHostedValues().put(GraalOptions.EagerSnippets, true);
         optionProvider.getRuntimeValues().put(GraalOptions.EagerSnippets, true);
+
+        if (!optionProvider.getHostedValues().containsKey(BciBlockMapping.Options.MaxDuplicationFactor)) {
+            /*
+             * Not being able to parse irreducible loops and jsr/ret structures means that image
+             * generation fails. We therefore allow a good bit of duplication.
+             */
+            optionProvider.getHostedValues().put(BciBlockMapping.Options.MaxDuplicationFactor, 10.0);
+        }
     }
 
     public static Platform loadPlatform(ClassLoader classLoader, String platformClassName) throws ClassNotFoundException {
@@ -1635,10 +1639,14 @@ public class NativeImageGenerator {
             }
         }
 
-        /*
-         * Entry points use a different calling convention (the native C ABI calling convention), so
-         * they must not be called from other Java methods.
-         */
+        checkForInvalidCallsToEntryPoints();
+    }
+
+    /**
+     * Entry points use a different calling convention (the native C ABI calling convention), so
+     * they must not be called from other Java methods.
+     */
+    protected void checkForInvalidCallsToEntryPoints() {
         for (AnalysisMethod method : aUniverse.getMethods()) {
             if (method.isEntryPoint()) {
                 Set<AnalysisMethod> invocations = method.getCallers();

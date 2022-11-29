@@ -82,15 +82,15 @@ public class TimeUtils {
     }
 
     /**
-     * Turn an absolute deadline in milliseconds, or a relative delay in nanoseconds, into a
-     * relative delay in nanoseconds.
+     * Turn an absolute deadline in milliseconds, or a relative duration in nanoseconds, into a
+     * relative duration in nanoseconds.
      */
-    public static long delayNanos(boolean isAbsolute, long time) {
+    public static long durationNanos(boolean isAbsolute, long time) {
         if (isAbsolute) {
             /* Absolute deadline, in milliseconds. */
             return millisToNanos(time - System.currentTimeMillis());
         } else {
-            /* Relative delay, in nanoseconds. */
+            /* Relative duration, in nanoseconds. */
             return time;
         }
     }

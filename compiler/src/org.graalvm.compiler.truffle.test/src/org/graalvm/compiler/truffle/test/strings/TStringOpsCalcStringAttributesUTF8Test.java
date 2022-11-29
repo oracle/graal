@@ -28,17 +28,18 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import com.oracle.truffle.api.profiles.ConditionProfile;
-import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
+import org.graalvm.compiler.replacements.nodes.CalcStringAttributesNode;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.api.profiles.ConditionProfile;
+
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @RunWith(Parameterized.class)
-public class TStringOpsCalcStringAttributesUTF8Test extends TStringOpsTest<AMD64CalcStringAttributesNode> {
+public class TStringOpsCalcStringAttributesUTF8Test extends TStringOpsTest<CalcStringAttributesNode> {
 
     private static final byte[][] PATTERNS = {
                     // valid
@@ -93,7 +94,8 @@ public class TStringOpsCalcStringAttributesUTF8Test extends TStringOpsTest<AMD64
         ArrayList<Object[]> ret = new ArrayList<>();
         int offset = 20;
         int padding = 20;
-        for (int length : new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 31, 32, 33, 47, 48, 49, 63, 64, 65, 127, 128, 129}) {
+        int large = 254 * 32;
+        for (int length : new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 31, 32, 33, 47, 48, 49, 63, 64, 65, 127, 128, 129, large - 1, large, large + 1}) {
             byte[] arr = new byte[offset + length + padding];
             for (int i = 0; i < offset; i++) {
                 arr[i] = (byte) 0x7f;
@@ -122,12 +124,12 @@ public class TStringOpsCalcStringAttributesUTF8Test extends TStringOpsTest<AMD64
         return ret;
     }
 
-    private final Object array;
+    private final byte[] array;
     private final int offset;
     private final int length;
 
-    public TStringOpsCalcStringAttributesUTF8Test(Object array, int offset, int length) {
-        super(AMD64CalcStringAttributesNode.class);
+    public TStringOpsCalcStringAttributesUTF8Test(byte[] array, int offset, int length) {
+        super(CalcStringAttributesNode.class);
         this.array = array;
         this.offset = offset;
         this.length = length;
@@ -136,7 +138,7 @@ public class TStringOpsCalcStringAttributesUTF8Test extends TStringOpsTest<AMD64
     @Test
     public void testUtf8() {
         ResolvedJavaMethod method = getTStringOpsMethod("calcStringAttributesUTF8", Object.class, int.class, int.class, boolean.class, boolean.class, ConditionProfile.class);
-        test(method, null, DUMMY_LOCATION, array, offset, length, true, false, ConditionProfile.getUncached());
-        test(method, null, DUMMY_LOCATION, array, offset, length, false, false, ConditionProfile.getUncached());
+        testWithNative(method, null, DUMMY_LOCATION, array, offset, length, true, false, ConditionProfile.getUncached());
+        testWithNative(method, null, DUMMY_LOCATION, array, offset, length, false, false, ConditionProfile.getUncached());
     }
 }

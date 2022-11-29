@@ -3,7 +3,7 @@ local _impl = import "run-spec-impl.libsonnet";
 local supported_oss_names = r.supported_oss_names;
 local supported_archs_names = r.supported_archs_names;
 local supported_jdks_names = r.supported_jdks_names;
-local std_get = (import "../../common-utils.libsonnet").std_get;
+local std_get = (import "../../ci/ci_common/common-utils.libsonnet").std_get;
 {
   local map_os_arch_jdk(fn) =
     [fn(os, arch, jdk)

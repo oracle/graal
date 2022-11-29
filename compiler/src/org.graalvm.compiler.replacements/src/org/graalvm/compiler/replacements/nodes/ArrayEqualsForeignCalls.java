@@ -60,6 +60,9 @@ public final class ArrayEqualsForeignCalls {
                     STUB_REGION_EQUALS_DYNAMIC_STRIDES,
 
                     STUB_LONG_ARRAY_EQUALS,
+    };
+
+    public static final ForeignCallDescriptor[] STUBS_AMD64 = {
                     STUB_FLOAT_ARRAY_EQUALS,
                     STUB_DOUBLE_ARRAY_EQUALS,
     };

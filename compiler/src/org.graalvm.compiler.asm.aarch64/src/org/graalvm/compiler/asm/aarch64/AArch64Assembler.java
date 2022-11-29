@@ -1091,9 +1091,13 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     public enum ShiftType {
+        /** Logical shift left. */
         LSL(0),
+        /** Logical shift right. */
         LSR(1),
+        /** Arithmetic shift right. */
         ASR(2),
+        /** Rotate right. */
         ROR(3);
 
         public final int encoding;
@@ -1104,13 +1108,29 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     public enum ExtendType {
+
+        /** Unsigned extend low byte (8 bit). */
         UXTB(0),
+
+        /** Unsigned extend low halfword (16 bit). */
         UXTH(1),
+
+        /** Unsigned extend low word (32 bit). */
         UXTW(2),
+
+        /** Unsigned extend low doubleword (64 bit). */
         UXTX(3),
+
+        /** Signed extend low byte (8 bit). */
         SXTB(4),
+
+        /** Signed extend low halfword (16 bit). */
         SXTH(5),
+
+        /** Signed extend low word (32 bit). */
         SXTW(6),
+
+        /** Signed extend low doubleword (64 bit). */
         SXTX(7);
 
         public final int encoding;
@@ -1577,6 +1597,37 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         loadStoreInstruction(LDRS, rt, address, false, getLog2TransferSize(srcSize), target32BitFlag);
     }
 
+    /**
+     * The prefetch operation is defined as {@code <type><target><policy>}.
+     * <p>
+     * {@code <type>} is one of:
+     * <ul>
+     * <li><b>PLD</b>: Prefetch for load.</li>
+     * <li><b>PLI</b>: Preload instructions.</li>
+     * <li><b>PST</b>: Prefetch for store.</li>
+     *
+     * </ul>
+     * </p>
+     *
+     * <p>
+     * {@code <target>} is one of:
+     * <ul>
+     * <li><b>L1</b>: Level 1 cache.</li>
+     * <li><b>L2</b>: Level 2 cache.</li>
+     * <li><b>L3</b>: Level 3 cache.</li>
+     *
+     * </ul>
+     * </p>
+     *
+     * <p>
+     * {@code <policy>} is one of:
+     * <ul>
+     * <li><b>KEEP</b>: Retained or temporal prefetch, allocated in the cache normally.</li>
+     * <li><b>STRM</b>: Streaming or non-temporal prefetch, for data that is used only once.</li>
+     *
+     * </ul>
+     * </p>
+     */
     public enum PrefetchMode {
         PLDL1KEEP(0b00000),
         PLDL1STRM(0b00001),
@@ -2954,7 +3005,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @param src2 general purpose register. May not be null or the stackpointer.
      * @param condition any condition flag. May not be null.
      */
-    protected void csinc(int size, Register dst, Register src1, Register src2, ConditionFlag condition) {
+    public void csinc(int size, Register dst, Register src1, Register src2, ConditionFlag condition) {
         assert verifySizeAndRegistersRZZ(size, dst, src1, src2);
 
         conditionalSelectInstruction(CSINC, dst, src1, src2, condition, generalFromSize(size));

@@ -38,11 +38,21 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.replacements.ConstantBindingParameterPlugin;
 import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
-import org.graalvm.compiler.truffle.compiler.amd64.substitutions.AMD64TruffleInvocationPlugins;
+import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPlugins;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 
 public abstract class TStringTest extends MethodSubstitutionTest {
+
+    public boolean isSupportedArchitecture() {
+        return isSupportedArchitecture(getArchitecture());
+    }
+
+    public static boolean isSupportedArchitecture(Architecture architecture) {
+        return architecture instanceof AMD64 || architecture instanceof AArch64;
+    }
 
     protected void addConstantParameterBinding(GraphBuilderConfiguration conf, Object[] constantArgs) {
         if (constantArgs != null) {
@@ -52,7 +62,7 @@ public abstract class TStringTest extends MethodSubstitutionTest {
 
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        AMD64TruffleInvocationPlugins.register(getBackend().getTarget().arch, invocationPlugins, getReplacements());
+        TruffleInvocationPlugins.register(getBackend().getTarget().arch, invocationPlugins, getReplacements());
         super.registerInvocationPlugins(invocationPlugins);
     }
 
@@ -92,7 +102,7 @@ public abstract class TStringTest extends MethodSubstitutionTest {
         }
     }
 
-    static int readValue(byte[] array, int stride, int index) {
+    protected static int readValue(byte[] array, int stride, int index) {
         int i = index << stride;
         if (stride == 0) {
             return Byte.toUnsignedInt(array[i]);

@@ -407,6 +407,14 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
       "jacoco" : "exclude",
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "ldflags" : ["-shared"]
+          },
+        },
+        "<others>" : {"<others" : {}},
+      },
     },
 
     "com.oracle.truffle.llvm.nfi.test.native.isolation" : {
@@ -421,6 +429,14 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
       "jacoco" : "exclude",
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "ldflags" : ["-shared"]
+          },
+        },
+        "<others>" : {"<others" : {}},
+      },
     },
 
     "com.oracle.truffle.llvm.nativemode" : {

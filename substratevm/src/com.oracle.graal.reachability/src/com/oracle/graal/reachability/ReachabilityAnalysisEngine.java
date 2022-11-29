@@ -32,7 +32,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 
-import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -108,21 +107,19 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     @SuppressWarnings("try")
     @Override
     public AnalysisType addRootClass(AnalysisType type, boolean addFields, boolean addArrayClass) {
-        try (Indent indent = debug.logAndIndent("add root class %s", type.getName())) {
-            for (AnalysisField field : type.getInstanceFields(false)) {
-                if (addFields) {
-                    field.registerAsAccessed();
-                }
+        for (AnalysisField field : type.getInstanceFields(false)) {
+            if (addFields) {
+                field.registerAsAccessed();
             }
+        }
 
-            markTypeAsReachable(type);
+        markTypeAsReachable(type);
 
-            if (type.getSuperclass() != null) {
-                addRootClass(type.getSuperclass(), addFields, addArrayClass);
-            }
-            if (addArrayClass) {
-                addRootClass(type.getArrayClass(), false, false);
-            }
+        if (type.getSuperclass() != null) {
+            addRootClass(type.getSuperclass(), addFields, addArrayClass);
+        }
+        if (addArrayClass) {
+            addRootClass(type.getArrayClass(), false, false);
         }
         return type;
     }
@@ -133,9 +130,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
         AnalysisType type = addRootClass(clazz, false, false);
         for (AnalysisField field : type.getInstanceFields(true)) {
             if (field.getName().equals(fieldName)) {
-                try (Indent indent = debug.logAndIndent("add root field %s in class %s", fieldName, clazz.getName())) {
-                    field.registerAsAccessed();
-                }
+                field.registerAsAccessed();
                 return field.getType();
             }
         }

@@ -117,7 +117,7 @@ class DragonEggSupport:
         mx.abort("Cannot find GCC program for dragonegg: {}\nDRAGONEGG_GCC environment variable not set".format(gccProgram))
 
 
-class SulongTestSuiteMixin(mx._with_metaclass(abc.ABCMeta, object)):
+class SulongTestSuiteMixin(object, metaclass=abc.ABCMeta):
 
     def getVariants(self):
         if not hasattr(self, '_variants'):
@@ -374,6 +374,9 @@ def _quote_windows(arg):
     return '"{}"'.format(arg)
 
 
+def _ninja_escape_string(val):
+    return val.replace(':', '$:')
+
 class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
     def __str__(self):
         return "Generating " + self.subject.name
@@ -440,10 +443,10 @@ CC = {CC}
 CXX = {CXX}
 AR = {AR}
 
-""".format(gcc_toolchain=os.path.join(gcc_ninja_toolchain.get_output(), 'toolchain.ninja'),
-           CC=self.subject.suite.toolchain.get_toolchain_tool('CC'),
-           CXX=self.subject.suite.toolchain.get_toolchain_tool('CXX'),
-           AR=self.subject.suite.toolchain.get_toolchain_tool('AR'))
+""".format(gcc_toolchain=_ninja_escape_string(os.path.join(gcc_ninja_toolchain.get_output(), 'toolchain.ninja')),
+           CC=_ninja_escape_string(self.subject.suite.toolchain.get_toolchain_tool('CC')),
+           CXX=_ninja_escape_string(self.subject.suite.toolchain.get_toolchain_tool('CXX')),
+           AR=_ninja_escape_string(self.subject.suite.toolchain.get_toolchain_tool('AR')))
 
 
 class AbstractSulongNativeProject(mx.NativeProject):  # pylint: disable=too-many-ancestors

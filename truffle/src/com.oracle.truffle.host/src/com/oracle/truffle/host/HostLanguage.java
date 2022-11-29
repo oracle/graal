@@ -158,7 +158,10 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
         } else {
             wrapped = value;
         }
-        return HostObject.forObject(wrapped, hostContext);
+        if (wrapped != null) {
+            return HostObject.forObject(wrapped, hostContext);
+        }
+        return null;
     }
 
     @Override

@@ -27,8 +27,8 @@ package com.oracle.svm.graal.stubs;
 import org.graalvm.compiler.lir.GeneratedStubsHolder;
 import org.graalvm.compiler.replacements.StringLatin1InflateNode;
 import org.graalvm.compiler.replacements.StringUTF16CompressNode;
-import org.graalvm.compiler.replacements.amd64.AMD64ArrayRegionEqualsWithMaskNode;
-import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
+import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsWithMaskNode;
+import org.graalvm.compiler.replacements.nodes.CalcStringAttributesNode;
 import org.graalvm.compiler.replacements.nodes.AESNode;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
@@ -56,8 +56,8 @@ import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
                 HasNegativesNode.class,
                 EncodeArrayNode.class,
                 VectorizedMismatchNode.class,
-                AMD64ArrayRegionEqualsWithMaskNode.class,
-                AMD64CalcStringAttributesNode.class,
+                ArrayRegionEqualsWithMaskNode.class,
+                CalcStringAttributesNode.class,
                 AESNode.class,
                 CounterModeAESNode.class,
                 CipherBlockChainingAESNode.class,

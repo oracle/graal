@@ -1,6 +1,6 @@
 {
-  local common = import '../../common.jsonnet',
-  local utils = import '../../common-utils.libsonnet',
+  local common = import '../../ci/ci_common/common.jsonnet',
+  local utils = import '../../ci/ci_common/common-utils.libsonnet',
 
   local sdk_gate = {
     name: 'gate-sdk-oraclejdk' + self.jdk_version + '-' + self.os + '-' + self.arch,

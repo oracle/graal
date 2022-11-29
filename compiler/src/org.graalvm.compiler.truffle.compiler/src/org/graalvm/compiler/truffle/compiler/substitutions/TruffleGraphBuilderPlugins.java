@@ -128,7 +128,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 
 /**
- * Provides {@link InvocationPlugin}s for Truffle classes.
+ * Provides {@link InvocationPlugin}s for Truffle classes. These plugins are used only during
+ * partial evaluation.
  */
 public class TruffleGraphBuilderPlugins {
 
