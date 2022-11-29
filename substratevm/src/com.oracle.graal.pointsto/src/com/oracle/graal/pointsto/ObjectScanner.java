@@ -412,7 +412,7 @@ public class ObjectScanner {
     private void doScan(WorklistEntry entry) {
         try {
             AnalysisType type = bb.getMetaAccess().lookupJavaType(entry.constant);
-            type.registerAsReachable();
+            type.registerAsReachable(entry.reason);
 
             if (type.isInstanceClass()) {
                 /* Scan constant's instance fields. */

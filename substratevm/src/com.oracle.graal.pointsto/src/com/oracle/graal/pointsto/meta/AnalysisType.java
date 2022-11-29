@@ -101,8 +101,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isInHeapUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "isInHeap");
 
-    private static final AtomicIntegerFieldUpdater<AnalysisType> isReachableUpdater = AtomicIntegerFieldUpdater
-                    .newUpdater(AnalysisType.class, "isReachable");
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isReachableUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisType.class, Object.class, "isReachable");
 
     private static final AtomicIntegerFieldUpdater<AnalysisType> isAnySubtypeInstantiatedUpdater = AtomicIntegerFieldUpdater
                     .newUpdater(AnalysisType.class, "isAnySubtypeInstantiated");
@@ -112,7 +112,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @SuppressWarnings("unused") private volatile Object isInHeap;
     @SuppressWarnings("unused") private volatile Object isAllocated;
-    @SuppressWarnings("unused") private volatile int isReachable;
+    @SuppressWarnings("unused") private volatile Object isReachable;
     @SuppressWarnings("unused") private volatile int isAnySubtypeInstantiated;
     private boolean reachabilityListenerNotified;
     private boolean unsafeFieldsRecomputed;
@@ -461,8 +461,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      *            describing why this type was manually marked as in-heap
      */
     public boolean registerAsInHeap(Object reason) {
-        assert reason != null && (!(reason instanceof String) || !reason.equals("")) : "Registering a type as in-heap needs to provide a non-empty reason.";
-        registerAsReachable();
+        assert isValidReason(reason) : "Registering a type as in-heap needs to provide a valid reason.";
+        registerAsReachable(reason);
         if (AtomicUtils.atomicSet(this, reason, isInHeapUpdater)) {
             onInstantiated(UsageKind.InHeap);
             return true;
@@ -476,8 +476,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      *            describing why this type was manually marked as allocated
      */
     public boolean registerAsAllocated(Object reason) {
-        assert reason != null && (!(reason instanceof String) || !reason.equals("")) : "Registering a type as allocated needs to provide a non-empty reason.";
-        registerAsReachable();
+        assert isValidReason(reason) : "Registering a type as allocated needs to provide a valid reason.";
+        registerAsReachable(reason);
         if (AtomicUtils.atomicSet(this, reason, isAllocatedUpdater)) {
             onInstantiated(UsageKind.Allocated);
             return true;
@@ -531,10 +531,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public void registerAsAssignable(BigBang bb) {
     }
 
-    public boolean registerAsReachable() {
+    public boolean registerAsReachable(Object reason) {
+        assert isValidReason(reason) : "Registering a type as reachable needs to provide a valid reason.";
         if (!AtomicUtils.isSet(this, isReachableUpdater)) {
             /* Mark this type and all its super types as reachable. */
-            forAllSuperTypes(type -> AtomicUtils.atomicMarkAndRun(type, isReachableUpdater, type::onReachable));
+            forAllSuperTypes(type -> AtomicUtils.atomicSetAndRun(type, reason, isReachableUpdater, type::onReachable));
             return true;
         }
         return false;
@@ -1136,7 +1137,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public AnalysisField[] getStaticFields() {
-        registerAsReachable();
         return convertFields(wrapped.getStaticFields(), new ArrayList<>(), false);
     }
 

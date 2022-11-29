@@ -51,7 +51,6 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
@@ -121,10 +120,6 @@ public class HostedGraphKit extends SubstrateGraphKit {
 
     public LoadFieldNode createLoadFieldNode(ConstantNode receiver, Class<BoxedRelocatedPointer> clazz, String fieldName) {
         try {
-            ResolvedJavaType type = getMetaAccess().lookupJavaType(clazz);
-            if (type instanceof AnalysisType) {
-                ((AnalysisType) type).registerAsReachable();
-            }
             ResolvedJavaField field = getMetaAccess().lookupJavaField(clazz.getDeclaredField(fieldName));
             return LoadFieldNode.createOverrideStamp(StampPair.createSingle(wordStamp((ResolvedJavaType) field.getType())), receiver, field);
         } catch (NoSuchFieldException e) {

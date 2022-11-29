@@ -366,7 +366,7 @@ public class AnalysisUniverse implements Universe {
              * it during constant folding.
              */
             AnalysisType declaringType = lookup(field.getDeclaringClass());
-            declaringType.registerAsReachable();
+            declaringType.registerAsReachable(field);
             declaringType.ensureInitialized();
 
             /*

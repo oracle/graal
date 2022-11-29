@@ -65,7 +65,8 @@ public final class ConstantFoldLoadFieldPlugin implements NodePlugin {
     private boolean tryConstantFold(GraphBuilderContext b, ResolvedJavaField field, JavaConstant receiver) {
         ConstantNode result;
         try {
-            result = ConstantFoldUtil.tryConstantFold(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(), field, receiver, b.getOptions());
+            result = ConstantFoldUtil.tryConstantFold(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(), field, receiver, b.getOptions(),
+                            b.getGraph().currentNodeSourcePosition());
         } catch (UnsupportedFeatureException e) {
             if (reason == ParsingReason.PointsToAnalysis) {
                 AnalysisMetaAccess metaAccess = (AnalysisMetaAccess) b.getMetaAccess();

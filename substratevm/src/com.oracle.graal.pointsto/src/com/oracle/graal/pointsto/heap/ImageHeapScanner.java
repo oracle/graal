@@ -110,8 +110,9 @@ public abstract class ImageHeapScanner {
     public void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
         if (isNonNullObjectConstant(root)) {
             AnalysisType type = metaAccess.lookupJavaType(root);
-            type.registerAsReachable();
-            getOrCreateConstantReachableTask(root, new EmbeddedRootScan(position, root), null);
+            EmbeddedRootScan reason = new EmbeddedRootScan(position, root);
+            type.registerAsReachable(reason);
+            getOrCreateConstantReachableTask(root, reason, null);
         }
     }
 
@@ -381,7 +382,7 @@ public abstract class ImageHeapScanner {
 
             AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(constant);
             if (typeFromClassConstant != null) {
-                typeFromClassConstant.registerAsReachable();
+                typeFromClassConstant.registerAsReachable(reason);
             }
         }
 

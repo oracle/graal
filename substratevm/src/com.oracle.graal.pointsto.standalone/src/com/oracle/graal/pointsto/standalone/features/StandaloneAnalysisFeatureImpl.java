@@ -167,16 +167,16 @@ public class StandaloneAnalysisFeatureImpl {
 
         @Override
         public void registerAsUsed(Class<?> clazz) {
-            registerAsUsed(getMetaAccess().lookupJavaType(clazz));
+            registerAsUsed(getMetaAccess().lookupJavaType(clazz), "registered from Feature API");
         }
 
-        public void registerAsUsed(AnalysisType aType) {
-            aType.registerAsReachable();
+        public void registerAsUsed(AnalysisType aType, Object reason) {
+            aType.registerAsReachable(reason);
         }
 
         @Override
         public void registerAsInHeap(Class<?> clazz) {
-            registerAsInHeap(getMetaAccess().lookupJavaType(clazz), "Registered from Feature API.");
+            registerAsInHeap(getMetaAccess().lookupJavaType(clazz), "registered from Feature API");
         }
 
         public void registerAsInHeap(AnalysisType aType, Object reason) {
@@ -185,16 +185,14 @@ public class StandaloneAnalysisFeatureImpl {
 
         @Override
         public void registerAsAccessed(Field field) {
-            getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
-            registerAsAccessed(getMetaAccess().lookupJavaField(field));
+            registerAsAccessed(getMetaAccess().lookupJavaField(field), "registered from Feature API");
         }
 
-        public void registerAsAccessed(AnalysisField aField) {
-            aField.registerAsAccessed();
+        public void registerAsAccessed(AnalysisField aField, Object reason) {
+            aField.registerAsAccessed(reason);
         }
 
         public void registerAsRead(Field field) {
-            getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
             registerAsRead(getMetaAccess().lookupJavaField(field));
         }
 
@@ -204,15 +202,14 @@ public class StandaloneAnalysisFeatureImpl {
 
         @Override
         public void registerAsUnsafeAccessed(Field field) {
-            getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
-            registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field));
+            registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), "registered from Feature API");
         }
 
-        public boolean registerAsUnsafeAccessed(AnalysisField aField) {
+        public boolean registerAsUnsafeAccessed(AnalysisField aField, Object reason) {
             if (!aField.isUnsafeAccessed()) {
                 /* Register the field as unsafe accessed. */
-                aField.registerAsAccessed();
-                aField.registerAsUnsafeAccessed();
+                aField.registerAsAccessed(reason);
+                aField.registerAsUnsafeAccessed(reason);
                 /* Force the update of registered unsafe loads and stores. */
                 bb.forceUnsafeUpdate(aField);
                 return true;
@@ -221,24 +218,23 @@ public class StandaloneAnalysisFeatureImpl {
         }
 
         public void registerAsFrozenUnsafeAccessed(Field field) {
-            getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
             registerAsFrozenUnsafeAccessed(getMetaAccess().lookupJavaField(field));
         }
 
         public void registerAsFrozenUnsafeAccessed(AnalysisField aField) {
             aField.setUnsafeFrozenTypeState(true);
-            registerAsUnsafeAccessed(aField);
+            registerAsUnsafeAccessed(aField, "registered from standalone feature");
         }
 
-        public void registerAsUnsafeAccessed(Field field, UnsafePartitionKind partitionKind) {
-            registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), partitionKind);
+        public void registerAsUnsafeAccessed(Field field, UnsafePartitionKind partitionKind, Object reason) {
+            registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), partitionKind, reason);
         }
 
-        public void registerAsUnsafeAccessed(AnalysisField aField, UnsafePartitionKind partitionKind) {
+        public void registerAsUnsafeAccessed(AnalysisField aField, UnsafePartitionKind partitionKind, Object reason) {
             if (!aField.isUnsafeAccessed()) {
                 /* Register the field as unsafe accessed. */
-                aField.registerAsAccessed();
-                aField.registerAsUnsafeAccessed(partitionKind);
+                aField.registerAsAccessed(reason);
+                aField.registerAsUnsafeAccessed(partitionKind, reason);
                 /* Force the update of registered unsafe loads and stores. */
                 bb.forceUnsafeUpdate(aField);
             }

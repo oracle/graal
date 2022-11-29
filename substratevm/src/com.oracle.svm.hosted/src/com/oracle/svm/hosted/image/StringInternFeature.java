@@ -30,10 +30,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.StringInternSupport;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -45,9 +44,6 @@ class StringInternFeature implements InternalFeature {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static ResolvedJavaField getInternedStringsField(MetaAccessProvider metaAccess) {
         try {
-            if (metaAccess instanceof AnalysisMetaAccess) {
-                ((AnalysisMetaAccess) metaAccess).lookupJavaType(StringInternSupport.class).registerAsReachable();
-            }
             return metaAccess.lookupJavaField(StringInternSupport.class.getDeclaredField("internedStrings"));
         } catch (NoSuchFieldException ex) {
             throw shouldNotReachHere(ex);

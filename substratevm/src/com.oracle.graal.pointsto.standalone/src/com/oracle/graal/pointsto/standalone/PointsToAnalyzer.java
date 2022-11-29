@@ -137,7 +137,6 @@ public final class PointsToAnalyzer {
         AnalysisUniverse aUniverse = new AnalysisUniverse(standaloneHost, wordKind,
                         analysisPolicy, SubstitutionProcessor.IDENTITY, originalMetaAccess, snippetReflection, snippetReflection, new PointsToAnalysisFactory());
         AnalysisMetaAccess aMetaAccess = new AnalysisMetaAccess(aUniverse, originalMetaAccess);
-        aMetaAccess.lookupJavaType(String.class).registerAsReachable();
         StandaloneConstantReflectionProvider aConstantReflection = new StandaloneConstantReflectionProvider(aUniverse, HotSpotJVMCIRuntime.runtime());
         StandaloneConstantFieldProvider aConstantFieldProvider = new StandaloneConstantFieldProvider(aMetaAccess);
         AnalysisMetaAccessExtensionProvider aMetaAccessExtensionProvider = new AnalysisMetaAccessExtensionProvider();
@@ -171,14 +170,14 @@ public final class PointsToAnalyzer {
          * good example.
          */
         try (Indent ignored = debugContext.logAndIndent("add initial classes/fields/methods")) {
-            bigbang.addRootClass(Object.class, false, false).registerAsInHeap("Root class.");
-            bigbang.addRootClass(String.class, false, false).registerAsInHeap("Root class.");
-            bigbang.addRootClass(String[].class, false, false).registerAsInHeap("Root class.");
-            bigbang.addRootField(String.class, "value").registerAsInHeap("Root class.");
-            bigbang.addRootClass(long[].class, false, false).registerAsInHeap("Root class.");
-            bigbang.addRootClass(byte[].class, false, false).registerAsInHeap("Root class.");
-            bigbang.addRootClass(byte[][].class, false, false).registerAsInHeap("Root class.");
-            bigbang.addRootClass(Object[].class, false, false).registerAsInHeap("Root class.");
+            bigbang.addRootClass(Object.class, false, false).registerAsInHeap("root class");
+            bigbang.addRootClass(String.class, false, false).registerAsInHeap("root class");
+            bigbang.addRootClass(String[].class, false, false).registerAsInHeap("root class");
+            bigbang.addRootField(String.class, "value").registerAsInHeap("root class");
+            bigbang.addRootClass(long[].class, false, false).registerAsInHeap("root class");
+            bigbang.addRootClass(byte[].class, false, false).registerAsInHeap("root class");
+            bigbang.addRootClass(byte[][].class, false, false).registerAsInHeap("root class");
+            bigbang.addRootClass(Object[].class, false, false).registerAsInHeap("root class");
 
             bigbang.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true);
 
@@ -187,7 +186,7 @@ public final class PointsToAnalyzer {
                     bigbang.addRootClass(kind.toJavaClass(), false, true);
                 }
             }
-            bigbang.getMetaAccess().lookupJavaType(JavaKind.Void.toJavaClass()).registerAsReachable();
+            bigbang.getMetaAccess().lookupJavaType(JavaKind.Void.toJavaClass()).registerAsReachable("root class");
 
             GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
             NoClassInitializationPlugin classInitializationPlugin = new NoClassInitializationPlugin();
