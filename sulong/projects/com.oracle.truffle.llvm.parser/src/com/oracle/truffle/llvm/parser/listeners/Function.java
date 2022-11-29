@@ -765,7 +765,16 @@ public final class Function implements ParserListener {
     private void createCompareExchange(RecordBuffer buffer, int record) {
         int ptr = readIndex(buffer);
         Type ptrType = readValueType(buffer, ptr);
-        int cmp = record == INSTRUCTION_CMPXCHG ? readIndexSkipType(buffer) : readIndex(buffer);
+        int cmp;
+        Type cmpType;
+        if (record == INSTRUCTION_CMPXCHG) {
+            cmp = readIndex(buffer);
+            cmpType = readValueType(buffer, cmp);
+        } else {
+            assert record == INSTRUCTION_CMPXCHG_OLD;
+            cmp = readIndex(buffer);
+            cmpType = Types.castToPointer(ptrType).getPointeeType();
+        }
         final int replace = readIndex(buffer);
         final boolean isVolatile = buffer.readBoolean();
         final long successOrdering = buffer.read();
@@ -774,7 +783,7 @@ public final class Function implements ParserListener {
         final boolean addExtractValue = buffer.remaining() == 0;
         final boolean isWeak = addExtractValue || buffer.readBoolean();
 
-        final AggregateType type = findCmpxchgResultType(Types.castToPointer(ptrType).getPointeeType());
+        final AggregateType type = findCmpxchgResultType(cmpType);
         CompareExchangeInstruction inst;
         emit(inst = CompareExchangeInstruction.fromSymbols(scope.getSymbols(), type, ptr, cmp, replace, isVolatile, successOrdering, synchronizationScope, failureOrdering, isWeak));
 
@@ -845,8 +854,7 @@ public final class Function implements ParserListener {
     }
 
     private void createAtomicReadModifyWrite(RecordBuffer buffer) {
-        int ptr = readIndex(buffer);
-        Type ptrType = readValueType(buffer, ptr);
+        int ptr = readIndexSkipType(buffer);
         int value = readIndex(buffer);
         Type valType = readValueType(buffer, value);
         int opcode = buffer.readInt();
@@ -854,9 +862,7 @@ public final class Function implements ParserListener {
         long atomicOrdering = buffer.read();
         long synchronizationScope = buffer.read();
 
-        final Type type = Types.castToPointer(ptrType).getPointeeType();
-
-        emit(ReadModifyWriteInstruction.fromSymbols(scope.getSymbols(), type, ptr, valType, value, opcode, isVolatile, atomicOrdering, synchronizationScope));
+        emit(ReadModifyWriteInstruction.fromSymbols(scope.getSymbols(), valType, ptr, valType, value, opcode, isVolatile, atomicOrdering, synchronizationScope));
     }
 
     private void createFence(RecordBuffer buffer) {
