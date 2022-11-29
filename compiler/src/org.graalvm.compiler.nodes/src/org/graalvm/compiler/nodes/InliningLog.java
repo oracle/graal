@@ -146,8 +146,8 @@ public class InliningLog {
         private Callsite(Callsite parent, Invokable invoke, ResolvedJavaMethod target, int bci) {
             this.parent = parent;
             this.bci = bci;
-            decisions = new ArrayList<>();
-            children = new ArrayList<>();
+            this.decisions = new ArrayList<>();
+            this.children = new ArrayList<>();
             this.invoke = invoke;
             this.target = target;
             if (parent != null) {
@@ -239,8 +239,8 @@ public class InliningLog {
     private final EconomicMap<Invokable, Callsite> leaves;
 
     public InliningLog(ResolvedJavaMethod rootMethod) {
-        root = new Callsite(null, null, rootMethod, Callsite.ROOT_CALLSITE_BCI);
-        leaves = EconomicMap.create();
+        this.root = new Callsite(null, null, rootMethod, Callsite.ROOT_CALLSITE_BCI);
+        this.leaves = EconomicMap.create();
     }
 
     /**

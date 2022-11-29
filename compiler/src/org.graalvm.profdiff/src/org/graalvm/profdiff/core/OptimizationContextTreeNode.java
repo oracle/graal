@@ -28,6 +28,8 @@ import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.util.Writer;
 
+import java.util.Objects;
+
 /**
  * A node of an optimization-context tree. A node might be an info node or backed either by an
  * {@link InliningTreeNode} or an {@link Optimization}.
@@ -64,6 +66,17 @@ public class OptimizationContextTreeNode extends TreeNode<OptimizationContextTre
     public OptimizationContextTreeNode(String infoMessage) {
         super(infoMessage);
         originalNode = null;
+    }
+
+    /**
+     * Creates an info node warning that there exists another branch with the same
+     * {@link org.graalvm.profdiff.core.inlining.InliningPath} in this tree, therefore optimizations
+     * cannot be unambiguously attributed.
+     *
+     * @return the warning node
+     */
+    public static OptimizationContextTreeNode duplicatePathWarning() {
+        return new OptimizationContextTreeNode("Warning: Optimizations cannot be unambiguously attributed (duplicate path)");
     }
 
     /**
@@ -146,5 +159,22 @@ public class OptimizationContextTreeNode extends TreeNode<OptimizationContextTre
         } else {
             return otherNode.originalNode == null ? 0 : -1;
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof OptimizationContextTreeNode)) {
+            return false;
+        }
+        OptimizationContextTreeNode that = (OptimizationContextTreeNode) o;
+        return Objects.equals(originalNode, that.originalNode);
+    }
+
+    @Override
+    public int hashCode() {
+        return originalNode != null ? originalNode.hashCode() : 0;
     }
 }

@@ -24,6 +24,8 @@
  */
 package org.graalvm.profdiff.core;
 
+import java.util.List;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
@@ -34,12 +36,12 @@ import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
 
 /**
- * An optimization context tree is an inlining tree extended with optimizations placed in their method context.
- * Optimization-context trees make it easier to attribute optimizations to inlining decisions.
+ * An optimization context tree is an inlining tree extended with optimizations placed in their
+ * method context. Optimization-context trees make it easier to attribute optimizations to inlining
+ * decisions.
  *
  * Consider the inlining and optimization tree below:
  *
- * @formatter:off
  * <pre>
  * A compilation unit of the method a()
  *     Inlining tree
@@ -55,11 +57,9 @@ import org.graalvm.profdiff.core.optimization.OptimizationTree;
  *                 SomeOptimization OptimizationC at bci {c(): 5, a(): 2}
  *                 SomeOptimization OptimizationD at bci {d(): 6, b(): 3, a(): 1}
  * </pre>
- * @formatter:on
  *
  * By combining the trees, we obtain the following optimization-context tree:
  *
- * @formatter:off
  * <pre>
  * A compilation unit of the method a()
  *     Optimization-context tree
@@ -72,7 +72,6 @@ import org.graalvm.profdiff.core.optimization.OptimizationTree;
  *             c() at bci 2
  *               SomeOptimization OptimizationC at bci 5
  * </pre>
- * @formatter:on
  */
 public final class OptimizationContextTree {
     /**
@@ -80,7 +79,7 @@ public final class OptimizationContextTree {
      */
     private final OptimizationContextTreeNode root;
 
-    private OptimizationContextTree(OptimizationContextTreeNode root) {
+    public OptimizationContextTree(OptimizationContextTreeNode root) {
         this.root = root;
     }
 
@@ -130,28 +129,33 @@ public final class OptimizationContextTree {
     }
 
     /**
-     * Creates an optimization-context tree by cloning an inlining tree.
+     * Creates an optimization-context tree by cloning an inlining tree. Stores the mapping from
+     * original nodes to created nodes in {@code replacements}.
      *
      * @param inliningTree the inlining tree to be cloned
+     * @param replacements the mapping from inlining-tree nodes to cloned optimization-context nodes
      * @return an optimization-context tree corresponding to a cloned inlining tree
      */
-    private static OptimizationContextTree fromInliningTree(InliningTree inliningTree) {
+    private static OptimizationContextTree fromInliningTree(InliningTree inliningTree, EconomicMap<InliningTreeNode, OptimizationContextTreeNode> replacements) {
         OptimizationContextTreeNode root = new OptimizationContextTreeNode();
-        fromInliningNode(root, inliningTree.getRoot());
+        fromInliningNode(root, inliningTree.getRoot(), replacements);
         return new OptimizationContextTree(root);
     }
 
     /**
-     * Clones an inlining subtree into an optimization-context tree node.
+     * Clones an inlining subtree into an optimization-context tree node. Stores the mapping from
+     * original nodes to created nodes in {@code replacements}.
      *
      * @param parent the optimization-context node (initially without children)
+     * @param replacements the mapping from inlining-tree nodes to cloned optimization-context nodes
      * @param inliningTreeNode the inlining subtree to be cloned into the optimization-context tree
      */
-    private static void fromInliningNode(OptimizationContextTreeNode parent, InliningTreeNode inliningTreeNode) {
+    private static void fromInliningNode(OptimizationContextTreeNode parent, InliningTreeNode inliningTreeNode, EconomicMap<InliningTreeNode, OptimizationContextTreeNode> replacements) {
         OptimizationContextTreeNode optimizationContextTreeNode = new OptimizationContextTreeNode(inliningTreeNode);
+        replacements.put(inliningTreeNode, optimizationContextTreeNode);
         parent.addChild(optimizationContextTreeNode);
         for (InliningTreeNode child : inliningTreeNode.getChildren()) {
-            fromInliningNode(optimizationContextTreeNode, child);
+            fromInliningNode(optimizationContextTreeNode, child, replacements);
         }
     }
 
@@ -183,26 +187,23 @@ public final class OptimizationContextTree {
      *
      * As an example, consider the following inlining tree:
      *
-     * @formatter:off
      * <pre>
      * Inlining tree
-     *     a()
+     *     a() at bci -1
      *         b() at bci 1
      *             d() at bci 3
      *         b() at bci 1
      *             d() at bci 3
      *         c() at bci 2
      * </pre>
-     * @formatter:on
      *
      * Suppose that we have an optimization with a position like {@code {a(): 1, b(): x}} or
      * {@code {a(): 1, b(): 3, d(): x}}. It is ambiguous to which branch of the tree it belongs. This
      * method inserts a warning to each node which might have ambiguous optimizations.
      *
-     * @formatter:off
      * <pre>
      * Optimization-context tree
-     *     a()
+     *     a() at bci -1
      *         b() at bci 1
      *             Warning
      *             d() at bci 3
@@ -213,28 +214,19 @@ public final class OptimizationContextTree {
      *                 Warning
      *         c() at bci 2
      * </pre>
-     * @formatter:on
+     *
+     * @param inliningTree the original inlining tree
+     * @param replacements the mapping from inlining-tree nodes to cloned optimization-context nodes
      */
-    private void insertWarningNodesForDuplicatePaths() {
-        EconomicMap<OptimizationContextTreeNode, InliningPath> paths = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
-        root.forEach(node -> {
-            InliningTreeNode inliningTreeNode = node.getOriginalInliningTreeNode();
-            if (inliningTreeNode == null || inliningTreeNode.isAbstract()) {
-                return;
+    private static void insertWarningNodesForDuplicatePaths(InliningTree inliningTree, EconomicMap<InliningTreeNode, OptimizationContextTreeNode> replacements) {
+        MapCursor<InliningTreeNode, OptimizationContextTreeNode> cursor = replacements.getEntries();
+        while (cursor.advance()) {
+            if (!cursor.getKey().isPositive()) {
+                continue;
             }
-            paths.put(node, InliningPath.fromRootToNode(inliningTreeNode));
-        });
-        MapCursor<OptimizationContextTreeNode, InliningPath> cursor1 = paths.getEntries();
-        outer: while (cursor1.advance()) {
-            MapCursor<OptimizationContextTreeNode, InliningPath> cursor2 = paths.getEntries();
-            while (cursor2.advance()) {
-                if (cursor1.getKey() == cursor2.getKey()) {
-                    continue;
-                }
-                if (cursor1.getValue().equals(cursor2.getValue())) {
-                    cursor1.getKey().addChild(new OptimizationContextTreeNode("Warning: Optimizations cannot be unambiguously attributed (duplicate path)"));
-                    continue outer;
-                }
+            List<InliningTreeNode> found = inliningTree.findNodesAt(InliningPath.fromRootToNode(cursor.getKey()));
+            if (found.size() > 1) {
+                cursor.getValue().addChild(OptimizationContextTreeNode.duplicatePathWarning());
             }
         }
     }
@@ -249,8 +241,9 @@ public final class OptimizationContextTree {
      */
     public static OptimizationContextTree createFrom(InliningTree inliningTree, OptimizationTree optimizationTree) {
         assert inliningTree.getRoot() != null;
-        OptimizationContextTree optimizationContextTree = fromInliningTree(inliningTree);
-        optimizationContextTree.insertWarningNodesForDuplicatePaths();
+        EconomicMap<InliningTreeNode, OptimizationContextTreeNode> replacements = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+        OptimizationContextTree optimizationContextTree = fromInliningTree(inliningTree, replacements);
+        OptimizationContextTree.insertWarningNodesForDuplicatePaths(inliningTree, replacements);
         optimizationContextTree.insertAllOptimizationNodes(optimizationTree);
         optimizationContextTree.root.forEach(node -> node.getChildren().sort(OptimizationContextTreeNode::compareTo));
         return optimizationContextTree;

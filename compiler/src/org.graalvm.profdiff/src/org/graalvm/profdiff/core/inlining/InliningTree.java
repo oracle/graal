@@ -24,6 +24,7 @@
  */
 package org.graalvm.profdiff.core.inlining;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.profdiff.core.VerbosityLevel;
@@ -136,53 +137,80 @@ public class InliningTree {
     }
 
     /**
-     * Recursively finds a node on a path. Returns {@code null} if there is no such node. Tree nodes
-     * corresponding to abstract methods ({@link InliningTreeNode#isAbstract()}) are skipped as if
-     * they were removed from the tree and their children reattached to the closest ancestor.
+     * Finds all nodes that match the given path.
      *
-     * If several nodes match the path, then the first match is returned. Note that backtracking is
-     * necessary, because a path element may match 2 different edges, and one of the edges may lead
-     * to a dead-end.
+     * Consider the following inlining tree:
+     *
+     * <pre>
+     * Inlining tree
+     *     a() at bci -1
+     *         b() at bci 1
+     *             d() at bci 3
+     *         b() at bci 1
+     *             d() at bci 3
+     *         c() at bci 2
+     * </pre>
+     *
+     * There are two nodes matching the path {@code a() at bci -1, b() at bci 1, d() at bci 3}.
+     * There is only one node matching the path {@code a() at bci -1, c() at bci 2}.
+     *
+     * Tree nodes corresponding to abstract methods ({@link InliningTreeNode#isAbstract()}) are
+     * skipped as if they were removed from the tree and their children reattached to the closest
+     * ancestor.
+     *
+     * @param path the path from root
+     * @return the list of nodes matching the given path
+     */
+    public List<InliningTreeNode> findNodesAt(InliningPath path) {
+        List<InliningTreeNode> found = new ArrayList<>();
+        findNodesAt(null, path, 0, found);
+        return found;
+    }
+
+    /**
+     * Recursively finds all nodes that match the given path. The nodes are stored in the
+     * {@code found} list.
      *
      * @param node the last node on the path (initially {@code null})
      * @param path the path from root
      * @param pathIndex the index to the next path element in the path (initially 0)
-     * @return the node found on the path or {@code null}
+     * @param found the list of nodes found on the path (initially empty)
+     *
+     * @see #findNodesAt(InliningPath)
      */
-    private InliningTreeNode findNodeAt(InliningTreeNode node, InliningPath path, int pathIndex) {
+    private void findNodesAt(InliningTreeNode node, InliningPath path, int pathIndex, List<InliningTreeNode> found) {
         if (pathIndex >= path.size()) {
-            return node;
+            if (node != null) {
+                found.add(node);
+            }
+            return;
         }
         InliningPath.PathElement element = path.get(pathIndex);
         List<InliningTreeNode> children = node == null ? List.of(root) : node.getChildren();
         for (InliningTreeNode child : children) {
-            InliningTreeNode result = null;
             if (child.isAbstract()) {
-                result = findNodeAt(child, path, pathIndex);
+                findNodesAt(child, path, pathIndex, found);
             } else if (element.matches(child.pathElement())) {
-                result = findNodeAt(child, path, pathIndex + 1);
-            }
-            if (result != null) {
-                return result;
+                findNodesAt(child, path, pathIndex + 1, found);
             }
         }
-        return null;
     }
 
     /**
      * Clones a subtree given by path. The cloned subtree is rooted in the node given by path. The
      * bci of the cloned root is set to {@link Optimization#UNKNOWN_BCI} and the inlining reason is
-     * reset. If there is no such node on the given path, an inlining tree with {@code null} root is
-     * returned.
+     * reset. The path should lead to exactly one node, i.e. {@code findNodesAt(path).size() == 1}.
      *
      * @param path the path to the root of the cloned subtree
      * @return a cloned subtree
      */
     public InliningTree cloneSubtreeAt(InliningPath path) {
-        InliningTreeNode rootNode = findNodeAt(null, path, 0);
-        if (rootNode == null) {
-            return new InliningTree(null);
+        List<InliningTreeNode> rootNodes = new ArrayList<>();
+        findNodesAt(null, path, 0, rootNodes);
+        if (rootNodes.size() != 1) {
+            throw new IllegalArgumentException("The given inlining path should correspond to exactly one node.");
         }
+        InliningTreeNode rootNode = rootNodes.get(0);
         InliningTreeNode clonedNode = new InliningTreeNode(rootNode.getName(), Optimization.UNKNOWN_BCI, rootNode.isPositive(), null, rootNode.isAbstract(), rootNode.getReceiverTypeProfile());
         cloneSubtreeInto(rootNode, clonedNode);
         return new InliningTree(clonedNode);
