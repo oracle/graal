@@ -92,7 +92,7 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
             VMError.shouldNotReachHere("Cannot update LocatableMultiOptionValue of type " + valueType + " with value of type " + rawValueElementType);
         }
         if (multipleElements) {
-            for (Object singleRawValue : List.of((Object[]) rawValue)) {
+            for (Object singleRawValue : (Object[]) rawValue) {
                 values.add(Pair.create(valueType.cast(singleRawValue), origin));
             }
         } else {
