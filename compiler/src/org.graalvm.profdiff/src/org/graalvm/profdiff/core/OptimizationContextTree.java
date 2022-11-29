@@ -182,8 +182,8 @@ public final class OptimizationContextTree {
     }
 
     /**
-     * Inserts info nodes to the inlining tree nodes whose path from root is duplicate. Duplicate paths
-     * make it impossible to correctly attribute optimizations.
+     * Inserts info nodes to the inlining tree nodes whose path from root is duplicate. Duplicate
+     * paths make it impossible to correctly attribute optimizations.
      *
      * As an example, consider the following inlining tree:
      *
@@ -198,8 +198,8 @@ public final class OptimizationContextTree {
      * </pre>
      *
      * Suppose that we have an optimization with a position like {@code {a(): 1, b(): x}} or
-     * {@code {a(): 1, b(): 3, d(): x}}. It is ambiguous to which branch of the tree it belongs. This
-     * method inserts a warning to each node which might have ambiguous optimizations.
+     * {@code {a(): 1, b(): 3, d(): x}}. It is ambiguous to which branch of the tree it belongs.
+     * This method inserts a warning to each node which might have ambiguous optimizations.
      *
      * <pre>
      * Optimization-context tree

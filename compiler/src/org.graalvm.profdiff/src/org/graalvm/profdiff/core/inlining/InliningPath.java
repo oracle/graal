@@ -104,6 +104,25 @@ public final class InliningPath {
         public int getCallsiteBCI() {
             return callsiteBCI;
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof PathElement)) {
+                return false;
+            }
+            PathElement element = (PathElement) o;
+            return callsiteBCI == element.callsiteBCI && methodName.equals(element.methodName);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = methodName.hashCode();
+            result = 31 * result + callsiteBCI;
+            return result;
+        }
     }
 
     /**
@@ -116,7 +135,7 @@ public final class InliningPath {
      */
     public static final InliningPath EMPTY = new InliningPath(List.of());
 
-    private InliningPath(List<PathElement> path) {
+    public InliningPath(List<PathElement> path) {
         this.path = path;
     }
 
@@ -145,24 +164,25 @@ public final class InliningPath {
     }
 
     /**
-     * Returns a path to an optimization's enclosing method, starting from the root method. If the
+     * Returns a path to the optimization's enclosing method, starting from the root method. If the
      * given {@link Optimization} does not have {@link Optimization#getPosition() a position},
      * {@link #EMPTY the empty path} is returned.
      *
      * For instance, if an optimization has the position:
      *
      * <pre>
-     * {a(): 2, b(): 3, c(): 4}
+     * {c(): 4, b(): 3, a(): 2}
      * </pre>
      *
-     * Then the path from root to the enclosing method is:
+     * Note that {@link Optimization#getPosition() positions} start with the innermost method. Then
+     * the path from root to the enclosing method is:
      *
      * <pre>
-     * a() at bci -1, b() at bci 2, c() at bci
+     * a() at bci -1, b() at bci 2, c() at bci 3
      * </pre>
      *
      * @param optimization the optimization to which the path is computed
-     * @return a path to an optimization's enclosing method
+     * @return a path to the optimization's enclosing method
      */
     public static InliningPath ofEnclosingMethod(Optimization optimization) {
         if (optimization.getPosition() == null) {
@@ -230,5 +250,22 @@ public final class InliningPath {
      */
     public boolean matches(InliningPath otherPath) {
         return path.size() == otherPath.size() && isPrefixOf(otherPath);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof InliningPath)) {
+            return false;
+        }
+        InliningPath path1 = (InliningPath) o;
+        return path.equals(path1.path);
+    }
+
+    @Override
+    public int hashCode() {
+        return path.hashCode();
     }
 }

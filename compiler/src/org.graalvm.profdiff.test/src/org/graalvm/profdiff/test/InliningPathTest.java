@@ -1,0 +1,90 @@
+/*
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package org.graalvm.profdiff.test;
+
+import static org.junit.Assert.assertEquals;
+
+import java.util.List;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.profdiff.core.inlining.InliningPath;
+import org.graalvm.profdiff.core.inlining.InliningTreeNode;
+import org.graalvm.profdiff.core.optimization.Optimization;
+import org.junit.Test;
+
+public class InliningPathTest {
+    @Test
+    public void pathToEnclosingMethod() {
+        EconomicMap<String, Integer> position = EconomicMap.create();
+        position.put("c", 3); // the position starts with the innermost method
+        position.put("b", 2);
+        position.put("a", 1);
+        Optimization optimization = new Optimization("foo", "bar", position, null);
+        InliningPath actual = InliningPath.ofEnclosingMethod(optimization);
+        InliningPath expected = new InliningPath(List.of(
+                        new InliningPath.PathElement("a", Optimization.UNKNOWN_BCI),
+                        new InliningPath.PathElement("b", 1),
+                        new InliningPath.PathElement("c", 2)));
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    public void emptyPathToEnclosingMethod() {
+        Optimization optimization = new Optimization("foo", "bar", null, null);
+        assertEquals(InliningPath.EMPTY, InliningPath.ofEnclosingMethod(optimization));
+    }
+
+    /**
+     * Verifies that {@link InliningPath#fromRootToNode(InliningTreeNode)} identifies the path
+     * correctly.
+     *
+     * The following inlining tree is tested:
+     *
+     * <pre>
+     * Inlining tree
+     *     a() at bci -1
+     *         b() at bci 1
+     *             (abstract) c() at bci 2
+     *                 d() at bci 3
+     * </pre>
+     */
+    @Test
+    public void pathFromRootToNode() {
+        InliningTreeNode a = new InliningTreeNode("a()", -1, true, null, false, null);
+        InliningTreeNode b = new InliningTreeNode("b()", 1, true, null, false, null);
+        InliningTreeNode c = new InliningTreeNode("c()", 2, false, null, true, null);
+        InliningTreeNode d = new InliningTreeNode("d()", 3, true, null, false, null);
+        a.addChild(b);
+        b.addChild(c);
+        c.addChild(d);
+
+        InliningPath actual = InliningPath.fromRootToNode(d);
+        InliningPath expected = new InliningPath(List.of(
+                        new InliningPath.PathElement("a()", -1),
+                        new InliningPath.PathElement("b()", 1),
+                        new InliningPath.PathElement("d()", 3)));
+        assertEquals(expected, actual);
+    }
+}
