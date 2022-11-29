@@ -214,20 +214,48 @@ public abstract class SubstrateSigprofHandler {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    boolean isProfilingEnabled() {
-        return enabled;
+    public static void preventThreadsFromEnteringSigProfHandler() {
+        if (ImageSingletons.contains(SubstrateSigprofHandler.class)) {
+            singleton().preventThreadsFromEnteringSigProfHandler0();
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void preventThreadsFromEnteringSigProfHandler() {
+    public static void allowThreadsInSigProfHandler() {
+        if (ImageSingletons.contains(SubstrateSigprofHandler.class)) {
+            singleton().allowThreadsInSigProfHandler0();
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void waitUntilAllThreadsExitedSignalHandler() {
+        if (ImageSingletons.contains(SubstrateSigprofHandler.class)) {
+            singleton().waitUntilAllThreadsExitedSignalHandler0();
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private void preventThreadsFromEnteringSigProfHandler0() {
         int value = isSignalHandlerDisabledTemporarily.incrementAndGet();
         assert value > 0;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void allowThreadsInSigProfHandler() {
+    private void allowThreadsInSigProfHandler0() {
         int value = isSignalHandlerDisabledTemporarily.decrementAndGet();
         assert value >= 0;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private void waitUntilAllThreadsExitedSignalHandler0() {
+        while (threadsInSignalHandler.get() > 0) {
+            VMThreads.singleton().yield();
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    boolean isProfilingEnabled() {
+        return enabled;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -238,13 +266,6 @@ public abstract class SubstrateSigprofHandler {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public SamplerBufferStack fullBuffers() {
         return fullBuffers;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void waitUntilAllThreadsExitedSignalHandler() {
-        while (threadsInSignalHandler.get() > 0) {
-            VMThreads.singleton().yield();
-        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

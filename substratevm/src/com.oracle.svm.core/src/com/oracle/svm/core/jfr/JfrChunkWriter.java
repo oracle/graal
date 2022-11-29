@@ -422,13 +422,13 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         private void processSamplerBuffers() {
-            SubstrateSigprofHandler.singleton().preventThreadsFromEnteringSigProfHandler();
+            SubstrateSigprofHandler.preventThreadsFromEnteringSigProfHandler();
             try {
-                SubstrateSigprofHandler.singleton().waitUntilAllThreadsExitedSignalHandler();
+                SubstrateSigprofHandler.waitUntilAllThreadsExitedSignalHandler();
                 SamplerBuffersAccess.processActiveBuffers();
                 SamplerBuffersAccess.processFullBuffers();
             } finally {
-                SubstrateSigprofHandler.singleton().allowThreadsInSigProfHandler();
+                SubstrateSigprofHandler.allowThreadsInSigProfHandler();
             }
         }
     }
