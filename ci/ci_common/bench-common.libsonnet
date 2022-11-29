@@ -86,19 +86,20 @@
       ["wait"]
     ],
 
+  // building block used to generate fork builds
   many_forks_benchmarking:: common.build_base + {
-    // building block used to generate fork builds
-    local benchmarking_config_repo = self.ci_resources.infra.benchmarking_config_repo,
+    // assumes that the CI provides the following env vars: CURRENT_BRANCH, BUILD_DIR (as absolute path)
+    local config_repo = "$BUILD_DIR/benchmarking-config",
     environment+: {
-      BENCHMARKING_CONFIG_REPO: "$BUILD_DIR/benchmarking-config",
-      FORK_COUNTS_DIRECTORY: "$BENCHMARKING_CONFIG_REPO/fork-counts",
+      FORK_COUNTS_DIRECTORY: config_repo + "/fork-counts",
       FORK_COUNT_FILE: error "FORK_COUNT_FILE env var must be set to use the many forks execution!"
     },
+    // there is no guarantee that those setup steps run first or from the repo root folder, so all paths must be absolute
     setup+: [
       ["set-export", "CURRENT_BRANCH", ["git", "rev-parse", "--abbrev-ref", "HEAD"]],
       ["echo", "[BENCH-FORKS-CONFIG] Using configuration files from branch ${CURRENT_BRANCH} if it exists remotely."],
-      ["git", "clone", benchmarking_config_repo, "${BENCHMARKING_CONFIG_REPO}"],
-      ["test", "${CURRENT_BRANCH}", "=", "master", "||", "git", "-C", "${BENCHMARKING_CONFIG_REPO}", "checkout", "--track", "origin/${CURRENT_BRANCH}", "||", "echo", "Using default fork counts since there is no branch named '${CURRENT_BRANCH}' in the benchmarking-config repo."]
+      ["git", "clone", self.ci_resources.infra.benchmarking_config_repo, config_repo],
+      ["test", "${CURRENT_BRANCH}", "=", "master", "||", "git", "-C", config_repo, "checkout", "--track", "origin/${CURRENT_BRANCH}", "||", "echo", "Using default fork counts since there is no branch named '${CURRENT_BRANCH}' in the benchmarking-config repo."]
     ]
   },
 
