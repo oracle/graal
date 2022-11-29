@@ -1333,13 +1333,26 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     private LLVMExpressionNode capsuleAddressByValue(LLVMExpressionNode child, Type type, AttributesGroup paramAttr) {
         try {
-            final Type pointee = ((PointerType) type).getPointeeType();
-            final long size = pointee.getSize(dataLayout);
-            int alignment = pointee.getAlignment(dataLayout);
+            Type pointee = null;
+            int alignment = -1;
             for (Attribute attr : paramAttr.getAttributes()) {
+                if (attr instanceof Attribute.KnownTypedAttribute && ((Attribute.KnownTypedAttribute) attr).getAttr() == Attribute.Kind.BYVAL) {
+                    pointee = ((Attribute.KnownTypedAttribute) attr).getType();
+                }
                 if (attr instanceof Attribute.KnownIntegerValueAttribute && ((Attribute.KnownIntegerValueAttribute) attr).getAttr() == Attribute.Kind.ALIGN) {
                     alignment = ((Attribute.KnownIntegerValueAttribute) attr).getValue();
                 }
+            }
+
+            if (pointee == null) {
+                // only happens on older versions, we can rely on not having an opaque pointer here
+                assert !((PointerType) type).isOpaque();
+                pointee = ((PointerType) type).getPointeeType();
+            }
+
+            final long size = pointee.getSize(dataLayout);
+            if (alignment < 0) {
+                alignment = pointee.getAlignment(dataLayout);
             }
 
             return nodeFactory.createVarArgCompoundValue(size, alignment, type, child);
