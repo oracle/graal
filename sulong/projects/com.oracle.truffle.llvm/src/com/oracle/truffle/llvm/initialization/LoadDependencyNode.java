@@ -70,21 +70,21 @@ public final class LoadDependencyNode extends LLVMNode {
         CallTarget callTarget = getContext().getCalltargetFromCache(libraryName);
         if (callTarget != null) {
             return callTarget;
-        } else {
-            // only create a source if the library has not already been parsed.
-            TruffleFile file = createTruffleFile(libraryName, libraryLocator);
-            CallTarget calls = getLanguage().getCachedLibrary(file.getPath());
-            if (calls != null) {
-                return calls;
-            } else {
-                Object sourceOrCallTarget = createDependencySource(libraryName, libraryName, file);
-                if (sourceOrCallTarget instanceof Source) {
-                    return getContext().getEnv().parseInternal((Source) sourceOrCallTarget);
-                } else if (sourceOrCallTarget instanceof CallTarget) {
-                    return (CallTarget) sourceOrCallTarget;
-                }
-            }
         }
+
+        TruffleFile file = createTruffleFile(libraryName, libraryLocator);
+        CallTarget calls = getLanguage().getCachedLibrary(file.getPath());
+        if (calls != null) {
+            return calls;
+        }
+
+        Object sourceOrCallTarget = createDependencySource(libraryName, libraryName, file);
+        if (sourceOrCallTarget instanceof Source) {
+            return getContext().getEnv().parseInternal((Source) sourceOrCallTarget);
+        } else if (sourceOrCallTarget instanceof CallTarget) {
+            return (CallTarget) sourceOrCallTarget;
+        }
+
         return null;
     }
 
@@ -111,12 +111,11 @@ public final class LoadDependencyNode extends LLVMNode {
 
         Source source;
         LLVMLanguage language = getLanguage();
-        if (language.containsLibrarySource(file.getPath())) {
-            source = language.getLibrarySource(file.getPath());
+        if (language.isDefaultInternalLibrary(file.getPath())) {
+            source = language.getDefaultInternalLibraryCache(file.getPath());
         } else {
             try {
                 source = Source.newBuilder("llvm", file).internal(getContext().isInternalLibraryFile(file)).build();
-                language.addLibrarySource(file.getPath(), source);
             } catch (IOException | SecurityException | OutOfMemoryError ex) {
                 throw new LLVMParserException("Error reading file " + file.getName() + ".");
             }

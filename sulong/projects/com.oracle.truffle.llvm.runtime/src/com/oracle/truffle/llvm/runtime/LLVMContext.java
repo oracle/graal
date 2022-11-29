@@ -156,11 +156,11 @@ public final class LLVMContext {
     // Assumptions that get invalidated whenever an entry in the above array changes:
     @CompilationFinal(dimensions = 2) private Assumption[][] symbolAssumptions;
 
+    // Calltarget Cache for SOName.
+    private final EconomicMap<String, CallTarget> loadedLibrariesBySOName = EconomicMap.create();
+
     private boolean[] libraryLoaded;
     private RootCallTarget[] destructorFunctions;
-
-    // Calltarget Cache for SOName.
-    protected final EconomicMap<String, CallTarget> calltargetCache = EconomicMap.create();
 
     // signals
     private final LLVMNativePointer sigDfl;
@@ -212,7 +212,6 @@ public final class LLVMContext {
         this.initialized = false;
         this.cleanupNecessary = false;
         this.finalized = false;
-        // this.destructorFunctions = new ArrayList<>();
         this.nativeCallStatistics = logNativeCallStatsEnabled() ? new ConcurrentHashMap<>() : null;
         this.sigDfl = LLVMNativePointer.create(0);
         this.sigIgn = LLVMNativePointer.create(1);
@@ -229,7 +228,6 @@ public final class LLVMContext {
 
         this.headGlobalScopeChain = new LLVMScopeChain();
         this.tailGlobalScopeChain = headGlobalScopeChain;
-        // this.localScopes = new ArrayList<>();
         this.dynamicLinkChain = new DynamicLinkChain();
         this.dynamicLinkChainForScopes = new DynamicLinkChain();
 
@@ -316,17 +314,14 @@ public final class LLVMContext {
              * libraries.
              */
             String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
-            Source[] libraries = new Source[sulongLibraryNames.length];
             if (language.isDefaultInternalLibraryCacheEmpty()) {
                 for (int i = sulongLibraryNames.length - 1; i >= 0; i--) {
                     TruffleFile file = InternalLibraryLocator.INSTANCE.locateLibrary(this, sulongLibraryNames[i], "<default bitcode library>");
                     Source librarySource = Source.newBuilder("llvm", file).internal(isInternalLibraryFile(file)).build();
                     // use the source cache in the language.
-                    language.addLibrarySource(file.getPath(), librarySource);
                     env.parseInternal(librarySource);
-                    libraries[i] = librarySource;
+                    language.setDefaultInternalLibraryCache(librarySource);
                 }
-                language.setDefaultInternalLibraryCache(libraries);
             }
             setLibsulongAuxFunction(SULONG_INIT_CONTEXT);
             setLibsulongAuxFunction(SULONG_DISPOSE_CONTEXT);
@@ -761,20 +756,15 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public void addSourceForCache(Source source) {
-        language.addLibrarySource(source.getPath(), source);
-    }
-
-    @TruffleBoundary
-    public void addCalltargetForCache(String soName, CallTarget callTarget) {
-        if (!calltargetCache.containsKey(soName)) {
-            calltargetCache.put(soName, callTarget);
+    public void addCalltargetForLoadedLibrary(String soName, CallTarget callTarget) {
+        if (!loadedLibrariesBySOName.containsKey(soName)) {
+            loadedLibrariesBySOName.put(soName, callTarget);
         }
     }
 
     @TruffleBoundary
     public CallTarget getCalltargetFromCache(String soName) {
-        return calltargetCache.get(soName);
+        return loadedLibrariesBySOName.get(soName);
     }
 
     public LLVMLanguage getLanguage() {
