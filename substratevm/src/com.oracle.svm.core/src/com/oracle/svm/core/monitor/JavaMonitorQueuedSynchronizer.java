@@ -153,10 +153,11 @@ abstract class JavaMonitorQueuedSynchronizer {
      * For {@linkplain JavaMonitorConditionObject#await conditional waiting}, returns the number of
      * acquisitions, which is subsequently passed to {@link #tryRelease} to entirely release
      * ownership, and later to {@link #tryAcquire} to regain ownership after waiting.
+     *
+     * While {@code AbstractQueuedLongSynchronizer} calls {@link #getState()} assuming that it
+     * encodes the acquisition count, this method allows for more flexibility in implementations.
      */
-    protected long getAcquisitions() {
-        return getState();
-    }
+    protected abstract long getAcquisitions();
 
     // see AbstractQueuedLongSynchronizer.compareAndSetState(long, long)
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -341,7 +342,7 @@ abstract class JavaMonitorQueuedSynchronizer {
     protected abstract boolean tryAcquire(long arg);
 
     // see AbstractQueuedLongSynchronizer.tryRelease(long)
-    protected abstract boolean tryRelease(long releases);
+    protected abstract boolean tryRelease(long arg);
 
     // see AbstractQueuedLongSynchronizer.isHeldExclusively()
     protected abstract boolean isHeldExclusively();

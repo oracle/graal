@@ -167,6 +167,7 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
             if (r < 0) { // overflow
                 throw new Error("Maximum lock count exceeded");
             }
+            // Note: protected by monitor and not required to be observable, no ordering needed
             acquisitions = r;
             return true;
         }
@@ -187,6 +188,7 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
             acquisitions = 1;
             setState(0);
         } else {
+            // Note: protected by monitor and not required to be observable, no ordering needed
             assert releases < acquisitions;
             acquisitions -= (int) releases;
         }
