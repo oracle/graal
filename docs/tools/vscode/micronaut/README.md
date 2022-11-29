@@ -38,11 +38,6 @@ The extension provides many features to boost your Java 8+ and Micronaut product
 * Oracle Cloud explorer
 
 While the extension delivers all these features on its own, it works best when used together with the [GraalVM Tools for Java extension](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm). You get all the GraalVM-specific features like the innovative Graal compiler for better performance, ahead-of-time compilation with GraalVM Native Image, built-in VisualVM, and many more.
-### Prerequisites
-
-- [Extension Pack for Java from Microsoft](https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-java-pack)
-- [Apache NetBeans Language Server](https://marketplace.visualstudio.com/items?itemName=asf.apache-netbeans-java)
-
 ## Extension Installation
 
 To install the GraalVM Tools for Micronaut extension in VS Code, do the following:
@@ -52,14 +47,16 @@ To install the GraalVM Tools for Micronaut extension in VS Code, do the followin
 3. Once found, click **Install**. to install the GraalVM Tools for Micronaut extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.micronaut).
 4. Reload when required.
 
-> Note: The Micronaut extension requires the [GraalVM Tools for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) extension for more features support such as GraalVM Java runtime and building native executables. It will be installed in the background.
+The Micronaut extension requires the [GraalVM Tools for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) extension for more features support such as GraalVM Java runtime and building native executables. For the Java language support, it depends on the [Apache NetBeans Language Server](https://marketplace.visualstudio.com/items?itemName=ASF.apache-netbeans-java). Both extensions will be installed in the background. 
 
 When installed, the extension checks whether there is a registered GraalVM installation, and eventually requests to download it or point to a local installation (see [GraalVM Installation and Setup in VS Code](../graalvm/README.md#graalvm-installation-wizard)).
+
+You can use the [Extension Pack for Java from Microsoft](https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-java-pack) if you prefer instead of the default Apache NetBeans Language Server (see [Java in VS Code](https://code.visualstudio.com/docs/languages/java) to get started).
+If VS Code detects the Extension Pack for Java from Microsoft installed, it deactivates the Apache NetBeans Language Server.
 
 The entrypoint to the Micronaut extension is the Micronaut Tools page which opens as soon as the extension is installed or using the Command Palette command **Micronaut: Show Micronaut Tools Page**.
 
  ![Micronaut Tools Page](images/micronaut_tools_page.png)
-
 ## Extension Settings
 
 The GraalVM Tools for Micronaut extension contributes the following settings in VS Code:

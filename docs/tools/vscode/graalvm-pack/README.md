@@ -10,10 +10,6 @@ permalink: /tools/vscode/graalvm-extension-pack/
 [GraalVM Extension Pack for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-pack) is a collection of extensions that helps you write, debug and test Java applications running on GraalVM, either standalone or using the [Micronaut framework](https://micronaut.io/).
 GraalVM Extension Pack for Java bundles [GraalVM Tools for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm), [GraalVM Tools for Micronaut](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.micronaut), and [Apache NetBeans Language Server](https://marketplace.visualstudio.com/items?itemName=asf.apache-netbeans-java) extensions.
 
-### Prerequisites
-
-- [Extension Pack for Java from Microsoft](https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-java-pack)
-
 This extension pack provides features for the Java application development and the [Micronaut framework](https://micronaut.io/), listed below.
 ### Java Development Support
 1. Full-fledged Java development (edit-compile-debug and test cycle) for Maven and Gradle projects

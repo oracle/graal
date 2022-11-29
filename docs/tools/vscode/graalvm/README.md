@@ -7,54 +7,45 @@ permalink: /tools/vscode/graalvm-extension/
 # GraalVM Tools for Java
 
 * [Extension Installation](#extension-installation)
-* [Java Development and Debugging](#java-development-and-debugging)
 * [GraalVM Installation Wizard](#graalvm-installation-wizard)
 * [Set Default Java Runtime](#set-default-java-runtime)
+* [Java Development and Debugging](#java-development-and-debugging)
 * [Integration with VisualVM](#integration-with-visualvm)
 * [Native Image Support](#native-image-support)
 * [Extension Settings](#extension-settings)
 
-[GraalVM Tools for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) VS Code extension provides support for Java application development and the GraalVM runtime with both just-in-time and ahead-of-time compilers, making it a comfortable and convenient integrated environment. The extension provides a wizard to install GraalVM and simplify configuring the development environment.
+[GraalVM Tools for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) extension provides capabilities to manage GraalVM installations and its components in VS Code and locally. 
+The extension ships a GraalVM installation and configuration wizard. 
+You can conveniently set up the default Java runtime to GraalVM JDK which comes with both just-in-time ([Graal](../../../reference-manual/java/compiler.md)) and ahead-of-time ([Native Image](../../../reference-manual/native-image/README.md)) compilers, making VS Code a comfortable and convenient integrated environment.
 
 The GraalVM Tools for Java in combination with the [GraalVM Tools for Micronaut](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.micronaut) brings native support for the Micronaut framework in VS Code and opens many more possibilities for Java developers.
 
 > Note: The extension is a Technology Preview, and the development team is actively working on further improvements to provide better usability for developers.
 
-### Prerequisites
-
-- [Extension Pack for Java from Microsoft](https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-java-pack)
-- [Apache NetBeans Language Server](https://marketplace.visualstudio.com/items?itemName=asf.apache-netbeans-java)
 ## Extension Installation
 
 To install the GraalVM Tools for Java extension in VS Code, do the following:
 
-1. Navigate to Extensions in the left-hand side Activity Bar.
+1. Navigate to Extensions in the Activity Bar.
 2. Search for "GraalVM" in the search field.
 3. Once found, click **Install**. That action will install the GraalVM Tools for Java extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm).
 4. Reload when required.
 
-Once installed, notice the **Gr** icon in the Activity Bar on the left.
-
-## Java Development and Debugging
-
-For the Java language development and debugging support, the extension relies on the [Language Support for Java™ by Red Hat](https://marketplace.visualstudio.com/items?itemName=redhat.java). (See [Java in VS Code](https://code.visualstudio.com/docs/languages/java) to get started.)
-
-In addition to regular features enabled with the [Extension Pack for Java from Microsoft](https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-java-pack) package, GraalVM Tools for Java additionally provide support for ahead-of-time compilation with GraalVM Native Image, Java-like debugging of a native executables, integration with VisualVM, and, lastly, polyglot programming (check [here](polyglot-runtime.md)).
+The extension depends on the [Apache NetBeans Language Server](https://marketplace.visualstudio.com/items?itemName=ASF.apache-netbeans-java). (VS Code installs it for you.)
+When the extension (and its dependent) is installed, VS Code will display the **Gr** icon in the Activity Bar on the left.
 
 ## GraalVM Installation Wizard
 
 You can easily install [GraalVM](https://www.graalvm.org/) in VS Code by using the built-in installation wizard.
 
-GraalVM includes a JDK based on the Java HotSpot VM, integrates an optimizing, just-in-time (JIT) compiler written in Java, the [Graal compiler](../../../reference-manual/java/compiler.md), and enables ahead-of-time compilation support with Native Image.
-Any application that runs on a Java Virtual Machine (JVM) can run on GraalVM.
-
-To start, click the **Gr** icon in the left side Activity Bar. You can either add an existing GraalVM installation (if you already have GraalVM), or download it immediately from within VS Code. A dialogue window suggests these options:
+To start, click the **Gr** icon in the Activity Bar. You can either add an existing GraalVM installation (if you already have GraalVM), or download it immediately from within VS Code. 
+A dialogue window suggests these options:
   * **Download & Install GraalVM**
   * **Add Existing GraalVM**
 
     ![GraalVM Install Dialog](images/graalvm_install_actions.png)
 
-The **Download & Install GraalVM** action is recommended as it eliminates the fuss around setting up environment variables and prepares the GraalVM runtime in VS Code for you.
+The **Download & Install GraalVM** action is recommended as it eliminates the fuss around setting up environment variables for you.
 
 Each registered GraalVM installation displays its location and all its available components.
 Components are either installed or available for download - the context actions to install (the plus icon) or remove (the bucket icon) are displayed when hovering over component's name.
@@ -79,7 +70,7 @@ Follow these steps to download and install GraalVM Community Edition:
 The installation will start immediately.
 The wizard will download the package from [Github](https://github.com/graalvm/graalvm-ce-builds/releases) in the background and display progress.
 
-Once the installation completes, the **Install Optional GraalVM Components** window will pop up prompting you to install additional language runtimes and utilities (Native Image, Node.js support, LLVM, Python, Ruby, etc.) to the core package:
+Once the installation completes, the **Install Optional GraalVM Components** window will pop up prompting you to install additional language runtimes and utilities (Native Image, JavaScript, Node.js, LLVM, Python, Ruby, etc.) to the core package:
 
 ![Install Optional GraalVM Components](images/install_optional_components_popup.png)
 
@@ -125,16 +116,8 @@ Follow these steps to download and install GraalVM Enterprise:
 
     > Note: If your machine is behind a proxy, you must set your environment variables (`http_proxy`, `https_proxy`) appropriately. You can use the quick command  **Setup Proxy**.
 
-Once the installation completes, the **Install Optional GraalVM Components** window will pop up prompting you to install additional language runtimes and utilities (Native Image, Node.js support, LLVM, Python, Ruby, etc.) to the core package. Once you confirm, you are taken to the selection list. 
-
-Since you already have `.gu/config`, the installation wizard will read it, and components can be installed without any additional interaction.
-
-Consider the following aspects:
-
-* `.gu/config` can only be read by the installation wizard and cannot be used to access any user data or modify these.
-* You can transfer `.gu/config` to another computer and VS Code, the wizard will accept/read it.
-* If you use the same email address to download a GraalVM Enterprise artifact (the core or additional components) from another computer, the existing `.gu/config` will become invalid.
-* You will be asked to re-accept the license only if the license text has changed.
+Once the installation completes, the **Install Optional GraalVM Components** window will pop up prompting you to install additional language runtimes and utilities (Native Image, JavaScript, Node.js, LLVM, Python, Ruby, etc.) to the core package. Once you confirm, you are taken to the selection list. 
+Since you already have a download token and accepted the license, components will be installed without any additional interaction.
 
 #### Show Current Download Configuration
 
@@ -167,14 +150,21 @@ When the installation is complete, the **Set Default Java** action is invoked.
 
 1. To set a newly added GraalVM active, click the home icon by the side of the installation name.
 
-2. Select both **Set as JAVA for Terminal** options in the **Configure active GraalVM** window:
+2. Select both **Set as JAVA for Terminal** options (`JAVA_HOME` and `PATH`) in the **Configure active GraalVM** window:
 
     ![Set as JAVA for Terminal](images/set_as_java_for_terminal.png)
 
 Alternatively, you can invoke the same action from **View**, then **Command Palette** (use the `Ctrl+Shift+P` hot keys combination for Linux, and `Command+Shift+P` for macOS to open the commands palette), and search for "GraalVM".
 You will see **GraalVM: Set Active GraalVM Installation** among other actions.
 
-![Command Palette](images/command-palette.png)
+## Java Development and Debugging
+
+The [Apache NetBeans Language Server](https://marketplace.visualstudio.com/items?itemName=ASF.apache-netbeans-java) is installed on par with the extension enables the Java language support. 
+You have the **Java 8+** **Run** and **Run without Debugging** configuration available for developing and debugging your Java projects in VS Code. 
+In addition to regular features enabled, GraalVM Tools for Java additionally provides support for ahead-of-time compilation with GraalVM Native Image, Java-like debugging of a native executables, integration with VisualVM, and, lastly, polyglot programming (check [here](polyglot-runtime.md)).
+
+You can use the [Extension Pack for Java from Microsoft](https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-java-pack) if you prefer instead of the default Apache NetBeans Language Server (see [Java in VS Code](https://code.visualstudio.com/docs/languages/java) to get started).
+If VS Code detects the Extension Pack for Java from Microsoft installed, it deactivates the Apache NetBeans Language Server.
 
 ## Integration with VisualVM
 
@@ -192,11 +182,6 @@ For more information, see the [dedicated guide](visualvm-integration.md) how to 
 
 Thanks to [GraalVM Tools for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) extension, you can conveniently configure, build, and debug native executables produced with [GraalVM Native Image](../../../reference-manual/native-image/README.md) directly in VS Code.   
 
-[GraalVM Native Image](../../../reference-manual/native-image/README.md) is a ahead-of-time compilation technology to package a Java application into a native executable. Only the code that is required by the application at runtime will be compiled and linked into the native executable. The advantages are many. Your application will:
-  * Be compiled into small executable files, using a fraction of customary resources, so they run lightning fast
-  * Achieve peak performance with no warmup time
-  * Have improved security by reducing attack surfaces and thwarting reverse engineering
-
 > Note: Support for GraalVM Native Image becomes available when you add Native Image component to your GraalVM installation.
 
 ### Configuration
@@ -205,7 +190,7 @@ GraalVM Tools for Java extension provides the **NATIVE IMAGE** with **Agent** pa
 
 ![Native Image Agent pane](images/ni_agent_pane.png)
 
-> Note: The **NATIVE IMAGE** pane will show up when you open your Java project in VS Code workspace. 
+> Note: The **NATIVE IMAGE** pane will show up when you open your Java project in VS Code. 
 
 > Note: The support for the Native Image agent is experimental.
 
@@ -217,8 +202,6 @@ To build a native executable of your Java application in VS Code, do the followi
 
 1. Create the _launch.json_ file. If not already created, create a new file from the **Run and Debug** activity panel using the _create a launch.json file_ link. Select the **Java 8+ environment** when asked. Save the _launch.json_ file after editing it.
 2. Enable the Tracing agent. Click **Gr** in the left sidebar and expand the **NATIVE IMAGE** pane. Expand **Agent** and click the edit button to configure its state.
-
-    ![Enable Native Image Agent state](images/edit_ni_state.png)
 
     Select **enabled** so the Native Image agent will start with the Java process:
 
@@ -243,7 +226,7 @@ To build a native executable of your Java application in VS Code, do the followi
     ```
 
 If you project is Maven or Gradle based, there are dedicated Maven or Gradle plugins to add support for building and testing native executables written in Java. 
-Refer to the following pages for more specific documentation:
+For more documentation, go to:
 
 * [Gradle plugin](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html)
 * [Maven plugin](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html)
@@ -255,7 +238,7 @@ If you use the Micronaut framework to create your Java project, you can build a 
 To use Native Image on Windows, you need Visual Studio Build Tools with Windows SDK installed. 
 The `native-image` builder will only work when it is executed from the **x64 Native Tools Command Prompt**. Check [this link](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311) for more details.
 
-For Windows users, the extension provides a preconfigured x64 command prompt using Microsoft Developer Tools. Assuming you already have Visual Studio Build Tools with Windows SDK, GraalVM with Native Image support installed, and opened your Java project in VS Code.
+For Windows users, the extension provides a pre-configured x64 command prompt using Microsoft Developer Tools. Assuming you already have Visual Studio Build Tools with Windows SDK, GraalVM with Native Image installed, and opened your Java project in VS Code.
 
 1. In the **NATIVE IMAGE** pane, click on right arrow, **>**:
 
@@ -265,9 +248,7 @@ For Windows users, the extension provides a preconfigured x64 command prompt usi
 
     ![Provide Path to Microsoft Build Tools Script](images/path_build_tools_script.png)
 
-2. Click enter. A new Terminal window will open running inside the x64 native tools command prompt. You can see that from the message printed:
-    
-    ![Native Command Prompt in VS Code Windows](images/native_tools_cmd_prompt.png)
+2. Click enter. A new Terminal window will open running inside the x64 native tools command prompt.
 
     Note that the path to Windows SDK build tools is saved globally, so next time you open a New Terminal 
     from the **NATIVE IMAGE** pane, it will run inside the x64 native tools command prompt.
@@ -278,7 +259,7 @@ For Windows users, the extension provides a preconfigured x64 command prompt usi
     native-image --version
     ```
 
-Read more about GraalVM Native Image [here](../../../reference-manual/native-image/README.md).
+Learn more about GraalVM Native Image [here](../../../reference-manual/native-image/README.md).
 
 ### Debugging
 
@@ -289,7 +270,7 @@ You can set breakpoints, inspect the state of your application, even attach the 
 
 > Note: To debug a native executable from within VS Code, you must install GraalVM Enterprise.
 
-Read more about this and find a demo application in the [Native Image Debugging guide](native-image-debugging.md).
+Learn more and find a demo application in the [Native Image Debugging guide](native-image-debugging.md).
 
 ## Extension Settings
 
