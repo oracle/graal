@@ -123,7 +123,7 @@ suite = {
             "checkstyleVersion" : "8.8",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
-                "TruffleJSON"
+                "truffle:TruffleJSON"
             ],
         },
         "org.graalvm.component.installer.test" : {
