@@ -323,6 +323,17 @@ public final class CollectionsUtil {
         };
     }
 
+    /**
+     * Returns an iterable over all pairs of elements.
+     *
+     * Suppose that the first iterable returns the elements {@code a1, a2, ..., an} and the second
+     * iterable returns the elements {@code b1, b2, ..., bm}. Then, the method returns the pairs
+     * {@code (a1, b1), (a1, b2), ..., (a1, bm), (a2, b1), (a2, b2), ... (an, bm)}.
+     *
+     * @param lhs the first iterable (left elements of the {@link Pair})
+     * @param rhs the second iterable (right elements of the {@link Pair})
+     * @return an iterable over all pairs of elements
+     */
     public static <L, R> Iterable<Pair<L, R>> cartesianProduct(Iterable<L> lhs, Iterable<R> rhs) {
         return () -> new Iterator<>() {
 
@@ -337,7 +348,13 @@ public final class CollectionsUtil {
             @Override
             public boolean hasNext() {
                 if (rhsReachedEnd) {
-                    return lhsIterator.hasNext() && rhs.iterator().hasNext();
+                    if (!lhsIterator.hasNext()) {
+                        return false;
+                    }
+                    lhsLast = lhsIterator.next();
+                    rhsIterator = rhs.iterator();
+                    rhsReachedEnd = !rhsIterator.hasNext();
+                    return !rhsReachedEnd;
                 }
                 return true;
             }
