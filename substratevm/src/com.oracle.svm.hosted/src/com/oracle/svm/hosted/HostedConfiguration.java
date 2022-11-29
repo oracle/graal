@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
@@ -37,6 +38,10 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.results.DefaultResultsBuilder;
 import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.image.LIRNativeImageCodeCache;
+import com.oracle.svm.hosted.image.NativeImageCodeCache;
+import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
+import com.oracle.svm.hosted.image.NativeImageHeap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -236,5 +241,14 @@ public class HostedConfiguration {
     private static void setMonitorField(HostedUniverse hUniverse, AnalysisType type) {
         final HostedInstanceClass hostedInstanceClass = (HostedInstanceClass) hUniverse.lookup(type);
         hostedInstanceClass.setNeedMonitorField();
+    }
+
+    public NativeImageCodeCacheFactory newCodeCacheFactory() {
+        return new NativeImageCodeCacheFactory() {
+            @Override
+            public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform targetPlatform, Path tempDir) {
+                return new LIRNativeImageCodeCache(compileQueue.getCompilationResults(), heap);
+            }
+        };
     }
 }

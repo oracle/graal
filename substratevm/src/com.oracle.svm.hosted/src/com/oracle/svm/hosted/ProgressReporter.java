@@ -144,6 +144,7 @@ public class ProgressReporter {
         PARSING("Parsing methods", true, true),
         INLINING("Inlining methods", true, false),
         COMPILING("Compiling methods", true, true),
+        LAYOUTING("Layouting methods", true, true),
         CREATING("Creating image");
 
         private static final int NUM_STAGES = values().length;
@@ -321,15 +322,25 @@ public class ProgressReporter {
     }
 
     public ReporterClosable printAnalysis(AnalysisUniverse universe, Collection<String> libraries) {
-        Timer timer = getTimer(TimerCollection.Registry.ANALYSIS);
+        return print(TimerCollection.Registry.ANALYSIS, BuildStage.ANALYSIS, () -> printAnalysisStatistics(universe, libraries));
+    }
+
+    private ReporterClosable print(TimerCollection.Registry registry, BuildStage buildStage) {
+        return print(registry, buildStage, null);
+    }
+
+    private ReporterClosable print(TimerCollection.Registry registry, BuildStage buildStage, Runnable extraPrint) {
+        Timer timer = getTimer(registry);
         timer.start();
-        stagePrinter.start(BuildStage.ANALYSIS);
+        stagePrinter.start(buildStage);
         return new ReporterClosable() {
             @Override
             public void closeAction() {
                 timer.stop();
                 stagePrinter.end(timer);
-                printAnalysisStatistics(universe, libraries);
+                if (extraPrint != null) {
+                    extraPrint.run();
+                }
             }
         };
     }
@@ -390,55 +401,23 @@ public class ProgressReporter {
     }
 
     public ReporterClosable printUniverse() {
-        Timer timer = getTimer(TimerCollection.Registry.UNIVERSE);
-        timer.start();
-        stagePrinter.start(BuildStage.UNIVERSE);
-        return new ReporterClosable() {
-            @Override
-            public void closeAction() {
-                timer.stop();
-                stagePrinter.end(timer);
-            }
-        };
+        return print(TimerCollection.Registry.UNIVERSE, BuildStage.UNIVERSE);
     }
 
     public ReporterClosable printParsing() {
-        Timer timer = getTimer(TimerCollection.Registry.PARSE);
-        timer.start();
-        stagePrinter.start(BuildStage.PARSING);
-        return new ReporterClosable() {
-            @Override
-            public void closeAction() {
-                timer.stop();
-                stagePrinter.end(timer);
-            }
-        };
+        return print(TimerCollection.Registry.PARSE, BuildStage.PARSING);
     }
 
     public ReporterClosable printInlining() {
-        Timer timer = getTimer(TimerCollection.Registry.INLINE);
-        timer.start();
-        stagePrinter.start(BuildStage.INLINING);
-        return new ReporterClosable() {
-            @Override
-            public void closeAction() {
-                timer.stop();
-                stagePrinter.end(timer);
-            }
-        };
+        return print(TimerCollection.Registry.INLINE, BuildStage.INLINING);
     }
 
     public ReporterClosable printCompiling() {
-        Timer timer = getTimer(TimerCollection.Registry.COMPILE);
-        timer.start();
-        stagePrinter.start(BuildStage.COMPILING);
-        return new ReporterClosable() {
-            @Override
-            public void closeAction() {
-                timer.stop();
-                stagePrinter.end(timer);
-            }
-        };
+        return print(TimerCollection.Registry.COMPILE, BuildStage.COMPILING);
+    }
+
+    public ReporterClosable printLayouting() {
+        return print(TimerCollection.Registry.LAYOUT, BuildStage.LAYOUTING);
     }
 
     // TODO: merge printCreationStart and printCreationEnd at some point (GR-35721).
