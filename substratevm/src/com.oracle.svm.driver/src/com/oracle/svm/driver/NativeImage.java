@@ -263,6 +263,14 @@ public class NativeImage {
 
     private long imageBuilderPid = -1;
 
+    ReplaySupport replaySupport;
+
+    void replaySupportShutdown() {
+        if (replaySupport != null) {
+            replaySupport.shutdown();
+        }
+    }
+
     protected static class BuildConfiguration {
 
         /*
@@ -1253,11 +1261,11 @@ public class NativeImage {
         }
     }
 
-    private String mainClass;
-    private String imageName;
-    private String imagePath;
+    String mainClass;
+    String imageName;
+    String imagePath;
 
-    protected static List<String> createImageBuilderArgs(ArrayList<String> imageArgs, LinkedHashSet<Path> imagecp, LinkedHashSet<Path> imagemp) {
+    protected static List<String> createImageBuilderArgs(List<String> imageArgs, List<Path> imagecp, List<Path> imagemp) {
         List<String> result = new ArrayList<>();
         if (!imagecp.isEmpty()) {
             result.add(SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
@@ -1332,7 +1340,16 @@ public class NativeImage {
              */
             arguments.addAll(Arrays.asList(SubstrateOptions.WATCHPID_PREFIX, "" + ProcessProperties.getProcessID()));
         }
-        List<String> finalImageBuilderArgs = createImageBuilderArgs(imageArgs, imagecp, imagemp);
+
+        boolean useReplay = replaySupport != null;
+        Function<Path, Path> substituteAuxiliaryPath = useReplay ? replaySupport::substituteAuxiliaryPath : Function.identity();
+        Function<String, String> imageArgsTransformer = rawArg -> apiOptionHandler.transformBuilderArgument(rawArg, substituteAuxiliaryPath);
+        List<String> finalImageArgs = imageArgs.stream().map(imageArgsTransformer).collect(Collectors.toList());
+        Function<Path, Path> substituteClassPath = useReplay ? replaySupport::substituteClassPath : Function.identity();
+        List<Path> finalImageClassPath = imagecp.stream().map(substituteClassPath).collect(Collectors.toList());
+        Function<Path, Path> substituteModulePath = useReplay ? replaySupport::substituteModulePath : Function.identity();
+        List<Path> finalImageModulePath = imagemp.stream().map(substituteModulePath).collect(Collectors.toList());
+        List<String> finalImageBuilderArgs = createImageBuilderArgs(finalImageArgs, finalImageClassPath, finalImageModulePath);
 
         /* Construct ProcessBuilder command from final arguments */
         List<String> command = new ArrayList<>();
@@ -1352,11 +1369,9 @@ public class NativeImage {
             showVerboseMessage(isVerbose() || dryRun, "]");
         }
 
-        if (dryRun) {
+        if (dryRun || useReplay && replaySupport.status == ReplaySupport.ReplayStatus.prepare) {
             return ExitStatus.OK.getValue();
         }
-
-        int exitStatus = ExitStatus.DRIVER_TO_BUILDER_ERROR.getValue();
 
         Process p = null;
         try {
@@ -1366,7 +1381,7 @@ public class NativeImage {
             sanitizeJVMEnvironment(pb.environment());
             p = pb.inheritIO().start();
             imageBuilderPid = p.pid();
-            exitStatus = p.waitFor();
+            return p.waitFor();
         } catch (IOException | InterruptedException e) {
             throw showError(e.getMessage());
         } finally {
@@ -1374,7 +1389,6 @@ public class NativeImage {
                 p.destroy();
             }
         }
-        return exitStatus;
     }
 
     private static void sanitizeJVMEnvironment(Map<String, String> environment) {
@@ -1443,26 +1457,31 @@ public class NativeImage {
                     throw showError("Requirements for building native images are not fulfilled [cause: " + e.getMessage() + "]", null);
                 }
             }
-            int buildStatus = nativeImage.completeImageBuild();
-            switch (ExitStatus.of(buildStatus)) {
-                case OK:
-                    break;
-                case BUILDER_ERROR:
-                    /* Exit, builder has handled error reporting. */
-                    System.exit(ExitStatus.BUILDER_ERROR.getValue());
-                    break;
-                case FALLBACK_IMAGE:
-                    nativeImage.showMessage("Generating fallback image...");
-                    build(new FallbackBuildConfiguration(nativeImage), nativeImageProvider);
-                    showWarning("Image '" + nativeImage.imageName +
-                                    "' is a fallback image that requires a JDK for execution " +
-                                    "(use --" + SubstrateOptions.OptionNameNoFallback +
-                                    " to suppress fallback image generation and to print more detailed information why a fallback image was necessary).");
-                    break;
-                default:
-                    String message = String.format("Image build request for '%s' (pid: %d, path: %s) failed with exit status %d",
-                                    nativeImage.imageName, nativeImage.imageBuilderPid, nativeImage.imagePath, buildStatus);
-                    throw showError(message, null, buildStatus);
+
+            try {
+                int exitStatusCode = nativeImage.completeImageBuild();
+                switch (ExitStatus.of(exitStatusCode)) {
+                    case OK:
+                        break;
+                    case BUILDER_ERROR:
+                        /* Exit, builder has handled error reporting. */
+                        System.exit(ExitStatus.BUILDER_ERROR.getValue());
+                        break;
+                    case FALLBACK_IMAGE:
+                        nativeImage.showMessage("Generating fallback image...");
+                        build(new FallbackBuildConfiguration(nativeImage), nativeImageProvider);
+                        showWarning("Image '" + nativeImage.imageName +
+                                        "' is a fallback image that requires a JDK for execution " +
+                                        "(use --" + SubstrateOptions.OptionNameNoFallback +
+                                        " to suppress fallback image generation and to print more detailed information why a fallback image was necessary).");
+                        break;
+                    default:
+                        String message = String.format("Image build request for '%s' (pid: %d, path: %s) failed with exit status %d",
+                                        nativeImage.imageName, nativeImage.imageBuilderPid, nativeImage.imagePath, exitStatusCode);
+                        throw showError(message, null, exitStatusCode);
+                }
+            } finally {
+                nativeImage.replaySupportShutdown();
             }
         }
     }

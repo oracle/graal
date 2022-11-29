@@ -26,7 +26,9 @@ package com.oracle.svm.driver;
 
 import java.io.File;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.graalvm.compiler.options.OptionType;
 
@@ -45,6 +47,7 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     private static final String serverOptionPrefix = "--server-";
 
     public static final String DEBUG_ATTACH_OPTION = "--debug-attach";
+    public static final String REPLAY_OPTION = "--replay";
 
     private static final String javaRuntimeVersion = System.getProperty("java.runtime.version");
 
@@ -149,6 +152,32 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 args.poll();
                 NativeImage.showWarning("Ignoring server-mode native-image argument " + headArg + ".");
                 return true;
+        }
+
+        if (headArg.startsWith(REPLAY_OPTION)) {
+            String replayArg = args.poll();
+            ReplaySupport.ReplayStatus replayStatus;
+            if (replayArg.equals(REPLAY_OPTION)) {
+                /* Handle short form of --replay-apply */
+                replayStatus = ReplaySupport.ReplayStatus.apply;
+            } else {
+                String replayVariant = replayArg.substring(REPLAY_OPTION.length() + 1);
+                try {
+                    replayStatus = ReplaySupport.ReplayStatus.valueOf(replayVariant);
+                } catch (IllegalArgumentException e) {
+                    String suggestedVariants = Arrays.stream(ReplaySupport.ReplayStatus.values())
+                                    .filter(ReplaySupport.ReplayStatus::show)
+                                    .map(v -> REPLAY_OPTION + "-" + v)
+                                    .collect(Collectors.joining(", "));
+                    throw NativeImage.showError("Unknown option " + replayArg + ". Valid variants are: " + suggestedVariants + ".");
+                }
+            }
+            if (replayStatus.loadBundle) {
+                nativeImage.replaySupport = new ReplaySupport(nativeImage, replayStatus, args.poll());
+            } else {
+                nativeImage.replaySupport = new ReplaySupport(nativeImage, replayStatus);
+            }
+            return true;
         }
 
         if (headArg.startsWith(DEBUG_ATTACH_OPTION)) {

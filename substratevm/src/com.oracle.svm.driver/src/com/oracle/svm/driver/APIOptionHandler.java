@@ -25,6 +25,7 @@
 package com.oracle.svm.driver;
 
 import java.lang.reflect.Field;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,7 +47,7 @@ import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.common.option.MultiOptionValue;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOption.APIOptionKind;
 import com.oracle.svm.core.option.APIOptionGroup;
@@ -60,6 +61,7 @@ import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
+import com.oracle.svm.util.StringUtil;
 
 class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -69,7 +71,6 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         final String builderOption;
         final String defaultValue;
         final String helpText;
-        final boolean hasPathArguments;
         final boolean defaultFinal;
         final String deprecationWarning;
         final boolean extra;
@@ -77,14 +78,13 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         final List<Function<Object, Object>> valueTransformers;
         final APIOptionGroup group;
 
-        OptionInfo(String[] variants, char[] valueSeparator, String builderOption, String defaultValue, String helpText, boolean hasPathArguments, boolean defaultFinal, String deprecationWarning,
+        OptionInfo(String[] variants, char[] valueSeparator, String builderOption, String defaultValue, String helpText, boolean defaultFinal, String deprecationWarning,
                         List<Function<Object, Object>> valueTransformers, APIOptionGroup group, boolean extra) {
             this.variants = variants;
             this.valueSeparator = valueSeparator;
             this.builderOption = builderOption;
             this.defaultValue = defaultValue;
             this.helpText = helpText;
-            this.hasPathArguments = hasPathArguments;
             this.defaultFinal = defaultFinal;
             this.deprecationWarning = deprecationWarning;
             this.valueTransformers = valueTransformers;
@@ -99,6 +99,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     private final SortedMap<String, OptionInfo> apiOptions;
     private final Map<String, GroupInfo> groupInfos;
+    final Map<String, String> pathOptions;
 
     APIOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
@@ -106,19 +107,24 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             APIOptionSupport support = ImageSingletons.lookup(APIOptionSupport.class);
             groupInfos = support.groupInfos;
             apiOptions = support.options;
+            pathOptions = support.pathOptions;
         } else {
             groupInfos = new HashMap<>();
-            apiOptions = extractOptions(ServiceLoader.load(OptionDescriptors.class, nativeImage.getClass().getClassLoader()), groupInfos);
+            pathOptions = new HashMap<>();
+            apiOptions = extractOptions(ServiceLoader.load(OptionDescriptors.class, nativeImage.getClass().getClassLoader()), groupInfos, pathOptions);
         }
     }
 
-    static SortedMap<String, OptionInfo> extractOptions(ServiceLoader<OptionDescriptors> optionDescriptors, Map<String, GroupInfo> groupInfos) {
+    static SortedMap<String, OptionInfo> extractOptions(ServiceLoader<OptionDescriptors> optionDescriptors, Map<String, GroupInfo> groupInfos, Map<String, String> pathOptions) {
         EconomicMap<String, OptionDescriptor> hostedOptions = EconomicMap.create();
         EconomicMap<String, OptionDescriptor> runtimeOptions = EconomicMap.create();
         HostedOptionParser.collectOptions(optionDescriptors, hostedOptions, runtimeOptions);
         SortedMap<String, OptionInfo> apiOptions = new TreeMap<>();
         Map<Class<? extends APIOptionGroup>, APIOptionGroup> groupInstances = new HashMap<>();
-        hostedOptions.getValues().forEach(o -> extractOption(NativeImage.oH, o, apiOptions, groupInfos, groupInstances));
+        hostedOptions.getValues().forEach(o -> {
+            extractOption(NativeImage.oH, o, apiOptions, groupInfos, groupInstances);
+            extractPathOption(NativeImage.oH, o, pathOptions);
+        });
         runtimeOptions.getValues().forEach(o -> extractOption(NativeImage.oR, o, apiOptions, groupInfos, groupInstances));
         groupInfos.forEach((groupName, groupInfo) -> {
             if (groupInfo.defaultValues.size() > 1) {
@@ -177,9 +183,6 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                             throw VMError.shouldNotReachHere(
                                             "Class specified as group for @APIOption " + apiOptionName + " cannot be loaded or instantiated: " + apiAnnotation.group().getTypeName(), ex.getCause());
                         }
-                    }
-                    if (apiAnnotation.kind().equals(APIOptionKind.Paths)) {
-                        VMError.shouldNotReachHere(String.format("Boolean APIOption %s(%s) cannot use APIOptionKind.Paths", apiOptionName, rawOptionName));
                     }
                     if (apiAnnotation.defaultValue().length > 0) {
                         VMError.shouldNotReachHere(String.format("Boolean APIOption %s(%s) cannot use APIOption.defaultValue", apiOptionName, rawOptionName));
@@ -258,11 +261,22 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 boolean defaultFinal = booleanOption || hasFixedValue;
                 apiOptions.put(apiOptionName,
                                 new APIOptionHandler.OptionInfo(apiAnnotation.name(), apiAnnotation.valueSeparator(), builderOption, defaultValue, helpText,
-                                                apiAnnotation.kind().equals(APIOptionKind.Paths),
                                                 defaultFinal, apiAnnotation.deprecated(), valueTransformers, group, apiAnnotation.extra()));
             }
         } catch (NoSuchFieldException e) {
             /* Does not qualify as APIOption */
+        }
+    }
+
+    private static void extractPathOption(String optionPrefix, OptionDescriptor optionDescriptor, Map<String, String> pathOptions) {
+        Object defaultValue = optionDescriptor.getOptionKey().getDefaultValue();
+        if (defaultValue instanceof MultiOptionValue) {
+            var multiOptionDefaultValue = ((MultiOptionValue<?>) defaultValue);
+            if (Path.class.isAssignableFrom(multiOptionDefaultValue.getValueType())) {
+                String rawOptionName = optionDescriptor.getName();
+                String builderOption = optionPrefix + rawOptionName;
+                pathOptions.put(builderOption, multiOptionDefaultValue.getDelimiter());
+            }
         }
     }
 
@@ -349,12 +363,6 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 optionValue = optionNameAndOptionValue[1];
             }
             if (optionValue != null) {
-                if (option.hasPathArguments) {
-                    optionValue = Arrays.stream(SubstrateUtil.split(optionValue, ","))
-                                    .filter(s -> !s.isEmpty())
-                                    .map(this::tryCanonicalize)
-                                    .collect(Collectors.joining(","));
-                }
                 Object transformed = optionValue;
                 for (Function<Object, Object> transformer : option.valueTransformers) {
                     transformed = transformer.apply(transformed);
@@ -368,12 +376,39 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         return null;
     }
 
-    private String tryCanonicalize(String path) {
+    String transformBuilderArgument(String builderArgument, Function<Path, Path> replayFunction) {
+        String[] nameAndValue = StringUtil.split(builderArgument, "=", 2);
+        if (nameAndValue.length != 2) {
+            return builderArgument;
+        }
+        String optionName = StringUtil.split(nameAndValue[0], "@", 2)[0];
+        String optionValue = nameAndValue[1];
+        String pathOptionSeparator = pathOptions.get(optionName);
+        if (pathOptionSeparator == null) {
+            return builderArgument;
+        }
+        List<String> rawEntries;
+        if (pathOptionSeparator.isEmpty()) {
+            rawEntries = List.of(optionValue);
+        } else {
+            rawEntries = List.of(StringUtil.split(optionValue, pathOptionSeparator));
+        }
+        String transformedOptionValue = rawEntries.stream()
+                        .filter(s -> !s.isEmpty())
+                        .map(this::tryCanonicalize)
+                        .map(replayFunction)
+                        .map(Path::toString)
+                        .collect(Collectors.joining(pathOptionSeparator));
+        return optionName + "=" + transformedOptionValue;
+    }
+
+    private Path tryCanonicalize(String path) {
+        Path origPath = Paths.get(path);
         try {
-            return nativeImage.canonicalize(Paths.get(path)).toString();
+            return nativeImage.canonicalize(origPath);
         } catch (NativeImage.NativeImageError e) {
             /* Allow features to handle the path string. */
-            return path;
+            return origPath;
         }
     }
 
@@ -470,10 +505,12 @@ final class APIOptionSupport {
 
     final Map<String, GroupInfo> groupInfos;
     final SortedMap<String, APIOptionHandler.OptionInfo> options;
+    final Map<String, String> pathOptions;
 
-    APIOptionSupport(Map<String, GroupInfo> groupInfos, SortedMap<String, APIOptionHandler.OptionInfo> options) {
+    APIOptionSupport(Map<String, GroupInfo> groupInfos, SortedMap<String, APIOptionHandler.OptionInfo> options, Map<String, String> pathOptions) {
         this.groupInfos = groupInfos;
         this.options = options;
+        this.pathOptions = pathOptions;
     }
 }
 
@@ -489,8 +526,9 @@ final class APIOptionFeature implements Feature {
     public void duringSetup(DuringSetupAccess access) {
         FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
         Map<String, GroupInfo> groupInfos = new HashMap<>();
+        Map<String, String> pathOptions = new HashMap<>();
         ServiceLoader<OptionDescriptors> optionDescriptors = ServiceLoader.load(OptionDescriptors.class, accessImpl.getImageClassLoader().getClassLoader());
-        SortedMap<String, APIOptionHandler.OptionInfo> options = APIOptionHandler.extractOptions(optionDescriptors, groupInfos);
-        ImageSingletons.add(APIOptionSupport.class, new APIOptionSupport(groupInfos, options));
+        SortedMap<String, APIOptionHandler.OptionInfo> options = APIOptionHandler.extractOptions(optionDescriptors, groupInfos, pathOptions);
+        ImageSingletons.add(APIOptionSupport.class, new APIOptionSupport(groupInfos, options, pathOptions));
     }
 }
