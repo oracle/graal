@@ -87,8 +87,8 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> isImplementationInvokedUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisMethod.class, Object.class, "isImplementationInvoked");
 
-    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isIntrinsicMethodUpdater = AtomicIntegerFieldUpdater
-                    .newUpdater(AnalysisMethod.class, "isIntrinsicMethod");
+    private static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> isIntrinsicMethodUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisMethod.class, Object.class, "isIntrinsicMethod");
 
     private static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> isInlinedUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisMethod.class, Object.class, "isInlined");
@@ -111,7 +111,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private Object entryPointData;
     @SuppressWarnings("unused") private volatile Object isInvoked;
     @SuppressWarnings("unused") private volatile Object isImplementationInvoked;
-    @SuppressWarnings("unused") private volatile int isIntrinsicMethod;
+    @SuppressWarnings("unused") private volatile Object isIntrinsicMethod;
     @SuppressWarnings("unused") private volatile Object isInlined;
 
     private final AtomicReference<Object> parsedGraphCacheState = new AtomicReference<>(GRAPH_CACHE_UNPARSED);
@@ -261,8 +261,9 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * builder plugin}. Such a method is treated similar to an invoked method. For example, method
      * resolution must be able to find the method (otherwise the intrinsification would not work).
      */
-    public void registerAsIntrinsicMethod() {
-        AtomicUtils.atomicMarkAndRun(this, isIntrinsicMethodUpdater, this::onReachable);
+    public void registerAsIntrinsicMethod(Object reason) {
+        assert isValidReason(reason) : "Registering a method as intrinsic needs to provide a valid reason, found: " + reason;
+        AtomicUtils.atomicSetAndRun(this, reason, isIntrinsicMethodUpdater, this::onReachable);
     }
 
     public void registerAsEntryPoint(Object newEntryPointData) {

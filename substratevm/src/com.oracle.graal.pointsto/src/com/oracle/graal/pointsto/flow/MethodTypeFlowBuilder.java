@@ -179,10 +179,10 @@ public class MethodTypeFlowBuilder {
     }
 
     @SuppressWarnings("try")
-    private boolean parse() {
+    private boolean parse(Object reason) {
         AnalysisParsedGraph analysisParsedGraph = method.ensureGraphParsed(bb);
         if (analysisParsedGraph.isIntrinsic()) {
-            method.registerAsIntrinsicMethod();
+            method.registerAsIntrinsicMethod(reason);
         }
 
         if (analysisParsedGraph.getEncodedGraph() == null) {
@@ -394,7 +394,7 @@ public class MethodTypeFlowBuilder {
         targetMethod.ifPresent(analysisMethod -> bb.addRootMethod(analysisMethod, true));
     }
 
-    protected void apply() {
+    protected void apply(Object reason) {
         // assert method.getAnnotation(Fold.class) == null : method;
         if (AnnotationAccess.isAnnotationPresent(method, NodeIntrinsic.class)) {
             graph.getDebug().log("apply MethodTypeFlow on node intrinsic %s", method);
@@ -417,7 +417,7 @@ public class MethodTypeFlowBuilder {
             return;
         }
 
-        if (!parse()) {
+        if (!parse(reason)) {
             return;
         }
 

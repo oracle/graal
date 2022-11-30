@@ -94,7 +94,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
             parsingReason = reason;
             try {
                 MethodTypeFlowBuilder builder = bb.createMethodTypeFlowBuilder(bb, method);
-                builder.apply();
+                builder.apply(PointsToAnalysisMethod.unwrapInvokeReason(parsingReason));
 
                 returnedParameterIndex = computeReturnedParameterIndex(builder.graph);
                 bb.numParsedGraphs.incrementAndGet();

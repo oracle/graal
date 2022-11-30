@@ -95,7 +95,15 @@ public class PointsToAnalysisMethod extends AnalysisMethod {
         return super.registerAsImplementationInvoked(unwrapInvokeReason(reason));
     }
 
-    private static Object unwrapInvokeReason(Object reason) {
+    /**
+     * In general the reason for a method invocation is an {@link InvokeTypeFlow}. Special and
+     * virtual root methods have the corresponding context-insensitive invoke reason set. Static
+     * root method doesn't have any reason set.
+     */
+    public static Object unwrapInvokeReason(Object reason) {
+        if (reason == null) {
+            return "static root method";
+        }
         if (reason instanceof InvokeTypeFlow) {
             BytecodePosition source = ((InvokeTypeFlow) reason).getSource();
             return source != null ? source : "root method";
