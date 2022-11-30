@@ -241,7 +241,7 @@ public final class Target_java_lang_Thread {
 
     @Substitution
     public static @JavaType(Thread.class) StaticObject currentCarrierThread(@Inject EspressoContext context) {
-        // FIXME: this is wrong
+        // FIXME: this is wrong for virtual threads
         return context.getCurrentThread();
     }
 
