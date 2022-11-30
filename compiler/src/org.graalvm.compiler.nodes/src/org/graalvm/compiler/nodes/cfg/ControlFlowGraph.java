@@ -33,6 +33,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.core.common.RetryableBailoutException;
+import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.CFGVerifier;
 import org.graalvm.compiler.core.common.cfg.Loop;
@@ -59,7 +61,7 @@ import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.cfg.Block.EditableBlock;
+import org.graalvm.compiler.nodes.cfg.Block.LIRBlock;
 import org.graalvm.compiler.nodes.cfg.Block.FixedBlock;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -117,8 +119,12 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         void exit(Block b, V value);
     }
 
-    public static ControlFlowGraph computeForSchedule(StructuredGraph graph) {
+    public static ControlFlowGraph computeForFinalSchedule(StructuredGraph graph) {
         return compute(graph, true, true, true, true, true, false);
+    }
+
+    public static ControlFlowGraph computeForSchedule(StructuredGraph graph) {
+        return compute(graph, false, true, true, true, true, false);
     }
 
     public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
@@ -133,8 +139,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
 
     /**
      * Creates a control flow graph from the nodes in {@code graph}.
-     * 
-     * @param editable specifies if the blocks can have their edges edited
+     *
+     * @param backendBlocks specifies if the blocks can have their edges edited
      * @param connectBlocks
      * @param computeFrequency
      * @param computeLoops
@@ -142,13 +148,13 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
      * @param computePostdominators
      */
     @SuppressWarnings("try")
-    public static ControlFlowGraph compute(StructuredGraph graph, boolean editable, boolean connectBlocks, boolean computeFrequency, boolean computeLoops, boolean computeDominators,
+    public static ControlFlowGraph compute(StructuredGraph graph, boolean backendBlocks, boolean connectBlocks, boolean computeFrequency, boolean computeLoops, boolean computeDominators,
                     boolean computePostdominators) {
 
         try (DebugCloseable c = CFG_MEMORY.start(graph.getDebug())) {
             ControlFlowGraph cfg = new ControlFlowGraph(graph);
 
-            cfg.identifyBlocks(editable);
+            cfg.identifyBlocks(backendBlocks);
 
             boolean loopInfoComputed = false;
             if (CFGOptions.DumpEndVersusExitLoopFrequencies.getValue(graph.getOptions())) {
@@ -180,12 +186,15 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     }
 
     private void identifyBlocks(boolean makeEditable) {
-        int numBlocks = 0;
+        char numBlocks = 0;
         for (AbstractBeginNode begin : graph.getNodes(AbstractBeginNode.TYPE)) {
             GraalError.guarantee(begin.predecessor() != null || (begin instanceof StartNode || begin instanceof AbstractMergeNode), "Disconnected control flow %s encountered", begin);
-            Block block = makeEditable ? new EditableBlock(begin, this) : new FixedBlock(begin, this);
+            Block block = makeEditable ? new LIRBlock(begin, this) : new FixedBlock(begin, this);
             identifyBlock(block);
             numBlocks++;
+            if (numBlocks > AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX) {
+                throw new RetryableBailoutException("Graph too large to safely compile in reasonable time. Graph contains more than %d basic blocks", AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX);
+            }
         }
         reversePostOrder = ReversePostOrder.identifyBlocks(this, numBlocks);
     }
@@ -645,7 +654,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         Block[] stack = new Block[size];
         stack[0] = block;
         int tos = 0;
-        int myNumber = 0;
+        char myNumber = 0;
 
         do {
             Block cur = stack[tos];
@@ -663,9 +672,9 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                     cur.setMaxChildDomNumber(myNumber);
                     --tos;
                 }
-                ++myNumber;
+                myNumber = AbstractBlockBase.addExact(myNumber, 1);
             } else {
-                cur.setMaxChildDomNumber(dominated.getMaxChildDominatorNumber());
+                cur.setMaxChildDomNumber(AbstractBlockBase.safeCast(dominated.getMaxChildDominatorNumber()));
                 --tos;
             }
         } while (tos >= 0);
@@ -1212,7 +1221,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             }
             Block firstSucc = block.getSuccessorAt(0);
             if (block.getSuccessorCount() == 1) {
-                block.postdominator = firstSucc.getId();
+                block.postdominator = AbstractBlockBase.safeCast(firstSucc.getId());
                 continue;
             }
             Block postdominator = firstSucc;

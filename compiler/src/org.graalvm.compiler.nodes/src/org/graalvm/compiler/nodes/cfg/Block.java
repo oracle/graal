@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.nodes.cfg;
 
+import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.BLOCK_ID_INITIAL;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -69,9 +71,9 @@ public abstract class Block extends AbstractBlockBase<Block> {
     // Extra data for cases where the loop information is no longer fully up to date due to blocks
     // being deleted during LIR control flow optimization.
     private boolean markedAsLoopEnd = false;
-    protected long numBackedges = -1;
+    protected int numBackedges = -1;
 
-    protected int postdominator = -1;
+    protected char postdominator = BLOCK_ID_INITIAL;
     private LocationSet killLocations;
     private LocationSet killLocationsBetweenThisAndDominator;
 
@@ -99,8 +101,8 @@ public abstract class Block extends AbstractBlockBase<Block> {
     }
 
     @Override
-    public int getLoopDepth() {
-        return loop == null ? 0 : loop.getDepth();
+    public char getLoopDepth() {
+        return AbstractBlockBase.safeCast(loop == null ? 0 : loop.getDepth());
     }
 
     @Override
@@ -109,7 +111,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
     }
 
     @Override
-    public long numBackedges() {
+    public int numBackedges() {
         return numBackedges;
     }
 
@@ -138,14 +140,12 @@ public abstract class Block extends AbstractBlockBase<Block> {
 
     @Override
     public Block getPostdominator() {
-        return postdominator >= 0 ? getBlocks()[postdominator] : null;
+        return postdominator != BLOCK_ID_INITIAL ? getBlocks()[postdominator] : null;
     }
 
-    /**
-     * Determines if this block can have its edges edited.
-     */
-    public boolean isEditable() {
-        return this instanceof EditableBlock;
+    @Override
+    public boolean isModifiable() {
+        return this instanceof LIRBlock;
     }
 
     private class NodeIterator implements Iterator<FixedNode> {
@@ -213,7 +213,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
 
     public String toString(Verbosity verbosity) {
         StringBuilder sb = new StringBuilder();
-        sb.append('B').append(id);
+        sb.append('B').append((int) id);
         if (verbosity == Verbosity.Name) {
             sb.append("{");
             sb.append(getBeginNode());
@@ -438,7 +438,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
 
     protected void setPostDominator(Block postdominator) {
         if (postdominator != null) {
-            this.postdominator = postdominator.getId();
+            this.postdominator = safeCast(postdominator.getId());
         }
     }
 
@@ -463,60 +463,60 @@ public abstract class Block extends AbstractBlockBase<Block> {
         return false;
     }
 
-    public static void computeLoopPredecessors(NodeMap<Block> nodeMap, EditableBlock block, LoopBeginNode loopBeginNode) {
+    public static void computeLoopPredecessors(NodeMap<Block> nodeMap, LIRBlock block, LoopBeginNode loopBeginNode) {
         int forwardEndCount = loopBeginNode.forwardEndCount();
         LoopEndNode[] loopEnds = loopBeginNode.orderedLoopEnds();
-        int firstPredecessor = nodeMap.get(loopBeginNode.forwardEndAt(0)).getId();
-        int[] extraPredecessors = new int[forwardEndCount + loopEnds.length - 1];
+        char firstPredecessor = safeCast(nodeMap.get(loopBeginNode.forwardEndAt(0)).getId());
+        char[] extraPredecessors = new char[forwardEndCount + loopEnds.length - 1];
         for (int i = 1; i < forwardEndCount; ++i) {
-            extraPredecessors[i - 1] = nodeMap.get(loopBeginNode.forwardEndAt(i)).getId();
+            extraPredecessors[i - 1] = safeCast(nodeMap.get(loopBeginNode.forwardEndAt(i)).getId());
         }
         for (int i = 0; i < loopEnds.length; ++i) {
-            extraPredecessors[i + forwardEndCount - 1] = nodeMap.get(loopEnds[i]).getId();
+            extraPredecessors[i + forwardEndCount - 1] = safeCast(nodeMap.get(loopEnds[i]).getId());
         }
         block.setPredecessors(firstPredecessor, extraPredecessors);
     }
 
     public static void assignPredecessorsAndSuccessors(Block[] blocks, ControlFlowGraph cfg) {
         for (int bI = 0; bI < blocks.length; bI++) {
-            EditableBlock b = (EditableBlock) blocks[bI];
+            LIRBlock b = (LIRBlock) blocks[bI];
             FixedNode blockEndNode = b.getEndNode();
             if (blockEndNode instanceof EndNode) {
                 EndNode endNode = (EndNode) blockEndNode;
                 Block suxBlock = cfg.getNodeToBlock().get(endNode.merge());
-                b.setSuccessor(suxBlock.getId());
+                b.setSuccessor(safeCast(suxBlock.getId()));
             } else if (blockEndNode instanceof ControlSplitNode) {
                 ControlSplitNode split = (ControlSplitNode) blockEndNode;
                 int index = 0;
-                int succ0 = -1;
-                int[] extraSucc = new int[split.getSuccessorCount() - 1];
+                char succ0 = BLOCK_ID_INITIAL;
+                char[] extraSucc = new char[split.getSuccessorCount() - 1];
                 for (Node sux : blockEndNode.successors()) {
-                    EditableBlock sucBlock = (EditableBlock) cfg.getNodeToBlock().get(sux);
+                    LIRBlock sucBlock = (LIRBlock) cfg.getNodeToBlock().get(sux);
                     if (index == 0) {
-                        succ0 = sucBlock.getId();
+                        succ0 = safeCast(sucBlock.getId());
                     } else {
-                        extraSucc[index - 1] = sucBlock.getId();
+                        extraSucc[index - 1] = safeCast(sucBlock.getId());
                     }
                     index++;
-                    sucBlock.setPredecessor(b.getId());
+                    sucBlock.setPredecessor(safeCast(b.getId()));
                 }
                 b.setSuccessors(succ0, extraSucc);
                 double[] succP = ((ControlSplitNode) blockEndNode).successorProbabilities();
                 b.setSuccessorProbabilities(succP[0], Arrays.copyOfRange(succP, 1, succP.length));
             } else if (blockEndNode instanceof LoopEndNode) {
                 LoopEndNode loopEndNode = (LoopEndNode) blockEndNode;
-                b.setSuccessor(cfg.getNodeToBlock().get(loopEndNode.loopBegin()).getId());
+                b.setSuccessor(safeCast(cfg.getNodeToBlock().get(loopEndNode.loopBegin()).getId()));
             } else if (blockEndNode instanceof ControlSinkNode) {
                 // nothing to do
             } else {
                 assert !(blockEndNode instanceof AbstractEndNode) : "Algorithm only supports EndNode and LoopEndNode.";
                 for (Node suxNode : blockEndNode.successors()) {
-                    EditableBlock sux = (EditableBlock) cfg.getNodeToBlock().get(suxNode);
-                    sux.setPredecessor(b.getId());
+                    LIRBlock sux = (LIRBlock) cfg.getNodeToBlock().get(suxNode);
+                    sux.setPredecessor(safeCast(b.getId()));
                 }
                 assert blockEndNode.successors().count() == 1 : "Node " + blockEndNode;
                 Block sequentialSuc = cfg.getNodeToBlock().get(blockEndNode.successors().first());
-                b.setSuccessor(sequentialSuc.getId());
+                b.setSuccessor(safeCast(sequentialSuc.getId()));
             }
             FixedNode blockBeginNode = b.getBeginNode();
             if (blockBeginNode instanceof LoopBeginNode) {
@@ -524,10 +524,10 @@ public abstract class Block extends AbstractBlockBase<Block> {
             } else if (blockBeginNode instanceof AbstractMergeNode) {
                 AbstractMergeNode mergeNode = (AbstractMergeNode) blockBeginNode;
                 int forwardEndCount = mergeNode.forwardEndCount();
-                int[] extraPred = new int[forwardEndCount - 1];
-                int pred0 = cfg.getNodeToBlock().get(mergeNode.forwardEndAt(0)).getId();
+                char[] extraPred = new char[forwardEndCount - 1];
+                char pred0 = safeCast(cfg.getNodeToBlock().get(mergeNode.forwardEndAt(0)).getId());
                 for (int i = 1; i < forwardEndCount; ++i) {
-                    extraPred[i - 1] = cfg.getNodeToBlock().get(mergeNode.forwardEndAt(i)).getId();
+                    extraPred[i - 1] = safeCast(cfg.getNodeToBlock().get(mergeNode.forwardEndAt(i)).getId());
                 }
                 b.setPredecessors(pred0, extraPred);
             }
@@ -537,12 +537,12 @@ public abstract class Block extends AbstractBlockBase<Block> {
     /**
      * A basic block that can have its edges edited.
      */
-    static class EditableBlock extends Block {
+    static class LIRBlock extends Block {
 
         private boolean align;
         private int linearScanNumber = -1;
 
-        EditableBlock(AbstractBeginNode node, ControlFlowGraph cfg) {
+        LIRBlock(AbstractBeginNode node, ControlFlowGraph cfg) {
             super(node, cfg);
         }
 
@@ -579,29 +579,25 @@ public abstract class Block extends AbstractBlockBase<Block> {
         /**
          * Index into {@link #getBlocks} of this block's first predecessor.
          */
-        private int firstPredecessor = -1;
+        private char firstPredecessor = BLOCK_ID_INITIAL;
 
         /**
          * Indexes into {@link #getBlocks} of this block's extra predecessors.
          */
-        private int[] extraPredecessors;
+        private char[] extraPredecessors;
 
         /**
          * Index into {@link #getBlocks} of this block's first successor.
          */
-        private int firstSuccessor = -1;
+        private char firstSuccessor = BLOCK_ID_INITIAL;
 
         /**
          * Indexes into {@link #getBlocks} of this block's extra succecessors.
          */
-        private int[] extraSuccessors;
+        private char[] extraSuccessors;
 
         private double firstSuccessorProbability;
         private double[] extraSuccessorsProbabilities;
-
-        private Block getBlock(int id) {
-            return null;
-        }
 
         @Override
         public Block getPredecessorAt(int predIndex) {
@@ -615,23 +611,23 @@ public abstract class Block extends AbstractBlockBase<Block> {
             return getBlocks()[getAtIndex(firstSuccessor, extraSuccessors, succIndex)];
         }
 
-        public void setPredecessor(int firstPredecessor) {
+        public void setPredecessor(char firstPredecessor) {
             this.firstPredecessor = firstPredecessor;
         }
 
         @SuppressWarnings("unchecked")
-        public void setPredecessors(int firstPredecessor, int[] extraPredecessors) {
+        public void setPredecessors(char firstPredecessor, char[] extraPredecessors) {
             this.firstPredecessor = firstPredecessor;
             this.extraPredecessors = extraPredecessors;
         }
 
-        public void setSuccessor(int firstSuccessor) {
+        public void setSuccessor(char firstSuccessor) {
             this.firstSuccessor = firstSuccessor;
             firstSuccessorProbability = 1.0D;
         }
 
         @SuppressWarnings("unchecked")
-        public void setSuccessors(int firstSuccessor, int[] extraSuccessors) {
+        public void setSuccessors(char firstSuccessor, char[] extraSuccessors) {
             this.firstSuccessor = firstSuccessor;
             this.extraSuccessors = extraSuccessors;
         }
@@ -649,11 +645,11 @@ public abstract class Block extends AbstractBlockBase<Block> {
             this.extraSuccessorsProbabilities = extraSuccProbabilities;
         }
 
-        private static int getCount(int first, int[] extra) {
-            return first == -1 ? 0 : 1 + (extra == null ? 0 : extra.length);
+        private static int getCount(char first, char[] extra) {
+            return first == BLOCK_ID_INITIAL ? 0 : 1 + (extra == null ? 0 : extra.length);
         }
 
-        private static int getAtIndex(int first, int[] extra, int index) {
+        private static char getAtIndex(char first, char[] extra, int index) {
             return index == 0 ? first : extra[index - 1];
         }
 
@@ -662,17 +658,17 @@ public abstract class Block extends AbstractBlockBase<Block> {
 
             // adjust successor and predecessor lists
             GraalError.guarantee(getSuccessorCount() == 1, "can only delete blocks with exactly one successor");
-            EditableBlock next = (EditableBlock) getSuccessorAt(0);
+            LIRBlock next = (LIRBlock) getSuccessorAt(0);
             int predecessorCount = getPredecessorCount();
             for (int i = 0; i < getPredecessorCount(); i++) {
-                EditableBlock pred = (EditableBlock) getPredecessorAt(i);
-                int[] newPredSuccs = new int[pred.getSuccessorCount()];
+                LIRBlock pred = (LIRBlock) getPredecessorAt(i);
+                char[] newPredSuccs = new char[pred.getSuccessorCount()];
                 for (int j = 0; j < pred.getSuccessorCount(); j++) {
                     Block predSuccAt = pred.getSuccessorAt(j);
                     if (predSuccAt == this) {
-                        newPredSuccs[j] = next.getId();
+                        newPredSuccs[j] = safeCast(next.getId());
                     } else {
-                        newPredSuccs[j] = predSuccAt.getId();
+                        newPredSuccs[j] = safeCast(predSuccAt.getId());
                     }
                 }
                 pred.setSuccessors(newPredSuccs[0], Arrays.copyOfRange(newPredSuccs, 1, newPredSuccs.length));
@@ -700,15 +696,15 @@ public abstract class Block extends AbstractBlockBase<Block> {
             }
 
             Block firstPred = newPreds.get(0);
-            int[] extraPred1 = null;
+            char[] extraPred1 = null;
             if (newPreds.size() - 1 > 0) {
-                extraPred1 = new int[newPreds.size() - 1];
+                extraPred1 = new char[newPreds.size() - 1];
                 for (int i = 1; i < newPreds.size(); i++) {
-                    extraPred1[i - 1] = newPreds.get(i).getId();
+                    extraPred1[i - 1] = safeCast(newPreds.get(i).getId());
                 }
-                next.setPredecessors(firstPred.getId(), extraPred1);
+                next.setPredecessors(safeCast(firstPred.getId()), extraPred1);
             } else {
-                next.setPredecessor(firstPred.getId());
+                next.setPredecessor(safeCast(firstPred.getId()));
             }
 
             // next.setPredecessors(newPreds.toArray(Block.EMPTY_ARRAY));
@@ -761,49 +757,49 @@ public abstract class Block extends AbstractBlockBase<Block> {
 
         @Override
         public Block getPredecessorAt(int predIndex) {
-            ControlFlowGraph cfg = (ControlFlowGraph) this.cfg;
+            ControlFlowGraph cfg1 = (ControlFlowGraph) this.cfg;
             if (beginNode instanceof AbstractMergeNode) {
                 if (beginNode instanceof LoopBeginNode) {
-                    return cfg.blockFor((((LoopBeginNode) beginNode).phiPredecessorAt(predIndex)));
+                    return cfg1.blockFor((((LoopBeginNode) beginNode).phiPredecessorAt(predIndex)));
                 }
-                return cfg.blockFor(((AbstractMergeNode) beginNode).forwardEndAt(predIndex));
+                return cfg1.blockFor(((AbstractMergeNode) beginNode).forwardEndAt(predIndex));
             }
-            return cfg.blockFor(beginNode.predecessor());
+            return cfg1.blockFor(beginNode.predecessor());
         }
 
         @Override
         public Block getSuccessorAt(int succIndex) {
-            ControlFlowGraph cfg = (ControlFlowGraph) this.cfg;
+            ControlFlowGraph cfg1 = (ControlFlowGraph) this.cfg;
             if (endNode instanceof EndNode) {
-                return cfg.blockFor(((EndNode) endNode).merge());
+                return cfg1.blockFor(((EndNode) endNode).merge());
             } else if (endNode instanceof ControlSplitNode) {
                 ControlSplitNode split = (ControlSplitNode) endNode;
                 if (split instanceof IfNode) {
                     // if node fast path
                     IfNode ifNode = (IfNode) split;
-                    return succIndex == 0 ? cfg.blockFor(ifNode.trueSuccessor()) : cfg.blockFor(ifNode.falseSuccessor());
+                    return succIndex == 0 ? cfg1.blockFor(ifNode.trueSuccessor()) : cfg1.blockFor(ifNode.falseSuccessor());
                 } else if (split instanceof SwitchNode) {
                     SwitchNode switchNode = (SwitchNode) split;
-                    return cfg.blockFor(switchNode.blockSuccessor(succIndex));
+                    return cfg1.blockFor(switchNode.blockSuccessor(succIndex));
                 } else if (split instanceof WithExceptionNode) {
                     GraalError.guarantee(succIndex <= 1, "With exception nodes only have 2 successors");
                     WithExceptionNode wen = (WithExceptionNode) split;
-                    return succIndex == 0 ? cfg.blockFor(wen.getPrimarySuccessor()) : cfg.blockFor(wen.exceptionEdge());
+                    return succIndex == 0 ? cfg1.blockFor(wen.getPrimarySuccessor()) : cfg1.blockFor(wen.exceptionEdge());
                 } else {
                     int index = 0;
                     for (Node successor : split.successors()) {
                         if (index++ == succIndex) {
-                            return cfg.blockFor(successor);
+                            return cfg1.blockFor(successor);
                         }
                     }
                     throw GraalError.shouldNotReachHere();
                 }
             } else if (endNode instanceof LoopEndNode) {
-                return cfg.blockFor(((LoopEndNode) endNode).loopBegin());
+                return cfg1.blockFor(((LoopEndNode) endNode).loopBegin());
             } else if (endNode instanceof ControlSinkNode) {
                 throw GraalError.shouldNotReachHere("Sink has no successor");
             } else {
-                return cfg.blockFor(endNode.successors().first());
+                return cfg1.blockFor(endNode.successors().first());
             }
         }
 

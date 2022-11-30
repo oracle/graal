@@ -24,43 +24,50 @@
  */
 package org.graalvm.compiler.core.common.cfg;
 
+import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.BLOCK_ID_INITIAL;
+
 import java.util.Comparator;
+
+import org.graalvm.compiler.core.common.RetryableBailoutException;
 
 public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     public static final double[] EMPTY_PROBABILITY_ARRAY = new double[0];
     public static final double[] SINGLETON_PROBABILITY_ARRAY = new double[]{1.0};
 
-    protected int id;
-    protected int domDepth;
+    protected char id = BLOCK_ID_INITIAL;
+    protected char domDepth = 0;
 
-    private int dominator = -1;
-    private int firstDominated = -1;
-    private int dominatedSibling = -1;
+    private char dominator = BLOCK_ID_INITIAL;
+    private char firstDominated = BLOCK_ID_INITIAL;
+    private char dominatedSibling = BLOCK_ID_INITIAL;
 
-    private int domNumber;
-    private int maxChildDomNumber;
+    private char domNumber = BLOCK_ID_INITIAL;
+    private char maxChildDomNumber = BLOCK_ID_INITIAL;
     protected final AbstractControlFlowGraph<T> cfg;
 
     protected AbstractBlockBase(AbstractControlFlowGraph<T> cfg) {
         this.cfg = cfg;
-        this.id = AbstractControlFlowGraph.BLOCK_ID_INITIAL;
-        this.domNumber = -1;
-        this.maxChildDomNumber = -1;
     }
 
-    public void setDominatorNumber(int domNumber) {
+    public void setDominatorNumber(char domNumber) {
         this.domNumber = domNumber;
     }
 
-    public void setMaxChildDomNumber(int maxChildDomNumber) {
+    public void setMaxChildDomNumber(char maxChildDomNumber) {
         this.maxChildDomNumber = maxChildDomNumber;
     }
 
     public int getDominatorNumber() {
+        if (domNumber == BLOCK_ID_INITIAL) {
+            return -1;
+        }
         return domNumber;
     }
 
     public int getMaxChildDominatorNumber() {
+        if (maxChildDomNumber == BLOCK_ID_INITIAL) {
+            return -1;
+        }
         return this.maxChildDomNumber;
     }
 
@@ -76,7 +83,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
         return cfg.getBlocks();
     }
 
-    public void setId(int id) {
+    public void setId(char id) {
         this.id = id;
     }
 
@@ -109,7 +116,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     public abstract double getSuccessorProbabilityAt(int succIndex);
 
     public T getDominator() {
-        return dominator >= 0 ? cfg.getBlocks()[dominator] : null;
+        return dominator != BLOCK_ID_INITIAL ? cfg.getBlocks()[dominator] : null;
     }
 
     /**
@@ -145,8 +152,24 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     }
 
     public void setDominator(T dominator) {
-        this.dominator = dominator.getId();
-        this.domDepth = dominator.domDepth + 1;
+        this.dominator = safeCast(dominator.getId());
+        this.domDepth = addExact(dominator.domDepth, 1);
+    }
+
+    public static char addExact(char x, int y) {
+        int result = x + y;
+        char res = (char) (x + y);
+        if (res != result) {
+            throw new RetryableBailoutException("Graph too large to safely compile in reasonable time. Dominator tree depth ids create numerical overflows");
+        }
+        return res;
+    }
+
+    public static char safeCast(int i) {
+        if (i < 0 || i > AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX) {
+            throw new RetryableBailoutException("Graph too large to safely compile in reasonable time.");
+        }
+        return (char) i;
     }
 
     /**
@@ -157,26 +180,26 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     }
 
     public T getFirstDominated() {
-        return firstDominated >= 0 ? cfg.getBlocks()[firstDominated] : null;
+        return firstDominated != BLOCK_ID_INITIAL ? cfg.getBlocks()[firstDominated] : null;
     }
 
     public void setFirstDominated(T block) {
-        this.firstDominated = block.getId();
+        this.firstDominated = safeCast(block.getId());
     }
 
     public T getDominatedSibling() {
-        return dominatedSibling >= 0 ? cfg.getBlocks()[dominatedSibling] : null;
+        return dominatedSibling != BLOCK_ID_INITIAL ? cfg.getBlocks()[dominatedSibling] : null;
     }
 
     public void setDominatedSibling(T block) {
         if (block != null) {
-            this.dominatedSibling = block.getId();
+            this.dominatedSibling = safeCast(block.getId());
         }
     }
 
     @Override
     public String toString() {
-        return "B" + id;
+        return "B" + (int) id;
     }
 
     public abstract int getLinearScanNumber();
@@ -191,7 +214,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
 
     public abstract Loop<T> getLoop();
 
-    public abstract int getLoopDepth();
+    public abstract char getLoopDepth();
 
     public abstract void delete();
 
@@ -204,7 +227,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
      * backedges. Note that due to control flow optimizations after computing loops this value may
      * differ from that computed via {@link #getLoop()}. Returns -1 if this is not a loop header.
      */
-    public abstract long numBackedges();
+    public abstract int numBackedges();
 
     public abstract T getPostdominator();
 

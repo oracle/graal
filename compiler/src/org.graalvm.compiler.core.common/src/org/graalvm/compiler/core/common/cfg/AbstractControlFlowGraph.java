@@ -28,8 +28,8 @@ import java.util.Collection;
 
 public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
 
-    int BLOCK_ID_INITIAL = -1;
-    int BLOCK_ID_VISITED = -2;
+    char BLOCK_ID_INITIAL = Character.MAX_VALUE;
+    char LAST_VALID_BLOCK_INDEX = Character.MAX_VALUE - 1;
 
     /**
      * Returns the list blocks contained in this control flow graph.

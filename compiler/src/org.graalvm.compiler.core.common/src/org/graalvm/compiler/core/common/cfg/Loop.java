@@ -63,7 +63,7 @@ public abstract class Loop<T extends AbstractBlockBase<T>> {
         this.naturalExits = new ArrayList<>();
     }
 
-    public abstract long numBackedges();
+    public abstract int numBackedges();
 
     @Override
     public String toString() {
