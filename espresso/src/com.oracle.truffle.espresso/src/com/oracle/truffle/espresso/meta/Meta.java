@@ -426,13 +426,13 @@ public final class Meta extends ContextAccessImpl {
             java_lang_Thread$FieldHolder_threadStatus = null;
 
             java_lang_Thread_group = java_lang_Thread.requireDeclaredField(Name.group, java_lang_ThreadGroup.getType());
-            java_lang_Thread_FieldHolder_group = null;
+            java_lang_Thread$FieldHolder_group = null;
 
             java_lang_Thread_priority = java_lang_Thread.requireDeclaredField(Name.priority, _int.getType());
-            java_lang_Thread_FieldHolder_priority = null;
+            java_lang_Thread$FieldHolder_priority = null;
 
             java_lang_Thread_daemon = java_lang_Thread.requireDeclaredField(Name.daemon, Type._boolean);
-            java_lang_Thread_FieldHolder_daemon = null;
+            java_lang_Thread$FieldHolder_daemon = null;
         } else {
             java_lang_Thread_holder = java_lang_Thread.requireDeclaredField(Name.holder, java_lang_Thread$FieldHolder.getType());
 
@@ -440,13 +440,13 @@ public final class Meta extends ContextAccessImpl {
             java_lang_Thread$FieldHolder_threadStatus = java_lang_Thread$FieldHolder.requireDeclaredField(Name.threadStatus, Type._int);
 
             java_lang_Thread_group = null;
-            java_lang_Thread_FieldHolder_group = java_lang_Thread$FieldHolder.requireDeclaredField(Name.group, java_lang_ThreadGroup.getType());
+            java_lang_Thread$FieldHolder_group = java_lang_Thread$FieldHolder.requireDeclaredField(Name.group, java_lang_ThreadGroup.getType());
 
             java_lang_Thread_priority = null;
-            java_lang_Thread_FieldHolder_priority = java_lang_Thread$FieldHolder.requireDeclaredField(Name.priority, _int.getType());
+            java_lang_Thread$FieldHolder_priority = java_lang_Thread$FieldHolder.requireDeclaredField(Name.priority, _int.getType());
 
             java_lang_Thread_daemon = null;
-            java_lang_Thread_FieldHolder_daemon = java_lang_Thread$FieldHolder.requireDeclaredField(Name.daemon, Type._boolean);
+            java_lang_Thread$FieldHolder_daemon = java_lang_Thread$FieldHolder.requireDeclaredField(Name.daemon, Type._boolean);
         }
         java_lang_Thread_tid = java_lang_Thread.requireDeclaredField(Name.tid, Type._long);
         java_lang_Thread_contextClassLoader = java_lang_Thread.requireDeclaredField(Name.contextClassLoader, Type.java_lang_ClassLoader);
@@ -1254,12 +1254,12 @@ public final class Meta extends ContextAccessImpl {
     public final Field HIDDEN_THREAD_WAITED_COUNT;
 
     public final Field java_lang_Thread_group;
-    public final Field java_lang_Thread_FieldHolder_group;
+    public final Field java_lang_Thread$FieldHolder_group;
     public final Field java_lang_Thread_name;
     public final Field java_lang_Thread_priority;
-    public final Field java_lang_Thread_FieldHolder_priority;
+    public final Field java_lang_Thread$FieldHolder_priority;
     public final Field java_lang_Thread_daemon;
-    public final Field java_lang_Thread_FieldHolder_daemon;
+    public final Field java_lang_Thread$FieldHolder_daemon;
     public final Field java_lang_Thread_inheritedAccessControlContext;
 
     public final ObjectKlass java_lang_ref_Finalizer$FinalizerThread;
@@ -1489,61 +1489,6 @@ public final class Meta extends ContextAccessImpl {
     @CompilationFinal public Method java_beans_ThreadGroupContext_removeBeanInfo;
     @CompilationFinal public ObjectKlass java_beans_Introspector;
     @CompilationFinal public Method java_beans_Introspector_flushFromCaches;
-
-    // JDK19 helpers
-    public void setJavaLangThreadThreadStatus(StaticObject self, int state) {
-        if (getJavaVersion().java17OrEarlier()) {
-            java_lang_Thread_threadStatus.setInt(self, state);
-        } else {
-            StaticObject holder = java_lang_Thread_holder.getObject(self);
-            java_lang_Thread$FieldHolder_threadStatus.setInt(holder, state);
-        }
-    }
-
-    public int getJavaLangThreadThreadStatus(StaticObject self) {
-        if (getJavaVersion().java17OrEarlier()) {
-            return java_lang_Thread_threadStatus.getInt(self);
-        } else {
-            StaticObject holder = java_lang_Thread_holder.getObject(self);
-            return java_lang_Thread$FieldHolder_threadStatus.getInt(holder);
-        }
-    }
-
-    public void setJavaLangThreadGroup(StaticObject self, StaticObject threadGroup) {
-        if (getJavaVersion().java17OrEarlier()) {
-            java_lang_ThreadGroup_add.invokeDirect(threadGroup, self);
-        } else {
-            StaticObject holder = java_lang_Thread_holder.getObject(self);
-            java_lang_Thread_FieldHolder_group.setObject(holder, threadGroup);
-        }
-    }
-
-    public void setJavaLangThreadPriority(StaticObject self, int prio) {
-        if (getJavaVersion().java17OrEarlier()) {
-            java_lang_Thread_priority.setInt(self, prio);
-        } else {
-            StaticObject holder = java_lang_Thread_holder.getObject(self);
-            java_lang_Thread_FieldHolder_priority.setInt(holder, prio);
-        }
-    }
-
-    public int getJavaLangThreadPriority(StaticObject self) {
-        if (getJavaVersion().java17OrEarlier()) {
-            return java_lang_Thread_priority.getInt(self);
-        } else {
-            StaticObject holder = java_lang_Thread_holder.getObject(self);
-            return java_lang_Thread_FieldHolder_priority.getInt(holder);
-        }
-    }
-
-    public boolean getJavaLangThreadDaemon(StaticObject self) {
-        if (getJavaVersion().java17OrEarlier()) {
-            return java_lang_Thread_daemon.getBoolean(self);
-        } else {
-            StaticObject holder = java_lang_Thread_holder.getObject(self);
-            return java_lang_Thread_FieldHolder_daemon.getBoolean(holder);
-        }
-    }
 
     public final class PolyglotSupport {
         public final ObjectKlass UnknownIdentifierException;

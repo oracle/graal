@@ -266,13 +266,13 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
                 meta.java_lang_Thread_holder.setObject(guestThread, holder);
             }
             // Allow guest Thread.currentThread() to work.
-            meta.setJavaLangThreadPriority(guestThread, Thread.NORM_PRIORITY);
+            getThreadAccess().setPriority(guestThread, Thread.NORM_PRIORITY);
             getThreadAccess().initializeHiddenFields(guestThread, hostThread, managedByEspresso);
 
             // register the new guest thread
             registerThread(hostThread, guestThread);
             // Set runnable status before executing guest code.
-            meta.setJavaLangThreadThreadStatus(guestThread, State.RUNNABLE.value);
+            getThreadAccess().setState(guestThread, State.RUNNABLE.value);
 
             if (name == null) {
                 meta.java_lang_Thread_init_ThreadGroup_Runnable.invokeDirect(guestThread, mainThreadGroup, StaticObject.NULL);
@@ -281,7 +281,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
             }
 
             // now add to the main thread group
-            meta.setJavaLangThreadGroup(guestThread, threadGroup);
+            getThreadAccess().setThreadGroup(guestThread, threadGroup);
 
             logger.fine(() -> {
                 String guestName = getThreadAccess().getThreadName(guestThread);
@@ -309,7 +309,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
             meta.java_lang_Thread_holder.setObject(mainThread, holder);
         }
         // Allow guest Thread.currentThread() to work.
-        meta.setJavaLangThreadPriority(mainThread, Thread.NORM_PRIORITY);
+        getThreadAccess().setPriority(mainThread, Thread.NORM_PRIORITY);
         getThreadAccess().initializeHiddenFields(mainThread, hostThread, false);
         mainThreadGroup = meta.java_lang_ThreadGroup.allocateInstance(getContext());
 
@@ -327,7 +327,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
                         .invokeDirect(mainThread,
                                         /* group */ mainThreadGroup,
                                         /* name */ meta.toGuestString("main"));
-        meta.setJavaLangThreadThreadStatus(mainThread, State.RUNNABLE.value);
+        getThreadAccess().setState(mainThread, State.RUNNABLE.value);
 
         // Notify native backend about main thread.
         getNativeAccess().prepareThread();

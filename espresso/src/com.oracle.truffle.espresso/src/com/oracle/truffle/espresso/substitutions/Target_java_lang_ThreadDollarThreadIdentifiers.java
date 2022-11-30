@@ -25,8 +25,8 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-@EspressoSubstitutions(nameProvider = Target_java_lang_ThreadDolloarThreadIdentifiers.ECJHack.class)
-public final class Target_java_lang_ThreadDolloarThreadIdentifiers {
+@EspressoSubstitutions(nameProvider = Target_java_lang_ThreadDollarThreadIdentifiers.ECJHack.class)
+public final class Target_java_lang_ThreadDollarThreadIdentifiers {
     private static volatile AtomicLong nextThreadId = new AtomicLong(2);
 
     @Substitution
