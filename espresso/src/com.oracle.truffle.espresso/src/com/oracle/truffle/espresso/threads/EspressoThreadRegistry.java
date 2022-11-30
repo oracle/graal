@@ -262,7 +262,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
             vm.attachThread(hostThread);
             StaticObject guestThread = meta.java_lang_Thread.allocateInstance(getContext());
             if (getJavaVersion().java19OrLater()) {
-                StaticObject holder = meta.java_lang_Thread_FieldHolder.allocateInstance(getContext());
+                StaticObject holder = meta.java_lang_Thread$FieldHolder.allocateInstance(getContext());
                 meta.java_lang_Thread_holder.setObject(guestThread, holder);
             }
             // Allow guest Thread.currentThread() to work.
@@ -305,7 +305,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
         Thread hostThread = Thread.currentThread();
         StaticObject mainThread = meta.java_lang_Thread.allocateInstance(getContext());
         if (getJavaVersion().java19OrLater()) {
-            StaticObject holder = meta.java_lang_Thread_FieldHolder.allocateInstance(getContext());
+            StaticObject holder = meta.java_lang_Thread$FieldHolder.allocateInstance(getContext());
             meta.java_lang_Thread_holder.setObject(mainThread, holder);
         }
         // Allow guest Thread.currentThread() to work.

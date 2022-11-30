@@ -385,7 +385,7 @@ public final class Meta extends ContextAccessImpl {
         java_nio_ByteOrder_LITTLE_ENDIAN = java_nio_ByteOrder.requireDeclaredField(Name.LITTLE_ENDIAN, Type.java_nio_ByteOrder);
 
         java_lang_Thread = knownKlass(Type.java_lang_Thread);
-        java_lang_Thread_FieldHolder = getJavaVersion().java19OrLater() ? knownKlass(Type.java_lang_Thread_FieldHolder) : null;
+        java_lang_Thread$FieldHolder = getJavaVersion().java19OrLater() ? knownKlass(Type.java_lang_Thread_FieldHolder) : null;
         // The interrupted field is no longer hidden as of JDK14+
         HIDDEN_INTERRUPTED = diff() //
                         .field(lower(13), Name.HIDDEN_INTERRUPTED, Type._boolean)//
@@ -423,7 +423,7 @@ public final class Meta extends ContextAccessImpl {
             java_lang_Thread_holder = null;
 
             java_lang_Thread_threadStatus = java_lang_Thread.requireDeclaredField(Name.threadStatus, Type._int);
-            java_lang_Thread_FieldHolder_threadStatus = null;
+            java_lang_Thread$FieldHolder_threadStatus = null;
 
             java_lang_Thread_group = java_lang_Thread.requireDeclaredField(Name.group, java_lang_ThreadGroup.getType());
             java_lang_Thread_FieldHolder_group = null;
@@ -434,19 +434,19 @@ public final class Meta extends ContextAccessImpl {
             java_lang_Thread_daemon = java_lang_Thread.requireDeclaredField(Name.daemon, Type._boolean);
             java_lang_Thread_FieldHolder_daemon = null;
         } else {
-            java_lang_Thread_holder = java_lang_Thread.requireDeclaredField(Name.holder, java_lang_Thread_FieldHolder.getType());
+            java_lang_Thread_holder = java_lang_Thread.requireDeclaredField(Name.holder, java_lang_Thread$FieldHolder.getType());
 
             java_lang_Thread_threadStatus = null;
-            java_lang_Thread_FieldHolder_threadStatus = java_lang_Thread_FieldHolder.requireDeclaredField(Name.threadStatus, Type._int);
+            java_lang_Thread$FieldHolder_threadStatus = java_lang_Thread$FieldHolder.requireDeclaredField(Name.threadStatus, Type._int);
 
             java_lang_Thread_group = null;
-            java_lang_Thread_FieldHolder_group = java_lang_Thread_FieldHolder.requireDeclaredField(Name.group, java_lang_ThreadGroup.getType());
+            java_lang_Thread_FieldHolder_group = java_lang_Thread$FieldHolder.requireDeclaredField(Name.group, java_lang_ThreadGroup.getType());
 
             java_lang_Thread_priority = null;
-            java_lang_Thread_FieldHolder_priority = java_lang_Thread_FieldHolder.requireDeclaredField(Name.priority, _int.getType());
+            java_lang_Thread_FieldHolder_priority = java_lang_Thread$FieldHolder.requireDeclaredField(Name.priority, _int.getType());
 
             java_lang_Thread_daemon = null;
-            java_lang_Thread_FieldHolder_daemon = java_lang_Thread_FieldHolder.requireDeclaredField(Name.daemon, Type._boolean);
+            java_lang_Thread_FieldHolder_daemon = java_lang_Thread$FieldHolder.requireDeclaredField(Name.daemon, Type._boolean);
         }
         java_lang_Thread_tid = java_lang_Thread.requireDeclaredField(Name.tid, Type._long);
         java_lang_Thread_contextClassLoader = java_lang_Thread.requireDeclaredField(Name.contextClassLoader, Type.java_lang_ClassLoader);
@@ -1230,10 +1230,10 @@ public final class Meta extends ContextAccessImpl {
     public final Method java_lang_Thread_dispatchUncaughtException;
     public final Field java_lang_ThreadGroup_maxPriority;
     public final ObjectKlass java_lang_Thread;
-    public final ObjectKlass java_lang_Thread_FieldHolder;
+    public final ObjectKlass java_lang_Thread$FieldHolder;
     public final Field java_lang_Thread_holder;
     public final Field java_lang_Thread_threadStatus;
-    public final Field java_lang_Thread_FieldHolder_threadStatus;
+    public final Field java_lang_Thread$FieldHolder_threadStatus;
     public final Field java_lang_Thread_tid;
     public final Field java_lang_Thread_contextClassLoader;
     public final Method java_lang_Thread_init_ThreadGroup_Runnable;
@@ -1496,7 +1496,7 @@ public final class Meta extends ContextAccessImpl {
             java_lang_Thread_threadStatus.setInt(self, state);
         } else {
             StaticObject holder = java_lang_Thread_holder.getObject(self);
-            java_lang_Thread_FieldHolder_threadStatus.setInt(holder, state);
+            java_lang_Thread$FieldHolder_threadStatus.setInt(holder, state);
         }
     }
 
@@ -1505,7 +1505,7 @@ public final class Meta extends ContextAccessImpl {
             return java_lang_Thread_threadStatus.getInt(self);
         } else {
             StaticObject holder = java_lang_Thread_holder.getObject(self);
-            return java_lang_Thread_FieldHolder_threadStatus.getInt(holder);
+            return java_lang_Thread$FieldHolder_threadStatus.getInt(holder);
         }
     }
 
