@@ -182,7 +182,7 @@ class LLVMAMD64TargetSpecificFeature implements InternalFeature {
 
             @Override
             public String getAddInlineAssembly(String outputRegister, String inputRegister) {
-                return "addq $0, %" + inputRegister;
+                return "addq %" + inputRegister + ", %" + outputRegister;
             }
 
             @Override
@@ -278,7 +278,7 @@ class LLVMAArch64TargetSpecificFeature implements InternalFeature {
 
             @Override
             public String getAddInlineAssembly(String outputRegister, String inputRegister) {
-                return "ADD $0, " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(inputRegister);
+                return "ADD " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(inputRegister);
             }
 
             @Override
@@ -378,7 +378,7 @@ class LLVMRISCV64TargetSpecificFeature implements InternalFeature {
 
             @Override
             public String getAddInlineAssembly(String outputRegister, String inputRegister) {
-                return "add $0, " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(inputRegister);
+                return "add " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(inputRegister);
             }
 
             @Override
