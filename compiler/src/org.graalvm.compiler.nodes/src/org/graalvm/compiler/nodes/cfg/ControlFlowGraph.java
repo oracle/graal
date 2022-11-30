@@ -61,8 +61,8 @@ import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.cfg.Block.LIRBlock;
 import org.graalvm.compiler.nodes.cfg.Block.FixedBlock;
+import org.graalvm.compiler.nodes.cfg.Block.ModifiableBlock;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -119,12 +119,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         void exit(Block b, V value);
     }
 
-    public static ControlFlowGraph computeForFinalSchedule(StructuredGraph graph) {
-        return compute(graph, true, true, true, true, true, false);
-    }
-
     public static ControlFlowGraph computeForSchedule(StructuredGraph graph) {
-        return compute(graph, false, true, true, true, true, false);
+        return compute(graph, true, true, true, true, true, false);
     }
 
     public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
@@ -189,7 +185,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         char numBlocks = 0;
         for (AbstractBeginNode begin : graph.getNodes(AbstractBeginNode.TYPE)) {
             GraalError.guarantee(begin.predecessor() != null || (begin instanceof StartNode || begin instanceof AbstractMergeNode), "Disconnected control flow %s encountered", begin);
-            Block block = makeEditable ? new LIRBlock(begin, this) : new FixedBlock(begin, this);
+            Block block = makeEditable ? new ModifiableBlock(begin, this) : new FixedBlock(begin, this);
             identifyBlock(block);
             numBlocks++;
             if (numBlocks > AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX) {

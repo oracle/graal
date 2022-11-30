@@ -62,13 +62,17 @@ public class DefaultCodeEmissionOrder<T extends AbstractBlockBase<T>> implements
      * @return sorted list of blocks
      */
     @Override
-    public AbstractBlockBase<?>[] computeCodeEmittingOrder(OptionValues options, ComputationTime computationTime) {
+    public char[] computeCodeEmittingOrder(OptionValues options, ComputationTime computationTime) {
         BlockList<T> order = new BlockList<>(originalBlockCount);
         BitSet visitedBlocks = new BitSet(originalBlockCount);
         PriorityQueue<T> worklist = BasicBlockOrderUtils.initializeWorklist(startBlock, visitedBlocks);
         computeCodeEmittingOrder(order, worklist, visitedBlocks, computationTime);
         BasicBlockOrderUtils.checkStartBlock(order, startBlock);
-        return order.toArray();
+        char[] orderIndices = new char[order.size()];
+        for (int i = 0; i < order.size(); i++) {
+            orderIndices[i] = AbstractBlockBase.safeCast(order.getOrder().get(i).getId());
+        }
+        return orderIndices;
     }
 
     /**

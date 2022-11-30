@@ -278,7 +278,7 @@ public class ReversePostOrder {
     public static Block[] identifyBlocks(ControlFlowGraph cfg, int numBlocks) {
         Block[] reversePostOrder = new Block[numBlocks];
         compute(cfg, cfg.graph.start(), reversePostOrder, 0);
-        if (reversePostOrder[0].isEditable()) {
+        if (reversePostOrder[0].isModifiable()) {
             Block.assignPredecessorsAndSuccessors(reversePostOrder, cfg);
         }
         return reversePostOrder;

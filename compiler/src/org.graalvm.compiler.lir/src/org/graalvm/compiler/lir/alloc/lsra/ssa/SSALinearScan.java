@@ -40,7 +40,7 @@ import jdk.vm.ci.code.TargetDescription;
 
 public final class SSALinearScan extends LinearScan {
 
-    public SSALinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, AbstractBlockBase<?>[] sortedBlocks,
+    public SSALinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, char[] sortedBlocks,
                     boolean neverSpillConstants) {
         super(target, res, spillMoveFactory, regAllocConfig, sortedBlocks, neverSpillConstants);
     }
@@ -75,7 +75,8 @@ public final class SSALinearScan extends LinearScan {
          * matches (ie. there is no resolution move) are falsely detected as errors.
          */
         try (DebugContext.Scope s1 = debug.scope("Remove Phi In")) {
-            for (AbstractBlockBase<?> toBlock : sortedBlocks()) {
+            for (char blockIndex : sortedBlocks()) {
+                AbstractBlockBase<?> toBlock = getLIR().getControlFlowGraph().getBlocks()[blockIndex];
                 if (toBlock.getPredecessorCount() > 1) {
                     SSAUtil.removePhiIn(getLIR(), toBlock);
                 }

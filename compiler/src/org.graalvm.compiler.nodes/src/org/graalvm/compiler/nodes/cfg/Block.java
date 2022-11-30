@@ -145,7 +145,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
 
     @Override
     public boolean isModifiable() {
-        return this instanceof LIRBlock;
+        return this instanceof ModifiableBlock;
     }
 
     private class NodeIterator implements Iterator<FixedNode> {
@@ -463,7 +463,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
         return false;
     }
 
-    public static void computeLoopPredecessors(NodeMap<Block> nodeMap, LIRBlock block, LoopBeginNode loopBeginNode) {
+    public static void computeLoopPredecessors(NodeMap<Block> nodeMap, ModifiableBlock block, LoopBeginNode loopBeginNode) {
         int forwardEndCount = loopBeginNode.forwardEndCount();
         LoopEndNode[] loopEnds = loopBeginNode.orderedLoopEnds();
         char firstPredecessor = safeCast(nodeMap.get(loopBeginNode.forwardEndAt(0)).getId());
@@ -479,7 +479,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
 
     public static void assignPredecessorsAndSuccessors(Block[] blocks, ControlFlowGraph cfg) {
         for (int bI = 0; bI < blocks.length; bI++) {
-            LIRBlock b = (LIRBlock) blocks[bI];
+            ModifiableBlock b = (ModifiableBlock) blocks[bI];
             FixedNode blockEndNode = b.getEndNode();
             if (blockEndNode instanceof EndNode) {
                 EndNode endNode = (EndNode) blockEndNode;
@@ -491,7 +491,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
                 char succ0 = BLOCK_ID_INITIAL;
                 char[] extraSucc = new char[split.getSuccessorCount() - 1];
                 for (Node sux : blockEndNode.successors()) {
-                    LIRBlock sucBlock = (LIRBlock) cfg.getNodeToBlock().get(sux);
+                    ModifiableBlock sucBlock = (ModifiableBlock) cfg.getNodeToBlock().get(sux);
                     if (index == 0) {
                         succ0 = safeCast(sucBlock.getId());
                     } else {
@@ -511,7 +511,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
             } else {
                 assert !(blockEndNode instanceof AbstractEndNode) : "Algorithm only supports EndNode and LoopEndNode.";
                 for (Node suxNode : blockEndNode.successors()) {
-                    LIRBlock sux = (LIRBlock) cfg.getNodeToBlock().get(suxNode);
+                    ModifiableBlock sux = (ModifiableBlock) cfg.getNodeToBlock().get(suxNode);
                     sux.setPredecessor(safeCast(b.getId()));
                 }
                 assert blockEndNode.successors().count() == 1 : "Node " + blockEndNode;
@@ -537,12 +537,12 @@ public abstract class Block extends AbstractBlockBase<Block> {
     /**
      * A basic block that can have its edges edited.
      */
-    static class LIRBlock extends Block {
+    static class ModifiableBlock extends Block {
 
         private boolean align;
         private int linearScanNumber = -1;
 
-        LIRBlock(AbstractBeginNode node, ControlFlowGraph cfg) {
+        ModifiableBlock(AbstractBeginNode node, ControlFlowGraph cfg) {
             super(node, cfg);
         }
 
@@ -658,10 +658,10 @@ public abstract class Block extends AbstractBlockBase<Block> {
 
             // adjust successor and predecessor lists
             GraalError.guarantee(getSuccessorCount() == 1, "can only delete blocks with exactly one successor");
-            LIRBlock next = (LIRBlock) getSuccessorAt(0);
+            ModifiableBlock next = (ModifiableBlock) getSuccessorAt(0);
             int predecessorCount = getPredecessorCount();
             for (int i = 0; i < getPredecessorCount(); i++) {
-                LIRBlock pred = (LIRBlock) getPredecessorAt(i);
+                ModifiableBlock pred = (ModifiableBlock) getPredecessorAt(i);
                 char[] newPredSuccs = new char[pred.getSuccessorCount()];
                 for (int j = 0; j < pred.getSuccessorCount(); j++) {
                     Block predSuccAt = pred.getSuccessorAt(j);

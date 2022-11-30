@@ -83,7 +83,9 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends FinalCodeAnalysisPhase
         }
 
         LIR ir = lirGenRes.getLIR();
-        for (AbstractBlockBase<?> block : ir.getBlocks()) {
+        for (char blockIndex : ir.getBlocks()) {
+            AbstractBlockBase<?> block = ir.getControlFlowGraph().getBlocks()[blockIndex];
+
             if (block == null) {
                 continue;
             }

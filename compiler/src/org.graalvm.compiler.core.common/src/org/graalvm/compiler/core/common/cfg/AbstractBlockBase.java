@@ -235,6 +235,8 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
 
     public abstract T getDominator(int distance);
 
+    public abstract boolean isModifiable();
+
     @Override
     public int hashCode() {
         return id;

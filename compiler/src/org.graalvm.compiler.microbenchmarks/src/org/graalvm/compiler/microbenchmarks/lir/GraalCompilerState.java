@@ -46,7 +46,6 @@ import org.graalvm.compiler.core.LIRGenerationPhase.LIRGenerationContext;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.alloc.LinearScanOrder;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.cfg.CodeEmissionOrder;
 import org.graalvm.compiler.core.gen.LIRCompilerBackend;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
@@ -310,7 +309,7 @@ public abstract class GraalCompilerState {
     private RegisterConfig registerConfig;
     private ScheduleResult schedule;
     private CodeEmissionOrder<?> blockOrder;
-    private AbstractBlockBase<?>[] linearScanOrder;
+    private char[] linearScanOrder;
 
     /**
      * Copies the {@link #originalGraph original graph} and prepares the {@link #request}.

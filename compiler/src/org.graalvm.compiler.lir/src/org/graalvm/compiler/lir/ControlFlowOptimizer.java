@@ -29,6 +29,7 @@ import static org.graalvm.compiler.lir.LIR.verifyBlocks;
 import java.util.ArrayList;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
@@ -97,10 +98,10 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
             }
         }
 
-        private void deleteEmptyBlocks(AbstractBlockBase<?>[] blocks) {
+        private void deleteEmptyBlocks(char[] blocks) {
             assert verifyBlocks(lir, blocks);
             for (int i = 0; i < blocks.length; i++) {
-                AbstractBlockBase<?> block = blocks[i];
+                AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blocks[i]];
                 if (canDeleteBlock(block)) {
 
                     block.delete();
@@ -109,7 +110,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
                     copyAlignment(block, other);
 
                     BLOCKS_DELETED.increment(lir.getDebug());
-                    blocks[i] = null;
+                    blocks[i] = AbstractControlFlowGraph.BLOCK_ID_INITIAL;
                 }
             }
             assert verifyBlocks(lir, blocks);

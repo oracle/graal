@@ -25,6 +25,7 @@
 package org.graalvm.compiler.core.test;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
@@ -66,7 +67,7 @@ public abstract class MatchRuleTest extends GraalCompilerTest {
     protected void checkLIR(String methodName, Predicate<LIRInstruction> predicate, int blockIndex, int expected) {
         compile(getResolvedJavaMethod(methodName), null);
         int actualOpNum = 0;
-        for (LIRInstruction ins : lir.getLIRforBlock(lir.codeEmittingOrder()[blockIndex])) {
+        for (LIRInstruction ins : lir.getLIRforBlock(lir.getControlFlowGraph().getBlocks()[lir.codeEmittingOrder()[blockIndex]])) {
             if (predicate.test(ins)) {
                 actualOpNum++;
             }
@@ -85,10 +86,11 @@ public abstract class MatchRuleTest extends GraalCompilerTest {
             compile(getResolvedJavaMethod(methodName), null);
         }
         int actualOpNum = 0;
-        for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
-            if (block == null) {
+        for (char blockIndex : lir.codeEmittingOrder()) {
+            if (blockIndex == AbstractControlFlowGraph.BLOCK_ID_INITIAL) {
                 continue;
             }
+            AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];
             for (LIRInstruction ins : lir.getLIRforBlock(block)) {
                 if (predicate.test(ins)) {
                     actualOpNum++;

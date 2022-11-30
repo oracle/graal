@@ -138,7 +138,7 @@ public class LinearScan {
     /**
      * List of blocks in linear-scan order. This is only correct as long as the CFG does not change.
      */
-    private final AbstractBlockBase<?>[] sortedBlocks;
+    private final char[] sortedBlocks;
 
     /**
      * @see #intervals()
@@ -193,7 +193,7 @@ public class LinearScan {
     public final boolean detailedAsserts;
     private final LIRGenerationResult res;
 
-    protected LinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, AbstractBlockBase<?>[] sortedBlocks,
+    protected LinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, char[] sortedBlocks,
                     boolean neverSpillConstants) {
         this.ir = res.getLIR();
         this.res = res;
@@ -408,7 +408,7 @@ public class LinearScan {
     }
 
     public AbstractBlockBase<?> blockAt(int index) {
-        return sortedBlocks[index];
+        return ir.getControlFlowGraph().getBlocks()[sortedBlocks[index]];
     }
 
     /**
@@ -903,7 +903,7 @@ public class LinearScan {
         return frameMapBuilder;
     }
 
-    public AbstractBlockBase<?>[] sortedBlocks() {
+    public char[] sortedBlocks() {
         return sortedBlocks;
     }
 

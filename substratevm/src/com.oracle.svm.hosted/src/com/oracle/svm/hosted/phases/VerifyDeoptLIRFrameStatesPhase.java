@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRFrameState;
@@ -77,10 +78,11 @@ class Instance {
         LIR ir = lirGenRes.getLIR();
         DebugContext debug = ir.getDebug();
         FrameMap frameMap = lirGenRes.getFrameMap();
-        for (AbstractBlockBase<?> block : ir.linearScanOrder()) {
-            if (block == null) {
+        for (char blockIndex : ir.linearScanOrder()) {
+            if (blockIndex == AbstractControlFlowGraph.BLOCK_ID_INITIAL) {
                 continue;
             }
+            AbstractBlockBase<?> block = ir.getControlFlowGraph().getBlocks()[blockIndex];
             for (LIRInstruction op : ir.getLIRforBlock(block)) {
                 op.forEachState((instruction, state) -> doState(debug, frameMap, instruction, state));
             }

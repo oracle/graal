@@ -25,7 +25,6 @@
 package org.graalvm.compiler.lir;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.compiler.asm.Label;
@@ -50,12 +49,12 @@ public final class LIR extends LIRGenerator.VariableProvider {
     /**
      * The linear-scan ordered list of blocks.
      */
-    private final AbstractBlockBase<?>[] linearScanOrder;
+    private final char[] linearScanOrder;
 
     /**
      * The order in which the code is emitted.
      */
-    private AbstractBlockBase<?>[] codeEmittingOrder;
+    private char[] codeEmittingOrder;
 
     /**
      * Map from {@linkplain AbstractBlockBase block} to {@linkplain LIRInstruction}s. Note that we
@@ -73,7 +72,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
      * Creates a new LIR instance for the specified compilation.
      */
     public LIR(AbstractControlFlowGraph<?> cfg,
-                    AbstractBlockBase<?>[] linearScanOrder,
+                    char[] linearScanOrder,
                     OptionValues options,
                     DebugContext debug) {
         this.cfg = cfg;
@@ -100,7 +99,8 @@ public final class LIR extends LIRGenerator.VariableProvider {
      * Determines if any instruction in the LIR has debug info associated with it.
      */
     public boolean hasDebugInfo() {
-        for (AbstractBlockBase<?> b : linearScanOrder()) {
+        for (char c : linearScanOrder()) {
+            AbstractBlockBase<?> b = cfg.getBlocks()[c];
             for (LIRInstruction op : getLIRforBlock(b)) {
                 if (op.hasState()) {
                     return true;
@@ -125,7 +125,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
      *
      * @return the blocks in linear scan order
      */
-    public AbstractBlockBase<?>[] linearScanOrder() {
+    public char[] linearScanOrder() {
         return linearScanOrder;
     }
 
@@ -140,14 +140,14 @@ public final class LIR extends LIRGenerator.VariableProvider {
      * @throws IllegalStateException if the code emitting order is not
      *             {@linkplain #codeEmittingOrderAvailable() available}
      */
-    public AbstractBlockBase<?>[] codeEmittingOrder() {
+    public char[] codeEmittingOrder() {
         if (!codeEmittingOrderAvailable()) {
             throw new IllegalStateException("codeEmittingOrder not computed, consider using getBlocks() or linearScanOrder()");
         }
         return codeEmittingOrder;
     }
 
-    public void setCodeEmittingOrder(AbstractBlockBase<?>[] codeEmittingOrder) {
+    public void setCodeEmittingOrder(char[] codeEmittingOrder) {
         this.codeEmittingOrder = codeEmittingOrder;
     }
 
@@ -166,7 +166,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
      * in {@link #linearScanOrder()}. In either case it can contain {@code null} entries for blocks
      * that have been optimized away. The start block will always be at index 0.
      */
-    public AbstractBlockBase<?>[] getBlocks() {
+    public char[] getBlocks() {
         if (codeEmittingOrderAvailable()) {
             return codeEmittingOrder;
         } else {
@@ -194,11 +194,11 @@ public final class LIR extends LIRGenerator.VariableProvider {
      * @return the next block in the list that is none {@code null} or {@code null} if there is no
      *         such block
      */
-    public static AbstractBlockBase<?> getNextBlock(AbstractBlockBase<?>[] blocks, int blockIndex) {
+    public static AbstractBlockBase<?> getNextBlock(AbstractControlFlowGraph<?> cfg, char[] blocks, int blockIndex) {
         for (int nextIndex = blockIndex + 1; nextIndex > 0 && nextIndex < blocks.length; nextIndex++) {
-            AbstractBlockBase<?> nextBlock = blocks[nextIndex];
-            if (nextBlock != null) {
-                return nextBlock;
+            char nextBlock = blocks[nextIndex];
+            if (nextBlock != AbstractControlFlowGraph.BLOCK_ID_INITIAL) {
+                return cfg.getBlocks()[nextBlock];
             }
         }
         return null;
@@ -255,18 +255,20 @@ public final class LIR extends LIRGenerator.VariableProvider {
         return true;
     }
 
-    public static boolean verifyBlocks(LIR lir, AbstractBlockBase<?>[] blocks) {
-        for (AbstractBlockBase<?> block : blocks) {
-            if (block == null) {
+    @SuppressWarnings("unlikely-arg-type")
+    public static boolean verifyBlocks(LIR lir, char[] blocks) {
+        for (char blockIndex : blocks) {
+            if (blockIndex == AbstractControlFlowGraph.BLOCK_ID_INITIAL) {
                 continue;
             }
+            AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];
             for (int i = 0; i < block.getSuccessorCount(); i++) {
                 AbstractBlockBase<?> sux = block.getSuccessorAt(i);
-                assert Arrays.asList(blocks).contains(sux) : "missing successor from: " + block + "to: " + sux;
+                assert contains(blocks, (char) sux.getId()) : "missing successor from: " + block + "to: " + sux;
             }
             for (int i = 0; i < block.getPredecessorCount(); i++) {
                 AbstractBlockBase<?> pred = block.getPredecessorAt(i);
-                assert Arrays.asList(blocks).contains(pred) : "missing predecessor from: " + block + "to: " + pred;
+                assert contains(blocks, (char) pred.getId()) : "missing predecessor from: " + block + "to: " + pred;
             }
             if (!verifyBlock(lir, block)) {
                 return false;
@@ -275,9 +277,18 @@ public final class LIR extends LIRGenerator.VariableProvider {
         return true;
     }
 
-    public void resetLabels() {
+    private static boolean contains(char[] blockIndices, char key) {
+        for (char index : blockIndices) {
+            if (index == key) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-        for (AbstractBlockBase<?> block : getBlocks()) {
+    public void resetLabels() {
+        for (char b : getBlocks()) {
+            AbstractBlockBase<?> block = cfg.getBlocks()[b];
             if (block == null) {
                 continue;
             }

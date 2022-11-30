@@ -37,6 +37,7 @@ import java.util.TreeMap;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.gen.NodeLIRBuilder;
 import org.graalvm.compiler.core.match.ComplexMatchValue;
 import org.graalvm.compiler.graph.Node;
@@ -97,15 +98,17 @@ class CFGPrinter extends CompilationPrinter {
      * Prints the specified list of blocks.
      *
      * @param label A label describing the compilation phase that produced the control flow graph.
-     * @param blocks The list of blocks to be printed.
+     * @param blockIndices The list of block indices for which the associated blocks have to be
+     *            printed.
      */
-    public void printCFG(String label, AbstractBlockBase<?>[] blocks) {
+    public void printCFG(String label, char[] blockIndices) {
         begin("cfg");
         out.print("name \"").print(label).println('"');
-        for (AbstractBlockBase<?> block : blocks) {
-            if (block == null) {
+        for (char blockIndex : blockIndices) {
+            if (blockIndex == AbstractControlFlowGraph.BLOCK_ID_INITIAL) {
                 continue;
             }
+            AbstractBlockBase<?> block = cfg.getBlocks()[blockIndex];
             printBlockProlog(block);
             printBlockEpilog(block);
         }

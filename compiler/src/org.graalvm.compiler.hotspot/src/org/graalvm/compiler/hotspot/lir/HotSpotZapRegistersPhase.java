@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.hotspot.HotSpotLIRGenerationResult;
@@ -83,10 +84,12 @@ public final class HotSpotZapRegistersPhase extends PostAllocationOptimizationPh
 
     private static void processLIR(DiagnosticLIRGeneratorTool diagnosticLirGenTool, LIR lir, EconomicSet<Register> allocatableRegisters, boolean zapRegisters, boolean zapStack) {
         LIRInsertionBuffer buffer = new LIRInsertionBuffer();
-        for (AbstractBlockBase<?> block : lir.getBlocks()) {
-            if (block != null) {
-                processBlock(diagnosticLirGenTool, lir, allocatableRegisters, buffer, block, zapRegisters, zapStack);
+        for (char blockIndex : lir.getBlocks()) {
+            if (blockIndex == AbstractControlFlowGraph.BLOCK_ID_INITIAL) {
+                continue;
             }
+            AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];
+            processBlock(diagnosticLirGenTool, lir, allocatableRegisters, buffer, block, zapRegisters, zapStack);
         }
     }
 

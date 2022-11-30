@@ -44,6 +44,7 @@ import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
@@ -365,10 +366,11 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
             }
         };
         boolean sawSaveRegisters = false;
-        for (AbstractBlockBase<?> block : lir.getBlocks()) {
-            if (block == null) {
+        for (char blockIndex : lir.getBlocks()) {
+            if (blockIndex == AbstractControlFlowGraph.BLOCK_ID_INITIAL) {
                 continue;
             }
+            AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];
             // Ignore the effects of instructions bracketed by save/restore
             SaveRegistersOp save = null;
             for (LIRInstruction op : lir.getLIRforBlock(block)) {

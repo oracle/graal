@@ -357,7 +357,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     public void setLastSchedule(ScheduleResult result) {
-        GraalError.guarantee(result == null || result.cfg.getStartBlock().isEditable(), "Schedule must use blocks that can be modified");
+        GraalError.guarantee(result == null || result.cfg.getStartBlock().isModifiable(), "Schedule must use blocks that can be modified");
         lastSchedule = result;
     }
 

@@ -61,10 +61,10 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
         LIR ir = lirGenRes.getLIR();
         Optimizer optimizer = new Optimizer(ir);
 
-        AbstractBlockBase<?>[] blockList = ir.linearScanOrder();
+        char[] blockIndices = ir.linearScanOrder();
         // ignore the first block in the list (index 0 is not processed)
-        for (int i = blockList.length - 1; i >= 1; i--) {
-            AbstractBlockBase<?> block = blockList[i];
+        for (int i = blockIndices.length - 1; i >= 1; i--) {
+            AbstractBlockBase<?> block = ir.getControlFlowGraph().getBlocks()[blockIndices[i]];
 
             if (block.getPredecessorCount() > 1) {
                 optimizer.optimizeMovesAtBlockEnd(block);

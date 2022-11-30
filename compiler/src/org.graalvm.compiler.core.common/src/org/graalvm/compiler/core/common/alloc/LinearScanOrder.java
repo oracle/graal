@@ -52,14 +52,18 @@ public final class LinearScanOrder {
      *
      * @return sorted list of blocks
      */
-    public static <T extends AbstractBlockBase<T>> AbstractBlockBase<?>[] computeLinearScanOrder(int originalBlockCount, T startBlock) {
+    public static <T extends AbstractBlockBase<T>> char[] computeLinearScanOrder(int originalBlockCount, T startBlock) {
         BlockList<T> order = new BlockList<>(originalBlockCount);
         BitSet visitedBlocks = new BitSet(originalBlockCount);
         PriorityQueue<T> worklist = BasicBlockOrderUtils.initializeWorklist(startBlock, visitedBlocks);
         computeLinearScanOrder(order, worklist, visitedBlocks);
         BasicBlockOrderUtils.checkOrder(order, originalBlockCount);
         BasicBlockOrderUtils.checkStartBlock(order, startBlock);
-        return order.toArray();
+        char[] orderIndices = new char[order.size()];
+        for (int i = 0; i < order.size(); i++) {
+            orderIndices[i] = AbstractBlockBase.safeCast(order.getOrder().get(i).getId());
+        }
+        return orderIndices;
     }
 
     /**

@@ -43,5 +43,5 @@ public interface CodeEmissionOrder<T extends AbstractBlockBase<T>> {
      *
      * @return sorted list of blocks
      */
-    AbstractBlockBase<?>[] computeCodeEmittingOrder(OptionValues options, ComputationTime computationTime);
+    char[] computeCodeEmittingOrder(OptionValues options, ComputationTime computationTime);
 }

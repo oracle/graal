@@ -27,6 +27,7 @@ package org.graalvm.compiler.core.test.backend;
 import java.util.HashSet;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -71,10 +72,11 @@ public class AllocatorTest extends BackendTest {
         RegisterStats(LIR lir) {
             this.lir = lir;
 
-            for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
-                if (block == null) {
+            for (char blockIndex : lir.codeEmittingOrder()) {
+                if (blockIndex == AbstractControlFlowGraph.BLOCK_ID_INITIAL) {
                     continue;
                 }
+                AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];
                 for (LIRInstruction instr : lir.getLIRforBlock(block)) {
                     collectStats(instr);
                 }

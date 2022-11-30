@@ -30,6 +30,7 @@ import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.Assembler.InstructionCounter;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInsertionBuffer;
@@ -114,10 +115,11 @@ public class HotSpotInstructionProfiling extends PostAllocationOptimizationPhase
     public static void countInstructions(LIR lir, Assembler<?> asm) {
         InstructionCounterOp lastOp = null;
         InstructionCounter counter = asm.getInstructionCounter();
-        for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
-            if (block == null) {
+        for (char blockIndex : lir.codeEmittingOrder()) {
+            if (blockIndex == AbstractControlFlowGraph.BLOCK_ID_INITIAL) {
                 continue;
             }
+            AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];
             for (LIRInstruction inst : lir.getLIRforBlock(block)) {
                 if (inst instanceof InstructionCounterOp) {
                     InstructionCounterOp currentOp = (InstructionCounterOp) inst;

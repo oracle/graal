@@ -125,7 +125,9 @@ public final class LIRVerifier {
 
         int maxRegisterNum = maxRegisterNum();
         curRegistersDefined = new BitSet();
-        for (AbstractBlockBase<?> block : lir.linearScanOrder()) {
+        for (char blockIndex : lir.linearScanOrder()) {
+            AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];
+
             curBlock = block;
             curVariablesLive = new BitSet();
             curRegistersLive = new Value[maxRegisterNum];

@@ -322,5 +322,9 @@ public final class BasicBlockOrderUtils {
         public AbstractBlockBase<?>[] toArray() {
             return order.toArray(new AbstractBlockBase<?>[0]);
         }
+
+        public ArrayList<T> getOrder() {
+            return order;
+        }
     }
 }

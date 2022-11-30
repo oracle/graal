@@ -118,7 +118,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
 
         // Assign IDs to LIR nodes and build a mapping, lirOps, from ID to LIRInstruction node.
         int numInstructions = 0;
-        for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
+        for (char blockIndex : allocator.sortedBlocks()) {
+            AbstractBlockBase<?> block = allocator.getLIR().getControlFlowGraph().getBlocks()[blockIndex];
             numInstructions += allocator.getLIR().getLIRforBlock(block).size();
         }
 
@@ -127,7 +128,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
 
         int opId = 0;
         int index = 0;
-        for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
+        for (char blockIndex : allocator.sortedBlocks()) {
+            AbstractBlockBase<?> block = allocator.getLIR().getControlFlowGraph().getBlocks()[blockIndex];
             allocator.initBlockData(block);
 
             ArrayList<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
@@ -174,7 +176,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
             final BitSet liveGenScratch = new BitSet(liveSize);
             final BitSet liveKillScratch = new BitSet(liveSize);
             // iterate all blocks
-            for (final AbstractBlockBase<?> block : allocator.sortedBlocks()) {
+            for (char blockIndex : allocator.sortedBlocks()) {
+                final AbstractBlockBase<?> block = allocator.getLIR().getControlFlowGraph().getBlocks()[blockIndex];
                 try (Indent indent = debug.logAndIndent("compute local live sets for block %s", block)) {
 
                     liveGenScratch.clear();
@@ -463,7 +466,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
 
                         ArrayDeque<AbstractBlockBase<?>> definedIn = new ArrayDeque<>();
                         EconomicSet<AbstractBlockBase<?>> usedIn = EconomicSet.create(Equivalence.IDENTITY);
-                        for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
+                        for (char blockIndex : allocator.sortedBlocks()) {
+                            AbstractBlockBase<?> block = allocator.getLIR().getControlFlowGraph().getBlocks()[blockIndex];
                             if (allocator.getBlockData(block).liveGen.get(operandNum)) {
                                 usedIn.add(block);
                                 try (Indent indent3 = debug.logAndIndent("used in block B%d", block.getId())) {
@@ -523,7 +527,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
          * Check that fixed intervals are not live at block boundaries (live set must be empty at
          * fixed intervals).
          */
-        for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
+        for (char blockIndex : allocator.sortedBlocks()) {
+            AbstractBlockBase<?> block = allocator.getLIR().getControlFlowGraph().getBlocks()[blockIndex];
             for (int j = 0; j <= allocator.maxRegisterNumber(); j++) {
                 assert !allocator.getBlockData(block).liveIn.get(j) : "liveIn  set of fixed register must be empty";
                 assert !allocator.getBlockData(block).liveOut.get(j) : "liveOut set of fixed register must be empty";

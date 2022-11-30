@@ -48,6 +48,7 @@ import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.code.CompilationResult.JumpTable;
 import org.graalvm.compiler.code.DataSection.Data;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.DataPointerConstant;
@@ -484,9 +485,9 @@ public class CompilationResultBuilder {
      */
     public boolean isSuccessorEdge(LabelRef edge) {
         assert lir != null;
-        AbstractBlockBase<?>[] order = lir.codeEmittingOrder();
-        assert order[currentBlockIndex] == edge.getSourceBlock();
-        AbstractBlockBase<?> nextBlock = LIR.getNextBlock(order, currentBlockIndex);
+        char[] order = lir.codeEmittingOrder();
+        assert order[currentBlockIndex] == edge.getSourceBlock().getId();
+        AbstractBlockBase<?> nextBlock = LIR.getNextBlock(lir.getControlFlowGraph(), order, currentBlockIndex);
         return nextBlock == edge.getTargetBlock();
     }
 
@@ -540,8 +541,9 @@ public class CompilationResultBuilder {
         frameContext.enter(this);
         final BasicBlockInfoLogger logger = new BasicBlockInfoLogger();
         AbstractBlockBase<?> previousBlock = null;
-        for (AbstractBlockBase<?> b : lir.codeEmittingOrder()) {
-            assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == null) || lir.codeEmittingOrder()[currentBlockIndex].equals(b);
+        for (char blockIndex : lir.codeEmittingOrder()) {
+            AbstractBlockBase<?> b = lir.getControlFlowGraph().getBlocks()[blockIndex];
+            assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == AbstractControlFlowGraph.BLOCK_ID_INITIAL) || lir.codeEmittingOrder()[currentBlockIndex] == blockIndex;
             if (b != null) {
                 if (b.isAligned() && previousBlock != null) {
                     AbstractBlockBase<?>[] successorArray = new AbstractBlockBase<?>[previousBlock.getSuccessorCount()];
@@ -656,7 +658,8 @@ public class CompilationResultBuilder {
         labelBindLirPositions = EconomicMap.create(Equivalence.IDENTITY);
         lirPositions = EconomicMap.create(Equivalence.IDENTITY);
         int instructionPosition = 0;
-        for (AbstractBlockBase<?> block : generatedLIR.getBlocks()) {
+        for (char blockIndex : generatedLIR.getBlocks()) {
+            AbstractBlockBase<?> block = generatedLIR.getControlFlowGraph().getBlocks()[blockIndex];
             if (block != null) {
                 for (LIRInstruction op : generatedLIR.getLIRforBlock(block)) {
                     if (op instanceof LabelHoldingOp) {
@@ -704,10 +707,11 @@ public class CompilationResultBuilder {
     }
 
     public final boolean needsClearUpperVectorRegisters() {
-        for (AbstractBlockBase<?> block : lir.getBlocks()) {
-            if (block == null) {
+        for (char blockIndex : lir.getBlocks()) {
+            if (blockIndex == AbstractControlFlowGraph.BLOCK_ID_INITIAL) {
                 continue;
             }
+            AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];
             for (LIRInstruction op : lir.getLIRforBlock(block)) {
                 if (op.needsClearUpperVectorRegisters()) {
                     return true;
