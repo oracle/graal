@@ -80,6 +80,8 @@ public interface FileSystem {
      * @param uri the {@link URI} to be converted to {@link Path}
      * @return the {@link Path} representing given {@link URI}
      * @throws UnsupportedOperationException when {@link URI} scheme is not supported
+     * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold. The format
+     *             of the URI is {@link FileSystem} specific.
      * @since 19.0
      */
     Path parsePath(URI uri);
@@ -91,6 +93,8 @@ public interface FileSystem {
      * @param path the string path to be converted to {@link Path}
      * @return the {@link Path}
      * @throws UnsupportedOperationException when the {@link FileSystem} supports only {@link URI}
+     * @throws IllegalArgumentException if the {@code path} string cannot be converted to a
+     *             {@link Path}
      * @since 19.0
      */
     Path parsePath(String path);

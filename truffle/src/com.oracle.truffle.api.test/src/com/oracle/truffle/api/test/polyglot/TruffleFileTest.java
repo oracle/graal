@@ -798,7 +798,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testInvalidScheme() throws IOException {
+    public void testInvalidURI() throws IOException {
         URI httpScheme = URI.create("http://127.0.0.1/foo.js");
         Path tmp = Files.createTempDirectory("invalidscheme");
         Path existingJar = tmp.resolve("exiting.jar");
@@ -810,17 +810,20 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         Path nonExistingJar = tmp.resolve("non_existing.jar");
         URI jarSchemeExistingFile = URI.create("jar:" + existingJar.toUri() + "!/");
         URI jarSchemeNonExistingFile = URI.create("jar:" + nonExistingJar.toUri() + "!/");
+        URI invalidUri = URI.create("file://localhost:8000/tmp");
         java.nio.file.FileSystem nioJarFS = FileSystems.newFileSystem(jarSchemeExistingFile, Collections.emptyMap());
         try {
             // Context with enabled IO
             testInvalidSchemeImpl(httpScheme);
             testInvalidSchemeImpl(jarSchemeExistingFile);
             testInvalidSchemeImpl(jarSchemeNonExistingFile);
+            testWrongURIPreconditionsImpl(invalidUri);
             // Context with disabled IO
             setupEnv(Context.newBuilder().build());
             testInvalidSchemeImpl(httpScheme);
             testInvalidSchemeImpl(jarSchemeExistingFile);
             testInvalidSchemeImpl(jarSchemeNonExistingFile);
+            testWrongURIPreconditionsImpl(invalidUri);
         } finally {
             nioJarFS.close();
             delete(tmp);
@@ -831,6 +834,20 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         assertFails(() -> languageEnv.getPublicTruffleFile(uri), UnsupportedOperationException.class);
         assertFails(() -> languageEnv.getInternalTruffleFile(uri), UnsupportedOperationException.class);
         assertFails(() -> languageEnv.getTruffleFileInternal(uri, (f) -> false), UnsupportedOperationException.class);
+    }
+
+    private void testWrongURIPreconditionsImpl(URI uri) {
+        assertFails(() -> languageEnv.getPublicTruffleFile(uri), IllegalArgumentException.class);
+        assertFails(() -> languageEnv.getInternalTruffleFile(uri), IllegalArgumentException.class);
+        assertFails(() -> languageEnv.getTruffleFileInternal(uri, (f) -> false), IllegalArgumentException.class);
+    }
+
+    @Test
+    public void testInvalidPath() {
+        String invalidPath = "\0";
+        assertFails(() -> languageEnv.getPublicTruffleFile(invalidPath), IllegalArgumentException.class);
+        assertFails(() -> languageEnv.getInternalTruffleFile(invalidPath), IllegalArgumentException.class);
+        assertFails(() -> languageEnv.getTruffleFileInternal(invalidPath, (f) -> false), IllegalArgumentException.class);
     }
 
     private static void delete(Path path) throws IOException {

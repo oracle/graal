@@ -297,11 +297,7 @@ final class FileSystems {
 
         @Override
         public Path parsePath(URI path) {
-            try {
-                return wrap(delegate.parsePath(path));
-            } catch (IllegalArgumentException | FileSystemNotFoundException e) {
-                throw new UnsupportedOperationException(e);
-            }
+            return wrap(delegate.parsePath(path));
         }
 
         @Override
@@ -771,9 +767,14 @@ final class FileSystems {
 
         @Override
         public Path parsePath(URI uri) {
+            if (!hostfs.getScheme().equals(uri.getScheme())) {
+                // Throw a UnsupportedOperationException with a better message than the default
+                // FileSystemProvider.getPath does.
+                throw new UnsupportedOperationException("Unsupported URI scheme " + uri.getScheme());
+            }
             try {
                 return hostfs.getPath(uri);
-            } catch (IllegalArgumentException | FileSystemNotFoundException e) {
+            } catch (FileSystemNotFoundException e) {
                 throw new UnsupportedOperationException(e);
             }
         }
@@ -781,7 +782,7 @@ final class FileSystems {
         @Override
         public Path parsePath(String path) {
             if (!"file".equals(hostfs.getScheme())) {
-                throw new IllegalStateException("The ParsePath(String path) should be called only for file scheme.");
+                throw new UnsupportedOperationException("The ParsePath(String path) should be called only for file scheme.");
             }
             return Paths.get(path);
         }
@@ -1027,7 +1028,7 @@ final class FileSystems {
                 // Paths.get(URI) cannot be used as it looks up the file system provider
                 // by scheme and can use a non default file system provider.
                 return defaultFileSystemProvider.getPath(uri);
-            } catch (IllegalArgumentException | FileSystemNotFoundException e) {
+            } catch (FileSystemNotFoundException e) {
                 throw new UnsupportedOperationException(e);
             }
         }

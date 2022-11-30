@@ -129,6 +129,8 @@ public class NIOFileSystemTest {
         expectException(() -> fs.parsePath((String) null), NullPointerException.class);
         expectException(() -> fs.parsePath((URI) null), NullPointerException.class);
         expectException(() -> fs.parsePath(new URI("unknownscheme:///tmp/")), UnsupportedOperationException.class);
+        expectException(() -> fs.parsePath("\0"), IllegalArgumentException.class);
+        expectException(() -> fs.parsePath(new URI("file://host:8000/tmp")), IllegalArgumentException.class);
     }
 
     @Test
