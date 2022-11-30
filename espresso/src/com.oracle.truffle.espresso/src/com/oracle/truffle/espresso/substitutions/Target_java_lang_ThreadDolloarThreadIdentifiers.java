@@ -25,7 +25,8 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-@EspressoSubstitutions(nameProvider = Target_java_lang_ThreadDolloarThreadIdentifiers.ECJHack.class)
+/* ECJ annotation processor trips over '$' in the class name */
+@EspressoSubstitutions(@JavaType(internalName = "Ljava/lang/Thread$ThreadIdentifiers;"))
 public final class Target_java_lang_ThreadDolloarThreadIdentifiers {
     private static volatile AtomicLong nextThreadId = new AtomicLong(2);
 
@@ -33,19 +34,4 @@ public final class Target_java_lang_ThreadDolloarThreadIdentifiers {
     public static long next() {
         return nextThreadId.getAndIncrement();
     }
-
-    /* It works with javac, but ECJ trips over '$' in the class name */
-    public static class ECJHack extends SubstitutionNamesProvider {
-        private static String[] NAMES = new String[]{
-                        TARGET_JAVA_LANG_THREAD_THREADIDENTIFIERS
-        };
-        public static SubstitutionNamesProvider INSTANCE = new ECJHack();
-
-        @Override
-        public String[] substitutionClassNames() {
-            return NAMES;
-        }
-    }
-
-    private static final String TARGET_JAVA_LANG_THREAD_THREADIDENTIFIERS = "Target_java_lang_Thread$ThreadIdentifiers";
 }
