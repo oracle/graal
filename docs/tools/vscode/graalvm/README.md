@@ -159,11 +159,11 @@ You will see **GraalVM: Set Active GraalVM Installation** among other actions.
 
 ## Java Development and Debugging
 
-The [Apache NetBeans Language Server](https://marketplace.visualstudio.com/items?itemName=ASF.apache-netbeans-java) is installed on par with the extension enables the Java language support. 
-You have the **Java 8+** **Run** and **Run without Debugging** configuration available for developing and debugging your Java projects in VS Code. 
-In addition to regular features enabled, GraalVM Tools for Java additionally provides support for ahead-of-time compilation with GraalVM Native Image, Java-like debugging of a native executables, integration with VisualVM, and, lastly, polyglot programming (check [here](polyglot-runtime.md)).
+The [Apache NetBeans Language Server](https://marketplace.visualstudio.com/items?itemName=ASF.apache-netbeans-java), installed on par with the extension, enables the Java language support. 
 
-You can use the [Extension Pack for Java from Microsoft](https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-java-pack) if you prefer instead of the default Apache NetBeans Language Server (see [Java in VS Code](https://code.visualstudio.com/docs/languages/java) to get started).
+There are several Java launch configurations available by default. In addition to regular features enabled, GraalVM Tools for Java provides support for ahead-of-time compilation with GraalVM Native Image, Java-like debugging of a native executables, integration with VisualVM, and, lastly, polyglot programming (check [here](polyglot-runtime.md)).
+
+You can use the [Extension Pack for Java from Microsoft](https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-java-pack) if you prefer it instead of the default Apache NetBeans Language Server (see [Java in VS Code](https://code.visualstudio.com/docs/languages/java) to get started).
 If VS Code detects the Extension Pack for Java from Microsoft installed, it deactivates the Apache NetBeans Language Server.
 
 ## Integration with VisualVM
