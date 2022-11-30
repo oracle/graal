@@ -84,7 +84,7 @@ class GDSRESTConnector {
     final String productId;
 
     GDSRESTConnector(String baseURL, Feedback feedback, String productId, Version gvmVersion) {
-        if (baseURL == null || baseURL.isBlank()) {
+        if (baseURL == null || baseURL.trim().isEmpty()) {
             throw new IllegalArgumentException("Base URL String can't be empty.");
         }
         URL url = null;
@@ -98,7 +98,7 @@ class GDSRESTConnector {
             throw new IllegalArgumentException("Feedback can't be null.");
         }
         this.feedback = feedback.withBundle(GDSRESTConnector.class);
-        if (productId == null || productId.isBlank()) {
+        if (productId == null || productId.trim().isEmpty()) {
             throw new IllegalArgumentException("Product ID can't be empty.");
         }
         this.productId = productId;

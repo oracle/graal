@@ -204,7 +204,7 @@ public class ComponentInstaller extends Launcher {
         forSoftwareChannels(true, (ch) -> {
             ch.init(SIMPLE_ENV, output);
             String s = ch.globalOptionsHelp();
-            if (s != null && !s.isBlank()) {
+            if (s != null && !s.trim().isEmpty()) {
                 extra.append(s).append("\n");
             }
         });

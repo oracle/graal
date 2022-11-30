@@ -36,9 +36,9 @@ import static org.graalvm.component.installer.CommonConstants.OS_TOKEN_WINDOWS;
 import static org.graalvm.component.installer.CommonConstants.SYSPROP_ARCH_NAME;
 import static org.graalvm.component.installer.CommonConstants.SYSPROP_JAVA_VERSION;
 import static org.graalvm.component.installer.CommonConstants.SYSPROP_OS_NAME;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLDecoder;
@@ -64,6 +64,8 @@ import org.graalvm.component.installer.model.ComponentRegistry;
 import java.net.URLEncoder;
 import java.util.Collection;
 import java.util.Locale;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -120,7 +122,7 @@ public class SystemUtils {
         }
 
         private static OS fromNameLower(String osNameLower) {
-            if (!osNameLower.isBlank()) {
+            if (!osNameLower.trim().isEmpty()) {
                 if (osNameLower.contains(OS_TOKEN_WINDOWS)) {
                     return WINDOWS;
                 }
@@ -168,7 +170,7 @@ public class SystemUtils {
         }
 
         private static ARCH fromNameLower(String archNameLower) {
-            if (!archNameLower.isBlank()) {
+            if (!archNameLower.trim().isEmpty()) {
                 if (archNameLower.contains(ARCH_AARCH64)) {
                     return AARCH64;
                 }
@@ -181,7 +183,7 @@ public class SystemUtils {
     }
 
     public static boolean nonBlankString(String string) {
-        return string != null && !string.isBlank();
+        return string != null && !string.trim().isEmpty();
     }
 
     /**
@@ -462,17 +464,21 @@ public class SystemUtils {
             return s;
         }
         String queryString = s.substring(q + 1);
-        for (String parSpec : queryString.split("&")) { // NOI18N
-            String[] nameAndVal = parSpec.split("="); // NOI18N
-            String n;
-            String v;
-
-            n = URLDecoder.decode(nameAndVal[0], UTF_8);
-            if (n.isEmpty()) {
-                continue;
+        for (String parSpec : queryString.split("&")) {
+            try {
+                // NOI18N
+                String[] nameAndVal = parSpec.split("="); // NOI18N
+                String n;
+                String v;
+                n = URLDecoder.decode(nameAndVal[0], "UTF_8");
+                if (n.isEmpty()) {
+                    continue;
+                }
+                v = nameAndVal.length > 1 ? URLDecoder.decode(nameAndVal[1], "UTF_8") : "";
+                params.put(n, v);
+            } catch (UnsupportedEncodingException ex) {
+                Logger.getLogger(SystemUtils.class.getName()).log(Level.SEVERE, null, ex);
             }
-            v = nameAndVal.length > 1 ? URLDecoder.decode(nameAndVal[1], UTF_8) : "";
-            params.put(n, v);
         }
         return s.substring(0, q);
     }
@@ -498,14 +504,18 @@ public class SystemUtils {
         for (Map.Entry<String, ? extends Collection<String>> entry : params.entrySet()) {
             Collection<String> vals = entry.getValue();
             String key = entry.getKey();
-            if (key == null || key.isBlank() || vals == null || vals.isEmpty()) {
+            if (key == null || key.trim().isEmpty() || vals == null || vals.isEmpty()) {
                 continue;
             }
             for (String val : vals) {
-                url.append(URLEncoder.encode(entry.getKey(), UTF_8));
-                url.append('=');
-                url.append(URLEncoder.encode(val, UTF_8));
-                url.append('&');
+                try {
+                    url.append(URLEncoder.encode(entry.getKey(), "UTF_8"));
+                    url.append('=');
+                    url.append(URLEncoder.encode(val, "UTF_8"));
+                    url.append('&');
+                } catch (UnsupportedEncodingException ex) {
+                    Logger.getLogger(SystemUtils.class.getName()).log(Level.SEVERE, null, ex);
+                }
             }
         }
         return url.substring(0, url.length() - 1);

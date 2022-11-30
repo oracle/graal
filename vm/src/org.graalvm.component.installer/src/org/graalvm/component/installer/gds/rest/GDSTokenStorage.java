@@ -38,9 +38,11 @@ import org.graalvm.component.installer.gds.GdsCommands;
 import static org.graalvm.component.installer.CommonConstants.PATH_GDS_CONFIG;
 import org.graalvm.component.installer.SystemUtils;
 import java.nio.file.attribute.PosixFilePermission;
-import java.util.Set;
 import static org.graalvm.component.installer.CommonConstants.PATH_USER_GU;
 import java.io.File;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.HashSet;
 
 /**
  *
@@ -59,7 +61,7 @@ public class GDSTokenStorage {
     public GDSTokenStorage(Feedback feedback, CommandInput input) {
         this.feedback = feedback.withBundle(GDSTokenStorage.class);
         this.input = input;
-        propertiesPath = Path.of(System.getProperty(SYSPROP_USER_HOME), PATH_USER_GU, PATH_GDS_CONFIG);
+        propertiesPath = Paths.get(System.getProperty(SYSPROP_USER_HOME), PATH_USER_GU, PATH_GDS_CONFIG);
     }
 
     public String getPropertiesPath() {
@@ -160,9 +162,9 @@ public class GDSTokenStorage {
             file.setExecutable(true);
             file.setWritable(true);
         } else {
-            Files.setPosixFilePermissions(parent, Set.of(PosixFilePermission.OWNER_READ,
+            Files.setPosixFilePermissions(parent, new HashSet<>(Arrays.asList(PosixFilePermission.OWNER_READ,
                             PosixFilePermission.OWNER_WRITE,
-                            PosixFilePermission.OWNER_EXECUTE));
+                            PosixFilePermission.OWNER_EXECUTE)));
         }
         try (OutputStream os = Files.newOutputStream(propertiesPath)) {
             properties.store(os, null);
@@ -176,8 +178,8 @@ public class GDSTokenStorage {
             file.setWritable(true);
         } else {
             Files.setPosixFilePermissions(propertiesPath,
-                            Set.of(PosixFilePermission.OWNER_READ,
-                                            PosixFilePermission.OWNER_WRITE));
+                            new HashSet<>(Arrays.asList(PosixFilePermission.OWNER_READ,
+                                            PosixFilePermission.OWNER_WRITE)));
         }
     }
 

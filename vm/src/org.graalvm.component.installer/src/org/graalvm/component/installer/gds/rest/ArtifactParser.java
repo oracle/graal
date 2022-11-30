@@ -205,7 +205,7 @@ class ArtifactParser {
 
     private Map<String, Object> translateProvidedValues(Feedback fb) {
         String prov = getProvidedCapabilities();
-        if (prov == null || prov.isBlank()) {
+        if (prov == null || prov.trim().isEmpty()) {
             return Collections.emptyMap();
         }
         return new HeaderParser("GDS Provided capabilities.", prov, fb).parseProvidedCapabilities();
@@ -213,7 +213,7 @@ class ArtifactParser {
 
     private Collection<String> translateWorkingDirs() {
         String dir = getWorkingDir();
-        if (dir == null || dir.isBlank()) {
+        if (dir == null || dir.trim().isEmpty()) {
             return Collections.emptyList();
         }
         return Collections.singleton(dir);
@@ -225,7 +225,7 @@ class ArtifactParser {
 
     private Set<String> translateDependency(Feedback fb) {
         String dep = getRequiredDependency();
-        if (dep == null || dep.isBlank()) {
+        if (dep == null || dep.trim().isEmpty()) {
             return Collections.emptySet();
         }
         return new HeaderParser("GDS Dependencies.", dep, fb).parseDependencies();
