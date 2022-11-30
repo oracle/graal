@@ -182,6 +182,7 @@ public class ITLDAPTest {
         tester.getContext().eval(source3);
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testMultiThreading() throws Exception {
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, new URL("file:///path/TestThreads.itl")).content("ROOT(\n" +
@@ -291,6 +292,7 @@ public class ITLDAPTest {
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":3},\"type\":\"request\",\"seq\":12}");
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testBadSourceReference() throws Exception {
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, new URL("file:///path/TestSrcRef.itl")).content("ROOT(\n" +
