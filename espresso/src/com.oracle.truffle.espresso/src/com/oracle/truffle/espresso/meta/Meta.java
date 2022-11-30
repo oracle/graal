@@ -408,7 +408,7 @@ public final class Meta extends ContextAccessImpl {
         }
 
         java_lang_ThreadGroup = knownKlass(Type.java_lang_ThreadGroup);
-        if (!getJavaVersion().java19OrLater()) {
+        if (getJavaVersion().java17OrEarlier()) {
             java_lang_ThreadGroup_add = java_lang_ThreadGroup.requireDeclaredMethod(Name.add, Signature._void_Thread);
         } else {
             java_lang_ThreadGroup_add = null;
@@ -419,7 +419,7 @@ public final class Meta extends ContextAccessImpl {
         java_lang_Thread_interrupt = java_lang_Thread.requireDeclaredMethod(Name.interrupt, Signature._void);
         java_lang_Thread_exit = java_lang_Thread.requireDeclaredMethod(Name.exit, Signature._void);
         java_lang_Thread_run = java_lang_Thread.requireDeclaredMethod(Name.run, Signature._void);
-        if (!getJavaVersion().java19OrLater()) {
+        if (getJavaVersion().java17OrEarlier()) {
             java_lang_Thread_holder = null;
 
             java_lang_Thread_threadStatus = java_lang_Thread.requireDeclaredField(Name.threadStatus, Type._int);
@@ -734,7 +734,7 @@ public final class Meta extends ContextAccessImpl {
         sun_reflect_Reflection_getCallerClass = sun_reflect_Reflection.requireDeclaredMethod(Name.getCallerClass, Signature.Class);
 
         if (getJavaVersion().java11OrLater()) {
-            if (!getJavaVersion().java19OrLater()) {
+            if (getJavaVersion().java17OrEarlier()) {
                 java_lang_invoke_MethodHandleNatives_linkDynamicConstant = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkDynamicConstant,
                                 Signature.Object_Object_int_Object_Object_Object_Object);
             } else {
@@ -1492,7 +1492,7 @@ public final class Meta extends ContextAccessImpl {
 
     // JDK19 helpers
     public void setJavaLangThreadThreadStatus(StaticObject self, int state) {
-        if (!getJavaVersion().java19OrLater()) {
+        if (getJavaVersion().java17OrEarlier()) {
             java_lang_Thread_threadStatus.setInt(self, state);
         } else {
             StaticObject holder = java_lang_Thread_holder.getObject(self);
@@ -1501,7 +1501,7 @@ public final class Meta extends ContextAccessImpl {
     }
 
     public int getJavaLangThreadThreadStatus(StaticObject self) {
-        if (!getJavaVersion().java19OrLater()) {
+        if (getJavaVersion().java17OrEarlier()) {
             return java_lang_Thread_threadStatus.getInt(self);
         } else {
             StaticObject holder = java_lang_Thread_holder.getObject(self);
@@ -1510,7 +1510,7 @@ public final class Meta extends ContextAccessImpl {
     }
 
     public void setJavaLangThreadGroup(StaticObject self, StaticObject threadGroup) {
-        if (!getJavaVersion().java19OrLater()) {
+        if (getJavaVersion().java17OrEarlier()) {
             java_lang_ThreadGroup_add.invokeDirect(threadGroup, self);
         } else {
             StaticObject holder = java_lang_Thread_holder.getObject(self);
@@ -1519,7 +1519,7 @@ public final class Meta extends ContextAccessImpl {
     }
 
     public void setJavaLangThreadPriority(StaticObject self, int prio) {
-        if (!getJavaVersion().java19OrLater()) {
+        if (getJavaVersion().java17OrEarlier()) {
             java_lang_Thread_priority.setInt(self, prio);
         } else {
             StaticObject holder = java_lang_Thread_holder.getObject(self);
@@ -1528,7 +1528,7 @@ public final class Meta extends ContextAccessImpl {
     }
 
     public int getJavaLangThreadPriority(StaticObject self) {
-        if (!getJavaVersion().java19OrLater()) {
+        if (getJavaVersion().java17OrEarlier()) {
             return java_lang_Thread_priority.getInt(self);
         } else {
             StaticObject holder = java_lang_Thread_holder.getObject(self);
@@ -1537,7 +1537,7 @@ public final class Meta extends ContextAccessImpl {
     }
 
     public boolean getJavaLangThreadDaemon(StaticObject self) {
-        if (!getJavaVersion().java19OrLater()) {
+        if (getJavaVersion().java17OrEarlier()) {
             return java_lang_Thread_daemon.getBoolean(self);
         } else {
             StaticObject holder = java_lang_Thread_holder.getObject(self);

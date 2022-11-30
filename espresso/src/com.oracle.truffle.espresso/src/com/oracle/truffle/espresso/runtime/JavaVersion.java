@@ -128,6 +128,10 @@ public enum JavaVersion {
         return version >= 16;
     }
 
+    public boolean java17OrEarlier() {
+        return version <= 17;
+    }
+
     public boolean java17OrLater() {
         return version >= 17;
     }
