@@ -1111,7 +1111,7 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.MEMORY_INIT: {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
                         final int dataIndex = readUnsignedInt32();
-                        readMemoryIndex();
+                        checkMemoryIndex(readMemoryIndex());
                         module.checkDataSegmentIndex(dataIndex);
                         state.popChecked(I32_TYPE);
                         state.popChecked(I32_TYPE);
@@ -1130,8 +1130,8 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case Instructions.MEMORY_COPY: {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
-                        readMemoryIndex();
-                        readMemoryIndex();
+                        checkMemoryIndex(readMemoryIndex());
+                        checkMemoryIndex(readMemoryIndex());
                         if (module.memoryHasIndexType64() && memory64) {
                             state.popChecked(I64_TYPE);
                             state.popChecked(I64_TYPE);
@@ -1145,7 +1145,7 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case Instructions.MEMORY_FILL: {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
-                        readMemoryIndex();
+                        checkMemoryIndex(readMemoryIndex());
                         if (module.memoryHasIndexType64() && memory64) {
                             state.popChecked(I64_TYPE);
                             state.popChecked(I32_TYPE);
@@ -1274,9 +1274,12 @@ public class BinaryParser extends BinaryStreamParser {
         // of it, but we need to store its byte length, so that we can skip it
         // during the execution.
         readAlignHint(n); // align hint
-        final long memoryOffset = readUnsignedInt64(); // 64-bit store offset
-        if (!idxType64) {
-            assertUnsignedLongLessOrEqual(memoryOffset, 0xffff_ffff, Failure.UNSPECIFIED_INVALID);
+        if (idxType64) {
+            final long memoryOffset = readUnsignedInt64(); // 64-bit store offset
+            assertUnsignedLongLess(memoryOffset, MAX_MEMORY_64_DECLARATION_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
+        } else {
+            final int memoryOffset = readUnsignedInt32(); // 32-bit store offset
+            assertUnsignedIntLess(memoryOffset, MAX_TABLE_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
         }
         state.popChecked(type); // value to store
         if (module.memoryHasIndexType64() && memory64) {
@@ -1294,11 +1297,12 @@ public class BinaryParser extends BinaryStreamParser {
         // of it, but we need to store its byte length, so that we can skip it
         // during execution.
         readAlignHint(n); // align hint
-        final long memoryOffset = readUnsignedInt64(); // 64-bit load offset
         if (idxType64) {
+            final long memoryOffset = readUnsignedInt64(); // 64-bit load offset
             assertUnsignedLongLess(memoryOffset, MAX_MEMORY_64_DECLARATION_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
         } else {
-            assertUnsignedLongLess(memoryOffset, MAX_TABLE_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
+            final int memoryOffset = readUnsignedInt32(); // 32-bit load offset
+            assertUnsignedIntLess(memoryOffset, MAX_TABLE_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
         }
         if (idxType64 && memory64) {
             state.popChecked(I64_TYPE); // 64-bit base address
@@ -1685,9 +1689,13 @@ public class BinaryParser extends BinaryStreamParser {
                 final int sectionType = readUnsignedInt32();
                 mode = sectionType & 0b01;
                 final boolean useMemoryIndex = (sectionType & 0b10) != 0;
+                final int memoryIndex;
                 if (useMemoryIndex) {
-                    readMemoryIndex();
+                    memoryIndex = readMemoryIndex();
+                } else {
+                    memoryIndex = 0;
                 }
+                checkMemoryIndex(memoryIndex);
                 if (mode == SegmentMode.ACTIVE) {
                     if (module.memoryHasIndexType64()) {
                         readLongOffsetExpression(longMultiResult);
@@ -1704,7 +1712,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
             } else {
                 mode = SegmentMode.ACTIVE;
-                readMemoryIndex();
+                checkMemoryIndex(readMemoryIndex());
                 if (module.memoryHasIndexType64()) {
                     readLongOffsetExpression(longMultiResult);
                     offsetAddress = longMultiResult[0];
@@ -1929,7 +1937,11 @@ public class BinaryParser extends BinaryStreamParser {
                 return true;
             }
             default:
-                fail(Failure.UNSPECIFIED_MALFORMED, String.format("Invalid limits prefix (expected 0x00, 0x01, 0x04, or 0x05, got 0x%02X", limitsPrefix));
+                if (limitsPrefix < 0) {
+                    fail(Failure.INTEGER_REPRESENTATION_TOO_LONG, String.format("Invalid limits prefix (expected 0x00, 0x01, 0x04, or 0x05, got 0x%02X", limitsPrefix));
+                } else {
+                    fail(Failure.INTEGER_TOO_LARGE, String.format("Invalid limits prefix (expected 0x00, 0x01, 0x04, or 0x05, got 0x%02X", limitsPrefix));
+                }
         }
         return false;
     }

@@ -1043,7 +1043,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     } else {
                         // region Load LEB128 Unsigned32 -> memOffset
                         long valueLength = unsignedIntConstantAndLength(data, offset);
-                        memOffset = value(valueLength);
+                        memOffset = Integer.toUnsignedLong(value(valueLength));
                         int offsetDelta = length(valueLength);
                         offset += offsetDelta;
                         // endregion
@@ -1087,7 +1087,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     } else {
                         // region Load LEB128 Unsigned32 -> memOffset
                         long valueLength = unsignedIntConstantAndLength(data, offset);
-                        memOffset = value(valueLength);
+                        memOffset = Integer.toUnsignedLong(value(valueLength));
                         int offsetDelta = length(valueLength);
                         offset += offsetDelta;
                         // endregion
@@ -1119,7 +1119,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     } else {
                         // region Load LEB128 Unsigned32 -> memOffset
                         long valueLength = unsignedIntConstantAndLength(data, offset);
-                        memOffset = value(valueLength);
+                        memOffset = Integer.toUnsignedLong(value(valueLength));
                         int offsetDelta = length(valueLength);
                         offset += offsetDelta;
                         // endregion
