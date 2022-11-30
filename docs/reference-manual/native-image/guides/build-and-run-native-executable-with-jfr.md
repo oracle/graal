@@ -23,6 +23,8 @@ To build a native executable with the JFR events support, you first need to add 
 
 Follow the steps below to practice building a native executable with JFR support and recording events at run time.
 
+> Note: You are expected to have GraalVM installed with Native Image support. The easiest way to install GraalVM is to use the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader).
+
 1. Install VisualVM by running:
     ```bash
     gu install visualvm
@@ -79,7 +81,7 @@ Follow the steps below to practice building a native executable with JFR support
     $JAVA_HOME/bin/visualvm
     ```
 
-6. Go to **File**, then **Add JFR Snapshot**, browse _recording.jfr_, and open the selected file. Confirm the display name and click **OK**. 
+7. Go to **File**, then **Add JFR Snapshot**, browse _recording.jfr_, and open the selected file. Confirm the display name and click **OK**. 
   Once opened, there is a bunch of options you can check: Monitoring, Threads, Exceptions, etc., but you should be mostly interested in the events browsing. It will look something like this:
 
     ![JDK Flight Recorder](img/jfr.png)
