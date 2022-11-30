@@ -552,10 +552,10 @@ public final class VM extends NativeEnv {
     }
 
     @VmImpl(isJni = true)
+    @TruffleBoundary
     public @JavaType(String.class) StaticObject JVM_GetSystemPackage(@JavaType(String.class) StaticObject name) {
         String hostPkgName = getMeta().toHostString(name);
         if (hostPkgName.endsWith("/")) {
-            CompilerDirectives.transferToInterpreter();
             hostPkgName = hostPkgName.substring(0, hostPkgName.length() - 1);
         }
         String fileName = getRegistries().getBootClassRegistry().getPackagePath(hostPkgName);
