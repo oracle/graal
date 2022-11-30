@@ -866,6 +866,14 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
     }
 
+    /**
+     * Finds a {@link PolyglotLanguage} for a guest or host language.
+     */
+    PolyglotLanguage findLanguage(LanguageInfo info) {
+        LanguageCache cache = (LanguageCache) EngineAccessor.NODES.getLanguageCache(info);
+        return languages[cache.getStaticIndex()];
+    }
+
     private Map<String, PolyglotInstrument> initializeInstruments(Map<String, InstrumentInfo> infos) {
         if (hostLanguageOnly) {
             return Collections.emptyMap();
