@@ -30,3 +30,10 @@
 
 void __sulong_destructor_functions() {
 }
+
+void __sulong_print_stacktrace() {
+}
+
+int __sulong_should_print_stacktrace_on_abort() {
+    return 0;
+}

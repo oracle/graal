@@ -72,6 +72,7 @@ add_compile_definitions(OS_${MX_OS} ARCH_${MX_ARCH})
 add_library(sulong SHARED)
 
 target_sources(sulong PRIVATE
+  src/abort.c
   src/crt0.c
   src/exit.c
   src/pthreads.c
@@ -90,7 +91,6 @@ if(WIN32)
     target_sources(sulong PRIVATE sulong.def)
 else()
     target_sources(sulong PRIVATE
-      src/abort.c
       src/assert.c
       src/builtin.c
       src/clone.c

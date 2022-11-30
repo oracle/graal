@@ -29,6 +29,7 @@
 ;
 
 EXPORTS
+  abort=__sulong_abort
   exit=__sulong_exit
   ExitProcess=__sulong_exit
   atexit=__sulong_atexit

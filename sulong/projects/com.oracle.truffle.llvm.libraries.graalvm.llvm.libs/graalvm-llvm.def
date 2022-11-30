@@ -118,6 +118,8 @@ EXPORTS
   truffle_cannot_be_handle
   truffle_decorate_function
   __sulong_destructor_functions
+  __sulong_print_stacktrace
+  __sulong_should_print_stacktrace_on_abort
   __sulong_thread_create
   __sulong_thread_join
   __sulong_thread_self
