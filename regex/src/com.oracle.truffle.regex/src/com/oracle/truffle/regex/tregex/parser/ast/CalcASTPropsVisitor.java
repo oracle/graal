@@ -291,10 +291,36 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                 LookAroundAssertion lookAround = term.asLookAroundAssertion();
                 if (lookAround.isNegated() && lookAround.isDead()) {
                     sequence.removeTerm(i, compilationBuffer);
+                    RemoveReachablePositionAssertions.run(ast, lookAround);
                     continue;
                 }
             }
             i++;
+        }
+    }
+
+    private static final class RemoveReachablePositionAssertions extends DepthFirstTraversalRegexASTVisitor {
+
+        private final RegexAST ast;
+
+        private RemoveReachablePositionAssertions(RegexAST ast) {
+            this.ast = ast;
+        }
+
+        private static void run(RegexAST ast, LookAroundAssertion root) {
+            new RemoveReachablePositionAssertions(ast).run(root);
+        }
+
+        @Override
+        protected void visit(PositionAssertion assertion) {
+            switch (assertion.type) {
+                case CARET:
+                    ast.getReachableCarets().remove(assertion);
+                    break;
+                case DOLLAR:
+                    ast.getReachableDollars().remove(assertion);
+                    break;
+            }
         }
     }
 
