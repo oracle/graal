@@ -1,2 +1,2 @@
-c\stdlib\stat.c.dir
-libc\file-operations\access.c.dir
+c/stdlib/stat.c.dir
+libc/file-operations/access.c.dir
