@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.junit.Assert.assertTrue;
-
 import java.io.IOException;
 
 import org.graalvm.polyglot.Context;
@@ -33,32 +31,32 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
+
 /**
- * See {@link DefaultLoomTest} for the default runtime.
+ * See {@link OptimizedLoomTest} for other runtimes.
  */
-public class OptimizedLoomTest {
+public class DefaultLoomTest {
 
     @Test
     public void test() throws InterruptedException, IOException {
-        SubprocessTestUtils.executeInSubprocess(OptimizedLoomTest.class, () -> {
+        // Run in subprocess with default truffle runtime. Drop DynamicCompilationThresholds since
+        // it does not exist in the default truffle runtime.
+        SubprocessTestUtils.executeInSubprocess(DefaultLoomTest.class, () -> {
             try {
+                Assume.assumeTrue(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
                 Assume.assumeTrue(LoomUtils.isLoomAvailable());
+
                 Thread t = LoomUtils.startVirtualThread(() -> {
                     try (Context c = Context.create()) {
                         c.eval("sl", "function main() {}");
-                    } catch (IllegalStateException e) {
-                        assertTrue(e.getMessage().equals("Using polyglot contexts on Java virtual threads is currently not supported with an optimizing Truffle runtime. " +
-                                        "As a workaround you may add the -Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime JVM argument to switch to a non-optimizing runtime when using virtual threads. " +
-                                        "Please note that performance is severly reduced in this mode. Loom support for optimizing runtimes will be added in a future release."));
-                        return;
                     }
-                    Assert.fail("Loom should not be supported yet.");
                 });
                 t.join();
             } catch (InterruptedException e) {
                 Assert.fail(e.getMessage());
             }
-        }, "--enable-preview");
+        }, "--enable-preview", "-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime", "~~-Dpolyglot.engine.DynamicCompilationThresholds");
     }
-
 }

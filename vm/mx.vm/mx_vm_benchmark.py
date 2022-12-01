@@ -843,7 +843,6 @@ class NativeImageVM(GraalVm):
                 samples = parsed["samplingProfiles"]
                 assert len(samples) != 0, "No sampling profiles in iprof file " + profile_path
                 for sample in samples:
-                    assert "<" in sample["ctx"], "Sampling profiles seem malformed in file " + profile_path
                     assert ":" in sample["ctx"], "Sampling profiles seem malformed in file " + profile_path
                     assert len(sample["records"]) == 1, "Sampling profiles seem to be missing records in file " + profile_path
                     assert sample["records"][0] > 0, "Sampling profiles seem to have a 0 in records in file " + profile_path
