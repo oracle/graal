@@ -36,7 +36,10 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.GuardNode;
+import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardedNode;
@@ -126,7 +129,24 @@ public abstract class FloatingIntegerDivRemNode<OP> extends BinaryArithmeticNode
          * Special case unconditionally deopting rem operations: Other optimziations can lead to
          * graphs where the rem operation will unconditionally deopt.
          */
-        boolean guardWillAlwaysDeopt = getGuard() != null && getGuard() instanceof GuardNode && ((GuardNode) getGuard()).willDeoptUnconditionally();
+        boolean guardWillAlwaysDeopt = false;
+        if (getGuard() != null) {
+            GuardingNode guard = getGuard();
+            if (guard instanceof GuardNode && ((GuardNode) guard).willDeoptUnconditionally()) {
+                guardWillAlwaysDeopt = true;
+            } else if (guard instanceof FixedGuardNode && ((FixedGuardNode) guard).willDeoptUnconditionally()) {
+                guardWillAlwaysDeopt = true;
+            } else if (guard instanceof AbstractBeginNode) {
+                AbstractBeginNode abn = (AbstractBeginNode) guard;
+                if (abn.predecessor() instanceof IfNode) {
+                    IfNode ifGuard = (IfNode) abn.predecessor();
+                    if (ifGuard.successorWillBeEliminated(abn)) {
+                        guardWillAlwaysDeopt = true;
+                    }
+                }
+            }
+            // else unknown, we cannot prove this guard is unconditionally true or false
+        }
         boolean cannotDeopt = (!canDivideByZero() && !overflowVisibleSideEffect());
         boolean isAfterStage = graph().isAfterStage(StageFlag.FIXED_READS);
         GraalError.guarantee(guardWillAlwaysDeopt || cannotDeopt || isAfterStage, "Floating irem must never create an exception or trap");
