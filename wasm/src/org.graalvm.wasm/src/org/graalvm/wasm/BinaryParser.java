@@ -46,7 +46,6 @@ import static org.graalvm.wasm.Assert.assertIntLessOrEqual;
 import static org.graalvm.wasm.Assert.assertTrue;
 import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
 import static org.graalvm.wasm.Assert.assertUnsignedIntLessOrEqual;
-import static org.graalvm.wasm.Assert.assertUnsignedLongLess;
 import static org.graalvm.wasm.Assert.assertUnsignedLongLessOrEqual;
 import static org.graalvm.wasm.Assert.fail;
 import static org.graalvm.wasm.WasmType.EXTERNREF_TYPE;
@@ -1111,7 +1110,7 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.MEMORY_INIT: {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
                         final int dataIndex = readUnsignedInt32();
-                        checkMemoryIndex(readMemoryIndex());
+                        readMemoryIndex();
                         module.checkDataSegmentIndex(dataIndex);
                         state.popChecked(I32_TYPE);
                         state.popChecked(I32_TYPE);
@@ -1130,8 +1129,8 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case Instructions.MEMORY_COPY: {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
-                        checkMemoryIndex(readMemoryIndex());
-                        checkMemoryIndex(readMemoryIndex());
+                        readMemoryIndex();
+                        readMemoryIndex();
                         if (module.memoryHasIndexType64() && memory64) {
                             state.popChecked(I64_TYPE);
                             state.popChecked(I64_TYPE);
@@ -1145,7 +1144,7 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case Instructions.MEMORY_FILL: {
                         checkBulkMemoryAndRefTypesSupport(miscOpcode);
-                        checkMemoryIndex(readMemoryIndex());
+                        readMemoryIndex();
                         if (module.memoryHasIndexType64() && memory64) {
                             state.popChecked(I64_TYPE);
                             state.popChecked(I32_TYPE);
@@ -1276,10 +1275,10 @@ public class BinaryParser extends BinaryStreamParser {
         readAlignHint(n); // align hint
         if (idxType64) {
             final long memoryOffset = readUnsignedInt64(); // 64-bit store offset
-            assertUnsignedLongLess(memoryOffset, MAX_MEMORY_64_DECLARATION_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
+            assertUnsignedLongLessOrEqual(memoryOffset, MAX_MEMORY_64_DECLARATION_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
         } else {
             final int memoryOffset = readUnsignedInt32(); // 32-bit store offset
-            assertUnsignedIntLess(memoryOffset, MAX_TABLE_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
+            assertUnsignedIntLessOrEqual(memoryOffset, MAX_TABLE_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
         }
         state.popChecked(type); // value to store
         if (module.memoryHasIndexType64() && memory64) {
@@ -1299,10 +1298,10 @@ public class BinaryParser extends BinaryStreamParser {
         readAlignHint(n); // align hint
         if (idxType64) {
             final long memoryOffset = readUnsignedInt64(); // 64-bit load offset
-            assertUnsignedLongLess(memoryOffset, MAX_MEMORY_64_DECLARATION_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
+            assertUnsignedLongLessOrEqual(memoryOffset, MAX_MEMORY_64_DECLARATION_SIZE, Failure.MEMORY_64_SIZE_LIMIT_EXCEEDED);
         } else {
             final int memoryOffset = readUnsignedInt32(); // 32-bit load offset
-            assertUnsignedIntLess(memoryOffset, MAX_TABLE_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
+            assertUnsignedIntLessOrEqual(memoryOffset, MAX_TABLE_DECLARATION_SIZE, Failure.MEMORY_SIZE_LIMIT_EXCEEDED);
         }
         if (idxType64 && memory64) {
             state.popChecked(I64_TYPE); // 64-bit base address
@@ -1689,13 +1688,9 @@ public class BinaryParser extends BinaryStreamParser {
                 final int sectionType = readUnsignedInt32();
                 mode = sectionType & 0b01;
                 final boolean useMemoryIndex = (sectionType & 0b10) != 0;
-                final int memoryIndex;
                 if (useMemoryIndex) {
-                    memoryIndex = readMemoryIndex();
-                } else {
-                    memoryIndex = 0;
+                    readMemoryIndex();
                 }
-                checkMemoryIndex(memoryIndex);
                 if (mode == SegmentMode.ACTIVE) {
                     if (module.memoryHasIndexType64()) {
                         readLongOffsetExpression(longMultiResult);
@@ -1712,7 +1707,7 @@ public class BinaryParser extends BinaryStreamParser {
                 }
             } else {
                 mode = SegmentMode.ACTIVE;
-                checkMemoryIndex(readMemoryIndex());
+                readMemoryIndex();
                 if (module.memoryHasIndexType64()) {
                     readLongOffsetExpression(longMultiResult);
                     offsetAddress = longMultiResult[0];

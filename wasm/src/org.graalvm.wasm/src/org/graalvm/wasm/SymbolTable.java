@@ -976,8 +976,7 @@ public abstract class SymbolTable {
     }
 
     boolean memoryHasIndexType64() {
-        assert memory != null;
-        return memory.indexType64;
+        return memory != null && memory.indexType64;
     }
 
     public void exportMemory(String name) {
