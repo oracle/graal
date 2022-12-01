@@ -41,12 +41,14 @@
 
 package org.graalvm.wasm;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.SegmentMode;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -122,7 +124,7 @@ public class WasmInstantiator {
         return instance;
     }
 
-    private void recreateLinkActions(WasmModule module) {
+    private static void recreateLinkActions(WasmModule module) {
         for (int i = 0; i < module.numFunctions(); i++) {
             final WasmFunction function = module.function(i);
             if (function.isImported()) {
@@ -236,34 +238,180 @@ public class WasmInstantiator {
             module.addLinkAction((context, instance) -> context.linker().resolveMemoryExport(instance, memoryName));
         }
 
+        final byte[] bytecode = module.bytecode();
+
         for (int i = 0; i < module.dataInstanceCount(); i++) {
             final int dataIndex = i;
-            final int dataMode = module.dataInstanceMode(dataIndex);
             final int dataOffset = module.dataInstanceOffset(dataIndex);
-            final int dataLength = module.dataInstanceLength(dataIndex);
+            final int flags = bytecode[dataOffset];
+            int effectiveOffset = dataOffset + 1;
+
+            final int dataMode = flags & Bytecode.DATA_SEG_MODE;
+            final int dataLength;
+            switch (flags & Bytecode.DATA_SEG_LENGTH_FLAG) {
+                case Bytecode.DATA_SEG_LENGTH_ZERO:
+                    dataLength = 0;
+                    break;
+                case Bytecode.DATA_SEG_LENGTH_U8:
+                    dataLength = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                    effectiveOffset++;
+                    break;
+                case Bytecode.DATA_SEG_LENGTH_U16:
+                    dataLength = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
+                    effectiveOffset += 2;
+                    break;
+                case Bytecode.DATA_SEG_LENGTH_U32:
+                    dataLength = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
+                    effectiveOffset += 3;
+                    break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
             if (dataMode == SegmentMode.ACTIVE) {
-                final int dataOffsetAddress = module.dataInstanceOffsetAddress(dataIndex);
-                final int dataGlobalIndex = module.dataInstanceGlobalIndex(dataIndex);
+                final int dataOffsetAddress;
+                switch (flags & Bytecode.DATA_SEG_OFFSET_ADDRESS_FLAG) {
+                    case Bytecode.DATA_SEG_OFFSET_ADDRESS_UNDEFINED:
+                        dataOffsetAddress = -1;
+                        break;
+                    case Bytecode.DATA_SEG_OFFSET_ADDRESS_U8:
+                        dataOffsetAddress = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                        effectiveOffset++;
+                        break;
+                    case Bytecode.DATA_SEG_OFFSET_ADDRESS_U16:
+                        dataOffsetAddress = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
+                        effectiveOffset += 2;
+                        break;
+                    case Bytecode.DATA_SEG_OFFSET_ADDRESS_U32:
+                        dataOffsetAddress = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
+                        effectiveOffset += 4;
+                        break;
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere();
+                }
+                final int dataGlobalIndex;
+                switch (flags & Bytecode.DATA_SEG_GLOBAL_INDEX_FLAG) {
+                    case Bytecode.DATA_SEG_GLOBAL_INDEX_UNDEFINED:
+                        dataGlobalIndex = -1;
+                        break;
+                    case Bytecode.DATA_SEG_GLOBAL_INDEX_U8:
+                        dataGlobalIndex = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                        effectiveOffset++;
+                        break;
+                    case Bytecode.DATA_SEG_GLOBAL_INDEX_U16:
+                        dataGlobalIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
+                        effectiveOffset += 2;
+                        break;
+                    case Bytecode.DATA_SEG_GLOBAL_INDEX_U32:
+                        dataGlobalIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
+                        effectiveOffset += 4;
+                        break;
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere();
+                }
+                final int dataBytecodeOffset = effectiveOffset;
                 module.addLinkAction((context, instance) -> context.linker().resolveDataSegment(context, instance, dataIndex, dataOffsetAddress, dataGlobalIndex, dataLength,
-                                dataOffset));
+                                dataBytecodeOffset));
             } else {
-                module.addLinkAction((context, instance) -> context.linker().resolvePassiveDataSegment(context, instance, dataIndex, dataOffset, dataLength));
+                final int dataBytecodeOffset = effectiveOffset;
+                module.addLinkAction((context, instance) -> context.linker().resolvePassiveDataSegment(instance, dataIndex, dataBytecodeOffset, dataLength));
             }
         }
 
         for (int i = 0; i < module.elemInstanceCount(); i++) {
             final int elemIndex = i;
-            final int elemMode = module.elemInstanceMode(elemIndex);
             final int elemOffset = module.elemInstanceOffset(elemIndex);
-            final int elemItemCount = module.elemInstanceItemCount(elemIndex);
+            final int flags = bytecode[elemOffset];
+            final int typeAndMode = bytecode[elemOffset + 1];
+            int effectiveOffset = elemOffset + 2;
+
+            final int elemMode = typeAndMode & Bytecode.ELEM_SEG_MODE;
+
+            final int elemCount;
+            switch (flags & Bytecode.ELEM_SEG_COUNT_FLAG) {
+                case Bytecode.ELEM_SEG_COUNT_ZERO:
+                    elemCount = 0;
+                    break;
+                case Bytecode.ELEM_SEG_COUNT_U8:
+                    elemCount = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                    effectiveOffset++;
+                    break;
+                case Bytecode.ELEM_SEG_COUNT_U16:
+                    elemCount = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
+                    effectiveOffset += 2;
+                    break;
+                case Bytecode.ELEM_SEG_COUNT_U32:
+                    elemCount = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
+                    effectiveOffset += 4;
+                    break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
             if (elemMode == SegmentMode.ACTIVE) {
-                final int elemTableIndex = module.elemInstanceTableIndex(elemIndex);
-                final int elemGlobalIndex = module.elemInstanceGlobalIndex(elemIndex);
-                final int elemOffsetAddress = module.elemInstanceOffsetAddress(elemIndex);
-                module.addLinkAction((context, instance) -> context.linker().resolveElemSegment(context, instance, elemTableIndex, elemIndex, elemOffsetAddress, elemGlobalIndex, elemOffset,
-                                elemItemCount));
+                final int tableIndex;
+                switch (flags & Bytecode.ELEM_SEG_TABLE_INDEX_FLAG) {
+                    case Bytecode.ELEM_SEG_TABLE_INDEX_ZERO:
+                        tableIndex = 0;
+                        break;
+                    case Bytecode.ELEM_SEG_TABLE_INDEX_U8:
+                        tableIndex = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                        effectiveOffset++;
+                        break;
+                    case Bytecode.ELEM_SEG_TABLE_INDEX_U16:
+                        tableIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
+                        effectiveOffset += 2;
+                        break;
+                    case Bytecode.ELEM_SEG_TABLE_INDEX_U32:
+                        tableIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
+                        effectiveOffset += 4;
+                        break;
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere();
+                }
+                final int offsetGlobalIndex;
+                switch (flags & Bytecode.ELEM_SEG_GLOBAL_INDEX_FLAG) {
+                    case Bytecode.ELEM_SEG_GLOBAL_INDEX_UNDEFINED:
+                        offsetGlobalIndex = -1;
+                        break;
+                    case Bytecode.ELEM_SEG_GLOBAL_INDEX_U8:
+                        offsetGlobalIndex = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                        effectiveOffset++;
+                        break;
+                    case Bytecode.ELEM_SEG_GLOBAL_INDEX_U16:
+                        offsetGlobalIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
+                        effectiveOffset += 2;
+                        break;
+                    case Bytecode.ELEM_SEG_GLOBAL_INDEX_U32:
+                        offsetGlobalIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
+                        effectiveOffset += 4;
+                        break;
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere();
+                }
+                final int offsetAddress;
+                switch (flags & Bytecode.ELEM_SEG_OFFSET_ADDRESS_FLAG) {
+                    case Bytecode.ELEM_SEG_OFFSET_ADDRESS_UNDEFINED:
+                        offsetAddress = -1;
+                        break;
+                    case Bytecode.ELEM_SEG_OFFSET_ADDRESS_U8:
+                        offsetAddress = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                        effectiveOffset++;
+                        break;
+                    case Bytecode.ELEM_SEG_OFFSET_ADDRESS_U16:
+                        offsetAddress = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
+                        effectiveOffset += 2;
+                        break;
+                    case Bytecode.ELEM_SEG_OFFSET_ADDRESS_U32:
+                        offsetAddress = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
+                        effectiveOffset += 4;
+                        break;
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere();
+                }
+                final int bytecodeOffset = effectiveOffset;
+                module.addLinkAction((context, instance) -> context.linker().resolveElemSegment(context, instance, tableIndex, elemIndex, offsetAddress, offsetGlobalIndex, bytecodeOffset, elemCount));
             } else {
-                module.addLinkAction((context, instance) -> context.linker().resolvePassiveElemSegment(context, instance, elemIndex, elemOffset, elemItemCount));
+                final int bytecodeOffset = effectiveOffset;
+                module.addLinkAction((context, instance) -> context.linker().resolvePassiveElemSegment(context, instance, elemIndex, bytecodeOffset, elemCount));
             }
         }
     }

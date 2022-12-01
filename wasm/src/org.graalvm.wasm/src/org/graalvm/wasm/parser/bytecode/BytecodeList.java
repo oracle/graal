@@ -193,9 +193,9 @@ public class BytecodeList {
     }
 
     /**
-     * Adds an instruction and an immediate value to the bytecode. If the value fits into a unsigned
-     * i8 value, the i8Instruction and an i8 value is added. Otherwise, the i32Instruction and an
-     * i32 value is added.
+     * Adds an instruction and an immediate value to the bytecode. If the value fits into an
+     * unsigned i8 value, the i8Instruction and an i8 value is added. Otherwise, the i32Instruction
+     * and an i32 value is added.
      *
      * @param i8Instruction The i8 instruction
      * @param i32Instruction The i32 instruction
@@ -448,40 +448,41 @@ public class BytecodeList {
     }
 
     private int addDataHeader(int mode, int length, int globalIndex, int offsetAddress) {
+        assert mode == SegmentMode.ACTIVE || mode == SegmentMode.PASSIVE;
         int location = bytecode.size();
         add1(0);
         int flags = mode;
         if (fitsIntoUnsignedByte(length)) {
-            flags |= 0b0100_0000;
+            flags |= Bytecode.DATA_SEG_LENGTH_U8;
             add1(length);
         } else if (fitsIntoUnsignedShort(length)) {
-            flags |= 0b1000_0000;
+            flags |= Bytecode.DATA_SEG_LENGTH_U16;
             add2(length);
         } else {
-            flags |= 0b1100_0000;
+            flags |= Bytecode.DATA_SEG_LENGTH_U32;
             add4(length);
         }
         if (globalIndex != -1) {
             if (fitsIntoUnsignedByte(globalIndex)) {
-                flags |= 0b0001_0000;
+                flags |= Bytecode.DATA_SEG_GLOBAL_INDEX_U8;
                 add1(globalIndex);
             } else if (fitsIntoUnsignedShort(globalIndex)) {
-                flags |= 0b0010_0000;
+                flags |= Bytecode.DATA_SEG_GLOBAL_INDEX_U16;
                 add2(globalIndex);
             } else {
-                flags |= 0b0011_0000;
+                flags |= Bytecode.DATA_SEG_GLOBAL_INDEX_U32;
                 add4(globalIndex);
             }
         }
         if (offsetAddress != -1) {
             if (fitsIntoUnsignedByte(offsetAddress)) {
-                flags |= 0b0000_0100;
+                flags |= Bytecode.DATA_SEG_OFFSET_ADDRESS_U8;
                 add1(offsetAddress);
             } else if (fitsIntoUnsignedShort(offsetAddress)) {
-                flags |= 0b0000_1000;
+                flags |= Bytecode.DATA_SEG_OFFSET_ADDRESS_U16;
                 add2(offsetAddress);
             } else {
-                flags |= 0b0000_1100;
+                flags |= Bytecode.DATA_SEG_OFFSET_ADDRESS_U32;
                 add4(offsetAddress);
             }
         }
@@ -499,62 +500,64 @@ public class BytecodeList {
 
     public int addElemHeader(int mode, int count, byte elemType, int tableIndex, int globalIndex, int offsetAddress) {
         int location = bytecode.size();
-        add2(0);
-        int flags = mode;
-        if (fitsIntoUnsignedByte(count)) {
-            flags |= 0b0100_0000;
-            add1(count);
-        } else if (fitsIntoUnsignedShort(count)) {
-            flags |= 0b1000_0000;
-            add2(count);
-        } else {
-            flags |= 0b1100_0000;
-            add4(count);
-        }
-        int elemTypeInfo = 0;
+        add1(0);
+        final int type;
         switch (elemType) {
             case WasmType.FUNCREF_TYPE:
+                type = Bytecode.ELEM_SEG_TYPE_FUNREF;
                 break;
             case WasmType.EXTERNREF_TYPE:
-                elemTypeInfo |= 1;
+                type = Bytecode.ELEM_SEG_TYPE_EXTERNREF;
                 break;
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
+        add1(type << 4 | mode);
+
+        int flags = 0;
+        if (fitsIntoUnsignedByte(count)) {
+            flags |= Bytecode.ELEM_SEG_COUNT_U8;
+            add1(count);
+        } else if (fitsIntoUnsignedShort(count)) {
+            flags |= Bytecode.ELEM_SEG_COUNT_U16;
+            add2(count);
+        } else {
+            flags |= Bytecode.ELEM_SEG_COUNT_U32;
+            add4(count);
+        }
         if (tableIndex != 0) {
             if (fitsIntoUnsignedByte(tableIndex)) {
-                elemTypeInfo |= 0b0100_0000;
+                flags |= Bytecode.ELEM_SEG_TABLE_INDEX_U8;
                 add1(tableIndex);
             } else if (fitsIntoUnsignedShort(tableIndex)) {
-                elemTypeInfo |= 0b1000_0000;
+                flags |= Bytecode.ELEM_SEG_TABLE_INDEX_U16;
                 add2(tableIndex);
             } else {
-                elemTypeInfo |= 0b1100_0000;
+                flags |= Bytecode.ELEM_SEG_TABLE_INDEX_U32;
                 add4(tableIndex);
             }
         }
-        bytecode.set(location + 1, (byte) elemTypeInfo);
         if (globalIndex != -1) {
             if (fitsIntoUnsignedByte(globalIndex)) {
-                flags |= 0b0001_0000;
+                flags |= Bytecode.ELEM_SEG_GLOBAL_INDEX_U8;
                 add1(globalIndex);
             } else if (fitsIntoUnsignedShort(globalIndex)) {
-                flags |= 0b0010_0000;
+                flags |= Bytecode.ELEM_SEG_GLOBAL_INDEX_U16;
                 add2(globalIndex);
             } else {
-                flags |= 0b0011_0000;
+                flags |= Bytecode.ELEM_SEG_GLOBAL_INDEX_U32;
                 add4(globalIndex);
             }
         }
         if (offsetAddress != -1) {
             if (fitsIntoUnsignedByte(offsetAddress)) {
-                flags |= 0b0000_0100;
+                flags |= Bytecode.ELEM_SEG_OFFSET_ADDRESS_U8;
                 add1(offsetAddress);
             } else if (fitsIntoUnsignedShort(offsetAddress)) {
-                flags |= 0b0000_1000;
+                flags |= Bytecode.ELEM_SEG_OFFSET_ADDRESS_U16;
                 add2(offsetAddress);
             } else {
-                flags |= 0b0000_1100;
+                flags |= Bytecode.ELEM_SEG_OFFSET_ADDRESS_U32;
                 add4(offsetAddress);
             }
         }
@@ -567,82 +570,82 @@ public class BytecodeList {
     }
 
     public void addElemNull() {
-        add1(0b0100_1000);
+        add1(Bytecode.ELEM_ITEM_TYPE_FUNCTION_INDEX | Bytecode.ELEM_ITEM_NULL_FLAG);
     }
 
     public void addElemFunctionIndex(int functionIndex) {
-        if (functionIndex >= 0 && functionIndex <= 63) {
-            add1(functionIndex);
+        if (functionIndex >= 0 && functionIndex <= 15) {
+            add1(Bytecode.ELEM_ITEM_TYPE_FUNCTION_INDEX | Bytecode.ELEM_ITEM_LENGTH_U4 | functionIndex);
         } else if (fitsIntoUnsignedByte(functionIndex)) {
-            add1(0b0100_0001);
+            add1(Bytecode.ELEM_ITEM_TYPE_FUNCTION_INDEX | Bytecode.ELEM_ITEM_LENGTH_U8);
             add1(functionIndex);
         } else if (fitsIntoUnsignedShort(functionIndex)) {
-            add1(0b0100_0010);
+            add1(Bytecode.ELEM_ITEM_TYPE_FUNCTION_INDEX | Bytecode.ELEM_ITEM_LENGTH_U16);
             add2(functionIndex);
         } else {
-            add1(0b0100_0100);
+            add1(Bytecode.ELEM_ITEM_TYPE_FUNCTION_INDEX | Bytecode.ELEM_ITEM_LENGTH_U32);
             add4(functionIndex);
         }
     }
 
     public void addElemGlobalIndex(int globalIndex) {
-        if (globalIndex >= 0 && globalIndex <= 63) {
-            add1(0b1000_0000 | globalIndex);
+        if (globalIndex >= 0 && globalIndex <= 15) {
+            add1(Bytecode.ELEM_ITEM_TYPE_GLOBAL_INDEX | Bytecode.ELEM_ITEM_LENGTH_U4 | globalIndex);
         } else if (fitsIntoUnsignedByte(globalIndex)) {
-            add1(0b1100_0001);
+            add1(Bytecode.ELEM_ITEM_TYPE_GLOBAL_INDEX | Bytecode.ELEM_ITEM_LENGTH_U8);
             add1(globalIndex);
         } else if (fitsIntoUnsignedShort(globalIndex)) {
-            add1(0b1100_0010);
+            add1(Bytecode.ELEM_ITEM_TYPE_GLOBAL_INDEX | Bytecode.ELEM_ITEM_LENGTH_U16);
             add2(globalIndex);
         } else {
-            add1(0b1100_0100);
+            add1(Bytecode.ELEM_ITEM_TYPE_GLOBAL_INDEX | Bytecode.ELEM_ITEM_LENGTH_U32);
             add4(globalIndex);
         }
     }
 
-    public void addCodeEntryHeader(int functionIndex, int maxStackSize, int bytecodeStartOffset, int bytecodeEndOffset) {
+    public void addCodeEntry(int functionIndex, int maxStackSize, int bytecodeStartOffset, int localCount, int resultCount) {
         final int location = bytecode.size();
         add1(0);
         int flags = 0;
-        if (fitsIntoUnsignedByte(functionIndex)) {
-            flags |= 0b0100_0000;
-            add1(functionIndex);
-        } else if (fitsIntoUnsignedShort(functionIndex)) {
-            flags |= 0b1000_0000;
-            add2(functionIndex);
-        } else {
-            flags |= 0b1100_0000;
-            add4(functionIndex);
+        if (functionIndex != 0) {
+            if (fitsIntoUnsignedByte(functionIndex)) {
+                flags |= Bytecode.CODE_ENTRY_FUNCTION_INDEX_U8;
+                add1(functionIndex);
+            } else if (fitsIntoUnsignedShort(functionIndex)) {
+                flags |= Bytecode.CODE_ENTRY_FUNCTION_INDEX_U16;
+                add2(functionIndex);
+            } else {
+                flags |= Bytecode.CODE_ENTRY_FUNCTION_INDEX_U32;
+                add4(functionIndex);
+            }
         }
-        if (fitsIntoUnsignedByte(maxStackSize)) {
-            flags |= 0b0001_0000;
-            add1(maxStackSize);
-        } else if (fitsIntoUnsignedShort(maxStackSize)) {
-            flags |= 0b0010_0000;
-            add2(maxStackSize);
-        } else {
-            flags |= 0b0011_0000;
-            add4(maxStackSize);
+        if (maxStackSize != 0) {
+            if (fitsIntoUnsignedByte(maxStackSize)) {
+                flags |= Bytecode.CODE_ENTRY_MAX_STACK_SIZE_U8;
+                add1(maxStackSize);
+            } else if (fitsIntoUnsignedShort(maxStackSize)) {
+                flags |= Bytecode.CODE_ENTRY_MAX_STACK_SIZE_U16;
+                add2(maxStackSize);
+            } else {
+                flags |= Bytecode.CODE_ENTRY_MAX_STACK_SIZE_U32;
+                add4(maxStackSize);
+            }
         }
         if (fitsIntoUnsignedByte(bytecodeStartOffset)) {
-            flags |= 0b0000_0100;
+            flags |= Bytecode.CODE_ENTRY_START_OFFSET_U8;
             add1(bytecodeStartOffset);
         } else if (fitsIntoUnsignedShort(bytecodeStartOffset)) {
-            flags |= 0b0000_1000;
+            flags |= Bytecode.CODE_ENTRY_START_OFFSET_U16;
             add2(bytecodeStartOffset);
         } else {
-            flags |= 0b0000_1100;
+            flags |= Bytecode.CODE_ENTRY_START_OFFSET_U32;
             add4(bytecodeStartOffset);
         }
-        if (fitsIntoUnsignedByte(bytecodeEndOffset)) {
-            flags |= 0b0000_0001;
-            add1(bytecodeEndOffset);
-        } else if (fitsIntoUnsignedShort(bytecodeEndOffset)) {
-            flags |= 0b0000_0010;
-            add2(bytecodeEndOffset);
-        } else {
-            flags |= 0b0000_0011;
-            add4(bytecodeEndOffset);
+        if (localCount != 0) {
+            flags |= Bytecode.CODE_ENTRY_LOCALS_FLAG;
+        }
+        if (resultCount != 0) {
+            flags |= Bytecode.CODE_ENTRY_RESULT_FLAG;
         }
         bytecode.set(location, (byte) flags);
     }

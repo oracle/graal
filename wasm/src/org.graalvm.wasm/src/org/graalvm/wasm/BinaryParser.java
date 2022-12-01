@@ -870,17 +870,20 @@ public class BinaryParser extends BinaryStreamParser {
             }
         }
         final int bytecodeEndOffset = bytecode.location();
-        final int codeEntryLocation = bytecode.location();
-        bytecode.addCodeEntryHeader(functionIndex, state.maxStackSize(), bytecodeStartOffset, bytecodeEndOffset);
+        bytecode.addCodeEntry(functionIndex, state.maxStackSize(), bytecodeStartOffset, locals.length, resultTypes.length);
         for (byte local : locals) {
             bytecode.addByte(local);
         }
-        bytecode.addByte((byte) 0);
+        if (locals.length != 0) {
+            bytecode.addByte((byte) 0);
+        }
         for (byte result : resultTypes) {
             bytecode.addByte(result);
         }
-        bytecode.addByte((byte) 0);
-        module.setCodeEntryOffset(codeEntryIndex, codeEntryLocation);
+        if (resultTypes.length != 0) {
+            bytecode.addByte((byte) 0);
+        }
+        module.setCodeEntryOffset(codeEntryIndex, bytecodeEndOffset);
         return new CodeEntry(functionIndex, state.maxStackSize(), locals, resultTypes, callNodes, bytecodeStartOffset, bytecodeEndOffset);
     }
 
@@ -1552,8 +1555,8 @@ public class BinaryParser extends BinaryStreamParser {
                 } else {
                     mode = useTableIndex ? SegmentMode.DECLARATIVE : SegmentMode.PASSIVE;
                     tableIndex = 0;
-                    currentOffsetAddress = 0;
-                    currentOffsetGlobalIndex = 0;
+                    currentOffsetAddress = -1;
+                    currentOffsetGlobalIndex = -1;
                 }
                 if (useExpressions) {
                     if (useType) {
@@ -1831,7 +1834,7 @@ public class BinaryParser extends BinaryStreamParser {
             } else {
                 final int bytecodeOffset = bytecode.addDataHeader(mode, byteLength);
                 module.setDataInstance(currentDataSegmentId, headerOffset);
-                module.addLinkAction(((context, instance) -> context.linker().resolvePassiveDataSegment(context, instance, currentDataSegmentId, bytecodeOffset, byteLength)));
+                module.addLinkAction(((context, instance) -> context.linker().resolvePassiveDataSegment(instance, currentDataSegmentId, bytecodeOffset, byteLength)));
             }
             // Add the data section to the bytecode.
             for (int i = 0; i < byteLength; i++) {
@@ -2086,15 +2089,15 @@ public class BinaryParser extends BinaryStreamParser {
             final long value = module.globalInitialValue(i);
             if (module.globalInitialized(i)) {
                 if (module.globalFunctionOrNull(i)) {
-                    final int functionIndex = (int) value;
-                    final WasmFunctionInstance function = instance.functionInstance(functionIndex);
-                    globals.storeReference(address, function);
+                    globals.storeReference(address, WasmConstant.NULL);
                 } else {
                     globals.storeLong(address, value);
                 }
             } else {
                 if (module.globalFunctionOrNull(i)) {
-                    globals.storeReference(address, WasmConstant.NULL);
+                    final int functionIndex = (int) value;
+                    final WasmFunctionInstance function = instance.functionInstance(functionIndex);
+                    globals.storeReference(address, function);
                 } else {
                     final int existingAddress = instance.globalAddress(module.globalExistingIndex(i));
                     globals.storeLong(address, globals.loadAsLong(existingAddress));
@@ -2104,13 +2107,74 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     public void resetMemoryState(WasmContext context, WasmInstance instance) {
+        final byte[] bytecode = module.bytecode();
         for (int i = 0; i < module.dataInstanceCount(); i++) {
-            final int mode = module.dataInstanceMode(i);
-            final int offsetGlobalIndex = module.dataInstanceGlobalIndex(i);
-            int offsetAddress = module.dataInstanceOffsetAddress(i);
-            final int bytecodeOffset = module.dataInstanceOffset(i);
-            final int byteLength = module.dataInstanceLength(i);
-            if (mode == SegmentMode.ACTIVE) {
+            final int dataOffset = module.dataInstanceOffset(i);
+            final int flags = bytecode[dataOffset];
+            int effectiveOffset = dataOffset + 1;
+
+            final int dataMode = flags & Bytecode.DATA_SEG_MODE;
+            final int dataLength;
+            switch (flags & Bytecode.DATA_SEG_LENGTH_FLAG) {
+                case Bytecode.DATA_SEG_LENGTH_ZERO:
+                    dataLength = 0;
+                    break;
+                case Bytecode.DATA_SEG_LENGTH_U8:
+                    dataLength = rawPeekU8(bytecode, effectiveOffset);
+                    effectiveOffset++;
+                    break;
+                case Bytecode.DATA_SEG_LENGTH_U16:
+                    dataLength = rawPeekU16(bytecode, effectiveOffset);
+                    effectiveOffset += 2;
+                    break;
+                case Bytecode.DATA_SEG_LENGTH_U32:
+                    dataLength = rawPeekI32(bytecode, effectiveOffset);
+                    effectiveOffset += 4;
+                    break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+            if (dataMode == SegmentMode.ACTIVE) {
+                final int offsetGlobalIndex;
+                switch (flags & Bytecode.DATA_SEG_GLOBAL_INDEX_FLAG) {
+                    case Bytecode.DATA_SEG_GLOBAL_INDEX_UNDEFINED:
+                        offsetGlobalIndex = -1;
+                        break;
+                    case Bytecode.DATA_SEG_GLOBAL_INDEX_U8:
+                        offsetGlobalIndex = rawPeekU8(bytecode, effectiveOffset);
+                        effectiveOffset++;
+                        break;
+                    case Bytecode.DATA_SEG_GLOBAL_INDEX_U16:
+                        offsetGlobalIndex = rawPeekU16(bytecode, effectiveOffset);
+                        effectiveOffset += 2;
+                        break;
+                    case Bytecode.DATA_SEG_GLOBAL_INDEX_U32:
+                        offsetGlobalIndex = rawPeekI32(bytecode, effectiveOffset);
+                        effectiveOffset += 4;
+                        break;
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere();
+                }
+                int offsetAddress;
+                switch (flags & Bytecode.DATA_SEG_OFFSET_ADDRESS_FLAG) {
+                    case Bytecode.DATA_SEG_OFFSET_ADDRESS_UNDEFINED:
+                        offsetAddress = -1;
+                        break;
+                    case Bytecode.DATA_SEG_OFFSET_ADDRESS_U8:
+                        offsetAddress = rawPeekU8(bytecode, effectiveOffset);
+                        effectiveOffset++;
+                        break;
+                    case Bytecode.DATA_SEG_OFFSET_ADDRESS_U16:
+                        offsetAddress = rawPeekU16(bytecode, effectiveOffset);
+                        effectiveOffset += 2;
+                        break;
+                    case Bytecode.DATA_SEG_OFFSET_ADDRESS_U32:
+                        offsetAddress = rawPeekI32(bytecode, effectiveOffset);
+                        effectiveOffset += 4;
+                        break;
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere();
+                }
                 if (offsetGlobalIndex != -1) {
                     int offsetGlobalAddress = instance.globalAddress(offsetGlobalIndex);
                     offsetAddress = context.globals().loadAsInt(offsetGlobalAddress);
@@ -2121,28 +2185,109 @@ public class BinaryParser extends BinaryStreamParser {
                 final WasmMemory memory = instance.memory();
 
                 Assert.assertUnsignedIntLessOrEqual(offsetAddress, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-                Assert.assertUnsignedIntLessOrEqual(offsetAddress + byteLength, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-                memory.initialize(module.bytecode(), bytecodeOffset, offsetAddress, byteLength);
+                Assert.assertUnsignedIntLessOrEqual(offsetAddress + dataLength, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+                memory.initialize(module.bytecode(), effectiveOffset, offsetAddress, dataLength);
             } else {
-                instance.setDataInstance(i, bytecodeOffset, byteLength);
+                instance.setDataInstance(i, effectiveOffset, dataLength);
             }
         }
     }
 
     public void resetTableState(WasmContext context, WasmInstance instance) {
+        final byte[] bytecode = module.bytecode();
         for (int i = 0; i < module.elemInstanceCount(); i++) {
-            final int byteOffset = module.elemInstanceOffset(i);
+            final int elemOffset = module.elemInstanceOffset(i);
+            final int flags = bytecode[elemOffset];
+            final int typeAndMode = bytecode[elemOffset + 1];
+            int effectiveOffset = elemOffset + 2;
+
+            final int elemMode = typeAndMode & Bytecode.ELEM_SEG_MODE;
+
+            final int elemCount;
+            switch (flags & Bytecode.ELEM_SEG_COUNT_FLAG) {
+                case Bytecode.ELEM_SEG_COUNT_ZERO:
+                    elemCount = 0;
+                    break;
+                case Bytecode.ELEM_SEG_COUNT_U8:
+                    elemCount = rawPeekU8(bytecode, effectiveOffset);
+                    effectiveOffset++;
+                    break;
+                case Bytecode.ELEM_SEG_COUNT_U16:
+                    elemCount = rawPeekU16(bytecode, effectiveOffset);
+                    effectiveOffset += 2;
+                    break;
+                case Bytecode.ELEM_SEG_COUNT_U32:
+                    elemCount = rawPeekI32(bytecode, effectiveOffset);
+                    effectiveOffset += 4;
+                    break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
             final Linker linker = Objects.requireNonNull(context.linker());
-            final int mode = module.elemInstanceMode(i);
-            final int elementCount = module.elemInstanceItemCount(i);
-            if (mode == SegmentMode.ACTIVE) {
-                final int tableIndex = module.elemInstanceTableIndex(i);
-                final int offsetAddress = module.elemInstanceOffsetAddress(i);
-                final int offsetGlobalIndex = module.elemInstanceGlobalIndex(i);
-                assertTrue(module.checkTableIndex(tableIndex), Failure.UNKNOWN_TABLE);
-                linker.immediatelyResolveElemSegment(context, instance, tableIndex, i, offsetAddress, offsetGlobalIndex, byteOffset, elementCount);
-            } else if (mode == SegmentMode.PASSIVE) {
-                linker.immediatelyResolvePassiveElementSegment(context, instance, i, byteOffset, elementCount);
+            if (elemMode == SegmentMode.ACTIVE) {
+                final int tableIndex;
+                switch (flags & Bytecode.ELEM_SEG_TABLE_INDEX_FLAG) {
+                    case Bytecode.ELEM_SEG_TABLE_INDEX_ZERO:
+                        tableIndex = 0;
+                        break;
+                    case Bytecode.ELEM_SEG_TABLE_INDEX_U8:
+                        tableIndex = rawPeekU8(bytecode, effectiveOffset);
+                        effectiveOffset++;
+                        break;
+                    case Bytecode.ELEM_SEG_TABLE_INDEX_U16:
+                        tableIndex = rawPeekU16(bytecode, effectiveOffset);
+                        effectiveOffset += 2;
+                        break;
+                    case Bytecode.ELEM_SEG_TABLE_INDEX_U32:
+                        tableIndex = rawPeekI32(bytecode, effectiveOffset);
+                        effectiveOffset += 4;
+                        break;
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere();
+                }
+                final int offsetGlobalIndex;
+                switch (flags & Bytecode.ELEM_SEG_GLOBAL_INDEX_FLAG) {
+                    case Bytecode.ELEM_SEG_GLOBAL_INDEX_UNDEFINED:
+                        offsetGlobalIndex = -1;
+                        break;
+                    case Bytecode.ELEM_SEG_GLOBAL_INDEX_U8:
+                        offsetGlobalIndex = rawPeekU8(bytecode, effectiveOffset);
+                        effectiveOffset++;
+                        break;
+                    case Bytecode.ELEM_SEG_GLOBAL_INDEX_U16:
+                        offsetGlobalIndex = rawPeekU16(bytecode, effectiveOffset);
+                        effectiveOffset += 2;
+                        break;
+                    case Bytecode.ELEM_SEG_GLOBAL_INDEX_U32:
+                        offsetGlobalIndex = rawPeekI32(bytecode, effectiveOffset);
+                        effectiveOffset += 4;
+                        break;
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere();
+                }
+                final int offsetAddress;
+                switch (flags & Bytecode.ELEM_SEG_OFFSET_ADDRESS_FLAG) {
+                    case Bytecode.ELEM_SEG_OFFSET_ADDRESS_UNDEFINED:
+                        offsetAddress = -1;
+                        break;
+                    case Bytecode.ELEM_SEG_OFFSET_ADDRESS_U8:
+                        offsetAddress = rawPeekU8(bytecode, effectiveOffset);
+                        effectiveOffset++;
+                        break;
+                    case Bytecode.ELEM_SEG_OFFSET_ADDRESS_U16:
+                        offsetAddress = rawPeekU16(bytecode, effectiveOffset);
+                        effectiveOffset += 2;
+                        break;
+                    case Bytecode.ELEM_SEG_OFFSET_ADDRESS_U32:
+                        offsetAddress = rawPeekI32(bytecode, effectiveOffset);
+                        effectiveOffset += 4;
+                        break;
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere();
+                }
+                linker.immediatelyResolveElemSegment(context, instance, tableIndex, i, offsetAddress, offsetGlobalIndex, effectiveOffset, elemCount);
+            } else if (elemMode == SegmentMode.PASSIVE) {
+                linker.immediatelyResolvePassiveElementSegment(context, instance, i, effectiveOffset, elemCount);
             }
         }
     }
@@ -2156,88 +2301,88 @@ public class BinaryParser extends BinaryStreamParser {
             int effectiveOffset = codeEntryOffset + 1;
 
             final int functionIndex;
-            switch (flags & 0b1100_0000) {
-                case 0b0100_0000:
+            switch (flags & Bytecode.CODE_ENTRY_FUNCTION_INDEX_FLAG) {
+                case Bytecode.CODE_ENTRY_FUNCTION_INDEX_ZERO:
+                    functionIndex = 0;
+                    break;
+                case Bytecode.CODE_ENTRY_FUNCTION_INDEX_U8:
                     functionIndex = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
                     effectiveOffset++;
                     break;
-                case 0b1000_0000:
+                case Bytecode.CODE_ENTRY_FUNCTION_INDEX_U16:
                     functionIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
                     effectiveOffset += 2;
                     break;
-                case 0b1100_0000:
+                case Bytecode.CODE_ENTRY_FUNCTION_INDEX_U32:
                     functionIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
                     effectiveOffset += 4;
                     break;
                 default:
-                    functionIndex = 0;
-                    break;
+                    throw CompilerDirectives.shouldNotReachHere();
             }
             final int maxStackSize;
-            switch (flags & 0b0011_0000) {
-                case 0b0001_0000:
+            switch (flags & Bytecode.CODE_ENTRY_MAX_STACK_SIZE_FLAG) {
+                case Bytecode.CODE_ENTRY_MAX_STACK_SIZE_ZERO:
+                    maxStackSize = 0;
+                    break;
+                case Bytecode.CODE_ENTRY_MAX_STACK_SIZE_U8:
                     maxStackSize = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
                     effectiveOffset++;
                     break;
-                case 0b0010_0000:
+                case Bytecode.CODE_ENTRY_MAX_STACK_SIZE_U16:
                     maxStackSize = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
                     effectiveOffset += 2;
                     break;
-                case 0b0011_0000:
+                case Bytecode.CODE_ENTRY_MAX_STACK_SIZE_U32:
                     maxStackSize = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
                     effectiveOffset += 4;
                     break;
                 default:
-                    maxStackSize = 0;
-                    break;
+                    throw CompilerDirectives.shouldNotReachHere();
             }
             final int bytecodeStartOffset;
-            switch (flags & 0b0000_1100) {
-                case 0b0000_0100:
+            switch (flags & Bytecode.CODE_ENTRY_START_OFFSET_FLAG) {
+                case Bytecode.CODE_ENTRY_START_OFFSET_UNDEFINED:
+                    bytecodeStartOffset = 0;
+                    break;
+                case Bytecode.CODE_ENTRY_START_OFFSET_U8:
                     bytecodeStartOffset = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
                     effectiveOffset++;
                     break;
-                case 0b0000_1000:
+                case Bytecode.CODE_ENTRY_START_OFFSET_U16:
                     bytecodeStartOffset = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
                     effectiveOffset += 2;
                     break;
-                case 0b0000_1100:
+                case Bytecode.CODE_ENTRY_START_OFFSET_U32:
                     bytecodeStartOffset = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
                     effectiveOffset += 4;
                     break;
                 default:
-                    bytecodeStartOffset = 0;
-                    break;
+                    throw CompilerDirectives.shouldNotReachHere();
             }
-            final int bytecodeEndOffset;
-            switch (flags & 0b0000_0011) {
-                case 0b0000_0001:
-                    bytecodeEndOffset = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
-                    effectiveOffset++;
-                    break;
-                case 0b0000_0010:
-                    bytecodeEndOffset = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
-                    effectiveOffset += 2;
-                    break;
-                case 0b0000_0011:
-                    bytecodeEndOffset = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
-                    effectiveOffset += 4;
-                    break;
-                default:
-                    bytecodeEndOffset = 0;
-                    break;
+            final byte[] locals;
+            if ((flags & Bytecode.CODE_ENTRY_LOCALS_FLAG) != 0) {
+                ByteArrayList localsList = new ByteArrayList();
+                for (; bytecode[effectiveOffset] != 0; effectiveOffset++) {
+                    localsList.add(bytecode[effectiveOffset]);
+                }
+                effectiveOffset++;
+                locals = localsList.toArray();
+            } else {
+                locals = Bytecode.EMPTY_BYTES;
             }
-            ByteArrayList locals = new ByteArrayList();
-            for (; bytecode[effectiveOffset] != 0; effectiveOffset++) {
-                locals.add(bytecode[effectiveOffset]);
+            final byte[] results;
+            if ((flags & Bytecode.CODE_ENTRY_RESULT_FLAG) != 0) {
+                ByteArrayList resultsList = new ByteArrayList();
+                for (; bytecode[effectiveOffset] != 0; effectiveOffset++) {
+                    resultsList.add(bytecode[effectiveOffset]);
+                }
+                results = resultsList.toArray();
+            } else {
+                results = Bytecode.EMPTY_BYTES;
             }
-            effectiveOffset++;
-            ByteArrayList results = new ByteArrayList();
-            for (; bytecode[effectiveOffset] != 0; effectiveOffset++) {
-                results.add(bytecode[effectiveOffset]);
-            }
-            List<CallNode> callNodes = readCallNodes(bytecodeStartOffset, bytecodeEndOffset);
-            codeEntries[i] = new CodeEntry(functionIndex, maxStackSize, locals.toArray(), results.toArray(), callNodes, bytecodeStartOffset, bytecodeEndOffset);
+            List<CallNode> callNodes = readCallNodes(bytecodeStartOffset, codeEntryOffset);
+            codeEntries[i] = new CodeEntry(functionIndex, maxStackSize, locals, results, callNodes, bytecodeStartOffset, codeEntryOffset);
         }
         module.setCodeEntries(codeEntries);
     }

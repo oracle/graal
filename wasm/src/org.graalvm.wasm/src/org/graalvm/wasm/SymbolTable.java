@@ -78,9 +78,10 @@ public abstract class SymbolTable {
     private static final byte GLOBAL_MUTABLE_BIT = 0x01;
     private static final byte GLOBAL_EXPORT_BIT = 0x02;
     private static final byte GLOBAL_INITIALIZED_BIT = 0x04;
-    private static final byte GLOBAL_FUNCTION_OR_NULL_BIT = 0x08;
-
+    private static final byte GLOBAL_REFERENCE_BIT = 0x08;
     private static final byte GLOBAL_IMPORTED_BIT = 0x10;
+    private static final byte GLOBAL_FUNCTION_INITIALIZER_BIT = 0x20;
+
     public static final int UNINITIALIZED_ADDRESS = Integer.MIN_VALUE;
     private static final int NO_EQUIVALENCE_CLASS = 0;
     static final int FIRST_EQUIVALENCE_CLASS = NO_EQUIVALENCE_CLASS + 1;
@@ -198,20 +199,6 @@ public abstract class SymbolTable {
         }
     }
 
-    public static class GlobalInfo {
-        public final byte valueType;
-        public byte flags;
-        public final int existingIndex;
-        public final long initialValue;
-
-        public GlobalInfo(byte valueType, byte flags, int existingIndex, long initialValue) {
-            this.valueType = valueType;
-            this.flags = flags;
-            this.existingIndex = existingIndex;
-            this.initialValue = initialValue;
-        }
-    }
-
     /**
      * Encodes the parameter and result types of each function type.
      * <p>
@@ -299,10 +286,12 @@ public abstract class SymbolTable {
      * two bytes -- the lowest (0th) byte is the value type. The 1st byte is organized like this:
      * <p>
      * <code>
-     * | . | . | . | . | . | initialized flag | exported flag | mutable flag |
+     * | . | . | . | functionOrIndex flag | reference flag | initialized flag | exported flag | mutable flag |
      * </code>
      */
-    @CompilationFinal(dimensions = 1) GlobalInfo[] globals;
+    @CompilationFinal(dimensions = 1) private byte[] globalTypes;
+
+    @CompilationFinal(dimensions = 1) private long[] globalInitializers;
 
     /**
      * A mapping between the indices of the imported globals and their import specifiers.
@@ -394,7 +383,8 @@ public abstract class SymbolTable {
         this.exportedFunctions = EconomicMap.create();
         this.exportedFunctionsByIndex = EconomicMap.create();
         this.startFunctionIndex = -1;
-        this.globals = new GlobalInfo[INITIAL_GLOBALS_SIZE];
+        this.globalTypes = new byte[2 * INITIAL_GLOBALS_SIZE];
+        this.globalInitializers = new long[INITIAL_GLOBALS_SIZE];
         this.importedGlobals = EconomicMap.create();
         this.exportedGlobals = EconomicMap.create();
         this.numGlobals = 0;
@@ -430,12 +420,6 @@ public abstract class SymbolTable {
 
     public void checkFunctionIndex(int funcIndex) {
         assertUnsignedIntLess(funcIndex, numFunctions, Failure.UNKNOWN_FUNCTION);
-    }
-
-    private static byte[] reallocate(byte[] array, int currentSize, int newLength) {
-        byte[] newArray = new byte[newLength];
-        System.arraycopy(array, 0, newArray, 0, currentSize);
-        return newArray;
     }
 
     private static int[] reallocate(int[] array, int currentSize, int newLength) {
@@ -712,10 +696,13 @@ public abstract class SymbolTable {
     }
 
     private void ensureGlobalsCapacity(int index) {
-        while (index >= globals.length) {
-            final GlobalInfo[] nGlobalTypes = new GlobalInfo[globals.length * 2];
-            System.arraycopy(globals, 0, nGlobalTypes, 0, globals.length);
-            globals = nGlobalTypes;
+        while (index >= globalInitializers.length) {
+            final byte[] nGlobalTypes = new byte[globalTypes.length * 2];
+            final long[] nGlobalInitializers = new long[globalInitializers.length * 2];
+            System.arraycopy(globalTypes, 0, nGlobalTypes, 0, globalTypes.length);
+            System.arraycopy(globalInitializers, 0, nGlobalInitializers, 0, globalInitializers.length);
+            globalTypes = nGlobalTypes;
+            globalInitializers = nGlobalInitializers;
         }
     }
 
@@ -740,12 +727,19 @@ public abstract class SymbolTable {
             flags |= GLOBAL_INITIALIZED_BIT;
         }
         if (functionOrNull) {
-            flags |= GLOBAL_FUNCTION_OR_NULL_BIT;
+            flags |= GLOBAL_REFERENCE_BIT;
         }
         if (imported) {
             flags |= GLOBAL_IMPORTED_BIT;
         }
-        globals[index] = new GlobalInfo(valueType, flags, existingIndex, initialValue);
+        if (existingIndex == -1) {
+            flags |= GLOBAL_FUNCTION_INITIALIZER_BIT;
+            globalInitializers[index] = initialValue;
+        } else {
+            globalInitializers[index] = existingIndex;
+        }
+        globalTypes[2 * index] = valueType;
+        globalTypes[2 * index + 1] = flags;
     }
 
     void declareExternalGlobal(int index, WasmGlobal global) {
@@ -794,14 +788,8 @@ public abstract class SymbolTable {
         return numGlobals;
     }
 
-    @SuppressWarnings("unused")
-    private boolean globalExported(int index) {
-        final int exportStatus = globals[index].flags & GLOBAL_EXPORT_BIT;
-        return exportStatus != 0;
-    }
-
     byte globalMutability(int index) {
-        if ((globals[index].flags & GLOBAL_MUTABLE_BIT) != 0) {
+        if ((globalTypes[2 * index + 1] & GLOBAL_MUTABLE_BIT) != 0) {
             return GlobalModifier.MUTABLE;
         } else {
             return GlobalModifier.CONSTANT;
@@ -813,27 +801,35 @@ public abstract class SymbolTable {
     }
 
     public byte globalValueType(int index) {
-        return globals[index].valueType;
+        return globalTypes[2 * index];
     }
 
     public boolean globalInitialized(int index) {
-        return (globals[index].flags & GLOBAL_INITIALIZED_BIT) != 0;
+        return (globalTypes[2 * index + 1] & GLOBAL_INITIALIZED_BIT) != 0;
     }
 
     public boolean globalFunctionOrNull(int index) {
-        return (globals[index].flags & GLOBAL_FUNCTION_OR_NULL_BIT) != 0;
+        return (globalTypes[2 * index + 1] & GLOBAL_REFERENCE_BIT) != 0;
     }
 
     public int globalExistingIndex(int index) {
-        return globals[index].existingIndex;
+        if ((globalTypes[2 * index + 1] & GLOBAL_FUNCTION_INITIALIZER_BIT) != 0) {
+            return -1;
+        } else {
+            return (int) globalInitializers[index];
+        }
     }
 
     public long globalInitialValue(int index) {
-        return globals[index].initialValue;
+        if ((globalTypes[2 * index + 1] & GLOBAL_FUNCTION_INITIALIZER_BIT) != 0) {
+            return globalInitializers[index];
+        } else {
+            return 0;
+        }
     }
 
     public boolean globalImported(int index) {
-        return (globals[index].flags & GLOBAL_IMPORTED_BIT) != 0;
+        return (globalTypes[2 * index + 1] & GLOBAL_IMPORTED_BIT) != 0;
     }
 
     public EconomicMap<String, Integer> exportedGlobals() {
@@ -854,7 +850,7 @@ public abstract class SymbolTable {
     void exportGlobal(String name, int index) {
         checkNotParsed();
         exportSymbol(name);
-        globals[index].flags |= GLOBAL_EXPORT_BIT;
+        globalTypes[2 * index + 1] |= GLOBAL_EXPORT_BIT;
         exportedGlobals.put(name, index);
         module().addLinkAction((context, instance) -> context.linker().resolveGlobalExport(instance.module(), name, index));
     }
@@ -1118,140 +1114,8 @@ public abstract class SymbolTable {
         }
     }
 
-    public int dataInstanceMode(int index) {
-        assert index < dataInstances.length;
-        final int bytecodeOffset = dataInstances[index];
-        return module().bytecode()[bytecodeOffset] & 0b0000_0011;
-    }
-
     public int dataInstanceOffset(int index) {
-        assert index < dataInstances.length;
-        final int bytecodeOffset = dataInstances[index];
-        final byte[] bytecode = module().bytecode();
-        final int flags = bytecode[bytecodeOffset];
-        int effectiveOffset = bytecodeOffset + 1;
-
-        final int lengthEncoding = flags & 0b1100_0000;
-        switch (lengthEncoding) {
-            case 0b0100_0000:
-                effectiveOffset++;
-                break;
-            case 0b1000_0000:
-                effectiveOffset += 2;
-                break;
-            case 0b1100_0000:
-                effectiveOffset += 4;
-                break;
-        }
-        final int globalIndexEncoding = flags & 0b0011_0000;
-        switch (globalIndexEncoding) {
-            case 0b0001_0000:
-                effectiveOffset++;
-                break;
-            case 0b0010_0000:
-                effectiveOffset += 2;
-                break;
-            case 0b0011_0000:
-                effectiveOffset += 4;
-                break;
-        }
-        final int offsetAddressEncoding = flags & 0b0000_1100;
-        switch (offsetAddressEncoding) {
-            case 0b0000_0100:
-                effectiveOffset++;
-                break;
-            case 0b0000_1000:
-                effectiveOffset += 2;
-                break;
-            case 0b0000_1100:
-                effectiveOffset += 4;
-                break;
-        }
-        return effectiveOffset;
-    }
-
-    public int dataInstanceLength(int index) {
-        assert index < dataInstances.length;
-        final int bytecodeOffset = dataInstances[index];
-        final byte[] bytecode = module().bytecode();
-        final int flags = bytecode[bytecodeOffset];
-        final int lengthEncoding = flags & 0b1100_0000;
-        switch (lengthEncoding) {
-            case 0b0100_0000:
-                return BinaryStreamParser.rawPeekU8(bytecode, bytecodeOffset + 1);
-            case 0b1000_0000:
-                return BinaryStreamParser.rawPeekU16(bytecode, bytecodeOffset + 1);
-            case 0b1100_0000:
-                return BinaryStreamParser.rawPeekI32(bytecode, bytecodeOffset + 1);
-            default:
-                return 0;
-        }
-    }
-
-    public int dataInstanceGlobalIndex(int index) {
-        assert index < dataInstances.length;
-        final int bytecodeOffset = dataInstances[index];
-        final byte[] bytecode = module().bytecode();
-        final int flags = bytecode[bytecodeOffset];
-        int effectiveOffset = bytecodeOffset + 1;
-
-        final int lengthEncoding = flags & 0b1100_0000;
-        switch (lengthEncoding) {
-            case 0b0100_0000:
-                effectiveOffset++;
-                break;
-            case 0b1000_0000:
-                effectiveOffset += 2;
-                break;
-            case 0b1100_0000:
-                effectiveOffset += 4;
-                break;
-        }
-
-        final int globalIndexEncoding = flags & 0b0011_0000;
-        switch (globalIndexEncoding) {
-            case 0b0001_0000:
-                return BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
-            case 0b0010_0000:
-                return BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
-            case 0b0011_0000:
-                return BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
-            default:
-                return -1;
-        }
-    }
-
-    public int dataInstanceOffsetAddress(int index) {
-        assert index < dataInstances.length;
-        final int bytecodeOffset = dataInstances[index];
-        final byte[] bytecode = module().bytecode();
-        final int flags = bytecode[bytecodeOffset];
-        int effectiveOffset = bytecodeOffset + 1;
-
-        final int lengthEncoding = flags & 0b1100_0000;
-        switch (lengthEncoding) {
-            case 0b0100_0000:
-                effectiveOffset++;
-                break;
-            case 0b1000_0000:
-                effectiveOffset += 2;
-                break;
-            case 0b1100_0000:
-                effectiveOffset += 4;
-                break;
-        }
-
-        final int offsetAddressEncoding = flags & 0b0000_1100;
-        switch (offsetAddressEncoding) {
-            case 0b0000_0100:
-                return BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
-            case 0b0000_1000:
-                return BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
-            case 0b0000_1100:
-                return BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
-            default:
-                return -1;
-        }
+        return dataInstances[index];
     }
 
     public int dataInstanceCount() {
@@ -1278,219 +1142,12 @@ public abstract class SymbolTable {
 
     void setElemInstance(int index, int offset, byte elemType) {
         ensureElemInstanceCapacity(index);
-        elemInstances[index] = (long) offset << 32 | elemType;
+        elemInstances[index] = (long) offset << 32 | (elemType & 0xFF);
         elemSegmentCount++;
     }
 
-    public int elemInstanceMode(int index) {
-        assert index < elemInstances.length;
-        final int bytecodeOffset = (int) (elemInstances[index] >>> 32);
-        return module().bytecode()[bytecodeOffset] & 0b0000_0011;
-    }
-
     public int elemInstanceOffset(int index) {
-        assert index < elemInstances.length;
-        final int bytecodeOffset = (int) (elemInstances[index] >>> 32);
-        final byte[] bytecode = module().bytecode();
-        final int flags = bytecode[bytecodeOffset];
-        final int elemType = bytecode[bytecodeOffset + 1];
-        int effectiveOffset = bytecodeOffset + 2;
-
-        final int countEncoding = flags & 0b1100_0000;
-        switch (countEncoding) {
-            case 0b0100_0000:
-                effectiveOffset++;
-                break;
-            case 0b1000_0000:
-                effectiveOffset += 2;
-                break;
-            case 0b1100_0000:
-                effectiveOffset += 4;
-                break;
-        }
-        final int tableIndexEncoding = elemType & 0b1100_0000;
-        switch (tableIndexEncoding) {
-            case 0b0100_0000:
-                effectiveOffset++;
-                break;
-            case 0b1000_0000:
-                effectiveOffset += 2;
-                break;
-            case 0b1100_0000:
-                effectiveOffset += 4;
-                break;
-        }
-
-        final int globalIndexEncoding = flags & 0b0011_0000;
-        switch (globalIndexEncoding) {
-            case 0b0001_0000:
-                effectiveOffset++;
-                break;
-            case 0b0010_0000:
-                effectiveOffset += 2;
-                break;
-            case 0b0011_0000:
-                effectiveOffset += 4;
-                break;
-        }
-
-        final int offsetAddressEncoding = flags & 0b0000_1100;
-        switch (offsetAddressEncoding) {
-            case 0b0000_0100:
-                effectiveOffset++;
-                break;
-            case 0b0000_1000:
-                effectiveOffset += 2;
-                break;
-            case 0b0000_1100:
-                effectiveOffset += 4;
-                break;
-        }
-        return effectiveOffset;
-    }
-
-    public int elemInstanceItemCount(int index) {
-        assert index < elemInstances.length;
-        final int bytecodeOffset = (int) (elemInstances[index] >>> 32);
-        final byte[] bytecode = module().bytecode();
-        final int flags = bytecode[bytecodeOffset];
-        final int encoding = flags & 0b1100_0000;
-        switch (encoding) {
-            case 0b0100_0000:
-                return BinaryStreamParser.rawPeekU8(bytecode, bytecodeOffset + 2);
-            case 0b1000_0000:
-                return BinaryStreamParser.rawPeekU16(bytecode, bytecodeOffset + 2);
-            case 0b1100_0000:
-                return BinaryStreamParser.rawPeekI32(bytecode, bytecodeOffset + 2);
-            default:
-                return 0;
-        }
-    }
-
-    public int elemInstanceTableIndex(int index) {
-        assert index < elemInstances.length;
-        final int bytecodeOffset = (int) (elemInstances[index] >>> 32);
-        final byte[] bytecode = module().bytecode();
-        final int flags = bytecode[bytecodeOffset];
-        final int elemType = bytecode[bytecodeOffset + 1];
-        int effectiveOffset = bytecodeOffset + 2;
-
-        final int countEncoding = flags & 0b1100_0000;
-        switch (countEncoding) {
-            case 0b0100_0000:
-                effectiveOffset++;
-                break;
-            case 0b1000_0000:
-                effectiveOffset += 2;
-                break;
-            case 0b1100_0000:
-                effectiveOffset += 4;
-                break;
-        }
-
-        final int tableIndexEncoding = elemType & 0b1100_0000;
-        switch (tableIndexEncoding) {
-            case 0b0100_0000:
-                return BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
-            case 0b1000_0000:
-                return BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
-            case 0b1100_0000:
-                return BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
-            default:
-                return 0;
-        }
-    }
-
-    public int elemInstanceGlobalIndex(int index) {
-        assert index < elemInstances.length;
-        final int bytecodeOffset = (int) (elemInstances[index] >>> 32);
-        final byte[] bytecode = module().bytecode();
-        final int flags = bytecode[bytecodeOffset];
-        final int elemType = bytecode[bytecodeOffset + 1];
-        int effectiveOffset = bytecodeOffset + 2;
-
-        final int countEncoding = flags & 0b1100_0000;
-        switch (countEncoding) {
-            case 0b0100_0000:
-                effectiveOffset++;
-                break;
-            case 0b1000_0000:
-                effectiveOffset += 2;
-                break;
-            case 0b1100_0000:
-                effectiveOffset += 4;
-                break;
-        }
-        final int tableIndexEncoding = elemType & 0b1100_0000;
-        switch (tableIndexEncoding) {
-            case 0b0100_0000:
-                effectiveOffset++;
-                break;
-            case 0b1000_0000:
-                effectiveOffset += 2;
-                break;
-            case 0b1100_0000:
-                effectiveOffset += 4;
-                break;
-        }
-
-        final int globalIndexEncoding = flags & 0b0011_0000;
-        switch (globalIndexEncoding) {
-            case 0b0001_0000:
-                return BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
-            case 0b0010_0000:
-                return BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
-            case 0b0011_0000:
-                return BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
-            default:
-                return -1;
-        }
-    }
-
-    public int elemInstanceOffsetAddress(int index) {
-        assert index < elemInstances.length;
-        final int bytecodeOffset = (int) (elemInstances[index] >>> 32);
-        final byte[] bytecode = module().bytecode();
-        final int flags = bytecode[bytecodeOffset];
-        final int elemType = bytecode[bytecodeOffset + 1];
-        int effectiveOffset = bytecodeOffset + 2;
-
-        final int countEncoding = flags & 0b1100_0000;
-        switch (countEncoding) {
-            case 0b0100_0000:
-                effectiveOffset++;
-                break;
-            case 0b1000_0000:
-                effectiveOffset += 2;
-                break;
-            case 0b1100_0000:
-                effectiveOffset += 4;
-                break;
-        }
-        final int tableIndexEncoding = elemType & 0b1100_0000;
-        switch (tableIndexEncoding) {
-            case 0b0100_0000:
-                effectiveOffset++;
-                break;
-            case 0b1000_0000:
-                effectiveOffset += 2;
-                break;
-            case 0b1100_0000:
-                effectiveOffset += 4;
-                break;
-        }
-
-        final int offsetAddressEncoding = flags & 0b0000_1100;
-        switch (offsetAddressEncoding) {
-            case 0b0000_0100:
-                return BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
-            case 0b0000_1000:
-                return BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
-            case 0b0000_1100:
-                return BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
-            default:
-                return -1;
-        }
+        return (int) (elemInstances[index] >>> 32);
     }
 
     public int elemInstanceCount() {
