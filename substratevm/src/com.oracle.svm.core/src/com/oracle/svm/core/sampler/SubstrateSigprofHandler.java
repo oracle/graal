@@ -344,7 +344,7 @@ public abstract class SubstrateSigprofHandler {
              * walk was interrupted because stack size exceeded given depth.
              */
             if (JavaStackWalker.walkCurrentThread(sp, ip, visitor()) || data.getTruncated()) {
-                SamplerSampleWriter.end(data);
+                SamplerSampleWriter.end(data, SamplerSampleWriter.SAMPLE_EVENT_DATA_END);
             }
         }
     }

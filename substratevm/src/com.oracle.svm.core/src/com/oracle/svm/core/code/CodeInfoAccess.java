@@ -41,7 +41,6 @@ import com.oracle.svm.core.code.FrameInfoDecoder.ValueInfoAllocator;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
@@ -485,8 +484,8 @@ public final class CodeInfoAccess {
             return this;
         }
 
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public FrameInfoQueryResult newFrameInfoQueryResult() {
             if (fired) {
                 return null;
@@ -498,26 +497,26 @@ public final class CodeInfoAccess {
     }
 
     public static class DummyValueInfoAllocator implements ValueInfoAllocator {
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public FrameInfoQueryResult.ValueInfo newValueInfo() {
             return null;
         }
 
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public FrameInfoQueryResult.ValueInfo[] newValueInfoArray(int len) {
             return null;
         }
 
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public FrameInfoQueryResult.ValueInfo[][] newValueInfoArrayArray(int len) {
             return null;
         }
 
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void decodeConstant(FrameInfoQueryResult.ValueInfo valueInfo, NonmovableObjectArray<?> frameInfoObjectConstants) {
         }
     }
