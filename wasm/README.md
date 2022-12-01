@@ -16,8 +16,8 @@ Feedback, bug reports, and open-source contributions are welcome!
 
 - Python 3 (required by `mx`)
 - GIT (to download, update, and locate repositories)
-- A [JVMCI-enabled JDK 8](https://github.com/graalvm/graal-jvmci-8/releases) or a newer JDK version (JDK 9+)
-- GCC for translating C files
+- JDK 11+
+- emscripten or wasi-sdk for translating C files
 
 ### Building
 
@@ -56,7 +56,6 @@ $ mx --dy /truffle,/compiler build
 
 These steps will build the `wasm.jar` file in the `mxbuild/dists/jdk<version>` directory,
 which contains the GraalWasm implementation.
-
 
 ## Tests and Benchmarks
 
@@ -315,3 +314,20 @@ mainFunction.execute();
 
 For more polyglot-related examples, consult the documentation at the
 [GraalVM website](https://www.graalvm.org/reference-manual/polyglot-programming/).
+
+## Compiling C files with the wasi-sdk
+
+1. Download the [wasi-sdk](https://github.com/WebAssembly/wasi-sdk/releases) and unpack it.
+2. Set `WASI_SDK`:
+   ```bash
+   $ export WASI_SDK=[path to wasi-sdk]
+   ```
+3. Compile the C files
+   ```bash
+   $ $WASI_SDK/bin/clang -O3 -o test.wasm test.c
+   ```
+   To export a specific function use the linker flag `-Wl,--export="[function name]"`.
+4. Most applications compiled with the wasi-sdk require WASI. To run a file with WASI enabled use the following command:
+   ```bash
+   $ graalvm/bin/wasm --Builtins=wasi_snapshot_preview1 test.wasm 
+   ```
