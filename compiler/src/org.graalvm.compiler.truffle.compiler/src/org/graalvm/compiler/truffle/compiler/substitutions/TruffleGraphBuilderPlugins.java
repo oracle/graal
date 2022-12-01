@@ -102,8 +102,8 @@ import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.ForceMaterializeNode;
-import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameAccessFlags;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.NewFrameNode;
+import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameAccessFlags;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameAccessType;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameClearNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameCopyNode;
@@ -541,6 +541,7 @@ public class TruffleGraphBuilderPlugins {
         registerFrameAccessors(r, JavaKind.Float);
         registerFrameAccessors(r, JavaKind.Boolean);
         registerFrameAccessors(r, JavaKind.Byte);
+        registerOSRFrameTransferMethods(r);
 
         registerFrameTagAccessor(r);
         registerFrameAuxiliaryAccessors(r);
@@ -682,6 +683,22 @@ public class TruffleGraphBuilderPlugins {
             }
         }
         return -1;
+    }
+
+    private static void registerOSRFrameTransferMethods(Registration r) {
+        TruffleCompilerRuntime runtime = getRuntime();
+        int accessTag = runtime.getFrameSlotKindTagForJavaKind(JavaKind.Long);
+        r.register(new RequiredInvocationPlugin("transferOSRStaticPrimitiveSlot", Receiver.class, int.class, long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode, ValueNode value) {
+                int frameSlotIndex = maybeGetConstantNumberedFrameSlotIndex(frameNode, frameSlotNode);
+                if (frameSlotIndex >= 0) {
+                    b.add(new VirtualFrameSetNode(frameNode, frameSlotIndex, accessTag, value, VirtualFrameAccessType.Indexed, VirtualFrameAccessFlags.STATIC_OSR));
+                    return true;
+                }
+                return false;
+            }
+        });
     }
 
     private static void registerFrameMethods(Registration r) {

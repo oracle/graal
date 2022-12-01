@@ -761,13 +761,17 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             indexedTags[slot] = STATIC_OBJECT_TAG;
             target.setObjectStatic(slot, getObjectStatic(slot));
             indexedTags[slot] = STATIC_LONG_TAG;
-            target.setLongStatic(slot, getLongStatic(slot));
+            target.transferOSRStaticPrimitiveSlot(slot, getLongStatic(slot));
             indexedTags[slot] = tag;
             target.setStaticSlotTag(slot, tag);
         } else {
             target.setObjectStatic(slot, getObjectStatic(slot));
-            target.setLongStatic(slot, getLongStatic(slot));
+            target.transferOSRStaticPrimitiveSlot(slot, getLongStatic(slot));
         }
+    }
+
+    private void transferOSRStaticPrimitiveSlot(int slot, long value) {
+        setLongStatic(slot, value);
     }
 
     private void setStaticSlotTag(int slot, byte tag) {

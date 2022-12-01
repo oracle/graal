@@ -23,21 +23,24 @@
  * questions.
  */
 
-package org.graalvm.compiler.truffle.compiler.nodes.frame;
+package org.graalvm.compiler.nodes;
 
-public final class VirtualFrameAccessFlags {
-    static final byte STATIC_FLAG = 1 << 0;
-    static final byte PRIMITIVE_FLAG = 1 << 1;
-    static final byte OBJECT_FLAG = 1 << 2;
-    static final byte SET_TAG_FLAG = 1 << 3;
-    static final byte OSR_TRANSFER_FLAG = 1 << 4;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 
-    public static final byte NON_STATIC = PRIMITIVE_FLAG | OBJECT_FLAG | SET_TAG_FLAG;
+/**
+ * Represent a primitive value in the graph which requires a custom value when merging during PEA.
+ */
+public interface PEACustomPhiValueProviderNode extends ValueNodeInterface {
+    /**
+     * Customizes a given entry to a phi during merging.
+     */
+    ValueNode transformEntry(ValueNode entryNode, VirtualizerTool tool);
 
-    public static final byte NON_STATIC_NO_SET_TAG = PRIMITIVE_FLAG | OBJECT_FLAG;
-
-    public static final byte STATIC = STATIC_FLAG | PRIMITIVE_FLAG | OBJECT_FLAG | SET_TAG_FLAG;
-    public static final byte STATIC_OSR = STATIC_FLAG | PRIMITIVE_FLAG | SET_TAG_FLAG | OSR_TRANSFER_FLAG;
-    public static final byte STATIC_PRIMITIVE = STATIC_FLAG | PRIMITIVE_FLAG | SET_TAG_FLAG;
-    public static final byte STATIC_OBJECT = STATIC_FLAG | OBJECT_FLAG | SET_TAG_FLAG;
+    /**
+     * The custom stamp of the phi created during merging.
+     */
+    default Stamp phiStamp() {
+        return asNode().stamp(NodeView.DEFAULT);
+    }
 }
