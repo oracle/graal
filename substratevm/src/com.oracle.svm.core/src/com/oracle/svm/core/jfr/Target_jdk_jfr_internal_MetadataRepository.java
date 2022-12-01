@@ -37,7 +37,7 @@ final class Target_jdk_jfr_internal_MetadataRepository {
      * Ignore all state of the FlightRecorder maintained when profiling the image generator itself.
      */
 
-    @Alias
+    @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
     private static MetadataRepository instance = new MetadataRepository();
 }

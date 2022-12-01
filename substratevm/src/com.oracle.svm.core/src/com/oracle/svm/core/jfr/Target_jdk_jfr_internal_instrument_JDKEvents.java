@@ -39,7 +39,7 @@ import jdk.jfr.events.SocketWriteEvent;
 @TargetClass(className = "jdk.jfr.internal.instrument.JDKEvents", onlyWith = HasJfrSupport.class)
 final class Target_jdk_jfr_internal_instrument_JDKEvents {
 
-    @Alias
+    @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true) private static Class<?>[] eventClasses = {
                     FileForceEvent.class,
                     FileReadEvent.class,
@@ -53,9 +53,9 @@ final class Target_jdk_jfr_internal_instrument_JDKEvents {
     // This is a list of the classes with instrumentation code that should be applied.
     // Instrumentation code should have already been applied when JFR was enabled during image
     // build.
-    @Alias
+    @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true) private static Class<?>[] instrumentationClasses = new Class<?>[]{};
 
-    @Alias
+    @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true) private static Class<?>[] mirrorEventClasses = new Class<?>[]{};
 }
