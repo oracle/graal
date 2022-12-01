@@ -20,6 +20,21 @@
       <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable Class.getSimpleName calls"/>
     </module>
 
+    <module name="RegexpSinglelineJava">
+      <property name="id" value="systemErr"/>
+      <metadata name="net.sf.eclipsecs.core.comment" value="Disallow calls to System.err."/>
+      <property name="severity" value="error"/>
+      <property name="format" value="System\.err"/>
+      <property name="message" value="Calls to System.err are restricted. Please use logging or System.out instead. (Use &quot;// Checkstyle: allow System.err ... // Checkstyle: disallow System.err&quot; to disable this check.)"/>
+      <property name="ignoreComments" value="true"/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="Checkstyle: allow System.err"/>
+      <property name="onCommentFormat" value="Checkstyle: disallow System.err"/>
+      <property name="idFormat" value="systemErr"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable System.err calls"/>
+    </module>
+
     <module name="AvoidStarImport">
       <property name="allowClassImports" value="false"/>
       <property name="allowStaticMemberImports" value="false"/>
