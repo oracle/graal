@@ -39,8 +39,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import org.junit.Test;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Locale;
-import java.util.Map;
 
 /**
  *
@@ -140,7 +140,7 @@ public class ArtifactParserTest extends TestBase {
             ap = new ArtifactParser(jo);
             fail("StringIndexOutOfBoundsException expected.");
         } catch (StringIndexOutOfBoundsException ex) {
-            assertEquals("begin 0, end -1, length 15", ex.getMessage());
+            assertEquals("String index out of range: -1", ex.getMessage());
             // expected
         }
         jo.put(JSON_KEY_DISP_NAME, JSON_VAL_DISP_NAME + SystemUtils.OS.get().getName());
@@ -198,10 +198,12 @@ public class ArtifactParserTest extends TestBase {
         assertEquals(JSON_VAL_LIC_NAME, ci.getLicenseType());
         assertEquals(DistributionType.OPTIONAL, ci.getDistributionType());
         assertEquals(Collections.singleton(JSON_META_VAL_WORK_DIR), ci.getWorkingDirectories());
-        assertEquals(Map.of(REQ_ARCH, JSON_META_VAL_ARCH.toLowerCase(Locale.ENGLISH),
-                        REQ_OS, JSON_META_VAL_OS.toLowerCase(Locale.ENGLISH),
-                        REQ_JAVA, JSON_META_VAL_JAVA,
-                        REQ_VER, JSON_META_VAL_VERSION), ci.getRequiredGraalValues());
+        HashMap<String, String> expected = new HashMap<>();
+        expected.put(REQ_ARCH, JSON_META_VAL_ARCH.toLowerCase(Locale.ENGLISH));
+        expected.put(REQ_OS, JSON_META_VAL_OS.toLowerCase(Locale.ENGLISH));
+        expected.put(REQ_JAVA, JSON_META_VAL_JAVA);
+        expected.put(REQ_VER, JSON_META_VAL_VERSION);
+        assertEquals(expected, ci.getRequiredGraalValues());
         assertEquals(Collections.singleton(JSON_META_VAL_SYMBOLIC_NAME), ci.getDependencies());
         assertEquals(StabilityLevel.fromName(JSON_META_VAL_STAB_EXPERIMENTAL), ci.getStability());
         setMeta(jo, JSON_META_KEY_STABILITY_LEVEL, JSON_META_VAL_STAB_SUPPORTED);

@@ -32,6 +32,7 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 import java.io.IOException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -70,10 +71,12 @@ public class GDSCatalogStorageTest extends CommandTestBase {
     }
 
     List<ComponentInfo> getComps() {
-        return List.of(new ComponentInfo(ID1, "name11", Version.NO_VERSION),
-                        new ComponentInfo(ID1, "name12", Version.NO_VERSION),
-                        new ComponentInfo(ID2, "name21", Version.NO_VERSION),
-                        new ComponentInfo(ID2, "name22", Version.NO_VERSION));
+        List<ComponentInfo> out = new ArrayList<>();
+        out.add(new ComponentInfo(ID1, "name11", Version.NO_VERSION));
+        out.add(new ComponentInfo(ID1, "name12", Version.NO_VERSION));
+        out.add(new ComponentInfo(ID2, "name21", Version.NO_VERSION));
+        out.add(new ComponentInfo(ID2, "name22", Version.NO_VERSION));
+        return out;
     }
 
     HashMap<String, Set<ComponentInfo>> getMapComps() {

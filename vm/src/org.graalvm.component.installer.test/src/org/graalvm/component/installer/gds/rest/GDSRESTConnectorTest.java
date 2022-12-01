@@ -50,6 +50,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -340,7 +341,7 @@ public class GDSRESTConnectorTest extends TestBase {
         public Map<String, List<String>> getParams() {
             // used to build URL querry then cleared
             Map<String, List<String>> parms = super.getParams();
-            testParams = Map.copyOf(parms);
+            testParams = new HashMap<>(parms);
             return Collections.emptyMap();
         }
 

@@ -109,13 +109,7 @@ suite = {
       "sha1" : "03ab18f3f0409fbed479c3c1c2cccec0d1b483c1",
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/com.oracle.truffle.impl.asm-7.2.0.jar"],
     },
-    
-    "TruffleJSON" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20220320.jar"],
-      "sha1" : "bb27152e93770f4e0c993efd3e620133817e5edb",
-      "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20220320-src.jar"],
-      "sourceSha1" : "d085e808a3ef7549cdb72a20056e5f87469f8d56",
-    },
+
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
   "projects" : {
