@@ -70,7 +70,7 @@ public class StandalonePointsToAnalysis extends PointsToAnalysis {
     public void onTypeInitialized(AnalysisType type) {
         AnalysisMethod clinitMethod = type.getClassInitializer();
         if (clinitMethod != null && !addedClinits.contains(clinitMethod)) {
-            addRootMethod(clinitMethod, true).registerAsImplementationInvoked();
+            addRootMethod(clinitMethod, true).registerAsImplementationInvoked(type);
             addedClinits.add(clinitMethod);
         }
     }

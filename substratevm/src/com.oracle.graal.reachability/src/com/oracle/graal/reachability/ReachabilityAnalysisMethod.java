@@ -104,8 +104,8 @@ public class ReachabilityAnalysisMethod extends AnalysisMethod {
     }
 
     @Override
-    public boolean registerAsInvoked() {
-        if (super.registerAsInvoked()) {
+    public boolean registerAsInvoked(Object invokeReason) {
+        if (super.registerAsInvoked(invokeReason)) {
             if (!isStatic()) {
                 getDeclaringClass().addInvokedVirtualMethod(this);
             }
@@ -126,7 +126,7 @@ public class ReachabilityAnalysisMethod extends AnalysisMethod {
     public static StructuredGraph getDecodedGraph(ReachabilityAnalysisEngine bb, ReachabilityAnalysisMethod method) {
         AnalysisParsedGraph analysisParsedGraph = method.ensureGraphParsed(bb);
         if (analysisParsedGraph.isIntrinsic()) {
-            method.registerAsIntrinsicMethod();
+            method.registerAsIntrinsicMethod("reachability analysis engine");
         }
         AnalysisError.guarantee(analysisParsedGraph.getEncodedGraph() != null, "Cannot provide  a summary for %s.", method.getQualifiedName());
 
