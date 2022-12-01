@@ -39,7 +39,7 @@ import sys
 import atexit
 from mx_gate import Task
 
-from os import environ, listdir, remove, linesep
+from os import environ, listdir, remove, linesep, pathsep
 from os.path import join, exists, dirname, isdir, isfile, getsize, abspath
 from tempfile import NamedTemporaryFile, mkdtemp
 from contextlib import contextmanager
@@ -65,6 +65,7 @@ class VmGateTasks:
     integration = 'integration'
     tools = 'tools'
     libgraal = 'libgraal'
+    svm_tck_test = 'svm_tck_test'
     svm_sl_tck = 'svm_sl_tck'
     svm_truffle_tck_js = 'svm-truffle-tck-js'
     svm_truffle_tck_python = 'svm-truffle-tck-python'
@@ -423,6 +424,7 @@ def gate_body(args, tasks):
     gate_substratevm(tasks, quickbuild=True)
     gate_sulong(tasks)
     gate_python(tasks)
+    gate_svm_truffle_tck_smoke_test(tasks)
     gate_svm_sl_tck(tasks)
     gate_svm_truffle_tck_js(tasks)
     gate_svm_truffle_tck_python(tasks)
@@ -509,24 +511,32 @@ def gate_python(tasks):
             python_suite = mx.suite("graalpython")
             python_suite.extensions.run_python_unittests(python_svm_image_path)
 
-def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id):
-    cp = None
-    for dist in svm_suite.dists:
-        if dist.name == 'SVM_TRUFFLE_TCK':
-            cp = dist.classpath_repr()
-            break
-    if not cp:
+def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id, language_distribution=None, fail_on_error=True):
+    assert not language_distribution if language_suite else language_distribution, 'Either language_suite or language_distribution must be given'
+    dists = [d for d in svm_suite.dists if d.name == 'SVM_TRUFFLE_TCK']
+    if not dists:
         mx.abort("Cannot resolve: SVM_TRUFFLE_TCK distribution.")
+
+    def _collect_excludes(suite, suite_import, excludes):
+        excludes_dir = join(suite.mxDir, 'truffle.tck.permissions')
+        if isdir(excludes_dir):
+            for excludes_file in listdir(excludes_dir):
+                excludes.append(join(excludes_dir, excludes_file))
+        imported_suite = mx.suite(suite_import.name)
+        imported_suite.visit_imports(_collect_excludes, excludes=excludes)
+
     excludes = []
-    excludes_dir = join(language_suite.mxDir, 'truffle.tck.permissions')
-    if isdir(excludes_dir):
-        for excludes_file in listdir(excludes_dir):
-            excludes.append(join(excludes_dir, excludes_file))
+    if language_suite:
+        language_suite.visit_imports(_collect_excludes, excludes=excludes)
+        macro_options = [f'--language:{language_id}']
+    else:
+        macro_options = ['--macro:truffle']
+        dists = dists + [language_distribution]
+    cp = pathsep.join([d.classpath_repr() for d in dists])
     svmbuild = mkdtemp()
     try:
         report_file = join(svmbuild, "language_permissions.log")
-        options = [
-            f'--language:{language_id}',
+        options = macro_options + [
             '--features=com.oracle.svm.truffle.tck.PermissionsFeature',
             '-H:ClassInitialization=:build_time',
             '-H:+EnforceMaxRuntimeCompileMethods',
@@ -545,9 +555,32 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id):
             with open(report_file, "r") as f:
                 for line in f.readlines():
                     message = message + line
-            mx.abort(message)
+            if fail_on_error:
+                mx.abort(message)
+            else:
+                return message
     finally:
         mx.rmtree(svmbuild)
+    return None
+
+def gate_svm_truffle_tck_smoke_test(tasks):
+    with Task('SVM Truffle TCK Smoke Test', tasks, tags=[VmGateTasks.svm_tck_test]) as t:
+        if t:
+            truffle_suite = mx.suite('truffle')
+            test_language_dist = [d for d in truffle_suite.dists if d.name == 'TRUFFLE_TCK_TESTS_LANGUAGE'][0]
+            native_image_context, svm = graalvm_svm()
+            with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
+                result = _svm_truffle_tck(native_image, svm.suite, None, 'TCKSmokeTestLanguage', test_language_dist, False)
+                if not 'Failed: Language TCKSmokeTestLanguage performs following privileged calls' in result:
+                    mx.abort("Expected failure, log:\n" + result)
+                if not 'UnsafeCallNode.doUnsafeAccess' in result:
+                    mx.abort("Missing UnsafeCallNode.doUnsafeAccess call in the log, log:\n" + result)
+                if not 'UnsafeCallNode.doUnsafeAccessBehindBoundary' in result:
+                    mx.abort("Missing UnsafeCallNode.doUnsafeAccessBehindBoundary call in the log, log:\n" + result)
+                if not 'PrivilegedCallNode.doPrivilegedCall' in result:
+                    mx.abort("Missing PrivilegedCallNode.doPrivilegedCall call in the log, log:\n" + result)
+                if not 'PrivilegedCallNode.doPrivilegedCallBehindBoundary' in result:
+                    mx.abort("Missing PrivilegedCallNode.doPrivilegedCallBehindBoundary call in the log, log:\n" + result)
 
 
 def gate_svm_truffle_tck_js(tasks):
