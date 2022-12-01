@@ -540,6 +540,7 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id, langu
             '--features=com.oracle.svm.truffle.tck.PermissionsFeature',
             '-H:ClassInitialization=:build_time',
             '-H:+EnforceMaxRuntimeCompileMethods',
+            '-H:-InlineBeforeAnalysis',
             '-cp',
             cp,
             '-H:-FoldSecurityManagerGetter',
