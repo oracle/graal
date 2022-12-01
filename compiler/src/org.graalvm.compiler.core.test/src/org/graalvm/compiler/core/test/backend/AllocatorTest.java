@@ -73,7 +73,7 @@ public class AllocatorTest extends BackendTest {
             this.lir = lir;
 
             for (char blockIndex : lir.codeEmittingOrder()) {
-                if (blockIndex == AbstractControlFlowGraph.BLOCK_ID_INITIAL) {
+                if (blockIndex == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
                     continue;
                 }
                 AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];

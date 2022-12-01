@@ -79,7 +79,7 @@ class Instance {
         DebugContext debug = ir.getDebug();
         FrameMap frameMap = lirGenRes.getFrameMap();
         for (char blockIndex : ir.linearScanOrder()) {
-            if (blockIndex == AbstractControlFlowGraph.BLOCK_ID_INITIAL) {
+            if (blockIndex == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
                 continue;
             }
             AbstractBlockBase<?> block = ir.getControlFlowGraph().getBlocks()[blockIndex];

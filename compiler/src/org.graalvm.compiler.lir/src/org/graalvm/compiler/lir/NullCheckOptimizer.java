@@ -46,7 +46,7 @@ public final class NullCheckOptimizer extends PostAllocationOptimizationPhase {
 
     private static void foldNullChecks(LIR ir, char[] blockIndices, int implicitNullCheckLimit) {
         for (char blockIndex : blockIndices) {
-            if (blockIndex == AbstractControlFlowGraph.BLOCK_ID_INITIAL) {
+            if (blockIndex == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
                 continue;
             }
             AbstractBlockBase<?> block = ir.getControlFlowGraph().getBlocks()[blockIndex];

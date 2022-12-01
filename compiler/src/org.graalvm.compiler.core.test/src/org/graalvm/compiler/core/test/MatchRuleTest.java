@@ -87,7 +87,7 @@ public abstract class MatchRuleTest extends GraalCompilerTest {
         }
         int actualOpNum = 0;
         for (char blockIndex : lir.codeEmittingOrder()) {
-            if (blockIndex == AbstractControlFlowGraph.BLOCK_ID_INITIAL) {
+            if (blockIndex == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
                 continue;
             }
             AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];

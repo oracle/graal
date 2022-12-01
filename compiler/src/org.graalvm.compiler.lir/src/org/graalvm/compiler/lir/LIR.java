@@ -197,7 +197,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
     public static AbstractBlockBase<?> getNextBlock(AbstractControlFlowGraph<?> cfg, char[] blocks, int blockIndex) {
         for (int nextIndex = blockIndex + 1; nextIndex > 0 && nextIndex < blocks.length; nextIndex++) {
             char nextBlock = blocks[nextIndex];
-            if (nextBlock != AbstractControlFlowGraph.BLOCK_ID_INITIAL) {
+            if (nextBlock != AbstractControlFlowGraph.INVALID_BLOCK_ID) {
                 return cfg.getBlocks()[nextBlock];
             }
         }
@@ -258,7 +258,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
     @SuppressWarnings("unlikely-arg-type")
     public static boolean verifyBlocks(LIR lir, char[] blocks) {
         for (char blockIndex : blocks) {
-            if (blockIndex == AbstractControlFlowGraph.BLOCK_ID_INITIAL) {
+            if (blockIndex == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
                 continue;
             }
             AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];

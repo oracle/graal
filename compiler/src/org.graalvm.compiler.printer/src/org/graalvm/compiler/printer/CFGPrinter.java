@@ -105,7 +105,7 @@ class CFGPrinter extends CompilationPrinter {
         begin("cfg");
         out.print("name \"").print(label).println('"');
         for (char blockIndex : blockIndices) {
-            if (blockIndex == AbstractControlFlowGraph.BLOCK_ID_INITIAL) {
+            if (blockIndex == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
                 continue;
             }
             AbstractBlockBase<?> block = cfg.getBlocks()[blockIndex];

@@ -24,25 +24,75 @@
  */
 package org.graalvm.compiler.core.common.cfg;
 
-import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.BLOCK_ID_INITIAL;
+import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.INVALID_BLOCK_ID;
 
 import java.util.Comparator;
 
 import org.graalvm.compiler.core.common.RetryableBailoutException;
 
+/**
+ * Abstract representation of a basic block in the Graal IR. A basic block is the longest sequence
+ * of instructions without a jump in between. Each block is held in specific order by
+ * {@code AbstractControlFlowGraph} (typically in a reverse post order fashion). Both the fronend of
+ * Graal as well as the backend operate on the same abstract block representation.
+ *
+ * In reality only one subclass exists that is shared both by the frontend and backend. However, the
+ * frontend builds, while scheduling the graph, the final control flow graph used by the backend.
+ * Since Graal has a strict dependency separation between frontend and backend this abstract basic
+ * block is the coupling API.
+ */
 public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     public static final double[] EMPTY_PROBABILITY_ARRAY = new double[0];
     public static final double[] SINGLETON_PROBABILITY_ARRAY = new double[]{1.0};
 
-    protected char id = BLOCK_ID_INITIAL;
+    /**
+     * Id of this basic block. The id is concurrently used as a unique identifier for the block as
+     * well as it's index into the @{@link #getBlocks()} array of the associated
+     * {@link AbstractControlFlowGraph}.
+     */
+    protected char id = INVALID_BLOCK_ID;
+    /**
+     * Block id of the dominator of this block. See
+     * <a href="https://en.wikipedia.org/wiki/Dominator_(graph_theory)">dominator theory<a/> for
+     * details.
+     */
+    private char dominator = INVALID_BLOCK_ID;
+    /**
+     * Block id of the first dominated block. A block can dominate more basic blocks: they are
+     * connected sequentially via the {@link AbstractBlockBase#dominatedSibling} index pointer into
+     * the {@link #getBlocks()}array.
+     */
+    private char firstDominated = INVALID_BLOCK_ID;
+    /**
+     * The dominated sibling of this block. See {@link AbstractBlockBase#firstDominated} for
+     * details.
+     */
+    private char dominatedSibling = INVALID_BLOCK_ID;
+    /**
+     * See {@link #getDominatorDepth()}.
+     */
     protected char domDepth = 0;
-
-    private char dominator = BLOCK_ID_INITIAL;
-    private char firstDominated = BLOCK_ID_INITIAL;
-    private char dominatedSibling = BLOCK_ID_INITIAL;
-
-    private char domNumber = BLOCK_ID_INITIAL;
-    private char maxChildDomNumber = BLOCK_ID_INITIAL;
+    /**
+     * Dominator number of this block: the dominator number is assigned for each basic block when
+     * building the dominator tree. It is a numbering scheme used for fast and efficient dominance
+     * checks. It attributes each basic block a numerical value that adheres to the following
+     * constraints
+     * <ul>
+     * <li>b1.domNumber > b2.domNumber iff b1 dominates b2</li>
+     * <li>b1.domNumber == b2.domNumber iff b1 == b2</li>
+     * </ul>
+     *
+     * This means all dominated blocks between {@code this} and the deepest dominated block in
+     * dominator tree are within the {@code [domNumber;maxDomNumber]} interval.
+     */
+    private char domNumber = INVALID_BLOCK_ID;
+    /**
+     * The maximum child dominator number, i.e., the maximum dom number of the deepest dominated
+     * block along the particular branch on the dominator tree rooted at this.
+     *
+     * See {@link #domNumber} for details.
+     */
+    private char maxChildDomNumber = INVALID_BLOCK_ID;
     protected final AbstractControlFlowGraph<T> cfg;
 
     protected AbstractBlockBase(AbstractControlFlowGraph<T> cfg) {
@@ -58,14 +108,14 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     }
 
     public int getDominatorNumber() {
-        if (domNumber == BLOCK_ID_INITIAL) {
+        if (domNumber == INVALID_BLOCK_ID) {
             return -1;
         }
         return domNumber;
     }
 
     public int getMaxChildDominatorNumber() {
-        if (maxChildDomNumber == BLOCK_ID_INITIAL) {
+        if (maxChildDomNumber == INVALID_BLOCK_ID) {
             return -1;
         }
         return this.maxChildDomNumber;
@@ -116,7 +166,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     public abstract double getSuccessorProbabilityAt(int succIndex);
 
     public T getDominator() {
-        return dominator != BLOCK_ID_INITIAL ? cfg.getBlocks()[dominator] : null;
+        return dominator != INVALID_BLOCK_ID ? cfg.getBlocks()[dominator] : null;
     }
 
     /**
@@ -180,7 +230,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     }
 
     public T getFirstDominated() {
-        return firstDominated != BLOCK_ID_INITIAL ? cfg.getBlocks()[firstDominated] : null;
+        return firstDominated != INVALID_BLOCK_ID ? cfg.getBlocks()[firstDominated] : null;
     }
 
     public void setFirstDominated(T block) {
@@ -188,7 +238,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     }
 
     public T getDominatedSibling() {
-        return dominatedSibling != BLOCK_ID_INITIAL ? cfg.getBlocks()[dominatedSibling] : null;
+        return dominatedSibling != INVALID_BLOCK_ID ? cfg.getBlocks()[dominatedSibling] : null;
     }
 
     public void setDominatedSibling(T block) {

@@ -28,7 +28,16 @@ import java.util.Collection;
 
 public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
 
-    char BLOCK_ID_INITIAL = Character.MAX_VALUE;
+    /**
+     * Special value used for basic block indices into the {@link #getBlocks()} array. Using this
+     * index can mean a block's id was not initialized or the block was deleted later on by control
+     * flow optimizations.
+     */
+    char INVALID_BLOCK_ID = Character.MAX_VALUE;
+    /**
+     * Last valid block index used by the compiler. A compilation unit with more basic blocks would
+     * trigger bailouts or compilation exceptions.
+     */
     char LAST_VALID_BLOCK_INDEX = Character.MAX_VALUE - 1;
 
     /**

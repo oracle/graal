@@ -85,7 +85,7 @@ public final class HotSpotZapRegistersPhase extends PostAllocationOptimizationPh
     private static void processLIR(DiagnosticLIRGeneratorTool diagnosticLirGenTool, LIR lir, EconomicSet<Register> allocatableRegisters, boolean zapRegisters, boolean zapStack) {
         LIRInsertionBuffer buffer = new LIRInsertionBuffer();
         for (char blockIndex : lir.getBlocks()) {
-            if (blockIndex == AbstractControlFlowGraph.BLOCK_ID_INITIAL) {
+            if (blockIndex == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
                 continue;
             }
             AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];

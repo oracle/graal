@@ -110,7 +110,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
                     copyAlignment(block, other);
 
                     BLOCKS_DELETED.increment(lir.getDebug());
-                    blocks[i] = AbstractControlFlowGraph.BLOCK_ID_INITIAL;
+                    blocks[i] = AbstractControlFlowGraph.INVALID_BLOCK_ID;
                 }
             }
             assert verifyBlocks(lir, blocks);

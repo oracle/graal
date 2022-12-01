@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.nodes.cfg;
 
-import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.BLOCK_ID_INITIAL;
+import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.INVALID_BLOCK_ID;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -59,7 +59,6 @@ import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.word.LocationIdentity;
 
 public abstract class Block extends AbstractBlockBase<Block> {
-    public static final Block[] EMPTY_ARRAY = new Block[0];
 
     protected final AbstractBeginNode beginNode;
     protected FixedNode endNode;
@@ -68,12 +67,9 @@ public abstract class Block extends AbstractBlockBase<Block> {
     protected ProfileSource frequencySource;
     protected Loop<Block> loop;
 
-    // Extra data for cases where the loop information is no longer fully up to date due to blocks
-    // being deleted during LIR control flow optimization.
-    private boolean markedAsLoopEnd = false;
     protected int numBackedges = -1;
 
-    protected char postdominator = BLOCK_ID_INITIAL;
+    protected char postdominator = INVALID_BLOCK_ID;
     private LocationSet killLocations;
     private LocationSet killLocationsBetweenThisAndDominator;
 
@@ -117,11 +113,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
 
     @Override
     public boolean isLoopEnd() {
-        return markedAsLoopEnd || getEndNode() instanceof LoopEndNode;
-    }
-
-    public void markAsLoopEnd() {
-        markedAsLoopEnd = true;
+        return getEndNode() instanceof LoopEndNode;
     }
 
     @Override
@@ -140,7 +132,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
 
     @Override
     public Block getPostdominator() {
-        return postdominator != BLOCK_ID_INITIAL ? getBlocks()[postdominator] : null;
+        return postdominator != INVALID_BLOCK_ID ? getBlocks()[postdominator] : null;
     }
 
     @Override
@@ -487,22 +479,34 @@ public abstract class Block extends AbstractBlockBase<Block> {
                 b.setSuccessor(safeCast(suxBlock.getId()));
             } else if (blockEndNode instanceof ControlSplitNode) {
                 ControlSplitNode split = (ControlSplitNode) blockEndNode;
+                final int splitSuccessorcount = split.getSuccessorCount();
                 int index = 0;
-                char succ0 = BLOCK_ID_INITIAL;
-                char[] extraSucc = new char[split.getSuccessorCount() - 1];
+                char succ0 = INVALID_BLOCK_ID;
+                char succ1 = INVALID_BLOCK_ID;
+                char[] extraSucc = splitSuccessorcount > 2 ? new char[split.getSuccessorCount() - 2] : null;
                 for (Node sux : blockEndNode.successors()) {
                     ModifiableBlock sucBlock = (ModifiableBlock) cfg.getNodeToBlock().get(sux);
                     if (index == 0) {
                         succ0 = safeCast(sucBlock.getId());
+                    } else if (index == 1) {
+                        succ1 = safeCast(sucBlock.getId());
                     } else {
-                        extraSucc[index - 1] = safeCast(sucBlock.getId());
+                        extraSucc[index - 2] = safeCast(sucBlock.getId());
                     }
                     index++;
                     sucBlock.setPredecessor(safeCast(b.getId()));
                 }
-                b.setSuccessors(succ0, extraSucc);
                 double[] succP = ((ControlSplitNode) blockEndNode).successorProbabilities();
-                b.setSuccessorProbabilities(succP[0], Arrays.copyOfRange(succP, 1, succP.length));
+                if (splitSuccessorcount == 1) {
+                    // degenerated graphs before the next canonicalization
+                    b.setSuccessor(succ0);
+                } else if (splitSuccessorcount == 2) {
+                    assert succP.length == 2;
+                    b.setSuccessors(succ0, succ1, succP[0], succP[1]);
+                } else {
+                    assert succP.length > 2;
+                    b.setSuccessors(succ0, succ1, extraSucc, succP[0], succP[1], Arrays.copyOfRange(succP, 2, succP.length));
+                }
             } else if (blockEndNode instanceof LoopEndNode) {
                 LoopEndNode loopEndNode = (LoopEndNode) blockEndNode;
                 b.setSuccessor(safeCast(cfg.getNodeToBlock().get(loopEndNode.loopBegin()).getId()));
@@ -538,12 +542,52 @@ public abstract class Block extends AbstractBlockBase<Block> {
      * A basic block that can have its edges edited.
      */
     static class ModifiableBlock extends Block {
-
+        /**
+         * Determine in the backend if this block should be alined.
+         */
         private boolean align;
         private int linearScanNumber = -1;
+        /**
+         * Extra data for cases where the loop information is no longer fully up to date due to
+         * blocks // being deleted during LIR control flow optimization.
+         */
+        private boolean markedAsLoopEnd = false;
+        /**
+         * Index into {@link #getBlocks} of this block's first predecessor.
+         */
+        private char firstPredecessor = INVALID_BLOCK_ID;
+        /**
+         * Indices into {@link #getBlocks} of this block's extra predecessors.
+         */
+        private char[] extraPredecessors;
+        /**
+         * Index into {@link #getBlocks} of this block's first successor.
+         */
+        private char firstSuccessor = INVALID_BLOCK_ID;
+        /**
+         * Index into {@link #getBlocks} of this block's second successor.
+         */
+        private char secondSuccessor = INVALID_BLOCK_ID;
+
+        /**
+         * Indices into {@link #getBlocks} of this block's extra successors.
+         */
+        private char[] extraSuccessors;
+        private double firstSuccessorProbability;
+        private double secondSuccessorProbability;
+        private double[] extraSuccessorsProbabilities;
 
         ModifiableBlock(AbstractBeginNode node, ControlFlowGraph cfg) {
             super(node, cfg);
+        }
+
+        @Override
+        public boolean isLoopEnd() {
+            return markedAsLoopEnd || super.isLoopEnd();
+        }
+
+        public void markAsLoopEnd() {
+            markedAsLoopEnd = true;
         }
 
         @Override
@@ -573,31 +617,36 @@ public abstract class Block extends AbstractBlockBase<Block> {
 
         @Override
         public int getSuccessorCount() {
-            return getCount(firstSuccessor, extraSuccessors);
+            return getCount(firstSuccessor, secondSuccessor, extraSuccessors);
         }
 
-        /**
-         * Index into {@link #getBlocks} of this block's first predecessor.
-         */
-        private char firstPredecessor = BLOCK_ID_INITIAL;
+        private static int getCount(char first, char second, char[] extra) {
+            if (first == INVALID_BLOCK_ID) {
+                return 0;
+            }
+            if (second == INVALID_BLOCK_ID) {
+                return 1;
+            }
+            return 2 + (extra == null ? 0 : extra.length);
+        }
 
-        /**
-         * Indexes into {@link #getBlocks} of this block's extra predecessors.
-         */
-        private char[] extraPredecessors;
+        private static int getCount(char first, char[] extra) {
+            return first == INVALID_BLOCK_ID ? 0 : 1 + (extra == null ? 0 : extra.length);
+        }
 
-        /**
-         * Index into {@link #getBlocks} of this block's first successor.
-         */
-        private char firstSuccessor = BLOCK_ID_INITIAL;
+        private static char getAtIndex(char first, char[] extra, int index) {
+            return index == 0 ? first : extra[index - 1];
+        }
 
-        /**
-         * Indexes into {@link #getBlocks} of this block's extra succecessors.
-         */
-        private char[] extraSuccessors;
-
-        private double firstSuccessorProbability;
-        private double[] extraSuccessorsProbabilities;
+        private static char getAtIndex(char first, char second, char[] extra, int index) {
+            if (index == 0) {
+                return first;
+            }
+            if (index == 1) {
+                return second;
+            }
+            return extra[index - 2];
+        }
 
         @Override
         public Block getPredecessorAt(int predIndex) {
@@ -608,7 +657,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
         @Override
         public Block getSuccessorAt(int succIndex) {
             assert succIndex < getSuccessorCount();
-            return getBlocks()[getAtIndex(firstSuccessor, extraSuccessors, succIndex)];
+            return getBlocks()[getAtIndex(firstSuccessor, secondSuccessor, extraSuccessors, succIndex)];
         }
 
         public void setPredecessor(char firstPredecessor) {
@@ -627,9 +676,21 @@ public abstract class Block extends AbstractBlockBase<Block> {
         }
 
         @SuppressWarnings("unchecked")
-        public void setSuccessors(char firstSuccessor, char[] extraSuccessors) {
+        public void setSuccessors(char firstSuccessor, char secondSuccessor, double firstSuccP, double secondSuccP) {
             this.firstSuccessor = firstSuccessor;
+            this.secondSuccessor = secondSuccessor;
+            this.firstSuccessorProbability = firstSuccP;
+            this.secondSuccessorProbability = secondSuccP;
+        }
+
+        @SuppressWarnings("unchecked")
+        public void setSuccessors(char firstSuccessor, char secondSuccessor, char[] extraSuccessors, double firstSuccP, double secondSuccP, double[] restSuccP) {
+            this.firstSuccessor = firstSuccessor;
+            this.secondSuccessor = secondSuccessor;
             this.extraSuccessors = extraSuccessors;
+            this.firstSuccessorProbability = firstSuccP;
+            this.secondSuccessorProbability = secondSuccP;
+            this.extraSuccessorsProbabilities = restSuccP;
         }
 
         @Override
@@ -637,20 +698,10 @@ public abstract class Block extends AbstractBlockBase<Block> {
             if (succIndex == 0) {
                 return firstSuccessorProbability;
             }
-            return extraSuccessorsProbabilities[succIndex - 1];
-        }
-
-        public void setSuccessorProbabilities(double succ0Probability, double[] extraSuccProbabilities) {
-            this.firstSuccessorProbability = succ0Probability;
-            this.extraSuccessorsProbabilities = extraSuccProbabilities;
-        }
-
-        private static int getCount(char first, char[] extra) {
-            return first == BLOCK_ID_INITIAL ? 0 : 1 + (extra == null ? 0 : extra.length);
-        }
-
-        private static char getAtIndex(char first, char[] extra, int index) {
-            return index == 0 ? first : extra[index - 1];
+            if (succIndex == 1) {
+                return secondSuccessorProbability;
+            }
+            return extraSuccessorsProbabilities[succIndex - 2];
         }
 
         @Override
@@ -663,15 +714,27 @@ public abstract class Block extends AbstractBlockBase<Block> {
             for (int i = 0; i < getPredecessorCount(); i++) {
                 ModifiableBlock pred = (ModifiableBlock) getPredecessorAt(i);
                 char[] newPredSuccs = new char[pred.getSuccessorCount()];
+                double[] newPredSuccP = new double[pred.getSuccessorCount()];
                 for (int j = 0; j < pred.getSuccessorCount(); j++) {
                     Block predSuccAt = pred.getSuccessorAt(j);
                     if (predSuccAt == this) {
                         newPredSuccs[j] = safeCast(next.getId());
+                        newPredSuccP[j] = pred.getSuccessorProbabilityAt(0);
                     } else {
+                        newPredSuccP[j] = pred.getSuccessorProbabilityAt(j);
                         newPredSuccs[j] = safeCast(predSuccAt.getId());
                     }
                 }
-                pred.setSuccessors(newPredSuccs[0], Arrays.copyOfRange(newPredSuccs, 1, newPredSuccs.length));
+                if (newPredSuccs.length == 1) {
+                    pred.setSuccessor(newPredSuccs[0]);
+                } else if (newPredSuccs.length == 2) {
+                    pred.setSuccessors(newPredSuccs[0], newPredSuccs[1], newPredSuccP[0], newPredSuccP[1]);
+                } else {
+                    pred.setSuccessors(newPredSuccs[0], newPredSuccs[1],
+                                    Arrays.copyOfRange(newPredSuccs, 2, newPredSuccs.length),
+                                    newPredSuccP[0], newPredSuccP[1],
+                                    Arrays.copyOfRange(newPredSuccP, 2, newPredSuccP.length));
+                }
 
                 if (isLoopEnd()) {
                     // The predecessor becomes a loop end.
@@ -706,8 +769,6 @@ public abstract class Block extends AbstractBlockBase<Block> {
             } else {
                 next.setPredecessor(safeCast(firstPred.getId()));
             }
-
-            // next.setPredecessors(newPreds.toArray(Block.EMPTY_ARRAY));
 
             // Remove the current block from the blocks of the loops it belongs to
             for (Loop<Block> currLoop = loop; currLoop != null; currLoop = currLoop.getParent()) {

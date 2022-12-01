@@ -543,7 +543,7 @@ public class CompilationResultBuilder {
         AbstractBlockBase<?> previousBlock = null;
         for (char blockIndex : lir.codeEmittingOrder()) {
             AbstractBlockBase<?> b = lir.getControlFlowGraph().getBlocks()[blockIndex];
-            assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == AbstractControlFlowGraph.BLOCK_ID_INITIAL) || lir.codeEmittingOrder()[currentBlockIndex] == blockIndex;
+            assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == AbstractControlFlowGraph.INVALID_BLOCK_ID) || lir.codeEmittingOrder()[currentBlockIndex] == blockIndex;
             if (b != null) {
                 if (b.isAligned() && previousBlock != null) {
                     AbstractBlockBase<?>[] successorArray = new AbstractBlockBase<?>[previousBlock.getSuccessorCount()];
@@ -708,7 +708,7 @@ public class CompilationResultBuilder {
 
     public final boolean needsClearUpperVectorRegisters() {
         for (char blockIndex : lir.getBlocks()) {
-            if (blockIndex == AbstractControlFlowGraph.BLOCK_ID_INITIAL) {
+            if (blockIndex == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
                 continue;
             }
             AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];
