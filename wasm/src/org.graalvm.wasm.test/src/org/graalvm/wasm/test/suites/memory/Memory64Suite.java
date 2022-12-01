@@ -41,24 +41,14 @@
 package org.graalvm.wasm.test.suites.memory;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.wasm.test.AbstractBinarySuite;
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
-@RunWith(Parameterized.class)
 public class Memory64Suite extends AbstractBinarySuite {
-    @Parameterized.Parameter public boolean useUnsafeWasmMemory;
-
-    @Parameterized.Parameters
-    public static Iterable<?> data() {
-        return Arrays.asList(false, true);
-    }
 
     // (type (func (result i32)))
     // (func (type 0))
@@ -85,7 +75,7 @@ public class Memory64Suite extends AbstractBinarySuite {
                         "0A 10 01 0E 00 42 00 41 01 36 00 00 42 00 28 00 00 0B");
         runRuntimeTest(binary, builder -> {
             builder.option("wasm.Memory64", "true");
-            builder.option("wasm.UseUnsafeMemory", Boolean.toString(useUnsafeWasmMemory));
+            builder.option("wasm.UseUnsafeMemory", "true");
         }, instance -> {
             Value a = instance.getMember("a");
             Value x = a.execute();
@@ -109,7 +99,7 @@ public class Memory64Suite extends AbstractBinarySuite {
                         "0A 18 01 16 00 42 80 80 80 80 00 41 01 36 00 00 42 80 80 80 80 00 28 00 00 0B");
         runRuntimeTest(binary, builder -> {
             builder.option("wasm.Memory64", "true");
-            builder.option("wasm.UseUnsafeMemory", Boolean.toString(useUnsafeWasmMemory));
+            builder.option("wasm.UseUnsafeMemory", "true");
         }, instance -> {
             Value a = instance.getMember("a");
             Value x = a.execute();
@@ -131,7 +121,7 @@ public class Memory64Suite extends AbstractBinarySuite {
                         "0A 0B 01 09 00 42 00 41 01 36 00 00 0B");
         runParserTest(binary, builder -> {
             builder.option("wasm.Memory64", "true");
-            builder.option("wasm.UseUnsafeMemory", Boolean.toString(useUnsafeWasmMemory));
+            builder.option("wasm.UseUnsafeMemory", "true");
         }, (context, source) -> {
             try {
                 context.eval(source);

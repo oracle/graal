@@ -147,6 +147,7 @@ public enum Failure {
 
     // TODO(mbovel): replace UNSPECIFIED_INTERNAL usages with assertInternal/shouldNotReachHere.
     UNSPECIFIED_INTERNAL(Type.INTERNAL, "unspecified"),
+    INCOMPATIBLE_OPTIONS(Type.INTERNAL, "some of the provided options are incompatible"),
 
     NON_REPRESENTABLE_EXTRA_DATA_VALUE(Type.MALFORMED, "value cannot be represented in extra data");
 

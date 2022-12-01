@@ -44,6 +44,8 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 
 public class WasmContextOptions {
     @CompilationFinal private boolean saturatingFloatToInt;
@@ -60,6 +62,7 @@ public class WasmContextOptions {
     WasmContextOptions(OptionValues optionValues) {
         this.optionValues = optionValues;
         setOptionValues();
+        checkOptionDependencies();
     }
 
     public static WasmContextOptions fromOptionValues(OptionValues optionValues) {
@@ -77,8 +80,18 @@ public class WasmContextOptions {
         this.memoryOverheadMode = readBooleanOption(WasmOptions.MemoryOverheadMode);
     }
 
+    private void checkOptionDependencies() {
+        if (memory64 && !unsafeMemory) {
+            failDependencyCheck("Memory64", "UseUnsafeMemory");
+        }
+    }
+
     private boolean readBooleanOption(OptionKey<Boolean> key) {
         return key.getValue(optionValues);
+    }
+
+    private static void failDependencyCheck(String option, String dependency) {
+        throw WasmException.format(Failure.INCOMPATIBLE_OPTIONS, "Incompatible WebAssembly options: %s requires %s to be enabled.", option, dependency);
     }
 
     public boolean supportSaturatingFloatToInt() {
