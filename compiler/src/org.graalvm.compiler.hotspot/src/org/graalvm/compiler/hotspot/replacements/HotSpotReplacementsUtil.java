@@ -299,6 +299,8 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity JAVA_THREAD_OSTHREAD_LOCATION = NamedLocationIdentity.mutable("JavaThread::_osthread");
 
+    public static final LocationIdentity JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION = NamedLocationIdentity.mutable("JavaThread::_held_monitor_count");
+
     @Fold
     public static JavaKind getWordKind() {
         return runtime().getHostJVMCIBackend().getCodeCache().getTarget().wordJavaKind;
@@ -667,6 +669,21 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static boolean useBiasedLocking(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.useBiasedLocking;
+    }
+
+    @Fold
+    static int heldMonitorCountOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.threadHeldMonitorCountOffset;
+    }
+
+    @Fold
+    static boolean heldMonitorCountIsWord(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.threadHeldMonitorCountIsWord;
+    }
+
+    @Fold
+    static boolean updateHeldMonitorCount(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.updateHeldMonitorCount;
     }
 
     @Fold
