@@ -26,7 +26,9 @@ package com.oracle.svm.driver;
 
 import java.io.File;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -173,9 +175,34 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 }
             }
             if (replayStatus.loadBundle) {
-                nativeImage.replaySupport = new ReplaySupport(nativeImage, replayStatus, args.poll());
+                String replayBundleFilename = args.poll();
+                nativeImage.replaySupport = new ReplaySupport(nativeImage, replayStatus, replayBundleFilename);
+                List<String> buildArgs = nativeImage.replaySupport.getBuildArgs();
+                for (int i = buildArgs.size() - 1; i >= 0; i--) {
+                    args.push(buildArgs.get(i));
+                }
             } else {
-                nativeImage.replaySupport = new ReplaySupport(nativeImage, replayStatus);
+                List<String> filteredBuildArgs = new ArrayList<>();
+                boolean skipNext = false;
+                for (String arg : nativeImage.config.getBuildArgs()) {
+                    if (skipNext) {
+                        skipNext = false;
+                        continue;
+                    }
+                    if (arg.startsWith(REPLAY_OPTION)) {
+                        continue;
+                    }
+                    if (arg.startsWith("-Dllvm.bin.dir=")) {
+                        continue;
+                    }
+                    if (arg.equals("--configurations-path")) {
+                        // FIXME Provide proper --configurations-path support
+                        skipNext = true;
+                        continue;
+                    }
+                    filteredBuildArgs.add(arg);
+                }
+                nativeImage.replaySupport = new ReplaySupport(nativeImage, replayStatus, filteredBuildArgs);
             }
             return true;
         }

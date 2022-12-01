@@ -30,7 +30,10 @@ import java.io.Reader;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -76,11 +79,14 @@ class ReplaySupport {
     final Path modulePathDir;
     final Path auxiliaryDir;
 
+    Map<Path, Path> pathCanonicalizations = new HashMap<>();
     Map<Path, Path> pathSubstitutions = new HashMap<>();
+
+    private final List<String> buildArgs;
 
     private static final String replayTempDirPrefix = "replayRoot-";
 
-    ReplaySupport(NativeImage nativeImage, ReplayStatus status) {
+    ReplaySupport(NativeImage nativeImage, ReplayStatus status, List<String> buildArgs) {
         assert !status.loadBundle;
 
         this.nativeImage = nativeImage;
@@ -96,6 +102,8 @@ class ReplaySupport {
         } catch (IOException e) {
             throw NativeImage.showError("Unable to create replay-bundle directory layout", e);
         }
+
+        this.buildArgs = Collections.unmodifiableList(buildArgs);
     }
 
     ReplaySupport(NativeImage nativeImage, ReplayStatus status, String replayBundleFilename) {
@@ -140,12 +148,47 @@ class ReplaySupport {
         classPathDir = classesDir.resolve("cp");
         modulePathDir = classesDir.resolve("p");
 
+        Path pathCanonicalizationsFile = stageDir.resolve("path_canonicalizations.json");
+        try (Reader reader = Files.newBufferedReader(pathCanonicalizationsFile)) {
+            new PathMapParser(pathCanonicalizations).parseAndRegister(reader);
+        } catch (IOException e) {
+            throw NativeImage.showError("Failed to read bundle-file " + pathCanonicalizationsFile, e);
+        }
         Path pathSubstitutionsFile = stageDir.resolve("path_substitutions.json");
         try (Reader reader = Files.newBufferedReader(pathSubstitutionsFile)) {
-            new PathSubstitutionsMapParser(true).parseAndRegister(reader);
+            new PathMapParser(pathSubstitutions).parseAndRegister(reader);
         } catch (IOException e) {
             throw NativeImage.showError("Failed to read bundle-file " + pathSubstitutionsFile, e);
         }
+        Path buildArgsFile = stageDir.resolve("build.json");
+        try (Reader reader = Files.newBufferedReader(buildArgsFile)) {
+            List<String> buildArgsFromFile = new ArrayList<>();
+            new BuildArgsParser(buildArgsFromFile).parseAndRegister(reader);
+            buildArgs = Collections.unmodifiableList(buildArgsFromFile);
+        } catch (IOException e) {
+            throw NativeImage.showError("Failed to read bundle-file " + pathSubstitutionsFile, e);
+        }
+    }
+
+    public List<String> getBuildArgs() {
+        return buildArgs;
+    }
+
+    Path recordCanonicalization(Path before, Path after) {
+        if (after.startsWith(nativeImage.config.getJavaHome())) {
+            return after;
+        }
+        System.out.println("RecordCanonicalization src: " + before + ", dst: " + after);
+        pathCanonicalizations.put(before, after);
+        return after;
+    }
+
+    Path restoreCanonicalization(Path before) {
+        Path after = pathCanonicalizations.get(before);
+        if (after != null) {
+            System.out.println("RestoreCanonicalization src: " + before + ", dst: " + after);
+        }
+        return after;
     }
 
     Path substituteAuxiliaryPath(Path origPath) {
@@ -164,9 +207,10 @@ class ReplaySupport {
     private Path substitutePath(Path origPath, Path destinationDir) {
         assert destinationDir.startsWith(replayRootDir);
 
-        Path alreadySubstitutedPath = pathSubstitutions.get(origPath);
-        if (alreadySubstitutedPath != null) {
-            return replayRootDir.resolve(alreadySubstitutedPath);
+        Path previousRelativeSubstitutedPath = pathSubstitutions.get(origPath);
+        if (previousRelativeSubstitutedPath != null) {
+            System.out.println("RestoreSubstitution src: " + origPath + ", dst: " + previousRelativeSubstitutedPath);
+            return replayRootDir.resolve(previousRelativeSubstitutedPath);
         }
 
         if (origPath.startsWith(nativeImage.config.getJavaHome())) {
@@ -180,6 +224,9 @@ class ReplaySupport {
             return origPath;
         }
 
+        // TODO Report error if user tries to use funky paths like / or c:
+        // TODO Report error if overlapping dir-trees are passed in
+        // TODO add .endsWith(ClasspathUtils.cpWildcardSubstitute) handling (copy whole directory)
         String[] baseNamePlusExtension = StringUtil.split(origPath.getFileName().toString(), ".", 2);
         String baseName = baseNamePlusExtension[0];
         String extension = baseNamePlusExtension.length == 2 ? "." + baseNamePlusExtension[1] : "";
@@ -199,13 +246,17 @@ class ReplaySupport {
         } else {
             copyFile(origPath, substitutedPath);
         }
-        pathSubstitutions.put(origPath, replayRootDir.relativize(substitutedPath));
+        Path relativeSubstitutedPath = replayRootDir.relativize(substitutedPath);
+        System.out.println("RecordSubstitution src: " + origPath + ", dst: " + relativeSubstitutedPath);
+        pathSubstitutions.put(origPath, relativeSubstitutedPath);
         return substitutedPath;
     }
 
     private void copyFile(Path source, Path target) {
         try {
-            System.out.println("> Copy " + nativeImage.config.workDir.relativize(source) + " to " + target);
+            if (nativeImage.isVerbose()) {
+                System.out.println("> Copy to bundle: " + nativeImage.config.workDir.relativize(source));
+            }
             Files.copy(source, target);
         } catch (IOException e) {
             throw NativeImage.showError("Failed to copy " + source + " to " + target, e);
@@ -221,15 +272,29 @@ class ReplaySupport {
     }
 
     void writeBundle() {
+        Path pathCanonicalizationsFile = stageDir.resolve("path_canonicalizations.json");
+        try (JsonWriter writer = new JsonWriter(pathCanonicalizationsFile)) {
+            /* Printing as list with defined sort-order ensures useful diffs are possible */
+            JsonPrinter.printCollection(writer, pathCanonicalizations.entrySet(), Map.Entry.comparingByKey(), ReplaySupport::printPathMapping);
+        } catch (IOException e) {
+            throw NativeImage.showError("Failed to write bundle-file " + pathCanonicalizationsFile, e);
+        }
         Path pathSubstitutionsFile = stageDir.resolve("path_substitutions.json");
         try (JsonWriter writer = new JsonWriter(pathSubstitutionsFile)) {
             /* Printing as list with defined sort-order ensures useful diffs are possible */
-            JsonPrinter.printCollection(writer, pathSubstitutions.entrySet(), Map.Entry.comparingByKey(), ReplaySupport::printPathSubstitution);
+            JsonPrinter.printCollection(writer, pathSubstitutions.entrySet(), Map.Entry.comparingByKey(), ReplaySupport::printPathMapping);
         } catch (IOException e) {
             throw NativeImage.showError("Failed to write bundle-file " + pathSubstitutionsFile, e);
         }
 
-        byte[] bundleEntryDataBuffer = new byte[16 * 1024];
+        Path buildArgsFile = stageDir.resolve("build.json");
+        try (JsonWriter writer = new JsonWriter(buildArgsFile)) {
+            /* Printing as list with defined sort-order ensures useful diffs are possible */
+            JsonPrinter.printCollection(writer, buildArgs, null, ReplaySupport::printBuildArg);
+        } catch (IOException e) {
+            throw NativeImage.showError("Failed to write bundle-file " + pathSubstitutionsFile, e);
+        }
+
         Path bundleFile = Path.of(nativeImage.imagePath).resolve(nativeImage.imageName + ".replay.jar");
         try (JarOutputStream jarOutStream = new JarOutputStream(Files.newOutputStream(bundleFile), new Manifest())) {
             try (Stream<Path> walk = Files.walk(replayRootDir)) {
@@ -257,16 +322,23 @@ class ReplaySupport {
     private static final String substitutionMapSrcField = "src";
     private static final String substitutionMapDstField = "dst";
 
-    private static void printPathSubstitution(Map.Entry<Path, Path> entry, JsonWriter w) throws IOException {
+    private static void printPathMapping(Map.Entry<Path, Path> entry, JsonWriter w) throws IOException {
         w.append('{').quote(substitutionMapSrcField).append(" : ").quote(entry.getKey());
         w.append(", ").quote(substitutionMapDstField).append(" : ").quote(entry.getValue());
         w.append('}');
     }
 
-    private class PathSubstitutionsMapParser extends ConfigurationParser {
+    private static void printBuildArg(String entry, JsonWriter w) throws IOException {
+        w.quote(entry);
+    }
 
-        private PathSubstitutionsMapParser(boolean strictConfiguration) {
-            super(strictConfiguration);
+    private static class PathMapParser extends ConfigurationParser {
+
+        private final Map<Path, Path> pathMap;
+
+        private PathMapParser(Map<Path, Path> pathMap) {
+            super(true);
+            this.pathMap = pathMap;
         }
 
         @Override
@@ -281,7 +353,24 @@ class ReplaySupport {
                 if (dstPathString == null) {
                     throw new JSONParserException("Expected " + substitutionMapDstField + "-field in substitution object");
                 }
-                pathSubstitutions.put(Path.of(srcPathString.toString()), Path.of(dstPathString.toString()));
+                pathMap.put(Path.of(srcPathString.toString()), Path.of(dstPathString.toString()));
+            }
+        }
+    }
+
+    private static class BuildArgsParser extends ConfigurationParser {
+
+        private final List<String> args;
+
+        private BuildArgsParser(List<String> args) {
+            super(true);
+            this.args = args;
+        }
+
+        @Override
+        public void parseAndRegister(Object json, URI origin) throws IOException {
+            for (var arg : asList(json, "Expected a list of arguments")) {
+                args.add(arg.toString());
             }
         }
     }

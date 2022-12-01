@@ -160,6 +160,10 @@ public class NativeImage {
             return queue.poll();
         }
 
+        public void push(String arg) {
+            queue.push(arg);
+        }
+
         public String peek() {
             return queue.peek();
         }
@@ -1491,9 +1495,15 @@ public class NativeImage {
     }
 
     Path canonicalize(Path path, boolean strict) {
+        if (replaySupport != null) {
+            Path prev = replaySupport.restoreCanonicalization(path);
+            if (prev != null) {
+                return prev;
+            }
+        }
         Path absolutePath = path.isAbsolute() ? path : config.getWorkingDirectory().resolve(path);
         if (!strict) {
-            return absolutePath;
+            return replaySupport != null ? replaySupport.recordCanonicalization(path, absolutePath) : absolutePath;
         }
         boolean hasWildcard = absolutePath.endsWith(ClasspathUtils.cpWildcardSubstitute);
         if (hasWildcard) {
@@ -1510,7 +1520,7 @@ public class NativeImage {
                 }
                 realPath = realPath.resolve(ClasspathUtils.cpWildcardSubstitute);
             }
-            return realPath;
+            return replaySupport != null ? replaySupport.recordCanonicalization(path, realPath) : realPath;
         } catch (IOException e) {
             throw showError("Invalid Path entry " + ClasspathUtils.classpathToString(path), e);
         }
