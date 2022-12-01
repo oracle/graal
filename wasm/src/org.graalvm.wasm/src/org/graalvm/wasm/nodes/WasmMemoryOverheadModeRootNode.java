@@ -39,56 +39,23 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.benchmark.memory;
+package org.graalvm.wasm.nodes;
 
-import java.util.ArrayList;
-import java.util.List;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 
-public class MemoryNode {
-    private final List<MemoryNode> children;
-    private final String name;
-    private final long bytes;
+public class WasmMemoryOverheadModeRootNode extends WasmRootNode {
 
-    private long size;
-
-    public MemoryNode(String name, long bytes) {
-        this.children = new ArrayList<>();
-        this.name = name;
-        this.bytes = bytes;
+    public WasmMemoryOverheadModeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmFunctionNode function) {
+        super(language, frameDescriptor, function);
     }
 
-    public MemoryNode getChild(String name) {
-        for (MemoryNode child : children) {
-            if (name.equals(child.name)) {
-                return child;
-            }
-        }
-        return null;
-    }
-
-    public MemoryNode addChild(MemoryNode child) {
-        children.add(child);
-        return child;
-    }
-
-    public void print() {
-        updateSize();
-        print("", size, 0);
-    }
-
-    private long updateSize() {
-        size = bytes;
-        for (MemoryNode child : children) {
-            size += child.updateSize();
-        }
-        return size;
-    }
-
-    private void print(String offset, double totalSize, int level) {
-        long percentage = Math.round((size / totalSize) * 100);
-        System.out.println(offset + "-" + name + ": " + size + " Byte [" + percentage + "%]");
-        for (MemoryNode child : children) {
-            child.print(offset + "  ", totalSize, level + 1);
-        }
+    @Override
+    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+        throw WasmException.create(Failure.MEMORY_OVERHEAD_MODE, this, "WebAssembly functions cannot be executed with memory overhead mode enabled, since this can lead to unexpected behavior.");
     }
 }

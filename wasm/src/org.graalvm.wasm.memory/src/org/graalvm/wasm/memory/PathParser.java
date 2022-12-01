@@ -38,8 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
-package org.graalvm.wasm.benchmark.memory;
+package org.graalvm.wasm.memory;
 
 import org.openjdk.jol.info.GraphPathRecord;
 

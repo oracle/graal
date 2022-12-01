@@ -199,12 +199,22 @@ suite = {
         "org.graalvm.wasm",
         "org.graalvm.wasm.utils",
         "mx:JMH_1_21",
-        "JOL",
       ],
       "javaCompliance" : "11+",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "testProject" : True,
     },
+
+    "org.graalvm.wasm.memory" : {
+      "subDir": "src",
+      "sourceDirs" : ["src"],
+      "dependencies": [
+        "org.graalvm.wasm",
+        "JOL",
+      ],
+      "javaCompliance": "11+",
+      "defaultBuild": False,
+    }
   },
 
   "externalProjects": {
