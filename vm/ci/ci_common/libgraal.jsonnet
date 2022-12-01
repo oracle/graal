@@ -25,6 +25,10 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     run+: [
       ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Compiler'],
     ],
+    logs+: [
+      '*/graal-compiler.log',
+      '*/graal-compiler-ctw.log'
+    ],
     timelimit: '1:00:00',
   },
 
@@ -41,7 +45,10 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     run+: [
       ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Truffle'] + if coverage then g.jacoco_gate_args else [],
     ],
-    logs+: ['*/graal-compiler.log'],
+    logs+: [
+      '*/graal-compiler.log',
+      '*/graal-compiler-ctw.log'
+    ],
     timelimit: '1:00:00',
     teardown+: if coverage then [
       g.upload_coverage
