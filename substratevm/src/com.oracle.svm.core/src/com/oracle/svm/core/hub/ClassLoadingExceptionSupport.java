@@ -69,7 +69,7 @@ public class ClassLoadingExceptionSupport {
     }
 
     private static void terminateUnconfigured(String className) {
-        System.err.println("Missing metadata error: Unable to process Class.forName invocation for class name " + className);
+        System.out.println("Missing metadata error: Unable to process Class.forName invocation for class name " + className);
         System.exit(EXIT_CODE);
     }
 }

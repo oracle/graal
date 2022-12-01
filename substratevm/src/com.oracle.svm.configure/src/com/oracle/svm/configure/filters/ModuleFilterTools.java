@@ -58,7 +58,7 @@ public class ModuleFilterTools {
     private static void checkDependencies(Module module, Set<String> includedModuleNames) {
         for (ModuleDescriptor.Requires require : module.getDescriptor().requires()) {
             if (!includedModuleNames.contains(require.name())) {
-                System.err.println("Warning: dependency missing from input set of modules: " + module.getName() + " -> " + require.name());
+                System.out.println("Warning: dependency missing from input set of modules: " + module.getName() + " -> " + require.name());
                 checkDependencies(module.getLayer().findModule(require.name()).get(), includedModuleNames);
             }
         }

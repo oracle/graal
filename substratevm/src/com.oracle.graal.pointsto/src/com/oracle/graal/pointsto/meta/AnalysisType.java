@@ -449,7 +449,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             }
         });
         if (!mismatchedAssignableResults.isEmpty()) {
-            mismatchedAssignableResults.forEach(System.err::println);
+            mismatchedAssignableResults.forEach(System.out::println);
             throw new AssertionError("Verification of all-instantiated type flows failed");
         }
         return true;
@@ -1166,7 +1166,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         try {
             return wrapped.isLocal();
         } catch (InternalError e) {
-            System.err.println("warning: unknown locality of class " + wrapped.getName() + ", assuming class is not local. To remove the warning report an issue " +
+            System.out.println("Warning: unknown locality of class " + wrapped.getName() + ", assuming class is not local. To remove the warning report an issue " +
                             "to the library or language author. The issue is caused by " + wrapped.getName() + " which is not following the naming convention.");
             return false;
         }

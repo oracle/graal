@@ -115,7 +115,7 @@ public class JfrFeature implements InternalFeature {
         boolean runtimeEnabled = VMInspectionOptions.hasJfrSupport();
         if (HOSTED_ENABLED && !runtimeEnabled) {
             if (allowPrinting) {
-                System.err.println("Warning: When FlightRecoder is used to profile the image generator, it is also automatically enabled in the native image at run time. " +
+                System.out.println("Warning: When FlightRecoder is used to profile the image generator, it is also automatically enabled in the native image at run time. " +
                                 "This can affect the measurements because it can can make the image larger and image build time longer.");
             }
             runtimeEnabled = true;

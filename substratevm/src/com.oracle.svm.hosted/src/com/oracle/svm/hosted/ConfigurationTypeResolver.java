@@ -53,7 +53,7 @@ public final class ConfigurationTypeResolver {
         }
         TypeResult<Class<?>> typeResult = classLoader.findClass(name);
         if (warn && !typeResult.isPresent()) {
-            System.err.println("Warning: Could not resolve " + name + " for " + configurationType + ".");
+            System.out.println("Warning: Could not resolve " + name + " for " + configurationType + ".");
         }
         return typeResult.get();
     }

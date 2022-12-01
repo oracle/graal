@@ -344,8 +344,8 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         try {
             RuntimeSupport.executeInitializationHooks();
         } catch (Throwable t) {
-            System.err.println("Uncaught exception while running initialization hooks:");
-            t.printStackTrace();
+            System.out.println("Uncaught exception while running initialization hooks:");
+            t.printStackTrace(System.out);
             CEntryPointActions.leaveTearDownIsolate();
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }

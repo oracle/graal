@@ -147,7 +147,7 @@ public class JavaMainWrapper {
                     System.out.println("Heap dump created at '" + absoluteHeapDumpPath + "'.");
                     return 0;
                 } else {
-                    System.err.println("Unable to dump heap. Heap dumping is only supported for native executables built with `" + VMInspectionOptions.getHeapdumpsCommandArgument() + "`.");
+                    System.out.println("Unable to dump heap. Heap dumping is only supported for native executables built with `" + VMInspectionOptions.getHeapdumpsCommandArgument() + "`.");
                     return 1;
                 }
             }

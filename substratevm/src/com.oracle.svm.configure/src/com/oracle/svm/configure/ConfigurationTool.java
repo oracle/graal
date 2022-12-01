@@ -116,7 +116,7 @@ public class ConfigurationTool {
                     throw new UsageException("Unknown subcommand: " + first);
             }
         } catch (UsageException e) {
-            System.err.println(e.getMessage() + System.lineSeparator() +
+            System.out.println(e.getMessage() + System.lineSeparator() +
                             "Use 'native-image-configure help' for usage.");
             System.exit(2);
         } catch (Exception e) {
@@ -311,7 +311,7 @@ public class ConfigurationTool {
         }
 
         if (outputCollection.isEmpty()) {
-            System.err.println("Warning: no outputs specified, validating inputs only.");
+            System.out.println("Warning: no outputs specified, validating inputs only.");
         }
         for (URI uri : outputCollection.getReflectConfigPaths()) {
             try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {

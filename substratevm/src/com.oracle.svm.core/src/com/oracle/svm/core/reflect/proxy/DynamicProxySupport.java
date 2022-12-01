@@ -133,7 +133,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
 
                 return clazz;
             } catch (Throwable t) {
-                System.err.println("Warning: Could not create a proxy class from list of interfaces: " + Arrays.toString(interfaces) + ". Reason: " + t.getMessage());
+                System.out.println("Warning: Could not create a proxy class from list of interfaces: " + Arrays.toString(interfaces) + ". Reason: " + t.getMessage());
                 return t;
             }
         });

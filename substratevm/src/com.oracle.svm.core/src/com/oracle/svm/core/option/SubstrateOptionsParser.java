@@ -107,7 +107,7 @@ public class SubstrateOptionsParser {
             if (deprecationMessage != null && !deprecationMessage.isEmpty()) {
                 message += ": " + deprecationMessage;
             }
-            System.err.println(message);
+            System.out.println(message);
         }
         return true;
     }

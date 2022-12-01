@@ -1746,7 +1746,7 @@ public class TypeCheckBuilder {
                     }
                 });
                 if (!mismatchedTypes.isEmpty()) {
-                    mismatchedTypes.forEach(System.err::println);
+                    mismatchedTypes.forEach(System.out::println);
                     throw new AssertionError("Verification of type assignment failed");
                 }
             }

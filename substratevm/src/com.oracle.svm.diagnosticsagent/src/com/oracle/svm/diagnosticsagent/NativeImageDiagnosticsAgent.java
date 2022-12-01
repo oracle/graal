@@ -191,7 +191,7 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
                     clinitClassMap.put(clinitMethodId.rawValue(), classHandleHolder);
                     check(jvmti.getFunctions().SetBreakpoint().invoke(jvmti, clinitMethodId, 0L));
                 } else {
-                    System.err.println("Trace class initialization requested for " + className + " but the class has not been instrumented with <clinit>.");
+                    System.out.println("Trace class initialization requested for " + className + " but the class has not been instrumented with <clinit>.");
                 }
             }
             if (advisor.shouldTraceObjectInstantiation(className)) {
@@ -211,7 +211,7 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
             }
         } else {
             /* This should never happen. */
-            System.err.println("Trace object instantiation requested for " + className + " but the class has no constructors.");
+            System.out.println("Trace object instantiation requested for " + className + " but the class has no constructors.");
         }
     }
 
@@ -396,8 +396,8 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
             return writer.toByteArray();
         } catch (Throwable e) {
             String targetClazzName = clazzName != null ? clazzName : "<unknown class>";
-            System.err.println("[native-image-diagnostics-agent] Failed to instrument class " + targetClazzName + ": ");
-            e.printStackTrace(System.err);
+            System.out.println("[native-image-diagnostics-agent] Failed to instrument class " + targetClazzName + ": ");
+            e.printStackTrace(System.out);
             return null;
         }
     }

@@ -271,7 +271,7 @@ class ReflectionProcessor extends AbstractProcessor {
                 break;
             }
             default:
-                System.err.println("Unsupported reflection method: " + function);
+                System.out.println("Unsupported reflection method: " + function);
         }
     }
 

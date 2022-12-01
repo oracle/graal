@@ -135,7 +135,7 @@ public class FallbackExecutor {
     }
 
     private static void showError(String s) {
-        System.err.println("Error: " + s);
+        System.out.println("Error: " + s);
         System.exit(1);
     }
 }

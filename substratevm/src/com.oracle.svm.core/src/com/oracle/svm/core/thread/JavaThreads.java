@@ -237,8 +237,8 @@ public final class JavaThreads {
             }
         } else {
             /* If no uncaught exception handler is present, then just report the throwable. */
-            System.err.print("Exception in thread \"" + Thread.currentThread().getName() + "\" ");
-            throwable.printStackTrace();
+            System.out.print("Exception in thread \"" + Thread.currentThread().getName() + "\" ");
+            throwable.printStackTrace(System.out);
         }
     }
 

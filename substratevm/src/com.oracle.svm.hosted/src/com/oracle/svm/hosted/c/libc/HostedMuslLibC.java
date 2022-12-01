@@ -51,7 +51,7 @@ public class HostedMuslLibC extends MuslLibC implements HostedLibCBase {
     @Override
     public void checkIfLibCSupported() {
         if (!SubstrateOptions.StaticExecutable.getValue()) {
-            System.err.println("Warning: Cross-compiling a musl-based native-image that is not an executable is an experimental feature!" +
+            System.out.println("Warning: Cross-compiling a musl-based native-image that is not an executable is an experimental feature!" +
                             "If omitting --static wasn't the intention, then --static should be used when compiling with --libc=musl");
         }
     }

@@ -259,7 +259,7 @@ public class SerializationFeature implements InternalFeature {
     }
 
     static void warn(String str) {
-        System.err.println("Warning: " + str);
+        System.out.println("Warning: " + str);
     }
 }
 

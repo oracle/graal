@@ -291,6 +291,6 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         if (cause != null) {
             message += " Reason: " + formatError(cause) + '.';
         }
-        System.err.println("Warning: " + message);
+        System.out.println("Warning: " + message);
     }
 }

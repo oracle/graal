@@ -62,7 +62,7 @@ public class Log4ShellFeature implements InternalFeature {
     private static final Set<String> targetMethods = Set.of("debug", "error", "fatal", "info", "log", "trace", "warn");
 
     private static void warn(String warning) {
-        System.err.println(warning);
+        System.out.println(warning);
     }
 
     private static Optional<String> getPomVersion(Class<?> log4jClass) {

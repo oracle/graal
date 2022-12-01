@@ -130,7 +130,7 @@ public abstract class ConfigurationParser {
         if (strictConfiguration) {
             throw new JSONParserException(message);
         } else {
-            System.err.println("Warning: " + message);
+            System.out.println("Warning: " + message);
         }
     }
 

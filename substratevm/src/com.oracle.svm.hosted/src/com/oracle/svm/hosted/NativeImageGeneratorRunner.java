@@ -445,7 +445,7 @@ public class NativeImageGeneratorRunner {
             }
 
             if (pee.getExceptions().size() > 1) {
-                System.err.println(pee.getExceptions().size() + " fatal errors detected:");
+                System.out.println(pee.getExceptions().size() + " fatal errors detected:");
             }
             for (Throwable exception : pee.getExceptions()) {
                 NativeImageGeneratorRunner.reportFatalError(exception);
@@ -537,7 +537,7 @@ public class NativeImageGeneratorRunner {
      * @param e error to be reported.
      */
     protected static void reportFatalError(Throwable e) {
-        System.err.print("Fatal error: ");
+        System.out.print("Fatal error: ");
         e.printStackTrace();
     }
 
@@ -548,7 +548,7 @@ public class NativeImageGeneratorRunner {
      * @param msg message to report.
      */
     protected static void reportFatalError(Throwable e, String msg) {
-        System.err.print("Fatal error: " + msg);
+        System.out.print("Fatal error: " + msg);
         e.printStackTrace();
     }
 
@@ -558,7 +558,7 @@ public class NativeImageGeneratorRunner {
      * @param msg error message that is printed.
      */
     public static void reportUserError(String msg) {
-        System.err.println("Error: " + msg);
+        System.out.println("Error: " + msg);
     }
 
     /**
@@ -603,7 +603,7 @@ public class NativeImageGeneratorRunner {
      * @param msg warning message that is printed.
      */
     private static void warn(String msg) {
-        System.err.println("Warning: " + msg);
+        System.out.println("Warning: " + msg);
     }
 
     public int build(ImageClassLoader imageClassLoader) {

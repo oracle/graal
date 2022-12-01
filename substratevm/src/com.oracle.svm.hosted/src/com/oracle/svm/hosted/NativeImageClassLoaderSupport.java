@@ -700,7 +700,7 @@ public class NativeImageClassLoaderSupport {
             boolean useFilter = root.equals(excludeRoot);
             if (useFilter) {
                 String excludesStr = excludes.stream().map(Path::toString).collect(Collectors.joining(", "));
-                System.err.println("Warning: Using directory " + excludeRoot + " on classpath is discouraged." +
+                System.out.println("Warning: Using directory " + excludeRoot + " on classpath is discouraged." +
                                 " Reading classes/resources from directories " + excludesStr + " will be suppressed.");
             }
             FileVisitor<Path> visitor = new SimpleFileVisitor<>() {

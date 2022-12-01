@@ -1415,10 +1415,10 @@ public class NativeImage {
         try {
             build(config, nativeImageProvider);
         } catch (NativeImageError e) {
-            NativeImage.show(System.err::println, "Error: " + e.getMessage());
+            NativeImage.show(System.out::println, "Error: " + e.getMessage());
             Throwable cause = e.getCause();
             while (cause != null) {
-                NativeImage.show(System.err::println, "Caused by: " + cause);
+                NativeImage.show(System.out::println, "Caused by: " + cause);
                 cause = cause.getCause();
             }
             if (config.getBuildArgs().contains("--verbose")) {
@@ -1734,7 +1734,7 @@ public class NativeImage {
     }
 
     public static void showWarning(String message) {
-        show(System.err::println, "Warning: " + message);
+        show(System.out::println, "Warning: " + message);
     }
 
     @SuppressWarnings("serial")
