@@ -231,9 +231,9 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
                 return invoke.execute(method, null, arguments);
             } else {
-                OverLoadedMethodSelectorNode.OverloadedMethodWithArgs[] typeMatched = overloadSelector.execute(candidates, arguments);
-                if (typeMatched != null && typeMatched.length == 1) {
-                    return invoke.execute(typeMatched[0].getMethod(), null, typeMatched[0].getConvertedArgs(), true);
+                OverLoadedMethodSelectorNode.OverloadedMethodWithArgs typeMatched = overloadSelector.execute(candidates, arguments);
+                if (typeMatched != null) {
+                    return invoke.execute(typeMatched.getMethod(), null, typeMatched.getConvertedArgs(), true);
                 }
             }
         }
@@ -407,9 +407,9 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                     invoke.execute(initMethod, newObject, arguments);
                     return newObject;
                 } else {
-                    OverLoadedMethodSelectorNode.OverloadedMethodWithArgs[] typeMatched = overloadSelector.execute(initCandidates, arguments);
-                    if (typeMatched != null && typeMatched.length == 1) {
-                        return invoke.execute(typeMatched[0].getMethod(), null, typeMatched[0].getConvertedArgs(), true);
+                    OverLoadedMethodSelectorNode.OverloadedMethodWithArgs typeMatched = overloadSelector.execute(initCandidates, arguments);
+                    if (typeMatched != null) {
+                        return invoke.execute(typeMatched.getMethod(), null, typeMatched.getConvertedArgs(), true);
                     }
                 }
             }

@@ -1003,14 +1003,12 @@ public class EspressoInterop extends BaseInterop {
             } else {
                 // multiple overloaded methods found
                 // find method with type matches
-                OverLoadedMethodSelectorNode.OverloadedMethodWithArgs[] typeMatched = selectorNode.execute(candidates, arguments);
-                if (typeMatched != null && typeMatched.length == 1) {
+                OverLoadedMethodSelectorNode.OverloadedMethodWithArgs typeMatched = selectorNode.execute(candidates, arguments);
+                if (typeMatched != null) {
                     // single match found!
-                    return invoke.execute(typeMatched[0].getMethod(), receiver, typeMatched[0].getConvertedArgs(), true);
+                    return invoke.execute(typeMatched.getMethod(), receiver, typeMatched.getConvertedArgs(), true);
                 } else {
-                    // We could try to de-disambiguate by selecting the most
-                    // specific method overload if any.
-                    // See: HostExecuteNode.findMostSpecificOverload
+                    // unable to select exactly one best candidate for the input args!
                     throw UnknownIdentifierException.create(member);
                 }
             }
