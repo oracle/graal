@@ -110,7 +110,6 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
                     // of static access to do the right thing.
                     ValueNode narrowedEntry = maybeNarrowForOSRStaticAccess(tool, dataEntry);
                     if (dataEntry != narrowedEntry) {
-                        tool.setVirtualEntry(dataVirtual, frameSlotIndex, narrowedEntry, JavaKind.Long, -1);
                         dataEntry = narrowedEntry;
                     }
                 }
