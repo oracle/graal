@@ -345,9 +345,6 @@ class NativeImageVM(GraalVm):
                 self.cached_jdk_pgo = True
             else:
                 mx.abort(f'Unknown jdk profiles configuration: {config}')
-            # choose appropriate profiles
-            jdk_profiles = f"JDK{str(mx.get_jdk().version).split('.')[0]}_PROFILES"
-            self.cached_profiles_base_dir = mx.library(jdk_profiles).get_path(True)
 
         if matching.group("edition") is not None:
             edition = matching.group("edition")[:-1]
@@ -865,7 +862,10 @@ class NativeImageVM(GraalVm):
         instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
         ml_args = ['-H:+ProfileInference'] if self.ml == 'ml-profile-inference' else []
         if self.cached_jdk_pgo:
-            cached_profiles = ','.join(list(map(lambda f: os.path.join(self.cached_profiles_base_dir, f), os.listdir(self.cached_profiles_base_dir))))
+            # choose appropriate profiles
+            jdk_profiles = f"JDK{mx.get_jdk().javaCompliance}_PROFILES"
+            cached_profiles_base_dir = mx.library(jdk_profiles).get_path(True)
+            cached_profiles = ','.join(list(map(lambda f: os.path.join(cached_profiles_base_dir, f), os.listdir(cached_profiles_base_dir))))
             jdk_profiles_args = [f'-H:CachedPGOEnabled={cached_profiles}']
         else:
             jdk_profiles_args = []
