@@ -1800,6 +1800,9 @@ public class NativeImage {
         }
         for (String arg : config.getBuildArgs()) {
             argsProcessor.accept(arg);
+            if (arg.matches("--enable-monitoring=(.*,)*(jfr|all)(,.*)*\\Z")) {
+                imageBuilderJavaArgs.add("-XX:StartFlightRecording"); // use JFR at image build time
+            }
         }
         return argsProcessor.apply(false);
     }
