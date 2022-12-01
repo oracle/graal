@@ -886,7 +886,6 @@ suite = {
         "LIBCXX_INCLUDE_BENCHMARKS": "NO",
         "LIBCXX_INCLUDE_TESTS": "NO",
         "LIBCXX_ENABLE_STATIC" : "NO",
-        "LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY" : "NO",
         "CMAKE_INSTALL_PREFIX" : "native",
         # workaround for build problem with cmake >=3.22
         # see https://lists.llvm.org/pipermail/llvm-dev/2021-December/154144.html
@@ -910,6 +909,7 @@ suite = {
           "cmakeConfig" : {
             "CMAKE_INSTALL_RPATH" : "\\$ORIGIN",
             "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
+            "CMAKE_LIBTOOL" : "<path:LLVM_TOOLCHAIN>/bin/llvm-libtool-darwin",
           },
         },
         "windows" : {
@@ -919,6 +919,7 @@ suite = {
             "SULONG_CMAKE_PRE_315" : "True",
             # On Windows libcxx must be compiled using the cl compatible
             # compiler rather than the clang toolchain
+            "CMAKE_AR" : "<path:LLVM_TOOLCHAIN>/bin/llvm-lib.exe",
             "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang-cl>",
             "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang-cl>",
             "CMAKE_LINKER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:lld-link>",
