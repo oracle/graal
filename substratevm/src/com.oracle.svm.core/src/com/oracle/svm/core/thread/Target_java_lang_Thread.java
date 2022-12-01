@@ -301,7 +301,7 @@ public final class Target_java_lang_Thread {
         return thread;
     }
 
-    /** On HotSpot, a field of C++ class {@code JavaThread}. Loads and stores are unordered. */
+    /** On HotSpot, a field in C++ class {@code JavaThread}. Loads and stores are unordered. */
     @Inject @TargetElement(onlyWith = ContinuationsSupported.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     Thread vthread = null;
