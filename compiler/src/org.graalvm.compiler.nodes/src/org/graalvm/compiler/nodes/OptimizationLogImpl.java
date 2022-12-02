@@ -729,21 +729,32 @@ public class OptimizationLogImpl implements OptimizationLog {
         if (graph.getInliningLog() == null) {
             return null;
         }
-        return callsiteAsJSONMap(graph.getInliningLog().getRootCallsite(), true, null, methodNameFormatter);
+        EconomicMap<InliningLog.Callsite, EconomicMap<String, Object>> replacements = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+        return callsiteAsJSONMap(graph.getInliningLog().getRootCallsite(), true, null, methodNameFormatter, replacements);
     }
 
     /**
      * Converts an inlining subtree to a JSON map starting from a callsite.
      *
+     * The tree built by this method respects {@link InliningLog.Callsite#getOverriddenParent() the
+     * overriden parents}. As a result of this, the tree is slightly different from what is printed
+     * by {@link GraalOptions#TraceInlining}. This is achieved by remembering the mapping from
+     * callsites to their JSON representations in the {@code replacements} parameter. Each callsite
+     * then attaches itself to the correct {@link InliningLog.Callsite#getOverriddenParent() parent}
+     * by querying {@code replacements}.
+     *
      * @param callsite the root of the inlining subtree
      * @param isInlined {@code true} if the callsite was inlined
      * @param reason the list of reasons for the inlining decisions made about the callsite
      * @param methodNameFormatter a function that formats method names
+     * @param replacements a mapping of callsites to their respective JSON maps
      * @return inlining subtree as a JSON map
      */
+    @SuppressWarnings("unchecked")
     private EconomicMap<String, Object> callsiteAsJSONMap(InliningLog.Callsite callsite, boolean isInlined, List<String> reason,
-                    Function<ResolvedJavaMethod, String> methodNameFormatter) {
+                    Function<ResolvedJavaMethod, String> methodNameFormatter, EconomicMap<InliningLog.Callsite, EconomicMap<String, Object>> replacements) {
         EconomicMap<String, Object> map = EconomicMap.create();
+        replacements.put(callsite, map);
         map.put(METHOD_NAME_PROPERTY, callsite.getTarget() == null ? null : methodNameFormatter.apply(callsite.getTarget()));
         map.put(CALLSITE_BCI_PROPERTY, callsite.getBci());
         map.put(INLINED_PROPERTY, isInlined);
@@ -756,7 +767,6 @@ public class OptimizationLogImpl implements OptimizationLog {
                 map.put(RECEIVER_TYPE_PROFILE_PROPERTY, receiverTypeProfile);
             }
         }
-        List<Object> invokes = null;
         for (InliningLog.Callsite child : callsite.getChildren()) {
             boolean childIsInlined = false;
             List<String> childReason = null;
@@ -769,12 +779,18 @@ public class OptimizationLogImpl implements OptimizationLog {
                     childReason.add(childDecision.getReason());
                 }
             }
-            if (invokes == null) {
-                invokes = new ArrayList<>();
-            }
-            invokes.add(callsiteAsJSONMap(child, childIsInlined, childReason, methodNameFormatter));
+            callsiteAsJSONMap(child, childIsInlined, childReason, methodNameFormatter, replacements);
         }
-        map.put(INVOKES_PROPERTY, invokes);
+        if (callsite.getOverriddenParent() != null) {
+            EconomicMap<String, Object> parentMap = replacements.get(callsite.getOverriddenParent());
+            assert parentMap != null;
+            List<Object> parentInvokesProperty = (List<Object>) parentMap.get(INVOKES_PROPERTY);
+            if (parentInvokesProperty == null) {
+                parentInvokesProperty = new ArrayList<>();
+                parentMap.put(INVOKES_PROPERTY, parentInvokesProperty);
+            }
+            parentInvokesProperty.add(map);
+        }
         return map;
     }
 

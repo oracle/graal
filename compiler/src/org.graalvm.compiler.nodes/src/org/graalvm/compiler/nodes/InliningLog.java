@@ -143,20 +143,44 @@ public class InliningLog {
          */
         private final int bci;
 
-        private Callsite(Callsite parent, Invokable invoke, ResolvedJavaMethod target, int bci) {
+        /**
+         * The original callsite holding the invoke from which this invoke was originally duplicated
+         * or {@code null}.
+         *
+         * If this field is set, the optimization log interprets it as the true parent node
+         * overriding the {@link #parent} field. This allows us to build a slightly different tree
+         * in the optimization log while preserving the behavior of {@link #positionString()} and
+         * {@link #formatAsTree}.
+         *
+         * It must hold that the original callsite (the value of this field) precedes this node in
+         * the preorder traversal of the call tree. This property simplifies the construction of the
+         * modified tree in the optimization log.
+         */
+        private final Callsite originalCallsite;
+
+        private Callsite(Callsite parent, Callsite originalCallsite, Invokable invoke, ResolvedJavaMethod target, int bci) {
             this.parent = parent;
             this.bci = bci;
             this.decisions = new ArrayList<>();
             this.children = new ArrayList<>();
             this.invoke = invoke;
             this.target = target;
+            this.originalCallsite = originalCallsite;
             if (parent != null) {
                 parent.children.add(this);
             }
         }
 
-        private Callsite addChild(Invokable childInvoke) {
-            return new Callsite(this, childInvoke, childInvoke.getTargetMethod(), childInvoke.bci());
+        /**
+         * Creates and adds a child call-tree node (callsite) to this node.
+         *
+         * @param childInvoke the invoke which represents the child callsite to be added
+         * @param abstractCallsite the original callsite from which the child invoke was duplicated
+         *            (if any)
+         * @return the created callsite for the child
+         */
+        private Callsite addChild(Invokable childInvoke, Callsite abstractCallsite) {
+            return new Callsite(this, abstractCallsite, childInvoke, childInvoke.getTargetMethod(), childInvoke.bci());
         }
 
         public String positionString() {
@@ -225,6 +249,15 @@ public class InliningLog {
         }
 
         /**
+         * Gets the parent callsite, which may be overridden by {@link #originalCallsite} if it set.
+         *
+         * @return the parent callsite (overridable by {@link #originalCallsite})
+         */
+        public Callsite getOverriddenParent() {
+            return originalCallsite == null ? parent : originalCallsite;
+        }
+
+        /**
          * Gets the bci of the invoke. Returns {@link #ROOT_CALLSITE_BCI} for the root callsite.
          *
          * @return the bci of the invoke
@@ -239,7 +272,7 @@ public class InliningLog {
     private final EconomicMap<Invokable, Callsite> leaves;
 
     public InliningLog(ResolvedJavaMethod rootMethod) {
-        this.root = new Callsite(null, null, rootMethod, Callsite.ROOT_CALLSITE_BCI);
+        this.root = new Callsite(null, null, null, rootMethod, Callsite.ROOT_CALLSITE_BCI);
         this.leaves = EconomicMap.create();
     }
 
@@ -353,7 +386,8 @@ public class InliningLog {
                 invoke = (Invokable) replacements.get(replacementSiteInvoke);
             }
         }
-        Callsite site = new Callsite(parent, invoke, replacementSite.target, replacementSite.bci);
+        Callsite originalCallsite = replacementSite.originalCallsite == null ? null : mapping.get(replacementSite.originalCallsite);
+        Callsite site = new Callsite(parent, originalCallsite, invoke, replacementSite.target, replacementSite.bci);
         site.decisions.addAll(replacementSite.decisions);
         mapping.put(replacementSite, site);
         for (Callsite replacementChild : replacementSite.children) {
@@ -453,19 +487,22 @@ public class InliningLog {
     }
 
     /**
-     * Opens a new update scope that registers callsites for cloned invokes as children of the
-     * original invoke's callsite.
+     * Opens a new update scope that registers callsites for duplicated invokes and sets the
+     * {@link Callsite#originalCallsite} of the duplicated callsite to the original callsite (the
+     * callsite of the invoke from which it is duplicated).
      *
      * @return a bound {@link UpdateScope} or {@code null} if the log is disabled
      */
-    public static UpdateScope openUpdateScopeAttachingClonesToOriginal(InliningLog inliningLog) {
+    public static UpdateScope openUpdateScopeTrackingOriginalCallsites(InliningLog inliningLog) {
         if (inliningLog == null) {
             return null;
         }
-        return inliningLog.openUpdateScope((parent, newInvoke) -> {
-            if (parent != null) {
-                Callsite parentCallsite = inliningLog.leaves.get(parent);
-                Callsite callsite = parentCallsite.addChild(newInvoke);
+        return inliningLog.openUpdateScope((originalInvoke, newInvoke) -> {
+            if (originalInvoke != null) {
+                inliningLog.removeLeafCallsite(newInvoke);
+                Callsite siblingCallsite = inliningLog.leaves.get(originalInvoke);
+                Callsite parentCallsite = siblingCallsite.parent;
+                Callsite callsite = parentCallsite.addChild(newInvoke, siblingCallsite);
                 inliningLog.leaves.put(newInvoke, callsite);
             }
         });
@@ -599,7 +636,7 @@ public class InliningLog {
     public void trackNewCallsite(Invokable invoke) {
         assert !leaves.containsKey(invoke);
         Callsite currentRoot = findCurrentRoot();
-        Callsite callsite = currentRoot.addChild(invoke);
+        Callsite callsite = currentRoot.addChild(invoke, null);
         leaves.put(invoke, callsite);
     }
 
@@ -610,7 +647,7 @@ public class InliningLog {
     public void trackDuplicatedCallsite(Invokable sibling, Invokable newInvoke) {
         Callsite siblingCallsite = leaves.get(sibling);
         Callsite parentCallsite = siblingCallsite.parent;
-        Callsite callsite = parentCallsite.addChild(newInvoke);
+        Callsite callsite = parentCallsite.addChild(newInvoke, null);
         leaves.put(newInvoke, callsite);
     }
 
