@@ -142,9 +142,8 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
     }
 
     private static void runFixedNodeGVN(StructuredGraph graph, CoreProviders context) {
-        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, false);
         LoopsData ld = context.getLoopsDataProvider().getLoopsData(graph);
-        cfg.visitDominatorTreeDefault(new GVNVisitor(cfg, ld));
+        ld.getCFG().visitDominatorTreeDefault(new GVNVisitor(ld.getCFG(), ld));
     }
 
     private static boolean verifyGVN(StructuredGraph graph) {
