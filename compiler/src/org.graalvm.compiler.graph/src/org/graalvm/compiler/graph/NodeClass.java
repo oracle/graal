@@ -165,11 +165,13 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     private final boolean isSimplifiable;
     private final boolean isLeafNode;
     private final boolean isNodeWithIdentity;
+    private final boolean isMemoryKill;
 
     private final int leafId;
 
     public NodeClass(Class<T> clazz, NodeClass<? super T> superNodeClass) {
         this(clazz, superNodeClass, new FieldsScanner.DefaultCalcOffset(), null, 0);
+
     }
 
     @SuppressWarnings("try")
@@ -183,6 +185,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         this.isCommutative = BinaryCommutativeMarker.class.isAssignableFrom(clazz);
         this.isSimplifiable = SimplifiableMarker.class.isAssignableFrom(clazz);
         this.isNodeWithIdentity = NodeWithIdentity.class.isAssignableFrom(clazz);
+        this.isMemoryKill = MemoryKillMarker.class.isAssignableFrom(clazz);
 
         NodeFieldsScanner fs = new NodeFieldsScanner(calcOffset, superNodeClass, debug);
         try (DebugCloseable t = Init_FieldScanning.start(debug)) {
@@ -968,6 +971,10 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
      */
     public boolean isLeafNode() {
         return isLeafNode;
+    }
+
+    public boolean isMemoryKill() {
+        return isMemoryKill;
     }
 
     public int getLeafId() {
