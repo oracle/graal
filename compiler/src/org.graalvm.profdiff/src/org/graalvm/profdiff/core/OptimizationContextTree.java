@@ -91,41 +91,34 @@ public final class OptimizationContextTree {
     }
 
     /**
-     * Recursively finds the last inlining node on a path. Returns {@code null} if there is no such
-     * node. Only tree nodes corresponding to inlining tree nodes are considered. Inlining tree
+     * Recursively finds an inlining node whose path from root matches the longest prefix of the
+     * given {@code path}. The length of the longest matching prefix is returned. Inlining tree
      * nodes corresponding to abstract methods ({@link InliningTreeNode#isAbstract()}) are skipped
      * as if they were removed from the tree and their children reattached to the closest ancestor.
      *
-     * If several nodes match the path, then the first match is returned. Note that backtracking is
-     * necessary, because a path element may match 2 different edges, and one of the edges may lead
-     * to a dead-end.
-     *
      * @param currentRoot the current root node to search from (initially the root of tree)
-     * @param lastNode the last non-abstract node seen on the path
      * @param path the path from root
      * @param pathIndex the index to the next path element in the path (initially 0)
-     * @return the last node found on the path or {@code null}
+     * @return the length of the longest prefix of {@code path[pathIndex:]} matched by a node in
+     *         {@code currentRoot}'s subtree
      */
-    private static OptimizationContextTreeNode findLastNodeAt(OptimizationContextTreeNode currentRoot, OptimizationContextTreeNode lastNode, InliningPath path, int pathIndex) {
+    private static int longestPrefix(OptimizationContextTreeNode currentRoot, InliningPath path, int pathIndex) {
         if (pathIndex >= path.size()) {
-            return lastNode;
+            return 0;
         }
+        int result = 0;
         for (OptimizationContextTreeNode child : currentRoot.getChildren()) {
             if (child.getOriginalInliningTreeNode() == null) {
                 continue;
             }
             InliningTreeNode inliningTreeNode = child.getOriginalInliningTreeNode();
-            OptimizationContextTreeNode result = null;
             if (inliningTreeNode.isAbstract()) {
-                result = findLastNodeAt(child, lastNode, path, pathIndex);
+                result = Math.max(result, longestPrefix(child, path, pathIndex));
             } else if (path.get(pathIndex).matches(inliningTreeNode.pathElement())) {
-                result = findLastNodeAt(child, child, path, pathIndex + 1);
-            }
-            if (result != null) {
-                return result;
+                result = Math.max(result, longestPrefix(child, path, pathIndex + 1) + 1);
             }
         }
-        return lastNode;
+        return result;
     }
 
     /**
@@ -161,22 +154,34 @@ public final class OptimizationContextTree {
 
     /**
      * Inserts all optimizations from the given optimization tree to the appropriate context in the
-     * optimization-context tree. The appropriate context is stated by the optimization's
-     * {@link InliningPath#ofEnclosingMethod(Optimization) enclosing methods}. The path to the
-     * enclosing method is followed in the optimization-context tree (by only considering node
-     * origination in inlining tree nodes), and the optimization is placed in the last node on the
-     * path.
+     * optimization-context tree.
+     *
+     * The appropriate context is stated by an optimization's
+     * {@link InliningPath#ofEnclosingMethod(Optimization) enclosing method}. The path to the
+     * enclosing method is followed in the optimization-context tree, and the optimization is placed
+     * in the node representing the optimization's enclosing method. It is possible that the
+     * enclosing method is not in the inlining tree. In that case, {@link #longestPrefix the longest
+     * prefix} of the path which is still in the tree is considered instead.
      *
      * @param optimizationTree the source optimization tree with optimizations
      */
-    private void insertAllOptimizationNodes(OptimizationTree optimizationTree) {
+    private void insertAllOptimizationNodes(InliningTree inliningTree, OptimizationTree optimizationTree,
+                    EconomicMap<InliningTreeNode, OptimizationContextTreeNode> replacements) {
         optimizationTree.getRoot().forEach(node -> {
             if (!(node instanceof Optimization)) {
                 return;
             }
             Optimization optimization = (Optimization) node;
             InliningPath optimizationPath = InliningPath.ofEnclosingMethod(optimization);
-            OptimizationContextTreeNode lastNode = findLastNodeAt(root, root, optimizationPath, 0);
+            OptimizationContextTreeNode lastNode = root;
+            int prefixLength = longestPrefix(root, optimizationPath, 0);
+            if (prefixLength > 0) {
+                InliningPath longestPathInTree = optimizationPath.prefix(prefixLength);
+                List<InliningTreeNode> found = inliningTree.findNodesAt(longestPathInTree);
+                assert found.size() >= 1;
+                lastNode = replacements.get(found.get(0));
+            }
+            assert lastNode != null;
             lastNode.addChild(new OptimizationContextTreeNode(optimization));
         });
     }
@@ -244,7 +249,7 @@ public final class OptimizationContextTree {
         EconomicMap<InliningTreeNode, OptimizationContextTreeNode> replacements = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
         OptimizationContextTree optimizationContextTree = fromInliningTree(inliningTree, replacements);
         OptimizationContextTree.insertWarningNodesForDuplicatePaths(inliningTree, replacements);
-        optimizationContextTree.insertAllOptimizationNodes(optimizationTree);
+        optimizationContextTree.insertAllOptimizationNodes(inliningTree, optimizationTree, replacements);
         optimizationContextTree.root.forEach(node -> node.getChildren().sort(OptimizationContextTreeNode::compareTo));
         return optimizationContextTree;
     }

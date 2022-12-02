@@ -63,6 +63,9 @@ public class OptimizationContextTreeTest {
      *              Optimization4 at {d(): 1, b(): 3, a(): 1}
      *              Optimization5 at {c(): 4, a(): 2}
      *              Optimization6 at {f(): 2, a(): 3}
+     *              Optimization7 at {x(): 2, a(): 3}
+     *              Optimization8 at {y(): 3, c(): 5, a(): 2}
+     *              Optimization9 at {z(): 4, f(): 1, a(): 3}
      * </pre>
      *
      * The expected result is:
@@ -72,6 +75,7 @@ public class OptimizationContextTreeTest {
      *     Optimization1 at null
      *     a() at bci -1
      *         Optimization2 at {a(): 5}
+     *         Optimization7 at {x(): 2, a(): 3}
      *         b() at bci 1
      *             Warning
      *             Optimization3 at {b(): 2, a(): 1}
@@ -84,9 +88,11 @@ public class OptimizationContextTreeTest {
      *                 Warning
      *         c() at bci 2
      *            Optimization5 at {c(): 4, a(): 2}
+     *            Optimization8 at {y(): 3, c(): 5, a(): 2}
      *         (abstract) e() at bci 3
      *             f() at bci 3
      *                 Optimization6 at {f(): 2, a(): 3}
+     *                 Optimization9 at {z(): 4, f(): 1, a(): 3}
      * </pre>
      */
     @Test
@@ -123,6 +129,17 @@ public class OptimizationContextTreeTest {
         Optimization o4 = new Optimization("Optimization4", "", o4Position, null);
         Optimization o5 = new Optimization("Optimization5", "", EconomicMap.of("c()", 4, "a()", 2), null);
         Optimization o6 = new Optimization("Optimization6", "", EconomicMap.of("f()", 2, "a()", 3), null);
+        Optimization o7 = new Optimization("Optimization7", "", EconomicMap.of("x()", 2, "a()", 3), null);
+        EconomicMap<String, Integer> o8Position = EconomicMap.create();
+        o8Position.put("y()", 3);
+        o8Position.put("c()", 5);
+        o8Position.put("a()", 2);
+        Optimization o8 = new Optimization("Optimization8", "", o8Position, null);
+        EconomicMap<String, Integer> o9Position = EconomicMap.create();
+        o9Position.put("z()", 4);
+        o9Position.put("f()", 1);
+        o9Position.put("a()", 3);
+        Optimization o9 = new Optimization("Optimization9", "", o9Position, null);
 
         rootPhase.addChild(tier1);
         rootPhase.addChild(tier2);
@@ -132,6 +149,9 @@ public class OptimizationContextTreeTest {
         tier2.addChild(o4);
         tier2.addChild(o5);
         tier2.addChild(o6);
+        tier2.addChild(o7);
+        tier2.addChild(o8);
+        tier2.addChild(o9);
 
         OptimizationTree optimizationTree = new OptimizationTree(rootPhase);
 
@@ -152,6 +172,9 @@ public class OptimizationContextTreeTest {
         OptimizationContextTreeNode co4 = new OptimizationContextTreeNode(o4);
         OptimizationContextTreeNode co5 = new OptimizationContextTreeNode(o5);
         OptimizationContextTreeNode co6 = new OptimizationContextTreeNode(o6);
+        OptimizationContextTreeNode co7 = new OptimizationContextTreeNode(o7);
+        OptimizationContextTreeNode co8 = new OptimizationContextTreeNode(o8);
+        OptimizationContextTreeNode co9 = new OptimizationContextTreeNode(o9);
 
         cb1.addChild(OptimizationContextTreeNode.duplicatePathWarning());
         cd1.addChild(OptimizationContextTreeNode.duplicatePathWarning());
@@ -160,10 +183,13 @@ public class OptimizationContextTreeTest {
 
         root.addChild(co1);
         ca.addChild(co2);
+        ca.addChild(co7);
         cb1.addChild(co3);
         cd1.addChild(co4);
         cc.addChild(co5);
+        cc.addChild(co8);
         cf.addChild(co6);
+        cf.addChild(co9);
 
         root.addChild(ca);
         ca.addChild(cb1);

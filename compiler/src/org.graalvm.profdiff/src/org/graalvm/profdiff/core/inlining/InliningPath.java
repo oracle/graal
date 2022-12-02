@@ -242,6 +242,20 @@ public final class InliningPath {
     }
 
     /**
+     * Returns the prefix of length {@code prefixLength}.
+     *
+     * @param prefixLength the length of the prefix
+     * @return a path which represents the prefix of the given length
+     */
+    public InliningPath prefix(int prefixLength) {
+        assert prefixLength >= 0 && prefixLength <= path.size();
+        if (prefixLength == 0) {
+            return InliningPath.EMPTY;
+        }
+        return new InliningPath(path.subList(0, prefixLength));
+    }
+
+    /**
      * Returns {@code true} iff this path matches the other path. This path matches the other path
      * iff this path is a prefix of the other path and the other path is a prefix of this path.
      *
