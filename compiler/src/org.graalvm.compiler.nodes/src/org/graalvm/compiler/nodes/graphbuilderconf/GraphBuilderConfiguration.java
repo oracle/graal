@@ -95,10 +95,6 @@ public final class GraphBuilderConfiguration {
             nodePlugins = newPlugins;
         }
 
-        public void clearNodePlugin() {
-            nodePlugins = new NodePlugin[0];
-        }
-
         public ParameterPlugin[] getParameterPlugins() {
             return parameterPlugins;
         }
@@ -122,17 +118,6 @@ public final class GraphBuilderConfiguration {
         public void appendTypePlugin(TypePlugin plugin) {
             typePlugins = Arrays.copyOf(typePlugins, typePlugins.length + 1);
             typePlugins[typePlugins.length - 1] = plugin;
-        }
-
-        public void prependTypePlugin(TypePlugin plugin) {
-            TypePlugin[] newPlugins = new TypePlugin[typePlugins.length + 1];
-            System.arraycopy(typePlugins, 0, newPlugins, 1, typePlugins.length);
-            newPlugins[0] = plugin;
-            typePlugins = newPlugins;
-        }
-
-        public void clearParameterPlugin() {
-            parameterPlugins = new ParameterPlugin[0];
         }
 
         public InlineInvokePlugin[] getInlineInvokePlugins() {
@@ -361,20 +346,6 @@ public final class GraphBuilderConfiguration {
                         trackNodeSourcePosition,
                         newRetainLocalVariables,
                         replaceLocalsWithConstants,
-                        skippedExceptionTypes,
-                        plugins);
-    }
-
-    public GraphBuilderConfiguration withReplaceLocalsWithConstants(boolean newReplaceLocalsWithConstants) {
-        return new GraphBuilderConfiguration(
-                        eagerResolving,
-                        unresolvedIsError,
-                        bytecodeExceptionMode,
-                        omitAssertions,
-                        insertFullInfopoints,
-                        trackNodeSourcePosition,
-                        retainLocalVariables,
-                        newReplaceLocalsWithConstants,
                         skippedExceptionTypes,
                         plugins);
     }

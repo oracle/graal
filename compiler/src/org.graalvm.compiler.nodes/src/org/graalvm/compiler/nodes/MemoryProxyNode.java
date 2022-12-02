@@ -46,11 +46,6 @@ public final class MemoryProxyNode extends ProxyNode implements SingleMemoryKill
         this.locationIdentity = locationIdentity;
     }
 
-    public void setValue(MemoryKill newValue) {
-        this.updateUsages(value.asNode(), newValue.asNode());
-        this.value = newValue;
-    }
-
     @Override
     public ValueNode value() {
         return (value == null ? null : value.asNode());

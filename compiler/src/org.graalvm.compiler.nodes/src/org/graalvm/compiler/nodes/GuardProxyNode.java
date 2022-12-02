@@ -41,11 +41,6 @@ public final class GuardProxyNode extends ProxyNode implements GuardingNode {
         this.value = value;
     }
 
-    public void setValue(GuardingNode newValue) {
-        this.updateUsages(value.asNode(), newValue.asNode());
-        this.value = newValue;
-    }
-
     @Override
     public ValueNode value() {
         return (value == null ? null : value.asNode());

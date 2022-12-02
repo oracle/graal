@@ -127,19 +127,6 @@ public final class Block extends AbstractBlockBase<Block> {
         return getSuccessors()[0];
     }
 
-    public Block getEarliestPostDominated() {
-        Block b = this;
-        while (true) {
-            Block dom = b.getDominator();
-            if (dom != null && dom.getPostdominator() == b) {
-                b = dom;
-            } else {
-                break;
-            }
-        }
-        return b;
-    }
-
     @Override
     public Block getPostdominator() {
         return postdominator;

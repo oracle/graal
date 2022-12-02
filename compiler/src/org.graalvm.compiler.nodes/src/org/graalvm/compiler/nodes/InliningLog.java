@@ -82,14 +82,6 @@ public class InliningLog {
             return reason;
         }
 
-        public String getPhase() {
-            return phase;
-        }
-
-        public ResolvedJavaMethod getTarget() {
-            return target;
-        }
-
         @Override
         public String toString() {
             return String.format("<%s> %s: %s, %s", phase, target != null ? target.format("%H.%n(%p)") : "", positive ? "yes" : "no",
@@ -491,13 +483,6 @@ public class InliningLog {
         Callsite parentCallsite = siblingCallsite.parent;
         Callsite callsite = parentCallsite.addChild(newInvoke);
         leaves.put(newInvoke, callsite);
-    }
-
-    public void updateExistingCallsite(Invokable previousInvoke, Invokable newInvoke) {
-        Callsite callsite = leaves.get(previousInvoke);
-        leaves.removeKey(previousInvoke);
-        leaves.put(newInvoke, callsite);
-        callsite.invoke = newInvoke;
     }
 
     /**
