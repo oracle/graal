@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -92,6 +93,8 @@ class LinuxSystemPropertiesFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.add(SystemPropertiesSupport.class, new LinuxSystemPropertiesSupport());
+        LinuxSystemPropertiesSupport systemPropertiesSupport = new LinuxSystemPropertiesSupport();
+        ImageSingletons.add(SystemPropertiesSupport.class, systemPropertiesSupport);
+        ImageSingletons.add(RuntimeSystemPropertiesSupport.class, systemPropertiesSupport);
     }
 }

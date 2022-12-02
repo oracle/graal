@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -390,6 +391,8 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
 class WindowsSystemPropertiesFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.add(SystemPropertiesSupport.class, new WindowsSystemPropertiesSupport());
+        WindowsSystemPropertiesSupport systemPropertiesSupport = new WindowsSystemPropertiesSupport();
+        ImageSingletons.add(SystemPropertiesSupport.class, systemPropertiesSupport);
+        ImageSingletons.add(RuntimeSystemPropertiesSupport.class, systemPropertiesSupport);
     }
 }

@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -49,7 +50,7 @@ import com.oracle.svm.core.util.VMError;
  * the current working directory is quite expensive. We initialize such a property either when it is
  * explicitly accessed, or when all properties are accessed.
  */
-public abstract class SystemPropertiesSupport {
+public abstract class SystemPropertiesSupport implements RuntimeSystemPropertiesSupport {
 
     /** System properties that are taken from the VM hosting the image generator. */
     private static final String[] HOSTED_PROPERTIES = {
@@ -193,6 +194,7 @@ public abstract class SystemPropertiesSupport {
      * Initializes a property at startup from external input (e.g., command line arguments). This
      * must only be called while the runtime is single threaded.
      */
+    @Override
     public void initializeProperty(String key, String value) {
         savedProperties.put(key, value);
         properties.setProperty(key, value);
