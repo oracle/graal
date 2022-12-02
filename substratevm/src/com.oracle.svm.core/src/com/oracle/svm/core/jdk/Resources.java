@@ -196,6 +196,7 @@ public final class Resources {
         return entry;
     }
 
+    @SuppressWarnings("deprecation")
     private static URL createURL(String moduleName, String resourceName, int index) {
         try {
             String refPart = index != 0 ? '#' + Integer.toString(index) : "";

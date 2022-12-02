@@ -1,7 +1,7 @@
 {
   "README": "This file contains definitions that are useful for the hocon and jsonnet CI files of multiple repositories.",
 
-  "mx_version" : "6.14.2",
+  "mx_version" : "6.14.4",
 
   "jdks": {
     "openjdk11":          {"name": "jpg-jdk",   "version": "11.0.11", "build_id": "9", "open": true, "release": true, "platformspecific": true },
@@ -27,7 +27,7 @@
     "labsjdk-ee-19Debug": {"name": "labsjdk",   "version": "ee-19.0.2+5-jvmci-23.0-b03-debug", "platformspecific": true },
     "labsjdk-ee-19-llvm": {"name": "labsjdk",   "version": "ee-19.0.2+5-jvmci-23.0-b03-sulong", "platformspecific": true },
 
-    "oraclejdk20":        {"name": "jpg-jdk",   "version": "20",      "build_id": "22", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]},
+    "oraclejdk20":        {"name": "jpg-jdk",   "version": "20",      "build_id": "24", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]},
     "labsjdk-ce-20":      {"name": "labsjdk",   "version": "ce-20+24-jvmci-23.0-b02", "platformspecific": true },
     "labsjdk-ce-20Debug": {"name": "labsjdk",   "version": "ce-20+24-jvmci-23.0-b02-debug", "platformspecific": true },
     "labsjdk-ce-20-llvm": {"name": "labsjdk",   "version": "ce-20+24-jvmci-23.0-b02-sulong", "platformspecific": true }
@@ -38,9 +38,11 @@
     "windows-jdk11":      { "packages" : { "devkit:VS2017-15.9.24+1" : "==0" }},
     "windows-jdk17":      { "packages" : { "devkit:VS2019-16.9.3+1"  : "==0" }},
     "windows-jdk19":      { "packages" : { "devkit:VS2022-17.1.0+1"  : "==0" }},
+    "windows-jdk20":      { "packages" : { "devkit:VS2022-17.1.0+1"  : "==0" }},
     "linux-jdk11":      { "packages" : { "devkit:gcc7.3.0-OEL6.4+1"  : "==1" }},
     "linux-jdk17":      { "packages" : { "devkit:gcc10.3.0-OL6.4+1"  : "==0" }},
-    "linux-jdk19":      { "packages" : { "devkit:gcc11.2.0-OL6.4+1"  : "==0" }}
+    "linux-jdk19":      { "packages" : { "devkit:gcc11.2.0-OL6.4+1"  : "==0" }},
+    "linux-jdk20":      { "packages" : { "devkit:gcc11.2.0-OL6.4+1"  : "==0" }}
   },
 
   "catch_files" : [

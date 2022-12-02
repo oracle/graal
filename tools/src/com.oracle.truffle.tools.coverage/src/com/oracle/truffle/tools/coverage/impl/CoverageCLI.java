@@ -85,8 +85,8 @@ final class CoverageCLI {
         return percentFormat(100 * (double) covered / loaded);
     }
 
-    private static long getCoveredCount(SectionCoverage[] sectionCoverage) {
-        return Arrays.stream(sectionCoverage).filter(SectionCoverage::isCovered).count();
+    private static int getCoveredCount(SectionCoverage[] sectionCoverage) {
+        return (int) Arrays.stream(sectionCoverage).filter(SectionCoverage::isCovered).count();
     }
 
     private static String rootCoverage(SourceCoverage coverage) {

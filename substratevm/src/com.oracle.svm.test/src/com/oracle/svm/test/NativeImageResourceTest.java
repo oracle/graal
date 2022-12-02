@@ -60,6 +60,7 @@ public class NativeImageResourceTest {
      * </p>
      */
     @Test
+    @SuppressWarnings("deprecation")
     public void githubIssues() {
         try {
             URL url1 = resourceNameToURL(RESOURCE_FILE_1, true);
@@ -134,6 +135,7 @@ public class NativeImageResourceTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testURLExternalFormEquivalence() {
         Enumeration<URL> urlEnumeration = null;
         try {

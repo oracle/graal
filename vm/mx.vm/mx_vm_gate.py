@@ -95,7 +95,7 @@ def _check_compiler_log(compiler_log_file, expectations, extra_check=None):
         expectations = [expectations]
     for pattern in expectations:
         if not re.search(pattern, compiler_log):
-            mx.abort('Did not find expected pattern ("{}") in compiler log:{}{}'.format(pattern, linesep, compiler_log))
+            mx.abort(f'Did not find expected pattern ("{pattern}") in compiler log:{linesep}{compiler_log}')
     if extra_check is not None:
         extra_check(compiler_log)
     if mx.get_opts().verbose or in_exception_path:
@@ -201,7 +201,7 @@ def _test_libgraal_fatal_error_handling():
             mx.abort('Expected a file starting with "hs_err_pid" in test directory. Entries found=' + str(listdir(latest_scratch_dir)))
 
         for hs_err in hs_errs:
-            mx.log("Verifying content of {}".format(join(latest_scratch_dir, hs_err)))
+            mx.log(f"Verifying content of {join(latest_scratch_dir, hs_err)}")
             with open(join(latest_scratch_dir, hs_err)) as fp:
                 contents = fp.read()
             if 'libjvmci' in hs_err:
@@ -221,7 +221,7 @@ def _test_libgraal_fatal_error_handling():
 
     # Only clean up scratch dir on success
     for scratch_dir in bench_suite.scratchDirs():
-        mx.log("Cleaning up scratch dir after gate task completion: {}".format(scratch_dir))
+        mx.log(f"Cleaning up scratch dir after gate task completion: {scratch_dir}")
         mx.rmtree(scratch_dir)
 
 def _jdk_has_ForceTranslateFailure_jvmci_option(jdk):
@@ -434,7 +434,7 @@ def graalvm_svm():
     native_image_cmd = join(mx_sdk_vm_impl.graalvm_output(), 'bin', 'native-image') + ('.cmd' if mx.get_os() == 'windows' else '')
     svm = mx.suite('substratevm')
     if not exists(native_image_cmd) or not svm:
-        mx.abort("Image building not accessible in GraalVM {}. Build GraalVM with native-image support".format(mx_sdk_vm_impl.graalvm_dist_name()))
+        mx.abort(f"Image building not accessible in GraalVM {mx_sdk_vm_impl.graalvm_dist_name()}. Build GraalVM with native-image support")
     # useful to speed up image creation during development
     hosted_assertions = mx.get_env("DISABLE_SVM_IMAGE_HOSTED_ASSERTIONS", "false") != "true"
     @contextmanager
@@ -526,22 +526,22 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id):
     try:
         report_file = join(svmbuild, "language_permissions.log")
         options = [
-            '--language:{}'.format(language_id),
+            f'--language:{language_id}',
             '--features=com.oracle.svm.truffle.tck.PermissionsFeature',
             '-H:ClassInitialization=:build_time',
             '-H:+EnforceMaxRuntimeCompileMethods',
             '-cp',
             cp,
             '-H:-FoldSecurityManagerGetter',
-            '-H:TruffleTCKPermissionsReportFile={}'.format(report_file),
-            '-H:Path={}'.format(svmbuild),
+            f'-H:TruffleTCKPermissionsReportFile={report_file}',
+            f'-H:Path={svmbuild}',
             'com.oracle.svm.truffle.tck.MockMain'
         ]
         if excludes:
-            options.append('-H:TruffleTCKPermissionsExcludeFiles={}'.format(','.join(excludes)))
+            options.append(f"-H:TruffleTCKPermissionsExcludeFiles={','.join(excludes)}")
         native_image(options)
         if isfile(report_file) and getsize(report_file) > 0:
-            message = "Failed: Language {} performs following privileged calls:\n\n".format(language_id)
+            message = f"Failed: Language {language_id} performs following privileged calls:\n\n"
             with open(report_file, "r") as f:
                 for line in f.readlines():
                     message = message + line
@@ -596,7 +596,7 @@ def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None,
                                    None,
                                    None)
             if not exists(unittests_file):
-                mx.abort('No unit tests found matching the criteria {}'.format(",".join(unit_tests)))
+                mx.abort(f"No unit tests found matching the criteria {','.join(unit_tests)}")
             build_deps = build_deps + unittest_deps
 
         if additional_deps:
@@ -617,7 +617,7 @@ def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None,
             if not any(s == 'EXECUTABLE' for s in artifacts.sections()):
                 mx.abort('Executable not found in image build artifacts.')
             tests_image_path = join(image_dir, str(artifacts.items('EXECUTABLE')[0][0]))
-        mx.logv('Test image path: {}'.format(tests_image_path))
+        mx.logv(f'Test image path: {tests_image_path}')
         return tests_image_path, unittests_file
 
 def gate_svm_sl_tck(tasks):
@@ -631,7 +631,7 @@ def gate_svm_sl_tck(tasks):
                 options = [
                     '--macro:truffle',
                     '--tool:all',
-                    '-H:Path={}'.format(svmbuild),
+                    f'-H:Path={svmbuild}',
                     '-H:Class=org.junit.runner.JUnitCore',
                 ]
                 tests_image_path, tests_file = build_tests_image(svmbuild, options, ['com.oracle.truffle.tck.tests'], ['truffle:TRUFFLE_SL_TCK', 'truffle:TRUFFLE_TCK_INSTRUMENTATION'])
