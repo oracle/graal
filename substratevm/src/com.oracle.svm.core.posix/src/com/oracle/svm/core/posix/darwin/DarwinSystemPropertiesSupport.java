@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -130,6 +131,8 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
 class DarwinSystemPropertiesFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.add(SystemPropertiesSupport.class, new DarwinSystemPropertiesSupport());
+        DarwinSystemPropertiesSupport systemPropertiesSupport = new DarwinSystemPropertiesSupport();
+        ImageSingletons.add(SystemPropertiesSupport.class, systemPropertiesSupport);
+        ImageSingletons.add(RuntimeSystemPropertiesSupport.class, systemPropertiesSupport);
     }
 }
