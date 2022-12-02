@@ -28,7 +28,6 @@ import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.PrimitiveConstant;
 
 /**
@@ -89,32 +88,6 @@ public enum Condition {
 
     Condition(String operator) {
         this.operator = operator;
-    }
-
-    public boolean check(int left, int right) {
-        switch (this) {
-            case EQ:
-                return left == right;
-            case NE:
-                return left != right;
-            case LT:
-                return left < right;
-            case LE:
-                return left <= right;
-            case GT:
-                return left > right;
-            case GE:
-                return left >= right;
-            case AE:
-                return UnsignedMath.aboveOrEqual(left, right);
-            case BE:
-                return UnsignedMath.belowOrEqual(left, right);
-            case AT:
-                return UnsignedMath.aboveThan(left, right);
-            case BT:
-                return UnsignedMath.belowThan(left, right);
-        }
-        throw new IllegalArgumentException(this.toString());
     }
 
     public static final class CanonicalizedCondition {
@@ -364,20 +337,6 @@ public enum Condition {
      */
     public final boolean isCommutative() {
         return this == EQ || this == NE;
-    }
-
-    /**
-     * Attempts to fold a comparison between two constants and return the result.
-     *
-     * @param lt the constant on the left side of the comparison
-     * @param rt the constant on the right side of the comparison
-     * @param constantReflection needed to compare constants
-     * @return {@link Boolean#TRUE} if the comparison is known to be true, {@link Boolean#FALSE} if
-     *         the comparison is known to be false
-     */
-    public boolean foldCondition(JavaConstant lt, JavaConstant rt, ConstantReflectionProvider constantReflection) {
-        assert !lt.getJavaKind().isNumericFloat() && !rt.getJavaKind().isNumericFloat();
-        return foldCondition(lt, rt, constantReflection, false);
     }
 
     /**
