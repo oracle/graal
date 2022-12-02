@@ -110,7 +110,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     @CompilerDirectives.TruffleBoundary
     public BinaryParser(WasmModule module, WasmContext context) {
-        super(module.sourceCode());
+        super(module.data());
         this.module = module;
         this.wasmContext = context;
         this.multiResult = new int[2];
@@ -204,9 +204,6 @@ public class BinaryParser extends BinaryStreamParser {
         }
         if (!hasCodeSection) {
             assertIntEqual(module.numFunctions(), module.importedFunctions().size(), Failure.FUNCTIONS_CODE_INCONSISTENT_LENGTHS);
-        }
-        if (!wasmContext.getContextOptions().keepDataSections()) {
-            module.setSourceCode(null);
         }
         module.setBytecode(bytecode.toArray());
         module.removeFunctionReferences();

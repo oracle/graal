@@ -50,7 +50,6 @@ import org.graalvm.wasm.exception.WasmException;
 public class WasmContextOptions {
     @CompilationFinal private boolean saturatingFloatToInt;
     @CompilationFinal private boolean signExtensionOps;
-    @CompilationFinal private boolean keepDataSections;
     @CompilationFinal private boolean multiValue;
     @CompilationFinal private boolean bulkMemoryAndRefTypes;
     @CompilationFinal private boolean memory64;
@@ -72,7 +71,6 @@ public class WasmContextOptions {
     private void setOptionValues() {
         this.saturatingFloatToInt = readBooleanOption(WasmOptions.SaturatingFloatToInt);
         this.signExtensionOps = readBooleanOption(WasmOptions.SignExtensionOps);
-        this.keepDataSections = readBooleanOption(WasmOptions.KeepDataSections);
         this.multiValue = readBooleanOption(WasmOptions.MultiValue);
         this.bulkMemoryAndRefTypes = readBooleanOption(WasmOptions.BulkMemoryAndRefTypes);
         this.memory64 = readBooleanOption(WasmOptions.Memory64);
@@ -102,10 +100,6 @@ public class WasmContextOptions {
         return signExtensionOps;
     }
 
-    public boolean keepDataSections() {
-        return keepDataSections;
-    }
-
     public boolean supportMultiValue() {
         return multiValue;
     }
@@ -131,7 +125,6 @@ public class WasmContextOptions {
         int hash = 5;
         hash = 53 * hash + (this.saturatingFloatToInt ? 1 : 0);
         hash = 53 * hash + (this.signExtensionOps ? 1 : 0);
-        hash = 53 * hash + (this.keepDataSections ? 1 : 0);
         hash = 53 * hash + (this.multiValue ? 1 : 0);
         hash = 53 * hash + (this.bulkMemoryAndRefTypes ? 1 : 0);
         hash = 53 * hash + (this.memory64 ? 1 : 0);
@@ -156,9 +149,6 @@ public class WasmContextOptions {
             return false;
         }
         if (this.signExtensionOps != other.signExtensionOps) {
-            return false;
-        }
-        if (this.keepDataSections != other.keepDataSections) {
             return false;
         }
         if (this.multiValue != other.multiValue) {
