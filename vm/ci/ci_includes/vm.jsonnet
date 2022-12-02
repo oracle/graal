@@ -106,8 +106,8 @@ local jdks = common_json.jdks;
   },
 
   diskspace_required: {
-    java17_linux_mad64: "30GB",
-    java19_linux_mad64: "30GB",
+    java17_linux_amd64: "30GB",
+    java19_linux_amd64: "30GB",
   },
 
   local builds = [

@@ -632,8 +632,8 @@ local devkits = common_json.devkits;
   #
 
   # Linux/AMD64
-  deploy_vm_java17_linux_amd64: vm.vm_java_17_llvm + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64("java17") + {name: 'post-merge-deploy-vm-java17-linux-amd64', diskspace_required: vm.diskspace_required.java17_linux_mad64, notify_groups:: ["deploy"]},
-  deploy_vm_java19_linux_amd64: vm.vm_java_19_llvm + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64("java19") + {name: 'post-merge-deploy-vm-java19-linux-amd64', diskspace_required: vm.diskspace_required.java19_linux_mad64, notify_groups:: ["deploy"]},
+  deploy_vm_java17_linux_amd64: vm.vm_java_17_llvm + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64("java17") + {name: 'post-merge-deploy-vm-java17-linux-amd64', diskspace_required: vm.diskspace_required.java17_linux_amd64, notify_groups:: ["deploy"]},
+  deploy_vm_java19_linux_amd64: vm.vm_java_19_llvm + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64("java19") + {name: 'post-merge-deploy-vm-java19-linux-amd64', diskspace_required: vm.diskspace_required.java19_linux_amd64, notify_groups:: ["deploy"]},
 
   # Linux/AARCH64
   deploy_vm_java17_linux_aarch64: vm.vm_java_17 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_linux_aarch64("java17") + {name: 'daily-deploy-vm-java17-linux-aarch64', notify_groups:: ["deploy"]},
