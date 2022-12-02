@@ -45,8 +45,8 @@ public final class GraphBuilderConfiguration {
 
         /**
          * Creates a copy of a given set of plugins. The {@link InvocationPlugins} in
-         * {@code copyFrom} become the {@linkplain InvocationPlugins#getParent() default}
-         * {@linkplain #getInvocationPlugins() invocation plugins} in this object.
+         * {@code copyFrom} become the default {@linkplain #getInvocationPlugins() invocation
+         * plugins} in this object.
          */
         public Plugins(Plugins copyFrom, InvocationPlugins invocationPlugins) {
             this.invocationPlugins = invocationPlugins != null ? invocationPlugins : new InvocationPlugins(null, copyFrom.invocationPlugins);
@@ -214,8 +214,7 @@ public final class GraphBuilderConfiguration {
 
     /**
      * Creates a copy of this configuration with all its plugins. The {@link InvocationPlugins} in
-     * this configuration become the {@linkplain InvocationPlugins#getParent() parent} of the
-     * {@link InvocationPlugins} in the copy.
+     * this configuration become the parent of the {@link InvocationPlugins} in the copy.
      */
     public GraphBuilderConfiguration copy() {
         Plugins newPlugins = new Plugins(plugins);

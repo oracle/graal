@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,9 +27,6 @@ package org.graalvm.compiler.debug.test;
 import org.graalvm.compiler.debug.TTY;
 import org.junit.Test;
 
-import java.util.HashMap;
-import java.util.Map;
-
 public class TTYTest {
 
     @Test
@@ -46,7 +43,7 @@ public class TTYTest {
         printAll();
     }
 
-    private void printAll() throws Exception {
+    private static void printAll() {
         TTY.print(Integer.MAX_VALUE);
         TTY.print('A');
         TTY.print(Long.MAX_VALUE);

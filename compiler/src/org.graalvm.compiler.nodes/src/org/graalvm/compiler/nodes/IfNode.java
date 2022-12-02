@@ -31,7 +31,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -198,18 +197,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         assertTrue(trueSuccessor() != null, "missing trueSuccessor");
         assertTrue(falseSuccessor() != null, "missing falseSuccessor");
         return super.verify();
-    }
-
-    private boolean compareCallContext(NodeSourcePosition successorPosition) {
-        NodeSourcePosition position = getNodeSourcePosition();
-        NodeSourcePosition successor = successorPosition;
-        while (position != null) {
-            assertTrue(Objects.equals(position.getMethod(), successor.getMethod()), "method mismatch");
-            position = position.getCaller();
-            successor = successor.getCaller();
-        }
-        assertTrue(successor == null, "successor position has more methods");
-        return true;
     }
 
     public void eliminateNegation() {
