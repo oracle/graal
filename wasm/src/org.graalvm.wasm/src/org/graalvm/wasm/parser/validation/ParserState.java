@@ -298,8 +298,7 @@ public class ParserState {
      * @param resultTypes The result type of the if and else branch that was entered.
      */
     public void enterIf(byte[] paramTypes, byte[] resultTypes) {
-        bytecode.add(Bytecode.I32_NEG);
-        final int fixupLocation = bytecode.addBranchIfLocation();
+        final int fixupLocation = bytecode.addIfLocation();
         ControlFrame frame = new IfFrame(paramTypes, resultTypes, valueStack.size(), false, fixupLocation);
         controlStack.push(frame);
         pushAll(paramTypes);

@@ -219,7 +219,7 @@ public class BytecodeList {
             add1(label);
             add1(resultCount << 7 | commonResultType | stackSize);
         } else if (resultCount <= 15 && fitsIntoUnsignedByte(stackSize)) {
-            add1(Bytecode.SKIP_LABEL_I8);
+            add1(Bytecode.SKIP_LABEL_U8);
             add1(4);
             location = bytecode.size();
             add1(label);
@@ -228,7 +228,7 @@ public class BytecodeList {
         } else {
             final boolean resultFitsIntoByte = fitsIntoUnsignedByte(resultCount);
             final boolean stackFitsIntoByte = fitsIntoUnsignedByte(stackSize);
-            add1(Bytecode.SKIP_LABEL_I8);
+            add1(Bytecode.SKIP_LABEL_U8);
             add1(3 + (resultFitsIntoByte ? 1 : 4) + (stackFitsIntoByte ? 1 : 4));
             location = bytecode.size();
             add1(label);
@@ -269,6 +269,16 @@ public class BytecodeList {
      */
     public int addLoopLabel(int resultCount, int stackSize, int commonResultType) {
         return addLabel(resultCount, stackSize, commonResultType, Bytecode.LOOP_LABEL);
+    }
+
+    public int addIfLocation() {
+        add1(Bytecode.IF);
+        final int location = bytecode.size();
+        // target
+        add4(0);
+        // profile
+        addProfile();
+        return location;
     }
 
     /**
@@ -351,7 +361,7 @@ public class BytecodeList {
      */
     public void addBranchTable(int size) {
         if (fitsIntoUnsignedByte(size)) {
-            add1(Bytecode.BR_TABLE_I8);
+            add1(Bytecode.BR_TABLE_U8);
             add1(size);
             // profile
             addProfile();
@@ -409,7 +419,7 @@ public class BytecodeList {
      */
     public void addCall(int nodeIndex, int functionIndex) {
         if (fitsIntoUnsignedByte(nodeIndex) && fitsIntoUnsignedByte(functionIndex)) {
-            add1(Bytecode.CALL_I8);
+            add1(Bytecode.CALL_U8);
             add1(nodeIndex);
             add1(functionIndex);
         } else {
@@ -431,7 +441,7 @@ public class BytecodeList {
      */
     public void addIndirectCall(int nodeIndex, int typeIndex, int tableIndex) {
         if (fitsIntoUnsignedByte(nodeIndex) && fitsIntoUnsignedByte(typeIndex) && fitsIntoUnsignedByte(tableIndex)) {
-            add1(Bytecode.CALL_INDIRECT_I8);
+            add1(Bytecode.CALL_INDIRECT_U8);
             add1(nodeIndex);
             add1(typeIndex);
             add1(tableIndex);

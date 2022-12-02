@@ -361,6 +361,20 @@ public abstract class BinaryStreamParser {
     }
 
     /**
+     * Reads the unsigned integer value at the given bytecode offset.
+     *
+     * @param bytecode The bytecode
+     * @param offset The offset in the bytecode
+     * @return The unsigned integer value at the given bytecode offset.
+     */
+    public static long rawPeekU32(byte[] bytecode, int offset) {
+        return (bytecode[offset] & 0xFFL) |
+                        ((bytecode[offset + 1] & 0xFFL) << 8) |
+                        ((bytecode[offset + 2] & 0xFFL) << 16) |
+                        ((bytecode[offset + 3] & 0xFFL) << 24);
+    }
+
+    /**
      * Reads the signed integer value at the given bytecode offset.
      * 
      * @param bytecode The bytecode

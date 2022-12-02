@@ -48,10 +48,11 @@ public class Bytecode {
 
     public static final int SKIP_LABEL = 0x03;
 
-    public static final int SKIP_LABEL_I8 = 0x04;
+    public static final int SKIP_LABEL_U8 = 0x04;
     public static final int LABEL = 0x05;
+    public static final int LOOP_LABEL = 0x06;
 
-    public static final int LOOP_LABEL = 0x07;
+    public static final int IF = 0x07;
 
     public static final int BR_I8 = 0x0A;
     public static final int BR_I32 = 0x0B;
@@ -59,13 +60,13 @@ public class Bytecode {
     public static final int BR_IF_I8 = 0x0C;
     public static final int BR_IF_I32 = 0x0D;
 
-    public static final int BR_TABLE_I8 = 0x0E;
+    public static final int BR_TABLE_U8 = 0x0E;
     public static final int BR_TABLE_I32 = 0x0F;
 
-    public static final int CALL_I8 = 0x10;
+    public static final int CALL_U8 = 0x10;
     public static final int CALL_I32 = 0x11;
 
-    public static final int CALL_INDIRECT_I8 = 0x12;
+    public static final int CALL_INDIRECT_U8 = 0x12;
     public static final int CALL_INDIRECT_I32 = 0x13;
 
     public static final int DROP = 0x14;
@@ -74,72 +75,72 @@ public class Bytecode {
     public static final int SELECT = 0x16;
     public static final int SELECT_REF = 0x17;
 
-    public static final int LOCAL_GET_I8 = 0x18;
+    public static final int LOCAL_GET_U8 = 0x18;
     public static final int LOCAL_GET_I32 = 0x019;
-    public static final int LOCAL_GET_REF_I8 = 0x1A;
+    public static final int LOCAL_GET_REF_U8 = 0x1A;
     public static final int LOCAL_GET_REF_I32 = 0x1B;
 
-    public static final int LOCAL_SET_I8 = 0x1C;
+    public static final int LOCAL_SET_U8 = 0x1C;
     public static final int LOCAL_SET_I32 = 0x1D;
-    public static final int LOCAL_SET_REF_I8 = 0x1E;
+    public static final int LOCAL_SET_REF_U8 = 0x1E;
     public static final int LOCAL_SET_REF_I32 = 0x1F;
 
-    public static final int LOCAL_TEE_I8 = 0x20;
+    public static final int LOCAL_TEE_U8 = 0x20;
     public static final int LOCAL_TEE_I32 = 0x21;
-    public static final int LOCAL_TEE_REF_I8 = 0x22;
+    public static final int LOCAL_TEE_REF_U8 = 0x22;
     public static final int LOCAL_TEE_REF_I32 = 0x23;
 
-    public static final int GLOBAL_GET_I8 = 0x24;
+    public static final int GLOBAL_GET_U8 = 0x24;
     public static final int GLOBAL_GET_I32 = 0x25;
-    public static final int GLOBAL_SET_I8 = 0x26;
+    public static final int GLOBAL_SET_U8 = 0x26;
     public static final int GLOBAL_SET_I32 = 0x27;
 
-    public static final int I32_LOAD_I8 = 0x28;
+    public static final int I32_LOAD_U8 = 0x28;
     public static final int I32_LOAD_I32 = 0x29;
-    public static final int I64_LOAD_I8 = 0x2A;
+    public static final int I64_LOAD_U8 = 0x2A;
     public static final int I64_LOAD_I32 = 0x2B;
-    public static final int F32_LOAD_I8 = 0x2C;
+    public static final int F32_LOAD_U8 = 0x2C;
     public static final int F32_LOAD_I32 = 0x2D;
-    public static final int F64_LOAD_I8 = 0x2E;
+    public static final int F64_LOAD_U8 = 0x2E;
     public static final int F64_LOAD_I32 = 0x2F;
-    public static final int I32_LOAD8_S_I8 = 0x30;
+    public static final int I32_LOAD8_S_U8 = 0x30;
     public static final int I32_LOAD8_S_I32 = 0x31;
-    public static final int I32_LOAD8_U_I8 = 0x32;
+    public static final int I32_LOAD8_U_U8 = 0x32;
     public static final int I32_LOAD8_U_I32 = 0x33;
-    public static final int I32_LOAD16_S_I8 = 0x34;
+    public static final int I32_LOAD16_S_U8 = 0x34;
     public static final int I32_LOAD16_S_I32 = 0x35;
-    public static final int I32_LOAD16_U_I8 = 0x36;
+    public static final int I32_LOAD16_U_U8 = 0x36;
     public static final int I32_LOAD16_U_I32 = 0x37;
-    public static final int I64_LOAD8_S_I8 = 0x38;
+    public static final int I64_LOAD8_S_U8 = 0x38;
     public static final int I64_LOAD8_S_I32 = 0x39;
-    public static final int I64_LOAD8_U_I8 = 0x3A;
+    public static final int I64_LOAD8_U_U8 = 0x3A;
     public static final int I64_LOAD8_U_I32 = 0x3B;
-    public static final int I64_LOAD16_S_I8 = 0x3C;
+    public static final int I64_LOAD16_S_U8 = 0x3C;
     public static final int I64_LOAD16_S_I32 = 0x3D;
-    public static final int I64_LOAD16_U_I8 = 0x3E;
+    public static final int I64_LOAD16_U_U8 = 0x3E;
     public static final int I64_LOAD16_U_I32 = 0x3F;
-    public static final int I64_LOAD32_S_I8 = 0x40;
+    public static final int I64_LOAD32_S_U8 = 0x40;
     public static final int I64_LOAD32_S_I32 = 0x41;
-    public static final int I64_LOAD32_U_I8 = 0x42;
+    public static final int I64_LOAD32_U_U8 = 0x42;
     public static final int I64_LOAD32_U_I32 = 0x43;
 
-    public static final int I32_STORE_I8 = 0x44;
+    public static final int I32_STORE_U8 = 0x44;
     public static final int I32_STORE_I32 = 0x45;
-    public static final int I64_STORE_I8 = 0x46;
+    public static final int I64_STORE_U8 = 0x46;
     public static final int I64_STORE_I32 = 0x47;
-    public static final int F32_STORE_I8 = 0x48;
+    public static final int F32_STORE_U8 = 0x48;
     public static final int F32_STORE_I32 = 0x49;
-    public static final int F64_STORE_I8 = 0x4A;
+    public static final int F64_STORE_U8 = 0x4A;
     public static final int F64_STORE_I32 = 0x4B;
-    public static final int I32_STORE_8_I8 = 0x4C;
+    public static final int I32_STORE_8_U8 = 0x4C;
     public static final int I32_STORE_8_I32 = 0x4D;
-    public static final int I32_STORE_16_I8 = 0x4E;
+    public static final int I32_STORE_16_U8 = 0x4E;
     public static final int I32_STORE_16_I32 = 0x4F;
-    public static final int I64_STORE_8_I8 = 0x50;
+    public static final int I64_STORE_8_U8 = 0x50;
     public static final int I64_STORE_8_I32 = 0x51;
-    public static final int I64_STORE_16_I8 = 0x52;
+    public static final int I64_STORE_16_U8 = 0x52;
     public static final int I64_STORE_16_I32 = 0x53;
-    public static final int I64_STORE_32_I8 = 0x54;
+    public static final int I64_STORE_32_U8 = 0x54;
     public static final int I64_STORE_32_I32 = 0x55;
 
     public static final int MEMORY_SIZE = 0x56;
@@ -155,7 +156,6 @@ public class Bytecode {
 
     public static final int F64_CONST = 0x5E;
 
-    public static final int I32_NEG = 0x5F;
     public static final int I32_EQZ = 0x60;
     public static final int I32_EQ = 0x61;
     public static final int I32_NE = 0x62;
@@ -326,6 +326,86 @@ public class Bytecode {
     public static final int TABLE_GROW = 0x07;
     public static final int TABLE_SIZE = 0x08;
     public static final int TABLE_FILL = 0x09;
+
+    public static final int I32_MEM64_LOAD_U8 = 0x0A;
+    public static final int I32_MEM64_LOAD_U32 = 0x0B;
+    public static final int I32_MEM64_LOAD_I64 = 0x0C;
+    public static final int I64_MEM64_LOAD_U8 = 0x0D;
+    public static final int I64_MEM64_LOAD_U32 = 0x0E;
+    public static final int I64_MEM64_LOAD_I64 = 0x0F;
+    public static final int F32_MEM64_LOAD_U8 = 0x10;
+    public static final int F32_MEM64_LOAD_U32 = 0x11;
+    public static final int F32_MEM64_LOAD_I64 = 0x12;
+    public static final int F64_MEM64_LOAD_U8 = 0x13;
+    public static final int F64_MEM64_LOAD_U32 = 0x14;
+    public static final int F64_MEM64_LOAD_I64 = 0x15;
+    public static final int I32_MEM64_LOAD8_S_U8 = 0x16;
+    public static final int I32_MEM64_LOAD8_S_U32 = 0x17;
+    public static final int I32_MEM64_LOAD8_S_I64 = 0x18;
+    public static final int I32_MEM64_LOAD8_U_U8 = 0x19;
+    public static final int I32_MEM64_LOAD8_U_U32 = 0x1A;
+    public static final int I32_MEM64_LOAD8_U_I64 = 0x1B;
+    public static final int I32_MEM64_LOAD16_S_U8 = 0x1C;
+    public static final int I32_MEM64_LOAD16_S_U32 = 0x1D;
+    public static final int I32_MEM64_LOAD16_S_I64 = 0x1E;
+    public static final int I32_MEM64_LOAD16_U_U8 = 0x1F;
+    public static final int I32_MEM64_LOAD16_U_U32 = 0x20;
+    public static final int I32_MEM64_LOAD16_U_I64 = 0x21;
+    public static final int I64_MEM64_LOAD8_S_U8 = 0x22;
+    public static final int I64_MEM64_LOAD8_S_U32 = 0x23;
+    public static final int I64_MEM64_LOAD8_S_I64 = 0x24;
+    public static final int I64_MEM64_LOAD8_U_U8 = 0x25;
+    public static final int I64_MEM64_LOAD8_U_U32 = 0x26;
+    public static final int I64_MEM64_LOAD8_U_I64 = 0x27;
+    public static final int I64_MEM64_LOAD16_S_U8 = 0x28;
+    public static final int I64_MEM64_LOAD16_S_U32 = 0x29;
+    public static final int I64_MEM64_LOAD16_S_I64 = 0x2A;
+    public static final int I64_MEM64_LOAD16_U_U8 = 0x2B;
+    public static final int I64_MEM64_LOAD16_U_U32 = 0x2C;
+    public static final int I64_MEM64_LOAD16_U_I64 = 0x2D;
+    public static final int I64_MEM64_LOAD32_S_U8 = 0x2E;
+    public static final int I64_MEM64_LOAD32_S_U32 = 0x2F;
+    public static final int I64_MEM64_LOAD32_S_I64 = 0x30;
+    public static final int I64_MEM64_LOAD32_U_U8 = 0x31;
+    public static final int I64_MEM64_LOAD32_U_U32 = 0x32;
+    public static final int I64_MEM64_LOAD32_U_I64 = 0x33;
+
+    public static final int I32_MEM64_STORE_U8 = 0x34;
+    public static final int I32_MEM64_STORE_U32 = 0x35;
+    public static final int I32_MEM64_STORE_I64 = 0x36;
+    public static final int I64_MEM64_STORE_U8 = 0x37;
+    public static final int I64_MEM64_STORE_U32 = 0x38;
+    public static final int I64_MEM64_STORE_I64 = 0x39;
+    public static final int F32_MEM64_STORE_U8 = 0x3A;
+    public static final int F32_MEM64_STORE_U32 = 0x3B;
+    public static final int F32_MEM64_STORE_I64 = 0x3C;
+    public static final int F64_MEM64_STORE_U8 = 0x3D;
+    public static final int F64_MEM64_STORE_U32 = 0x3E;
+    public static final int F64_MEM64_STORE_I64 = 0x3F;
+    public static final int I32_MEM64_STORE_8_U8 = 0x40;
+    public static final int I32_MEM64_STORE_8_U32 = 0x41;
+    public static final int I32_MEM64_STORE_8_I64 = 0x42;
+    public static final int I32_MEM64_STORE_16_U8 = 0x43;
+    public static final int I32_MEM64_STORE_16_U32 = 0x44;
+    public static final int I32_MEM64_STORE_16_I64 = 0x45;
+    public static final int I64_MEM64_STORE_8_U8 = 0x46;
+    public static final int I64_MEM64_STORE_8_U32 = 0x47;
+    public static final int I64_MEM64_STORE_8_I64 = 0x48;
+    public static final int I64_MEM64_STORE_16_U8 = 0x49;
+    public static final int I64_MEM64_STORE_16_U32 = 0x4A;
+    public static final int I64_MEM64_STORE_16_I64 = 0x4B;
+    public static final int I64_MEM64_STORE_32_U8 = 0x4C;
+    public static final int I64_MEM64_STORE_32_U32 = 0x4D;
+    public static final int I64_MEM64_STORE_32_I64 = 0x4E;
+
+    public static final int MEMORY_INIT_UNSAFE = 0x4F;
+
+    public static final int MEMORY64_SIZE = 0x50;
+    public static final int MEMORY64_GROW = 0x51;
+    public static final int MEMORY64_INIT = 0x52;
+    public static final int MEMORY64_INIT_UNSAFE = 0x53;
+    public static final int MEMORY64_COPY = 0x54;
+    public static final int MEMORY64_FILL = 0x55;
 
     // Data section
 

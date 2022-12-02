@@ -253,10 +253,11 @@ public class RuntimeState {
     }
 
     private void ensureDataInstanceCapacity(int index) {
+        int size = index * 2;
         if (dataInstances == null) {
-            dataInstances = new long[Math.max(Integer.highestOneBit(index) << 1, 2)];
+            dataInstances = new long[Math.max(Integer.highestOneBit(size) << 1, 2)];
         } else if (index >= dataInstances.length) {
-            final long[] nDataInstances = new long[Math.max(Integer.highestOneBit(index) << 1, 2 * dataInstances.length)];
+            final long[] nDataInstances = new long[Math.max(Integer.highestOneBit(size) << 1, 2 * dataInstances.length)];
             System.arraycopy(dataInstances, 0, nDataInstances, 0, dataInstances.length);
             dataInstances = nDataInstances;
         }
@@ -265,7 +266,15 @@ public class RuntimeState {
     void setDataInstance(int index, int bytecodeOffset, int length) {
         assert bytecodeOffset != -1;
         ensureDataInstanceCapacity(index);
-        dataInstances[index] = (long) bytecodeOffset << 32 | length;
+        dataInstances[index] = bytecodeOffset;
+        dataInstances[index + 1] = length;
+    }
+
+    void setDataInstance(int index, long address, int length) {
+        assert address != 0;
+        ensureDataInstanceCapacity(index);
+        dataInstances[index] = address;
+        dataInstances[index + 1] = length;
     }
 
     public void dropDataInstance(int index) {
@@ -281,7 +290,7 @@ public class RuntimeState {
             return 0;
         }
         assert index < dataInstances.length;
-        return (int) (dataInstances[index] >> 32);
+        return (int) (dataInstances[index]);
     }
 
     public int dataInstanceLength(int index) {
@@ -289,7 +298,15 @@ public class RuntimeState {
             return 0;
         }
         assert index < dataInstances.length;
-        return (int) dataInstances[index];
+        return (int) dataInstances[index + 1];
+    }
+
+    public long dataInstanceAddress(int index) {
+        if (dataInstances == null) {
+            return 0;
+        }
+        assert index < dataInstances.length;
+        return dataInstances[index];
     }
 
     private void ensureElemInstanceCapacity(int index) {
