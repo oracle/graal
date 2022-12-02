@@ -118,7 +118,7 @@ public class OptimizationPhase extends OptimizationTreeNode {
 
     @Override
     public int hashCode() {
-        return getName().hashCode() + getChildren().hashCode();
+        return getName().hashCode() + 31 * getChildren().hashCode();
     }
 
     @Override

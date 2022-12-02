@@ -52,17 +52,17 @@ public class OptimizationContextTreeTest {
      *             d() at bci 3
      *         c() at bci 2
      *         (abstract) e() at bci 3
-     *             f() at bci 1
+     *             f() at bci 3
      * Optimization tree
      *      RootPhase
      *          Tier1
      *              Optimization1 at null
      *              Optimization2 at {a(): 5}
-     *              Optimization3 at {a(): 1, b(): 2}
+     *              Optimization3 at {b(): 2, a(): 1}
      *          Tier2
-     *              Optimization4 at {a(): 1, b(): 3, d(): 1}
-     *              Optimization5 at {a(): 2, c(): 4}
-     *              Optimization6 at {a(): 3, f(): 2}
+     *              Optimization4 at {d(): 1, b(): 3, a(): 1}
+     *              Optimization5 at {c(): 4, a(): 2}
+     *              Optimization6 at {f(): 2, a(): 3}
      * </pre>
      *
      * The expected result is:
@@ -74,19 +74,19 @@ public class OptimizationContextTreeTest {
      *         Optimization2 at {a(): 5}
      *         b() at bci 1
      *             Warning
-     *             Optimization3 at {a(): 1, b(): 2}
+     *             Optimization3 at {b(): 2, a(): 1}
      *             d() at bci 3
      *                 Warning
-     *                 Optimization4 at {a(): 1, b(): 3, d(): 1}
+     *                 Optimization4 at {d(): 1, b(): 3, a(): 1}
      *         b() at bci 1
      *             Warning
      *             d() at bci 3
      *                 Warning
      *         c() at bci 2
-     *             Optimization5 at {a(): 2, c(): 4}
+     *            Optimization5 at {c(): 4, a(): 2}
      *         (abstract) e() at bci 3
-     *             f() at bci 1
-     *                 Optimization6 at {a(): 3, f(): 2}
+     *             f() at bci 3
+     *                 Optimization6 at {f(): 2, a(): 3}
      * </pre>
      */
     @Test
@@ -98,7 +98,7 @@ public class OptimizationContextTreeTest {
         InliningTreeNode d2 = new InliningTreeNode("d()", 3, true, null, false, null);
         InliningTreeNode c = new InliningTreeNode("c()", 2, true, null, false, null);
         InliningTreeNode e = new InliningTreeNode("e()", 3, false, null, true, null);
-        InliningTreeNode f = new InliningTreeNode("f()", 1, true, null, false, null);
+        InliningTreeNode f = new InliningTreeNode("f()", 3, true, null, false, null);
 
         a.addChild(b1);
         a.addChild(b2);
@@ -115,14 +115,14 @@ public class OptimizationContextTreeTest {
         OptimizationPhase tier2 = new OptimizationPhase("Tier2");
         Optimization o1 = new Optimization("Optimization1", "", null, null);
         Optimization o2 = new Optimization("Optimization2", "", EconomicMap.of("a()", 5), null);
-        Optimization o3 = new Optimization("Optimization3", "", EconomicMap.of("a()", 1, "b()", 2), null);
+        Optimization o3 = new Optimization("Optimization3", "", EconomicMap.of("b()", 2, "a()", 1), null);
         EconomicMap<String, Integer> o4Position = EconomicMap.create();
-        o4Position.put("a()", 1);
-        o4Position.put("b()", 3);
         o4Position.put("d()", 1);
+        o4Position.put("b()", 3);
+        o4Position.put("a()", 1);
         Optimization o4 = new Optimization("Optimization4", "", o4Position, null);
-        Optimization o5 = new Optimization("Optimization5", "", EconomicMap.of("a()", 2, "c()", 4), null);
-        Optimization o6 = new Optimization("Optimization6", "", EconomicMap.of("a()", 3, "f()", 2), null);
+        Optimization o5 = new Optimization("Optimization5", "", EconomicMap.of("c()", 4, "a()", 2), null);
+        Optimization o6 = new Optimization("Optimization6", "", EconomicMap.of("f()", 2, "a()", 3), null);
 
         rootPhase.addChild(tier1);
         rootPhase.addChild(tier2);
@@ -158,6 +158,14 @@ public class OptimizationContextTreeTest {
         cb2.addChild(OptimizationContextTreeNode.duplicatePathWarning());
         cd2.addChild(OptimizationContextTreeNode.duplicatePathWarning());
 
+        root.addChild(co1);
+        ca.addChild(co2);
+        cb1.addChild(co3);
+        cd1.addChild(co4);
+        cc.addChild(co5);
+        cf.addChild(co6);
+
+        root.addChild(ca);
         ca.addChild(cb1);
         ca.addChild(cb2);
         ca.addChild(cc);
@@ -165,13 +173,6 @@ public class OptimizationContextTreeTest {
         cb1.addChild(cd1);
         cb2.addChild(cd2);
         ce.addChild(cf);
-
-        root.addChild(co1);
-        ca.addChild(co2);
-        cb1.addChild(co3);
-        cd1.addChild(co4);
-        cc.addChild(co5);
-        cf.addChild(co6);
 
         assertEquals(root, actual.getRoot());
     }

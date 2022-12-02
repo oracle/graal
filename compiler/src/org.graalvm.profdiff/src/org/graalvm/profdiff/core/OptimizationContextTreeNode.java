@@ -170,11 +170,15 @@ public class OptimizationContextTreeNode extends TreeNode<OptimizationContextTre
             return false;
         }
         OptimizationContextTreeNode that = (OptimizationContextTreeNode) o;
-        return Objects.equals(originalNode, that.originalNode);
+        return Objects.equals(getName(), that.getName()) && Objects.equals(originalNode, that.originalNode) &&
+                        getChildren().equals(that.getChildren());
     }
 
     @Override
     public int hashCode() {
-        return originalNode != null ? originalNode.hashCode() : 0;
+        int result = getName() == null ? 0 : getName().hashCode();
+        result = 31 * result + (originalNode != null ? originalNode.hashCode() : 0);
+        result = 31 * result + getChildren().hashCode();
+        return result;
     }
 }
