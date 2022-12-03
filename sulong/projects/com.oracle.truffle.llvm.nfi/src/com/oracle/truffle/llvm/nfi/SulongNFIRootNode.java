@@ -69,7 +69,7 @@ abstract class SulongNFIRootNode extends RootNode {
         this.parseSource = new ParseSourceNode(sulongSource);
     }
 
-    @Specialization(guards = "call.getCallTarget() == parsedSource")
+    @Specialization(guards = "call.getCallTarget() == parsedSource", limit = "3")
     Object doCached(CallTarget parsedSource,
                     @Cached(parameters = "parsedSource") DirectCallNode call) {
         assert call.getCallTarget() == parsedSource;

@@ -36,7 +36,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
-import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.api.profiles.InlinedExactClassProfile;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
@@ -79,8 +79,8 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
         }
 
         @Specialization
-        public Object doCondition(Object cond, @Cached("createClassProfile()") ValueProfile conditionValueClass) {
-            return conditionValueClass.profile(cond);
+        public Object doCondition(Object cond, @Cached InlinedExactClassProfile conditionValueClass) {
+            return conditionValueClass.profile(this, cond);
         }
 
         @Override

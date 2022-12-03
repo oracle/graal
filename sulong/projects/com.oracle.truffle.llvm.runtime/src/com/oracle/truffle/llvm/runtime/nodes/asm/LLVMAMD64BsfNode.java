@@ -32,19 +32,19 @@ package com.oracle.truffle.llvm.runtime.nodes.asm;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64WriteBooleanNode;
+import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64WriteBooleanNode;
 
 @NodeChild("src")
 @NodeChild("dst")
 public abstract class LLVMAMD64BsfNode extends LLVMExpressionNode {
     @Child protected LLVMAMD64WriteBooleanNode writeZFNode;
-    protected final ConditionProfile profile;
+    protected final CountingConditionProfile profile;
 
     public LLVMAMD64BsfNode(LLVMAMD64WriteBooleanNode writeZFNode) {
         this.writeZFNode = writeZFNode;
-        profile = ConditionProfile.createCountingProfile();
+        profile = CountingConditionProfile.create();
     }
 
     public abstract static class LLVMAMD64BsfwNode extends LLVMAMD64BsfNode {

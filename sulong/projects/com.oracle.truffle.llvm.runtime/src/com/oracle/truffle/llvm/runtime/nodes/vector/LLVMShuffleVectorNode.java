@@ -34,7 +34,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -59,7 +59,7 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMI1Vector doI1Vector(LLVMI1Vector leftVector, LLVMI1Vector rightVector, LLVMI32Vector maskVector,
-                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
+                        @Cached CountingConditionProfile conditionProfile) {
             assert maskVector.getLength() == getVectorLength();
             boolean[] newValues = new boolean[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
@@ -75,7 +75,7 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMI8Vector doI8Vector(LLVMI8Vector leftVector, LLVMI8Vector rightVector, LLVMI32Vector maskVector,
-                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
+                        @Cached CountingConditionProfile conditionProfile) {
             assert maskVector.getLength() == getVectorLength();
             byte[] newValues = new byte[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
@@ -91,7 +91,7 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMI16Vector doI8Vector(LLVMI16Vector leftVector, LLVMI16Vector rightVector, LLVMI32Vector maskVector,
-                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
+                        @Cached CountingConditionProfile conditionProfile) {
             assert maskVector.getLength() == getVectorLength();
             short[] newValues = new short[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
@@ -107,7 +107,7 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMI32Vector doI32Vector(LLVMI32Vector leftVector, LLVMI32Vector rightVector, LLVMI32Vector maskVector,
-                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
+                        @Cached CountingConditionProfile conditionProfile) {
             assert maskVector.getLength() == getVectorLength();
             int[] newValues = new int[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
@@ -123,7 +123,7 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMI64Vector doI64Vector(LLVMI64Vector leftVector, LLVMI64Vector rightVector, LLVMI32Vector maskVector,
-                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
+                        @Cached CountingConditionProfile conditionProfile) {
             assert maskVector.getLength() == getVectorLength();
             long[] newValues = new long[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
@@ -137,7 +137,7 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMPointerVector doPointerVector(LLVMPointerVector leftVector, LLVMI64Vector rightVector, LLVMI32Vector maskVector,
-                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
+                        @Cached CountingConditionProfile conditionProfile) {
             assert maskVector.getLength() == getVectorLength();
             LLVMPointer[] newValues = new LLVMPointer[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
@@ -151,7 +151,7 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMPointerVector doPointerVector(LLVMI64Vector leftVector, LLVMPointerVector rightVector, LLVMI32Vector maskVector,
-                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
+                        @Cached CountingConditionProfile conditionProfile) {
             assert maskVector.getLength() == getVectorLength();
             LLVMPointer[] newValues = new LLVMPointer[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
@@ -165,7 +165,7 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMPointerVector doPointerVector(LLVMPointerVector leftVector, LLVMPointerVector rightVector, LLVMI32Vector maskVector,
-                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
+                        @Cached CountingConditionProfile conditionProfile) {
             assert maskVector.getLength() == getVectorLength();
             LLVMPointer[] newValues = new LLVMPointer[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
@@ -181,7 +181,7 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMFloatVector doOp(LLVMFloatVector leftVector, LLVMFloatVector rightVector, LLVMI32Vector maskVector,
-                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
+                        @Cached CountingConditionProfile conditionProfile) {
             assert maskVector.getLength() == getVectorLength();
             float[] newValues = new float[getVectorLength()];
             int leftVectorLength = leftVector.getLength();
@@ -197,7 +197,7 @@ public abstract class LLVMShuffleVectorNode extends LLVMExpressionNode {
         @Specialization
         @ExplodeLoop
         protected LLVMDoubleVector doOp(LLVMDoubleVector leftVector, LLVMDoubleVector rightVector, LLVMI32Vector maskVector,
-                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
+                        @Cached CountingConditionProfile conditionProfile) {
             assert maskVector.getLength() == getVectorLength();
             double[] newValues = new double[getVectorLength()];
             int leftVectorLength = leftVector.getLength();

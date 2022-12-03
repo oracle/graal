@@ -44,7 +44,7 @@ public abstract class DebugExprShortCircuitEvaluationNode extends LLVMExpression
 
     @Child private ShortCircuitOpNode op;
 
-    private final ConditionProfile evaluateRightProfile = ConditionProfile.createCountingProfile();
+    private final ConditionProfile evaluateRightProfile = ConditionProfile.create();
 
     public DebugExprShortCircuitEvaluationNode(LLVMExpressionNode leftNode, LLVMExpressionNode rightNode, ShortCircuitOpNode op) {
         this.leftNode = leftNode;

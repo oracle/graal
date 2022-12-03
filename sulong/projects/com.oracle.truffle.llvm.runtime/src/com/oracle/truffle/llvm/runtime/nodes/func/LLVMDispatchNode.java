@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
@@ -46,6 +47,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
@@ -99,17 +101,20 @@ public abstract class LLVMDispatchNode extends LLVMNode {
             // llvmFunction.getFixedCode() to return the intrinsic.
             // Therefore, the pre-initialization must be postponed to the AOT preparation stage
             // using the AOTInitHelper.
-            aotInitHelper = new AOTInitHelper((language, root) -> {
-                if (llvmFunction != null) {
-                    if (llvmFunction.getFixedCode() != null && llvmFunction.getFixedCode().isIntrinsicFunctionSlowPath()) {
-                        LLVMDispatchNode.this.aotFixedIntrinsicFunction = llvmFunction;
-                        llvmFunction.getFixedCode().getIntrinsicSlowPath().cachedCallTarget(type);
+            aotInitHelper = new AOTInitHelper(new GenerateAOT.Provider() {
+                @Override
+                public void prepareForAOT(TruffleLanguage<?> language, RootNode root) {
+                    if (llvmFunction != null) {
+                        if (llvmFunction.getFixedCode() != null && llvmFunction.getFixedCode().isIntrinsicFunctionSlowPath()) {
+                            LLVMDispatchNode.this.aotFixedIntrinsicFunction = llvmFunction;
+                            llvmFunction.getFixedCode().getIntrinsicSlowPath().cachedCallTarget(type);
+                        }
                     }
+                    aot = true;
+                    // Throw the helper AOT init node away as it is used during the AOT preparation
+                    // stage only
+                    aotInitHelper = null;
                 }
-                aot = true;
-                // Throw the helper AOT init node away as it is used during the AOT preparation
-                // stage only
-                aotInitHelper = null;
             });
 
             // Early parsing of the function's signature for the sake of the AOT preparation
@@ -129,9 +134,12 @@ public abstract class LLVMDispatchNode extends LLVMNode {
                 throw new RuntimeException(e);
             }
         } else {
-            aotInitHelper = new AOTInitHelper((language, root) -> {
-                aot = true;
-                aotInitHelper = null;
+            aotInitHelper = new AOTInitHelper(new GenerateAOT.Provider() {
+                @Override
+                public void prepareForAOT(TruffleLanguage<?> language, RootNode root) {
+                    aot = true;
+                    aotInitHelper = null;
+                }
             });
         }
     }

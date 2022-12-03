@@ -34,12 +34,12 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.CountingConditionProfile;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdateCPAZSOFlagsNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64WriteValueNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValue;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValueNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -53,13 +53,13 @@ public abstract class LLVMAMD64CmpXchgNode extends LLVMStatementNode {
     @Child protected LLVMAMD64WriteValueNode out1;
     @Child protected LLVMAMD64WriteValueNode out2;
 
-    protected final ConditionProfile profile;
+    protected final CountingConditionProfile profile;
 
     private LLVMAMD64CmpXchgNode(LLVMAMD64UpdateCPAZSOFlagsNode flags, LLVMAMD64WriteValueNode out1, LLVMAMD64WriteValueNode out2) {
         this.flags = flags;
         this.out1 = out1;
         this.out2 = out2;
-        profile = ConditionProfile.createCountingProfile();
+        profile = CountingConditionProfile.create();
     }
 
     public abstract static class LLVMAMD64CmpXchgbNode extends LLVMAMD64CmpXchgNode {

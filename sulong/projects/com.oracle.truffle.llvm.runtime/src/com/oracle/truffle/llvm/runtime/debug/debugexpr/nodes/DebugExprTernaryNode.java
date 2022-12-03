@@ -49,7 +49,7 @@ public abstract class DebugExprTernaryNode extends LLVMExpressionNode {
     public DebugExprTernaryNode(LLVMExpressionNode thenNode, LLVMExpressionNode elseNode) {
         this.thenNode = thenNode;
         this.elseNode = elseNode;
-        this.conditionProfile = ConditionProfile.createCountingProfile();
+        this.conditionProfile = ConditionProfile.create();
     }
 
     @Specialization

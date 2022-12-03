@@ -30,7 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -41,7 +41,7 @@ public abstract class LLVMAMD64SyscallMmapNode extends LLVMSyscallOperationNode 
         return "mmap";
     }
 
-    private final ConditionProfile mapAnonymousProfile = ConditionProfile.createCountingProfile();
+    private final CountingConditionProfile mapAnonymousProfile = CountingConditionProfile.create();
 
     /**
      * @param addr

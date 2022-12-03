@@ -49,7 +49,7 @@ public abstract class LLVMPolyglotTimeZoneGetIdNode extends LLVMExpressionNode {
 
     @Specialization
     @GenerateAOT.Exclude
-    public LLVMManagedPointer executeForeign(LLVMManagedPointer object,
+    public LLVMManagedPointer doForeign(LLVMManagedPointer object,
                     @Cached LLVMAsForeignNode foreign,
                     @Cached BranchProfile profile,
                     @CachedLibrary(limit = "3") InteropLibrary interop) {

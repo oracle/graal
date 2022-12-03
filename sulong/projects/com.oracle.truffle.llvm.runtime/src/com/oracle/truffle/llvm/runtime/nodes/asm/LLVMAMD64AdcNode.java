@@ -32,9 +32,9 @@ package com.oracle.truffle.llvm.runtime.nodes.asm;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdateCPZSOFlagsNode;
+import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdateCPZSOFlagsNode;
 
 @NodeChild("left")
 @NodeChild("right")
@@ -42,9 +42,9 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMAMD64AdcNode extends LLVMExpressionNode {
     @Child protected LLVMAMD64UpdateCPZSOFlagsNode flags;
 
-    protected final ConditionProfile noCfProfile = ConditionProfile.createCountingProfile();
-    protected final ConditionProfile smallLeftProfile = ConditionProfile.createCountingProfile();
-    protected final ConditionProfile smallRightProfile = ConditionProfile.createCountingProfile();
+    protected final CountingConditionProfile noCfProfile = CountingConditionProfile.create();
+    protected final CountingConditionProfile smallLeftProfile = CountingConditionProfile.create();
+    protected final CountingConditionProfile smallRightProfile = CountingConditionProfile.create();
 
     private static boolean carry(byte left, byte right) {
         byte result = (byte) (left + right);

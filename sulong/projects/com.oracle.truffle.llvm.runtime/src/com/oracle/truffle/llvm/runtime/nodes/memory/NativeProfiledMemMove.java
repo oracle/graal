@@ -35,7 +35,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMCopyTargetLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -93,7 +93,7 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
     protected void doManagedAliasing(LLVMManagedPointer target, LLVMManagedPointer source, long length,
                     @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
                     @Cached UnitSizeNode unitSizeNode,
-                    @Cached("createCountingProfile()") ConditionProfile canCopyForward,
+                    @Cached CountingConditionProfile canCopyForward,
                     @SuppressWarnings("unused") @CachedLibrary("target.getObject()") LLVMCopyTargetLibrary copyTargetLib) {
         if (canCopyForward.profile(Long.compareUnsigned(target.getOffset() - source.getOffset(), length) >= 0)) {
             copyForward(target, source, length, helper, unitSizeNode);
@@ -136,7 +136,7 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
         LLVMCopyTargetLibrary copyTargetLib = LLVMCopyTargetLibrary.getFactory().getUncached();
         if (LLVMManagedPointer.isInstance(target) && LLVMManagedPointer.isInstance(source)) {
             // potentially aliasing
-            doManagedAliasing(LLVMManagedPointer.cast(target), LLVMManagedPointer.cast(source), length, helper, unitSizeNode, ConditionProfile.getUncached(), copyTargetLib);
+            doManagedAliasing(LLVMManagedPointer.cast(target), LLVMManagedPointer.cast(source), length, helper, unitSizeNode, CountingConditionProfile.getUncached(), copyTargetLib);
         } else if (LLVMManagedPointer.isInstance(target) && LLVMManagedPointer.isInstance(source) &&
                         doCustomCopy(LLVMManagedPointer.cast(target), LLVMManagedPointer.cast(source), length, copyTargetLib)) {
             copyTargetLib.copyFrom(LLVMManagedPointer.cast(target).getObject(), LLVMManagedPointer.cast(source).getObject(), length);
