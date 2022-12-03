@@ -120,7 +120,7 @@ public final class LambdaUtils {
 
     public static boolean isLambdaType(ResolvedJavaType type) {
         String typeName = type.getName();
-        return type.isFinalFlagSet() && typeName.contains("/") && typeName.contains(LAMBDA_CLASS_NAME_SUBSTRING) && lambdaMatcher(type.getName()).find();
+        return type.isFinalFlagSet() && typeName.contains(LAMBDA_CLASS_NAME_SUBSTRING) && lambdaMatcher(type.getName()).find();
     }
 
     private static String createStableLambdaName(ResolvedJavaType lambdaType, List<ResolvedJavaMethod> targetMethods) {
