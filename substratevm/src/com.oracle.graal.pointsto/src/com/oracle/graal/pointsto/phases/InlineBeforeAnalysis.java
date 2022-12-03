@@ -181,15 +181,15 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
     }
 
     @Override
-    protected Node addFloatingNode(MethodScope methodScope, Node node) {
+    protected Node addFloatingNode(MethodScope methodScope, LoopScope loopScope, Node node) {
         assert node.isUnregistered() : "If node is already in the graph, we would count it twice";
         maybeAbortInlining(methodScope, node);
-        return super.addFloatingNode(methodScope, node);
+        return super.addFloatingNode(methodScope, loopScope, node);
     }
 
     @Override
-    protected Node canonicalizeFixedNode(MethodScope methodScope, Node node) {
-        Node canonical = super.canonicalizeFixedNode(methodScope, node);
+    protected Node canonicalizeFixedNode(MethodScope methodScope, LoopScope loopScope, Node node) {
+        Node canonical = super.canonicalizeFixedNode(methodScope, loopScope, node);
         /*
          * When no canonicalization was done, we check the node that was decoded (which is already
          * alive, but we know it was just decoded and therefore not checked yet).
