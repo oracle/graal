@@ -98,6 +98,7 @@ import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
+import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
@@ -1466,11 +1467,21 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     @SuppressWarnings("try")
     @Override
-    protected Node canonicalizeFixedNode(MethodScope s, Node node) {
+    protected Node canonicalizeFixedNode(MethodScope s, Node originalNode) {
         PEMethodScope methodScope = (PEMethodScope) s;
 
+        Node node = originalNode;
         Node replacedNode = node;
         if (nodePlugins != null && nodePlugins.length > 0) {
+
+            if (originalNode instanceof UnsafeAccessNode) {
+                /*
+                 * Ensure that raw stores and loads are eventually transformed to fields to make
+                 * node plugins trigger for them reliably during PE.
+                 */
+                node = ((UnsafeAccessNode) node).canonical(canonicalizerTool);
+            }
+
             if (node instanceof LoadFieldNode) {
                 LoadFieldNode loadFieldNode = (LoadFieldNode) node;
                 PEAppendGraphBuilderContext graphBuilderContext = new PEAppendGraphBuilderContext(methodScope, loadFieldNode);
