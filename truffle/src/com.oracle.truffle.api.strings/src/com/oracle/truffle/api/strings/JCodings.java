@@ -114,7 +114,6 @@ interface JCodings {
     long calcStringAttributes(Node location, Object array, int offset, int length, TruffleString.Encoding encoding, int fromIndex, InlinedConditionProfile validCharacterProfile,
                     InlinedConditionProfile fixedWidthProfile);
 
-
     TruffleString transcode(Node location, AbstractTruffleString a, Object arrayA, int codePointLengthA, TruffleString.Encoding targetEncoding,
                     InlinedBranchProfile outOfMemoryProfile,
                     InlinedConditionProfile nativeProfile,
