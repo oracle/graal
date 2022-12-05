@@ -58,8 +58,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
 
-import sun.misc.Unsafe;
-
 /**
  * Contains classes to support node object inlining in Truffle. These classes are only needed if
  * manual node inlining is implemented. Typically Truffle DSL's {@link GenerateInline} takes care of
@@ -1142,7 +1140,7 @@ public final class InlineSupport {
     /**
      * Unsafe base class for fields.
      */
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "deprecation"})
     abstract static class UnsafeField {
 
         // used for TruffleBaseFeature substitution
@@ -1414,21 +1412,21 @@ public final class InlineSupport {
             return U.compareAndSwapObject(useNode, offset, expect, update);
         }
 
-        private static Unsafe getUnsafe() {
+        private static sun.misc.Unsafe getUnsafe() {
             try {
-                return Unsafe.getUnsafe();
+                return sun.misc.Unsafe.getUnsafe();
             } catch (SecurityException e) {
             }
             try {
-                Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
+                Field theUnsafeInstance = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
                 theUnsafeInstance.setAccessible(true);
-                return (Unsafe) theUnsafeInstance.get(Unsafe.class);
+                return (sun.misc.Unsafe) theUnsafeInstance.get(sun.misc.Unsafe.class);
             } catch (Exception e) {
                 throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
             }
         }
 
-        static final Unsafe U = getUnsafe();
+        static final sun.misc.Unsafe U = getUnsafe();
     }
 
     /*
