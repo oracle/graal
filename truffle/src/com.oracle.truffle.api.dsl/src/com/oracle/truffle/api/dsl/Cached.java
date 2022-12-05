@@ -318,11 +318,12 @@ public @interface Cached {
     boolean inline() default false;
 
     /**
-     * Instead of looking up the the inline method from the receiver type use an accessible
-     * enclosing method of a name instead. The method must have a single parameter
-     * {@link InlineTarget} and return a type compatible to the cached type. This can be useful if
-     * you want to route calls to the inline method through an abstraction that does not allow
-     * direct type access to the node classes.
+     * Specifies an alternative method name for node object inlining. Instead of looking up the
+     * inline method from the receiver type use an accessible enclosing method of the given name
+     * instead. The method must have a single parameter {@link InlineTarget} and return a type
+     * compatible to the cached type. This can be useful if you want to route calls to the inline
+     * method through an abstraction that does not allow direct type access to the node classes. It
+     * is expected that this property is only needed rarely.
      *
      * @since 23.0
      */
