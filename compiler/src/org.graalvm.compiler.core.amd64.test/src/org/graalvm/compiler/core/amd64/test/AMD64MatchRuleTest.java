@@ -234,8 +234,8 @@ public class AMD64MatchRuleTest extends MatchRuleTest {
         compile(getResolvedJavaMethod("testAddLoadDifferentBlocksNoMatchSnippet"), null);
         LIR lir = getLIR();
         boolean found = false;
-        for (char blockIndex : lir.codeEmittingOrder()) {
-            AbstractBlockBase<?> b = lir.getControlFlowGraph().getBlocks()[blockIndex];
+        for (char blockId : lir.codeEmittingOrder()) {
+            AbstractBlockBase<?> b = lir.getBlockById(blockId);
             for (LIRInstruction ins : lir.getLIRforBlock(b)) {
                 if (ins instanceof AMD64Binary.CommutativeTwoOp && ((AMD64Binary.CommutativeTwoOp) ins).getOpcode().toString().equals("ADD")) {
                     assertFalse("CommutativeTwoOp expected only once in first block", found);

@@ -41,18 +41,22 @@ import org.graalvm.compiler.options.OptionValues;
 /**
  * This class implements the overall container for the LIR graph and directs its construction,
  * optimization, and finalization.
+ *
+ * In order to reduce memory usage LIR keeps arrays of block ids instead of direct pointer arrays to
+ * {@link AbstractBlockBase} from a {@link AbstractControlFlowGraph} reverse post order list.
  */
 public final class LIR extends LIRGenerator.VariableProvider {
 
     private final AbstractControlFlowGraph<?> cfg;
 
     /**
-     * The linear-scan ordered list of blocks.
+     * The linear-scan ordered list of block ids into {@link AbstractControlFlowGraph#getBlocks()}.
      */
     private final char[] linearScanOrder;
 
     /**
-     * The order in which the code is emitted.
+     * The code emission ordered list of block ids into
+     * {@link AbstractControlFlowGraph#getBlocks()}.
      */
     private char[] codeEmittingOrder;
 
@@ -85,6 +89,10 @@ public final class LIR extends LIRGenerator.VariableProvider {
 
     public AbstractControlFlowGraph<?> getControlFlowGraph() {
         return cfg;
+    }
+
+    public AbstractBlockBase<?> getBlockById(char blockId) {
+        return cfg.getBlocks()[blockId];
     }
 
     public OptionValues getOptions() {
@@ -257,18 +265,18 @@ public final class LIR extends LIRGenerator.VariableProvider {
 
     @SuppressWarnings("unlikely-arg-type")
     public static boolean verifyBlocks(LIR lir, char[] blocks) {
-        for (char blockIndex : blocks) {
-            if (blockIndex == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
+        for (char blockId : blocks) {
+            if (blockId == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
                 continue;
             }
-            AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];
+            AbstractBlockBase<?> block = lir.getBlockById(blockId);
             for (int i = 0; i < block.getSuccessorCount(); i++) {
                 AbstractBlockBase<?> sux = block.getSuccessorAt(i);
-                assert contains(blocks, (char) sux.getId()) : "missing successor from: " + block + "to: " + sux;
+                assert contains(blocks, sux.getId()) : "missing successor from: " + block + "to: " + sux;
             }
             for (int i = 0; i < block.getPredecessorCount(); i++) {
                 AbstractBlockBase<?> pred = block.getPredecessorAt(i);
-                assert contains(blocks, (char) pred.getId()) : "missing predecessor from: " + block + "to: " + pred;
+                assert contains(blocks, pred.getId()) : "missing predecessor from: " + block + "to: " + pred;
             }
             if (!verifyBlock(lir, block)) {
                 return false;

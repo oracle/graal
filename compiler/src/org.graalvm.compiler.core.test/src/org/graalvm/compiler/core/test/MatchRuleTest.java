@@ -24,8 +24,11 @@
  */
 package org.graalvm.compiler.core.test;
 
+import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.INVALID_BLOCK_ID;
+
+import java.util.function.Predicate;
+
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
-import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
@@ -33,11 +36,9 @@ import org.graalvm.compiler.lir.phases.LIRPhase;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
 import org.graalvm.compiler.options.OptionValues;
-
-import jdk.vm.ci.code.TargetDescription;
 import org.junit.Assert;
 
-import java.util.function.Predicate;
+import jdk.vm.ci.code.TargetDescription;
 
 public abstract class MatchRuleTest extends GraalCompilerTest {
     private LIR lir;
@@ -64,10 +65,10 @@ public abstract class MatchRuleTest extends GraalCompilerTest {
         checkLIR(methodName, predicate, 0, expected);
     }
 
-    protected void checkLIR(String methodName, Predicate<LIRInstruction> predicate, int blockIndex, int expected) {
+    protected void checkLIR(String methodName, Predicate<LIRInstruction> predicate, int blockId, int expected) {
         compile(getResolvedJavaMethod(methodName), null);
         int actualOpNum = 0;
-        for (LIRInstruction ins : lir.getLIRforBlock(lir.getControlFlowGraph().getBlocks()[lir.codeEmittingOrder()[blockIndex]])) {
+        for (LIRInstruction ins : lir.getLIRforBlock(lir.getBlockById(lir.codeEmittingOrder()[blockId]))) {
             if (predicate.test(ins)) {
                 actualOpNum++;
             }
@@ -86,11 +87,11 @@ public abstract class MatchRuleTest extends GraalCompilerTest {
             compile(getResolvedJavaMethod(methodName), null);
         }
         int actualOpNum = 0;
-        for (char blockIndex : lir.codeEmittingOrder()) {
-            if (blockIndex == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
+        for (char blockId : lir.codeEmittingOrder()) {
+            if (blockId == INVALID_BLOCK_ID) {
                 continue;
             }
-            AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];
+            AbstractBlockBase<?> block = lir.getBlockById(blockId);
             for (LIRInstruction ins : lir.getLIRforBlock(block)) {
                 if (predicate.test(ins)) {
                     actualOpNum++;

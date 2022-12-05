@@ -101,7 +101,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
         private void deleteEmptyBlocks(char[] blocks) {
             assert verifyBlocks(lir, blocks);
             for (int i = 0; i < blocks.length; i++) {
-                AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blocks[i]];
+                AbstractBlockBase<?> block = lir.getBlockById(blocks[i]);
                 if (canDeleteBlock(block)) {
 
                     block.delete();

@@ -25,13 +25,13 @@
 package org.graalvm.compiler.hotspot.lir;
 
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.INVALID_BLOCK_ID;
 
 import java.util.ArrayList;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
-import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.hotspot.HotSpotLIRGenerationResult;
@@ -84,11 +84,11 @@ public final class HotSpotZapRegistersPhase extends PostAllocationOptimizationPh
 
     private static void processLIR(DiagnosticLIRGeneratorTool diagnosticLirGenTool, LIR lir, EconomicSet<Register> allocatableRegisters, boolean zapRegisters, boolean zapStack) {
         LIRInsertionBuffer buffer = new LIRInsertionBuffer();
-        for (char blockIndex : lir.getBlocks()) {
-            if (blockIndex == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
+        for (char blockId : lir.getBlocks()) {
+            if (blockId == INVALID_BLOCK_ID) {
                 continue;
             }
-            AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];
+            AbstractBlockBase<?> block = lir.getBlockById(blockId);
             processBlock(diagnosticLirGenTool, lir, allocatableRegisters, buffer, block, zapRegisters, zapStack);
         }
     }

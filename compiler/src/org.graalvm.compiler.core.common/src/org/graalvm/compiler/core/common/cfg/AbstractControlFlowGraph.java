@@ -34,6 +34,7 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
      * flow optimizations.
      */
     char INVALID_BLOCK_ID = Character.MAX_VALUE;
+
     /**
      * Last valid block index used by the compiler. A compilation unit with more basic blocks would
      * trigger bailouts or compilation exceptions.

@@ -366,11 +366,11 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
             }
         };
         boolean sawSaveRegisters = false;
-        for (char blockIndex : lir.getBlocks()) {
-            if (blockIndex == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
+        for (char blockId : lir.getBlocks()) {
+            if (blockId == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
                 continue;
             }
-            AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];
+            AbstractBlockBase<?> block = lir.getBlockById(blockId);
             // Ignore the effects of instructions bracketed by save/restore
             SaveRegistersOp save = null;
             for (LIRInstruction op : lir.getLIRforBlock(block)) {

@@ -29,6 +29,7 @@ import java.util.PriorityQueue;
 
 import org.graalvm.compiler.core.common.alloc.BasicBlockOrderUtils.BlockList;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 
 /**
  * Computes an ordering of the blocks that can be used by the linear scan register allocator.
@@ -50,7 +51,8 @@ public final class LinearScanOrder {
     /**
      * Computes the block order used for the linear scan register allocator.
      *
-     * @return sorted list of blocks
+     * @return sorted list of block ids pointing into the reverse post order array of
+     *         {@link AbstractControlFlowGraph}
      */
     public static <T extends AbstractBlockBase<T>> char[] computeLinearScanOrder(int originalBlockCount, T startBlock) {
         BlockList<T> order = new BlockList<>(originalBlockCount);
@@ -61,7 +63,7 @@ public final class LinearScanOrder {
         BasicBlockOrderUtils.checkStartBlock(order, startBlock);
         char[] orderIndices = new char[order.size()];
         for (int i = 0; i < order.size(); i++) {
-            orderIndices[i] = AbstractBlockBase.safeCast(order.getOrder().get(i).getId());
+            orderIndices[i] = order.getOrder().get(i).getId();
         }
         return orderIndices;
     }

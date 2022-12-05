@@ -82,8 +82,8 @@ public class AMD64ReadAfterWriteMatchTest extends MatchRuleTest {
         compile(getResolvedJavaMethod(method), null, options != null ? options : getInitialOptions());
         LIR lir = getLIR();
         int count = 0;
-        for (char blockIndex : lir.codeEmittingOrder()) {
-            AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];
+        for (char blockId : lir.codeEmittingOrder()) {
+            AbstractBlockBase<?> block = lir.getBlockById(blockId);
             for (LIRInstruction ins : lir.getLIRforBlock(block)) {
                 if (filter.test(ins)) {
                     count++;

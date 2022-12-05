@@ -57,8 +57,8 @@ public class SaveCalleeSaveRegisters extends PreAllocationOptimizationPhase {
         LIR lir = lirGenRes.getLIR();
         RegisterMap<Variable> savedRegisters = saveAtEntry(lir, context.lirGen, lirGenRes, calleeSaveRegisters, target.arch);
 
-        for (char blockIndex : lir.getBlocks()) {
-            AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];
+        for (char blockId : lir.getBlocks()) {
+            AbstractBlockBase<?> block = lir.getBlockById(blockId);
             if (block == null) {
                 continue;
             }

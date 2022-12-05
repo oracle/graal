@@ -75,8 +75,8 @@ public final class SSALinearScan extends LinearScan {
          * matches (ie. there is no resolution move) are falsely detected as errors.
          */
         try (DebugContext.Scope s1 = debug.scope("Remove Phi In")) {
-            for (char blockIndex : sortedBlocks()) {
-                AbstractBlockBase<?> toBlock = getLIR().getControlFlowGraph().getBlocks()[blockIndex];
+            for (char blockId : sortedBlocks()) {
+                AbstractBlockBase<?> toBlock = getLIR().getBlockById(blockId);
                 if (toBlock.getPredecessorCount() > 1) {
                     SSAUtil.removePhiIn(getLIR(), toBlock);
                 }

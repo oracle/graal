@@ -25,6 +25,7 @@
 package org.graalvm.compiler.nodes.cfg;
 
 import static org.graalvm.compiler.core.common.cfg.AbstractBlockBase.BLOCK_ID_COMPARATOR;
+import static org.graalvm.compiler.core.common.cfg.AbstractBlockBase.safeCast;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -61,7 +62,7 @@ import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.cfg.Block.FixedBlock;
+import org.graalvm.compiler.nodes.cfg.Block.UnmodifiableBlock;
 import org.graalvm.compiler.nodes.cfg.Block.ModifiableBlock;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -185,7 +186,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         char numBlocks = 0;
         for (AbstractBeginNode begin : graph.getNodes(AbstractBeginNode.TYPE)) {
             GraalError.guarantee(begin.predecessor() != null || (begin instanceof StartNode || begin instanceof AbstractMergeNode), "Disconnected control flow %s encountered", begin);
-            Block block = makeEditable ? new ModifiableBlock(begin, this) : new FixedBlock(begin, this);
+            Block block = makeEditable ? new ModifiableBlock(begin, this) : new UnmodifiableBlock(begin, this);
             identifyBlock(block);
             numBlocks++;
             if (numBlocks > AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX) {
@@ -670,7 +671,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                 }
                 myNumber = AbstractBlockBase.addExact(myNumber, 1);
             } else {
-                cur.setMaxChildDomNumber(AbstractBlockBase.safeCast(dominated.getMaxChildDominatorNumber()));
+                cur.setMaxChildDomNumber(safeCast(dominated.getMaxChildDominatorNumber()));
                 --tos;
             }
         } while (tos >= 0);
@@ -1217,7 +1218,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             }
             Block firstSucc = block.getSuccessorAt(0);
             if (block.getSuccessorCount() == 1) {
-                block.postdominator = AbstractBlockBase.safeCast(firstSucc.getId());
+                block.postdominator = firstSucc.getId();
                 continue;
             }
             Block postdominator = firstSucc;

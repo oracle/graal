@@ -172,17 +172,17 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
 
         private void initBlockData(LIR lir) {
             DebugContext debug = lir.getDebug();
-            char[] blockIndices = lir.linearScanOrder();
+            char[] blockIds = lir.linearScanOrder();
             numRegs = 0;
 
-            int maxStackLocations = COMPLEXITY_LIMIT / blockIndices.length;
+            int maxStackLocations = COMPLEXITY_LIMIT / blockIds.length;
 
             /*
              * Search for relevant locations which can be optimized. These are register or stack
              * slots which occur as destinations of move instructions.
              */
-            for (char blockIndex : blockIndices) {
-                AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];
+            for (char blockId : blockIds) {
+                AbstractBlockBase<?> block = lir.getBlockById(blockId);
                 ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
                 for (LIRInstruction op : instructions) {
                     if (isEligibleMove(op)) {
@@ -208,8 +208,8 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
              */
             int numLocations = numRegs + stackIndices.size();
             debug.log("num locations = %d (regs = %d, stack = %d)", numLocations, numRegs, stackIndices.size());
-            for (char blockIndex : blockIndices) {
-                AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];
+            for (char blockId : blockIds) {
+                AbstractBlockBase<?> block = lir.getBlockById(blockId);
                 BlockData data = new BlockData(numLocations);
                 blockData.put(block, data);
             }
@@ -229,24 +229,17 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
 
             DebugContext debug = lir.getDebug();
             try (Indent indent = debug.logAndIndent("solve data flow")) {
-
-                char[] blockIndices = lir.linearScanOrder();
-
+                char[] blockIds = lir.linearScanOrder();
                 int numIter = 0;
-
-                /*
-                 * Iterate until there are no more changes.
-                 */
+                // Iterate until there are no more changes.
                 int currentValueNum = 1;
                 boolean firstRound = true;
                 boolean changed;
                 do {
                     changed = false;
                     try (Indent indent2 = debug.logAndIndent("new iteration")) {
-
-                        for (char blockIndex : blockIndices) {
-                            AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];
-
+                        for (char blockId : blockIds) {
+                            AbstractBlockBase<?> block = lir.getBlockById(blockId);
                             BlockData data = blockData.get(block);
                             /*
                              * Initialize the number for global value numbering for this block. It
@@ -260,7 +253,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
                             assert valueNum > 0;
                             boolean newState = false;
 
-                            if (block.getId() == blockIndices[0] || block.isExceptionEntry()) {
+                            if (block.getId() == blockIds[0] || block.isExceptionEntry()) {
                                 /*
                                  * The entry block has undefined values. And also exception handler
                                  * blocks: the LinearScan can insert moves at the end of an
@@ -331,16 +324,11 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
         @SuppressWarnings("try")
         private void eliminateMoves(LIR lir) {
             DebugContext debug = lir.getDebug();
-
             try (Indent indent = debug.logAndIndent("eliminate moves")) {
-
-                char[] blockIndices = lir.linearScanOrder();
-
-                for (char blockIndex : blockIndices) {
-                    AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];
-
+                char[] blockIds = lir.linearScanOrder();
+                for (char blockId : blockIds) {
+                    AbstractBlockBase<?> block = lir.getBlockById(blockId);
                     try (Indent indent2 = debug.logAndIndent("eliminate moves in block %d", block.getId())) {
-
                         ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
                         BlockData data = blockData.get(block);
                         boolean hasDead = false;

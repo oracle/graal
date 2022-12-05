@@ -24,13 +24,14 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.INVALID_BLOCK_ID;
+
 import java.util.ArrayList;
 
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.Assembler.InstructionCounter;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
-import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInsertionBuffer;
@@ -115,11 +116,11 @@ public class HotSpotInstructionProfiling extends PostAllocationOptimizationPhase
     public static void countInstructions(LIR lir, Assembler<?> asm) {
         InstructionCounterOp lastOp = null;
         InstructionCounter counter = asm.getInstructionCounter();
-        for (char blockIndex : lir.codeEmittingOrder()) {
-            if (blockIndex == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
+        for (char blockId : lir.codeEmittingOrder()) {
+            if (blockId == INVALID_BLOCK_ID) {
                 continue;
             }
-            AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];
+            AbstractBlockBase<?> block = lir.getBlockById(blockId);
             for (LIRInstruction inst : lir.getLIRforBlock(block)) {
                 if (inst instanceof InstructionCounterOp) {
                     InstructionCounterOp currentOp = (InstructionCounterOp) inst;

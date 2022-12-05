@@ -408,7 +408,7 @@ public class LinearScan {
     }
 
     public AbstractBlockBase<?> blockAt(int index) {
-        return ir.getControlFlowGraph().getBlocks()[sortedBlocks[index]];
+        return ir.getBlockById(sortedBlocks[index]);
     }
 
     /**

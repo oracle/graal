@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.graal.lir;
 
+import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.INVALID_BLOCK_ID;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -83,12 +85,11 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends FinalCodeAnalysisPhase
         }
 
         LIR ir = lirGenRes.getLIR();
-        for (char blockIndex : ir.getBlocks()) {
-            AbstractBlockBase<?> block = ir.getControlFlowGraph().getBlocks()[blockIndex];
-
-            if (block == null) {
+        for (char blockId : ir.getBlocks()) {
+            if (blockId == INVALID_BLOCK_ID) {
                 continue;
             }
+            AbstractBlockBase<?> block = ir.getBlockById(blockId);
             List<LIRInstruction> instructions = ir.getLIRforBlock(block);
             for (int i = 0; i < instructions.size(); i++) {
                 LIRInstruction op = instructions.get(i);

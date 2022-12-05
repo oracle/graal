@@ -30,6 +30,7 @@ import java.util.PriorityQueue;
 
 import org.graalvm.compiler.core.common.alloc.BasicBlockOrderUtils.BlockList;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.CodeEmissionOrder;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.options.OptionValues;
@@ -59,7 +60,8 @@ public class DefaultCodeEmissionOrder<T extends AbstractBlockBase<T>> implements
     /**
      * Computes the block order used for code emission.
      *
-     * @return sorted list of blocks
+     * @return sorted list of ids of basic blocks, see {@link AbstractControlFlowGraph} for details
+     *         about the data structures
      */
     @Override
     public char[] computeCodeEmittingOrder(OptionValues options, ComputationTime computationTime) {
@@ -70,7 +72,7 @@ public class DefaultCodeEmissionOrder<T extends AbstractBlockBase<T>> implements
         BasicBlockOrderUtils.checkStartBlock(order, startBlock);
         char[] orderIndices = new char[order.size()];
         for (int i = 0; i < order.size(); i++) {
-            orderIndices[i] = AbstractBlockBase.safeCast(order.getOrder().get(i).getId());
+            orderIndices[i] = order.getOrder().get(i).getId();
         }
         return orderIndices;
     }

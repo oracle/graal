@@ -27,6 +27,7 @@ package org.graalvm.compiler.lir.asm;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static org.graalvm.compiler.core.common.GraalOptions.IsolatedLoopHeaderAlignment;
+import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.INVALID_BLOCK_ID;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -541,9 +542,9 @@ public class CompilationResultBuilder {
         frameContext.enter(this);
         final BasicBlockInfoLogger logger = new BasicBlockInfoLogger();
         AbstractBlockBase<?> previousBlock = null;
-        for (char blockIndex : lir.codeEmittingOrder()) {
-            AbstractBlockBase<?> b = lir.getControlFlowGraph().getBlocks()[blockIndex];
-            assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == AbstractControlFlowGraph.INVALID_BLOCK_ID) || lir.codeEmittingOrder()[currentBlockIndex] == blockIndex;
+        for (char blockId : lir.codeEmittingOrder()) {
+            AbstractBlockBase<?> b = lir.getBlockById(blockId);
+            assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == AbstractControlFlowGraph.INVALID_BLOCK_ID) || lir.codeEmittingOrder()[currentBlockIndex] == blockId;
             if (b != null) {
                 if (b.isAligned() && previousBlock != null) {
                     AbstractBlockBase<?>[] successorArray = new AbstractBlockBase<?>[previousBlock.getSuccessorCount()];
@@ -582,7 +583,7 @@ public class CompilationResultBuilder {
         }
         boolean emitComment = debug.isDumpEnabled(DebugContext.BASIC_LEVEL) || Options.PrintLIRWithAssembly.getValue(getOptions());
         if (emitComment) {
-            blockComment(String.format("block B%d %s", block.getId(), block.getLoop()));
+            blockComment(String.format("block B%d %s", (int) block.getId(), block.getLoop()));
         }
 
         for (LIRInstruction op : lir.getLIRforBlock(block)) {
@@ -658,8 +659,8 @@ public class CompilationResultBuilder {
         labelBindLirPositions = EconomicMap.create(Equivalence.IDENTITY);
         lirPositions = EconomicMap.create(Equivalence.IDENTITY);
         int instructionPosition = 0;
-        for (char blockIndex : generatedLIR.getBlocks()) {
-            AbstractBlockBase<?> block = generatedLIR.getControlFlowGraph().getBlocks()[blockIndex];
+        for (char blockId : generatedLIR.getBlocks()) {
+            AbstractBlockBase<?> block = generatedLIR.getBlockById(blockId);
             if (block != null) {
                 for (LIRInstruction op : generatedLIR.getLIRforBlock(block)) {
                     if (op instanceof LabelHoldingOp) {
@@ -707,11 +708,11 @@ public class CompilationResultBuilder {
     }
 
     public final boolean needsClearUpperVectorRegisters() {
-        for (char blockIndex : lir.getBlocks()) {
-            if (blockIndex == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
+        for (char blockId : lir.getBlocks()) {
+            if (blockId == INVALID_BLOCK_ID) {
                 continue;
             }
-            AbstractBlockBase<?> block = lir.getControlFlowGraph().getBlocks()[blockIndex];
+            AbstractBlockBase<?> block = lir.getBlockById(blockId);
             for (LIRInstruction op : lir.getLIRforBlock(block)) {
                 if (op.needsClearUpperVectorRegisters()) {
                     return true;

@@ -24,10 +24,11 @@
  */
 package org.graalvm.compiler.lir;
 
+import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.INVALID_BLOCK_ID;
+
 import java.util.ArrayList;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
-import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.lir.StandardOp.ImplicitNullCheck;
 import org.graalvm.compiler.lir.StandardOp.NullCheck;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
@@ -44,12 +45,12 @@ public final class NullCheckOptimizer extends PostAllocationOptimizationPhase {
         NullCheckOptimizer.foldNullChecks(ir, blockIndices, target.implicitNullCheckLimit);
     }
 
-    private static void foldNullChecks(LIR ir, char[] blockIndices, int implicitNullCheckLimit) {
-        for (char blockIndex : blockIndices) {
-            if (blockIndex == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
+    private static void foldNullChecks(LIR ir, char[] blockIds, int implicitNullCheckLimit) {
+        for (char blockId : blockIds) {
+            if (blockId == INVALID_BLOCK_ID) {
                 continue;
             }
-            AbstractBlockBase<?> block = ir.getControlFlowGraph().getBlocks()[blockIndex];
+            AbstractBlockBase<?> block = ir.getBlockById(blockId);
             ArrayList<LIRInstruction> list = ir.getLIRforBlock(block);
             if (!list.isEmpty()) {
                 LIRInstruction lastInstruction = list.get(0);

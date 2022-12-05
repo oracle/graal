@@ -98,17 +98,16 @@ class CFGPrinter extends CompilationPrinter {
      * Prints the specified list of blocks.
      *
      * @param label A label describing the compilation phase that produced the control flow graph.
-     * @param blockIndices The list of block indices for which the associated blocks have to be
-     *            printed.
+     * @param blockIds The list of block ids for which the associated blocks have to be printed.
      */
-    public void printCFG(String label, char[] blockIndices) {
+    public void printCFG(String label, char[] blockIds) {
         begin("cfg");
         out.print("name \"").print(label).println('"');
-        for (char blockIndex : blockIndices) {
-            if (blockIndex == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
+        for (char blockId : blockIds) {
+            if (blockId == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
                 continue;
             }
-            AbstractBlockBase<?> block = cfg.getBlocks()[blockIndex];
+            AbstractBlockBase<?> block = cfg.getBlocks()[blockId];
             printBlockProlog(block);
             printBlockEpilog(block);
         }
@@ -398,7 +397,7 @@ class CFGPrinter extends CompilationPrinter {
         } else {
             // LIR instructions contain references to blocks and these blocks are printed as the
             // blockID -> use the blockID.
-            return "B" + block.getId();
+            return "B" + (int) block.getId();
         }
     }
 

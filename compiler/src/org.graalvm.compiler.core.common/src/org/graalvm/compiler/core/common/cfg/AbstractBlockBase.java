@@ -29,12 +29,13 @@ import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.INVA
 import java.util.Comparator;
 
 import org.graalvm.compiler.core.common.RetryableBailoutException;
+import org.graalvm.compiler.debug.GraalError;
 
 /**
  * Abstract representation of a basic block in the Graal IR. A basic block is the longest sequence
- * of instructions without a jump in between. Each block is held in specific order by
- * {@code AbstractControlFlowGraph} (typically in a reverse post order fashion). Both the fronend of
- * Graal as well as the backend operate on the same abstract block representation.
+ * of instructions without a jump in between. A sequential ordering of blocks is maintained by
+ * {@code AbstractControlFlowGraph} (typically in a reverse post order fashion). Both the frontend
+ * of Graal as well as the backend operate on the same abstract block representation.
  *
  * In reality only one subclass exists that is shared both by the frontend and backend. However, the
  * frontend builds, while scheduling the graph, the final control flow graph used by the backend.
@@ -47,8 +48,13 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
 
     /**
      * Id of this basic block. The id is concurrently used as a unique identifier for the block as
-     * well as it's index into the @{@link #getBlocks()} array of the associated
+     * well as its index into the @{@link #getBlocks()} array of the associated
      * {@link AbstractControlFlowGraph}.
+     *
+     * The type {@code char} is used to reduce memory usage of the block array and associated
+     * indexing operations. This comes at a certain debugging cost - inspecting block ids in a
+     * debugger is bad because it will display character codes. Use {@link #toString()} to see the
+     * id representation using a number.
      */
     protected char id = INVALID_BLOCK_ID;
     /**
@@ -78,17 +84,18 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
      * checks. It attributes each basic block a numerical value that adheres to the following
      * constraints
      * <ul>
-     * <li>b1.domNumber > b2.domNumber iff b1 dominates b2</li>
+     * <li>b1.domNumber <= b2.domNumber iff b1 dominates b2</li>
      * <li>b1.domNumber == b2.domNumber iff b1 == b2</li>
      * </ul>
      *
-     * This means all dominated blocks between {@code this} and the deepest dominated block in
-     * dominator tree are within the {@code [domNumber;maxDomNumber]} interval.
+     * Two distinct branches in the dominator tree always have distinct ids. This means all
+     * dominated blocks between {@code this} and the deepest dominated block in dominator tree are
+     * within the {@code [domNumber;maxChildDomNumber]} interval.
      */
     private char domNumber = INVALID_BLOCK_ID;
     /**
      * The maximum child dominator number, i.e., the maximum dom number of the deepest dominated
-     * block along the particular branch on the dominator tree rooted at this.
+     * block along the particular branch on the dominator tree rooted at this block.
      *
      * See {@link #domNumber} for details.
      */
@@ -121,7 +128,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
         return this.maxChildDomNumber;
     }
 
-    public int getId() {
+    public char getId() {
         return id;
     }
 
@@ -202,7 +209,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     }
 
     public void setDominator(T dominator) {
-        this.dominator = safeCast(dominator.getId());
+        this.dominator = dominator.getId();
         this.domDepth = addExact(dominator.domDepth, 1);
     }
 
@@ -216,7 +223,10 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     }
 
     public static char safeCast(int i) {
-        if (i < 0 || i > AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX) {
+        if (i < 0) {
+            throw GraalError.shouldNotReachHere("Negative block id");
+        }
+        if (i > AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX) {
             throw new RetryableBailoutException("Graph too large to safely compile in reasonable time.");
         }
         return (char) i;
@@ -234,7 +244,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     }
 
     public void setFirstDominated(T block) {
-        this.firstDominated = safeCast(block.getId());
+        this.firstDominated = block.getId();
     }
 
     public T getDominatedSibling() {
@@ -243,7 +253,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
 
     public void setDominatedSibling(T block) {
         if (block != null) {
-            this.dominatedSibling = safeCast(block.getId());
+            this.dominatedSibling = block.getId();
         }
     }
 
@@ -264,7 +274,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
 
     public abstract Loop<T> getLoop();
 
-    public abstract char getLoopDepth();
+    public abstract int getLoopDepth();
 
     public abstract void delete();
 
@@ -285,6 +295,10 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
 
     public abstract T getDominator(int distance);
 
+    /**
+     * Determine if this block is modifiable in the context of its {@link AbstractControlFlowGraph}.
+     * This includes deleting this block, modifying its predecessors and successors.
+     */
     public abstract boolean isModifiable();
 
     @Override

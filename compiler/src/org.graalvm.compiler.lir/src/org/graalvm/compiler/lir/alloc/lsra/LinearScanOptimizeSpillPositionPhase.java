@@ -200,7 +200,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
             AbstractBlockBase<?> currentBlock = block;
             int nextBlockIndex = block.getLinearScanNumber() + 1;
             if (nextBlockIndex < allocator.sortedBlocks().length) {
-                block = allocator.getLIR().getControlFlowGraph().getBlocks()[allocator.sortedBlocks()[nextBlockIndex]];
+                block = allocator.getLIR().getBlockById(allocator.sortedBlocks()[nextBlockIndex]);
                 if (range.to <= allocator.getFirstLirInstructionId(block)) {
                     range = range.next;
                     if (range.isEndMarker()) {
