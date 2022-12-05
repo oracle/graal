@@ -29,11 +29,13 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.profdiff.core.TreeNode;
 
 /**
- * Provides an equality test of two {@link TreeNode tree nodes} and determines costs of edit
- * operations. It is assumed that there is a constant cost of node insertion and it is equal to the
- * cost of deletion. The cost to insert/delete a subtree is then calculated by multiplying the
- * constant by the size of the subtree. Sizes of the subtrees are calculated with memoization (the
- * identity of a node is mapped to its subtree size).
+ * Provides an equality test of two {@link TreeNode tree nodes} and determines the costs of edit
+ * operations for a {@link TreeMatcher}.
+ *
+ * It is assumed that there is a constant cost of node insertion, and it is equal to the cost of
+ * deletion. The cost to insert/delete a subtree is then calculated by multiplying the constant by
+ * the size of the subtree. Sizes of the subtrees are calculated with memoization (the identity of a
+ * node is mapped to its subtree size).
  *
  * @param <T> the concrete type of the {@link TreeNode}
  */

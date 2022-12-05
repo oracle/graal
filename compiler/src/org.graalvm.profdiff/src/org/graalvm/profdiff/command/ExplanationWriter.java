@@ -154,7 +154,7 @@ public class ExplanationWriter {
         if (!singleExperiment && verbosityLevel.shouldDiffCompilations()) {
             writer.writeln("the inlining trees of two paired compilations are diffed");
             writer.increaseIndent();
-            writer.writeln("the tree also includes negative decisions, i.e., a callsite may be considered for inlining but ultimately not inlined");
+            writer.writeln("the tree also includes negative decisions, i.e., a callsite may be considered for inlining but is ultimately not inlined");
             writer.writeln("a list of operations to transform the first inlining tree to the second with minimal cost is computed");
             writer.writeln("the operations include subtree deletion, subtree insertion and relabeling (changing one node to another node)");
             writer.writeln("the diff is printed in the form of a tree");
@@ -198,7 +198,7 @@ public class ExplanationWriter {
         if (!singleExperiment && verbosityLevel.shouldDiffCompilations()) {
             writer.writeln("the optimization-context trees of two paired compilations are diffed");
             writer.increaseIndent();
-            writer.writeln("the tree also includes negative decisions, i.e., a callsite may be considered for inlining but ultimately not inlined");
+            writer.writeln("the tree also includes negative decisions, i.e., a callsite may be considered for inlining but is ultimately not inlined");
             writer.writeln("a list of operations to transform the first inlining tree to the second with minimal cost is computed");
             writer.writeln("the operations include subtree deletion, subtree insertion and relabeling (changing one node to another node)");
             writer.writeln("the diff is printed in the form of a tree");

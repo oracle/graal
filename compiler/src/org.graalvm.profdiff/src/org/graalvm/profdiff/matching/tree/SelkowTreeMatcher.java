@@ -32,7 +32,8 @@ import java.lang.reflect.Array;
  * Creates a matching by computing an optimal edit script between two trees using
  * <a href="https://doi.org/10.1016/0020-0190(77)90064-3">Selkow's tree edit distance</a>. The
  * allowed set of operations is leaf insertion, leaf deletion and node relabelling. The original
- * algorithm is extended with the collection of performed operations.
+ * algorithm is extended with the collection of performed operations. Operation costs are determined
+ * by a {@link TreeEditPolicy}.
  */
 public class SelkowTreeMatcher<T extends TreeNode<T>> implements TreeMatcher<T> {
     /**

@@ -28,10 +28,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicMapUtil;
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Equivalence;
 import org.graalvm.profdiff.core.CompilationFragment;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.Experiment;
@@ -112,26 +110,31 @@ public class ExperimentPair {
     }
 
     /**
-     * Creates compilation fragments for the destination experiments by testing the requirements
-     * against the source experiment.
+     * Creates compilation fragments for the experiment {@code destination} by testing the
+     * requirements against the experiment {@code source}.
      *
-     * The method executes the following algorithm to find appropriate candidates for a compilation fragment:
+     * The method executes the following algorithm to find appropriate candidates for a compilation
+     * fragment:
      *
-     * @formatter:off
      * <pre>
      *     for each method M in the destination experiment:
      *         for each hot compilation unit CU of the method M:
      *             for each inlined method I in CU:
-     *                 if the path to I in CU is unique
-     *                    and (1) there is not any hot compilation unit of M in the other experiment
-     *                        (2) or there exists a hot compilation unit of M in the other experiment
-     *                                        where I is not inlined:
+     *                 if (1) the path to I in CU is unique
+     *                    (2) and there is not any hot compilation unit of M in the other experiment
+     *                            or there exists a hot compilation unit of M in the other experiment
+     *                                            where I is not inlined:
      *                    create a fragment from CU rooted in I
      * </pre>
-     * @formatter:on
      *
-     * The first condition (1) ensures that optimizations can be properly attributed to the fragments. The second
-     * condition (2) reduces the set of created fragments to only those that are likely useful.
+     * The first condition (1) ensures that optimizations can be properly attributed to the
+     * fragments. A path to an inlining {@code node} in a compilation unit's {@code inliningTree} is
+     * unique iff {@code inliningTree.findNodesAt(InliningPath.fromRootToNode(node)).size() == 1}.
+     * In other words, the {@link InliningPath} lead exactly to our {@code node} and not any other
+     * node. This property is usually violated after code duplication.
+     *
+     * The second condition (2) reduces the set of created fragments to only those that are likely
+     * useful.
      *
      * @param destination the destination experiment where fragments are created
      * @param source the source experiments, which is only used to test requirements
@@ -147,19 +150,14 @@ public class ExperimentPair {
                     continue;
                 }
                 InliningTree inliningTree = compilationUnit.loadTrees().getInliningTree();
-                // we will check that the path is unique
-                // a path is not unique after duplication, unrolling...
-                // duplicated paths make it impossible to attribute optimizations
-                EconomicMap<InliningTreeNode, InliningPath> nodePaths = EconomicMap.create(Equivalence.IDENTITY);
-                inliningTree.getRoot().forEach(node -> nodePaths.put(node, InliningPath.fromRootToNode(node)));
                 inliningTree.getRoot().forEach(node -> {
                     // make sure the node is actually inlined, and it is not the root node
                     if (node.getName() == null || !node.isPositive() || method.getMethodName().equals(node.getName())) {
                         return;
                     }
                     // make sure the path is unique
-                    InliningPath pathToNode = nodePaths.get(node);
-                    if (CollectionsUtil.anyMatch(nodePaths.getValues(), otherPath -> otherPath != pathToNode && pathToNode.matches(otherPath))) {
+                    InliningPath pathToNode = InliningPath.fromRootToNode(node);
+                    if (inliningTree.findNodesAt(pathToNode).size() != 1) {
                         return;
                     }
                     // check that the method is either not hot in the other experiment or not
@@ -172,15 +170,8 @@ public class ExperimentPair {
                         }
                         hasHotCompilationUnit = true;
                         try {
-                            List<InliningTreeNode> otherNodes = new ArrayList<>();
-                            otherCompilationUnit.loadTrees().getInliningTree().getRoot().forEach(otherNode -> {
-                                if (otherNode != null && otherNode.isPositive() && otherNode.pathElement().matches(node.pathElement())) {
-                                    otherNodes.add(otherNode);
-                                }
-                            });
-                            boolean inlinedInOtherCompilationUnit = CollectionsUtil.anyMatch(otherNodes,
-                                            otherNode -> otherNode.isPositive() && InliningPath.fromRootToNode(otherNode).matches(pathToNode));
-                            if (!inlinedInOtherCompilationUnit) {
+                            List<InliningTreeNode> otherNodes = otherCompilationUnit.loadTrees().getInliningTree().findNodesAt(pathToNode);
+                            if (!CollectionsUtil.anyMatch(otherNodes, InliningTreeNode::isPositive)) {
                                 notInlinedInAtLeastOneCompilationUnit = true;
                                 break;
                             }

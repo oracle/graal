@@ -30,7 +30,7 @@ import org.graalvm.profdiff.core.optimization.OptimizationTree;
 import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
 
 /**
- * A compilation which is a fragment of a full compilation unit.
+ * Represents a fragment of a full compilation unit in terms of optimization scope.
  *
  * A fragment is created from the parent compilation unit's inlining tree and optimization tree. A
  * subtree of the inlining tree becomes the inlining tree of the newly created fragment. The

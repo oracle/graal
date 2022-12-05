@@ -48,11 +48,11 @@ import org.graalvm.profdiff.core.optimization.Optimization;
  *               __/  \__
  *             /         \
  *           d()         e()
- *        at bci 0     at bci 1
+ *        at bci 0     at bci 2
  * </pre>
  *
  * As an example, the right-most path in the inlining tree is
- * {@code a() at bci -1, c() at bci 1, e() at bci 1}.
+ * {@code a() at bci -1, c() at bci 1, e() at bci 2}.
  */
 public final class InliningPath {
     /**

@@ -38,6 +38,7 @@ import org.graalvm.profdiff.util.Writer;
  *
  * Consider the following set of methods:
  *
+ * @formatter:off
  * <pre>
  *     void a() { b(); c(); }
  *     void b() { }
@@ -45,6 +46,7 @@ import org.graalvm.profdiff.util.Writer;
  *     void d() { }
  *     void e() { }
  * </pre>
+ * @formatter:on
  *
  * After inlining everything in {@code a()}, we obtain the inlining tree below:
  *
