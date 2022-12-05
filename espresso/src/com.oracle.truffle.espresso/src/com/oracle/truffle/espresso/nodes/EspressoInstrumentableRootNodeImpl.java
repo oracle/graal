@@ -36,7 +36,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 abstract class EspressoInstrumentableRootNodeImpl extends EspressoInstrumentableRootNode {
 
     private final MethodVersion methodVersion;
-    private SourceSection sourceSection;
+    private volatile SourceSection sourceSection;
 
     EspressoInstrumentableRootNodeImpl(MethodVersion methodVersion) {
         this.methodVersion = methodVersion;

@@ -90,12 +90,10 @@ public class InlinedMethodNode extends InvokeQuickNode implements InlinedFrameAc
                 return null;
             }
             if (sourceSection == null) {
-                if (sourceSection == null) {
-                    SourceSection localSourceSection = m.getWholeMethodSourceSection();
-                    synchronized (this) {
-                        if (sourceSection == null) {
-                            sourceSection = localSourceSection;
-                        }
+                SourceSection localSourceSection = m.getWholeMethodSourceSection();
+                synchronized (this) {
+                    if (sourceSection == null) {
+                        sourceSection = localSourceSection;
                     }
                 }
             }
