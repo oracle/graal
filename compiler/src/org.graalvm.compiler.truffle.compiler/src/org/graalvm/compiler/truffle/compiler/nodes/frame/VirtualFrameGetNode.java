@@ -36,7 +36,6 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
@@ -141,19 +140,18 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
         if (!(valueStamp instanceof PrimitiveStamp)) {
             return value;
         }
-        return narrowForOSRStaticAccess(tool, value, accessKind);
+        return narrowForOSRStaticAccess(tool, value);
     }
 
-    static ValueNode narrowForOSRStaticAccess(VirtualizerTool tool, ValueNode value, JavaKind accessKind) {
+    private ValueNode narrowForOSRStaticAccess(VirtualizerTool tool, ValueNode value) {
         assert value.getStackKind() == JavaKind.Long && accessKind.isPrimitive();
         if (accessKind == JavaKind.Boolean) {
             // Special handling for boolean slots.
             // Canonically equivalent to:
             // (int) value != 0;
-            StructuredGraph graph = value.graph();
-            LogicNode logicNode = new IntegerEqualsNode(value, ConstantNode.forLong(0, graph));
+            LogicNode logicNode = new IntegerEqualsNode(value, ConstantNode.forLong(0, graph()));
             tool.addNode(logicNode);
-            ValueNode conditional = new ConditionalNode(logicNode, ConstantNode.forInt(0, graph), ConstantNode.forInt(1, graph));
+            ValueNode conditional = new ConditionalNode(logicNode, ConstantNode.forInt(0, graph()), ConstantNode.forInt(1, graph()));
             tool.addNode(conditional);
             return conditional;
         }
