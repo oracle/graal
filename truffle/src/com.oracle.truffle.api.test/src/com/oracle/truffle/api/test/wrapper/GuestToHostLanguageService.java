@@ -101,12 +101,12 @@ public class GuestToHostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public Object createToHostTypeNode() {
+    public Object inlineToHostTypeNode(Object inlineTarget) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public <T> T toHostType(Object hostNode, Object hostContext, Object value, Class<T> targetType, Type genericType) {
+    public <T> T toHostType(Object hostNode, Object targetNode, Object hostContext, Object value, Class<T> targetType, Type genericType) {
         throw new UnsupportedOperationException();
     }
 

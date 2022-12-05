@@ -51,6 +51,7 @@ import com.oracle.truffle.api.dsl.test.NegatedGuardsTestFactory.NegatedGuardNode
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class NegatedGuardsTest {
 
     @Test

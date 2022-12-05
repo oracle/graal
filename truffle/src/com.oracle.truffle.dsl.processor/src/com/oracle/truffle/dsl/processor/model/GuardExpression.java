@@ -57,7 +57,6 @@ import com.oracle.truffle.dsl.processor.expression.DSLExpression.AbstractDSLExpr
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.BooleanLiteral;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Call;
-import com.oracle.truffle.dsl.processor.expression.DSLExpression.Negate;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
@@ -74,6 +73,13 @@ public final class GuardExpression extends MessageContainer {
     public GuardExpression(SpecializationData source, DSLExpression expression) {
         this.source = source;
         this.expression = expression;
+    }
+
+    public GuardExpression copy(SpecializationData newSpecialization) {
+        GuardExpression guard = new GuardExpression(newSpecialization, expression);
+        guard.libraryAcceptsGuard = libraryAcceptsGuard;
+        guard.weakReferenceGuard = weakReferenceGuard;
+        return guard;
     }
 
     @Override
@@ -191,23 +197,6 @@ public final class GuardExpression extends MessageContainer {
             }
         }
         return false;
-    }
-
-    public boolean equalsNegated(GuardExpression other) {
-        boolean negated = false;
-        DSLExpression thisExpression = expression;
-        if (thisExpression instanceof Negate) {
-            negated = true;
-            thisExpression = ((Negate) thisExpression).getReceiver();
-        }
-
-        boolean otherNegated = false;
-        DSLExpression otherExpression = other.expression;
-        if (otherExpression instanceof Negate) {
-            otherNegated = true;
-            otherExpression = ((Negate) otherExpression).getReceiver();
-        }
-        return Objects.equals(thisExpression, otherExpression) && negated != otherNegated;
     }
 
     public boolean implies(GuardExpression other) {

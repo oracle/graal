@@ -796,9 +796,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Object findStaticClass(Object context, String classValue);
 
-        public abstract Object createToHostTypeNode();
+        public abstract Object inlineToHostTypeNode(Object inlineTarget);
 
-        public abstract <T> T toHostType(Object hostNode, Object hostContext, Object value, Class<T> targetType, Type genericType);
+        public abstract <T> T toHostType(Object hostNode, Object targetNode, Object hostContext, Object value, Class<T> targetType, Type genericType);
 
         public abstract boolean isHostValue(Object value);
 

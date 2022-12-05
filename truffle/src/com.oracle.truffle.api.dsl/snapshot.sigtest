@@ -19,8 +19,11 @@ innr public abstract interface static !annotation Shared
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean adopt()
 meth public abstract !hasdefault boolean allowUncached()
+meth public abstract !hasdefault boolean inline()
+meth public abstract !hasdefault boolean neverDefault()
 meth public abstract !hasdefault boolean weak()
 meth public abstract !hasdefault int dimensions()
+meth public abstract !hasdefault java.lang.String inlineMethod()
 meth public abstract !hasdefault java.lang.String uncached()
 meth public abstract !hasdefault java.lang.String value()
 meth public abstract !hasdefault java.lang.String[] parameters()
@@ -43,6 +46,11 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.CreateCast
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
 meth public abstract java.lang.String[] value()
+
+CLSS public abstract com.oracle.truffle.api.dsl.DSLSupport
+meth public static <%0 extends java.lang.Enum<?>> {%%0}[] lookupEnumConstants(java.lang.Class<{%%0}>)
+supr java.lang.Object
+hfds ENUM_CONSTANTS
 
 CLSS public abstract interface com.oracle.truffle.api.dsl.ExecuteTracingSupport
 meth public abstract boolean isTracingEnabled()
@@ -76,12 +84,30 @@ intf java.lang.annotation.Annotation
 
 CLSS public abstract interface static com.oracle.truffle.api.dsl.GenerateAOT$Provider
  outer com.oracle.truffle.api.dsl.GenerateAOT
-meth public abstract void prepareForAOT(com.oracle.truffle.api.TruffleLanguage<?>,com.oracle.truffle.api.nodes.RootNode)
+meth public void prepareForAOT(com.oracle.truffle.api.TruffleLanguage<?>,com.oracle.truffle.api.nodes.RootNode)
+meth public void prepareForAOT(com.oracle.truffle.api.TruffleLanguage<?>,com.oracle.truffle.api.nodes.RootNode,com.oracle.truffle.api.nodes.Node)
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GenerateCached
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean alwaysInlineCached()
+meth public abstract !hasdefault boolean inherit()
+meth public abstract !hasdefault boolean value()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GenerateInline
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean inherit()
+meth public abstract !hasdefault boolean value()
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GenerateNodeFactory
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean inherit()
+meth public abstract !hasdefault boolean value()
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GeneratePackagePrivate
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
@@ -93,6 +119,7 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GenerateUn
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean inherit()
+meth public abstract !hasdefault boolean value()
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GeneratedBy
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
@@ -112,6 +139,145 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.ImportStat
 intf java.lang.annotation.Annotation
 meth public abstract java.lang.Class<?>[] value()
 
+CLSS public final com.oracle.truffle.api.dsl.InlineSupport
+innr public abstract interface static !annotation RequiredField
+innr public abstract interface static !annotation RequiredFields
+innr public abstract static InlinableField
+innr public final static BooleanField
+innr public final static ByteField
+innr public final static CharField
+innr public final static DoubleField
+innr public final static FloatField
+innr public final static InlineTarget
+innr public final static IntField
+innr public final static LongField
+innr public final static ReferenceField
+innr public final static ShortField
+innr public final static StateField
+meth public !varargs static boolean validate(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.dsl.InlineSupport$InlinableField,com.oracle.truffle.api.dsl.InlineSupport$InlinableField,com.oracle.truffle.api.dsl.InlineSupport$InlinableField[])
+meth public static boolean validate(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.dsl.InlineSupport$InlinableField)
+meth public static boolean validate(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.dsl.InlineSupport$InlinableField,com.oracle.truffle.api.dsl.InlineSupport$InlinableField)
+supr java.lang.Object
+hcls UnsafeField,VarHandleField
+
+CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$BooleanField
+ outer com.oracle.truffle.api.dsl.InlineSupport
+meth public boolean get(com.oracle.truffle.api.nodes.Node)
+meth public com.oracle.truffle.api.dsl.InlineSupport$BooleanField createParentAccessor(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
+meth public static com.oracle.truffle.api.dsl.InlineSupport$BooleanField create(java.lang.invoke.MethodHandles$Lookup,java.lang.String)
+meth public void set(com.oracle.truffle.api.nodes.Node,boolean)
+supr com.oracle.truffle.api.dsl.InlineSupport$InlinableField
+
+CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$ByteField
+ outer com.oracle.truffle.api.dsl.InlineSupport
+meth public byte get(com.oracle.truffle.api.nodes.Node)
+meth public com.oracle.truffle.api.dsl.InlineSupport$ByteField createParentAccessor(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
+meth public static com.oracle.truffle.api.dsl.InlineSupport$ByteField create(java.lang.invoke.MethodHandles$Lookup,java.lang.String)
+meth public void set(com.oracle.truffle.api.nodes.Node,byte)
+supr com.oracle.truffle.api.dsl.InlineSupport$InlinableField
+
+CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$CharField
+ outer com.oracle.truffle.api.dsl.InlineSupport
+meth public char get(com.oracle.truffle.api.nodes.Node)
+meth public com.oracle.truffle.api.dsl.InlineSupport$CharField createParentAccessor(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
+meth public static com.oracle.truffle.api.dsl.InlineSupport$CharField create(java.lang.invoke.MethodHandles$Lookup,java.lang.String)
+meth public void set(com.oracle.truffle.api.nodes.Node,char)
+supr com.oracle.truffle.api.dsl.InlineSupport$InlinableField
+
+CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$DoubleField
+ outer com.oracle.truffle.api.dsl.InlineSupport
+meth public com.oracle.truffle.api.dsl.InlineSupport$DoubleField createParentAccessor(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
+meth public double get(com.oracle.truffle.api.nodes.Node)
+meth public static com.oracle.truffle.api.dsl.InlineSupport$DoubleField create(java.lang.invoke.MethodHandles$Lookup,java.lang.String)
+meth public void set(com.oracle.truffle.api.nodes.Node,double)
+supr com.oracle.truffle.api.dsl.InlineSupport$InlinableField
+
+CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$FloatField
+ outer com.oracle.truffle.api.dsl.InlineSupport
+meth public com.oracle.truffle.api.dsl.InlineSupport$FloatField createParentAccessor(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
+meth public float get(com.oracle.truffle.api.nodes.Node)
+meth public static com.oracle.truffle.api.dsl.InlineSupport$FloatField create(java.lang.invoke.MethodHandles$Lookup,java.lang.String)
+meth public void set(com.oracle.truffle.api.nodes.Node,float)
+supr com.oracle.truffle.api.dsl.InlineSupport$InlinableField
+
+CLSS public abstract static com.oracle.truffle.api.dsl.InlineSupport$InlinableField
+ outer com.oracle.truffle.api.dsl.InlineSupport
+meth public final boolean validate(com.oracle.truffle.api.nodes.Node)
+supr java.lang.Object
+hfds parentField
+
+CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$InlineTarget
+ outer com.oracle.truffle.api.dsl.InlineSupport
+meth public !varargs static com.oracle.truffle.api.dsl.InlineSupport$InlineTarget create(java.lang.Class<?>,com.oracle.truffle.api.dsl.InlineSupport$InlinableField[])
+meth public <%0 extends com.oracle.truffle.api.dsl.InlineSupport$InlinableField> {%%0} getPrimitive(int,java.lang.Class<{%%0}>)
+meth public <%0 extends java.lang.Object> com.oracle.truffle.api.dsl.InlineSupport$ReferenceField<{%%0}> getReference(int,java.lang.Class<?>)
+meth public com.oracle.truffle.api.dsl.InlineSupport$StateField getState(int,int)
+meth public java.lang.Class<?> getTargetClass()
+supr java.lang.Object
+hfds targetClass,updaters
+
+CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$IntField
+ outer com.oracle.truffle.api.dsl.InlineSupport
+meth public com.oracle.truffle.api.dsl.InlineSupport$IntField createParentAccessor(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
+meth public int get(com.oracle.truffle.api.nodes.Node)
+meth public static com.oracle.truffle.api.dsl.InlineSupport$IntField create(java.lang.invoke.MethodHandles$Lookup,java.lang.String)
+meth public void set(com.oracle.truffle.api.nodes.Node,int)
+supr com.oracle.truffle.api.dsl.InlineSupport$InlinableField
+
+CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$LongField
+ outer com.oracle.truffle.api.dsl.InlineSupport
+meth public com.oracle.truffle.api.dsl.InlineSupport$LongField createParentAccessor(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
+meth public long get(com.oracle.truffle.api.nodes.Node)
+meth public static com.oracle.truffle.api.dsl.InlineSupport$LongField create(java.lang.invoke.MethodHandles$Lookup,java.lang.String)
+meth public void set(com.oracle.truffle.api.nodes.Node,long)
+supr com.oracle.truffle.api.dsl.InlineSupport$InlinableField
+
+CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$ReferenceField<%0 extends java.lang.Object>
+ outer com.oracle.truffle.api.dsl.InlineSupport
+meth public boolean compareAndSet(com.oracle.truffle.api.nodes.Node,{com.oracle.truffle.api.dsl.InlineSupport$ReferenceField%0},{com.oracle.truffle.api.dsl.InlineSupport$ReferenceField%0})
+meth public com.oracle.truffle.api.dsl.InlineSupport$ReferenceField<{com.oracle.truffle.api.dsl.InlineSupport$ReferenceField%0}> createParentAccessor(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
+meth public static <%0 extends java.lang.Object> com.oracle.truffle.api.dsl.InlineSupport$ReferenceField<{%%0}> create(java.lang.invoke.MethodHandles$Lookup,java.lang.String,java.lang.Class<{%%0}>)
+meth public void set(com.oracle.truffle.api.nodes.Node,{com.oracle.truffle.api.dsl.InlineSupport$ReferenceField%0})
+meth public {com.oracle.truffle.api.dsl.InlineSupport$ReferenceField%0} get(com.oracle.truffle.api.nodes.Node)
+meth public {com.oracle.truffle.api.dsl.InlineSupport$ReferenceField%0} getVolatile(com.oracle.truffle.api.nodes.Node)
+supr com.oracle.truffle.api.dsl.InlineSupport$InlinableField
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.dsl.InlineSupport$RequiredField
+ outer com.oracle.truffle.api.dsl.InlineSupport
+ anno 0 java.lang.annotation.Repeatable(java.lang.Class<? extends java.lang.annotation.Annotation> value=class com.oracle.truffle.api.dsl.InlineSupport$RequiredFields)
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[PARAMETER])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault int bits()
+meth public abstract !hasdefault int dimensions()
+meth public abstract !hasdefault java.lang.Class<?> type()
+meth public abstract java.lang.Class<? extends com.oracle.truffle.api.dsl.InlineSupport$InlinableField> value()
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.dsl.InlineSupport$RequiredFields
+ outer com.oracle.truffle.api.dsl.InlineSupport
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[PARAMETER])
+intf java.lang.annotation.Annotation
+meth public abstract com.oracle.truffle.api.dsl.InlineSupport$RequiredField[] value()
+
+CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$ShortField
+ outer com.oracle.truffle.api.dsl.InlineSupport
+meth public com.oracle.truffle.api.dsl.InlineSupport$ShortField createParentAccessor(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
+meth public short get(com.oracle.truffle.api.nodes.Node)
+meth public static com.oracle.truffle.api.dsl.InlineSupport$ShortField create(java.lang.invoke.MethodHandles$Lookup,java.lang.String)
+meth public void set(com.oracle.truffle.api.nodes.Node,short)
+supr com.oracle.truffle.api.dsl.InlineSupport$InlinableField
+
+CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$StateField
+ outer com.oracle.truffle.api.dsl.InlineSupport
+meth public com.oracle.truffle.api.dsl.InlineSupport$StateField createParentAccessor(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
+meth public com.oracle.truffle.api.dsl.InlineSupport$StateField subUpdater(int,int)
+meth public int get(com.oracle.truffle.api.nodes.Node)
+meth public static com.oracle.truffle.api.dsl.InlineSupport$StateField create(java.lang.invoke.MethodHandles$Lookup,java.lang.String)
+meth public void set(com.oracle.truffle.api.nodes.Node,int)
+supr com.oracle.truffle.api.dsl.InlineSupport$InlinableField
+hfds bitLength,bitMask,bitOffset
+
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Introspectable
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
@@ -121,15 +287,18 @@ CLSS public final com.oracle.truffle.api.dsl.Introspection
 innr public abstract interface static Provider
 innr public final static SpecializationInfo
 meth public static boolean isIntrospectable(com.oracle.truffle.api.nodes.Node)
+meth public static com.oracle.truffle.api.dsl.Introspection$SpecializationInfo getSpecialization(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node,java.lang.String)
 meth public static com.oracle.truffle.api.dsl.Introspection$SpecializationInfo getSpecialization(com.oracle.truffle.api.nodes.Node,java.lang.String)
 meth public static java.util.List<com.oracle.truffle.api.dsl.Introspection$SpecializationInfo> getSpecializations(com.oracle.truffle.api.nodes.Node)
+meth public static java.util.List<com.oracle.truffle.api.dsl.Introspection$SpecializationInfo> getSpecializations(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node)
 supr java.lang.Object
 hfds EMPTY_CACHED,NO_CACHED,data
 
 CLSS public abstract interface static com.oracle.truffle.api.dsl.Introspection$Provider
  outer com.oracle.truffle.api.dsl.Introspection
 meth public !varargs static com.oracle.truffle.api.dsl.Introspection create(java.lang.Object[])
-meth public abstract com.oracle.truffle.api.dsl.Introspection getIntrospectionData()
+meth public com.oracle.truffle.api.dsl.Introspection getIntrospectionData()
+meth public com.oracle.truffle.api.dsl.Introspection getIntrospectionData(com.oracle.truffle.api.nodes.Node)
 
 CLSS public final static com.oracle.truffle.api.dsl.Introspection$SpecializationInfo
  outer com.oracle.truffle.api.dsl.Introspection
@@ -141,6 +310,11 @@ meth public java.lang.String toString()
 meth public java.util.List<java.lang.Object> getCachedData(int)
 supr java.lang.Object
 hfds cachedData,methodName,state
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.NeverDefault
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD, FIELD, PARAMETER])
+intf java.lang.annotation.Annotation
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.NodeChild
  anno 0 java.lang.annotation.Repeatable(java.lang.Class<? extends java.lang.annotation.Annotation> value=class com.oracle.truffle.api.dsl.NodeChildren)
@@ -207,6 +381,7 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Specializa
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault int unroll()
 meth public abstract !hasdefault java.lang.Class<? extends java.lang.Throwable>[] rewriteOn()
 meth public abstract !hasdefault java.lang.String insertBefore()
 meth public abstract !hasdefault java.lang.String limit()
@@ -241,6 +416,12 @@ meth public abstract void acceptExecute(int,java.lang.Class<?>)
 meth public abstract void acceptExecute(int,java.lang.Class<?>,java.lang.Class<?>)
 meth public static com.oracle.truffle.api.dsl.SpecializationStatistics$NodeStatistics create(com.oracle.truffle.api.nodes.Node,java.lang.String[])
 supr java.lang.Object
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.SuppressPackageWarnings
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[PACKAGE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.String[] value()
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.TypeCast
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)

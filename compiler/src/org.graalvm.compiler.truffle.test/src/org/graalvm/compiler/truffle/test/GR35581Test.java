@@ -102,6 +102,7 @@ public class GR35581Test {
         }
 
         @Specialization
+        @SuppressWarnings("truffle-neverdefault")
         Object doIt(@Cached("runUnderASTLock()") Object cacheValue) {
             return cacheValue;
         }

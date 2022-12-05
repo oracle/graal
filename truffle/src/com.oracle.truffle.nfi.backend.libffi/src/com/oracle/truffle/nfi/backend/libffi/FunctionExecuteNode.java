@@ -59,6 +59,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.backend.libffi.LibFFISignature.CachedSignatureInfo;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.CachedTypeInfo;
 
+//TODO GR-42818 fix warnings
+@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
 @GenerateUncached
 @ImportStatic(LibFFILanguage.class)
 @GenerateAOT

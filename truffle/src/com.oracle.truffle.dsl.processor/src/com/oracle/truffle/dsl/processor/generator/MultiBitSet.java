@@ -40,75 +40,121 @@
  */
 package com.oracle.truffle.dsl.processor.generator;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 
-class MultiBitSet<T extends BitSet> {
+class MultiBitSet {
 
-    private final List<T> sets;
+    private final List<BitSet> sets;
 
-    MultiBitSet(List<T> sets) {
+    MultiBitSet(List<BitSet> sets) {
         this.sets = sets;
     }
 
-    public List<T> getSets() {
+    public List<BitSet> getSets() {
         return sets;
     }
 
     public int getCapacity() {
         int length = 0;
         for (BitSet a : sets) {
-            length += a.getCapacity();
+            length += a.getBitCount();
         }
         return length;
     }
 
-    public CodeTree createContains(FrameState frameState, Object[] elements) {
+    public CodeTree createContains(FrameState frameState, StateQuery elements) {
         return createContainsImpl(sets, frameState, elements);
     }
 
-    protected static CodeTree createContainsImpl(List<? extends BitSet> sets, FrameState frameState, Object[] elements) {
+    protected static CodeTree createContainsImpl(List<? extends BitSet> sets, FrameState frameState, StateQuery elements) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-        String sep = "";
-        if (sets.size() > 1) {
-            builder.string("(");
-        }
+        List<CodeTree> conditions = new ArrayList<>();
         for (BitSet set : sets) {
-            Object[] included = set.filter(elements);
-            if (included.length > 0) {
-                builder.string(sep);
-                builder.tree(set.createContains(frameState, included));
-                sep = " || ";
+            StateQuery included = set.filter(elements);
+            if (!included.isEmpty()) {
+                conditions.add(set.createContains(frameState, included));
             }
         }
-        if (sets.size() > 1) {
+
+        if (conditions.size() > 1) {
+            builder.string("(");
+        }
+        String sep = "";
+        for (CodeTree tree : conditions) {
+            builder.string(sep);
+            builder.tree(tree);
+            sep = " || ";
+        }
+        if (conditions.size() > 1) {
             builder.string(")");
         }
         return builder.build();
     }
 
-    public CodeTree createSet(FrameState frameState, Object[] elements, boolean value, boolean persist) {
+    static final class StateTransaction {
+
+        private final LinkedHashSet<BitSet> modified = new LinkedHashSet<>();
+
+    }
+
+    public CodeTree persistTransaction(FrameState frameState, StateTransaction transaction) {
+        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+        for (BitSet set : transaction.modified) {
+            if (set.hasLocal(frameState)) {
+                builder.tree(set.createSet(frameState, null, null, true));
+            } else {
+                throw new AssertionError("Cannot persist transaction state local without a local variable in the frame state.");
+            }
+        }
+        return builder.build();
+
+    }
+
+    public CodeTree createSet(FrameState frameState, StateTransaction transaction, StateQuery query, boolean value, boolean persist) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         for (BitSet set : sets) {
-            Object[] included = set.filter(elements);
-
-            if (included.length > 0 || persist) {
+            StateQuery included = set.getStates().filter(query);
+            if (!included.isEmpty()) {
+                if (transaction != null) {
+                    if (!set.hasLocal(frameState) || persist) {
+                        throw new AssertionError("Must be loaded for transactional write.");
+                    }
+                    transaction.modified.add(set);
+                }
                 builder.tree(set.createSet(frameState, included, value, persist));
             }
         }
         return builder.build();
     }
 
-    public CodeTree createContainsOnly(FrameState frameState, int offset, int length, Object[] selectedElements, Object[] allElements) {
+    public CodeTree createSetInteger(FrameState frameState, StateTransaction transaction, StateQuery element, CodeTree value) {
+        for (BitSet set : sets) {
+            if (set.contains(element)) {
+                if (transaction != null) {
+                    if (!set.hasLocal(frameState)) {
+                        throw new AssertionError("Cannot use transactions without the state being loaded.");
+                    }
+                    transaction.modified.add(set);
+                }
+                return set.createSetInteger(frameState, element, value);
+            }
+        }
+        throw new AssertionError("element not contained");
+    }
+
+    public CodeTree createContainsOnly(FrameState frameState, int offset, int length, StateQuery selectedElements, StateQuery allElements) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         String sep = "";
         for (BitSet set : sets) {
-            Object[] selected = set.filter(selectedElements);
-            Object[] filteredAll = set.filter(allElements);
-            if (filteredAll.length > 0) {
+            StateQuery selected = set.filter(selectedElements);
+            StateQuery filteredAll = set.filter(allElements);
+            if (!filteredAll.isEmpty()) {
                 CodeTree containsOnly = set.createContainsOnly(frameState, offset, length, selected, filteredAll);
                 if (containsOnly != null) {
                     builder.string(sep);
@@ -120,13 +166,13 @@ class MultiBitSet<T extends BitSet> {
         return builder.build();
     }
 
-    public CodeTree createIs(FrameState frameState, Object[] selectedElements, Object[] maskedElements) {
+    public CodeTree createIs(FrameState frameState, StateQuery selectedElements, StateQuery maskedElements) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         String sep = "";
         for (BitSet set : sets) {
-            Object[] selected = set.filter(selectedElements);
-            Object[] masked = set.filter(maskedElements);
-            if (masked.length > 0) {
+            StateQuery masked = set.filter(maskedElements);
+            if (!masked.isEmpty()) {
+                StateQuery selected = set.filter(selectedElements);
                 builder.string(sep);
                 builder.tree(set.createIs(frameState, selected, masked));
                 sep = " && ";
@@ -135,15 +181,15 @@ class MultiBitSet<T extends BitSet> {
         return builder.build();
     }
 
-    public CodeTree createIsNotAny(FrameState frameState, Object[] elements) {
+    public CodeTree createIsNotAny(FrameState frameState, StateQuery elements) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.string("(");
         String sep = "";
         for (BitSet set : sets) {
-            Object[] setElements = set.filter(elements);
-            if (setElements.length > 0) {
+            StateQuery filteredElements = set.filter(elements);
+            if (!filteredElements.isEmpty()) {
                 builder.string(sep);
-                builder.tree(set.createIsNotAny(frameState, setElements));
+                builder.tree(set.createIsNotAny(frameState, filteredElements));
                 sep = " || "; // exclusive or needed for one bit check
             }
         }
@@ -151,7 +197,7 @@ class MultiBitSet<T extends BitSet> {
         return builder.build();
     }
 
-    public CodeTree createExtractInteger(FrameState frameState, Object element) {
+    public CodeTree createExtractInteger(FrameState frameState, StateQuery element) {
         for (BitSet set : sets) {
             if (set.contains(element)) {
                 return set.createExtractInteger(frameState, element);
@@ -160,27 +206,18 @@ class MultiBitSet<T extends BitSet> {
         throw new AssertionError("element not contained");
     }
 
-    public CodeTree createNotContains(FrameState frameState, Object[] elements) {
+    public CodeTree createNotContains(FrameState frameState, StateQuery elements) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         String sep = "";
         for (BitSet set : sets) {
-            Object[] setElements = set.filter(elements);
-            if (setElements.length > 0) {
+            StateQuery setElements = set.filter(elements);
+            if (!setElements.isEmpty()) {
                 builder.string(sep);
                 builder.tree(set.createNotContains(frameState, setElements));
                 sep = " && "; // exclusive or needed for one bit check
             }
         }
         return builder.build();
-    }
-
-    public CodeTree createSetInteger(FrameState frameState, Object element, CodeTree value) {
-        for (BitSet set : sets) {
-            if (set.contains(element)) {
-                return set.createSetInteger(frameState, element, value);
-            }
-        }
-        throw new AssertionError("element not contained");
     }
 
 }

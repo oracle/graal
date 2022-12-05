@@ -65,10 +65,6 @@ public class Log {
         this.emitWarnings = emitWarnings;
     }
 
-    public void debug(String message, Object... args) {
-        message(Kind.ERROR, null, null, null, message, args);
-    }
-
     public void message(Kind kind, Element element, AnnotationMirror mirror, AnnotationValue value, String format, Object... args) {
         AnnotationMirror usedMirror = mirror;
         Element usedElement = element;

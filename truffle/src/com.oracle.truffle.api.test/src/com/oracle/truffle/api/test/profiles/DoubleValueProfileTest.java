@@ -40,31 +40,22 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
-import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.theories.DataPoint;
-import org.junit.experimental.theories.Theories;
-import org.junit.experimental.theories.Theory;
-import org.junit.runner.RunWith;
 
+import com.oracle.truffle.api.dsl.InlineSupport.InlinableField;
 import com.oracle.truffle.api.profiles.DoubleValueProfile;
-import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.api.profiles.InlinedDoubleValueProfile;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
-@RunWith(Theories.class)
-public class DoubleValueProfileTest {
+public class DoubleValueProfileTest extends AbstractProfileTest {
 
-    @DataPoint public static final double VALUE0 = Double.MIN_VALUE;
-    @DataPoint public static final double VALUE1 = -0.0f;
-    @DataPoint public static final double VALUE2 = +0.0f;
-    @DataPoint public static final double VALUE3 = 14.5f;
-    @DataPoint public static final double VALUE4 = Double.MAX_VALUE;
+    private static double[] VALUES = new double[]{Double.MIN_VALUE, -0.0d, +0.0d, 14.5f, Double.MAX_VALUE};
 
     private static final double FLOAT_DELTA = 0.00001f;
 
@@ -73,23 +64,9 @@ public class DoubleValueProfileTest {
         TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
-    private DoubleValueProfile profile;
-
-    @Before
-    public void create() {
-        profile = ReflectionUtils.newInstance(DoubleValueProfile.class);
-    }
-
-    private static boolean isGeneric(DoubleValueProfile profile) {
-        return (boolean) invoke(profile, "isGeneric");
-    }
-
-    private static boolean isUninitialized(DoubleValueProfile profile) {
-        return (boolean) invoke(profile, "isUninitialized");
-    }
-
-    private static double getCachedValue(DoubleValueProfile profile) {
-        return (double) invoke(profile, "getCachedValue");
+    @Override
+    protected InlinableField[] getInlinedFields() {
+        return createInlinedFields(1, 0, 0, 2, 0);
     }
 
     public static boolean exactCompare(double a, double b) {
@@ -101,70 +78,182 @@ public class DoubleValueProfileTest {
     }
 
     @Test
+    public void testNotCrashing() {
+        DoubleValueProfile profile = createEnabled(DoubleValueProfile.class);
+        profile.disable();
+        profile.reset();
+        assertEquals(profile, profile);
+        assertEquals(profile.hashCode(), profile.hashCode());
+        assertNotNull(profile.toString());
+    }
+
+    @Test
     public void testInitial() {
+        DoubleValueProfile profile = createEnabled(DoubleValueProfile.class);
         assertThat(isGeneric(profile), is(false));
         assertThat(isUninitialized(profile), is(true));
         profile.toString(); // test that it is not crashing
     }
 
-    @Theory
-    public void testProfileOneFloat(double value) {
-        double result = profile.profile(value);
+    @Test
+    public void testProfileOneFloat() {
+        for (double value : VALUES) {
+            DoubleValueProfile profile = createEnabled(DoubleValueProfile.class);
+            double result = profile.profile(value);
 
-        assertThat(result, is(value));
-        assertEquals(getCachedValue(profile), value, FLOAT_DELTA);
-        assertThat(isUninitialized(profile), is(false));
+            assertThat(result, is(value));
+            assertEquals((double) getCachedValue(profile), value, FLOAT_DELTA);
+            assertThat(isUninitialized(profile), is(false));
+            profile.toString(); // test that it is not crashing
+        }
+    }
+
+    @Test
+    public void testProfileTwoFloat() {
+        for (double value0 : VALUES) {
+            for (double value1 : VALUES) {
+                DoubleValueProfile profile = createEnabled(DoubleValueProfile.class);
+                double result0 = profile.profile(value0);
+                double result1 = profile.profile(value1);
+
+                assertEquals(result0, value0, FLOAT_DELTA);
+                assertEquals(result1, value1, FLOAT_DELTA);
+
+                if (exactCompare(value0, value1)) {
+                    assertEquals((double) getCachedValue(profile), value0, FLOAT_DELTA);
+                    assertThat(isGeneric(profile), is(false));
+                } else {
+                    assertThat(isGeneric(profile), is(true));
+                }
+                assertThat(isUninitialized(profile), is(false));
+                profile.toString(); // test that it is not crashing
+            }
+        }
+    }
+
+    @Test
+    public void testProfileThreeFloat() {
+        for (double value0 : VALUES) {
+            for (double value1 : VALUES) {
+                for (double value2 : VALUES) {
+                    DoubleValueProfile profile = createEnabled(DoubleValueProfile.class);
+                    double result0 = profile.profile(value0);
+                    double result1 = profile.profile(value1);
+                    double result2 = profile.profile(value2);
+
+                    assertEquals(result0, value0, FLOAT_DELTA);
+                    assertEquals(result1, value1, FLOAT_DELTA);
+                    assertEquals(result2, value2, FLOAT_DELTA);
+
+                    if (exactCompare(value0, value1) && exactCompare(value1, value2)) {
+                        assertEquals((double) getCachedValue(profile), value0, FLOAT_DELTA);
+                        assertThat(isGeneric(profile), is(false));
+                    } else {
+                        assertThat(isGeneric(profile), is(true));
+                    }
+                    assertThat(isUninitialized(profile), is(false));
+                    profile.toString(); // test that it is not crashing
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testNotCrashingInlined() {
+        InlinedDoubleValueProfile profile = createEnabled(InlinedDoubleValueProfile.class);
+        profile.disable(state);
+        profile.reset(state);
+        assertEquals(profile, profile);
+        assertEquals(profile.hashCode(), profile.hashCode());
+        assertNotNull(profile.toString());
+    }
+
+    @Test
+    public void testInitialInlined() {
+        DoubleValueProfile profile = createEnabled(DoubleValueProfile.class);
+        assertThat(isGeneric(profile), is(false));
+        assertThat(isUninitialized(profile), is(true));
         profile.toString(); // test that it is not crashing
     }
 
-    @SuppressWarnings("deprecation")
-    @Theory
-    public void testProfileTwoFloat(double value0, double value1) {
-        double result0 = profile.profile(value0);
-        double result1 = profile.profile(value1);
+    @Test
+    public void testProfileOneFloatInlined() {
+        for (double value : VALUES) {
+            InlinedDoubleValueProfile profile = createEnabled(InlinedDoubleValueProfile.class);
+            double result = profile.profile(state, value);
 
-        assertEquals(result0, value0, FLOAT_DELTA);
-        assertEquals(result1, value1, FLOAT_DELTA);
-
-        if (exactCompare(value0, value1)) {
-            assertEquals(getCachedValue(profile), value0, FLOAT_DELTA);
-            assertThat(isGeneric(profile), is(false));
-        } else {
-            assertThat(isGeneric(profile), is(true));
+            assertThat(result, is(value));
+            assertEquals((double) getCachedValue(profile), value, FLOAT_DELTA);
+            assertThat(isUninitialized(profile), is(false));
+            profile.toString(); // test that it is not crashing
         }
-        assertThat(isUninitialized(profile), is(false));
-        profile.toString(); // test that it is not crashing
     }
 
-    @SuppressWarnings("deprecation")
-    @Theory
-    public void testProfileThreeFloat(double value0, double value1, double value2) {
-        double result0 = profile.profile(value0);
-        double result1 = profile.profile(value1);
-        double result2 = profile.profile(value2);
+    @Test
+    public void testProfileTwoFloatInlined() {
+        for (double value0 : VALUES) {
+            for (double value1 : VALUES) {
+                InlinedDoubleValueProfile profile = createEnabled(InlinedDoubleValueProfile.class);
+                double result0 = profile.profile(state, value0);
+                double result1 = profile.profile(state, value1);
 
-        assertEquals(result0, value0, FLOAT_DELTA);
-        assertEquals(result1, value1, FLOAT_DELTA);
-        assertEquals(result2, value2, FLOAT_DELTA);
+                assertEquals(result0, value0, FLOAT_DELTA);
+                assertEquals(result1, value1, FLOAT_DELTA);
 
-        if (exactCompare(value0, value1) && exactCompare(value1, value2)) {
-            assertEquals(getCachedValue(profile), value0, FLOAT_DELTA);
-            assertThat(isGeneric(profile), is(false));
-        } else {
-            assertThat(isGeneric(profile), is(true));
+                if (exactCompare(value0, value1)) {
+                    assertEquals((double) getCachedValue(profile), value0, FLOAT_DELTA);
+                    assertThat(isGeneric(profile), is(false));
+                } else {
+                    assertThat(isGeneric(profile), is(true));
+                }
+                assertThat(isUninitialized(profile), is(false));
+                profile.toString(); // test that it is not crashing
+            }
         }
-        assertThat(isUninitialized(profile), is(false));
-        profile.toString(); // test that it is not crashing
+    }
+
+    @Test
+    public void testProfileThreeFloatInlined() {
+        for (double value0 : VALUES) {
+            for (double value1 : VALUES) {
+                for (double value2 : VALUES) {
+                    InlinedDoubleValueProfile profile = createEnabled(InlinedDoubleValueProfile.class);
+                    double result0 = profile.profile(state, value0);
+                    double result1 = profile.profile(state, value1);
+                    double result2 = profile.profile(state, value2);
+
+                    assertEquals(result0, value0, FLOAT_DELTA);
+                    assertEquals(result1, value1, FLOAT_DELTA);
+                    assertEquals(result2, value2, FLOAT_DELTA);
+
+                    if (exactCompare(value0, value1) && exactCompare(value1, value2)) {
+                        assertEquals((double) getCachedValue(profile), value0, FLOAT_DELTA);
+                        assertThat(isGeneric(profile), is(false));
+                    } else {
+                        assertThat(isGeneric(profile), is(true));
+                    }
+                    assertThat(isUninitialized(profile), is(false));
+                    profile.toString(); // test that it is not crashing
+                }
+            }
+        }
     }
 
     @Test
     public void testDisabled() {
         DoubleValueProfile p = DoubleValueProfile.getUncached();
-        assertThat(p.profile(VALUE0), is(VALUE0));
-        assertThat(p.profile(VALUE1), is(VALUE1));
-        assertThat(p.profile(VALUE2), is(VALUE2));
-        assertThat(p.profile(VALUE3), is(VALUE3));
-        assertThat(p.profile(VALUE4), is(VALUE4));
+        for (double value : VALUES) {
+            assertThat(p.profile(value), is(value));
+        }
+        p.toString(); // test that it is not crashing
+    }
+
+    @Test
+    public void testDisabledInlined() {
+        InlinedDoubleValueProfile p = InlinedDoubleValueProfile.getUncached();
+        for (double value : VALUES) {
+            assertThat(p.profile(state, value), is(value));
+        }
         p.toString(); // test that it is not crashing
     }
 

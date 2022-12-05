@@ -45,6 +45,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
+@SuppressWarnings("truffle-inlining")
 public class CachedLibraryCompilationTest extends PartialEvaluationTest {
 
     private Context context;

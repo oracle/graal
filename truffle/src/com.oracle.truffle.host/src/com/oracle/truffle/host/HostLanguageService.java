@@ -53,8 +53,10 @@ import org.graalvm.polyglot.proxy.Proxy;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.host.HostAdapterFactory.AdapterResult;
 import com.oracle.truffle.host.HostLanguage.HostLanguageException;
 import com.oracle.truffle.host.HostMethodDesc.SingleMethod;
@@ -119,19 +121,19 @@ public class HostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public Object createToHostTypeNode() {
-        return HostToTypeNodeGen.create();
+    public Object inlineToHostTypeNode(Object inlineTarget) {
+        return HostToTypeNodeGen.inline((InlineTarget) inlineTarget);
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public <T> T toHostType(Object hostNode, Object hostContext, Object value, Class<T> targetType, Type genericType) {
+    public <T> T toHostType(Object hostNode, Object targetNode, Object hostContext, Object value, Class<T> targetType, Type genericType) {
         HostContext context = (HostContext) hostContext;
         HostToTypeNode node = (HostToTypeNode) hostNode;
         if (node == null) {
             node = HostToTypeNodeGen.getUncached();
         }
-        return (T) node.execute(context, value, targetType, genericType, true);
+        return (T) node.execute((Node) targetNode, context, value, targetType, genericType, true);
     }
 
     @Override

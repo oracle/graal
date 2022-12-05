@@ -122,10 +122,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         return assertPartialEvalEquals(expected, actual, arguments, true);
     }
 
-    protected OptimizedCallTarget assertPartialEvalEquals(RootNode expected, RootNode actual, Object[] arguments, boolean checkConstants) {
-        final OptimizedCallTarget expectedTarget = (OptimizedCallTarget) expected.getCallTarget();
-        final OptimizedCallTarget actualTarget = (OptimizedCallTarget) actual.getCallTarget();
-
+    protected OptimizedCallTarget assertPartialEvalEquals(OptimizedCallTarget expectedTarget, OptimizedCallTarget actualTarget, Object[] arguments, boolean checkConstants) {
         BailoutException lastBailout = null;
         for (int i = 0; i < 10; i++) {
             try {
@@ -154,6 +151,12 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             throw lastBailout;
         }
         return actualTarget;
+    }
+
+    protected OptimizedCallTarget assertPartialEvalEquals(RootNode expected, RootNode actual, Object[] arguments, boolean checkConstants) {
+        final OptimizedCallTarget expectedTarget = (OptimizedCallTarget) expected.getCallTarget();
+        final OptimizedCallTarget actualTarget = (OptimizedCallTarget) actual.getCallTarget();
+        return assertPartialEvalEquals(expectedTarget, actualTarget, arguments, checkConstants);
     }
 
     private static TruffleCompilationTask newTask() {
@@ -258,6 +261,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
                                 handler);
                 try (Graph.NodeEventScope nes = nodeEventListener == null ? null : context.graph.trackNodeEvents(nodeEventListener)) {
                     truffleTier.apply(context.graph, context);
+                    lastCompiledGraph = context.graph;
                     return context.graph;
                 }
             }

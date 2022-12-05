@@ -72,7 +72,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
-import com.oracle.truffle.dsl.processor.java.model.CodeNames;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
@@ -83,11 +82,14 @@ import com.oracle.truffle.dsl.processor.model.TemplateMethod;
 
 public class GeneratorUtils {
 
-    public static void pushEncapsulatingNode(CodeTreeBuilder builder, String nodeRef) {
+    public static void pushEncapsulatingNode(CodeTreeBuilder builder, CodeTree nodeRef) {
         TruffleTypes types = ProcessorContext.getInstance().getTypes();
         builder.startStatement().type(types.EncapsulatingNodeReference).string(" encapsulating_ = ").//
                         startStaticCall(types.EncapsulatingNodeReference, "getCurrent").end().end();
-        builder.startStatement().type(types.Node).string(" prev_ = encapsulating_.set(" + nodeRef + ")").end();
+
+        builder.startStatement().type(types.Node).string(" prev_ = encapsulating_.");
+        builder.startCall("set").tree(nodeRef).end();
+        builder.end();
     }
 
     public static void popEncapsulatingNode(CodeTreeBuilder builder) {
@@ -119,13 +121,6 @@ public class GeneratorUtils {
         ProcessorContext context = ProcessorContext.getInstance();
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.startThrow().startStaticCall(context.getTypes().CompilerDirectives, "shouldNotReachHere").tree(causeExpression).end().end();
-        return builder.build();
-    }
-
-    public static CodeTree createTransferToInterpreter() {
-        ProcessorContext context = ProcessorContext.getInstance();
-        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-        builder.startStatement().startStaticCall(context.getTypes().CompilerDirectives, "transferToInterpreter").end().end();
         return builder.build();
     }
 
@@ -168,7 +163,7 @@ public class GeneratorUtils {
         method.addAnnotationMirror(new CodeAnnotationMirror(override));
     }
 
-    public static void mergeSupressWarnings(CodeElement<?> element, String... addWarnings) {
+    public static void mergeSuppressWarnings(CodeElement<?> element, String... addWarnings) {
         List<String> mergedWarnings = Arrays.asList(addWarnings);
         AnnotationMirror currentWarnings = ElementUtils.findAnnotationMirror(element, SuppressWarnings.class);
         if (currentWarnings != null) {
@@ -181,15 +176,11 @@ public class GeneratorUtils {
         }
         DeclaredType suppressWarnings = ProcessorContext.getInstance().getDeclaredType(SuppressWarnings.class);
         CodeAnnotationMirror mirror = new CodeAnnotationMirror(suppressWarnings);
-        if (mergedWarnings.size() == 1) {
-            mirror.setElementValue(mirror.findExecutableElement("value"), new CodeAnnotationValue(mergedWarnings.iterator().next()));
-        } else {
-            List<AnnotationValue> values = new ArrayList<>();
-            for (String warning : mergedWarnings) {
-                values.add(new CodeAnnotationValue(warning));
-            }
-            mirror.setElementValue(mirror.findExecutableElement("value"), new CodeAnnotationValue(values));
+        List<AnnotationValue> values = new ArrayList<>();
+        for (String warning : mergedWarnings) {
+            values.add(new CodeAnnotationValue(warning));
         }
+        mirror.setElementValue(mirror.findExecutableElement("value"), new CodeAnnotationValue(values));
 
         if (currentWarnings != null) {
             ((CodeElement<?>) element).getAnnotationMirrors().remove(currentWarnings);
@@ -245,25 +236,6 @@ public class GeneratorUtils {
         } else {
             return constructors.get(0);
         }
-    }
-
-    public static CodeExecutableElement createSuperConstructor(TypeElement type, ExecutableElement element) {
-        if (element.getModifiers().contains(Modifier.PRIVATE)) {
-            return null;
-        }
-        CodeExecutableElement executable = CodeExecutableElement.clone(element);
-        executable.setReturnType(null);
-        executable.setSimpleName(CodeNames.of(type.getSimpleName().toString()));
-        CodeTreeBuilder b = executable.createBuilder();
-        b.startStatement();
-        b.startSuperCall();
-        for (VariableElement v : element.getParameters()) {
-            b.string(v.getSimpleName().toString());
-        }
-        b.end();
-        b.end();
-
-        return executable;
     }
 
     public static CodeTypeElement createClass(Template sourceModel, TemplateMethod sourceMethod, Set<Modifier> modifiers, String simpleName, TypeMirror superType) {

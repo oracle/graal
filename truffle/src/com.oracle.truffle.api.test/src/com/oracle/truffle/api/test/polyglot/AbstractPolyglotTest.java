@@ -43,7 +43,16 @@ package com.oracle.truffle.api.test.polyglot;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -226,6 +235,116 @@ public abstract class AbstractPolyglotTest {
         // execute it to trigger instrumentations
         root.getCallTarget().call();
         return () -> (T) root.node;
+    }
+
+    protected interface ParallelObjectConsumer<T> {
+
+        /**
+         * @param object current object previously created by the objectFactory that is shared
+         *            across threads.
+         * @param threadIndex current thread index of the current iteration
+         * @param objectIndex object index of the current iteration and thread
+         */
+        void accept(T object, int threadIndex, int objectIndex);
+
+    }
+
+    protected final <T extends Node> List<T> assertNodeInParallel(Supplier<T> objectFactory, ParallelObjectConsumer<T> assertions,
+                    int threadPools,
+                    int threads,
+                    int iterations,
+                    int objectCount) throws InterruptedException {
+        return assertInParallel(() -> adoptNode(objectFactory.get()).get(), assertions, threadPools, threads, iterations, objectCount);
+    }
+
+    /**
+     * Runs assertions for a node in parallel. This method aims to maximize races for each
+     * assertions consumer running in parallel.
+     *
+     * @param threadPools number of thread pools
+     * @param threads number of threads in parallel for each iteration
+     * @param number of iterations per thread pool
+     * @param number of objects created through the factory per iteration.
+     */
+    @SuppressWarnings({"unchecked", "static-method"})
+    protected final <T> List<T> assertInParallel(Supplier<T> objectFactory, ParallelObjectConsumer<T> assertions,
+                    int threadPools,
+                    int threads,
+                    int iterations,
+                    int objectCount) throws InterruptedException {
+        List<T> createdObjects = new ArrayList<>();
+        for (int poolIndex = 0; poolIndex < threadPools; poolIndex++) {
+            ExecutorService executorService = Executors.newFixedThreadPool(threads);
+            try {
+                Semaphore semaphore = new Semaphore(0);
+                AtomicReference<T[]> node = new AtomicReference<>();
+                AtomicReference<CountDownLatch> latchRef = new AtomicReference<>();
+                List<Future<?>> futures = new ArrayList<>();
+                AtomicReference<Throwable> error = new AtomicReference<>();
+                for (int i = 0; i < threads; i++) {
+                    int threadIndex = i + 1;
+                    futures.add(executorService.submit(() -> {
+                        while (true) {
+                            try {
+                                semaphore.acquire();
+                            } catch (InterruptedException e1) {
+                                throw new AssertionError(e1);
+                            }
+                            CountDownLatch latch = latchRef.get();
+                            try {
+                                T[] nodes = node.get();
+                                for (int objectIndex = 0; objectIndex < objectCount; objectIndex++) {
+                                    assertions.accept(nodes[objectIndex], threadIndex, objectIndex);
+                                }
+                                if (latch == null) {
+                                    break;
+                                }
+                            } catch (Throwable t) {
+                                error.set(t);
+                            } finally {
+                                if (latch != null) {
+                                    latch.countDown();
+                                    try {
+                                        latch.await();
+                                    } catch (InterruptedException e) {
+                                        throw new AssertionError(e);
+                                    }
+                                }
+                            }
+                        }
+                    }));
+                }
+                try {
+                    for (int i = 0; i < iterations; i++) {
+                        T[] nodes = (T[]) new Node[objectCount];
+                        for (int j = 0; j < objectCount; j++) {
+                            nodes[j] = objectFactory.get();
+                            createdObjects.add(nodes[j]);
+                        }
+                        node.set(nodes);
+                        CountDownLatch latch = new CountDownLatch(threads);
+                        latchRef.set(latch);
+                        semaphore.release(threads);
+                        latch.await();
+                        if (error.get() != null) {
+                            break;
+                        }
+                    }
+
+                } finally {
+                    latchRef.set(null);
+                    semaphore.release(threads);
+                }
+
+                if (error.get() != null) {
+                    throw new AssertionError(error.get());
+                }
+            } finally {
+                executorService.shutdownNow();
+                executorService.awaitTermination(100, TimeUnit.SECONDS);
+            }
+        }
+        return createdObjects;
     }
 
     @After

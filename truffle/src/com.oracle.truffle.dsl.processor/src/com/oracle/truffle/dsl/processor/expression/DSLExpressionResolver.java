@@ -184,20 +184,20 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
         }
     }
 
-    private ExecutableElement resolveCall(Call call) {
+    public ExecutableElement lookupMethod(String searchName, List<TypeMirror> searchParameters) {
         lazyProcess();
-        List<ExecutableElement> methodsWithName = this.methods.get(call.getName());
+        List<ExecutableElement> methodsWithName = this.methods.get(searchName);
         ExecutableElement foundWithName = null;
         if (methodsWithName != null) {
             for (ExecutableElement method : methodsWithName) {
-                if (matchExecutable(call, method) && ElementUtils.isVisible(accessType, method)) {
+                if (matchExecutable(searchName, searchParameters, method) && ElementUtils.isVisible(accessType, method)) {
                     return method;
                 }
                 foundWithName = method;
             }
         }
         if (parent != null) {
-            ExecutableElement parentResult = parent.resolveCall(call);
+            ExecutableElement parentResult = parent.lookupMethod(searchName, searchParameters);
             if (parentResult != null) {
                 return parentResult;
             }
@@ -205,22 +205,34 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
         return foundWithName;
     }
 
-    private static boolean matchExecutable(Call call, ExecutableElement method) {
-        if (!getMethodName(method).equals(call.getName())) {
+    private ExecutableElement resolveCall(Call call) {
+        lazyProcess();
+
+        ExecutableElement foundMethod = lookupMethod(call.getName(), call.getResolvedParameterTypes());
+        if (foundMethod != null) {
+            List<DSLExpression> expressions = call.getParameters();
+            // refine resolved parameter types
+            for (int i = 0; i < expressions.size() && i < foundMethod.getParameters().size(); i++) {
+                expressions.get(i).setResolvedTargetType(foundMethod.getParameters().get(i).asType());
+            }
+        }
+        return foundMethod;
+    }
+
+    public static boolean matchExecutable(String name, List<TypeMirror> searchParameters, ExecutableElement method) {
+        if (!getMethodName(method).equals(name)) {
             return false;
         }
         List<? extends VariableElement> parameters = method.getParameters();
-        if (parameters.size() != call.getParameters().size()) {
+        if (parameters.size() != searchParameters.size()) {
             return false;
         }
         int parameterIndex = 0;
-        for (DSLExpression expression : call.getParameters()) {
-            TypeMirror sourceType = expression.getResolvedType();
+        for (TypeMirror sourceType : searchParameters) {
             TypeMirror targetType = parameters.get(parameterIndex).asType();
             if (!ElementUtils.isAssignable(sourceType, targetType)) {
                 return false;
             }
-            expression.setResolvedTargetType(targetType);
             parameterIndex++;
         }
         return true;
@@ -284,7 +296,7 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
             throw new InvalidExpressionException(message);
         } else if (!ElementUtils.isVisible(accessType, resolvedMethod)) {
             throw new InvalidExpressionException(String.format("The method %s is not visible.", ElementUtils.getReadableSignature(resolvedMethod)));
-        } else if (!matchExecutable(call, resolvedMethod)) {
+        } else if (!matchExecutable(call.getName(), call.getResolvedParameterTypes(), resolvedMethod)) {
             StringBuilder arguments = new StringBuilder();
             String sep = "";
             for (DSLExpression expression : call.getParameters()) {

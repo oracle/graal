@@ -387,7 +387,6 @@ public class DynamicDispatchTest extends AbstractParametrizedLibraryTest {
     // test that cast cannot be override
     @ExportLibrary(DynamicDispatchLibrary.class)
     @SuppressWarnings("static-method")
-    @ExpectError("No message 'cast' found for library DynamicDispatchLibrary.")
     static final class ErrorOverrideCast1 {
 
         @ExportMessage
@@ -396,6 +395,7 @@ public class DynamicDispatchTest extends AbstractParametrizedLibraryTest {
         }
 
         @ExportMessage
+        @ExpectError("No message 'cast' found for library DynamicDispatchLibrary.")
         Object cast() {
             return null;
         }

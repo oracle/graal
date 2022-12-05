@@ -60,6 +60,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class CachedReachableFallbackTest {
 
     static final String CACHED_GUARD_FALLBACK_ERROR = "Some guards for the following specializations could not be negated for the @Fallback specialization: [s1].%";
@@ -69,7 +70,7 @@ public class CachedReachableFallbackTest {
 
         abstract Object execute(Object other);
 
-        @Specialization(guards = {"guardNode.execute(obj)"})
+        @Specialization(guards = {"guardNode.execute(obj)"}, limit = "3")
         protected Object s1(int obj,
                         @Cached("createGuard()") GuardNode guardNode) {
             return "s1";
@@ -174,7 +175,7 @@ public class CachedReachableFallbackTest {
         Assert.assertEquals("s1", node.execute(42));
         Assert.assertEquals("fallback", node.execute("42"));
         Assert.assertEquals("s1", node.execute(42)); // s2 does not replace s1
-        Assert.assertEquals(2, node.createGuardCalls);
+        Assert.assertEquals(1, node.createGuardCalls);
         Assert.assertEquals(1, countGuardNodes(node));
 
         // test fallback first
@@ -183,12 +184,12 @@ public class CachedReachableFallbackTest {
         Assert.assertEquals("fallback", node.execute("42"));
         Assert.assertEquals(0, countGuardNodes(node));
         Assert.assertEquals("s1", node.execute(42));
-        Assert.assertEquals(2, node.createGuardCalls);
+        Assert.assertEquals(1, node.createGuardCalls);
         Assert.assertEquals(1, countGuardNodes(node));
     }
 
     @SuppressWarnings("unused")
-    abstract static class CacheDuplicatesNode extends Node {
+    abstract static class CacheDuplicatesNode extends SlowPathListenerNode {
 
         abstract Object execute(Object other);
 
@@ -216,6 +217,7 @@ public class CachedReachableFallbackTest {
         Assert.assertEquals("fallback", node.execute(41));
         Assert.assertEquals(42, node.execute(42));
         Assert.assertEquals("fallback", node.execute(41));
+        Assert.assertEquals(2, node.specializeCount);
 
         // test fallback with string
         node = CacheDuplicatesNodeGen.create();
@@ -223,6 +225,7 @@ public class CachedReachableFallbackTest {
         Assert.assertEquals(41, node.execute(41));
         Assert.assertEquals("fallback", node.execute(42));
         Assert.assertEquals(41, node.execute(41));
+        Assert.assertEquals(2, node.specializeCount);
     }
 
     private static void assertAdopted(Node node) {
@@ -303,7 +306,7 @@ public class CachedReachableFallbackTest {
 
         @Specialization(guards = {"guardNode1.execute(obj)", "notTwo(obj)"}, rewriteOn = RuntimeException.class, assumptions = "createAssumption()", limit = "1")
         protected Object s1(int obj,
-                        @Cached("create(1)") NotGuardNode guardNode1) {
+                        @Cached(value = "create(1)", neverDefault = true) NotGuardNode guardNode1) {
             assertAdopted(guardNode1);
             if (obj == 3) {
                 throw new RuntimeException();

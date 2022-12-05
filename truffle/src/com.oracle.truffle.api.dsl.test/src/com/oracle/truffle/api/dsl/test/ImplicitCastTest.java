@@ -43,8 +43,6 @@ package com.oracle.truffle.api.dsl.test;
 import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createArguments;
 import static org.junit.Assert.assertEquals;
 
-import java.util.concurrent.locks.ReentrantLock;
-
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -82,6 +80,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
+@SuppressWarnings("truffle")
 public class ImplicitCastTest {
 
     @TypeSystem({int.class, String.class, boolean.class})
@@ -595,19 +594,19 @@ public class ImplicitCastTest {
     public void testImplicitCastWithCache() {
         TestImplicitCastWithCacheNode node = TestImplicitCastWithCacheNodeGen.create();
 
-        Assert.assertEquals(0, node.specializeCalls);
+        Assert.assertEquals(0, node.specializeCount);
 
         ConcreteString concrete = new ConcreteString();
         node.execute("a", true);
-        Assert.assertEquals(1, node.specializeCalls);
+        Assert.assertEquals(1, node.specializeCount);
         node.execute(concrete, true);
-        Assert.assertEquals(2, node.specializeCalls);
+        Assert.assertEquals(1, node.specializeCount);
         node.execute(concrete, true);
         node.execute(concrete, true);
         node.execute(concrete, true);
 
         // ensure we stabilize
-        Assert.assertEquals(2, node.specializeCalls);
+        Assert.assertEquals(1, node.specializeCount);
     }
 
     interface AbstractString {
@@ -625,26 +624,15 @@ public class ImplicitCastTest {
     }
 
     @TypeSystemReference(TestTypeSystem.class)
-    abstract static class TestImplicitCastWithCacheNode extends Node {
-
-        int specializeCalls;
+    abstract static class TestImplicitCastWithCacheNode extends SlowPathListenerNode {
 
         public abstract int execute(Object arg, boolean flag);
 
-        @Specialization(guards = {"specializeCall(flag)", "cachedFlag == flag"})
+        @Specialization(guards = {"cachedFlag == flag"})
         @SuppressWarnings("unused")
         protected static int test(AbstractString arg, boolean flag,
                         @Cached("flag") boolean cachedFlag) {
             return flag ? 100 : -100;
-        }
-
-        boolean specializeCall(@SuppressWarnings("unused") boolean flag) {
-            ReentrantLock lock = (ReentrantLock) getLock();
-            if (lock.isHeldByCurrentThread()) {
-                // the lock is held for guards executed in executeAndSpecialize
-                specializeCalls++;
-            }
-            return true;
         }
 
     }

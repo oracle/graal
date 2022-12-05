@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.dsl.processor.library;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,8 +61,6 @@ import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 
 public class LibraryParser extends AbstractParser<LibraryData> {
-
-    public final List<DeclaredType> annotations = Arrays.asList(types.GenerateLibrary, types.GenerateLibrary_DefaultExport, types.GenerateLibrary_Abstract);
 
     @Override
     public boolean isDelegateToRootDeclaredType() {
@@ -97,6 +94,18 @@ public class LibraryParser extends AbstractParser<LibraryData> {
         AnnotationMirror generateAOT = ElementUtils.findAnnotationMirror(element, types.GenerateAOT);
         if (generateAOT != null) {
             model.setGenerateAOT(true);
+        }
+
+        AnnotationMirror invalidAnnotation = ElementUtils.findAnnotationMirror(element, types.GenerateCached);
+        if (invalidAnnotation == null) {
+            invalidAnnotation = ElementUtils.findAnnotationMirror(element, types.GenerateUncached);
+        }
+        if (invalidAnnotation == null) {
+            invalidAnnotation = ElementUtils.findAnnotationMirror(element, types.GenerateInline);
+        }
+        if (invalidAnnotation != null) {
+            model.addError(invalidAnnotation, null, "The annotation @%s cannot be used on a library.", ElementUtils.getSimpleName(invalidAnnotation.getAnnotationType()));
+            return model;
         }
 
         model.setDefaultExportLookupEnabled(ElementUtils.getAnnotationValue(Boolean.class, mirror, "defaultExportLookupEnabled"));

@@ -57,6 +57,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class StateBitTest {
 
     /*

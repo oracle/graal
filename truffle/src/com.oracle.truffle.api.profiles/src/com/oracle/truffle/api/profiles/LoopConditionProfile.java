@@ -42,6 +42,7 @@ package com.oracle.truffle.api.profiles;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.NeverDefault;
 
 /**
  * <p>
@@ -97,8 +98,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  *
  * {@inheritDoc}
  *
- * @see #createBinaryProfile()
- * @see #createCountingProfile()
+ * @see #create()
  * @see LoopConditionProfile
  * @since 0.10
  */
@@ -243,10 +243,25 @@ public final class LoopConditionProfile extends ConditionProfile {
     @Override
     public String toString() {
         if (this == DISABLED) {
-            return toStringDisabled(LoopConditionProfile.class);
+            return toStringDisabled();
         } else {
             return toString(LoopConditionProfile.class, falseCount == 0, false, //
                             String.format("trueProbability=%s (trueCount=%s, falseCount=%s)", calculateProbability(trueCount, falseCount), trueCount, falseCount));
+        }
+    }
+
+    /**
+     * @since 0.10
+     * @deprecated use {@link #create()} instead.
+     */
+    @SuppressWarnings("deprecation")
+    @Deprecated
+    @NeverDefault
+    public static LoopConditionProfile createCountingProfile() {
+        if (isProfilingEnabled()) {
+            return new LoopConditionProfile();
+        } else {
+            return DISABLED;
         }
     }
 
@@ -255,25 +270,9 @@ public final class LoopConditionProfile extends ConditionProfile {
      * <code>true</code>. It also captures loop probabilities for the compiler. Loop condition
      * profiles are intended to be used for loop conditions.
      *
-     * @see LoopConditionProfile
-     * @since 0.10
-     */
-    public static LoopConditionProfile createCountingProfile() {
-        if (Profile.isProfilingEnabled()) {
-            return new LoopConditionProfile();
-        } else {
-            return DISABLED;
-        }
-    }
-
-    /**
-     * Creates a {@link LoopConditionProfile} using {@link #createCountingProfile()}. This is a
-     * convenience method so it can be used as {@code @Cached LoopConditionProfile loopProfile}
-     * instead of the much longer
-     * {@code @Cached("createCountingProfile()") LoopConditionProfile loopProfile}.
-     *
      * @since 21.2
      */
+    @NeverDefault
     public static LoopConditionProfile create() {
         return createCountingProfile();
     }

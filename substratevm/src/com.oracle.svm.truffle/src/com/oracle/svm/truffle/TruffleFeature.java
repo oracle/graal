@@ -332,7 +332,6 @@ public class TruffleFeature implements InternalFeature {
                 neverPartOfCompilationViolations.add(Pair.create(b.getMethod(), String.join(",", callTree)));
             }
         }
-
         return true;
     }
 
@@ -980,6 +979,7 @@ public class TruffleFeature implements InternalFeature {
                 }
             }
         }
+
         System.out.printf("Number of Truffle call boundaries: %d, number of unique called methods outside the boundary: %d%n", callSiteCount, calleeCount);
     }
 
