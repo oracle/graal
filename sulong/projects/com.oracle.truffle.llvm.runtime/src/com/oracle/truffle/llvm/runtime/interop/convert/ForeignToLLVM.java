@@ -35,6 +35,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
+import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -72,6 +73,7 @@ public abstract class ForeignToLLVM extends LLVMNode {
         FLOAT(4),
         DOUBLE(8),
         FP80(10),
+        FP128(16),
         POINTER(8),
         VECTOR(-1),
         ARRAY(-1),
@@ -140,6 +142,11 @@ public abstract class ForeignToLLVM extends LLVMNode {
             return this == ForeignToLLVMType.POINTER;
         }
 
+        public boolean isFP128() {
+            return this == ForeignToLLVMType.FP128;
+        }
+
+
         public static Object getDefaultValue(ForeignToLLVMType type) {
             switch (type) {
                 case I1:
@@ -159,6 +166,8 @@ public abstract class ForeignToLLVM extends LLVMNode {
                     return 0d;
                 case FP80:
                     return LLVM80BitFloat.createPositiveZero();
+                case FP128:
+                    return LLVM128BitFloat.createPositiveZero();
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw CompilerDirectives.shouldNotReachHere("unexpected type " + type);
@@ -185,6 +194,8 @@ public abstract class ForeignToLLVM extends LLVMNode {
                     return ForeignToLLVMType.DOUBLE;
                 case X86_FP80:
                     return ForeignToLLVMType.FP80;
+                case PPC_FP128:
+                    return ForeignToLLVMType.FP128;
                 default:
                     throw new IllegalStateException("unexpected primitive kind " + ((PrimitiveType) type).getPrimitiveKind());
             }
@@ -240,6 +251,8 @@ public abstract class ForeignToLLVM extends LLVMNode {
                         return ToI8.slowPathPrimitiveConvert(this, value);
                     case FP80:
                         return ToFP80.slowPathPrimitiveConvert(value);
+                    case FP128:
+                        return ToFP128.slowPathPrimitiveConvert(value);
                     default:
                         throw new IllegalStateException(type.toString());
                 }

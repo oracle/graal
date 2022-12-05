@@ -11,9 +11,11 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM128BitFloatStoreNodeGen.LLVM128BitFloatOffsetStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+
 
 public abstract class LLVM128BitFloatStoreNode extends LLVMStoreNode {
 
@@ -41,11 +43,11 @@ public abstract class LLVM128BitFloatStoreNode extends LLVMStoreNode {
     public abstract static class LLVM128BitFloatOffsetStoreNode extends LLVMOffsetStoreNode {
 
         public static LLVM128BitFloatOffsetStoreNode create() {
-            return LLVM128BitFloatOffsetStoreNodeGen.create(null, null);
+            return LLVM128BitFloatOffsetStoreNodeGen.create(null, null, null);
         }
 
         public static LLVM128BitFloatOffsetStoreNode create(LLVMExpressionNode value) {
-            return LLVM128BitFloatOffsetStoreNodeGen.create(null, value);
+            return LLVM128BitFloatOffsetStoreNodeGen.create(null, null, value);
         }
 
         public abstract void executeWithTarget(LLVMPointer receiver, long offset, LLVM128BitFloat value);

@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMSourceTypeFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
@@ -48,6 +49,7 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToAnyLLVMNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToDoubleNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.convert.ToFP128NodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToFP80NodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToFloatNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToI16NodeGen;
@@ -116,6 +118,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMToDebugDe
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMToDebugValueNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAArgNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMMetaLiteralNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVM128BitFloatLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVM80BitFloatLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMDoubleLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMFloatLiteralNodeGen;
@@ -128,6 +131,7 @@ import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFacto
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMManagedPointerLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMNativePointerLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMVectorizedGetElementPtrNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVM128BitFloatLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVM80BitFloatLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNode.LLVMDoubleOffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNodeGen;
@@ -793,7 +797,8 @@ public class CommonNodeFactory {
                     return LLVMDoubleLoadNodeGen.create(loadTarget);
                 case X86_FP80:
                     return LLVM80BitFloatLoadNodeGen.create(loadTarget);
-                    //TODO: FP128
+                case PPC_FP128:
+                    return LLVM128BitFloatLoadNodeGen.create(loadTarget);
                 default:
                     throw new AssertionError(resultType);
             }
@@ -855,6 +860,8 @@ public class CommonNodeFactory {
                 return ToDoubleNodeGen.create();
             case FP80:
                 return ToFP80NodeGen.create();
+            case FP128:
+                return ToFP128NodeGen.create();
             case POINTER:
                 return ToPointer.create(type.baseType);
             default:
@@ -1065,7 +1072,8 @@ public class CommonNodeFactory {
                     } else {
                         return LLVM80BitFloatLiteralNodeGen.create(LLVM80BitFloat.fromBytesBigEndian((byte[]) constant));
                     }
-                    //TODO: Fp128
+                case PPC_FP128:
+                    return LLVM128BitFloatLiteralNodeGen.create(LLVM128BitFloat.fromBytesBigEndian((byte[]) constant));
                 case I64:
                     return LLVMI64LiteralNodeGen.create((long) constant);
                 default:

@@ -1,13 +1,8 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -47,7 +42,7 @@ public abstract class LLVM128BitFloatLoadNode extends LLVMLoadNode {
         return load.executeWithTarget(getReceiver.execute(addr));
     }
 
-    @Specialization(limit = "3")
+    /*@Specialization(limit = "3")
     @ExplodeLoop
     @GenerateAOT.Exclude
     protected LLVM128BitFloat doForeign(LLVMManagedPointer addr,
@@ -57,5 +52,5 @@ public abstract class LLVM128BitFloatLoadNode extends LLVMLoadNode {
         currentAddressPtr += Double.BYTES;
         long expSignFraction = nativeRead.readI64(addr.getObject(), currentAddressPtr);
         return new LLVM128BitFloat(expSignFraction, fraction);
-    }
+    }*/
 }

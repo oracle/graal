@@ -347,6 +347,7 @@ public final class LLVMNativeMemory extends LLVMHandleMemoryBase {
         putByteArray(location, ptr, value.getBytes());
     }
 
+    @Override
     public void put128BitFloat(Node location, long ptr, LLVM128BitFloat value) {
         long currentptr = ptr;
         putI64(location, currentptr, value.getFraction());

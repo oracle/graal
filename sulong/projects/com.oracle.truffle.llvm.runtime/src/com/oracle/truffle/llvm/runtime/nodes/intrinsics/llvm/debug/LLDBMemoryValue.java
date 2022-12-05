@@ -191,6 +191,8 @@ final class LLDBMemoryValue implements LLVMDebugValue {
         return unavailable(bitOffset, LLVMDebugTypeConstants.LLVM80BIT_SIZE_ACTUAL);
     }
 
+    //TODO: FP128
+
     @Override
     public Object readAddress(long bitOffset) {
         if (!canRead(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE)) {

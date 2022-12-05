@@ -253,6 +253,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.rmw.LLVMI1RMWNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.memory.rmw.LLVMI32RMWNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.memory.rmw.LLVMI64RMWNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.memory.rmw.LLVMI8RMWNodeFactory;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM128BitFloatStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNode.LLVM80BitFloatOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNodeGen;
@@ -1096,7 +1097,9 @@ public class BasicNodeFactory implements NodeFactory {
                 case X86_FP80:
                     store = LLVM80BitFloatStoreNode.create();
                     break;
-                    //TODO: FP128
+                case PPC_FP128:
+                    store = LLVM128BitFloatStoreNodeGen.create();
+                    break;
                 default:
                     throw new AssertionError(llvmType + " is not supported for insertvalue");
             }

@@ -31,7 +31,7 @@ public final class FP128Constant extends FloatingPointConstant {
 
     private static final int HEX_MASK = 0xf;
 
-    private static final int BYTE_MSB_SHIFT = 6;
+    private static final int BYTE_MSB_SHIFT = 8;
 
     @Override
     public String getStringValue() {

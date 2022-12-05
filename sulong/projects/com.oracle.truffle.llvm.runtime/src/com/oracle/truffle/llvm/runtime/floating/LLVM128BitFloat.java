@@ -1,14 +1,19 @@
 package com.oracle.truffle.llvm.runtime.floating;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 
-public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
+import java.util.Arrays;
 
+public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
     private static final int BIT_TO_HEX_FACTOR = 4;
-    public static final long SIGN_BIT = (long) (1 << 15);
+    public static final long SIGN_BIT = 1 << 15;
     private static final int EXPONENT_BIT_WIDTH = 15;
     private static final int FRACTION_BIT_WIDTH = 112;
+    public static final int BIT_WIDTH = 128;
+    public static final int BYTE_WIDTH = BIT_WIDTH / Byte.SIZE;
+
     public static final long EXPONENT_MASK = 0b111111111111111; // 15 bit
     private static final int HEX_DIGITS_FRACTION = FRACTION_BIT_WIDTH / BIT_TO_HEX_FACTOR;
     private static final LLVM128BitFloat POSITIVE_INFINITY = LLVM128BitFloat.fromRawValues(false, EXPONENT_MASK, bit(112L));
@@ -16,7 +21,8 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
     private static final LLVM128BitFloat POSITIVE_ZERO = LLVM128BitFloat.fromRawValues(false, 0, 0);
     private static final LLVM128BitFloat NEGATIVE_ZERO = LLVM128BitFloat.fromRawValues(true, 0, 0);
     private static final int EXPONENT_BIAS = 16383;
-    private static final int FLOAT_EXPONENT_BIAS = 127;
+    //private static final int FLOAT_EXPONENT_BIAS = 127;
+    //private static final int DOUBLE_EXPONENT_BIAS = 1023;
 
 
     @Override
@@ -61,10 +67,6 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
         return String.format("%" + bitWidth + "x", number).replace(" ", "0");
     }
 
-
-    private static final int FP128_EXPONENT_BIAS = 16383;
-    private static final int DOUBLE_EXPONENT_BIAS = 1023;
-
     private final long expSignFraction; // 64 bit -- the left over of the fraction goes into here.
     private final long fraction; // 64 bit -- fill this part first.
 
@@ -88,7 +90,7 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
     }
 
     public long getExponent() {
-        return (long) (expSignFraction & EXPONENT_MASK);
+        return expSignFraction & EXPONENT_MASK;
     }
 
     public long getFraction() {
@@ -144,15 +146,36 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
         return fromLong(Math.abs(val), sign);
     }
 
+    public byte[] getBytes() {
+        byte[] array = new byte[BYTE_WIDTH];
+        ByteArraySupport.littleEndian().putLong(array, 0, fraction);
+        ByteArraySupport.littleEndian().putLong(array, 8, expSignFraction);
+        return array;
+    }
+
+    public static LLVM128BitFloat fromBytesBigEndian(byte[] bytes) {
+        assert bytes.length == BYTE_WIDTH;
+        long expSignFraction = ByteArraySupport.bigEndian().getShort(bytes, 0);
+        long fraction = ByteArraySupport.bigEndian().getLong(bytes, 2);
+        return new LLVM128BitFloat(expSignFraction, fraction);
+    }
+
+    public static LLVM128BitFloat fromBytes(byte[] bytes) {
+        assert bytes.length == BYTE_WIDTH;
+        long fraction = ByteArraySupport.littleEndian().getLong(bytes, 0);
+        long expSignFraction = ByteArraySupport.littleEndian().getShort(bytes, 8);
+        return new LLVM128BitFloat(expSignFraction, fraction);
+    }
+
     private static LLVM128BitFloat fromLong(long val, boolean sign) {
         //int leadingOnePosition = Long.SIZE - Long.numberOfLeadingZeros(val);
         int exponent = EXPONENT_BIAS + Long.SIZE;
         long fractionMask;
-        if (leadingOnePosition == Long.SIZE || leadingOnePosition == Long.SIZE - 1) {
+        //if (leadingOnePosition == Long.SIZE || leadingOnePosition == Long.SIZE - 1) {
             fractionMask = 0xffffffff;
-        } else {
+        /*} else {
             fractionMask = (1L << Long.SIZE + 1) - 1;
-        }
+        }*/
         long maskedFractionValue = val & fractionMask;
         long fraction = maskedFractionValue << (Long.SIZE );
         return LLVM128BitFloat.fromRawValues(sign, exponent, fraction);
@@ -175,5 +198,10 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
             long biasedExponentFraction = ((long) biasedExponent << 48) | (doubleFraction >> 4); // 112 - 64 = 48
             return LLVM128BitFloat.fromRawValues(sign, biasedExponentFraction, fraction);
         }
+    }
+
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(getBytes());
     }
 }
