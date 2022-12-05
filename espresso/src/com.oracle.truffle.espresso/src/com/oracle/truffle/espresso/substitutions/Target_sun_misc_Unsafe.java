@@ -269,7 +269,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     private static StaticObject resolveUnsafeAccessHolder(Field f, StaticObject advertisedHolder, Meta meta) {
-        if (f.isStatic() && advertisedHolder.getKlass().getType() == Type.java_lang_Class) {
+        if (f.isStatic() && advertisedHolder.isMirrorKlass()) {
             // This is needed to support:
             // > int off = U.objectFieldOffset(SomeClass.class, "staticField")
             // > U.getInt(SomeClass.class, off);
