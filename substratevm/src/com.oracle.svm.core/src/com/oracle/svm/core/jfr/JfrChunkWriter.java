@@ -190,7 +190,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
          * Switch to a new epoch. This is done at a safepoint to ensure that we end up with
          * consistent data, even if multiple threads have JFR events in progress.
          */
-        JfrChangeEpochOperation op = new JfrChangeEpochOperation(false);
+        JfrChangeEpochOperation op = new JfrChangeEpochOperation();
         op.enqueue();
 
         /*
@@ -512,11 +512,9 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     private class JfrChangeEpochOperation extends JavaVMOperation {
-        private boolean flush;
 
-        protected JfrChangeEpochOperation(boolean flush) {
+        protected JfrChangeEpochOperation() {
             super(VMOperationInfos.get(JfrChangeEpochOperation.class, "JFR change epoch", SystemEffect.SAFEPOINT));
-            this.flush = flush;
         }
 
         @Override
@@ -551,12 +549,10 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                 write(buffer);
                 JfrBufferAccess.reinitialize(buffer);
             }
-            if (!flush) {
-                JfrTraceIdEpoch.getInstance().changeEpoch();
+            JfrTraceIdEpoch.getInstance().changeEpoch();
 
-                // Now that the epoch changed, re-register all running threads for the new epoch.
-                SubstrateJVM.getThreadRepo().registerRunningThreads();
-            }
+            // Now that the epoch changed, re-register all running threads for the new epoch.
+            SubstrateJVM.getThreadRepo().registerRunningThreads();
         }
     }
 
@@ -586,47 +582,26 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         // possibly block traversal at very beginning.
 
         JfrBufferNode node = linkedList.getAndLockTail();
-        if (node.isNull()) {
-            // If we couldn't acquire the tail. Give up, and try again next time.
-            return;
-        }
+        // If we couldn't acquire the tail. node is null. Give up, and try again next time.
 
         while (node.isNonNull()) {
             VMError.guarantee(isAcquired(node) || VMOperation.isInProgressAtSafepoint(), "Cannot traverse JfrBufferNodeLinkedList outside safepoint without acquiring nodes.");
             JfrBufferNode prev = node.getPrev();
-
-            // Try to remove
-            if (!node.getAlive()) {
-                if (linkedList.removeNode(node, true)) {
-                    // able to remove node
-                    if (tryAcquire(prev)) {
-                        node = prev;
-                        continue;
-                    }
-                    // Failed to get next node. Give up on flush and try again later
-                    return;
-                } else {
-                    // unable to remove node
-                    if (tryAcquire(prev)) {
-                        release(node);
-                        node = prev;
-                        continue;
-                    }
-                    // Failed to get next node. Give up on flush and try again later
-                    release(node);
-                    return;
-                }
-            }
 
             if (!linkedList.isTail(node)) {
                 JfrBuffer buffer = node.getValue();
                 VMError.guarantee(buffer.isNonNull(), "JFR buffer should exist if we have not already removed its respective node.");
 
                 // Try to get BUFFER if not in safepoint
-                if (!safepoint && !JfrBufferAccess.acquire(buffer)) { // make one attempt
+                // make one attempt
+                if (!safepoint && !JfrBufferAccess.acquire(buffer)) {
+                    if (tryAcquire(prev)) {
+                        release(node);
+                        node = prev;
+                        continue;
+                    }
                     release(node);
-                    node = prev;
-                    continue;
+                    return;
                 }
 
                 write(buffer);
@@ -636,6 +611,22 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                 }
                 if (java) {
                     JfrThreadLocal.notifyEventWriter(node.getThread());
+                }
+            }
+
+            // If a node has been marked as dead, it means the thread was unable to flush upon
+            // death.
+            // So we need to flush the buffer above first, before attempting to remove the node
+            // here.
+            if (!node.getAlive()) {
+                if (linkedList.removeNode(node, true)) {
+                    // able to remove node
+                    if (tryAcquire(prev)) {
+                        node = prev;
+                        continue;
+                    }
+                    // Failed to get next node. Give up and try again later
+                    return;
                 }
             }
 

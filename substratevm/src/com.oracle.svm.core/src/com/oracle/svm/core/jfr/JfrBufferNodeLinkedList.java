@@ -85,7 +85,7 @@ public class JfrBufferNodeLinkedList {
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public JfrBufferNode getAndLockTail() {
-        VMError.guarantee(tail.isNonNull(), "^^116");
+        VMError.guarantee(tail.isNonNull(), "Tail Node should never be null");
         if (tryAcquire(tail)) {
             return tail;
         }
@@ -166,7 +166,8 @@ public class JfrBufferNodeLinkedList {
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public boolean lockAdjacent(JfrBufferNode target) {
         VMError.guarantee(target.isNonNull(), "Attempted to lock buffer node that is null.");
-        // acquire target and adjacent nodes
+        VMError.guarantee(isAcquired(target), "Target node should be acquired when locking adjacent nodes.");
+        // adjacent nodes
         if (target.getPrev().isNull() || acquire(target.getPrev())) {
             if (target.getNext().isNull() || acquire(target.getNext())) {
                 return true;
@@ -219,13 +220,14 @@ public class JfrBufferNodeLinkedList {
         while (!acquire(head)) {
             // spin until we acquire
         }
+        JfrBufferNode oldHead = head;
         node.setPrev(WordFactory.nullPointer());
 
         VMError.guarantee(head.getPrev().isNull(), "Adding node: Head should be first node in JfrBufferNodeLinkedList.");
         node.setNext(head);
         head.setPrev(node);
         head = node;
-        release(head.getNext());
+        release(oldHead);
     }
 
     @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)

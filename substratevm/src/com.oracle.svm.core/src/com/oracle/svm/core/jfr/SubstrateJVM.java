@@ -590,6 +590,30 @@ public class SubstrateJVM {
         return DynamicHub.fromClass(eventClass).getJfrEventConfiguration();
     }
 
+    public void exclude(Thread thread) {
+        JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) getThreadLocal();
+        jfrThreadLocal.exclude(thread);
+    }
+
+    public void include(Thread thread) {
+        JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) getThreadLocal();
+        jfrThreadLocal.include(thread);
+    }
+
+    public boolean isExcluded(Thread thread) {
+        // in jdk 17 and jdk19 the argument is only ever the current thread.
+        if (!thread.equals(Thread.currentThread())) {
+            return false;
+        }
+        return isCurrentThreadExcluded();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public boolean isCurrentThreadExcluded() {
+        JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) getThreadLocal();
+        return jfrThreadLocal.isCurrentThreadExcluded();
+    }
+
     private static class JfrBeginRecordingOperation extends JavaVMOperation {
         JfrBeginRecordingOperation() {
             super(VMOperationInfos.get(JfrBeginRecordingOperation.class, "JFR begin recording", SystemEffect.SAFEPOINT));

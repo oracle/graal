@@ -46,7 +46,7 @@ public class ThreadSleepEvent {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static void emit0(long time, long startTicks) {
-        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.ThreadSleep)) {
+        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.ThreadSleep) && !SubstrateJVM.get().isCurrentThreadExcluded()) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 

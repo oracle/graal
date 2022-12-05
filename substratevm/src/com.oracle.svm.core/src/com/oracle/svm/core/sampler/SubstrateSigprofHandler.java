@@ -61,6 +61,7 @@ import com.oracle.svm.core.jdk.management.SubstrateThreadMXBean;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrFeature;
 import com.oracle.svm.core.jfr.JfrRecorderThread;
+import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
@@ -178,7 +179,8 @@ public abstract class SubstrateSigprofHandler {
             }
         };
 
-        @SuppressWarnings("unused") @Option(help = "Start sampling-based profiling with options.")//
+        @SuppressWarnings("unused") //
+        @Option(help = "Start sampling-based profiling with options.")//
         public static final RuntimeOptionKey<String> StartSamplingBasedProfiling = new RuntimeOptionKey<>("") {
             @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
@@ -292,6 +294,10 @@ public abstract class SubstrateSigprofHandler {
 
     @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
     protected static void doUninterruptibleStackWalk(RegisterDumper.Context uContext) {
+        if (SubstrateJVM.get().isCurrentThreadExcluded()) {
+            return;
+        }
+
         CodePointer ip;
         Pointer sp;
         if (isIPInJavaCode(uContext)) {

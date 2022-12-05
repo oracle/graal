@@ -47,6 +47,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
+import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.util.VMError;
 
 import com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.JfrBufferNode;
@@ -75,6 +76,7 @@ public class JfrThreadLocal implements ThreadListener {
     private static final FastThreadLocalWord<UnsignedWord> dataLost = FastThreadLocalFactory.createWord("JfrThreadLocal.dataLost");
     private static final FastThreadLocalLong threadId = FastThreadLocalFactory.createLong("JfrThreadLocal.threadId");
     private static final FastThreadLocalLong parentThreadId = FastThreadLocalFactory.createLong("JfrThreadLocal.parentThreadId");
+    private static final FastThreadLocalInt excluded = FastThreadLocalFactory.createInt("JfrThreadLocal.excluded");
 
     private long threadLocalBufferSize;
     private static JfrBufferNodeLinkedList javaBufferList = null;
@@ -117,6 +119,7 @@ public class JfrThreadLocal implements ThreadListener {
         Target_java_lang_Thread t = SubstrateUtil.cast(javaThread, Target_java_lang_Thread.class);
         threadId.set(isolateThread, t.getId());
         parentThreadId.set(isolateThread, JavaThreads.getParentThreadId(javaThread));
+        excluded.set(0);
 
         SubstrateJVM.getThreadRepo().registerThread(javaThread);
 
@@ -300,6 +303,7 @@ public class JfrThreadLocal implements ThreadListener {
         VMError.guarantee(threadLocalBuffer.isNonNull(), "TLB cannot be null if promoting.");
         VMError.guarantee(!VMOperation.isInProgressAtSafepoint(), "Should not be promoting if at safepoint. ");
 
+        // Needed for race between streaming flush and promotion
         if (!acquireBufferWithRetry(threadLocalBuffer)) {
             return WordFactory.nullPointer();
         }
@@ -368,5 +372,35 @@ public class JfrThreadLocal implements ThreadListener {
         if (javaBuffers != null) {
             javaBuffers.teardown();
         }
+    }
+
+    public void exclude(Thread thread) {
+        if (!thread.equals(Thread.currentThread())) {
+            return;
+        }
+        IsolateThread currentIsolateThread = CurrentIsolate.getCurrentThread();
+        excluded.set(currentIsolateThread, 1);
+
+        if (javaEventWriter.get(currentIsolateThread) != null && JavaVersionUtil.JAVA_SPEC >= 19) {
+            javaEventWriter.get(currentIsolateThread).excluded = true;
+        }
+    }
+
+    public void include(Thread thread) {
+        if (!thread.equals(Thread.currentThread())) {
+            return;
+        }
+        IsolateThread currentIsolateThread = CurrentIsolate.getCurrentThread();
+
+        excluded.set(currentIsolateThread, 0);
+
+        if (javaEventWriter.get(currentIsolateThread) != null && JavaVersionUtil.JAVA_SPEC >= 19) {
+            javaEventWriter.get(currentIsolateThread).excluded = false;
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public boolean isCurrentThreadExcluded() {
+        return excluded.get() == 1 ? true : false;
     }
 }

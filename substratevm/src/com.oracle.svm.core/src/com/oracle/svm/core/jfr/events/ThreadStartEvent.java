@@ -40,7 +40,7 @@ public class ThreadStartEvent {
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static void emit(IsolateThread isolateThread) {
         SubstrateJVM svm = SubstrateJVM.get();
-        if (SubstrateJVM.isRecording() && svm.isEnabled(JfrEvent.ThreadStart)) {
+        if (SubstrateJVM.isRecording() && svm.isEnabled(JfrEvent.ThreadStart) && !svm.isCurrentThreadExcluded()) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 

@@ -52,10 +52,12 @@ public final class Target_jdk_jfr_internal_JVM {
     @Alias static Object FILE_DELTA_CHANGE;
     // Checkstyle: resume
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private volatile boolean nativeOK;
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     @TargetElement(onlyWith = JDK11OrEarlier.class) //
     private volatile boolean recording;
 
@@ -412,20 +414,19 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
     public void include(Thread thread) {
-        // Temporarily do nothing. This is used for JFR streaming.
+        SubstrateJVM.get().include(thread);
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
     public void exclude(Thread thread) {
-        // Temporarily do nothing. This is used for JFR streaming.
+        SubstrateJVM.get().exclude(thread);
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class) //
     public boolean isExcluded(Thread thread) {
-        // Temporarily do nothing. This is used for JFR streaming.
-        return false;
+        return SubstrateJVM.get().isExcluded(thread);
     }
 
     @Substitute
