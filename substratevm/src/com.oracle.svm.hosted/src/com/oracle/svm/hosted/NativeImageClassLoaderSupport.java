@@ -71,6 +71,7 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.util.ClassUtil;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -583,14 +584,6 @@ public class NativeImageClassLoaderSupport {
         return ((Module) module).getDescriptor().mainClass();
     }
 
-    final Path excludeDirectoriesRoot = Paths.get("/");
-    final Set<Path> excludeDirectories = getExcludeDirectories();
-
-    private Set<Path> getExcludeDirectories() {
-        return Stream.of("dev", "sys", "proc", "etc", "var", "tmp", "boot", "lost+found")
-                        .map(excludeDirectoriesRoot::resolve).collect(Collectors.toUnmodifiableSet());
-    }
-
     private final class LoadClassHandler {
 
         private final ForkJoinPool executor;
@@ -690,7 +683,7 @@ public class NativeImageClassLoaderSupport {
                 }
             } else {
                 URI container = path.toUri();
-                loadClassesFromPath(container, path, excludeDirectoriesRoot, excludeDirectories);
+                loadClassesFromPath(container, path, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES);
             }
         }
 

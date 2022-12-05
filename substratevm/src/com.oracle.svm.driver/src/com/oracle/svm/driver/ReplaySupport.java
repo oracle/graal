@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.net.URI;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -43,10 +44,12 @@ import java.util.stream.Stream;
 
 import org.graalvm.util.json.JSONParserException;
 
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.util.json.JsonPrinter;
 import com.oracle.svm.core.util.json.JsonWriter;
+import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.StringUtil;
 
 class ReplaySupport {
@@ -196,11 +199,34 @@ class ReplaySupport {
     }
 
     Path substituteClassPath(Path origPath) {
-        return substitutePath(origPath, classPathDir);
+        try {
+            return substitutePath(origPath, classPathDir);
+        } catch (ReplayPathSubstitutionError error) {
+            throw NativeImage.showError("Failed to prepare class-path entry '" + error.origPath + "' for replay bundle inclusion.", error);
+        }
     }
 
     Path substituteModulePath(Path origPath) {
-        return substitutePath(origPath, modulePathDir);
+        try {
+            return substitutePath(origPath, modulePathDir);
+        } catch (ReplayPathSubstitutionError error) {
+            throw NativeImage.showError("Failed to prepare module-path entry '" + error.origPath + "' for replay bundle inclusion.", error);
+        }
+    }
+
+    @SuppressWarnings("serial")
+    static final class ReplayPathSubstitutionError extends Error {
+        public final Path origPath;
+
+        public ReplayPathSubstitutionError(String message, Path origPath) {
+            super(message);
+            this.origPath = origPath;
+        }
+
+        public ReplayPathSubstitutionError(String message, Path origPath, Throwable cause) {
+            super(message, cause);
+            this.origPath = origPath;
+        }
     }
 
     @SuppressWarnings("try")
@@ -218,13 +244,31 @@ class ReplaySupport {
             return origPath;
         }
 
+        boolean forbiddenPath = false;
+        if (!OS.WINDOWS.isCurrent()) {
+            for (Path path : ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES) {
+                if (origPath.startsWith(path)) {
+                    forbiddenPath = true;
+                    break;
+                }
+            }
+        }
+        for (Path rootDirectory : FileSystems.getDefault().getRootDirectories()) {
+            /* Refuse /, C:, D:, ... */
+            if (origPath.equals(rootDirectory)) {
+                forbiddenPath = true;
+            }
+        }
+        if (forbiddenPath) {
+            throw new ReplayPathSubstitutionError("Replay bundles do not allow inclusion of directory " + origPath, origPath);
+        }
+
         if (!Files.isReadable(origPath)) {
             /* Prevent subsequent retries to substitute invalid paths */
             pathSubstitutions.put(origPath, origPath);
             return origPath;
         }
 
-        // TODO Report error if user tries to use funky paths like / or c:
         // TODO Report error if overlapping dir-trees are passed in
         // TODO add .endsWith(ClasspathUtils.cpWildcardSubstitute) handling (copy whole directory)
         String[] baseNamePlusExtension = StringUtil.split(origPath.getFileName().toString(), ".", 2);
@@ -234,14 +278,14 @@ class ReplaySupport {
         Path substitutedPath = destinationDir.resolve(substitutedPathFilename);
         if (Files.exists(substitutedPath)) {
             /* If we ever see this, we have to implement substitutedPath collision-handling */
-            throw NativeImage.showError("Failed to create a unique path-name in " + destinationDir + ". " + substitutedPath + " already exists");
+            throw new ReplayPathSubstitutionError("Failed to create a unique path-name in " + destinationDir + ". " + substitutedPath + " already exists", origPath);
         }
 
         if (Files.isDirectory(origPath)) {
             try (Stream<Path> walk = Files.walk(origPath)) {
                 walk.forEach(sourcePath -> copyFile(sourcePath, substitutedPath.resolve(origPath.relativize(sourcePath))));
             } catch (IOException e) {
-                throw NativeImage.showError("Failed to iterate through directory " + origPath, e);
+                throw new ReplayPathSubstitutionError("Failed to iterate through directory " + origPath, origPath, e);
             }
         } else {
             copyFile(origPath, substitutedPath);

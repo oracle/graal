@@ -60,6 +60,7 @@ import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 
+import com.oracle.svm.util.ClassUtil;
 import jdk.internal.module.Modules;
 
 public class ClassLoaderSupportImpl extends ClassLoaderSupport {
@@ -166,8 +167,8 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                 }
                 try (Stream<Path> pathStream = Files.list(entry)) {
                     Stream<Path> filtered = pathStream;
-                    if (support.excludeDirectoriesRoot.equals(entry)) {
-                        filtered = filtered.filter(Predicate.not(support.excludeDirectories::contains));
+                    if (ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT.equals(entry)) {
+                        filtered = filtered.filter(Predicate.not(ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES::contains));
                     }
                     filtered.forEach(queue::push);
                 }

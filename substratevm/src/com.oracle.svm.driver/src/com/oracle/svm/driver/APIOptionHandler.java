@@ -381,25 +381,32 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         if (nameAndValue.length != 2) {
             return builderArgument;
         }
-        String optionName = StringUtil.split(nameAndValue[0], "@", 2)[0];
         String optionValue = nameAndValue[1];
+
+        String[] nameAndOrigin = StringUtil.split(nameAndValue[0], "@", 2);
+        String optionName = nameAndOrigin[0];
         String pathOptionSeparator = pathOptions.get(optionName);
         if (pathOptionSeparator == null) {
             return builderArgument;
         }
+        OptionOrigin optionOrigin = OptionOrigin.from(nameAndOrigin.length == 2 ? nameAndOrigin[1] : null);
         List<String> rawEntries;
         if (pathOptionSeparator.isEmpty()) {
             rawEntries = List.of(optionValue);
         } else {
             rawEntries = List.of(StringUtil.split(optionValue, pathOptionSeparator));
         }
-        String transformedOptionValue = rawEntries.stream()
-                        .filter(s -> !s.isEmpty())
-                        .map(this::tryCanonicalize)
-                        .map(replayFunction)
-                        .map(Path::toString)
-                        .collect(Collectors.joining(pathOptionSeparator));
-        return optionName + "=" + transformedOptionValue;
+        try {
+            String transformedOptionValue = rawEntries.stream()
+                            .filter(s -> !s.isEmpty())
+                            .map(this::tryCanonicalize)
+                            .map(replayFunction)
+                            .map(Path::toString)
+                            .collect(Collectors.joining(pathOptionSeparator));
+            return optionName + "=" + transformedOptionValue;
+        } catch (ReplaySupport.ReplayPathSubstitutionError error) {
+            throw NativeImage.showError("Failed to prepare path entry '" + error.origPath + "' of option " + optionName + " from " + optionOrigin + " for replay bundle inclusion.", error);
+        }
     }
 
     private Path tryCanonicalize(String path) {
