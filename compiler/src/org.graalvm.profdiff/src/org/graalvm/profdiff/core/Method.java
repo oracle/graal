@@ -136,6 +136,13 @@ public class Method {
     }
 
     /**
+     * Gets an iterable over {@link CompilationFragment the compilation fragments} of this method.
+     */
+    public Iterable<CompilationFragment> getCompilationFragments() {
+        return () -> compilationUnits.stream().filter(compilation -> compilation instanceof CompilationFragment).map(compilation -> (CompilationFragment) compilation).iterator();
+    }
+
+    /**
      * Gets an iterable over hot compilation units of this method.
      */
     public Iterable<CompilationUnit> getHotCompilationUnits() {
