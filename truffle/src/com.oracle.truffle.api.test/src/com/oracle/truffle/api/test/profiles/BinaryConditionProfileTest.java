@@ -40,89 +40,201 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
-import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
-import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
-import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
 import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.theories.DataPoints;
-import org.junit.experimental.theories.Theories;
-import org.junit.experimental.theories.Theory;
-import org.junit.runner.RunWith;
 
+import com.oracle.truffle.api.dsl.InlineSupport.InlinableField;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
-@RunWith(Theories.class)
-public class BinaryConditionProfileTest {
+public class BinaryConditionProfileTest extends AbstractProfileTest {
 
-    @DataPoints public static boolean[] data = new boolean[]{true, false};
+    private static boolean[] VALUES = new boolean[]{true, false};
 
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
-    private ConditionProfile profile;
-
-    @Before
-    public void create() {
-        profile = (ConditionProfile) invokeStatic(loadRelative(BinaryConditionProfileTest.class, "ConditionProfile$Binary"), "createLazyLoadClass");
+    @Override
+    protected InlinableField[] getInlinedFields() {
+        return createInlinedFields(1, 0, 0, 0, 0);
     }
 
-    private static boolean wasTrue(ConditionProfile profile) {
-        return (boolean) invoke(profile, "wasTrue");
+    private boolean wasTrue(Object profile) {
+        return (boolean) invokeProfileMethod(profile, "wasTrue");
     }
 
-    private static boolean wasFalse(ConditionProfile profile) {
-        return (boolean) invoke(profile, "wasFalse");
+    private boolean wasFalse(Object profile) {
+        return (boolean) invokeProfileMethod(profile, "wasFalse");
+    }
+
+    @Test
+    public void testNotCrashing() {
+        ConditionProfile profile = createEnabled(ConditionProfile.class);
+        profile.disable();
+        profile.reset();
+        assertEquals(profile, profile);
+        assertEquals(profile.hashCode(), profile.hashCode());
+        assertNotNull(profile.toString());
     }
 
     @Test
     public void testInitial() {
+        ConditionProfile profile = createEnabled(ConditionProfile.class);
         assertThat(wasTrue(profile), is(false));
         assertThat(wasFalse(profile), is(false));
-        profile.toString();
+        profile.toString(); // test that it is not crashing
     }
 
-    @Theory
-    public void testProfileOne(boolean value) {
-        boolean result = profile.profile(value);
+    @Test
+    public void testProfileOne() {
+        for (boolean value : VALUES) {
+            ConditionProfile profile = createEnabled(ConditionProfile.class);
+            boolean result = profile.profile(value);
 
-        assertThat(result, is(value));
-        assertThat(wasTrue(profile), is(value));
-        assertThat(wasFalse(profile), is(!value));
-        profile.toString();
+            assertThat(result, is(value));
+            assertThat(wasTrue(profile), is(value));
+            assertThat(wasFalse(profile), is(!value));
+            profile.toString();
+        }
     }
 
-    @Theory
-    public void testProfileTwo(boolean value0, boolean value1) {
-        boolean result0 = profile.profile(value0);
-        boolean result1 = profile.profile(value1);
+    @Test
+    public void testProfileTwo() {
+        for (boolean value0 : VALUES) {
+            for (boolean value1 : VALUES) {
+                ConditionProfile profile = createEnabled(ConditionProfile.class);
 
-        assertThat(result0, is(value0));
-        assertThat(result1, is(value1));
-        assertThat(wasTrue(profile), is(value0 || value1));
-        assertThat(wasFalse(profile), is(!value0 || !value1));
-        profile.toString();
+                boolean result0 = profile.profile(value0);
+                boolean result1 = profile.profile(value1);
+
+                assertThat(result0, is(value0));
+                assertThat(result1, is(value1));
+                assertThat(wasTrue(profile), is(value0 || value1));
+                assertThat(wasFalse(profile), is(!value0 || !value1));
+                profile.toString();
+            }
+        }
     }
 
-    @Theory
-    public void testProfileThree(boolean value0, boolean value1, boolean value2) {
-        boolean result0 = profile.profile(value0);
-        boolean result1 = profile.profile(value1);
-        boolean result2 = profile.profile(value2);
+    @Test
+    public void testProfileThree() {
+        for (boolean value0 : VALUES) {
+            for (boolean value1 : VALUES) {
+                for (boolean value2 : VALUES) {
+                    ConditionProfile profile = createEnabled(ConditionProfile.class);
 
-        assertThat(result0, is(value0));
-        assertThat(result1, is(value1));
-        assertThat(result2, is(value2));
-        assertThat(wasTrue(profile), is(value0 || value1 || value2));
-        assertThat(wasFalse(profile), is(!value0 || !value1 || !value2));
-        profile.toString();
+                    boolean result0 = profile.profile(value0);
+                    boolean result1 = profile.profile(value1);
+                    boolean result2 = profile.profile(value2);
+
+                    assertThat(result0, is(value0));
+                    assertThat(result1, is(value1));
+                    assertThat(result2, is(value2));
+                    assertThat(wasTrue(profile), is(value0 || value1 || value2));
+                    assertThat(wasFalse(profile), is(!value0 || !value1 || !value2));
+                    profile.toString();
+                }
+            }
+        }
+
+    }
+
+    @Test
+    public void testNotCrashingInlined() {
+        InlinedConditionProfile profile = createEnabled(InlinedConditionProfile.class);
+        profile.disable(state);
+        profile.reset(state);
+        assertEquals(profile, profile);
+        assertEquals(profile.hashCode(), profile.hashCode());
+        assertNotNull(profile.toString());
+    }
+
+    @Test
+    public void testInitialInlined() {
+        InlinedConditionProfile profile = createEnabled(InlinedConditionProfile.class);
+        assertThat(wasTrue(profile), is(false));
+        assertThat(wasFalse(profile), is(false));
+        profile.toString(); // test that it is not crashing
+    }
+
+    @Test
+    public void testProfileOneInlined() {
+        for (boolean value : VALUES) {
+            InlinedConditionProfile profile = createEnabled(InlinedConditionProfile.class);
+            boolean result = profile.profile(state, value);
+
+            assertThat(result, is(value));
+            assertThat(wasTrue(profile), is(value));
+            assertThat(wasFalse(profile), is(!value));
+            profile.toString();
+        }
+    }
+
+    @Test
+    public void testProfileTwoInlined() {
+        for (boolean value0 : VALUES) {
+            for (boolean value1 : VALUES) {
+                InlinedConditionProfile profile = createEnabled(InlinedConditionProfile.class);
+
+                boolean result0 = profile.profile(state, value0);
+                boolean result1 = profile.profile(state, value1);
+
+                assertThat(result0, is(value0));
+                assertThat(result1, is(value1));
+                assertThat(wasTrue(profile), is(value0 || value1));
+                assertThat(wasFalse(profile), is(!value0 || !value1));
+                profile.toString();
+            }
+        }
+    }
+
+    @Test
+    public void testProfileThreeInlined() {
+        for (boolean value0 : VALUES) {
+            for (boolean value1 : VALUES) {
+                for (boolean value2 : VALUES) {
+                    InlinedConditionProfile profile = createEnabled(InlinedConditionProfile.class);
+
+                    boolean result0 = profile.profile(state, value0);
+                    boolean result1 = profile.profile(state, value1);
+                    boolean result2 = profile.profile(state, value2);
+
+                    assertThat(result0, is(value0));
+                    assertThat(result1, is(value1));
+                    assertThat(result2, is(value2));
+                    assertThat(wasTrue(profile), is(value0 || value1 || value2));
+                    assertThat(wasFalse(profile), is(!value0 || !value1 || !value2));
+                    profile.toString();
+                }
+            }
+        }
+
+    }
+
+    @Test
+    public void testDisabled() {
+        ConditionProfile p = ConditionProfile.getUncached();
+        for (boolean value : VALUES) {
+            assertThat(p.profile(value), is(value));
+        }
+        p.toString(); // test that it is not crashing
+    }
+
+    @Test
+    public void testDisabledInlined() {
+        InlinedConditionProfile p = InlinedConditionProfile.getUncached();
+        for (boolean value : VALUES) {
+            assertThat(p.profile(state, value), is(value));
+        }
+        p.toString(); // test that it is not crashing
     }
 
 }

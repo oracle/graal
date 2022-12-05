@@ -58,6 +58,8 @@ import com.oracle.truffle.nfi.ConvertTypeNode.ConvertFromNativeNode;
 import com.oracle.truffle.nfi.ConvertTypeNode.ConvertToNativeNode;
 import com.oracle.truffle.nfi.NFISignature.SignatureCachedState;
 
+//TODO GR-42818 fix warnings
+@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
 @ExportLibrary(InteropLibrary.class)
 final class NFIClosure implements TruffleObject {
 

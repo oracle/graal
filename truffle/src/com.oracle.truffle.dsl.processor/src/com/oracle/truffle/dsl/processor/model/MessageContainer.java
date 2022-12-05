@@ -43,35 +43,50 @@ package com.oracle.truffle.dsl.processor.model;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.ListIterator;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.dsl.processor.ExpectError;
 import com.oracle.truffle.dsl.processor.Log;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleProcessorOptions;
+import com.oracle.truffle.dsl.processor.TruffleSuppressedWarnings;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
 
 public abstract class MessageContainer implements Iterable<MessageContainer> {
 
-    private final List<Message> messages = new ArrayList<>();
+    private List<Message> messages;
+
     protected final TruffleTypes types = ProcessorContext.getInstance().getTypes();
 
     public final void addWarning(String text, Object... params) {
-        getMessages().add(new Message(null, null, null, this, String.format(text, params), Kind.WARNING));
+        getMessagesForModification().add(new Message(null, null, null, this, String.format(text, params), Kind.WARNING, null));
+    }
+
+    public final void addSuppressableWarning(String suppressionKey, String text, Object... params) {
+        getMessagesForModification().add(new Message(null, null, null, this, String.format(text, params), Kind.WARNING, suppressionKey));
     }
 
     public final void addWarning(AnnotationValue value, String text, Object... params) {
-        getMessages().add(new Message(null, value, null, this, String.format(text, params), Kind.WARNING));
+        getMessagesForModification().add(new Message(null, value, null, this, String.format(text, params), Kind.WARNING, null));
+    }
+
+    public final void addSuppressableWarning(String suppressionKey, AnnotationValue value, String text, Object... params) {
+        getMessagesForModification().add(new Message(null, value, null, this, String.format(text, params), Kind.WARNING, suppressionKey));
     }
 
     public final void addError(String text, Object... params) {
@@ -79,15 +94,15 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
     }
 
     public final void addError(Element enclosedElement, String text, Object... params) {
-        getMessages().add(new Message(null, null, enclosedElement, this, String.format(text, params), Kind.ERROR));
+        getMessagesForModification().add(new Message(null, null, enclosedElement, this, String.format(text, params), Kind.ERROR, null));
     }
 
     public final void addError(AnnotationValue value, String text, Object... params) {
-        getMessages().add(new Message(null, value, null, this, String.format(text, params), Kind.ERROR));
+        getMessagesForModification().add(new Message(null, value, null, this, String.format(text, params), Kind.ERROR, null));
     }
 
     public final void addError(AnnotationMirror mirror, AnnotationValue value, String text, Object... params) {
-        getMessages().add(new Message(mirror, value, null, this, String.format(text, params), Kind.ERROR));
+        getMessagesForModification().add(new Message(mirror, value, null, this, String.format(text, params), Kind.ERROR, null));
     }
 
     protected List<MessageContainer> findChildContainers() {
@@ -105,47 +120,36 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
     }
 
     public final void redirectMessages(MessageContainer to) {
-        if (!getMessages().isEmpty()) {
-            for (Message message : getMessages()) {
+        if (messages != null) {
+            List<Message> list = getMessagesForModification();
+            for (Message message : list) {
+                if (message.getKind() == Kind.WARNING) {
+                    continue;
+                }
                 Element element = message.getEnclosedElement();
                 if (element == null) {
                     element = message.getOriginalContainer().getMessageElement();
                 }
                 String reference = ElementUtils.getReadableReference(to.getMessageElement(), element);
                 String prefix = "Message redirected from element " + reference + ":" + System.lineSeparator();
-                to.getMessages().add(message.redirect(prefix, to.getMessageElement()));
+                to.getMessagesForModification().add(message.redirect(prefix, to.getMessageElement()));
             }
-            getMessages().clear();
+            list.clear();
         }
         for (MessageContainer container : findChildContainers()) {
             container.redirectMessages(to);
         }
     }
 
-    public final void redirectMessagesNotEnclosedIn(MessageContainer to) {
-        if (!getMessages().isEmpty()) {
-            Element baseElement = to.getMessageElement();
-            ListIterator<Message> messageIterator = getMessages().listIterator();
-            while (messageIterator.hasNext()) {
-                Message message = messageIterator.next();
-                if (!ElementUtils.isEnclosedIn(baseElement, message.getEnclosedElement())) {
-                    messageIterator.set(message.redirect("", baseElement));
-                }
-            }
-        }
-        for (MessageContainer container : findChildContainers()) {
-            container.redirectMessagesNotEnclosedIn(to);
-        }
-    }
-
     public final void redirectMessagesOnGeneratedElements(MessageContainer to) {
-        if (!getMessages().isEmpty()) {
+        if (messages != null) {
             Element messageElement = getMessageElement();
             if (messageElement == null || messageElement instanceof GeneratedElement || messageElement.getEnclosingElement() instanceof GeneratedElement) {
-                for (Message message : getMessages()) {
-                    to.getMessages().add(message.redirect("", to.getMessageElement()));
+                List<Message> list = getMessagesForModification();
+                for (Message message : list) {
+                    to.getMessagesForModification().add(message.redirect("", to.getMessageElement()));
                 }
-                getMessages().clear();
+                list.clear();
             }
         }
         for (MessageContainer container : findChildContainers()) {
@@ -154,67 +158,53 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
     }
 
     public final void emitMessages(ProcessorContext context, Log log) {
-        emitMessagesImpl(context, log, new HashSet<MessageContainer>(), null);
+        Map<Element, List<Message>> emittedMessages = new HashMap<>();
+        Set<Element> relevantTypes = new LinkedHashSet<>();
+        visit((container) -> {
+            List<Message> m = container.getMessages();
+            for (int i = m.size() - 1; i >= 0; i--) {
+                Message message = m.get(i);
+                Element targetElement = container.emitDefault(context, log, message);
+                emittedMessages.computeIfAbsent(targetElement, (e) -> new ArrayList<>()).add(message);
+            }
+            if (container.getMessageElement() instanceof TypeElement) {
+                relevantTypes.add(container.getMessageElement());
+            }
+            return true; // continue
+        });
+
+        if (!ProcessorContext.types().ExpectErrorTypes.isEmpty()) {
+            for (Element element : relevantTypes) {
+                verifyExpectedErrors(element, emittedMessages);
+            }
+        }
     }
 
-    private void emitMessagesImpl(ProcessorContext context, Log log, Set<MessageContainer> visitedSinks, List<Message> verifiedMessages) {
-        List<Message> childMessages;
-        if (verifiedMessages == null) {
-            childMessages = collectMessagesWithElementChildren(new HashSet<MessageContainer>(), getMessageElement());
-        } else {
-            childMessages = verifiedMessages;
+    private static void verifyExpectedErrors(Element element, Map<Element, List<Message>> emitted) {
+        List<String> expectedErrors = ExpectError.getExpectedErrors(element);
+        if (!expectedErrors.isEmpty()) {
+            List<Message> foundMessages = emitted.get(element);
+            foundMessages = foundMessages == null ? Collections.emptyList() : foundMessages;
+            if (expectedErrors.size() != foundMessages.size()) {
+                ProcessorContext.getInstance().getLog().message(Kind.ERROR, element, null, null, "Error count expected %s but was %s. Expected errors %s but got %s.",
+                                expectedErrors.size(),
+                                foundMessages.size(),
+                                expectedErrors.toString(),
+                                foundMessages.toString());
+            }
         }
 
-        if (verifiedMessages != null) {
-            verifyExpectedMessages(context, log, childMessages);
-        }
-
-        for (int i = getMessages().size() - 1; i >= 0; i--) {
-            emitDefault(context, log, getMessages().get(i));
-        }
-
-        for (MessageContainer sink : findChildContainers()) {
-            if (visitedSinks.contains(sink)) {
+        for (Element enclosed : element.getEnclosedElements()) {
+            if (enclosed instanceof TypeElement) {
+                // we just validate types.
                 continue;
             }
-
-            visitedSinks.add(sink);
-            if (sink.getMessageElement() == this.getMessageElement()) {
-                sink.emitMessagesImpl(context, log, visitedSinks, childMessages);
-            } else {
-                sink.emitMessagesImpl(context, log, visitedSinks, null);
-            }
+            verifyExpectedErrors(enclosed, emitted);
         }
+
     }
 
-    private List<Message> collectMessagesWithElementChildren(Set<MessageContainer> visitedSinks, Element e) {
-        if (visitedSinks.contains(this)) {
-            return Collections.emptyList();
-        }
-        visitedSinks.add(this);
-
-        List<Message> foundMessages = new ArrayList<>();
-        if (getMessageElement() != null && ElementUtils.typeEquals(getMessageElement().asType(), e.asType())) {
-            foundMessages.addAll(getMessages());
-        }
-        for (MessageContainer sink : findChildContainers()) {
-            foundMessages.addAll(sink.collectMessagesWithElementChildren(visitedSinks, e));
-        }
-        return foundMessages;
-    }
-
-    private void verifyExpectedMessages(ProcessorContext context, Log log, List<Message> msgs) {
-        Element element = getMessageElement();
-        List<String> expectedErrors = ExpectError.getExpectedErrors(context.getEnvironment(), element);
-        if (expectedErrors.size() > 0) {
-            if (expectedErrors.size() != msgs.size()) {
-                log.message(Kind.ERROR, element, null, null, "Error count expected %s but was %s. Expected errors %s but got %s.", expectedErrors.size(), msgs.size(), expectedErrors.toString(),
-                                msgs.toString());
-            }
-        }
-    }
-
-    private void emitDefault(ProcessorContext context, Log log, Message message) {
+    private Element emitDefault(ProcessorContext context, Log log, Message message) {
         Kind kind = message.getKind();
         Element messageElement = getMessageElement();
         AnnotationMirror messageAnnotation = getMessageAnnotation();
@@ -227,24 +217,33 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
         }
 
         Element enclosedElement = message.getEnclosedElement();
-        if (messageElement instanceof GeneratedElement) {
+        Element targetElement = enclosedElement == null ? messageElement : enclosedElement;
+        if (targetElement instanceof GeneratedElement) {
             throw new AssertionError("Tried to emit message to generated element: " + messageElement + ". Make sure messages are redirected correctly. Message: " + message.getText());
         }
 
         String text = trimLongMessage(message.getText());
-        List<String> expectedErrors = ExpectError.getExpectedErrors(context.getEnvironment(), messageElement);
+        List<String> expectedErrors = ExpectError.getExpectedErrors(targetElement);
         if (!expectedErrors.isEmpty()) {
-            if (ExpectError.isExpectedError(context.getEnvironment(), messageElement, text)) {
-                return;
+            if (ExpectError.isExpectedError(targetElement, text)) {
+                return targetElement;
             }
-            log.message(kind, messageElement, null, null, "Message expected one of '%s' but was '%s'.", expectedErrors, text);
+            log.message(Kind.ERROR, targetElement, null, null, "Message expected one of '%s' but was '%s'.", expectedErrors, text);
         } else {
+            if (kind == Kind.WARNING &&
+                            (TruffleProcessorOptions.suppressAllWarnings(context.getEnvironment()) || TruffleSuppressedWarnings.isSuppressed(messageElement, message.suppressionKey))) {
+                return targetElement;
+            }
+            if (message.suppressionKey != null) {
+                text = text + " This warning may be suppressed using @SuppressWarnings(\"" + message.suppressionKey + "\").";
+            }
             if (enclosedElement == null) {
-                log.message(kind, messageElement, messageAnnotation, messageValue, text);
+                log.message(kind, targetElement, messageAnnotation, messageValue, text);
             } else {
-                log.message(kind, enclosedElement, null, null, text);
+                log.message(kind, targetElement, null, null, text);
             }
         }
+        return targetElement;
     }
 
     private static final int MAX_MARKER_BYTE_LENGTH = 60000;
@@ -283,52 +282,67 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
     }
 
     public final boolean hasErrors() {
-        return hasErrorsImpl(new HashSet<MessageContainer>(), false);
+        return !visit((container) -> {
+            for (Message msg : container.getMessages()) {
+                if (msg.getKind() == Kind.ERROR) {
+                    return false;
+                }
+            }
+            return true;
+        });
     }
 
     public final boolean hasErrorsOrWarnings() {
-        return hasErrorsImpl(new HashSet<MessageContainer>(), true);
+        return !visit((container) -> {
+            for (Message msg : container.getMessages()) {
+                if (msg.getKind() == Kind.ERROR || msg.getKind() == Kind.WARNING) {
+                    return false;
+                }
+            }
+            return true;
+        });
+    }
+
+    private boolean visit(Predicate<MessageContainer> vistor) {
+        return visitImpl(new HashSet<MessageContainer>(), vistor);
+    }
+
+    private boolean visitImpl(Set<MessageContainer> visited, Predicate<MessageContainer> visitor) {
+        if (visited.contains(this)) {
+            return true;
+        }
+        visited.add(this);
+        if (!visitor.test(this)) {
+            return false;
+        }
+        for (MessageContainer sink : findChildContainers()) {
+            if (!sink.visitImpl(visited, visitor)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public final List<Message> collectMessages() {
-        List<Message> collectedMessages = new ArrayList<>();
-        collectMessagesImpl(collectedMessages, new HashSet<MessageContainer>());
-        return collectedMessages;
+        List<Message> foundMessages = new ArrayList<>();
+        visit((s) -> {
+            foundMessages.addAll(s.getMessages());
+            return true;
+        });
+        return foundMessages;
     }
 
-    private void collectMessagesImpl(List<Message> collectedMessages, Set<MessageContainer> visitedSinks) {
-        collectedMessages.addAll(getMessages());
-        for (MessageContainer sink : findChildContainers()) {
-            if (visitedSinks.contains(sink)) {
-                return;
-            }
-
-            visitedSinks.add(sink);
-            sink.collectMessagesImpl(collectedMessages, visitedSinks);
+    protected final List<Message> getMessagesForModification() {
+        if (messages == null) {
+            messages = new ArrayList<>();
         }
+        return messages;
     }
 
-    private boolean hasErrorsImpl(Set<MessageContainer> visitedSinks, boolean orWarnings) {
-        for (Message msg : getMessages()) {
-            if (msg.getKind() == Kind.ERROR || (orWarnings && msg.getKind() == Kind.WARNING)) {
-                return true;
-            }
+    public final List<Message> getMessages() {
+        if (messages == null) {
+            return Collections.emptyList();
         }
-        for (MessageContainer sink : findChildContainers()) {
-            if (visitedSinks.contains(sink)) {
-                continue;
-            }
-
-            visitedSinks.add(sink);
-
-            if (sink.hasErrorsImpl(visitedSinks, orWarnings)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public List<Message> getMessages() {
         return messages;
     }
 
@@ -341,18 +355,20 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
         private final AnnotationValue annotationValue;
         private final String text;
         private final Kind kind;
+        private final String suppressionKey;
 
-        public Message(AnnotationMirror annotationMirror, AnnotationValue annotationValue, Element enclosedElement, MessageContainer originalContainer, String text, Kind kind) {
+        public Message(AnnotationMirror annotationMirror, AnnotationValue annotationValue, Element enclosedElement, MessageContainer originalContainer, String text, Kind kind, String suppressionKey) {
             this.annotationMirror = annotationMirror;
             this.annotationValue = annotationValue;
             this.enclosedElement = enclosedElement;
             this.originalContainer = originalContainer;
             this.text = text;
             this.kind = kind;
+            this.suppressionKey = suppressionKey;
         }
 
         public Message redirect(String textPrefix, Element element) {
-            return new Message(null, null, element, originalContainer, textPrefix + text, kind);
+            return new Message(null, null, element, originalContainer, textPrefix + text, kind, null);
         }
 
         public Element getEnclosedElement() {

@@ -125,6 +125,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -134,7 +135,8 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 
 public class ValueAPITest {
@@ -2449,9 +2451,10 @@ public class ValueAPITest {
 
         @ExportMessage
         String readArrayElement(long idx,
-                        @Cached BranchProfile exception) throws InvalidArrayIndexException {
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile exception) throws InvalidArrayIndexException {
             if (!isArrayElementReadable(idx)) {
-                exception.enter();
+                exception.enter(node);
                 throw InvalidArrayIndexException.create(idx);
             }
             return members[(int) idx];

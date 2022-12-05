@@ -60,7 +60,9 @@ import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.AbstractDSLExpressionVisitor;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Call;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
+import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.parser.NodeParser;
 
 public final class SpecializationData extends TemplateMethod {
 
@@ -76,19 +78,23 @@ public final class SpecializationData extends TemplateMethod {
     private final List<GuardExpression> guards = new ArrayList<>();
     private List<CacheExpression> caches = Collections.emptyList();
     private List<AssumptionExpression> assumptionExpressions = Collections.emptyList();
-    private final Set<SpecializationData> replaces = new LinkedHashSet<>();
-    private final Set<String> replacesNames = new LinkedHashSet<>();
-    private final Set<SpecializationData> excludedBy = new LinkedHashSet<>();
+    private Set<SpecializationData> replaces;
+    private Set<String> replacesNames;
+    private Set<SpecializationData> replacedBy;
     private String insertBeforeName;
     private SpecializationData insertBefore;
     private boolean replaced;
     private boolean reachable;
     private boolean reachesFallback;
+    private int unroll;
+    private int unrollIndex = -1;
     private int index;
     private DSLExpression limitExpression;
     private SpecializationData uncachedSpecialization;
     private final boolean reportPolymorphism;
     private final boolean reportMegamorphism;
+
+    private Double localActivationProbability;
 
     private boolean aotReachable;
 
@@ -104,22 +110,108 @@ public final class SpecializationData extends TemplateMethod {
         this.reportMegamorphism = reportMegamorphism;
     }
 
+    public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind) {
+        this(node, template, kind, new ArrayList<SpecializationThrowsData>(), false, true, false);
+    }
+
     public SpecializationData copy() {
         SpecializationData copy = new SpecializationData(node, this, kind, new ArrayList<>(exceptions), hasUnexpectedResultRewrite, reportPolymorphism, reportMegamorphism);
-        copy.guards.addAll(guards);
-        copy.caches = new ArrayList<>(caches);
+
+        copy.guards.clear();
+        for (GuardExpression guard : guards) {
+            copy.guards.add(guard.copy(copy));
+        }
+
+        copy.caches = new ArrayList<>(caches.size());
+        for (CacheExpression cache : caches) {
+            copy.caches.add(cache.copy());
+        }
+
         copy.assumptionExpressions = new ArrayList<>(assumptionExpressions);
+        if (replacesNames != null) {
+            copy.replacesNames = new LinkedHashSet<>();
+            copy.replacesNames.addAll(replacesNames);
+        }
+
         copy.replaced = replaced;
-        copy.replaces.addAll(replaces);
-        copy.replacesNames.addAll(replacesNames);
-        copy.excludedBy.addAll(excludedBy);
+
+        if (replaces != null) {
+            copy.replaces = new LinkedHashSet<>();
+            copy.replaces.addAll(replaces);
+        }
+        if (replacedBy != null) {
+            copy.replacedBy = new LinkedHashSet<>();
+            copy.replacedBy.addAll(replacedBy);
+        }
         copy.insertBeforeName = insertBeforeName;
         copy.reachable = reachable;
         copy.reachesFallback = reachesFallback;
         copy.index = index;
         copy.limitExpression = limitExpression;
         copy.aotReachable = aotReachable;
+        copy.unroll = unroll;
+        copy.uncachedSpecialization = uncachedSpecialization;
         return copy;
+    }
+
+    public boolean isNodeReceiverVariable(VariableElement var) {
+        if (getNode().isGenerateInline()) {
+            Parameter p = findByVariable(var);
+            if (p != null && p.getSpecification().isSignature()) {
+                NodeExecutionData execution = p.getSpecification().getExecution();
+                if (execution.getIndex() == FlatNodeGenFactory.INLINED_NODE_INDEX) {
+                    return true;
+                }
+            }
+        }
+
+        String simpleString = var.getSimpleName().toString();
+        return (simpleString.equals("this") || simpleString.equals(NodeParser.NODE_KEYWORD)) && ElementUtils.typeEquals(var.asType(), types.Node);
+    }
+
+    public boolean isNodeReceiverBound(DSLExpression expression) {
+        for (Variable variable : expression.findBoundVariables()) {
+            if (isNodeReceiverVariable(variable.getResolvedVariable())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isUncachedSpecialization() {
+        // do not initialize unroll for uncached specializations
+        if (getReplaces() != null) {
+            for (SpecializationData replace : getReplaces()) {
+                if (replace.getUncachedSpecialization() == this) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public void setUnrollIndex(int unrollIndex) {
+        this.unrollIndex = unrollIndex;
+    }
+
+    public int getUnrollIndex() {
+        return unrollIndex;
+    }
+
+    public void setUnroll(int unroll) {
+        this.unroll = unroll;
+    }
+
+    public boolean hasUnroll() {
+        return unroll > 0;
+    }
+
+    public boolean isUnrolled() {
+        return hasUnroll() && unrollIndex != -1;
+    }
+
+    public int getUnroll() {
+        return unroll;
     }
 
     /**
@@ -358,6 +450,9 @@ public final class SpecializationData extends TemplateMethod {
     }
 
     public boolean isDynamicParameterBound(DSLExpression expression, boolean transitive) {
+        if (expression == null) {
+            return false;
+        }
         Set<VariableElement> boundVariables = expression.findBoundVariableElements();
         for (Parameter parameter : getDynamicParameters()) {
             if (boundVariables.contains(parameter.getVariableElement())) {
@@ -425,16 +520,24 @@ public final class SpecializationData extends TemplateMethod {
         return replacesNames;
     }
 
-    public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind) {
-        this(node, template, kind, new ArrayList<SpecializationThrowsData>(), false, true, false);
+    public void setReplacesNames(Set<String> replacesNames) {
+        this.replacesNames = replacesNames;
     }
 
     public Set<SpecializationData> getReplaces() {
         return replaces;
     }
 
-    public Set<SpecializationData> getExcludedBy() {
-        return excludedBy;
+    public void setReplaces(Set<SpecializationData> replaces) {
+        this.replaces = replaces;
+    }
+
+    public Set<SpecializationData> getReplacedBy() {
+        return replacedBy;
+    }
+
+    public void setReplacedBy(Set<SpecializationData> replacedBy) {
+        this.replacedBy = replacedBy;
     }
 
     public void setReachable(boolean reachable) {
@@ -485,6 +588,9 @@ public final class SpecializationData extends TemplateMethod {
         if (!getCaches().isEmpty()) {
             for (CacheExpression cache : getCaches()) {
                 if (cache.isEagerInitialize()) {
+                    continue;
+                }
+                if (cache.getInlinedNode() != null) {
                     continue;
                 }
                 if (!cache.isAlwaysInitialized()) {
@@ -589,19 +695,22 @@ public final class SpecializationData extends TemplateMethod {
         return guards;
     }
 
-    public SpecializationData findNextSpecialization() {
-        List<SpecializationData> specializations = node.getSpecializations();
-        for (int i = 0; i < specializations.size() - 1; i++) {
-            if (specializations.get(i) == this) {
-                return specializations.get(i + 1);
-            }
-        }
-        return null;
+    public void setLocalActivationProbability(double activationProbability) {
+        this.localActivationProbability = activationProbability;
+    }
+
+    public double getLocalActivationProbability() {
+        return localActivationProbability;
+    }
+
+    public double getActivationProbability() {
+        return getNode().getActivationProbability() * localActivationProbability;
     }
 
     @Override
     public String toString() {
-        return String.format("%s [id = %s, method = %s, guards = %s, signature = %s]", getClass().getSimpleName(), getId(), getMethod(), getGuards(), getDynamicTypes());
+        return String.format("%s [nodeId =%s, id = %s, method = %s, guards = %s, signature = %s]", getClass().getSimpleName(), getNode().getNodeId(), getId(), getMethod(), getGuards(),
+                        getDynamicTypes());
     }
 
     public boolean isFrameUsedByGuard() {
@@ -613,7 +722,7 @@ public final class SpecializationData extends TemplateMethod {
                 }
             }
             for (CacheExpression cache : getCaches()) {
-                if (cache.getDefaultExpression().findBoundVariableElements().contains(frame.getVariableElement())) {
+                if (cache.getDefaultExpression() != null && cache.getDefaultExpression().findBoundVariableElements().contains(frame.getVariableElement())) {
                     return true;
                 }
             }
@@ -639,15 +748,6 @@ public final class SpecializationData extends TemplateMethod {
 
     public boolean hasMultipleInstances() {
         return getMaximumNumberOfInstances() > 1;
-    }
-
-    public boolean isExpressionBindsCache(DSLExpression expression, CacheExpression cache) {
-        for (CacheExpression otherCache : getBoundCaches(expression, true)) {
-            if (otherCache == cache) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public boolean isGuardBindsCache() {

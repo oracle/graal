@@ -56,8 +56,6 @@ public final class LibraryData extends Template {
 
     private final List<LibraryMessage> methods = new ArrayList<>();
     private final List<LibraryData> superTypes = new ArrayList<>();
-    private List<TypeMirror> cachedSignature;
-    private List<String> cachedSignatureNames;
 
     private final List<LibraryDefaultExportData> defaultExports = new ArrayList<>();
     private TypeMirror signatureReceiverType;
@@ -134,22 +132,6 @@ public final class LibraryData extends Template {
     @Override
     protected List<MessageContainer> findChildContainers() {
         return (List<MessageContainer>) (List<?>) methods;
-    }
-
-    void setCachedSignatureNames(List<String> cachedSignatureNames) {
-        this.cachedSignatureNames = cachedSignatureNames;
-    }
-
-    public List<String> getCachedSignatureNames() {
-        return cachedSignatureNames;
-    }
-
-    void setCachedSignature(List<TypeMirror> cachedSignature) {
-        this.cachedSignature = cachedSignature;
-    }
-
-    public List<TypeMirror> getCachedSignature() {
-        return cachedSignature;
     }
 
     public List<LibraryDefaultExportData> getDefaultExports() {

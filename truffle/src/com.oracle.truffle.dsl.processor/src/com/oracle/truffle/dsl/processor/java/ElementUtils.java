@@ -107,6 +107,36 @@ public class ElementUtils {
         return null;
     }
 
+    public static List<Element> getEnumValues(TypeElement type) {
+        List<Element> values = new ArrayList<>();
+        for (Element element : type.getEnclosedElements()) {
+            if (element.getKind() == ElementKind.ENUM_CONSTANT) {
+                values.add(element);
+            }
+        }
+        return values;
+    }
+
+    public static ExecutableElement findMethod(DeclaredType type, String methodName, int parameterCount) {
+        ProcessorContext context = ProcessorContext.getInstance();
+        TypeElement typeElement = context.getTypeElement(type);
+        for (ExecutableElement method : ElementFilter.methodsIn(typeElement.getEnclosedElements())) {
+            if (method.getParameters().size() == parameterCount && method.getSimpleName().toString().equals(methodName)) {
+                return method;
+            }
+        }
+        return null;
+    }
+
+    public static ExecutableElement findStaticMethod(TypeElement type, String methodName) {
+        for (ExecutableElement method : ElementFilter.methodsIn(type.getEnclosedElements())) {
+            if (method.getModifiers().contains(Modifier.STATIC) && method.getSimpleName().toString().equals(methodName)) {
+                return method;
+            }
+        }
+        return null;
+    }
+
     public static String defaultValue(TypeMirror mirror) {
         switch (mirror.getKind()) {
             case VOID:
@@ -137,10 +167,6 @@ public class ElementUtils {
         }
     }
 
-    public static TypeMirror getType(Class<?> element) {
-        return ProcessorContext.getInstance().getType(element);
-    }
-
     public static TypeElement getTypeElement(final CharSequence typeName) {
         return ProcessorContext.getInstance().getTypeElement(typeName);
     }
@@ -166,7 +192,11 @@ public class ElementUtils {
     }
 
     public static VariableElement findVariableElement(DeclaredType type, String name) {
-        List<? extends VariableElement> elements = ElementFilter.fieldsIn(type.asElement().getEnclosedElements());
+        return findVariableElement(type.asElement(), name);
+    }
+
+    public static VariableElement findVariableElement(Element element, String name) {
+        List<? extends VariableElement> elements = ElementFilter.fieldsIn(element.getEnclosedElements());
         for (VariableElement variableElement : elements) {
             if (variableElement.getSimpleName().toString().equals(name)) {
                 return variableElement;
@@ -299,6 +329,39 @@ public class ElementUtils {
             builder.append(sep);
             builder.append(getSimpleName(var.asType()));
             sep = ", ";
+        }
+        builder.append(")");
+        return builder.toString();
+    }
+
+    public static boolean hasOverloads(TypeElement enclosingType, ExecutableElement e) {
+        String name = e.getSimpleName().toString();
+        for (ExecutableElement otherExecutable : ElementFilter.methodsIn(enclosingType.getEnclosedElements())) {
+            if (otherExecutable.getSimpleName().toString().equals(name)) {
+                if (!ElementUtils.elementEquals(e, otherExecutable)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static String getReadableSignature(ExecutableElement method, int highlightParameter) {
+        StringBuilder builder = new StringBuilder();
+        builder.append(method.getSimpleName().toString());
+        builder.append("(");
+        VariableElement var = method.getParameters().get(highlightParameter);
+        if (highlightParameter > 0) {
+            // not first parameter
+            builder.append("..., ");
+        }
+
+        builder.append(getSimpleName(var.asType())).append(" ");
+        builder.append(var.getSimpleName().toString());
+
+        if (highlightParameter < method.getParameters().size() - 1) {
+            // not last
+            builder.append(", ...");
         }
         builder.append(")");
         return builder.toString();
@@ -1678,8 +1741,17 @@ public class ElementUtils {
                 parent = getReadableReference(relativeTo, element.getEnclosingElement());
                 return parent + "." + getReadableSignature((ExecutableElement) element);
             case PARAMETER:
-                parent = getReadableReference(relativeTo, element.getEnclosingElement());
-                return parent + " parameter " + element.getSimpleName().toString();
+                Element enclosing = element.getEnclosingElement();
+                if (enclosing instanceof ExecutableElement) {
+                    ExecutableElement method = (ExecutableElement) enclosing;
+                    int highlightIndex = method.getParameters().indexOf(element);
+                    if (highlightIndex != -1) {
+                        parent = getReadableReference(relativeTo, method.getEnclosingElement());
+                        return parent + "." + getReadableSignature(method, highlightIndex);
+                    }
+                }
+                parent = getReadableReference(relativeTo, enclosing);
+                return " parameter " + element.getSimpleName().toString() + " in " + parent;
             case FIELD:
                 parent = getReadableReference(relativeTo, element.getEnclosingElement());
                 return parent + "." + element.getSimpleName().toString();
@@ -1719,6 +1791,37 @@ public class ElementUtils {
             return b.toString();
         } else {
             return ProcessorContext.getInstance().getEnvironment().getElementUtils().getBinaryName(provider).toString();
+        }
+    }
+
+    public static final int COMPRESSED_POINTER_SIZE = 4;
+    public static final int COMPRESSED_HEADER_SIZE = 12;
+
+    public static int getCompressedReferenceSize(TypeMirror mirror) {
+        switch (mirror.getKind()) {
+            case BOOLEAN:
+            case BYTE:
+                return 1;
+            case SHORT:
+                return 2;
+            case INT:
+            case FLOAT:
+            case CHAR:
+                return 4;
+            case DOUBLE:
+            case LONG:
+                return 8;
+            case DECLARED:
+            case ARRAY:
+            case TYPEVAR:
+                return COMPRESSED_POINTER_SIZE;
+            case VOID:
+            case NULL:
+            case EXECUTABLE:
+                // unknown
+                return 0;
+            default:
+                throw new RuntimeException("Unknown type specified " + mirror.getKind());
         }
     }
 

@@ -56,7 +56,7 @@ import com.oracle.truffle.api.nodes.Node;
  *
  * This example remains here to ensure that it compiles clean with the DSL.
  */
-@SuppressWarnings("unused")
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing", "unused"})
 public class GR32992Test {
 
     static class T0 {

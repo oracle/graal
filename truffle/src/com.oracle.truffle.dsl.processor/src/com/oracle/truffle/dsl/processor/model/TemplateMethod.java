@@ -97,11 +97,6 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return findParameter(FRAME_NAME);
     }
 
-    public void removeParameter(Parameter p) {
-        this.parameters.remove(p);
-        this.parameterCache.remove(p.getLocalName());
-    }
-
     public void addParameter(int index, Parameter p) {
         this.parameters.add(index, p);
         this.parameterCache.put(p.getLocalName(), p);
@@ -120,12 +115,16 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
 
     public TemplateMethod(TemplateMethod method) {
         this(method.id, method.naturalOrder, method.template, method.specification, method.method, method.markerAnnotation, method.returnType, method.parameters);
-        getMessages().addAll(method.getMessages());
+        if (!method.getMessages().isEmpty()) {
+            getMessagesForModification().addAll(method.getMessages());
+        }
     }
 
     public TemplateMethod(TemplateMethod method, ExecutableElement executable) {
         this(method.id, method.naturalOrder, method.template, method.specification, executable, method.markerAnnotation, method.returnType, method.parameters);
-        getMessages().addAll(method.getMessages());
+        if (!method.getMessages().isEmpty()) {
+            getMessagesForModification().addAll(method.getMessages());
+        }
     }
 
     @Override
@@ -203,6 +202,15 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         throw new AssertionError("Could not find parameter for execution");
     }
 
+    public Parameter findParameter(NodeExecutionData execution) {
+        for (Parameter parameter : parameters) {
+            if (parameter.getSpecification().isSignature() && parameter.getSpecification().getExecution() == execution) {
+                return parameter;
+            }
+        }
+        return null;
+    }
+
     public List<Parameter> findByExecutionData(NodeExecutionData execution) {
         List<Parameter> foundParameters = new ArrayList<>();
         for (Parameter parameter : getParameters()) {
@@ -248,17 +256,6 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return String.format("%s [id = %s, method = %s]", getClass().getSimpleName(), getId(), getMethod());
     }
 
-    public Parameter getPreviousParam(Parameter searchParam) {
-        Parameter prev = null;
-        for (Parameter param : getParameters()) {
-            if (param == searchParam) {
-                return prev;
-            }
-            prev = param;
-        }
-        return prev;
-    }
-
     @SuppressWarnings("unused")
     public int getSignatureSize() {
         int signatureSize = 0;
@@ -278,25 +275,6 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
             }
         }
         return signature;
-    }
-
-    public void updateSignature(TypeSignature signature) {
-        // TODO(CH): fails in normal usage - output ok though
-        // assert signature.size() >= 1;
-
-        int signatureIndex = 0;
-        for (Parameter parameter : getReturnTypeAndParameters()) {
-            if (!parameter.getSpecification().isSignature()) {
-                continue;
-            }
-            if (signatureIndex >= signature.size()) {
-                break;
-            }
-            TypeMirror newType = signature.get(signatureIndex++);
-            if (!ElementUtils.typeEquals(newType, parameter.getType())) {
-                replaceParameter(parameter.getLocalName(), new Parameter(parameter, newType));
-            }
-        }
     }
 
     @Override
@@ -350,10 +328,6 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
 
         public TypeSignature() {
             this.types = new ArrayList<>();
-        }
-
-        public TypeSignature(List<TypeMirror> signature) {
-            this.types = signature;
         }
 
         @Override

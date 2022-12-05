@@ -968,9 +968,8 @@ public class HostAccessTest extends AbstractHostAccessTest {
         function.execute("ok");
         // when calling a functional interface implementation, only dispatch to implementations of
         // the single abstract method and not other methods with the same name in the subclass.
-        assertFails(() -> function.execute(42), PolyglotException.class, e -> {
-            assertTrue(e.toString(), e.isHostException());
-            assertTrue(e.asHostException().toString(), e.asHostException() instanceof ClassCastException);
+        assertFails(() -> function.execute(42), IllegalArgumentException.class, e -> {
+            assertTrue(e.getMessage(), e.getMessage().contains("Cannot convert '42'(language: Java, type: java.lang.Integer)"));
         });
         assertFails(() -> function.execute("ok", "not ok"), IllegalArgumentException.class);
 

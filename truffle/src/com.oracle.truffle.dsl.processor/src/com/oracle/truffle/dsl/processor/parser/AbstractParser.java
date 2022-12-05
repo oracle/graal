@@ -54,6 +54,7 @@ import javax.tools.Diagnostic.Kind;
 import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.Log;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.Timer;
 import com.oracle.truffle.dsl.processor.TruffleProcessorOptions;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -104,9 +105,10 @@ public abstract class AbstractParser<M extends MessageContainer> {
         return true;
     }
 
+    @SuppressWarnings({"unchecked", "try"})
     public final M parse(Element element, boolean emitErrors) {
         M model = null;
-        try {
+        try (Timer timer = Timer.create(getClass().getSimpleName(), element)) {
             List<AnnotationMirror> mirrors = null;
             if (getAnnotationType() != null) {
                 mirrors = ElementUtils.getRepeatedAnnotation(element.getAnnotationMirrors(), getAnnotationType());
@@ -126,7 +128,7 @@ public abstract class AbstractParser<M extends MessageContainer> {
                 return emitErrors ? filterErrorElements(model) : model;
             }
         } catch (CompileErrorException e) {
-            log.message(Kind.WARNING, element, null, null, "The truffle processor could not parse class due to error: %s", e.getMessage());
+            log.message(Kind.WARNING, element, null, null, "The truffle processor could not parse class due to error: %s%nError: ", e.getMessage(), ElementUtils.printException(e));
             return null;
         }
     }

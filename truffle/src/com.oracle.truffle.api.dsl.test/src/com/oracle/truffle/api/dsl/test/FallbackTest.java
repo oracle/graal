@@ -55,6 +55,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -85,6 +86,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class FallbackTest extends AbstractPolyglotTest {
 
     private static final Object UNKNOWN_OBJECT = new Object() {
@@ -625,6 +627,7 @@ public class FallbackTest extends AbstractPolyglotTest {
 
     @TypeSystemReference(ImplicitCastInFallbackTypeSystem.class)
     @SuppressWarnings("unused")
+    @GenerateInline(false)
     public abstract static class ImplicitCastInFallbackNode extends Node {
 
         public abstract String execute(Object n);
@@ -647,6 +650,7 @@ public class FallbackTest extends AbstractPolyglotTest {
      * problems.
      */
     @SuppressWarnings("unused")
+    @GenerateInline(false)
     public abstract static class FrameInFallbackTestNode extends Node {
 
         public abstract String execute(VirtualFrame frame, Object left);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,22 +38,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.dsl.test;
+package com.oracle.truffle.api.dsl;
 
-public class BoxedString {
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-    private final String delegate;
+/**
+ * Useful to annotate methods, fields or parameters bound by any DSL expression to indicate that it
+ * never returns a <code>null</code> or default primitive value. This may in some case be
+ * preferential to specifying {@link Cached#neverDefault()} for each cache expression. The DSL emits
+ * a warnings when the usage of this method is recommended.
+ *
+ * @see Cached#neverDefault()
+ * @since 23.0
+ */
+@Retention(RetentionPolicy.CLASS)
+@Target({ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER})
+public @interface NeverDefault {
 
-    public BoxedString(String delegate) {
-        this.delegate = delegate;
-    }
-
-    public String getDelegate() {
-        return delegate;
-    }
-
-    @Override
-    public String toString() {
-        return getDelegate();
-    }
 }

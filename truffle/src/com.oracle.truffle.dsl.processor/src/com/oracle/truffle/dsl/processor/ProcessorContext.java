@@ -44,6 +44,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.TypeElement;
@@ -56,27 +57,43 @@ import javax.lang.model.util.Types;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
-import com.oracle.truffle.dsl.processor.model.Template;
 
 /**
  * THIS IS NOT PUBLIC API.
  */
-public class ProcessorContext {
+public class ProcessorContext implements AutoCloseable {
 
     private final ProcessingEnvironment environment;
-
-    private final Map<String, Template> models = new HashMap<>();
-
-    private final ProcessCallback callback;
     private final Log log;
     private TruffleTypes types;
     private final Map<String, TypeElement> typeLookupCache = new HashMap<>();
+    private final Map<Class<?>, Map<String, Object>> modelCache = new HashMap<>();
 
-    public ProcessorContext(ProcessingEnvironment env, ProcessCallback callback) {
+    private Timer currentTimer;
+
+    private final boolean timingsEnabled;
+
+    public ProcessorContext(ProcessingEnvironment env) {
         this.environment = env;
-        this.callback = callback;
-        boolean emitWarnings = !Boolean.parseBoolean(System.getProperty("truffle.dsl.ignoreCompilerWarnings", "false"));
+        boolean emitWarnings = !Boolean.parseBoolean(System.getProperty("truffle.dsl.ignoreCompilerWarnings", "false")) || TruffleProcessorOptions.suppressAllWarnings(env);
         this.log = new Log(environment, emitWarnings);
+        this.timingsEnabled = TruffleProcessorOptions.printTimings(env);
+    }
+
+    Timer getCurrentTimer() {
+        return currentTimer;
+    }
+
+    void setCurrentTimer(Timer currentTimer) {
+        this.currentTimer = currentTimer;
+    }
+
+    public boolean timingsEnabled() {
+        return timingsEnabled;
+    }
+
+    public static TruffleTypes types() {
+        return getInstance().getTypes();
     }
 
     public TruffleTypes getTypes() {
@@ -89,24 +106,6 @@ public class ProcessorContext {
 
     public ProcessingEnvironment getEnvironment() {
         return environment;
-    }
-
-    public boolean containsTemplate(TypeElement element) {
-        return models.containsKey(ElementUtils.getQualifiedName(element));
-    }
-
-    public void registerTemplate(TypeElement element, Template model) {
-        models.put(ElementUtils.getQualifiedName(element), model);
-    }
-
-    public Template getTemplate(TypeMirror templateTypeMirror, boolean invokeCallback) {
-        String qualifiedName = ElementUtils.getQualifiedName(templateTypeMirror);
-        Template model = models.get(qualifiedName);
-        if (model == null && invokeCallback) {
-            callback.callback(ElementUtils.fromTypeMirror(templateTypeMirror));
-            model = models.get(qualifiedName);
-        }
-        return model;
     }
 
     public DeclaredType getDeclaredType(Class<?> element) {
@@ -223,21 +222,11 @@ public class ProcessorContext {
 
     private static final ThreadLocal<ProcessorContext> instance = new ThreadLocal<>();
 
-    public static ProcessorContext enter(ProcessingEnvironment environment, ProcessCallback callback) {
-        ProcessorContext context = new ProcessorContext(environment, callback);
-        setThreadLocalInstance(context);
-        return context;
-    }
-
     public static ProcessorContext enter(ProcessingEnvironment environment) {
-        return enter(environment, null);
-    }
-
-    public static void leave() {
-        instance.set(null);
-    }
-
-    private static void setThreadLocalInstance(ProcessorContext context) {
+        ProcessorContext context = new ProcessorContext(environment);
+        if (instance.get() != null) {
+            throw new IllegalStateException("context already entered");
+        }
         instance.set(context);
         if (context != null && context.types == null) {
             try {
@@ -246,6 +235,23 @@ public class ProcessorContext {
                 TruffleProcessor.handleThrowable(null, e, null);
                 throw e;
             }
+        }
+        return context;
+    }
+
+    @Override
+    public void close() {
+        ProcessorContext context = instance.get();
+        if (context != this) {
+            throw new IllegalStateException("context cannot be left if not entered");
+        }
+        context.notifyLeave();
+        instance.set(null);
+    }
+
+    private void notifyLeave() {
+        if (currentTimer != null && timingsEnabled()) {
+            currentTimer.printSummary(System.out, "  ");
         }
     }
 
@@ -268,4 +274,20 @@ public class ProcessorContext {
         }
         return (Map<K, V>) cacheMap;
     }
+
+    @SuppressWarnings("unchecked")
+    public <T> T parseIfAbsent(TypeElement element, Class<?> cacheKey,
+                    Function<TypeElement, T> parser) {
+        Map<String, Object> cache = modelCache.computeIfAbsent(cacheKey, (e) -> new HashMap<>());
+        String typeId = ElementUtils.getUniqueIdentifier(element.asType());
+        T result;
+        if (cache.containsKey(typeId)) {
+            result = (T) cache.get(typeId);
+        } else {
+            result = parser.apply(element);
+            cache.put(typeId, result);
+        }
+        return result;
+    }
+
 }

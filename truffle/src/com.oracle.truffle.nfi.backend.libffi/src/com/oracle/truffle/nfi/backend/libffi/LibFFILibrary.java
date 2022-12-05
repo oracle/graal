@@ -52,6 +52,8 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 
+//TODO GR-42818 fix warnings
+@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
 @ExportLibrary(InteropLibrary.class)
 final class LibFFILibrary implements TruffleObject {
 

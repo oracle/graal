@@ -95,6 +95,9 @@ public final class Introspection {
      * name. The returned introspection information is not updated when the state of the given
      * operation node is updated. The implementation of this method might be slow, do not use it in
      * performance critical code.
+     * <p>
+     * For a node was {@link GenerateInline inlined} use
+     * {@link #getSpecialization(Node, Node, String)}.
      *
      * @param node a introspectable DSL operation with at least one specialization
      * @param methodName the Java method name of the specialization to introspect
@@ -107,12 +110,30 @@ public final class Introspection {
     }
 
     /**
+     * Like {@link #getSpecialization(Node, String)} but must be used for nodes that were
+     * {@link GenerateInline inlined}.
+     *
+     * @param inlineParent the inlined parent node.
+     * @param node a introspectable DSL operation with at least one specialization
+     * @param methodName the Java method name of the specialization to introspect
+     * @return introspection info for the method
+     * @see Introspection example usage
+     * @since 23.0
+     */
+    public static SpecializationInfo getSpecialization(Node inlineParent, Node node, String methodName) {
+        return getIntrospectionData(inlineParent, node).getSpecialization(methodName);
+    }
+
+    /**
      * Returns introspection information for all declared specializations as unmodifiable list. A
      * given node must declare at least one specialization and must be annotated with
      * {@link Introspectable} otherwise an {@link IllegalArgumentException} is thrown. The returned
      * introspection information is not updated when the state of the given operation node is
      * updated. The implementation of this method might be slow, do not use it in performance
      * critical code.
+     * <p>
+     * For a node was {@link GenerateInline inlined} use
+     * {@link #getSpecialization(Node, Node, String)}.
      *
      * @param node a introspectable DSL operation with at least one specialization
      * @see Introspection example usage
@@ -122,11 +143,31 @@ public final class Introspection {
         return getIntrospectionData(node).getSpecializations();
     }
 
+    /**
+     * Like {@link #getSpecializations(Node)} but must be used for nodes that were
+     * {@link GenerateInline inlined}.
+     *
+     * @param inlineParent the inlined parent node.
+     * @param node a introspectable DSL operation with at least one specialization
+     * @see Introspection example usage
+     * @since 23.0
+     */
+    public static List<SpecializationInfo> getSpecializations(Node inlineParent, Node node) {
+        return getIntrospectionData(inlineParent, node).getSpecializations();
+    }
+
     private static Introspection getIntrospectionData(Node node) {
         if (!(node instanceof Provider)) {
             throw new IllegalArgumentException(String.format("Provided node is not introspectable. Annotate with @%s to make a node introspectable.", Introspectable.class.getSimpleName()));
         }
         return ((Provider) node).getIntrospectionData();
+    }
+
+    private static Introspection getIntrospectionData(Node inlineParent, Node node) {
+        if (!(node instanceof Provider)) {
+            throw new IllegalArgumentException(String.format("Provided node is not introspectable. Annotate with @%s to make a node introspectable.", Introspectable.class.getSimpleName()));
+        }
+        return ((Provider) node).getIntrospectionData(inlineParent);
     }
 
     /**
@@ -202,7 +243,7 @@ public final class Introspection {
 
         /**
          * {@inheritDoc}
-         * 
+         *
          * @since 21.1
          */
         @Override
@@ -226,7 +267,20 @@ public final class Introspection {
          *
          * @since 0.22
          */
-        Introspection getIntrospectionData();
+        default Introspection getIntrospectionData() {
+            throw new UnsupportedOperationException(
+                            "Introspection provider for regular nodes is not implemented. Use Introspection.getSpecializations(Node, Node) with inlinedParent parameter instead.");
+        }
+
+        /**
+         * Returns internal reflection data in undefined format. A DSL user must not call this
+         * method.
+         *
+         * @since 23.0
+         */
+        default Introspection getIntrospectionData(@SuppressWarnings("unused") Node inlinedParent) {
+            return getIntrospectionData();
+        }
 
         /**
          * Factory method to create {@link Node} introspection data. The factory is used to create

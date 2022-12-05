@@ -113,7 +113,7 @@ public abstract class NodeObjectDescriptor implements TruffleObject {
 
         @Override
         @ExportMessage
-        Object readMember(String member, @Cached BranchProfile error) throws UnknownIdentifierException {
+        Object readMember(String member, @Cached(inline = false) BranchProfile error) throws UnknownIdentifierException {
             return super.readMember(member, error);
         }
 
@@ -151,7 +151,7 @@ public abstract class NodeObjectDescriptor implements TruffleObject {
 
         @Override
         @ExportMessage
-        Object readMember(String member, @Cached BranchProfile error) throws UnknownIdentifierException {
+        Object readMember(String member, @Cached(inline = false) BranchProfile error) throws UnknownIdentifierException {
             super.readMember(member, error); // To verify readability
             return nameSymbol;
         }

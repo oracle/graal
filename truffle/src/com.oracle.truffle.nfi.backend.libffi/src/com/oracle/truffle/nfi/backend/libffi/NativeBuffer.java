@@ -56,6 +56,8 @@ import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.nfi.api.SerializableLibrary;
 
+//TODO GR-42818 fix warnings
+@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
 abstract class NativeBuffer implements TruffleObject {
 
     @ExportLibrary(value = SerializableLibrary.class, useForAOT = false)

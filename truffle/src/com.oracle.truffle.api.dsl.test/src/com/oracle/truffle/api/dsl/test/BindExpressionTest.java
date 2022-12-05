@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.dsl.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -66,6 +67,8 @@ import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindInLimitNode
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindMethodNodeGen;
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindMethodTwiceNodeGen;
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindNodeFieldNodeGen;
+import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindThisMultipleInstancesTestNodeGen;
+import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindThisTestNodeGen;
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindTransitiveCachedInAssumptionNodeGen;
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindTransitiveCachedInLimitNodeGen;
 import com.oracle.truffle.api.dsl.test.BindExpressionTestFactory.BindTransitiveCachedWithLibraryNodeGen;
@@ -77,9 +80,10 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
-@SuppressWarnings("unused")
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing", "unused"})
 public class BindExpressionTest extends AbstractPolyglotTest {
 
     static class TestObject {
@@ -419,7 +423,7 @@ public class BindExpressionTest extends AbstractPolyglotTest {
 
         @Specialization(assumptions = "extractAssumption2")
         Object s0(TestObject a0,
-                        @Cached("a0.assumption") Assumption assumption,
+                        @Cached(value = "a0.assumption", neverDefault = true) Assumption assumption,
                         @Bind("assumption") Assumption extractAssumption1,
                         @Bind("extractAssumption1") Assumption extractAssumption2) {
             return a0;
@@ -443,6 +447,72 @@ public class BindExpressionTest extends AbstractPolyglotTest {
         int s0(TestObject a0,
                         @Bind("field0") int field) {
             return field;
+        }
+    }
+
+    @Test
+    public void testBindThis() {
+        BindThisTest node = BindThisTestNodeGen.create();
+        node.execute();
+    }
+
+    abstract static class BindThisTest extends Node {
+
+        abstract void execute();
+
+        @Specialization
+        void s0(@Bind("this") Node thisNode) {
+            assertSame(this, thisNode);
+        }
+    }
+
+    abstract static class BindThisParentTest extends Node {
+
+        abstract void execute();
+
+        @Specialization
+        void s0(@Bind("this.getParent()") Node thisNode) {
+            assertSame(this.getParent(), thisNode);
+        }
+    }
+
+    @Test
+    public void testBindThisMultipleInstances() {
+        BindThisMultipleInstancesTest node = BindThisMultipleInstancesTestNodeGen.create();
+        node.execute(42);
+        node.execute(43);
+        node.execute(44);
+        node.execute(45);
+    }
+
+    abstract static class BindThisMultipleInstancesTest extends Node {
+
+        abstract void execute(int arg);
+
+        @Specialization(guards = "arg == cachedArg", limit = "2")
+        void s0(int arg,
+                        @Cached("arg") int cachedArg,
+                        @Bind("this") Node thisNode) {
+            /*
+             * The specialization does not bind nodes therefore it returns the current node instead
+             * of the specialization class.
+             */
+            assertSame(this, this);
+        }
+
+        @SuppressWarnings("truffle-static-method")
+        @Specialization(guards = "arg == cachedArg", limit = "2")
+        void s1(int arg,
+                        @Cached("arg") int cachedArg,
+                        @Cached InlinedBranchProfile branchProfile,
+                        @Bind("this") Node thisNode) {
+            /*
+             * The specialization does not bind nodes therefore it returns the current node instead
+             * of the specialization class.
+             */
+            branchProfile.enter(thisNode);
+            assertNotSame(this, thisNode);
+            assertSame(thisNode.getParent(), this);
         }
     }
 
@@ -564,6 +634,16 @@ public class BindExpressionTest extends AbstractPolyglotTest {
             return a0;
         }
 
+    }
+
+    abstract static class ErrorBindThisWithCachedTest extends Node {
+
+        abstract void execute();
+
+        @Specialization
+        void s0(@ExpectError("Cannot use 'this' with @Cached use @Bind instead.") //
+        @Cached("this") Node thisNode) {
+        }
     }
 
 }

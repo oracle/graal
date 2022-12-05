@@ -42,11 +42,14 @@ package com.oracle.truffle.dsl.processor.model;
 
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getAnnotationValue;
 
+import java.util.Objects;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.type.DeclaredType;
 
+import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Call;
@@ -72,6 +75,9 @@ public final class CacheExpression extends MessageContainer {
     private boolean isWeakReferenceGet;
     private boolean isWeakReference;
     private boolean adopt = true;
+    private boolean neverDefault;
+    private boolean neverDefaultGuaranteed;
+    private InlinedNodeData inlinedNode;
 
     private LibraryData cachedlibrary;
     private boolean usedInGuard;
@@ -87,6 +93,17 @@ public final class CacheExpression extends MessageContainer {
         copy.defaultExpression = this.defaultExpression;
         copy.uncachedExpression = this.uncachedExpression;
         copy.alwaysInitialized = this.alwaysInitialized;
+        copy.eagerInitialize = this.eagerInitialize;
+        copy.uncachedExpressionError = this.uncachedExpressionError;
+        copy.requiresBoundary = this.requiresBoundary;
+        copy.mergedLibrary = this.mergedLibrary;
+        copy.isWeakReference = this.isWeakReference;
+        copy.isWeakReferenceGet = this.isWeakReferenceGet;
+        copy.adopt = this.adopt;
+        copy.inlinedNode = this.inlinedNode != null ? this.inlinedNode.copy() : null;
+        copy.cachedlibrary = cachedlibrary;
+        copy.usedInGuard = usedInGuard;
+        copy.neverDefault = neverDefault;
         return copy;
     }
 
@@ -96,6 +113,30 @@ public final class CacheExpression extends MessageContainer {
 
     public boolean isUsedInGuard() {
         return usedInGuard;
+    }
+
+    public boolean isNeverDefault() {
+        return neverDefault;
+    }
+
+    public void setNeverDefault(boolean neverDefault) {
+        this.neverDefault = neverDefault;
+    }
+
+    public boolean isNeverDefaultGuaranteed() {
+        return neverDefaultGuaranteed;
+    }
+
+    public void setNeverDefaultGuaranteed(boolean neverDefault) {
+        this.neverDefaultGuaranteed = neverDefault;
+    }
+
+    public void setInlinedNode(InlinedNodeData inlinedNode) {
+        this.inlinedNode = inlinedNode;
+    }
+
+    public InlinedNodeData getInlinedNode() {
+        return inlinedNode;
     }
 
     public boolean isEagerInitialize() {
@@ -108,6 +149,13 @@ public final class CacheExpression extends MessageContainer {
 
     public AnnotationMirror getSharedGroupMirror() {
         return ElementUtils.findAnnotationMirror(sourceParameter.getVariableElement(), types.Cached_Shared);
+    }
+
+    public boolean isEncodedEnum() {
+        if (!isCached()) {
+            return false;
+        }
+        return ElementUtils.isAssignable(getParameter().getType(), ProcessorContext.getInstance().getType(Enum.class));
     }
 
     public AnnotationValue getSharedGroupValue() {
@@ -230,6 +278,21 @@ public final class CacheExpression extends MessageContainer {
         return mergedLibrary;
     }
 
+    public boolean isThisExpression() {
+        DSLExpression e = getDefaultExpression();
+        if (!(e instanceof Variable)) {
+            return false;
+        }
+        Variable v = (Variable) e;
+        if (v.getResolvedVariable() instanceof CodeVariableElement) {
+            if (v.getResolvedVariable().getSimpleName().toString().equals("this")) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public String getMergedLibraryIdentifier() {
         DSLExpression identifierExpression = getDefaultExpression().reduce(new DSLExpressionReducer() {
 
@@ -314,6 +377,11 @@ public final class CacheExpression extends MessageContainer {
 
     public boolean usesDefaultCachedInitializer() {
         return ElementUtils.getAnnotationValue(getMessageAnnotation(), "value", false) == null;
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "@" + Integer.toHexString(hashCode()) + "[" + Objects.toString(sourceParameter) + "]";
     }
 
 }

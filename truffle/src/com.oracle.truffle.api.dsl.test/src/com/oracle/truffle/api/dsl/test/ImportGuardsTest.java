@@ -115,7 +115,6 @@ public class ImportGuardsTest {
 
     }
 
-    @ExpectError("The specified import guard class 'com.oracle.truffle.api.dsl.test.ImportGuardsTest.Imports1' must be public.")
     @NodeChild("a")
     @ImportStatic(Imports1.class)
     static class ImportGuards2 extends ValueNode {
@@ -129,7 +128,6 @@ public class ImportGuardsTest {
 
     }
 
-    @ExpectError("The specified import guard class 'com.oracle.truffle.api.dsl.test.ImportGuardsTest.Imports2' must be public.")
     @NodeChild("a")
     @ImportStatic(Imports2.class)
     static class ImportGuards3 extends ValueNode {
@@ -139,7 +137,6 @@ public class ImportGuardsTest {
         }
     }
 
-    @ExpectError("The specified import guard class 'boolean' is not a declared type.")
     @NodeChild("a")
     @ImportStatic(boolean.class)
     static class ImportGuards4 extends ValueNode {
@@ -153,7 +150,6 @@ public class ImportGuardsTest {
 
     }
 
-    @ExpectError("At least import guard classes must be specified.")
     @NodeChild("a")
     @ImportStatic({})
     static class ImportGuards5 extends ValueNode {

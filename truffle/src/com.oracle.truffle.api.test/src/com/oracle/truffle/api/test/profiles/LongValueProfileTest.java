@@ -40,117 +40,210 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
-import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.theories.DataPoint;
-import org.junit.experimental.theories.Theories;
-import org.junit.experimental.theories.Theory;
-import org.junit.runner.RunWith;
 
+import com.oracle.truffle.api.dsl.InlineSupport.InlinableField;
+import com.oracle.truffle.api.profiles.InlinedLongValueProfile;
 import com.oracle.truffle.api.profiles.LongValueProfile;
-import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
-@RunWith(Theories.class)
-public class LongValueProfileTest {
+public class LongValueProfileTest extends AbstractProfileTest {
 
-    @DataPoint public static final long VALUE0 = Long.MIN_VALUE;
-    @DataPoint public static final long VALUE1 = 0L;
-    @DataPoint public static final long VALUE2 = 14L;
-    @DataPoint public static final long VALUE3 = Long.MAX_VALUE;
+    private static long[] VALUES = new long[]{Long.MIN_VALUE, 0, 14, Long.MAX_VALUE};
+
+    @Override
+    protected InlinableField[] getInlinedFields() {
+        return createInlinedFields(1, 0, 0, 2, 0);
+    }
 
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
-    private LongValueProfile profile;
-
-    @Before
-    public void create() {
-        profile = ReflectionUtils.newInstance(LongValueProfile.class);
-    }
-
-    private static boolean isGeneric(LongValueProfile profile) {
-        return (boolean) invoke(profile, "isGeneric");
-    }
-
-    private static boolean isUninitialized(LongValueProfile profile) {
-        return (boolean) invoke(profile, "isUninitialized");
-    }
-
-    private static long getCachedValue(LongValueProfile profile) {
-        return (long) invoke(profile, "getCachedValue");
-    }
-
     @Test
     public void testInitial() {
+        LongValueProfile profile = createEnabled(LongValueProfile.class);
         assertThat(isGeneric(profile), is(false));
         assertThat(isUninitialized(profile), is(true));
         profile.toString(); // test that it is not crashing
     }
 
-    @Theory
-    public void testProfileOneObject(long value) {
-        long result = profile.profile(value);
+    @Test
+    public void testNotCrashing() {
+        LongValueProfile profile = createEnabled(LongValueProfile.class);
+        profile.disable();
+        profile.reset();
+        assertEquals(profile, profile);
+        assertEquals(profile.hashCode(), profile.hashCode());
+        assertNotNull(profile.toString());
+    }
 
-        assertThat(result, is(value));
-        assertEquals(getCachedValue(profile), value);
-        assertThat(isUninitialized(profile), is(false));
+    @Test
+    public void testProfileOneObject() {
+        for (long value : VALUES) {
+            LongValueProfile profile = createEnabled(LongValueProfile.class);
+            long result = profile.profile(value);
+
+            assertThat(result, is(value));
+            assertEquals((long) getCachedValue(profile), value);
+            assertThat(isUninitialized(profile), is(false));
+            profile.toString(); // test that it is not crashing
+        }
+    }
+
+    @Test
+    public void testProfileTwoObject() {
+        for (long value0 : VALUES) {
+            for (long value1 : VALUES) {
+                LongValueProfile profile = createEnabled(LongValueProfile.class);
+                long result0 = profile.profile(value0);
+                long result1 = profile.profile(value1);
+
+                assertThat(result0, is(value0));
+                assertThat(result1, is(value1));
+
+                if (value0 == value1) {
+                    assertThat(getCachedValue(profile), is(value0));
+                    assertThat(isGeneric(profile), is(false));
+                } else {
+                    assertThat(isGeneric(profile), is(true));
+                }
+                assertThat(isUninitialized(profile), is(false));
+                profile.toString(); // test that it is not crashing
+            }
+        }
+    }
+
+    @Test
+    public void testProfileThreeObject() {
+        for (long value0 : VALUES) {
+            for (long value1 : VALUES) {
+                for (long value2 : VALUES) {
+                    LongValueProfile profile = createEnabled(LongValueProfile.class);
+                    long result0 = profile.profile(value0);
+                    long result1 = profile.profile(value1);
+                    long result2 = profile.profile(value2);
+
+                    assertThat(result0, is(value0));
+                    assertThat(result1, is(value1));
+                    assertThat(result2, is(value2));
+
+                    if (value0 == value1 && value1 == value2) {
+                        assertThat(getCachedValue(profile), is(value0));
+                        assertThat(isGeneric(profile), is(false));
+                    } else {
+                        assertThat(isGeneric(profile), is(true));
+                    }
+                    assertThat(isUninitialized(profile), is(false));
+                    profile.toString(); // test that it is not crashing
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testInitialInlined() {
+        InlinedLongValueProfile profile = createEnabled(InlinedLongValueProfile.class);
+        assertThat(isGeneric(profile), is(false));
+        assertThat(isUninitialized(profile), is(true));
         profile.toString(); // test that it is not crashing
     }
 
-    @Theory
-    public void testProfileTwoObject(long value0, long value1) {
-        long result0 = profile.profile(value0);
-        long result1 = profile.profile(value1);
-
-        assertThat(result0, is(value0));
-        assertThat(result1, is(value1));
-
-        if (value0 == value1) {
-            assertThat(getCachedValue(profile), is(value0));
-            assertThat(isGeneric(profile), is(false));
-        } else {
-            assertThat(isGeneric(profile), is(true));
-        }
-        assertThat(isUninitialized(profile), is(false));
-        profile.toString(); // test that it is not crashing
+    @Test
+    public void testNotCrashingInlined() {
+        InlinedLongValueProfile profile = createEnabled(InlinedLongValueProfile.class);
+        profile.disable(state);
+        profile.reset(state);
+        assertEquals(profile, profile);
+        assertEquals(profile.hashCode(), profile.hashCode());
+        assertNotNull(profile.toString());
     }
 
-    @Theory
-    public void testProfileThreeObject(long value0, long value1, long value2) {
-        long result0 = profile.profile(value0);
-        long result1 = profile.profile(value1);
-        long result2 = profile.profile(value2);
+    @Test
+    public void testProfileOneObjectInlined() {
+        for (long value : VALUES) {
+            InlinedLongValueProfile profile = createEnabled(InlinedLongValueProfile.class);
+            long result = profile.profile(state, value);
 
-        assertThat(result0, is(value0));
-        assertThat(result1, is(value1));
-        assertThat(result2, is(value2));
-
-        if (value0 == value1 && value1 == value2) {
-            assertThat(getCachedValue(profile), is(value0));
-            assertThat(isGeneric(profile), is(false));
-        } else {
-            assertThat(isGeneric(profile), is(true));
+            assertThat(result, is(value));
+            assertEquals((long) getCachedValue(profile), value);
+            assertThat(isUninitialized(profile), is(false));
+            profile.toString(); // test that it is not crashing
         }
-        assertThat(isUninitialized(profile), is(false));
-        profile.toString(); // test that it is not crashing
+    }
+
+    @Test
+    public void testProfileTwoObjectInlined() {
+        for (long value0 : VALUES) {
+            for (long value1 : VALUES) {
+                InlinedLongValueProfile profile = createEnabled(InlinedLongValueProfile.class);
+                long result0 = profile.profile(state, value0);
+                long result1 = profile.profile(state, value1);
+
+                assertThat(result0, is(value0));
+                assertThat(result1, is(value1));
+
+                if (value0 == value1) {
+                    assertThat(getCachedValue(profile), is(value0));
+                    assertThat(isGeneric(profile), is(false));
+                } else {
+                    assertThat(isGeneric(profile), is(true));
+                }
+                assertThat(isUninitialized(profile), is(false));
+                profile.toString(); // test that it is not crashing
+            }
+        }
+    }
+
+    @Test
+    public void testProfileThreeObjectInlined() {
+        for (long value0 : VALUES) {
+            for (long value1 : VALUES) {
+                for (long value2 : VALUES) {
+                    InlinedLongValueProfile profile = createEnabled(InlinedLongValueProfile.class);
+                    long result0 = profile.profile(state, value0);
+                    long result1 = profile.profile(state, value1);
+                    long result2 = profile.profile(state, value2);
+
+                    assertThat(result0, is(value0));
+                    assertThat(result1, is(value1));
+                    assertThat(result2, is(value2));
+
+                    if (value0 == value1 && value1 == value2) {
+                        assertThat(getCachedValue(profile), is(value0));
+                        assertThat(isGeneric(profile), is(false));
+                    } else {
+                        assertThat(isGeneric(profile), is(true));
+                    }
+                    assertThat(isUninitialized(profile), is(false));
+                    profile.toString(); // test that it is not crashing
+                }
+            }
+        }
     }
 
     @Test
     public void testDisabled() {
         LongValueProfile p = LongValueProfile.getUncached();
-        assertThat(p.profile(VALUE0), is(VALUE0));
-        assertThat(p.profile(VALUE1), is(VALUE1));
-        assertThat(p.profile(VALUE2), is(VALUE2));
-        assertThat(p.profile(VALUE3), is(VALUE3));
+        for (long value : VALUES) {
+            assertThat(p.profile(value), is(value));
+        }
+        p.toString(); // test that it is not crashing
+    }
+
+    @Test
+    public void testDisabledInlined() {
+        InlinedLongValueProfile p = InlinedLongValueProfile.getUncached();
+        for (long value : VALUES) {
+            assertThat(p.profile(state, value), is(value));
+        }
         p.toString(); // test that it is not crashing
     }
 
