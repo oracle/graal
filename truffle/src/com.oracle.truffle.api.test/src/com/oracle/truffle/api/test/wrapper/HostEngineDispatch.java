@@ -162,11 +162,11 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
     }
 
     @Override
-    public RuntimeException toHostException(Object receiver, Throwable throwable) {
+    public RuntimeException hostToGuestException(Object receiver, Throwable throwable) {
         HostEngine engine = (HostEngine) receiver;
         Engine localEngine = engine.localEngine;
         AbstractEngineDispatch dispatch = api.getDispatch(localEngine);
         Object engineReceiver = api.getReceiver(localEngine);
-        return dispatch.toHostException(engineReceiver, throwable);
+        return dispatch.hostToGuestException(engineReceiver, throwable);
     }
 }

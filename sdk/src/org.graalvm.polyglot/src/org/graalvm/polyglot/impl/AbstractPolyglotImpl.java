@@ -594,7 +594,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void shutdown(Object engine);
 
-        public abstract RuntimeException toHostException(Object engineReceiver, Throwable throwable);
+        public abstract RuntimeException hostToGuestException(Object engineReceiver, Throwable throwable);
 
     }
 
@@ -764,7 +764,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void notifyEngineClosed(Object engineReceiver, boolean cancelIfExecuting);
 
-        public abstract RuntimeException toHostException(AbstractHostLanguageService hostLanguageService, Throwable throwable);
+        public abstract RuntimeException hostToGuestException(AbstractHostLanguageService hostLanguageService, Throwable throwable);
     }
 
     public abstract static class AbstractHostLanguageService extends AbstractDispatchClass {

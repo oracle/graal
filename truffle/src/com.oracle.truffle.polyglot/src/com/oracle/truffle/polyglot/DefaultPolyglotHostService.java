@@ -75,7 +75,7 @@ class DefaultPolyglotHostService extends AbstractPolyglotHostService {
     }
 
     @Override
-    public RuntimeException toHostException(AbstractHostLanguageService host, Throwable throwable) {
+    public RuntimeException hostToGuestException(AbstractHostLanguageService host, Throwable throwable) {
         assert !host.isHostException(throwable);
         return host.toHostException(PolyglotFastThreadLocals.getLanguageContext(null, computeLanguageIndexFromStaticIndex(HOST_LANGUAGE_INDEX, LANGUAGE_CONTEXT_OFFSET)), throwable);
     }

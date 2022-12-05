@@ -302,8 +302,7 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
     }
 
     @Override
-    public RuntimeException toHostException(Object engineReceiver, Throwable throwable) {
-        return ((PolyglotEngineImpl) engineReceiver).toHostException(throwable);
+    public RuntimeException hostToGuestException(Object engineReceiver, Throwable throwable) {
+        return PolyglotImpl.hostToGuestException((PolyglotEngineImpl) engineReceiver, throwable);
     }
-
 }

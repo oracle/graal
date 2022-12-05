@@ -731,6 +731,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         return access.newLanguageException(exceptionImpl.getMessage(), getInstance().exceptionDispatch, exceptionImpl);
     }
 
+    static RuntimeException hostToGuestException(PolyglotEngineImpl engine, Throwable t) {
+        return engine.polyglotHostService.hostToGuestException(engine.host, t);
+    }
+
     static boolean isGuestPrimitive(Object receiver) {
         return receiver instanceof Integer || receiver instanceof Double //
                         || receiver instanceof Long || receiver instanceof Float //
