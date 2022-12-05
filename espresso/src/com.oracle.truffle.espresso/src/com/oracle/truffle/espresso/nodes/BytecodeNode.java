@@ -1971,9 +1971,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     // region Bytecode quickening
 
     private char readCPI(int curBCI) {
-        assert (!Bytecodes.isQuickenable(bs.currentBC(curBCI)) || lockIsHeld())
-                        : "Reading the CPI for a quickenable bytecode must be done under the BytecodeNode lock. " +
-                                        "Please obtain the lock, or use readOriginalCPI.";
+        assert (!Bytecodes.isQuickenable(bs.currentBC(curBCI)) ||
+                        lockIsHeld()) : "Reading the CPI for a quickenable bytecode must be done under the BytecodeNode lock. Please obtain the lock, or use readOriginalCPI.";
         return bs.readCPI(curBCI);
     }
 

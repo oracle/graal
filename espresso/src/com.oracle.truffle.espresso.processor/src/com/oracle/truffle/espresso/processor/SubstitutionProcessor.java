@@ -744,6 +744,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         return classBuilder;
     }
 
+    @SuppressWarnings("fallthrough")
     private ClassBuilder generateInvokeInlined(ClassBuilder classBuilder, String className, List<String> parameterTypeName, SubstitutionHelper helper) {
         SubstitutorHelper h = (SubstitutorHelper) helper;
         MethodBuilder invoke = new MethodBuilder("invokeInlined") //
@@ -803,7 +804,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         return classBuilder.withMethod(invoke);
     }
 
-    static private String extractResultToPush(String invocation, SubstitutorHelper h) {
+    private static String extractResultToPush(String invocation, SubstitutorHelper h) {
         if (h.returnType.equals("Z")) {
             return "(" + invocation + ") ? 1 : 0";
         } else {
