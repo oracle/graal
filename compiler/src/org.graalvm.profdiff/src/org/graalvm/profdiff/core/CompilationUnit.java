@@ -205,7 +205,7 @@ public class CompilationUnit {
         treePair.getInliningTree().preprocess(writer.getVerbosityLevel());
         treePair.getOptimizationTree().preprocess(writer.getVerbosityLevel());
         if (optimizationContextTreeEnabled) {
-            OptimizationContextTree.createFrom(treePair.getInliningTree(), treePair.getOptimizationTree()).getRoot().writeRecursive(writer);
+            OptimizationContextTree.createFrom(treePair.getInliningTree(), treePair.getOptimizationTree()).write(writer);
         } else {
             treePair.getInliningTree().write(writer);
             treePair.getOptimizationTree().write(writer);

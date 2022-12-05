@@ -34,6 +34,7 @@ import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
+import org.graalvm.profdiff.util.Writer;
 
 /**
  * An optimization context tree is an inlining tree extended with optimizations placed in their
@@ -88,6 +89,24 @@ public final class OptimizationContextTree {
      */
     public OptimizationContextTreeNode getRoot() {
         return root;
+    }
+
+    /**
+     * Writes the optimization-context tree with a header in preorder using the destination writer.
+     *
+     * @param writer the destination writer
+     */
+    public void write(Writer writer) {
+        if (root == null) {
+            return;
+        }
+        root.forEach(node -> {
+            node.writeHead(writer);
+            if (node.getOriginalInliningTreeNode() != null) {
+                node.getOriginalInliningTreeNode().writeReceiverTypeProfile(writer, null);
+            }
+            writer.increaseIndent();
+        }, node -> writer.decreaseIndent());
     }
 
     /**
