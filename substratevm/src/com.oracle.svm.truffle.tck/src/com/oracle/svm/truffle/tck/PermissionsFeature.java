@@ -110,7 +110,7 @@ public class PermissionsFeature implements Feature {
                         null);
 
         @Option(help = "Comma separated list of exclude files.") public static final HostedOptionKey<LocatableMultiOptionValue.Paths> TruffleTCKPermissionsExcludeFiles = new HostedOptionKey<>(
-                        new LocatableMultiOptionValue.Paths());
+                        LocatableMultiOptionValue.Paths.commaSeparated());
 
         @Option(help = "Maximal depth of a stack trace.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleTCKPermissionsMaxStackTraceDepth = new HostedOptionKey<>(
                         -1);

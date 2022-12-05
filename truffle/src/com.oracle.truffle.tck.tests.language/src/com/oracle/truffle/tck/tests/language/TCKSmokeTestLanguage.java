@@ -112,6 +112,7 @@ final class TCKSmokeTestLanguage extends TruffleLanguage<TCKSmokeTestLanguageCon
             doPrivilegedCallBehindBoundary();
         }
 
+        @SuppressWarnings("deprecation" /* JEP-411 */)
         static void doPrivilegedCall() {
             System.getSecurityManager().checkPropertiesAccess();
         }
@@ -131,10 +132,15 @@ final class TCKSmokeTestLanguage extends TruffleLanguage<TCKSmokeTestLanguageCon
                 f.setAccessible(true);
                 UNSAFE = (Unsafe) f.get(null);
                 f = Integer.class.getDeclaredField("value");
-                VALUE_OFFSET = UNSAFE.objectFieldOffset(f);
+                VALUE_OFFSET = getFieldOffset(f);
             } catch (ReflectiveOperationException e) {
                 throw new RuntimeException(e);
             }
+        }
+
+        @SuppressWarnings("deprecation"/* JDK-8277863 */)
+        private static long getFieldOffset(Field filed) {
+            return UNSAFE.objectFieldOffset(filed);
         }
 
         @Override

@@ -1230,7 +1230,7 @@ suite = {
       "allowsJavadocWarnings": True,
       "testDistribution" : True,
       "maven": False,
-    },      
+    },
 
     "TRUFFLE_TCK_INSTRUMENTATION" : {
       "subDir" : "src",
