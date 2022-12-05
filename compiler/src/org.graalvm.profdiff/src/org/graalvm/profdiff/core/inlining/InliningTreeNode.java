@@ -150,15 +150,22 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
             return false;
         }
         InliningTreeNode other = (InliningTreeNode) object;
-        return bci == other.bci && Objects.equals(getName(), other.getName()) && positive == other.positive &&
-                        Objects.equals(reason, other.reason) && getChildren().equals(other.getChildren());
+        return bci == other.bci && isAbstract == other.isAbstract && positive == other.positive &&
+                        Objects.equals(getName(), other.getName()) &&
+                        Objects.equals(reason, other.reason) &&
+                        Objects.equals(receiverTypeProfile, other.receiverTypeProfile) &&
+                        getChildren().equals(other.getChildren());
     }
 
     @Override
     public int hashCode() {
-        int result = getName() == null ? 0 : getName().hashCode();
-        result = 31 * result + bci;
-        result = 31 * result + (getChildren() == null ? 0 : getChildren().hashCode());
+        int result = bci;
+        result = 31 * result + (getName() == null ? 0 : getName().hashCode());
+        result = 31 * result + getChildren().hashCode();
+        result = 31 * result + (positive ? 1 : 0);
+        result = 31 * result + (reason != null ? reason.hashCode() : 0);
+        result = 31 * result + (isAbstract ? 1 : 0);
+        result = 31 * result + (receiverTypeProfile != null ? receiverTypeProfile.hashCode() : 0);
         return result;
     }
 

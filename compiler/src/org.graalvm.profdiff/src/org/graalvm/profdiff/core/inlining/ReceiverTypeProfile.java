@@ -25,6 +25,7 @@
 package org.graalvm.profdiff.core.inlining;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.graalvm.profdiff.util.Writer;
 
@@ -55,6 +56,29 @@ public class ReceiverTypeProfile {
             this.typeName = typeName;
             this.probability = probability;
             this.concreteMethodName = concreteMethodName;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof ProfiledType)) {
+                return false;
+            }
+
+            ProfiledType that = (ProfiledType) o;
+            return Double.compare(that.probability, probability) == 0 && Objects.equals(typeName, that.typeName) &&
+                            Objects.equals(concreteMethodName, that.concreteMethodName);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = typeName != null ? typeName.hashCode() : 0;
+            long temp = Double.doubleToLongBits(probability);
+            result = 31 * result + (int) (temp ^ (temp >>> 32));
+            result = 31 * result + (concreteMethodName != null ? concreteMethodName.hashCode() : 0);
+            return result;
         }
 
         /**
@@ -127,5 +151,25 @@ public class ReceiverTypeProfile {
                 writer.writeln();
             }
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof ReceiverTypeProfile)) {
+            return false;
+        }
+
+        ReceiverTypeProfile that = (ReceiverTypeProfile) o;
+        return isMature == that.isMature && Objects.equals(profiledTypes, that.profiledTypes);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = (isMature ? 1 : 0);
+        result = 31 * result + (profiledTypes != null ? profiledTypes.hashCode() : 0);
+        return result;
     }
 }

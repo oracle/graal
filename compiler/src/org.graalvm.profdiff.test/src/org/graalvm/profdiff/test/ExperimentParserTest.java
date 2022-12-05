@@ -25,7 +25,6 @@
 package org.graalvm.profdiff.test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 import java.io.BufferedReader;
@@ -43,6 +42,7 @@ import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.VerbosityLevel;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
+import org.graalvm.profdiff.core.inlining.ReceiverTypeProfile;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.parser.experiment.ExperimentFiles;
@@ -151,13 +151,17 @@ public class ExperimentParserTest {
                     break;
                 }
                 case "2": {
-                    assertEquals("org.example.myMethod(org.example.Foo, org.example.Class$Context)",
+                    assertEquals("Klass.someMethod()",
                                     compilationUnit.getMethod().getMethodName());
+                    InliningTreeNode inliningTreeRoot = new InliningTreeNode(compilationUnit.getMethod().getMethodName(), -1, true, null, false, null);
+                    ReceiverTypeProfile receiverTypeProfile = new ReceiverTypeProfile(true, List.of(new ReceiverTypeProfile.ProfiledType("KlassImpl", 1.0, "KlassImpl.abstractMethod()")));
+                    inliningTreeRoot.addChild(new InliningTreeNode("Klass.abstractMethod()", 1, false, null, true, receiverTypeProfile));
+                    assertEquals(inliningTreeRoot, trees.getInliningTree().getRoot());
                     OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
                     rootPhase.addChild(new Optimization(
                                     "LoopTransformation",
                                     "PartialUnroll",
-                                    EconomicMap.of("org.example.myMethod(org.example.Foo, org.example.Class$Context)", 2),
+                                    EconomicMap.of("Klass.someMethod()", 2),
                                     EconomicMap.of("unrollFactor", 1)));
                     rootPhase.addChild(new Optimization(
                                     "LoopTransformation",
@@ -165,7 +169,6 @@ public class ExperimentParserTest {
                                     null,
                                     EconomicMap.of("unrollFactor", 2)));
                     assertEquals(rootPhase, trees.getOptimizationTree().getRoot());
-                    assertNull(trees.getInliningTree().getRoot());
                     break;
                 }
                 default:
