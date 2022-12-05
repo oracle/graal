@@ -255,8 +255,8 @@ public final class Target_sun_misc_Unsafe {
                     field = holder.getMirrorKlass(meta).lookupStaticFieldTable(slot);
                 } else {
                     assert holder.isStaticStorage();
+                    field = holder.getKlass().lookupStaticFieldTable(slot);
                 }
-                field = holder.getKlass().lookupStaticFieldTable(slot);
             } else {
                 field = holder.getKlass().lookupFieldTable(slot);
             }
