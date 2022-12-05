@@ -305,11 +305,13 @@ abstract class SerializeArgumentNode extends Node {
             }
         }
 
+        @SuppressWarnings("static-method")
         @ExportMessage
         boolean hasBufferElements() {
             return true;
         }
 
+        @SuppressWarnings("static-method")
         @ExportMessage
         boolean isBufferWritable() {
             return true;
@@ -361,11 +363,13 @@ abstract class SerializeArgumentNode extends Node {
             buffer.putDouble(value);
         }
 
+        @SuppressWarnings({"static-method", "unused"})
         @ExportMessage
         byte readBufferByte(long offset) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
         }
 
+        @SuppressWarnings({"static-method", "unused"})
         @ExportMessage(name = "readBufferShort")
         @ExportMessage(name = "readBufferInt")
         @ExportMessage(name = "readBufferLong")

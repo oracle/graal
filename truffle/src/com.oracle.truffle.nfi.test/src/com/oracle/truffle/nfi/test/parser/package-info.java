@@ -3,7 +3,8 @@
  * ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
  */
 
-@SuppressPackageWarnings({"truffle-inlining", "truffle-neverdefault"})
-package com.oracle.truffle.nfi.test;
+// TODO GR-42818 fix warnings
+@SuppressPackageWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault"})
+package com.oracle.truffle.nfi.test.parser;
 
 import com.oracle.truffle.api.dsl.SuppressPackageWarnings;
