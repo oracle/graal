@@ -171,7 +171,6 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     public NodeClass(Class<T> clazz, NodeClass<? super T> superNodeClass) {
         this(clazz, superNodeClass, new FieldsScanner.DefaultCalcOffset(), null, 0);
-
     }
 
     @SuppressWarnings("try")
@@ -973,12 +972,15 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         return isLeafNode;
     }
 
-    public boolean isMemoryKill() {
-        return isMemoryKill;
-    }
-
     public int getLeafId() {
         return this.leafId;
+    }
+
+    /**
+     * @return {@code true} if the node implements {@link MemoryKillMarker}
+     */
+    public boolean isMemoryKill() {
+        return isMemoryKill;
     }
 
     public NodeClass<? super T> getSuperNodeClass() {
