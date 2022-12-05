@@ -726,9 +726,7 @@ public class OptimizationLogImpl implements OptimizationLog {
     }
 
     private EconomicMap<String, Object> inliningTreeAsJSONMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {
-        if (graph.getInliningLog() == null) {
-            return null;
-        }
+        assert graph.getInliningLog() != null;
         EconomicMap<InliningLog.Callsite, EconomicMap<String, Object>> replacements = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
         return callsiteAsJSONMap(graph.getInliningLog().getRootCallsite(), true, null, methodNameFormatter, replacements);
     }

@@ -133,23 +133,19 @@ public class ExperimentMatcher {
     private void matchInliningTrees(InliningTree inliningTree1, InliningTree inliningTree2) {
         InliningTreeNode inliningTreeRoot1 = inliningTree1.getRoot();
         InliningTreeNode inliningTreeRoot2 = inliningTree2.getRoot();
-        if (inliningTreeRoot1 != null && inliningTreeRoot2 != null) {
-            writer.writeln("Inlining tree matching");
-            inliningTree1.preprocess(writer.getVerbosityLevel());
-            inliningTree2.preprocess(writer.getVerbosityLevel());
-            EditScript<InliningTreeNode> inliningTreeMatching = inliningTreeMatcher.match(inliningTreeRoot1, inliningTreeRoot2);
-            DeltaTree<InliningTreeNode> inliningDeltaTree = DeltaTree.fromEditScript(inliningTreeMatching);
-            if (writer.getVerbosityLevel().shouldShowOnlyDiff()) {
-                inliningDeltaTree.pruneIdentities();
-            }
-            inliningDeltaTree.expand();
-            writer.increaseIndent();
-            InliningDeltaTreeWriterVisitor inliningDeltaTreeWriter = new InliningDeltaTreeWriterVisitor(writer);
-            inliningDeltaTree.accept(inliningDeltaTreeWriter);
-            writer.decreaseIndent();
-        } else {
-            writer.writeln("Inlining trees are not available");
+        writer.writeln("Inlining tree matching");
+        inliningTree1.preprocess(writer.getVerbosityLevel());
+        inliningTree2.preprocess(writer.getVerbosityLevel());
+        EditScript<InliningTreeNode> inliningTreeMatching = inliningTreeMatcher.match(inliningTreeRoot1, inliningTreeRoot2);
+        DeltaTree<InliningTreeNode> inliningDeltaTree = DeltaTree.fromEditScript(inliningTreeMatching);
+        if (writer.getVerbosityLevel().shouldShowOnlyDiff()) {
+            inliningDeltaTree.pruneIdentities();
         }
+        inliningDeltaTree.expand();
+        writer.increaseIndent();
+        InliningDeltaTreeWriterVisitor inliningDeltaTreeWriter = new InliningDeltaTreeWriterVisitor(writer);
+        inliningDeltaTree.accept(inliningDeltaTreeWriter);
+        writer.decreaseIndent();
     }
 
     /**
@@ -179,10 +175,6 @@ public class ExperimentMatcher {
      * @param treePair2 the tree pair from the second experiment
      */
     private void createOptimizationContextTreeAndMatch(CompilationUnit.TreePair treePair1, CompilationUnit.TreePair treePair2) {
-        if (treePair1.getInliningTree().getRoot() == null || treePair2.getInliningTree().getRoot() == null) {
-            writer.writeln("Inlining trees are not available");
-            return;
-        }
         treePair1.getInliningTree().preprocess(writer.getVerbosityLevel());
         treePair2.getInliningTree().preprocess(writer.getVerbosityLevel());
         treePair1.getOptimizationTree().preprocess(writer.getVerbosityLevel());

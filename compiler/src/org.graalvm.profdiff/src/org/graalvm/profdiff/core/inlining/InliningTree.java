@@ -38,7 +38,6 @@ import org.graalvm.profdiff.util.Writer;
  *
  * Consider the following set of methods:
  *
- * @formatter:off
  * <pre>
  *     void a() { b(); c(); }
  *     void b() { }
@@ -71,7 +70,6 @@ import org.graalvm.profdiff.util.Writer;
  *             d() at bci 0
  *             e() at bci 1
  * </pre>
- * @formatter:on
  */
 public class InliningTree {
     /**
@@ -122,10 +120,8 @@ public class InliningTree {
      * @param writer the destination writer
      */
     public void write(Writer writer) {
-        if (root == null) {
-            writer.writeln("Inlining tree not available");
-        } else {
-            writer.writeln("Inlining tree");
+        writer.writeln("Inlining tree");
+        if (root != null) {
             writer.increaseIndent();
             root.forEach(node -> {
                 node.writeHead(writer);

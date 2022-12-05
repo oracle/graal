@@ -65,8 +65,7 @@ public class CompilationUnitTreeParser implements CompilationUnit.TreeLoader {
         try {
             ExperimentJSONParser parser = new ExperimentJSONParser(experimentId, fileView);
             ExperimentJSONParser.JSONMap map = parser.parse().asMap();
-            ExperimentJSONParser.JSONLiteral inliningTreeNode = map.property(OptimizationLogImpl.INLINING_TREE_PROPERTY);
-            InliningTree inliningTree = new InliningTree(inliningTreeNode.isNull() ? null : parseInliningTreeNode(inliningTreeNode.asMap()));
+            InliningTree inliningTree = new InliningTree(parseInliningTreeNode(map.property(OptimizationLogImpl.INLINING_TREE_PROPERTY).asMap()));
             OptimizationTree optimizationTree = new OptimizationTree(parseOptimizationPhase(map.property(OptimizationLogImpl.OPTIMIZATION_TREE_PROPERTY).asMap()));
             return new CompilationUnit.TreePair(optimizationTree, inliningTree);
         } catch (IOException e) {
