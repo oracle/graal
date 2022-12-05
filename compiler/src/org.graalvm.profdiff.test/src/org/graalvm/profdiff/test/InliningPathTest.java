@@ -25,6 +25,8 @@
 package org.graalvm.profdiff.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
@@ -86,5 +88,36 @@ public class InliningPathTest {
                         new InliningPath.PathElement("b()", 1),
                         new InliningPath.PathElement("d()", 3)));
         assertEquals(expected, actual);
+    }
+
+    @Test
+    public void prefixWorks() {
+        InliningPath path = new InliningPath(List.of(
+                        new InliningPath.PathElement("a()", -1),
+                        new InliningPath.PathElement("b()", 1),
+                        new InliningPath.PathElement("c()", 2)));
+        List<InliningPath> prefixes = List.of(
+                        InliningPath.EMPTY,
+                        new InliningPath(List.of(new InliningPath.PathElement("a()", -1))),
+                        new InliningPath(List.of(
+                                        new InliningPath.PathElement("a()", -1),
+                                        new InliningPath.PathElement("b()", 1))),
+                        new InliningPath(List.of(
+                                        new InliningPath.PathElement("a()", -1),
+                                        new InliningPath.PathElement("b()", 1),
+                                        new InliningPath.PathElement("c()", 2))));
+        prefixes.forEach(prefix -> assertTrue(prefix.isPrefixOf(path)));
+
+        List<InliningPath> notPrefixes = List.of(
+                        new InliningPath(List.of(new InliningPath.PathElement("b()", -1))),
+                        new InliningPath(List.of(
+                                        new InliningPath.PathElement("a()", -1),
+                                        new InliningPath.PathElement("b()", 2))),
+                        new InliningPath(List.of(
+                                        new InliningPath.PathElement("a()", -1),
+                                        new InliningPath.PathElement("b()", 1),
+                                        new InliningPath.PathElement("c()", 2),
+                                        new InliningPath.PathElement("d()", 3))));
+        notPrefixes.forEach(prefix -> assertFalse(prefix.isPrefixOf(path)));
     }
 }
