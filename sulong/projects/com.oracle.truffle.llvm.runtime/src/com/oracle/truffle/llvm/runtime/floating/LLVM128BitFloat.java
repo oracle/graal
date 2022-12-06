@@ -38,15 +38,8 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
 
     @CompilerDirectives.TruffleBoundary
     public static String toLLVMString(LLVM128BitFloat value) {
-        /*if (value.isQNaN()) {
-            return "QNaN";
-
-        } else if (value.isSNaN()) {
-            return "SNaN";
-
-        } else*/ if (value.isInfinity()) {
+        if (value.isInfinity()) {
             return "INF";
-
         } else {
             long exponent = value.getExponent();
             if (value.getSign()) {
