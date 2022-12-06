@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.graalvm.compiler.replacements.nodes.CalcStringAttributesNode;
-import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
