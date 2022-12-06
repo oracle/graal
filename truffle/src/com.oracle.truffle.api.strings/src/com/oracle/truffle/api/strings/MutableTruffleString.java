@@ -759,22 +759,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
         }
 
         @Specialization
-        static String doString(String v) {
-            return v;
-        }
-
-        @Specialization
         static NativePointer doNativePointer(NativePointer v) {
-            return v;
-        }
-
-        @Specialization
-        static LazyLong doLazyLong(LazyLong v) {
-            return v;
-        }
-
-        @Specialization
-        static LazyConcat doLazyConcat(LazyConcat v) {
             return v;
         }
 

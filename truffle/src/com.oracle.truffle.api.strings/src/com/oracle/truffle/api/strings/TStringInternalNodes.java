@@ -141,50 +141,6 @@ final class TStringInternalNodes {
         }
     }
 
-    abstract static class EncodingProfile extends AbstractInternalNode {
-
-        abstract Encoding execute(Node node, Encoding encoding);
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "encoding == cachedEncoding", limit = "1")
-        static Encoding doProfiled(Encoding encoding, @Cached("encoding") Encoding cachedEncoding) {
-            return cachedEncoding;
-        }
-
-        @Specialization(replaces = "doProfiled")
-        static Encoding doGeneric(Encoding encoding) {
-            return encoding;
-        }
-
-    }
-
-    abstract static class CreateSubstringNode extends AbstractInternalNode {
-
-        abstract TruffleString execute(Node node, AbstractTruffleString a, Object array, int offset, int length, int stride, Encoding encoding, int codeRange);
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "compaction == cachedCompaction", limit = Stride.STRIDE_CACHE_LIMIT, unroll = Stride.STRIDE_UNROLL)
-        static TruffleString doCached(Node node, AbstractTruffleString a, Object array, int offset, int length, int stride, Encoding encoding,
-                        int codeRange,
-                        @Bind("fromStride(stride)") CompactionLevel compaction,
-                        @Cached("compaction") CompactionLevel cachedCompaction,
-                        @Cached EncodingProfile cachedEncoding,
-                        @Cached CalcStringAttributesNode calcAttributesNode) {
-            return createString(node, a, array, offset, length, cachedCompaction.getStride(), cachedEncoding.execute(node, encoding), codeRange, calcAttributesNode);
-        }
-
-        private static TruffleString createString(Node node, AbstractTruffleString a, Object array, int offset, int length, int stride, Encoding encoding, int codeRange,
-                        CalcStringAttributesNode calcAttributesNode) {
-            long attrs = calcAttributesNode.execute(node, a, array, offset, length, stride, encoding, 0, codeRange);
-            int newStride = Stride.fromCodeRange(StringAttributes.getCodeRange(attrs), encoding);
-            byte[] newBytes = new byte[length << newStride];
-            TStringOps.arraycopyWithStride(node,
-                            array, offset, stride, 0,
-                            newBytes, 0, newStride, 0, length);
-            return TruffleString.createFromByteArray(newBytes, length, newStride, encoding, StringAttributes.getCodePointLength(attrs), StringAttributes.getCodeRange(attrs));
-        }
-    }
-
     abstract static class FromBufferWithStringCompactionNode extends AbstractInternalNode {
 
         abstract TruffleString execute(Node node, Object arrayA, int offsetA, int byteLength, Encoding encoding, boolean copy, boolean isCacheHead);
