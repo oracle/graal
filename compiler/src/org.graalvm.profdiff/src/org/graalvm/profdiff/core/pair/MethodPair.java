@@ -28,7 +28,7 @@ import java.util.stream.StreamSupport;
 
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.Method;
-import org.graalvm.profdiff.util.Writer;
+import org.graalvm.profdiff.core.Writer;
 import org.graalvm.util.CollectionsUtil;
 
 /**

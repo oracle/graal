@@ -31,7 +31,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.profdiff.util.Writer;
 
 /**
  * Represents a named node in a tree.

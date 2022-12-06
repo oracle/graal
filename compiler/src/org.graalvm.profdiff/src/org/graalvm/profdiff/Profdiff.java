@@ -30,15 +30,15 @@ import org.graalvm.profdiff.command.JITJITCommand;
 import org.graalvm.profdiff.command.ReportCommand;
 import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
 import org.graalvm.profdiff.core.OptionValues;
-import org.graalvm.profdiff.parser.args.BooleanArgument;
-import org.graalvm.profdiff.parser.args.CommandGroup;
-import org.graalvm.profdiff.parser.args.DoubleArgument;
-import org.graalvm.profdiff.parser.args.IntegerArgument;
-import org.graalvm.profdiff.parser.args.InvalidArgumentException;
-import org.graalvm.profdiff.parser.args.MissingArgumentException;
-import org.graalvm.profdiff.parser.args.ProgramArgumentParser;
-import org.graalvm.profdiff.parser.args.UnknownArgumentException;
-import org.graalvm.profdiff.util.StdoutWriter;
+import org.graalvm.profdiff.args.BooleanArgument;
+import org.graalvm.profdiff.args.CommandGroup;
+import org.graalvm.profdiff.args.DoubleArgument;
+import org.graalvm.profdiff.args.IntegerArgument;
+import org.graalvm.profdiff.args.InvalidArgumentException;
+import org.graalvm.profdiff.args.MissingArgumentException;
+import org.graalvm.profdiff.args.ProgramArgumentParser;
+import org.graalvm.profdiff.args.UnknownArgumentException;
+import org.graalvm.profdiff.core.StdoutWriter;
 
 public class Profdiff {
     private static class ProgramArguments {

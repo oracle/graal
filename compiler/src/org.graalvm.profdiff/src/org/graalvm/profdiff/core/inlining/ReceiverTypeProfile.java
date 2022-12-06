@@ -27,7 +27,7 @@ package org.graalvm.profdiff.core.inlining;
 import java.util.List;
 import java.util.Objects;
 
-import org.graalvm.profdiff.util.Writer;
+import org.graalvm.profdiff.core.Writer;
 
 /**
  * Receiver-type profile information for a concrete inlining tree node.

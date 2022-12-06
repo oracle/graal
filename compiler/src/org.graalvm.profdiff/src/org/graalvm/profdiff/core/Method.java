@@ -29,7 +29,6 @@ import java.util.Comparator;
 import java.util.List;
 
 import org.graalvm.profdiff.core.inlining.InliningPath;
-import org.graalvm.profdiff.util.Writer;
 
 /**
  * Represents a named Java method, which may have been compiled by Graal several times. The class is

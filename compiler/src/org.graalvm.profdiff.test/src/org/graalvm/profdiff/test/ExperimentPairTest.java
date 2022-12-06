@@ -40,7 +40,7 @@ import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.pair.CompilationUnitPair;
 import org.graalvm.profdiff.core.pair.ExperimentPair;
 import org.graalvm.profdiff.core.pair.MethodPair;
-import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
+import org.graalvm.profdiff.parser.ExperimentParserError;
 import org.junit.Test;
 
 public class ExperimentPairTest {

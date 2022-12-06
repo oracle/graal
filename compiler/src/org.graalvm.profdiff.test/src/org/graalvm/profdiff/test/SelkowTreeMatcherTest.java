@@ -28,9 +28,9 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
-import org.graalvm.profdiff.matching.tree.EditScript;
-import org.graalvm.profdiff.matching.tree.OptimizationTreeEditPolicy;
-import org.graalvm.profdiff.matching.tree.SelkowTreeMatcher;
+import org.graalvm.profdiff.diff.EditScript;
+import org.graalvm.profdiff.diff.OptimizationTreeEditPolicy;
+import org.graalvm.profdiff.diff.SelkowTreeMatcher;
 import org.junit.Assert;
 import org.junit.Test;
 

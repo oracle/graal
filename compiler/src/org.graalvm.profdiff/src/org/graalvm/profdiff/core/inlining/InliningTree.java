@@ -29,7 +29,7 @@ import java.util.List;
 
 import org.graalvm.profdiff.core.OptionValues;
 import org.graalvm.profdiff.core.optimization.Optimization;
-import org.graalvm.profdiff.util.Writer;
+import org.graalvm.profdiff.core.Writer;
 
 /**
  * The inlining tree of a compilation unit. Each {@link InliningTreeNode node} in the tree

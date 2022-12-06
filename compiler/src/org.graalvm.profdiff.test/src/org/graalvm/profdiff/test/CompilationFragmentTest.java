@@ -38,7 +38,7 @@ import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
 import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
-import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
+import org.graalvm.profdiff.parser.ExperimentParserError;
 import org.junit.Test;
 
 public class CompilationFragmentTest {

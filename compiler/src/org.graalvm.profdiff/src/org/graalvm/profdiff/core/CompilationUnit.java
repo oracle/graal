@@ -26,8 +26,7 @@ package org.graalvm.profdiff.core;
 
 import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
-import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
-import org.graalvm.profdiff.util.Writer;
+import org.graalvm.profdiff.parser.ExperimentParserError;
 
 /**
  * Represents an executed Graal compilation of a method.

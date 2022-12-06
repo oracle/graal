@@ -27,11 +27,11 @@ package org.graalvm.profdiff.command;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.pair.ExperimentPair;
-import org.graalvm.profdiff.parser.args.ArgumentParser;
-import org.graalvm.profdiff.parser.args.StringArgument;
-import org.graalvm.profdiff.parser.experiment.ExperimentParser;
-import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
-import org.graalvm.profdiff.util.Writer;
+import org.graalvm.profdiff.args.ArgumentParser;
+import org.graalvm.profdiff.args.StringArgument;
+import org.graalvm.profdiff.parser.ExperimentParser;
+import org.graalvm.profdiff.parser.ExperimentParserError;
+import org.graalvm.profdiff.core.Writer;
 
 /**
  * Compares two JIT-compiled experiments with proftool data.

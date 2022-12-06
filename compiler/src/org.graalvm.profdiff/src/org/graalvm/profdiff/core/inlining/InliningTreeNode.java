@@ -30,7 +30,7 @@ import java.util.Objects;
 
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.TreeNode;
-import org.graalvm.profdiff.util.Writer;
+import org.graalvm.profdiff.core.Writer;
 
 /**
  * Represents a method in the inlining tree, which is a candidate for inlining. The method might

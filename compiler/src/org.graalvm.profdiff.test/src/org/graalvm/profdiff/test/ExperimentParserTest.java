@@ -44,11 +44,11 @@ import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.inlining.ReceiverTypeProfile;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
-import org.graalvm.profdiff.parser.experiment.ExperimentFiles;
-import org.graalvm.profdiff.parser.experiment.ExperimentParser;
-import org.graalvm.profdiff.parser.experiment.FileView;
-import org.graalvm.profdiff.util.StdoutWriter;
-import org.graalvm.profdiff.util.Writer;
+import org.graalvm.profdiff.parser.ExperimentFiles;
+import org.graalvm.profdiff.parser.ExperimentParser;
+import org.graalvm.profdiff.parser.FileView;
+import org.graalvm.profdiff.core.StdoutWriter;
+import org.graalvm.profdiff.core.Writer;
 import org.junit.Test;
 
 public class ExperimentParserTest {

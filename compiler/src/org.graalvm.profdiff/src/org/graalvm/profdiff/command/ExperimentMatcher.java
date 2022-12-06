@@ -34,17 +34,17 @@ import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
 import org.graalvm.profdiff.core.pair.CompilationUnitPair;
 import org.graalvm.profdiff.core.pair.ExperimentPair;
 import org.graalvm.profdiff.core.pair.MethodPair;
-import org.graalvm.profdiff.matching.tree.DeltaTree;
-import org.graalvm.profdiff.matching.tree.DeltaTreeWriterVisitor;
-import org.graalvm.profdiff.matching.tree.EditScript;
-import org.graalvm.profdiff.matching.tree.InliningDeltaTreeWriterVisitor;
-import org.graalvm.profdiff.matching.tree.InliningTreeEditPolicy;
-import org.graalvm.profdiff.matching.tree.OptimizationContextTreeEditPolicy;
-import org.graalvm.profdiff.matching.tree.OptimizationContextTreeWriterVisitor;
-import org.graalvm.profdiff.matching.tree.OptimizationTreeEditPolicy;
-import org.graalvm.profdiff.matching.tree.SelkowTreeMatcher;
-import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
-import org.graalvm.profdiff.util.Writer;
+import org.graalvm.profdiff.diff.DeltaTree;
+import org.graalvm.profdiff.diff.DeltaTreeWriterVisitor;
+import org.graalvm.profdiff.diff.EditScript;
+import org.graalvm.profdiff.diff.InliningDeltaTreeWriterVisitor;
+import org.graalvm.profdiff.diff.InliningTreeEditPolicy;
+import org.graalvm.profdiff.diff.OptimizationContextTreeEditPolicy;
+import org.graalvm.profdiff.diff.OptimizationContextTreeWriterVisitor;
+import org.graalvm.profdiff.diff.OptimizationTreeEditPolicy;
+import org.graalvm.profdiff.diff.SelkowTreeMatcher;
+import org.graalvm.profdiff.parser.ExperimentParserError;
+import org.graalvm.profdiff.core.Writer;
 
 /**
  * Matches and compares the methods and compilations of two experiments, writing the results

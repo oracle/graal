@@ -38,7 +38,7 @@ import org.graalvm.profdiff.core.Method;
 import org.graalvm.profdiff.core.inlining.InliningPath;
 import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
-import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
+import org.graalvm.profdiff.parser.ExperimentParserError;
 import org.graalvm.util.CollectionsUtil;
 
 /**

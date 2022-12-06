@@ -27,7 +27,7 @@ package org.graalvm.profdiff.core;
 import org.graalvm.profdiff.core.inlining.InliningPath;
 import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
-import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
+import org.graalvm.profdiff.parser.ExperimentParserError;
 
 /**
  * Represents a fragment of a full compilation unit in terms of optimization scope.

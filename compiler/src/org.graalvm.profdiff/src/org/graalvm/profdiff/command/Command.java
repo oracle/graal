@@ -24,9 +24,9 @@
  */
 package org.graalvm.profdiff.command;
 
-import org.graalvm.profdiff.parser.args.ArgumentParser;
-import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
-import org.graalvm.profdiff.util.Writer;
+import org.graalvm.profdiff.args.ArgumentParser;
+import org.graalvm.profdiff.parser.ExperimentParserError;
+import org.graalvm.profdiff.core.Writer;
 
 /**
  * Represents one use case of the program that can be invoked from the command line using

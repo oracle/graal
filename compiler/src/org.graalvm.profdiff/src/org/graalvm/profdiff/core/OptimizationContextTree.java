@@ -34,7 +34,6 @@ import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
-import org.graalvm.profdiff.util.Writer;
 
 /**
  * An optimization context tree is an inlining tree extended with optimizations placed in their

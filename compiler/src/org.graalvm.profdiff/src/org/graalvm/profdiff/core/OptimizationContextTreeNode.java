@@ -26,7 +26,6 @@ package org.graalvm.profdiff.core;
 
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.optimization.Optimization;
-import org.graalvm.profdiff.util.Writer;
 
 import java.util.Objects;
 

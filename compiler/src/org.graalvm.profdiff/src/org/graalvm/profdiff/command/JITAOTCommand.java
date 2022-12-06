@@ -28,11 +28,11 @@ import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.pair.ExperimentPair;
-import org.graalvm.profdiff.parser.args.ArgumentParser;
-import org.graalvm.profdiff.parser.args.StringArgument;
-import org.graalvm.profdiff.parser.experiment.ExperimentParser;
-import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
-import org.graalvm.profdiff.util.Writer;
+import org.graalvm.profdiff.args.ArgumentParser;
+import org.graalvm.profdiff.args.StringArgument;
+import org.graalvm.profdiff.parser.ExperimentParser;
+import org.graalvm.profdiff.parser.ExperimentParserError;
+import org.graalvm.profdiff.core.Writer;
 
 /**
  * Compares a JIT-compiled experiment with an AOT compilation. Uses proftool data of the JIT

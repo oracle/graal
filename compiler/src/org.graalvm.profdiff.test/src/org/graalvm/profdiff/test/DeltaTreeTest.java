@@ -28,9 +28,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.profdiff.core.TreeNode;
-import org.graalvm.profdiff.matching.tree.DeltaTree;
-import org.graalvm.profdiff.matching.tree.DeltaTreeNode;
-import org.graalvm.profdiff.matching.tree.EditScript;
+import org.graalvm.profdiff.diff.DeltaTree;
+import org.graalvm.profdiff.diff.DeltaTreeNode;
+import org.graalvm.profdiff.diff.EditScript;
 import org.junit.Assert;
 import org.junit.Test;
 

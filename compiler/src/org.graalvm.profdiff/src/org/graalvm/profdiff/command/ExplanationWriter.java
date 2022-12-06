@@ -25,8 +25,8 @@
 package org.graalvm.profdiff.command;
 
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
-import org.graalvm.profdiff.matching.tree.EditScript;
-import org.graalvm.profdiff.util.Writer;
+import org.graalvm.profdiff.diff.EditScript;
+import org.graalvm.profdiff.core.Writer;
 
 /**
  * Writes an explanation of the output. Explains only what is printed, i.e., the output depends on

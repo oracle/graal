@@ -29,7 +29,7 @@ import org.graalvm.collections.EconomicMapUtil;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.profdiff.core.inlining.InliningPath;
-import org.graalvm.profdiff.util.Writer;
+import org.graalvm.profdiff.core.Writer;
 
 /**
  * Represents an immutable optimization (applied graph transformation) in a compilation unit at a
