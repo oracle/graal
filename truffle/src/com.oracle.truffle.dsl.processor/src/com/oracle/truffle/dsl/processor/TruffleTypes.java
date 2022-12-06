@@ -55,7 +55,7 @@ public class TruffleTypes {
     // Testing API
     private static final String[] EXPECT_ERROR_TYPES = new String[]{TruffleTypes.EXPECT_ERROR_CLASS_NAME1, TruffleTypes.EXPECT_ERROR_CLASS_NAME2};
     public static final String ALWAYS_SLOW_PATH_MODE_NAME = "com.oracle.truffle.api.dsl.test.AlwaysGenerateOnlySlowPath";
-    public static final String DISABLE_WARNING_SUPRESSION = "com.oracle.truffle.api.dsl.test.DisableWarningSuppression";
+    public static final String DISABLE_STATE_BITWIDTH_MODIFICATION = "com.oracle.truffle.api.dsl.test.DisableStateBitWidthModfication";
     public static final String EXPECT_ERROR_CLASS_NAME1 = "com.oracle.truffle.api.dsl.test.ExpectError";
     public static final String EXPECT_ERROR_CLASS_NAME2 = "com.oracle.truffle.api.test.ExpectError";
     public static final List<String> TEST_PACKAGES = List.of("com.oracle.truffle.api.test", "com.oracle.truffle.api.instrumentation.test");
@@ -63,7 +63,7 @@ public class TruffleTypes {
     public static final String SlowPathListener_Name = "com.oracle.truffle.api.dsl.test.SlowPathListener";
     public final DeclaredType SlowPathListener = c.getDeclaredTypeOptional(SlowPathListener_Name);
     public final DeclaredType AlwaysSlowPath = c.getDeclaredTypeOptional(ALWAYS_SLOW_PATH_MODE_NAME);
-    public final DeclaredType DisableWarningSuppression = c.getDeclaredTypeOptional(DISABLE_WARNING_SUPRESSION);
+    public final DeclaredType DisableStateBitWidthModification = c.getDeclaredTypeOptional(DISABLE_STATE_BITWIDTH_MODIFICATION);
     public final List<DeclaredType> ExpectErrorTypes;
     {
         List<DeclaredType> types = new ArrayList<>(EXPECT_ERROR_TYPES.length);

@@ -618,6 +618,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
     @GenerateInline
     @GeneratePackagePrivate
+    @DisableStateBitWidthModfication
     public abstract static class CustomInline1Node extends Node {
 
         abstract int execute(Node node, int value);
@@ -640,6 +641,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
     @GenerateInline
     @GeneratePackagePrivate
+    @DisableStateBitWidthModfication
     public abstract static class CustomInline2Node extends Node {
 
         abstract int execute(Node node, int value);
@@ -661,6 +663,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
     }
 
     @SuppressWarnings({"truffle", "unused"})
+    @DisableStateBitWidthModfication
     public abstract static class UseCustomInlineNode extends Node {
 
         abstract Object execute(int value);
@@ -2070,6 +2073,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
     @GenerateInline
     @GeneratePackagePrivate
+    @DisableStateBitWidthModfication
     public abstract static class ErrorNodeWithCustomInlineNode extends Node {
 
         abstract long execute(Node node, long value);
@@ -2095,6 +2099,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
     @GenerateInline
     @GeneratePackagePrivate
+    @DisableStateBitWidthModfication
     public abstract static class ErrorNodeWithCustomInline2Node extends Node {
 
         abstract long execute(Node node, long value);

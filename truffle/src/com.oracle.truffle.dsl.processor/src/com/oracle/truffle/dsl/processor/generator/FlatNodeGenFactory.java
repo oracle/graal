@@ -487,8 +487,7 @@ public class FlatNodeGenFactory {
     }
 
     private static MultiStateBitSet createMultiStateBitset(String namePrefix, NodeData activeNode, BitStateList objects) {
-        ProcessorContext context = ProcessorContext.getInstance();
-        int maxBits = TruffleProcessorOptions.stateBitWidth(context.getEnvironment());
+        int maxBits = TruffleProcessorOptions.stateBitWidth(activeNode);
         return objects.splitBitSets(namePrefix, activeNode, maxBits);
     }
 
@@ -1579,8 +1578,9 @@ public class FlatNodeGenFactory {
         }
         StateTransaction transaction = new StateTransaction();
         builder.tree(multiState.createForceLoad(frameState,
-                        AOT_PREPARED, StateQuery.create(SpecializationActive.class, filteredSpecializations),
+                        AOT_PREPARED,
                         StateQuery.create(GuardActive.class, bulkStateSetGuards), StateQuery.create(ImplicitCastState.class, implicitCasts)));
+
         builder.tree(multiState.createSet(frameState, transaction, AOT_PREPARED, true, false));
         builder.tree(multiState.createSet(frameState, transaction, StateQuery.create(GuardActive.class, bulkStateSetGuards), true, false));
         builder.tree(multiState.createSet(frameState, transaction, StateQuery.create(ImplicitCastState.class, implicitCasts), true, false));
@@ -3111,7 +3111,7 @@ public class FlatNodeGenFactory {
         if (reportPolymorphismAction.polymorphism) {
 
             String sep = "";
-            for (BitSet s : multiState.getSets()) {
+            for (BitSet s : relevantSets) {
                 builder.string(sep);
                 builder.string("((", getSetOldName(s), " ^ ", getSetNewName(s), ") != 0)");
                 sep = " || ";
@@ -3197,12 +3197,16 @@ public class FlatNodeGenFactory {
     }
 
     private void generateCheckNewPolymorphismState(CodeTreeBuilder builder, FrameState frameState, ReportPolymorphismAction reportPolymorphismAction) {
+        SpecializationData[] relevantSpecializations = getSpecalizationsForReportAction(reportPolymorphismAction);
+        StateQuery query = StateQuery.create(SpecializationActive.class, relevantSpecializations);
         builder.startIf();
         String sep = "";
         for (BitSet s : multiState.getSets()) {
-            builder.string(sep);
-            builder.string(getSetOldName(s), " != 0");
-            sep = " || ";
+            if (s.contains(query)) {
+                builder.string(sep);
+                builder.string(getSetOldName(s), " != 0");
+                sep = " || ";
+            }
         }
 
         builder.end();
@@ -3213,8 +3217,6 @@ public class FlatNodeGenFactory {
         if (frameState.isInlinedNode()) {
             builder.tree(frameState.getValue(INLINED_NODE_INDEX).createReference());
         }
-        SpecializationData[] relevantSpecializations = getSpecalizationsForReportAction(reportPolymorphismAction);
-        StateQuery query = StateQuery.create(SpecializationActive.class, relevantSpecializations);
         for (BitSet s : multiState.getSets()) {
             if (s.contains(query)) {
                 builder.string(getSetOldName(s));
