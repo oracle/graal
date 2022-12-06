@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,7 +54,7 @@ import com.oracle.svm.core.util.json.JsonPrinter;
 import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.util.ClassUtil;
 
-class ReplaySupport {
+final class ReplaySupport {
 
     static final String REPLAY_OPTION = "--replay";
 
@@ -276,12 +276,12 @@ class ReplaySupport {
     static final class ReplayPathSubstitutionError extends Error {
         public final Path origPath;
 
-        public ReplayPathSubstitutionError(String message, Path origPath) {
+        ReplayPathSubstitutionError(String message, Path origPath) {
             super(message);
             this.origPath = origPath;
         }
 
-        public ReplayPathSubstitutionError(String message, Path origPath, Throwable cause) {
+        ReplayPathSubstitutionError(String message, Path origPath, Throwable cause) {
             super(message, cause);
             this.origPath = origPath;
         }
@@ -453,7 +453,7 @@ class ReplaySupport {
         w.quote(entry);
     }
 
-    private static class PathMapParser extends ConfigurationParser {
+    private static final class PathMapParser extends ConfigurationParser {
 
         private final Map<Path, Path> pathMap;
 
@@ -479,7 +479,7 @@ class ReplaySupport {
         }
     }
 
-    private static class BuildArgsParser extends ConfigurationParser {
+    private static final class BuildArgsParser extends ConfigurationParser {
 
         private final List<String> args;
 

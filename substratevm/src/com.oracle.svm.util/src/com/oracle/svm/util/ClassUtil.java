@@ -35,7 +35,7 @@ public final class ClassUtil {
     public static final Path CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT = Paths.get("/");
     public static final Set<Path> CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES = getClassModulePathExcludeDirectories();
 
-    static private Set<Path> getClassModulePathExcludeDirectories() {
+    private static Set<Path> getClassModulePathExcludeDirectories() {
         return Stream.of("dev", "sys", "proc", "etc", "var", "tmp", "boot", "lost+found")
                         .map(CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT::resolve).collect(Collectors.toUnmodifiableSet());
     }
