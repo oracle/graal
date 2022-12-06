@@ -390,14 +390,17 @@ public final class InlineSupport {
 
         static RuntimeException invalidAccessError(Class<?> expectedClass, Object node) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            String message = String.format("Invalid parameter type passed to updater. Instance of type '%s' expected but was '%s'. " + //
+            if (node == null) {
+                throw new NullPointerException(formatInvalidAccessError(expectedClass, node));
+            } else {
+                throw new ClassCastException(formatInvalidAccessError(expectedClass, node));
+            }
+        }
+
+        private static String formatInvalidAccessError(Class<?> expectedClass, Object node) {
+            return String.format("Invalid parameter type passed to updater. Instance of type '%s' expected but was '%s'. " + //
                             "Did you pass the wrong node to an execute method of an inlined cached node?",
                             getEnclosingSimpleName(expectedClass), node != null ? getEnclosingSimpleName(node.getClass()) : "null");
-            if (node == null) {
-                throw new NullPointerException(message);
-            } else {
-                throw new ClassCastException(message);
-            }
         }
 
         static RuntimeException invalidValue(Class<?> expectedClass, Object value) {

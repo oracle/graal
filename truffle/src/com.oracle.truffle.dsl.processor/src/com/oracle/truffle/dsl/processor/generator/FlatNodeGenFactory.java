@@ -6206,11 +6206,13 @@ public class FlatNodeGenFactory {
                     builder.end();
 
                 } else {
-                    if (cache.isEncodedEnum()) {
-                        IfTriple triple = createNeverDefaultGuard(frameState, specialization, cache, " == ");
-                        builder.startIf().tree(triple.condition).end().startBlock();
-                    } else {
-                        builder.startIf().tree(createCacheAccess(frameState, specialization, cache, null)).string(" == ").string(defaultValue).end().startBlock();
+                    if (!cache.isEagerInitialize()) {
+                        if (cache.isEncodedEnum()) {
+                            IfTriple triple = createNeverDefaultGuard(frameState, specialization, cache, " == ");
+                            builder.startIf().tree(triple.condition).end().startBlock();
+                        } else {
+                            builder.startIf().tree(createCacheAccess(frameState, specialization, cache, null)).string(" == ").string(defaultValue).end().startBlock();
+                        }
                     }
 
                     if (!cacheInitialized) {
@@ -6221,7 +6223,9 @@ public class FlatNodeGenFactory {
                     builder.tree(createCacheAccess(frameState, specialization, cache, CodeTreeBuilder.singleString(localName)));
                     builder.end();
 
-                    builder.end();
+                    if (!cache.isEagerInitialize()) {
+                        builder.end();
+                    }
                 }
                 builder.end();
                 builder.end();
@@ -6427,6 +6431,10 @@ public class FlatNodeGenFactory {
     private void checkSharedCacheNull(CodeTreeBuilder builder, String refName, SpecializationData specialization, CacheExpression cache) {
         if (useCacheClass(specialization, cache)) {
             // no shared check needed.
+            return;
+        }
+        if (cache.isEagerInitialize()) {
+            // always default for eager initialization
             return;
         }
         builder.startIf().string(refName).string(" == ").string(ElementUtils.defaultValue(cache.getParameter().getType())).end().startBlock();
