@@ -79,6 +79,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -429,8 +430,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
         verifyConstructors(node);
         verifySpecializationThrows(node);
         verifyFrame(node);
+
         if (isGenerateSlowPathOnly(node)) {
-            removeFastPathSpecializations(node);
+            removeFastPathSpecializations(node, node.getSharedCaches());
         }
 
         verifyRecommendationWarnings(node, recommendInline);
@@ -2826,18 +2828,50 @@ public final class NodeParser extends AbstractParser<NodeData> {
         node.setReachableSpecializations(node.getReachableSpecializations());
     }
 
-    public static void removeFastPathSpecializations(NodeData node) {
+    public static void removeFastPathSpecializations(NodeData node, Map<CacheExpression, String> sharing) {
         List<SpecializationData> specializations = node.getSpecializations();
         List<SpecializationData> toRemove = new ArrayList<>();
         for (SpecializationData cur : specializations) {
-            for (SpecializationData contained : cur.getReplaces()) {
-                if (contained != cur && contained.getUncachedSpecialization() != cur) {
-                    toRemove.add(contained);
+            if (cur.getReplaces() != null) {
+                for (SpecializationData contained : cur.getReplaces()) {
+                    if (contained != cur && contained.getUncachedSpecialization() != cur) {
+                        toRemove.add(contained);
+
+                        for (CacheExpression cache : contained.getCaches()) {
+                            sharing.remove(cache);
+                        }
+                    }
                 }
             }
         }
+
+        // group sharing by key
+        Map<String, List<CacheExpression>> newCaches = new HashMap<>();
+        for (Entry<CacheExpression, String> entry : sharing.entrySet()) {
+            newCaches.computeIfAbsent(entry.getValue(), (s) -> new ArrayList<>()).add(entry.getKey());
+        }
+
+        // remove sharing with a single shared cache
+        for (Entry<String, List<CacheExpression>> entry : newCaches.entrySet()) {
+            if (entry.getValue().size() <= 1) {
+                for (CacheExpression cache : entry.getValue()) {
+                    sharing.remove(cache);
+                }
+            }
+        }
+
+        // clear sharing info in cache to be consistent in node generation
+        for (SpecializationData specialization : specializations) {
+            for (CacheExpression cache : specialization.getCaches()) {
+                if (cache.getSharedGroup() != null && !sharing.containsKey(cache)) {
+                    cache.clearSharing();
+                }
+            }
+        }
+
         specializations.removeAll(toRemove);
         node.getReachableSpecializations().removeAll(toRemove);
+
     }
 
     private static void initializeSpecializationIdsWithMethodNames(List<SpecializationData> specializations) {
@@ -3452,10 +3486,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (inlineMethod != null) {
                 fields = parseInlineMethod(cache, null, inlineMethod);
                 if (!cache.hasErrors() && !typeEquals(inlineMethod.getReturnType(), cache.getParameter().getType())) {
-                    cache.addError("Invalid return type %s found but expected %s. This is a common error if a different type is required for inlining. Signature %s.",
+                    cache.addError("Invalid return type %s found but expected %s. This is a common error if a different type is required for inlining.",
                                     getQualifiedName(inlineMethod.getReturnType()),
-                                    getQualifiedName(cache.getParameter().getType()),
-                                    ElementUtils.getReadableSignature(inlineMethod));
+                                    getQualifiedName(cache.getParameter().getType()));
                 }
             } else {
                 /*

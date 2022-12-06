@@ -479,7 +479,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             for (ExportsLibrary libraryExports : model.getExportedLibraries().values()) {
                 for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
                     if (export.isClass() && export.getSpecializedNode() != null) {
-                        NodeParser.removeFastPathSpecializations(export.getSpecializedNode());
+                        NodeParser.removeFastPathSpecializations(export.getSpecializedNode(), libraryExports.getSharedExpressions());
                     }
                 }
             }
