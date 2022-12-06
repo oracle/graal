@@ -163,6 +163,7 @@ compilation unit, after formatting, is the following:
     "callsiteBci": -1,
     "inlined": true,
     "reason": null,
+    "abstract": false,
     "invokes": [
       {
         "methodName": "java.lang.String.isLatin1()",
@@ -172,6 +173,7 @@ compilation unit, after formatting, is the following:
           "bytecode parser did not replace invoke",
           "trivial (relevance=1.000000, probability=0.618846, bonus=1.000000, nodes=9)"
         ],
+        "abstract": false,
         "invokes": null
       },
       {
@@ -182,6 +184,7 @@ compilation unit, after formatting, is the following:
           "bytecode parser did not replace invoke",
           "relevance-based (relevance=1.000000, probability=0.618846, bonus=1.000000, nodes=27 <= 300.000000)"
         ],
+        "abstract": false,
         "invokes": null
       }
     ]
@@ -203,6 +206,49 @@ compilation unit.
 reflected by the `inlined` property. Its value equals `true` if the method was inlined, otherwise it is `false`. The
 reasons for the decisions, in their original order, are listed in the `reason` property. Finally, `callsiteBci` is the
 byte code index of the invoke node in the callsite.
+
+The `abstract` property is `true` iff the target method is known to be abstract, i.e., it is an invoke through an
+interface or a virtual method call. Abstract calls contain
+a [receiver-type profile](https://wiki.openjdk.org/display/HotSpot/TypeProfile) if it is available. Consider the
+abstract call to `Iterator.next()` below.
+
+```json
+{
+  "methodName": "java.util.Iterator.next()",
+  "callsiteBci": 19,
+  "inlined": false,
+  "reason": [
+    "bytecode parser did not replace invoke",
+    "call is indirect."
+  ],
+  "abstract": true,
+  "receiverTypeProfile": {
+    "mature": true,
+    "profiledTypes": [
+      {
+        "typeName": "java.util.HashMap$KeyIterator",
+        "probability": 0.90,
+        "concreteMethodName": "java.util.HashMap$KeyIterator.next()"
+      },
+      {
+        "typeName": "java.util.Arrays$ArrayItr",
+        "probability": 0.09,
+        "concreteMethodName": "java.util.Arrays$ArrayItr.next()"
+      },
+      {
+        "typeName": "java.util.Collections$1",
+        "probability": 0.01,
+        "concreteMethodName": "java.util.Collections$1.next()"
+      }
+    ]
+  }
+}
+```
+
+`mature` is `true` iff the receiver-type profile is mature. `profiledTypes` is an array, which contains an entry
+for each observed receiver type of the call. The exact type of the receiver is in the `typeName` property, `probability`
+is the fraction of calls when the receiver's type is `typeName`, and `concreteMethodName` is the concrete method invoked
+for this receiver type.
 
 `optimizationTree` contains the root of the optimization tree. Each node in the optimization tree is either:
 

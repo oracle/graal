@@ -49,6 +49,11 @@ public class ExplanationWriter {
      */
     private final boolean onlyHotMethods;
 
+    /**
+     * {@code true} iff {@link org.graalvm.profdiff.core.OptimizationContextTree an optimization
+     * context tree} should be built and displayed instead of a separate inlining and optimization
+     * tree.
+     */
     private final boolean optimizationContextTreeEnabled;
 
     /**
@@ -57,6 +62,7 @@ public class ExplanationWriter {
      * @param writer the destination writer
      * @param singleExperiment the output consists of only one experiment
      * @param onlyHotMethods only hot methods are displayed
+     * @param optimizationContextTreeEnabled {@code true} iff optimization-context tree is enabled
      */
     public ExplanationWriter(Writer writer, boolean singleExperiment, boolean onlyHotMethods, boolean optimizationContextTreeEnabled) {
         this.writer = writer;
@@ -151,6 +157,15 @@ public class ExplanationWriter {
         } else {
             writer.writeln("the children of a node are in the order they appeared in the log");
         }
+        writer.writeln("calls to abstract methods are prefixed with `" + InliningTreeNode.ABSTRACT_PREFIX + "`");
+        writer.increaseIndent();
+        writer.writeln("indirect calls may get devirtualized and have inlinees of their own");
+        writer.writeln("abstract calls show a receiver-type profile if it is available");
+        writer.writeln("each line in the profile is in the format `probability% typeName -> concreteMethodName`");
+        writer.writeln("`typeName` is the exact type of the receiver");
+        writer.writeln("`concreteMethodName` is the concrete method called for the given receiver type");
+        writer.writeln("`probability` is the fraction of calls having this exact receiver type");
+        writer.decreaseIndent();
         if (!singleExperiment && verbosityLevel.shouldDiffCompilations()) {
             writer.writeln("the inlining trees of two paired compilations are diffed");
             writer.increaseIndent();

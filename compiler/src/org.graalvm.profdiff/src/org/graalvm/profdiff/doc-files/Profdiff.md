@@ -184,6 +184,42 @@ Canonicalizer UnusedNodeRemoval at bci {java.lang.StringLatin1.equals(byte[], by
                                         java.lang.String.equals(Object): 44}
 ```
 
+## Abstract methods
+
+Indirect calls, e.g. virtual method calls or a calls through an interface, appear in the log as calls to abstract
+methods. An indirect call cannot be directly inlined. Therefore, profdiff marks calls known to be indirect
+as `(abstract)`.
+
+Consider a call to the abstract method `java.util.Iterator.next()`.
+
+```
+(abstract) java.util.Iterator.next() at bci 19
+    |_ receiver-type profile
+            90.13% java.util.HashMap$KeyIterator -> java.util.HashMap$KeyIterator.next()
+             9.51% java.util.Arrays$ArrayItr -> java.util.Arrays$ArrayItr.next()
+             0.24% java.util.Collections$1 -> java.util.Collections$1.next()
+             0.08% java.util.ImmutableCollections$Set12$1 -> java.util.ImmutableCollections$Set12$1.next()
+             0.03% java.util.HashMap$ValueIterator -> java.util.HashMap$ValueIterator.next()
+             0.01% java.util.LinkedList$ListItr -> java.util.LinkedList$ListItr.next()
+```
+
+Profdiff also shows the receiver-type profile for indirect calls if it is available. The profile contains several
+entries on separate lines, each in the format `probability% typeName -> concreteMethodName`. The type name is the exact
+type of the receiver (a type implementing `java.util.Iterator` in the example). `concreteMethodName` is the concrete
+method called for the given receiver type (an implementation of `java.util.Iterator.next()` in our case). `probability`
+is the fraction of calls having this exact receiver type.
+
+The compiler may devirtualize and inline the call if the there is only one receiver. As an example, the receiver of the
+call to `java.lang.CharSequence.length()` was always a `String`. Thus, the compiler could inline it
+as `java.lang.String.length()` and also inline the call to `java.lang.String.coder()` inside the method.
+
+```
+(abstract) java.lang.CharSequence.length() at bci 10
+    |_ receiver-type profile
+            100.00% java.lang.String -> java.lang.String.length()
+    java.lang.String.coder() at bci 6
+```
+
 ## Preprocessing and postprocessing
 
 Depending on the `--verbosity` level, preprocessing steps are taken to simplify the inlining/optimization trees and/or
