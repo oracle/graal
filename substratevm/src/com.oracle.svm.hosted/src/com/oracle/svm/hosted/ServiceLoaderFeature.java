@@ -47,7 +47,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -55,7 +54,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.Resources;
-import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -136,9 +134,7 @@ public class ServiceLoaderFeature implements InternalFeature {
     // before because implementation classes were instantiated using runtime reflection instead of
     // ServiceLoader (and thus weren't reachable in analysis).
 
-    protected final Set<String> serviceProvidersToSkip = new HashSet<>(Arrays.asList(
-                    "com.sun.jndi.rmi.registry.RegistryContextFactory"      // GR-26547
-    ));
+    protected final Set<String> serviceProvidersToSkip = new HashSet<>();
 
     /** Copy of private field {@code ServiceLoader.PREFIX}. */
     private static final String LOCATION_PREFIX = "META-INF/services/";
@@ -163,7 +159,6 @@ public class ServiceLoaderFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(ServiceCatalogSupport.class, new ServiceCatalogSupport());
         servicesToSkip.addAll(Options.ServiceLoaderFeatureExcludeServices.getValue().values());
         serviceProvidersToSkip.addAll(Options.ServiceLoaderFeatureExcludeServiceProviders.getValue().values());
     }

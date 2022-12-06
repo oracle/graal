@@ -92,7 +92,7 @@ class JRTDisableFeature implements InternalFeature {
     @SuppressWarnings("unchecked")
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        ServiceCatalogSupport.instance().removeServicesFromServicesCatalog("java.nio.file.spi.FileSystemProvider", new HashSet<>(Arrays.asList("jdk.internal.jrtfs.JrtFileSystemProvider")));
+        ServiceCatalogSupport.singleton().removeServicesFromServicesCatalog("java.nio.file.spi.FileSystemProvider", new HashSet<>(Arrays.asList("jdk.internal.jrtfs.JrtFileSystemProvider")));
     }
 }
 
