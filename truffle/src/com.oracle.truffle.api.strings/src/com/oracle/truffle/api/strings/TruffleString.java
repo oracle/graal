@@ -2438,17 +2438,10 @@ public final class TruffleString extends AbstractTruffleString {
 
         abstract Object execute(Node node, AbstractTruffleString a, Object data);
 
+        @Specialization
         @SuppressWarnings("unused")
-        @Specialization(guards = "isByteArray(data)")
-        static byte[] doByteArray(AbstractTruffleString a, Object data) {
-            return (byte[]) data;
-        }
-
-        /*
-         * Workaround for DSL bug.
-         */
-        static boolean isByteArray(Object value) {
-            return value instanceof byte[];
+        static byte[] doByteArray(AbstractTruffleString a, byte[] data) {
+            return data;
         }
 
         @Specialization(guards = "isSupportedEncoding(a.encoding())")
