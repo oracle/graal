@@ -26,8 +26,6 @@ package com.oracle.svm.core.properties;
 
 import java.util.Arrays;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 
 public final class RuntimePropertyParser {
@@ -69,7 +67,7 @@ public final class RuntimePropertyParser {
         String key = property.substring(0, splitIndex);
         String value = property.substring(splitIndex + 1);
 
-        ImageSingletons.lookup(SystemPropertiesSupport.class).initializeProperty(key, value);
+        SystemPropertiesSupport.singleton().initializeProperty(key, value);
 
         return true;
     }

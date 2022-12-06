@@ -38,7 +38,6 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
-import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.PosixSystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Limits;
 import com.oracle.svm.core.posix.headers.Stdlib;
@@ -132,7 +131,6 @@ class DarwinSystemPropertiesFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         DarwinSystemPropertiesSupport systemPropertiesSupport = new DarwinSystemPropertiesSupport();
-        ImageSingletons.add(SystemPropertiesSupport.class, systemPropertiesSupport);
         ImageSingletons.add(RuntimeSystemPropertiesSupport.class, systemPropertiesSupport);
     }
 }

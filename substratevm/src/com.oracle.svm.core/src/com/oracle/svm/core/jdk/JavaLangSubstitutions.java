@@ -305,30 +305,30 @@ final class Target_java_lang_System {
 
     @Substitute
     private static Properties getProperties() {
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).getProperties();
+        return SystemPropertiesSupport.singleton().getProperties();
     }
 
     @Substitute
     private static void setProperties(Properties props) {
-        ImageSingletons.lookup(SystemPropertiesSupport.class).setProperties(props);
+        SystemPropertiesSupport.singleton().setProperties(props);
     }
 
     @Substitute
     public static String setProperty(String key, String value) {
         checkKey(key);
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).setProperty(key, value);
+        return SystemPropertiesSupport.singleton().setProperty(key, value);
     }
 
     @Substitute
     private static String getProperty(String key) {
         checkKey(key);
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).getProperty(key);
+        return SystemPropertiesSupport.singleton().getProperty(key);
     }
 
     @Substitute
     public static String clearProperty(String key) {
         checkKey(key);
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).clearProperty(key);
+        return SystemPropertiesSupport.singleton().clearProperty(key);
     }
 
     @Substitute

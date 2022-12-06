@@ -27,8 +27,6 @@ package com.oracle.svm.core.jdk;
 import java.nio.charset.Charset;
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -56,47 +54,47 @@ final class Target_jdk_internal_util_StaticProperty {
 
     @Substitute
     private static String userHome() {
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).userHome();
+        return SystemPropertiesSupport.singleton().userHome();
     }
 
     @Substitute
     private static String userDir() {
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).userDir();
+        return SystemPropertiesSupport.singleton().userDir();
     }
 
     @Substitute
     private static String userName() {
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).userName();
+        return SystemPropertiesSupport.singleton().userName();
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class)
     private static String javaIoTmpDir() {
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).javaIoTmpDir();
+        return SystemPropertiesSupport.singleton().javaIoTmpDir();
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class)
     private static String javaLibraryPath() {
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).javaLibraryPath();
+        return SystemPropertiesSupport.singleton().javaLibraryPath();
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class)
     private static String sunBootLibraryPath() {
-        String value = ImageSingletons.lookup(SystemPropertiesSupport.class).savedProperties.get("sun.boot.library.path");
+        String value = SystemPropertiesSupport.singleton().savedProperties.get("sun.boot.library.path");
         return value == null ? "" : value;
     }
 
     @Substitute
     private static String jdkSerialFilter() {
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).savedProperties.get("jdk.serialFilter");
+        return SystemPropertiesSupport.singleton().savedProperties.get("jdk.serialFilter");
     }
 
     @Substitute
     @TargetElement(onlyWith = StaticPropertyJdkSerialFilterFactoryAvailable.class)
     private static String jdkSerialFilterFactory() {
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).savedProperties.get("jdk.serialFilterFactory");
+        return SystemPropertiesSupport.singleton().savedProperties.get("jdk.serialFilterFactory");
     }
 
     private abstract static class StaticPropertyMethodAvailable implements BooleanSupplier {
@@ -127,31 +125,31 @@ final class Target_jdk_internal_util_StaticProperty {
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class)
     public static String nativeEncoding() {
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).savedProperties.get("native.encoding");
+        return SystemPropertiesSupport.singleton().savedProperties.get("native.encoding");
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK19OrLater.class)
     public static String fileEncoding() {
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).savedProperties.get("file.encoding");
+        return SystemPropertiesSupport.singleton().savedProperties.get("file.encoding");
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK19OrLater.class)
     public static String javaPropertiesDate() {
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).savedProperties.getOrDefault("java.properties.date", null);
+        return SystemPropertiesSupport.singleton().savedProperties.getOrDefault("java.properties.date", null);
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK19OrLater.class)
     public static String jnuEncoding() {
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).savedProperties.get("sun.jnu.encoding");
+        return SystemPropertiesSupport.singleton().savedProperties.get("sun.jnu.encoding");
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK19OrLater.class)
     public static Charset jnuCharset() {
-        String jnuEncoding = ImageSingletons.lookup(SystemPropertiesSupport.class).savedProperties.get("sun.jnu.encoding");
+        String jnuEncoding = SystemPropertiesSupport.singleton().savedProperties.get("sun.jnu.encoding");
         return Target_java_nio_charset_Charset.forName(jnuEncoding, Charset.defaultCharset());
     }
 }
