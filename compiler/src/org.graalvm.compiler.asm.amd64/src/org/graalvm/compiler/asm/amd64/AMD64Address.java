@@ -111,13 +111,6 @@ public final class AMD64Address extends AbstractAddress {
     }
 
     /**
-     * Determines if the scaling factor {@code scale} is supported.
-     */
-    public static boolean isScaleSupported(int scale) {
-        return CodeUtil.isPowerOf2(scale) && scale <= 8;
-    }
-
-    /**
      * Determines if the log2 scaling factor {@code shift} is supported.
      */
     public static boolean isScaleShiftSupported(int shift) {

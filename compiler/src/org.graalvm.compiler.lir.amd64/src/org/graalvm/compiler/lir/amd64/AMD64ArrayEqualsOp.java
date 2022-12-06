@@ -485,7 +485,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
 
     private static void emitVectorCmp(AMD64MacroAssembler masm, Register vector1, Register vector2, AVXSize size) {
         masm.pxor(size, vector1, vector2);
-        masm.ptest(size, vector1);
+        masm.ptest(size, vector1, vector1);
     }
 
     /**
@@ -837,7 +837,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
                 asm.por(vSize, vector1, vector3);
             }
             asm.xorq(arrayA, arrayA);
-            asm.ptest(vSize, vector1);
+            asm.ptest(vSize, vector1, vector1);
             asm.cmovl(AMD64Assembler.ConditionFlag.NotZero, result, arrayA);
         }
     }

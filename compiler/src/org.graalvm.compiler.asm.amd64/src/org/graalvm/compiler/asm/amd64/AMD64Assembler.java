@@ -37,9 +37,6 @@ import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512DQ;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512F;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512VL;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
-import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseAddressNop;
-import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseIntelNops;
-import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseNormalNop;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADC;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.AND;
@@ -118,10 +115,34 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                 "See https://www.intel.com/content/dam/support/us/en/documents/processors/mitigations-jump-conditional-code-erratum.pdf for more details. " +
                 "If not set explicitly, the default value will be determined according to the CPU model.", type = OptionType.User)
         public static final OptionKey<Boolean> UseBranchesWithin32ByteBoundary = new OptionKey<>(false);
+
+        @Option(help = "Repeatedly emit single-byte nop when requesting for multi-bytes nop.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> UseNormalNop = new OptionKey<>(false);
+
+        @Option(help = "Emit address-based nop when requesting for multi-bytes nop.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> UseAddressNop = new OptionKey<>(true);
+
+        @Option(help = "Emit Intel-favored address-based nop instructions when requesting for multiple-byte nop.", type = OptionType.Debug)
+        public static final OptionKey<Boolean>  UseIntelNops = new OptionKey<>(true);
+
+        @Option(help = "Use inc/dec instructions where applicable.", type = OptionType.Debug)
+        public static final OptionKey<Boolean>  UseIncDec = new OptionKey<>(true);
+
+        @Option(help = "Clear upper bytes of a xmm register when loading scalar double value from memory.", type = OptionType.Debug)
+        public static final OptionKey<Boolean>  UseXmmLoadAndClearUpper = new OptionKey<>(true);
+
+        @Option(help = "Move all bytes of a xmm register when moving double value between registers.", type = OptionType.Debug)
+        public static final OptionKey<Boolean>  UseXmmRegToRegMoveAll = new OptionKey<>(true);
         // @formatter:on
     }
 
     private final boolean useBranchesWithin32ByteBoundary;
+    protected final boolean useNormalNop;
+    protected final boolean useAddressNop;
+    protected final boolean useIntelNops;
+    protected final boolean useIncDec;
+    protected final boolean useXmmLoadAndClearUpper;
+    protected final boolean useXmmRegToRegMoveAll;
 
     /**
      * Constructs an assembler for the AMD64 architecture.
@@ -129,11 +150,23 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     public AMD64Assembler(TargetDescription target) {
         super(target);
         useBranchesWithin32ByteBoundary = false;
+        useNormalNop = false;
+        useAddressNop = true;
+        useIntelNops = true;
+        useIncDec = true;
+        useXmmLoadAndClearUpper = true;
+        useXmmRegToRegMoveAll = true;
     }
 
     public AMD64Assembler(TargetDescription target, OptionValues optionValues) {
         super(target);
         useBranchesWithin32ByteBoundary = Options.UseBranchesWithin32ByteBoundary.getValue(optionValues);
+        useNormalNop = Options.UseNormalNop.getValue(optionValues);
+        useAddressNop = Options.UseAddressNop.getValue(optionValues);
+        useIntelNops = Options.UseIntelNops.getValue(optionValues);
+        useIncDec = Options.UseIncDec.getValue(optionValues);
+        useXmmLoadAndClearUpper = Options.UseXmmLoadAndClearUpper.getValue(optionValues);
+        useXmmRegToRegMoveAll = Options.UseXmmRegToRegMoveAll.getValue(optionValues);
     }
 
     public AMD64Assembler(TargetDescription target, OptionValues optionValues, boolean hasIntelJccErratum) {
@@ -143,6 +176,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         } else {
             useBranchesWithin32ByteBoundary = hasIntelJccErratum;
         }
+        useNormalNop = Options.UseNormalNop.getValue(optionValues);
+        useAddressNop = Options.UseAddressNop.getValue(optionValues);
+        useIntelNops = Options.UseIntelNops.getValue(optionValues);
+        useIncDec = Options.UseIncDec.getValue(optionValues);
+        useXmmLoadAndClearUpper = Options.UseXmmLoadAndClearUpper.getValue(optionValues);
+        useXmmRegToRegMoveAll = Options.UseXmmRegToRegMoveAll.getValue(optionValues);
     }
 
     /**
@@ -3217,7 +3256,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public void nop(int count) {
         int i = count;
-        if (UseNormalNop) {
+        if (useNormalNop) {
             assert i > 0 : " ";
             // The fancy nops aren't currently recognized by debuggers making it a
             // pain to disassemble code while debugging. If assert are on clearly
@@ -3230,8 +3269,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             return;
         }
 
-        if (UseAddressNop) {
-            if (UseIntelNops) {
+        if (useAddressNop) {
+            if (useIntelNops) {
                 intelNops(i);
             } else {
                 amdNops(i);

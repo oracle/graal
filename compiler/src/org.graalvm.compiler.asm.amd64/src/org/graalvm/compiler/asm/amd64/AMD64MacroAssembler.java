@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.asm.amd64;
 
-import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseIncDec;
-import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseXmmLoadAndClearUpper;
-import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseXmmRegToRegMoveAll;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.AND;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
@@ -52,7 +49,6 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.JavaKind;
 
 /**
  * This class implements commonly used X86 code patterns.
@@ -61,10 +57,6 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     public AMD64MacroAssembler(TargetDescription target) {
         super(target);
-    }
-
-    public AMD64MacroAssembler(TargetDescription target, OptionValues optionValues) {
-        super(target, optionValues);
     }
 
     public AMD64MacroAssembler(TargetDescription target, OptionValues optionValues, boolean hasIntelJccErratum) {
@@ -87,7 +79,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         if (value == 0) {
             return;
         }
-        if (value == 1 && UseIncDec) {
+        if (value == 1 && useIncDec) {
             decq(reg);
         } else {
             subq(reg, value);
@@ -106,7 +98,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         if (value == 0) {
             return;
         }
-        if (value == 1 && UseIncDec) {
+        if (value == 1 && useIncDec) {
             decq(dst);
         } else {
             subq(dst, value);
@@ -129,7 +121,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         if (value == 0) {
             return;
         }
-        if (value == 1 && UseIncDec) {
+        if (value == 1 && useIncDec) {
             incq(reg);
         } else {
             addq(reg, value);
@@ -148,7 +140,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         if (value == 0) {
             return;
         }
-        if (value == 1 && UseIncDec) {
+        if (value == 1 && useIncDec) {
             incq(dst);
         } else {
             addq(dst, value);
@@ -191,7 +183,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         if (value == 0) {
             return;
         }
-        if (value == 1 && UseIncDec) {
+        if (value == 1 && useIncDec) {
             decl(reg);
         } else {
             subl(reg, value);
@@ -210,7 +202,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         if (value == 0) {
             return;
         }
-        if (value == 1 && UseIncDec) {
+        if (value == 1 && useIncDec) {
             decl(dst);
         } else {
             subl(dst, value);
@@ -229,7 +221,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         if (value == 0) {
             return;
         }
-        if (value == 1 && UseIncDec) {
+        if (value == 1 && useIncDec) {
             incl(reg);
         } else {
             addl(reg, value);
@@ -248,7 +240,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         if (value == 0) {
             return;
         }
-        if (value == 1 && UseIncDec) {
+        if (value == 1 && useIncDec) {
             incl(dst);
         } else {
             addl(dst, value);
@@ -257,7 +249,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     public final void movflt(Register dst, Register src) {
         assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM);
-        if (UseXmmRegToRegMoveAll) {
+        if (useXmmRegToRegMoveAll) {
             if (isAVX512Register(dst) || isAVX512Register(src)) {
                 VexMoveOp.VMOVAPS.emit(this, AVXSize.XMM, dst, src);
             } else {
@@ -292,7 +284,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     public final void movdbl(Register dst, Register src) {
         assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM);
-        if (UseXmmRegToRegMoveAll) {
+        if (useXmmRegToRegMoveAll) {
             if (isAVX512Register(dst) || isAVX512Register(src)) {
                 VexMoveOp.VMOVAPD.emit(this, AVXSize.XMM, dst, src);
             } else {
@@ -309,7 +301,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     public final void movdbl(Register dst, AMD64Address src) {
         assert dst.getRegisterCategory().equals(AMD64.XMM);
-        if (UseXmmLoadAndClearUpper) {
+        if (useXmmLoadAndClearUpper) {
             if (isAVX512Register(dst)) {
                 VexMoveOp.VMOVSD.emit(this, AVXSize.XMM, dst, src);
             } else {
@@ -946,6 +938,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
                     movdq(dst, src);
                     break;
                 default:
+                    // TODO xmm <- cpu ?
                     movdqu(dst, src);
                     break;
             }
@@ -969,14 +962,6 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      */
     public final void pcmpeq(AVXSize vectorSize, Stride elementStride, Register dst, Register src) {
         pcmpeq(vectorSize, elementStride.value, dst, src);
-    }
-
-    /**
-     * Compares all packed bytes/words/dwords in {@code dst} to {@code src}. Matching values are set
-     * to all ones (0xff, 0xffff, ...), non-matching values are set to zero.
-     */
-    public final void pcmpeq(AVXSize vectorSize, JavaKind elementKind, Register dst, Register src) {
-        pcmpeq(vectorSize, elementKind.getByteCount(), dst, src);
     }
 
     private void pcmpeq(AVXSize vectorSize, int elementSize, Register dst, Register src) {
@@ -1025,14 +1010,6 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      */
     public final void pcmpeq(AVXSize size, Stride elementStride, Register dst, AMD64Address src) {
         pcmpeq(size, elementStride.value, dst, src);
-    }
-
-    /**
-     * Compares all packed bytes/words/dwords in {@code dst} to {@code src}. Matching values are set
-     * to all ones (0xff, 0xffff, ...), non-matching values are set to zero.
-     */
-    public final void pcmpeq(AVXSize size, JavaKind elementKind, Register dst, AMD64Address src) {
-        pcmpeq(size, elementKind.getByteCount(), dst, src);
     }
 
     private void pcmpeq(AVXSize vectorSize, int elementSize, Register dst, AMD64Address src) {
@@ -1350,10 +1327,6 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         }
     }
 
-    public final void psllw(AVXSize size, Register dst, int imm8) {
-        psllw(size, dst, dst, imm8);
-    }
-
     public final void psllw(AVXSize size, Register dst, Register src, int imm8) {
         if (isAVX()) {
             VexShiftOp.VPSLLW.emit(this, size, dst, src, imm8);
@@ -1364,10 +1337,6 @@ public class AMD64MacroAssembler extends AMD64Assembler {
             }
             psllw(dst, imm8);
         }
-    }
-
-    public final void psrlw(AVXSize size, Register dst, int imm8) {
-        psrlw(size, dst, dst, imm8);
     }
 
     public final void psrlw(AVXSize size, Register dst, Register src, int imm8) {
@@ -1382,10 +1351,6 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         }
     }
 
-    public final void pslld(AVXSize size, Register dst, int imm8) {
-        pslld(size, dst, dst, imm8);
-    }
-
     public final void pslld(AVXSize size, Register dst, Register src, int imm8) {
         if (isAVX()) {
             VexShiftOp.VPSLLD.emit(this, size, dst, src, imm8);
@@ -1396,10 +1361,6 @@ public class AMD64MacroAssembler extends AMD64Assembler {
             }
             pslld(dst, imm8);
         }
-    }
-
-    public final void psrld(AVXSize size, Register dst, int imm8) {
-        psrld(size, dst, dst, imm8);
     }
 
     public final void psrld(AVXSize size, Register dst, Register src, int imm8) {
@@ -1432,10 +1393,6 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         }
     }
 
-    public final void ptest(AVXSize size, Register dst) {
-        ptest(size, dst, dst);
-    }
-
     public final void ptest(AVXSize size, Register dst, Register src) {
         if (isAVX()) {
             VexRMOp.VPTEST.emit(this, size, dst, src);
@@ -1458,9 +1415,5 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     public boolean isAVX() {
         return supports(CPUFeature.AVX);
-    }
-
-    public static boolean isAVX(AMD64 arch) {
-        return arch.getFeatures().contains(CPUFeature.AVX);
     }
 }
