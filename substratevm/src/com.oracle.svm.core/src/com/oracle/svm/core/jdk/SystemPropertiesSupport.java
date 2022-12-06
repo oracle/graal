@@ -202,7 +202,10 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
      */
     @Override
     public void initializeProperty(String key, String value) {
-        savedProperties.put(key, value);
+        String prevValue = savedProperties.put(key, value);
+        if (prevValue != null && !prevValue.equals(value)) {
+            VMError.shouldNotReachHere("System property " + key + " is initialized to " + value + " but was previously initialized to " + prevValue + ".");
+        }
         properties.setProperty(key, value);
     }
 
