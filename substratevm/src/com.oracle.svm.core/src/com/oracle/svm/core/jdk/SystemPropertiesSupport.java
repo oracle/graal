@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.function.Supplier;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -88,6 +89,11 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
     // needed as fallback for platforms that don't implement osNameValue
 
     private volatile boolean fullyInitialized;
+
+    @Fold
+    public static SystemPropertiesSupport singleton() {
+        return (SystemPropertiesSupport) ImageSingletons.lookup(RuntimeSystemPropertiesSupport.class);
+    }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     protected SystemPropertiesSupport() {

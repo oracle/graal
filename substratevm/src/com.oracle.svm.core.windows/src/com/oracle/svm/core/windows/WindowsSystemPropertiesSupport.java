@@ -392,7 +392,6 @@ class WindowsSystemPropertiesFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         WindowsSystemPropertiesSupport systemPropertiesSupport = new WindowsSystemPropertiesSupport();
-        ImageSingletons.add(SystemPropertiesSupport.class, systemPropertiesSupport);
         ImageSingletons.add(RuntimeSystemPropertiesSupport.class, systemPropertiesSupport);
     }
 }
