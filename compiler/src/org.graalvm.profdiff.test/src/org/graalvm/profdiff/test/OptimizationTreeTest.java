@@ -29,18 +29,17 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.profdiff.core.TreeNode;
-import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
 import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
-import org.junit.Assert;
 import org.junit.Test;
 
-public class CompilationUnitTest {
-    private static class MockCompilationUnit {
-        public final InliningTree inliningTree;
+import static org.junit.Assert.assertEquals;
+
+public class OptimizationTreeTest {
+    private static final class MockCompilationUnit {
 
         public final OptimizationTree optimizationTree;
 
@@ -56,13 +55,7 @@ public class CompilationUnitTest {
          */
         public final List<OptimizationTreeNode> optimizationTreePreorderAfterRemoval;
 
-        /**
-         * The expected preorder of the compilation units's inlining tree after
-         * {@link org.graalvm.profdiff.core.inlining.InliningTree#sortInliningTree()}.
-         */
-        public final List<InliningTreeNode> inliningTreeNodePreorderAfterSort;
-
-        MockCompilationUnit() {
+        private MockCompilationUnit() {
             OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
             OptimizationPhase controlPhase = new OptimizationPhase("ControlPhase$");
             assert !controlPhase.isUnorderedCategory() && !controlPhase.isVeryDetailedCategory();
@@ -109,14 +102,11 @@ public class CompilationUnitTest {
             inliningTreeRoot.addChild(method3);
             inliningTreeRoot.addChild(method2);
 
-            inliningTree = new InliningTree(inliningTreeRoot);
             optimizationTree = new OptimizationTree(rootPhase);
             optimizationTreePreorderAfterSort = List.of(rootPhase, controlPhase, controlPhaseChild2, controlPhaseChild1,
                             unorderedDetailedPhase, optimization1, optimization2, optimization3, optimization4, optimization5,
                             optimization6, subphase1, subphase2);
             optimizationTreePreorderAfterRemoval = List.of(rootPhase, controlPhase, controlPhaseChild2, controlPhaseChild1);
-            inliningTreeNodePreorderAfterSort = List.of(inliningTreeRoot, method1, method2, method3, method3First, method3Second,
-                            method4, method5, method6);
         }
     }
 
@@ -131,7 +121,7 @@ public class CompilationUnitTest {
         MockCompilationUnit mockCompilationUnit = new MockCompilationUnit();
         mockCompilationUnit.optimizationTree.removeVeryDetailedPhases();
         List<OptimizationTreeNode> actualPreorder = treeInPreorder(mockCompilationUnit.optimizationTree.getRoot());
-        Assert.assertEquals(mockCompilationUnit.optimizationTreePreorderAfterRemoval, actualPreorder);
+        assertEquals(mockCompilationUnit.optimizationTreePreorderAfterRemoval, actualPreorder);
     }
 
     @Test
@@ -139,14 +129,33 @@ public class CompilationUnitTest {
         MockCompilationUnit mockCompilationUnit = new MockCompilationUnit();
         mockCompilationUnit.optimizationTree.sortUnorderedPhases();
         List<OptimizationTreeNode> actualPreorder = treeInPreorder(mockCompilationUnit.optimizationTree.getRoot());
-        Assert.assertEquals(mockCompilationUnit.optimizationTreePreorderAfterSort, actualPreorder);
+        assertEquals(mockCompilationUnit.optimizationTreePreorderAfterSort, actualPreorder);
     }
 
     @Test
-    public void sortInliningTree() {
-        MockCompilationUnit mockCompilationUnit = new MockCompilationUnit();
-        mockCompilationUnit.inliningTree.sortInliningTree();
-        List<InliningTreeNode> actualPreorder = treeInPreorder(mockCompilationUnit.inliningTree.getRoot());
-        Assert.assertEquals(mockCompilationUnit.inliningTreeNodePreorderAfterSort, actualPreorder);
+    public void recursiveOptimizationList() {
+        OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
+        OptimizationPhase phaseA = new OptimizationPhase("A");
+        OptimizationPhase phaseB = new OptimizationPhase("B");
+        OptimizationPhase phaseC = new OptimizationPhase("C");
+        OptimizationPhase phaseD = new OptimizationPhase("D");
+        Optimization optimization1 = new Optimization("foo", "1", null, null);
+        Optimization optimization2 = new Optimization("foo", "2", null, null);
+        Optimization optimization3 = new Optimization("foo", "3", null, null);
+        Optimization optimization4 = new Optimization("foo", "4", null, null);
+        Optimization optimization5 = new Optimization("foo", "5", null, null);
+
+        rootPhase.addChild(optimization1);
+        rootPhase.addChild(phaseA);
+        phaseA.addChild(optimization2);
+        rootPhase.addChild(optimization3);
+        rootPhase.addChild(phaseB);
+        phaseB.addChild(phaseC);
+        phaseC.addChild(optimization4);
+        phaseC.addChild(optimization5);
+        phaseB.addChild(phaseD);
+
+        List<Optimization> expected = List.of(optimization1, optimization2, optimization3, optimization4, optimization5);
+        assertEquals(expected, rootPhase.getOptimizationsRecursive());
     }
 }
