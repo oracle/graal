@@ -65,21 +65,48 @@ public class EditScript<T extends TreeNode<T>> implements TreeMatching {
     public static final String RELABEL_PREFIX = "* ";
 
     /**
+     * Type of subtree operation.
+     */
+    public enum OperationType {
+        Identity,
+        Delete,
+        Insert,
+        Relabel
+    }
+
+    /**
      * An operation that modifies a rooted, ordered and labeled tree. It is a node of the delta
      * tree. Each operation works on at most one node from the first (left) tree and at most one
      * node from the second (right) tree. The nodes have always the same depth (the depth of root is
-     * 0). Remembering the depth allows us to easily {@link DeltaNode#write write} the delta tree in
-     * dfs preorder.
+     * 0).
      */
-    public abstract static class DeltaNode<T extends TreeNode<T>> {
-        protected final T left;
-        protected final T right;
-        protected final int depth;
+    public static final class Operation<T extends TreeNode<T>> {
+        private final OperationType operationType;
+        private final T left;
+        private final T right;
+        private final int depth;
 
-        protected DeltaNode(T left, T right, int depth) {
+        private Operation(OperationType operationType, T left, T right, int depth) {
+            this.operationType = operationType;
             this.left = left;
             this.right = right;
             this.depth = depth;
+        }
+
+        public OperationType getOperationType() {
+            return operationType;
+        }
+
+        public T getLeft() {
+            return left;
+        }
+
+        public T getRight() {
+            return right;
+        }
+
+        public int getDepth() {
+            return depth;
         }
 
         @Override
@@ -91,150 +118,22 @@ public class EditScript<T extends TreeNode<T>> implements TreeMatching {
                 return false;
             }
 
-            DeltaNode<?> deltaNode = (DeltaNode<?>) obj;
-
-            if (!Objects.equals(left, deltaNode.left)) {
-                return false;
-            }
-            return Objects.equals(right, deltaNode.right);
+            Operation<?> operation = (Operation<?>) obj;
+            return operationType.equals(operation.operationType) && depth == operation.depth &&
+                            Objects.equals(left, operation.left) && Objects.equals(right, operation.right);
         }
 
         @Override
         public int hashCode() {
-            int result = left != null ? left.hashCode() : 0;
+            int result = operationType.hashCode();
+            result = 31 * result + depth;
+            result = 31 * result + (left != null ? left.hashCode() : 0);
             result = 31 * result + (right != null ? right.hashCode() : 0);
             return result;
         }
-
-        /**
-         * Writes the string representation either of this delta subtree or this delta node to the
-         * destination writer. When an entire subtree is deleted/inserted, we create only one delta
-         * node for the whole subtree - in that case, this method writes the entire subtree.
-         * Otherwise, this object represents exactly one delta node and only prints itself.
-         *
-         * @param writer the destination writer
-         */
-        public abstract void write(Writer writer);
     }
 
-    /**
-     * An identity operation, which represents a pair of matched nodes.
-     */
-    public static class Identity<T extends TreeNode<T>> extends DeltaNode<T> {
-        /**
-         * Constructor of an identity operation.
-         *
-         * @param left the matched node from the first (left) tree
-         * @param right the matched node from the second (right) tree
-         * @param depth the depth of the nodes
-         */
-        public Identity(T left, T right, int depth) {
-            super(left, right, depth);
-        }
-
-        @Override
-        public void write(Writer writer) {
-            writer.increaseIndent(depth);
-            writer.setPrefixAfterIndent(IDENTITY_PREFIX);
-            left.writeHead(writer);
-            writer.clearPrefixAfterIndent();
-            writer.decreaseIndent(depth);
-        }
-    }
-
-    /**
-     * Insertion of a subtree.
-     */
-    public static class Insert<T extends TreeNode<T>> extends DeltaNode<T> {
-        /**
-         * Constructor of a subtree insert operation.
-         *
-         * @param node the root of the subtree that is inserted
-         * @param depth the depth of the root of the inserted subtree
-         */
-        public Insert(T node, int depth) {
-            super(null, node, depth);
-        }
-
-        @Override
-        public void write(Writer writer) {
-            writer.increaseIndent(depth);
-            writer.setPrefixAfterIndent(INSERT_PREFIX);
-            right.writeRecursive(writer);
-            writer.clearPrefixAfterIndent();
-            writer.decreaseIndent(depth);
-        }
-    }
-
-    /**
-     * Deletion of a subtree.
-     */
-    public static class Delete<T extends TreeNode<T>> extends DeltaNode<T> {
-
-        /**
-         * Constructor of a subtree delete operation.
-         *
-         * @param node the root of the subtree that is deleted
-         * @param depth the depth of the root of the deleted subtree
-         */
-        public Delete(T node, int depth) {
-            super(node, null, depth);
-        }
-
-        @Override
-        public void write(Writer writer) {
-            writer.increaseIndent(depth);
-            writer.setPrefixAfterIndent(DELETE_PREFIX);
-            left.writeRecursive(writer);
-            writer.clearPrefixAfterIndent();
-            writer.decreaseIndent(depth);
-        }
-    }
-
-    /**
-     * An operation that changes the label - the {@link TreeNode#getName() name} of a node.
-     */
-    public static class Relabel<T extends TreeNode<T>> extends DeltaNode<T> {
-        /**
-         * Constructor of a relabelling operation.
-         *
-         * @param left the node which holds the original name from the first (left) tree
-         * @param right the node which hold the new name from the second (right) tree
-         * @param depth the depth of the nodes
-         */
-        public Relabel(T left, T right, int depth) {
-            super(left, right, depth);
-        }
-
-        @Override
-        public void write(Writer writer) {
-            writer.increaseIndent(depth);
-            writer.writeln(RELABEL_PREFIX + left.getNameOrNull() + " -> " + right.getNameOrNull());
-            writer.decreaseIndent(depth);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null || getClass() != obj.getClass()) {
-                return false;
-            }
-
-            Relabel<?> relabel = (Relabel<?>) obj;
-            return Objects.equals(left, relabel.left) && Objects.equals(right, relabel.right);
-        }
-
-        @Override
-        public int hashCode() {
-            int result = left.hashCode();
-            result = 31 * result + right.hashCode();
-            return result;
-        }
-    }
-
-    private ConcatList<DeltaNode<T>> operations = new ConcatList<>();
+    private ConcatList<Operation<T>> operations = new ConcatList<>();
 
     /**
      * Prepends a subtree insert operation to this edit script.
@@ -243,7 +142,7 @@ public class EditScript<T extends TreeNode<T>> implements TreeMatching {
      * @param depth the depth of the node
      */
     public void insert(T node, int depth) {
-        operations.prepend(new Insert<>(node, depth));
+        operations.prepend(new Operation<>(OperationType.Insert, null, node, depth));
     }
 
     /**
@@ -253,7 +152,7 @@ public class EditScript<T extends TreeNode<T>> implements TreeMatching {
      * @param depth the depth of the node
      */
     public void delete(T node, int depth) {
-        operations.prepend(new Delete<>(node, depth));
+        operations.prepend(new Operation<>(OperationType.Delete, node, null, depth));
     }
 
     /**
@@ -264,7 +163,7 @@ public class EditScript<T extends TreeNode<T>> implements TreeMatching {
      * @param depth the depth of the nodes
      */
     public void relabel(T node1, T node2, int depth) {
-        operations.prepend(new Relabel<>(node1, node2, depth));
+        operations.prepend(new Operation<>(OperationType.Relabel, node1, node2, depth));
     }
 
     /**
@@ -275,7 +174,7 @@ public class EditScript<T extends TreeNode<T>> implements TreeMatching {
      * @param depth the depth of the nodes
      */
     public void identity(T node1, T node2, int depth) {
-        operations.prepend(new Identity<>(node1, node2, depth));
+        operations.prepend(new Operation<>(OperationType.Identity, node1, node2, depth));
     }
 
     /**
@@ -297,9 +196,7 @@ public class EditScript<T extends TreeNode<T>> implements TreeMatching {
      */
     @Override
     public void write(Writer writer) {
-        for (DeltaNode<T> operation : operations) {
-            operation.write(writer);
-        }
+        DeltaTree.fromEditScript(this).accept(new DeltaTreeWriterVisitor<>(writer));
     }
 
     /**
@@ -307,7 +204,7 @@ public class EditScript<T extends TreeNode<T>> implements TreeMatching {
      *
      * @return the list of operations
      */
-    public ConcatList<DeltaNode<T>> getDeltaNodes() {
+    public ConcatList<Operation<T>> getOperations() {
         return operations;
     }
 }

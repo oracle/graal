@@ -94,7 +94,7 @@ public class CommandGroup extends Argument {
         Formatter fmt = new Formatter();
         fmt.format("available commands:%n");
         for (Command command : commands.getValues()) {
-            fmt.format("  %-20s %s%n", command.getName(), command.getDescription());
+            fmt.format("  %-30s %s%n", command.getName(), command.getDescription());
         }
         return fmt.toString();
     }

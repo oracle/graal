@@ -131,19 +131,41 @@ mx profdiff jit-vs-aot ../compiler/jit_scrabble_log ../compiler/scrabble_prof.js
 
 ## Options
 
-There a few options accepted by all `profdiff` commands. The `--verbosity` option controls the amount of output that is
-displayed for each compilation unit. Possible values are `low`, `default`, `high`, `max`. The `low` verbosity level
-displays only the important differences between compilation units by applying preprocessing steps. In contrast, `max`
-dumps all available data about a compilation without any preprocessing or diffing.
+There are several options accepted by all `profdiff` commands. None of them are mandatory, and they are all set to
+default values which are suitable for quick identification of differences. Run `mx profdiff help` to view the
+defaults. Note that binary options expect the literal `true` or `false`, e.g. `--long-bci=true`.
 
 The options `--hot-min-limit`, `--hot-max-limit`, and `--hot-percentile` are parameters for the algorithm that selects
 hot compilations. This is relevant only when proftool data is provided. `--hot-min-limit` and `--hot-max-limit` are hard
 upper and lower bounds, respectively, on the number of hot compilations. `--hot-percentile` is the percentile of the
 execution period taken up by hot compilations. Read the section about hot compilations for more information.
 
-The flag `--optimization-context-tree` enables the optimization-context tree. The optimization-context tree visualizes
-optimizations in their inlining context and replaces the inlining and optimization tree. Read the separate section about
-the optimization-context tree to learn more.
+The option `--optimization-context-tree` enables the optimization-context tree. The optimization-context tree visualizes
+optimizations in their inlining context and replaces the inlining and optimization tree. This is not enabled by default.
+Read the separate section about the optimization-context tree to learn more.
+
+If `--diff-compilations` is enabled, all pairs of hot compilations of the same method in two experiments are diffed. If
+it is not enabled, all compilations are printed without any diffing. `--diff-compilations` is enabled by default. Read
+the section about method matching to learn more.
+
+If `--long-bci` is enabled, the full position of each optimization is displayed. This is not applied by default. Read
+the section about node source positions to learn more.
+
+Depending on the value of `--sort-inlining-tree`, the children of each node in the inlining tree are sorted
+lexicographically by (callsite bci, method name). This makes the tree easier to navigate and also reduces excessive
+differences found by the tree matching algorithm, which does not understand the change of order as an operation. Enabled
+by default.
+
+If `--sort-unordered-phases` is enabled, the children of selected optimization phases in the optimization trees are
+sorted. The goal is to establish a fixed order of optimization phases across compilation units to reduce the number of
+superfluous differences found by the tree diffing algorithm. This is enabled by default.
+
+Selected optimization phases are removed from the optimization tree when `--remove-detailed-phases` is enabled. These
+include the canonicalizer, dead code elimination, and inlining phases. This is enabled by default.
+
+If `--prune-identities` is enabled, only the differences with context between two
+optimization/inlining/optimization-context trees are displayed, i.e., the identities are pruned. This is enabled by
+default.
 
 ## Hot compilation units
 
@@ -165,10 +187,10 @@ The algorithm to mark hot methods works as follows:
 
 Optimizations are associated with a node source position via a node that took part in the transformation. A node source
 position contains a bytecode index (bci) in the method. This bci is the position of an optimization that is displayed
-at verbosity level `default` or lower.
+by default when `--long-bci` is not enabled.
 
-However, in the presence of inlining, the bci is relative to the inlined method. For verbosity levels `high` and `max`,
-we also display the path from an inlined method to the root including bytecode indices of callsites.
+However, in the presence of inlining, the bci is relative to the inlined method. When `--long-bci` is enabled,
+the path from an inlined method to the root including bytecode indices of callsites is displayed.
 
 For example, in the compilation of `String#equals`, we might have the following optimization:
 
@@ -176,13 +198,16 @@ For example, in the compilation of `String#equals`, we might have the following 
 Canonicalizer UnusedNodeRemoval at bci 9
 ```
 
-At a higher verbosity level, we can see that the bci 9 is relative to the inlined `StringLatin1#equals` method, which is
-invoked by the root method at bci 44.
+We can run the program with `--long-bci=true` to see that the bci 9 is relative to the inlined `StringLatin1#equals`
+method, which is invoked by the root method at bci 44.
 
 ```
 Canonicalizer UnusedNodeRemoval at bci {java.lang.StringLatin1.equals(byte[], byte[]): 9,
                                         java.lang.String.equals(Object): 44}
 ```
+
+Perhaps a better way to visualize the position of an optimization is to enable the optimization-context tree. Read the
+section about the optimization-context tree to learn more.
 
 ## Abstract methods
 
@@ -220,33 +245,12 @@ as `java.lang.String.length()` and also inline the call to `java.lang.String.cod
     java.lang.String.coder() at bci 6
 ```
 
-## Preprocessing and postprocessing
-
-Depending on the `--verbosity` level, preprocessing steps are taken to simplify the inlining/optimization trees and/or
-their matching. This reduces the amount of produced output by leaving out unimportant information.
-
-- The children of each node in the inlining tree are always sorted lexicographically by (callsite bci, method name).
-  This makes the tree easier to navigate and also reduces excessive differences found by the tree matching algorithm,
-  which does not understand the change of order as an operation.
-- The children of selected optimization phases in the inlining trees are sorted. The goal is to establish a fixed order
-  of optimization phases across compilation units to reduce the number of superfluous differences found by the
-  algorithm. This is only applied at `--verbosity low`.
-- Selected optimization phases are removed from the optimization tree at `--verbosity low`. These include the
-  canonicalizer, dead code elimination, and inlining phases.
-
-Finally, there is one postprocessing step performed on the delta tree after optimization/inlining tree matching. The
-delta tree is the result of tree matching. Each node represents either a deletion, insertion, or identity.
-
-- Only the differences between the trees are shown with context at `--verbosity low`. Equivalently, all identity nodes
-  which do not have any deletion or insertion as a descendant are deleted. As a result of this, a matching of equivalent
-  trees is an empty tree at `--verbosity low`.
-
 ## Optimization-context tree
 
 An optimization-context tree is an inlining tree extended with optimizations placed in their method context.
 Optimization-context trees make it easier to attribute optimizations to inlining decisions. However, the structure of
-the optimization tree is lost. The feature is enabled with the flag `--optimization-context-tree`, and is compatible
-with each use case, e.g., `mx profdiff --optimization-context-tree report scrabble_log`.
+the optimization tree is lost. The feature is enabled using the option `--optimization-context-tree`, and is compatible
+with each command, e.g., `mx profdiff --optimization-context-tree=true report scrabble_log`.
 
 As an instance, consider the inlining and optimization tree below:
 
@@ -311,8 +315,8 @@ We can see that the root method `java.util.stream.ReduceOps$ReduceOp.evaluateSeq
 has 3 compilations in the 1st experiment and 2 compilations in the 2nd experiment. Some of these compilations were
 marked as hot.
 
-In the general case, all pairs of *hot* compilations are diffed. In this case, the only pair of hot compilations is
-diffed.
+If `--diff-compilations` is enabled, all pairs of *hot* compilations are diffed (in our case, there is only one pair).
+Otherwise, hot compilations are printed without any diffing.
 
 ### Optimization tree matching
 

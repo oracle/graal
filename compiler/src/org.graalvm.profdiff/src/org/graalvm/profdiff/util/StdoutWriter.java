@@ -24,11 +24,11 @@
  */
 package org.graalvm.profdiff.util;
 
-import org.graalvm.profdiff.core.VerbosityLevel;
+import org.graalvm.profdiff.core.OptionValues;
 
 /**
  * An output writer that manages indentation and writes to the standard output. The writer holds the
- * current {@link VerbosityLevel} for convenience.
+ * current {@link OptionValues} for convenience.
  */
 public class StdoutWriter implements Writer {
     /**
@@ -49,15 +49,15 @@ public class StdoutWriter implements Writer {
     /**
      * The current verbosity level.
      */
-    private final VerbosityLevel verbosityLevel;
+    private final OptionValues optionValues;
 
     /**
      * Constructs a writer to the standard output.
      *
-     * @param verbosityLevel the current verbosity level
+     * @param optionValues the current option values
      */
-    public StdoutWriter(VerbosityLevel verbosityLevel) {
-        this.verbosityLevel = verbosityLevel;
+    public StdoutWriter(OptionValues optionValues) {
+        this.optionValues = optionValues;
     }
 
     @Override
@@ -124,8 +124,8 @@ public class StdoutWriter implements Writer {
     }
 
     @Override
-    public VerbosityLevel getVerbosityLevel() {
-        return verbosityLevel;
+    public OptionValues getOptionValues() {
+        return optionValues;
     }
 
     private void printIndentIfNeeded() {

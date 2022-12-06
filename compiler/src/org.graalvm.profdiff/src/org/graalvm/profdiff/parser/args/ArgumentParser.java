@@ -209,7 +209,9 @@ public class ArgumentParser {
         Formatter fmt = new Formatter();
         fmt.format("options:%n");
         for (Argument argument : optionArguments.getValues()) {
-            fmt.format("  %-20s %s%n", argument.getName(), argument.getDescription());
+            argument.getDefaultValueRepresentation().ifPresentOrElse(
+                            (defaultValue) -> fmt.format("  %-30s %s (default: %s)%n", argument.getName(), argument.getDescription(), defaultValue),
+                            () -> fmt.format("  %-30s %s%n", argument.getName(), argument.getDescription()));
         }
         return fmt.toString();
     }
@@ -221,7 +223,7 @@ public class ArgumentParser {
         Formatter fmt = new Formatter();
         fmt.format("positional arguments:%n");
         for (Argument argument : positionalArguments) {
-            fmt.format("  %-20s %s%n", argument.getName(), argument.getDescription());
+            fmt.format("  %-30s %s%n", argument.getName(), argument.getDescription());
         }
         return fmt.toString();
     }
@@ -334,6 +336,21 @@ public class ArgumentParser {
      */
     public <T extends Enum<T>> EnumArgument<T> addEnumArgument(String name, T defaultValue, String help) {
         EnumArgument<T> argument = new EnumArgument<>(name, defaultValue, help);
+        addArgument(argument);
+        return argument;
+    }
+
+    /**
+     * Adds an optional program argument that expects a boolean.
+     *
+     * @param name the name of the argument
+     * @param defaultValue the value of the argument when no value is set in the program arguments
+     * @param help the help message in the program usage string
+     * @return the created argument instance
+     */
+    public BooleanArgument addBooleanArgument(String name, boolean defaultValue, String help) {
+        BooleanArgument argument = new BooleanArgument(name, defaultValue, help);
+        assert argument.isOptionArgument();
         addArgument(argument);
         return argument;
     }

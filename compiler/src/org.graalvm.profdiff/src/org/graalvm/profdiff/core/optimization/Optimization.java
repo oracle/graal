@@ -198,13 +198,13 @@ public class Optimization extends OptimizationTreeNode {
 
     /**
      * Writes {@link #toString(boolean) the representation of this optimization} to the destination
-     * writer according to the current verbosity level.
+     * writer according to the option values.
      *
      * @param writer the destination writer
      */
     @Override
     public void writeHead(Writer writer) {
-        writer.writeln(toString(writer.getVerbosityLevel().isBciLongForm()));
+        writer.writeln(toString(writer.getOptionValues().isBciLongForm()));
     }
 
     private int calculateHashCode() {

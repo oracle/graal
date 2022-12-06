@@ -53,7 +53,7 @@ public class DeltaTreeTest {
         editScript.insert(new MockTreeNode(), 1);
         editScript.identity(new MockTreeNode(), new MockTreeNode(), 0);
         EditScript<MockTreeNode> convertedEditScript = DeltaTree.fromEditScript(editScript).asEditScript();
-        Assert.assertEquals(editScript.getDeltaNodes().toList(), convertedEditScript.getDeltaNodes().toList());
+        Assert.assertEquals(editScript.getOperations().toList(), convertedEditScript.getOperations().toList());
     }
 
     @Test

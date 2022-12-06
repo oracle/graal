@@ -27,7 +27,7 @@ package org.graalvm.profdiff.core.inlining;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.profdiff.core.VerbosityLevel;
+import org.graalvm.profdiff.core.OptionValues;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.util.Writer;
 
@@ -106,12 +106,12 @@ public class InliningTree {
     }
 
     /**
-     * Preprocesses the inlining tree according to the provided verbosity level.
+     * Preprocesses the inlining tree according to the provided option values.
      *
-     * @param verbosityLevel the verbosity level
+     * @param optionValues the option values
      */
-    public void preprocess(VerbosityLevel verbosityLevel) {
-        if (verbosityLevel.shouldSortInliningTree()) {
+    public void preprocess(OptionValues optionValues) {
+        if (optionValues.shouldSortInliningTree()) {
             sortInliningTree();
         }
     }

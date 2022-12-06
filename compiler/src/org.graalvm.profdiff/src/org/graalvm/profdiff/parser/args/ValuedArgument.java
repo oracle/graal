@@ -24,6 +24,8 @@
  */
 package org.graalvm.profdiff.parser.args;
 
+import java.util.Optional;
+
 /**
  * Represents a program argument with a value that may be a default value or parsed from the program
  * arguments. The purpose of this class is reduced code duplication while all argument types still
@@ -99,4 +101,9 @@ abstract class ValuedArgument<T> extends Argument {
      * @throws InvalidArgumentException the value could not be parsed
      */
     protected abstract T parseValue(String s) throws InvalidArgumentException;
+
+    @Override
+    public Optional<String> getDefaultValueRepresentation() {
+        return Optional.of(String.valueOf(value));
+    }
 }

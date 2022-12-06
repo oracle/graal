@@ -24,6 +24,8 @@
  */
 package org.graalvm.profdiff.parser.args;
 
+import java.util.Optional;
+
 /**
  * Represents a program argument that can parse its value from a string.
  */
@@ -130,5 +132,13 @@ public abstract class Argument {
      */
     public boolean isOptionArgument() {
         return name.startsWith(OPTION_PREFIX);
+    }
+
+    /**
+     * Gets a string representation of the default value if there is a default value, otherwise
+     * {@link Optional#empty()}.
+     */
+    public Optional<String> getDefaultValueRepresentation() {
+        return Optional.empty();
     }
 }

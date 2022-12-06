@@ -27,39 +27,23 @@ package org.graalvm.profdiff.core;
 import org.graalvm.profdiff.core.optimization.Optimization;
 
 /**
- * Represents the requested level of detail in the output. The code dependent should query the
- * getters rather than use the constants directly.
+ * Values of tunable options of the program.
  */
-public enum VerbosityLevel {
+public class OptionValues {
     /**
-     * Low verbosity level.
+     * The policy which designates hot compilation units.
      */
-    LOW(false, true, false, true, true, true, true),
+    private final HotCompilationUnitPolicy hotCompilationUnitPolicy;
 
     /**
-     * The default verbosity level.
+     * {@code true} iff {@link OptimizationContextTree an optimization context tree} should be built
+     * and displayed instead of a separate inlining and optimization tree.
      */
-    DEFAULT(false, true, false, true, false, false, false),
-
-    /**
-     * High verbosity level.
-     */
-    HIGH(false, true, true, true, false, false, false),
-
-    /**
-     * Maximum verbosity level.
-     */
-    MAX(true, false, true, true, false, false, false);
-
-    /**
-     * Whether the optimization tree should be printed for each hot compilation unit.
-     */
-    private final boolean printOptimizationTree;
+    private final boolean optimizationContextTreeEnabled;
 
     /**
      * Whether a matching of hot compilations should be created for each method and their diffs
-     * printed. If a compilation does not have match, its optimization tree is printed instead
-     * (similarly to {@link #printOptimizationTree}).
+     * printed.
      */
     private final boolean diffCompilations;
 
@@ -91,12 +75,12 @@ public enum VerbosityLevel {
     /**
      * Show only the difference when trees are compared.
      */
-    private final boolean showOnlyDiff;
+    private final boolean pruneIdentities;
 
     /**
-     * Constructs a verbosity level.
+     * Constructs option values.
      *
-     * @param printOptimizationTree optimization tree should be printed for each hot compilation
+     * @param hotCompilationUnitPolicy the policy which designates hot compilation units
      * @param diffCompilations compilations should be matched and diffed
      * @param bciLongForm byte code indices should be printed in the long form
      * @param sortInliningTree the nodes of each inlining tree should be sorted
@@ -104,24 +88,34 @@ public enum VerbosityLevel {
      *            sorted
      * @param removeVeryDetailedPhases phases that perform a lot of optimizations with little
      *            individual impact should be removed
-     * @param showOnlyDiff show only the difference when trees are compared
+     * @param pruneIdentities only differences when trees are compared
      */
-    VerbosityLevel(boolean printOptimizationTree, boolean diffCompilations, boolean bciLongForm, boolean sortInliningTree, boolean sortUnorderedPhases, boolean removeVeryDetailedPhases,
-                    boolean showOnlyDiff) {
-        this.printOptimizationTree = printOptimizationTree;
+    public OptionValues(HotCompilationUnitPolicy hotCompilationUnitPolicy, boolean optimizationContextTreeEnabled,
+                    boolean diffCompilations, boolean bciLongForm, boolean sortInliningTree, boolean sortUnorderedPhases,
+                    boolean removeVeryDetailedPhases, boolean pruneIdentities) {
+        this.hotCompilationUnitPolicy = hotCompilationUnitPolicy;
+        this.optimizationContextTreeEnabled = optimizationContextTreeEnabled;
         this.diffCompilations = diffCompilations;
         this.bciLongForm = bciLongForm;
         this.sortInliningTree = sortInliningTree;
         this.sortUnorderedPhases = sortUnorderedPhases;
         this.removeVeryDetailedPhases = removeVeryDetailedPhases;
-        this.showOnlyDiff = showOnlyDiff;
+        this.pruneIdentities = pruneIdentities;
     }
 
     /**
-     * Returns whether the optimization tree should be printed for each hot compilation unit.
+     * Returns {@code true} iff {@link OptimizationContextTree an optimization context tree} should
+     * be built and displayed instead of a separate inlining and optimization tree.
      */
-    public boolean shouldPrintOptimizationTree() {
-        return printOptimizationTree;
+    public boolean isOptimizationContextTreeEnabled() {
+        return optimizationContextTreeEnabled;
+    }
+
+    /**
+     * Returns the policy which designates hot compilation units.
+     */
+    public HotCompilationUnitPolicy getHotCompilationUnitPolicy() {
+        return hotCompilationUnitPolicy;
     }
 
     /**
@@ -163,7 +157,7 @@ public enum VerbosityLevel {
     /**
      * Returns whether only the difference should be shown when trees are compared.
      */
-    public boolean shouldShowOnlyDiff() {
-        return showOnlyDiff;
+    public boolean shouldPruneIdentities() {
+        return pruneIdentities;
     }
 }

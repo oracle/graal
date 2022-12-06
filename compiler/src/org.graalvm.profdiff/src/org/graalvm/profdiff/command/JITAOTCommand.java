@@ -38,7 +38,7 @@ import org.graalvm.profdiff.util.Writer;
  * Compares a JIT-compiled experiment with an AOT compilation. Uses proftool data of the JIT
  * experiment to designate hot compilations units.
  */
-public class JITAOTCommand extends Command {
+public class JITAOTCommand implements Command {
     private final ArgumentParser argumentParser;
 
     private final StringArgument jitOptimizationLogArgument;
@@ -74,12 +74,12 @@ public class JITAOTCommand extends Command {
 
     @Override
     public void invoke(Writer writer) throws ExperimentParserError {
-        ExplanationWriter explanationWriter = new ExplanationWriter(writer, false, true, getCommandParameters().isOptimizationContextTreeEnabled());
+        ExplanationWriter explanationWriter = new ExplanationWriter(writer, false, true);
         explanationWriter.explain();
 
         writer.writeln();
         Experiment jit = ExperimentParser.parseOrExit(ExperimentId.ONE, Experiment.CompilationKind.JIT, proftoolArgument.getValue(), jitOptimizationLogArgument.getValue(), writer);
-        getCommandParameters().getHotCompilationUnitPolicy().markHotCompilationUnits(jit);
+        writer.getOptionValues().getHotCompilationUnitPolicy().markHotCompilationUnits(jit);
         jit.writeExperimentSummary(writer);
 
         writer.writeln();
@@ -92,7 +92,7 @@ public class JITAOTCommand extends Command {
             aot.getMethodOrCreate(jitUnit.getMethod().getMethodName()).getCompilationUnits().forEach(aotUnit -> aotUnit.setHot(true));
         }
 
-        ExperimentMatcher matcher = new ExperimentMatcher(writer, getCommandParameters().isOptimizationContextTreeEnabled());
+        ExperimentMatcher matcher = new ExperimentMatcher(writer);
         matcher.match(new ExperimentPair(jit, aot));
     }
 }

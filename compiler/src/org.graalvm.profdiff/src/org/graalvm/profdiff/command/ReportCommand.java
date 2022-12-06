@@ -28,7 +28,6 @@ import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.Method;
-import org.graalvm.profdiff.core.VerbosityLevel;
 import org.graalvm.profdiff.parser.args.ArgumentParser;
 import org.graalvm.profdiff.parser.args.StringArgument;
 import org.graalvm.profdiff.parser.experiment.ExperimentParser;
@@ -38,7 +37,7 @@ import org.graalvm.profdiff.util.Writer;
 /**
  * Prints out one experiment which may optionally include proftool data.
  */
-public class ReportCommand extends Command {
+public class ReportCommand implements Command {
     private final ArgumentParser argumentParser;
 
     private final StringArgument optimizationLogArgument;
@@ -71,13 +70,12 @@ public class ReportCommand extends Command {
     @Override
     public void invoke(Writer writer) throws ExperimentParserError {
         boolean hasProftool = proftoolArgument.getValue() != null;
-        ExplanationWriter explanationWriter = new ExplanationWriter(writer, true, hasProftool, getCommandParameters().isOptimizationContextTreeEnabled());
+        ExplanationWriter explanationWriter = new ExplanationWriter(writer, true, hasProftool);
         explanationWriter.explain();
 
-        VerbosityLevel verbosity = writer.getVerbosityLevel();
         writer.writeln();
         Experiment experiment = ExperimentParser.parseOrExit(ExperimentId.ONE, null, proftoolArgument.getValue(), optimizationLogArgument.getValue(), writer);
-        getCommandParameters().getHotCompilationUnitPolicy().markHotCompilationUnits(experiment);
+        writer.getOptionValues().getHotCompilationUnitPolicy().markHotCompilationUnits(experiment);
         experiment.writeExperimentSummary(writer);
 
         for (Method method : experiment.getMethodsByDescendingPeriod()) {
@@ -89,14 +87,12 @@ public class ReportCommand extends Command {
             writer.increaseIndent();
             method.writeCompilationList(writer);
             writer.increaseIndent();
-            if ((verbosity.shouldPrintOptimizationTree() || verbosity.shouldDiffCompilations()) && !verbosity.shouldShowOnlyDiff()) {
-                Iterable<CompilationUnit> compilationUnits = method.getCompilationUnits();
-                if (proftoolArgument.getValue() != null) {
-                    compilationUnits = method.getHotCompilationUnits();
-                }
-                for (CompilationUnit compilationUnit : compilationUnits) {
-                    compilationUnit.write(writer, getCommandParameters().isOptimizationContextTreeEnabled());
-                }
+            Iterable<CompilationUnit> compilationUnits = method.getCompilationUnits();
+            if (proftoolArgument.getValue() != null) {
+                compilationUnits = method.getHotCompilationUnits();
+            }
+            for (CompilationUnit compilationUnit : compilationUnits) {
+                compilationUnit.write(writer);
             }
             writer.decreaseIndent(2);
         }

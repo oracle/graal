@@ -24,14 +24,13 @@
  */
 package org.graalvm.profdiff.command;
 
-import org.graalvm.profdiff.core.VerbosityLevel;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.matching.tree.EditScript;
 import org.graalvm.profdiff.util.Writer;
 
 /**
  * Writes an explanation of the output. Explains only what is printed, i.e., the output depends on
- * the current {@link VerbosityLevel}.
+ * the option values.
  */
 public class ExplanationWriter {
     /**
@@ -50,32 +49,22 @@ public class ExplanationWriter {
     private final boolean onlyHotMethods;
 
     /**
-     * {@code true} iff {@link org.graalvm.profdiff.core.OptimizationContextTree an optimization
-     * context tree} should be built and displayed instead of a separate inlining and optimization
-     * tree.
-     */
-    private final boolean optimizationContextTreeEnabled;
-
-    /**
      * Constructs an explanation writer.
      *
      * @param writer the destination writer
      * @param singleExperiment the output consists of only one experiment
      * @param onlyHotMethods only hot methods are displayed
-     * @param optimizationContextTreeEnabled {@code true} iff optimization-context tree is enabled
      */
-    public ExplanationWriter(Writer writer, boolean singleExperiment, boolean onlyHotMethods, boolean optimizationContextTreeEnabled) {
+    public ExplanationWriter(Writer writer, boolean singleExperiment, boolean onlyHotMethods) {
         this.writer = writer;
         this.singleExperiment = singleExperiment;
         this.onlyHotMethods = onlyHotMethods;
-        this.optimizationContextTreeEnabled = optimizationContextTreeEnabled;
     }
 
     /**
      * Prints an explanation to the destination writer.
      */
     public void explain() {
-        VerbosityLevel verbosityLevel = writer.getVerbosityLevel();
         writer.writeln("How to read the output");
         writer.setPrefixAfterIndent("- ");
         writer.increaseIndent();
@@ -84,7 +73,7 @@ public class ExplanationWriter {
         } else {
             writer.writeln("each compiled method is printed in a separate section below");
         }
-        if (!singleExperiment && verbosityLevel.shouldDiffCompilations()) {
+        if (!singleExperiment && writer.getOptionValues().shouldDiffCompilations()) {
             writer.writeln("hot compilations are paired by their fraction of execution");
         }
         writer.writeln("a compilation refers to either a compilation unit or a compilation fragment");
@@ -92,22 +81,17 @@ public class ExplanationWriter {
         writer.writeln("a compilation unit is the result of a Graal compilation");
         writer.writeln("a compilation fragment is created from a compilation unit");
         writer.decreaseIndent();
-        if (optimizationContextTreeEnabled) {
+        if (writer.getOptionValues().isOptimizationContextTreeEnabled()) {
             explainOptimizationContextTree();
         } else {
             explainOptimizationTree();
             explainInliningTree();
         }
-        writer.writeln("this message is adapted to the " + verbosityLevel.toString().toLowerCase() + " verbosity level");
         writer.decreaseIndent();
-        writer.setPrefixAfterIndent("");
+        writer.clearPrefixAfterIndent();
     }
 
     private void explainOptimizationTree() {
-        VerbosityLevel verbosityLevel = writer.getVerbosityLevel();
-        if (!verbosityLevel.shouldPrintOptimizationTree() && !verbosityLevel.shouldDiffCompilations()) {
-            return;
-        }
         writer.writeln("the optimization tree is a tree of optimization phases and individual performed optimizations");
         writer.increaseIndent();
         writer.writeln("the root of the tree is a virtual root phase that encompasses all phases");
@@ -124,12 +108,12 @@ public class ExplanationWriter {
         writer.decreaseIndent();
         writer.writeln("properties are key-value pairs that give additional information");
         writer.decreaseIndent();
-        if (!singleExperiment && verbosityLevel.shouldDiffCompilations()) {
+        if (!singleExperiment && writer.getOptionValues().shouldDiffCompilations()) {
             writer.writeln("the optimization trees of two paired compilations are diffed");
             writer.writeln("a list of operations to transform the first optimization tree to the second with minimal cost is computed");
             writer.writeln("the operations include subtree deletion and subtree insertion");
             writer.writeln("the diff is printed in the form of a tree");
-            if (verbosityLevel.shouldShowOnlyDiff()) {
+            if (writer.getOptionValues().shouldPruneIdentities()) {
                 writer.writeln("only the different parts of the trees are displayed at this verbosity level");
             }
             writer.writeln("each node's prefix shows the type of operation it took part in, for example");
@@ -143,16 +127,12 @@ public class ExplanationWriter {
     }
 
     private void explainInliningTree() {
-        VerbosityLevel verbosityLevel = writer.getVerbosityLevel();
-        if (!verbosityLevel.shouldPrintOptimizationTree() && !verbosityLevel.shouldDiffCompilations()) {
-            return;
-        }
         writer.writeln("the inlining tree is a tree of methods that were inlined or considered for inlining in a compilation unit");
         writer.increaseIndent();
         writer.writeln("the root of the tree is the compiled root method");
         writer.writeln("the children of a node are the methods that are called from the node at a particular bci");
         writer.writeln("if a node is not inlined, it is displayed with the prefix `" + InliningTreeNode.NOT_INLINED_PREFIX + "`");
-        if (verbosityLevel.shouldSortInliningTree()) {
+        if (writer.getOptionValues().shouldSortInliningTree()) {
             writer.writeln("the children of each node are sorted lexicographically by (bci, name)");
         } else {
             writer.writeln("the children of a node are in the order they appeared in the log");
@@ -166,14 +146,14 @@ public class ExplanationWriter {
         writer.writeln("`concreteMethodName` is the concrete method called for the given receiver type");
         writer.writeln("`probability` is the fraction of calls having this exact receiver type");
         writer.decreaseIndent();
-        if (!singleExperiment && verbosityLevel.shouldDiffCompilations()) {
+        if (!singleExperiment && writer.getOptionValues().shouldDiffCompilations()) {
             writer.writeln("the inlining trees of two paired compilations are diffed");
             writer.increaseIndent();
             writer.writeln("the tree also includes negative decisions, i.e., a callsite may be considered for inlining but is ultimately not inlined");
             writer.writeln("a list of operations to transform the first inlining tree to the second with minimal cost is computed");
             writer.writeln("the operations include subtree deletion, subtree insertion and relabeling (changing one node to another node)");
             writer.writeln("the diff is printed in the form of a tree");
-            if (verbosityLevel.shouldShowOnlyDiff()) {
+            if (writer.getOptionValues().shouldPruneIdentities()) {
                 writer.writeln("only the different parts of the trees are displayed at this verbosity level");
             }
             writer.writeln("each node's prefix shows the type of operation it took part in, for example");
@@ -195,10 +175,6 @@ public class ExplanationWriter {
     }
 
     private void explainOptimizationContextTree() {
-        VerbosityLevel verbosityLevel = writer.getVerbosityLevel();
-        if (!verbosityLevel.shouldPrintOptimizationTree() && !verbosityLevel.shouldDiffCompilations()) {
-            return;
-        }
         writer.writeln("the optimization-context tree is a tree of methods and the optimizations performed in them");
         writer.increaseIndent();
         writer.writeln("each node in the tree is either an inlined/not inlined method or an optimization");
@@ -210,14 +186,14 @@ public class ExplanationWriter {
         writer.writeln("the optimizations performed in the inlined method");
         writer.decreaseIndent();
         writer.writeln("an optimization is a always a leaf node in the tree");
-        if (!singleExperiment && verbosityLevel.shouldDiffCompilations()) {
+        if (!singleExperiment && writer.getOptionValues().shouldDiffCompilations()) {
             writer.writeln("the optimization-context trees of two paired compilations are diffed");
             writer.increaseIndent();
             writer.writeln("the tree also includes negative decisions, i.e., a callsite may be considered for inlining but is ultimately not inlined");
             writer.writeln("a list of operations to transform the first inlining tree to the second with minimal cost is computed");
             writer.writeln("the operations include subtree deletion, subtree insertion and relabeling (changing one node to another node)");
             writer.writeln("the diff is printed in the form of a tree");
-            if (verbosityLevel.shouldShowOnlyDiff()) {
+            if (writer.getOptionValues().shouldPruneIdentities()) {
                 writer.writeln("only the different parts of the trees are displayed at this verbosity level");
             }
             writer.writeln("each node's prefix shows the type of operation it took part in, for example");

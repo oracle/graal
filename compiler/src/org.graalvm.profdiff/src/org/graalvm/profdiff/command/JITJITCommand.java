@@ -36,7 +36,7 @@ import org.graalvm.profdiff.util.Writer;
 /**
  * Compares two JIT-compiled experiments with proftool data.
  */
-public class JITJITCommand extends Command {
+public class JITJITCommand implements Command {
     private final ArgumentParser argumentParser;
 
     private final StringArgument optimizationLogArgument1;
@@ -76,20 +76,20 @@ public class JITJITCommand extends Command {
 
     @Override
     public void invoke(Writer writer) throws ExperimentParserError {
-        ExplanationWriter explanationWriter = new ExplanationWriter(writer, false, true, getCommandParameters().isOptimizationContextTreeEnabled());
+        ExplanationWriter explanationWriter = new ExplanationWriter(writer, false, true);
         explanationWriter.explain();
 
         writer.writeln();
         Experiment jit1 = ExperimentParser.parseOrExit(ExperimentId.ONE, Experiment.CompilationKind.JIT, proftoolArgument1.getValue(), optimizationLogArgument1.getValue(), writer);
-        getCommandParameters().getHotCompilationUnitPolicy().markHotCompilationUnits(jit1);
+        writer.getOptionValues().getHotCompilationUnitPolicy().markHotCompilationUnits(jit1);
         jit1.writeExperimentSummary(writer);
 
         writer.writeln();
         Experiment jit2 = ExperimentParser.parseOrExit(ExperimentId.TWO, Experiment.CompilationKind.JIT, proftoolArgument2.getValue(), optimizationLogArgument2.getValue(), writer);
-        getCommandParameters().getHotCompilationUnitPolicy().markHotCompilationUnits(jit2);
+        writer.getOptionValues().getHotCompilationUnitPolicy().markHotCompilationUnits(jit2);
         jit2.writeExperimentSummary(writer);
 
-        ExperimentMatcher matcher = new ExperimentMatcher(writer, getCommandParameters().isOptimizationContextTreeEnabled());
+        ExperimentMatcher matcher = new ExperimentMatcher(writer);
         matcher.match(new ExperimentPair(jit1, jit2));
     }
 }

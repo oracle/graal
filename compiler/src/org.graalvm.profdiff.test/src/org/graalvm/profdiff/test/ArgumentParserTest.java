@@ -51,7 +51,7 @@ public class ArgumentParserTest {
         BAR
     }
 
-    private static final class CommandFoo extends Command {
+    private static final class CommandFoo implements Command {
         private final ArgumentParser argumentParser = new ArgumentParser();
 
         @Override
@@ -75,7 +75,7 @@ public class ArgumentParserTest {
         }
     }
 
-    private static final class CommandBar extends Command {
+    private static final class CommandBar implements Command {
         private final ArgumentParser argumentParser = new ArgumentParser();
 
         private final FlagArgument flagArgument;

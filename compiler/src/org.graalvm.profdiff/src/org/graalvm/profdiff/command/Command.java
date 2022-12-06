@@ -24,7 +24,6 @@
  */
 package org.graalvm.profdiff.command;
 
-import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
 import org.graalvm.profdiff.parser.args.ArgumentParser;
 import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
 import org.graalvm.profdiff.util.Writer;
@@ -34,59 +33,16 @@ import org.graalvm.profdiff.util.Writer;
  * {@link #getName() the command's name}. A command may define additional arguments, which are
  * parsed using {@link #getArgumentParser() its argument parser}.
  */
-public abstract class Command {
-    /**
-     * Parameter values common for all commands.
-     */
-    public static class CommandParameters {
-        /**
-         * The policy which designates hot compilation units.
-         */
-        private final HotCompilationUnitPolicy hotCompilationUnitPolicy;
-
-        /**
-         * {@code true} iff {@link org.graalvm.profdiff.core.OptimizationContextTree an optimization
-         * context tree} should be built and displayed instead of a separate inlining and
-         * optimization tree.
-         */
-        private final boolean optimizationContextTreeEnabled;
-
-        public CommandParameters(HotCompilationUnitPolicy hotCompilationUnitPolicy, boolean optimizationContextTreeEnabled) {
-            this.hotCompilationUnitPolicy = hotCompilationUnitPolicy;
-            this.optimizationContextTreeEnabled = optimizationContextTreeEnabled;
-        }
-
-        /**
-         * Returns {@code true} iff {@link org.graalvm.profdiff.core.OptimizationContextTree an
-         * optimization context tree} should be built and displayed instead of a separate inlining
-         * and optimization tree.
-         */
-        public boolean isOptimizationContextTreeEnabled() {
-            return optimizationContextTreeEnabled;
-        }
-
-        /**
-         * Returns the policy which designates hot compilation units.
-         */
-        public HotCompilationUnitPolicy getHotCompilationUnitPolicy() {
-            return hotCompilationUnitPolicy;
-        }
-    }
-
-    /**
-     * Common parameter values for all commands.
-     */
-    private CommandParameters commandParameters;
-
+public interface Command {
     /**
      * Gets the string that invokes this command from the command line.
      */
-    public abstract String getName();
+    String getName();
 
     /**
      * Gets the help message describing the purpose of the command.
      */
-    public abstract String getDescription();
+    String getDescription();
 
     /**
      * Gets the argument parser of the command, which parses the arguments that come just after the
@@ -94,7 +50,7 @@ public abstract class Command {
      *
      * @return the argument parser that parses the arguments belonging to this command
      */
-    public abstract ArgumentParser getArgumentParser();
+    ArgumentParser getArgumentParser();
 
     /**
      * Performs the action of the command. Called if the command was selected on the command line
@@ -103,21 +59,5 @@ public abstract class Command {
      *
      * @param writer the writer to use for standard output of the command
      */
-    public abstract void invoke(Writer writer) throws ExperimentParserError;
-
-    /**
-     * Sets the common parameters for all commands.
-     *
-     * @param commandParameters the new parameter values
-     */
-    public void setCommandParameters(CommandParameters commandParameters) {
-        this.commandParameters = commandParameters;
-    }
-
-    /**
-     * Gets the common parameters for all commands.
-     */
-    protected CommandParameters getCommandParameters() {
-        return commandParameters;
-    }
+    void invoke(Writer writer) throws ExperimentParserError;
 }

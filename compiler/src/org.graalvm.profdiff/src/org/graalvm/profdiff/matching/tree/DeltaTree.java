@@ -130,21 +130,21 @@ public class DeltaTree<T extends TreeNode<T>> {
      */
     public static <T extends TreeNode<T>> DeltaTree<T> fromEditScript(EditScript<T> editScript) {
         LinkedList<DeltaTreeNode<T>> stack = new LinkedList<>();
-        for (EditScript.DeltaNode<T> deltaNode : editScript.getDeltaNodes()) {
-            boolean isIdentity = deltaNode instanceof EditScript.Identity;
+        for (EditScript.Operation<T> operation : editScript.getOperations()) {
+            boolean isIdentity = operation.getOperationType() == EditScript.OperationType.Identity;
             if (stack.isEmpty()) {
-                stack.add(new DeltaTreeNode<>(0, isIdentity, deltaNode.left, deltaNode.right));
+                stack.add(new DeltaTreeNode<>(0, isIdentity, operation.getLeft(), operation.getRight()));
                 continue;
             }
-            if (deltaNode.depth == stack.getLast().getDepth() + 1) {
-                DeltaTreeNode<T> child = stack.getLast().addChild(isIdentity, deltaNode.left, deltaNode.right);
+            if (operation.getDepth() == stack.getLast().getDepth() + 1) {
+                DeltaTreeNode<T> child = stack.getLast().addChild(isIdentity, operation.getLeft(), operation.getRight());
                 stack.add(child);
-            } else if (deltaNode.depth <= stack.getLast().getDepth()) {
-                int toPop = stack.getLast().getDepth() - deltaNode.depth + 1;
+            } else if (operation.getDepth() <= stack.getLast().getDepth()) {
+                int toPop = stack.getLast().getDepth() - operation.getDepth() + 1;
                 for (int i = 0; i < toPop; i++) {
                     stack.removeLast();
                 }
-                DeltaTreeNode<T> child = stack.getLast().addChild(isIdentity, deltaNode.left, deltaNode.right);
+                DeltaTreeNode<T> child = stack.getLast().addChild(isIdentity, operation.getLeft(), operation.getRight());
                 stack.add(child);
             } else {
                 throw new RuntimeException("The edit script is not in dfs preorder.");

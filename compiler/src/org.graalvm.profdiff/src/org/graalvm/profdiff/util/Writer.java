@@ -24,11 +24,11 @@
  */
 package org.graalvm.profdiff.util;
 
-import org.graalvm.profdiff.core.VerbosityLevel;
+import org.graalvm.profdiff.core.OptionValues;
 
 /**
  * An output writer that manages indentation and optional string prefixes that are prepended to each
- * written line. The writer holds the current {@link VerbosityLevel} for convenience.
+ * written line. The writer holds the current {@link OptionValues} for convenience.
  */
 public interface Writer {
     /**
@@ -100,7 +100,7 @@ public interface Writer {
     void clearPrefixAfterIndent();
 
     /**
-     * Gets the current verbosity level.
+     * Gets the current option values.
      */
-    VerbosityLevel getVerbosityLevel();
+    OptionValues getOptionValues();
 }

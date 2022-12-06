@@ -40,7 +40,6 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
-import org.graalvm.profdiff.core.VerbosityLevel;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.inlining.ReceiverTypeProfile;
 import org.graalvm.profdiff.core.optimization.Optimization;
@@ -121,7 +120,7 @@ public class ExperimentParserTest {
     @Test
     public void testExperimentParser() throws Exception {
         ExperimentFiles experimentFiles = new ExperimentResources();
-        Writer writer = new StdoutWriter(VerbosityLevel.DEFAULT);
+        Writer writer = new StdoutWriter(null);
         ExperimentParser experimentParser = new ExperimentParser(experimentFiles, writer);
         Experiment experiment = experimentParser.parse();
         assertEquals("16102", experiment.getExecutionId());

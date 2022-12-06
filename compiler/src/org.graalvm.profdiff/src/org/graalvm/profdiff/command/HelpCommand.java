@@ -32,7 +32,7 @@ import org.graalvm.profdiff.util.Writer;
 /**
  * A command that shows a help message for the whole program or a particular command.
  */
-public class HelpCommand extends Command {
+public class HelpCommand implements Command {
     private final ProgramArgumentParser programArgumentParser;
 
     private final ArgumentParser argumentParser;

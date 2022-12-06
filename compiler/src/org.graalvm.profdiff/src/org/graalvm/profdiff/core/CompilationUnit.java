@@ -192,9 +192,8 @@ public class CompilationUnit {
      * {@link Experiment#isProfileAvailable() available} to the experiment.
      *
      * @param writer the destination writer
-     * @param optimizationContextTreeEnabled writes the optimization-context tree iff {@code true}
      */
-    public void write(Writer writer, boolean optimizationContextTreeEnabled) throws ExperimentParserError {
+    public void write(Writer writer) throws ExperimentParserError {
         writer.write("Compilation " + compilationId);
         if (method.getExperiment().isProfileAvailable()) {
             writer.write(" (" + createExecutionSummary() + ")");
@@ -202,9 +201,9 @@ public class CompilationUnit {
         writer.writeln(" in experiment " + method.getExperiment().getExperimentId());
         writer.increaseIndent();
         TreePair treePair = loader.load();
-        treePair.getInliningTree().preprocess(writer.getVerbosityLevel());
-        treePair.getOptimizationTree().preprocess(writer.getVerbosityLevel());
-        if (optimizationContextTreeEnabled) {
+        treePair.getInliningTree().preprocess(writer.getOptionValues());
+        treePair.getOptimizationTree().preprocess(writer.getOptionValues());
+        if (writer.getOptionValues().isOptimizationContextTreeEnabled()) {
             OptimizationContextTree.createFrom(treePair.getInliningTree(), treePair.getOptimizationTree()).write(writer);
         } else {
             treePair.getInliningTree().write(writer);

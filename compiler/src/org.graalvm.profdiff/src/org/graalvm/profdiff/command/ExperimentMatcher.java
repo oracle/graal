@@ -27,7 +27,6 @@ package org.graalvm.profdiff.command;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.OptimizationContextTree;
 import org.graalvm.profdiff.core.OptimizationContextTreeNode;
-import org.graalvm.profdiff.core.VerbosityLevel;
 import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
@@ -69,15 +68,8 @@ public class ExperimentMatcher {
      */
     private final Writer writer;
 
-    /**
-     * {@code true} iff {@link OptimizationContextTree an optimization context tree} should be built
-     * and displayed instead of a separate inlining and optimization tree.
-     */
-    private final boolean optimizationContextTreeEnabled;
-
-    public ExperimentMatcher(Writer writer, boolean optimizationContextTreeEnabled) {
+    public ExperimentMatcher(Writer writer) {
         this.writer = writer;
-        this.optimizationContextTreeEnabled = optimizationContextTreeEnabled;
     }
 
     /**
@@ -93,35 +85,35 @@ public class ExperimentMatcher {
      */
     public void match(ExperimentPair experimentPair) throws ExperimentParserError {
         experimentPair.createCompilationFragments();
-        VerbosityLevel verbosityLevel = writer.getVerbosityLevel();
         for (MethodPair methodPair : experimentPair.getHotMethodPairsByDescendingPeriod()) {
             writer.writeln();
             methodPair.writeHeaderAndCompilationList(writer);
             writer.increaseIndent();
-            if (verbosityLevel.shouldPrintOptimizationTree()) {
+            if (writer.getOptionValues().shouldDiffCompilations()) {
+                for (CompilationUnitPair compilationUnitPair : methodPair.getHotCompilationUnitPairsByDescendingPeriod()) {
+                    writer.writeln(compilationUnitPair.formatHeaderForHotCompilations());
+                    writer.increaseIndent();
+                    if (compilationUnitPair.bothHot()) {
+                        CompilationUnit.TreePair treePair1 = compilationUnitPair.getCompilationUnit1().loadTrees();
+                        CompilationUnit.TreePair treePair2 = compilationUnitPair.getCompilationUnit2().loadTrees();
+                        if (writer.getOptionValues().isOptimizationContextTreeEnabled()) {
+                            createOptimizationContextTreeAndMatch(treePair1, treePair2);
+                        } else {
+                            matchInliningTrees(treePair1.getInliningTree(), treePair2.getInliningTree());
+                            matchOptimizationTrees(treePair1.getOptimizationTree(), treePair2.getOptimizationTree());
+                        }
+                    } else if (!writer.getOptionValues().shouldPruneIdentities()) {
+                        compilationUnitPair.firstNonNull().write(writer);
+                    }
+                    writer.decreaseIndent();
+                }
+            } else {
                 for (CompilationUnit compilationUnit : methodPair.getMethod1().getCompilationUnits()) {
-                    compilationUnit.write(writer, optimizationContextTreeEnabled);
+                    compilationUnit.write(writer);
                 }
                 for (CompilationUnit compilationUnit : methodPair.getMethod2().getCompilationUnits()) {
-                    compilationUnit.write(writer, optimizationContextTreeEnabled);
+                    compilationUnit.write(writer);
                 }
-            }
-            for (CompilationUnitPair compilationUnitPair : methodPair.getHotCompilationUnitPairsByDescendingPeriod()) {
-                writer.writeln(compilationUnitPair.formatHeaderForHotCompilations());
-                writer.increaseIndent();
-                if (compilationUnitPair.bothHot()) {
-                    CompilationUnit.TreePair treePair1 = compilationUnitPair.getCompilationUnit1().loadTrees();
-                    CompilationUnit.TreePair treePair2 = compilationUnitPair.getCompilationUnit2().loadTrees();
-                    if (optimizationContextTreeEnabled) {
-                        createOptimizationContextTreeAndMatch(treePair1, treePair2);
-                    } else {
-                        matchInliningTrees(treePair1.getInliningTree(), treePair2.getInliningTree());
-                        matchOptimizationTrees(treePair1.getOptimizationTree(), treePair2.getOptimizationTree());
-                    }
-                } else if (!verbosityLevel.shouldShowOnlyDiff()) {
-                    compilationUnitPair.firstNonNull().write(writer, optimizationContextTreeEnabled);
-                }
-                writer.decreaseIndent();
             }
             writer.decreaseIndent();
         }
@@ -134,11 +126,11 @@ public class ExperimentMatcher {
         InliningTreeNode inliningTreeRoot1 = inliningTree1.getRoot();
         InliningTreeNode inliningTreeRoot2 = inliningTree2.getRoot();
         writer.writeln("Inlining tree matching");
-        inliningTree1.preprocess(writer.getVerbosityLevel());
-        inliningTree2.preprocess(writer.getVerbosityLevel());
+        inliningTree1.preprocess(writer.getOptionValues());
+        inliningTree2.preprocess(writer.getOptionValues());
         EditScript<InliningTreeNode> inliningTreeMatching = inliningTreeMatcher.match(inliningTreeRoot1, inliningTreeRoot2);
         DeltaTree<InliningTreeNode> inliningDeltaTree = DeltaTree.fromEditScript(inliningTreeMatching);
-        if (writer.getVerbosityLevel().shouldShowOnlyDiff()) {
+        if (writer.getOptionValues().shouldPruneIdentities()) {
             inliningDeltaTree.pruneIdentities();
         }
         inliningDeltaTree.expand();
@@ -153,11 +145,11 @@ public class ExperimentMatcher {
      */
     private void matchOptimizationTrees(OptimizationTree optimizationTree1, OptimizationTree optimizationTree2) {
         writer.writeln("Optimization tree matching");
-        optimizationTree1.preprocess(writer.getVerbosityLevel());
-        optimizationTree2.preprocess(writer.getVerbosityLevel());
+        optimizationTree1.preprocess(writer.getOptionValues());
+        optimizationTree2.preprocess(writer.getOptionValues());
         EditScript<OptimizationTreeNode> optimizationTreeMatching = optimizationTreeMatcher.match(optimizationTree1.getRoot(), optimizationTree2.getRoot());
         DeltaTree<OptimizationTreeNode> optimizationDeltaTree = DeltaTree.fromEditScript(optimizationTreeMatching);
-        if (writer.getVerbosityLevel().shouldShowOnlyDiff()) {
+        if (writer.getOptionValues().shouldPruneIdentities()) {
             optimizationDeltaTree.pruneIdentities();
         }
         optimizationDeltaTree.expand();
@@ -175,15 +167,15 @@ public class ExperimentMatcher {
      * @param treePair2 the tree pair from the second experiment
      */
     private void createOptimizationContextTreeAndMatch(CompilationUnit.TreePair treePair1, CompilationUnit.TreePair treePair2) {
-        treePair1.getInliningTree().preprocess(writer.getVerbosityLevel());
-        treePair2.getInliningTree().preprocess(writer.getVerbosityLevel());
-        treePair1.getOptimizationTree().preprocess(writer.getVerbosityLevel());
-        treePair2.getOptimizationTree().preprocess(writer.getVerbosityLevel());
+        treePair1.getInliningTree().preprocess(writer.getOptionValues());
+        treePair2.getInliningTree().preprocess(writer.getOptionValues());
+        treePair1.getOptimizationTree().preprocess(writer.getOptionValues());
+        treePair2.getOptimizationTree().preprocess(writer.getOptionValues());
         OptimizationContextTree optimizationContextTree1 = OptimizationContextTree.createFrom(treePair1.getInliningTree(), treePair1.getOptimizationTree());
         OptimizationContextTree optimizationContextTree2 = OptimizationContextTree.createFrom(treePair2.getInliningTree(), treePair2.getOptimizationTree());
         EditScript<OptimizationContextTreeNode> optimizationContextTreeMatching = optimizationContextTreeMatcher.match(optimizationContextTree1.getRoot(), optimizationContextTree2.getRoot());
         DeltaTree<OptimizationContextTreeNode> deltaTree = DeltaTree.fromEditScript(optimizationContextTreeMatching);
-        if (writer.getVerbosityLevel().shouldShowOnlyDiff()) {
+        if (writer.getOptionValues().shouldPruneIdentities()) {
             deltaTree.pruneIdentities();
         }
         deltaTree.expand();
