@@ -247,7 +247,7 @@ public class NativeImage {
 
     protected final BuildConfiguration config;
 
-    private final Map<String, String> userConfigProperties = new HashMap<>();
+    final Map<String, String> userConfigProperties = new HashMap<>();
     private final Map<String, String> propertyFileSubstitutionValues = new HashMap<>();
 
     private boolean verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
@@ -554,14 +554,7 @@ public class NativeImage {
          * @return native-image (i.e. image build) arguments
          */
         public List<String> getBuildArgs() {
-            if (args.isEmpty()) {
-                return Collections.emptyList();
-            }
-            List<String> buildArgs = new ArrayList<>();
-            buildArgs.addAll(Arrays.asList("--configurations-path", rootDir.toString()));
-            buildArgs.addAll(Arrays.asList("--configurations-path", rootDir.resolve(Paths.get("lib", "svm")).toString()));
-            buildArgs.addAll(args);
-            return buildArgs;
+            return args;
         }
 
         /**
@@ -724,17 +717,18 @@ public class NativeImage {
 
     private final DriverMetaInfProcessor metaInfProcessor;
 
+    static final String CONFIG_FILE_ENV_VAR_KEY = "NATIVE_IMAGE_CONFIG_FILE";
+
     protected NativeImage(BuildConfiguration config) {
         this.config = config;
         this.metaInfProcessor = new DriverMetaInfProcessor();
 
-        String configFileEnvVarKey = "NATIVE_IMAGE_CONFIG_FILE";
-        String configFile = System.getenv(configFileEnvVarKey);
+        String configFile = System.getenv(CONFIG_FILE_ENV_VAR_KEY);
         if (configFile != null && !configFile.isEmpty()) {
             try {
                 userConfigProperties.putAll(loadProperties(canonicalize(Paths.get(configFile))));
             } catch (NativeImageError | Exception e) {
-                showError("Invalid environment variable " + configFileEnvVarKey, e);
+                showError("Invalid environment variable " + CONFIG_FILE_ENV_VAR_KEY, e);
             }
         }
 
@@ -743,6 +737,8 @@ public class NativeImage {
 
         /* Discover supported MacroOptions */
         optionRegistry = new MacroOption.Registry();
+        optionRegistry.addMacroOptionRoot(config.rootDir);
+        optionRegistry.addMacroOptionRoot(config.rootDir.resolve(Paths.get("lib", "svm")));
 
         cmdLineOptionHandler = new CmdLineOptionHandler(this);
 
@@ -755,7 +751,9 @@ public class NativeImage {
     }
 
     void addMacroOptionRoot(Path configDir) {
-        optionRegistry.addMacroOptionRoot(canonicalize(configDir));
+        Path origRootDir = canonicalize(configDir);
+        Path rootDir = replaySupport != null ? replaySupport.substituteClassPath(origRootDir) : origRootDir;
+        optionRegistry.addMacroOptionRoot(rootDir);
     }
 
     protected void registerOptionHandler(OptionHandler<? extends NativeImage> handler) {
@@ -956,17 +954,6 @@ public class NativeImage {
         }
         String origin = "manifest from " + jarFilePath.toUri();
         addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(oHClass + mainClassValue, origin));
-        String jarFileName = jarFilePath.getFileName().toString();
-        String jarSuffix = ".jar";
-        String jarFileNameBase;
-        if (jarFileName.endsWith(jarSuffix)) {
-            jarFileNameBase = jarFileName.substring(0, jarFileName.length() - jarSuffix.length());
-        } else {
-            jarFileNameBase = jarFileName;
-        }
-        if (!jarFileNameBase.isEmpty()) {
-            addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(oHName + jarFileNameBase, origin));
-        }
     }
 
     void handleClassPathAttribute(LinkedHashSet<Path> destination, Path jarFilePath, Attributes mainAttributes) {
@@ -1346,6 +1333,18 @@ public class NativeImage {
         }
 
         boolean useReplay = replaySupport != null;
+        if (useReplay) {
+            Path imageNamePath = Path.of(imageName);
+            if (imageNamePath.getParent() != null) {
+                throw NativeImage.showError("Replay-bundle support can only be used with simple output image-name. Use '" + imageNamePath.getFileName() + "' instead of '" + imageNamePath + "'.");
+            }
+            if (!Path.of(imagePath).equals(config.getWorkingDirectory())) {
+                /* Allow bundle write to succeed in working directory */
+                imagePath = config.getWorkingDirectory().toString();
+
+                throw NativeImage.showError("Replay-bundle support can only be used with default image output directory. Ensure '" + oHPath + "<value>' is not explicitly set.");
+            }
+        }
         Function<Path, Path> substituteAuxiliaryPath = useReplay ? replaySupport::substituteAuxiliaryPath : Function.identity();
         Function<String, String> imageArgsTransformer = rawArg -> apiOptionHandler.transformBuilderArgument(rawArg, substituteAuxiliaryPath);
         List<String> finalImageArgs = imageArgs.stream().map(imageArgsTransformer).collect(Collectors.toList());
@@ -1636,8 +1635,9 @@ public class NativeImage {
             return;
         }
 
-        imageModulePath.add(mpEntry);
-        processClasspathNativeImageMetaInf(mpEntry);
+        Path mpEntryFinal = replaySupport != null ? replaySupport.substituteModulePath(mpEntry) : mpEntry;
+        imageModulePath.add(mpEntryFinal);
+        processClasspathNativeImageMetaInf(mpEntryFinal);
     }
 
     /**
@@ -1674,10 +1674,11 @@ public class NativeImage {
             return;
         }
 
-        if (!imageClasspath.contains(classpathEntry) && !customImageClasspath.contains(classpathEntry)) {
-            destination.add(classpathEntry);
-            processManifestMainAttributes(classpathEntry, (jarFilePath, attributes) -> handleClassPathAttribute(destination, jarFilePath, attributes));
-            processClasspathNativeImageMetaInf(classpathEntry);
+        Path classpathEntryFinal = replaySupport != null ? replaySupport.substituteModulePath(classpathEntry) : classpathEntry;
+        if (!imageClasspath.contains(classpathEntryFinal) && !customImageClasspath.contains(classpathEntryFinal)) {
+            destination.add(classpathEntryFinal);
+            processManifestMainAttributes(classpathEntryFinal, (jarFilePath, attributes) -> handleClassPathAttribute(destination, jarFilePath, attributes));
+            processClasspathNativeImageMetaInf(classpathEntryFinal);
         }
     }
 

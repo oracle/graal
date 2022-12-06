@@ -26,11 +26,7 @@ package com.oracle.svm.driver;
 
 import java.io.File;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.graalvm.compiler.options.OptionType;
 
@@ -49,7 +45,6 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     private static final String serverOptionPrefix = "--server-";
 
     public static final String DEBUG_ATTACH_OPTION = "--debug-attach";
-    public static final String REPLAY_OPTION = "--replay";
 
     private static final String javaRuntimeVersion = System.getProperty("java.runtime.version");
 
@@ -114,7 +109,7 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     NativeImage.showError(headArg + " requires a " + File.pathSeparator + " separated list of directories");
                 }
                 for (String configDir : configPath.split(File.pathSeparator)) {
-                    nativeImage.addMacroOptionRoot(nativeImage.canonicalize(Paths.get(configDir)));
+                    nativeImage.addMacroOptionRoot(Paths.get(configDir));
                 }
                 return true;
             case "--exclude-config":
@@ -156,54 +151,9 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
         }
 
-        if (headArg.startsWith(REPLAY_OPTION)) {
+        if (headArg.startsWith(ReplaySupport.REPLAY_OPTION)) {
             String replayArg = args.poll();
-            ReplaySupport.ReplayStatus replayStatus;
-            if (replayArg.equals(REPLAY_OPTION)) {
-                /* Handle short form of --replay-apply */
-                replayStatus = ReplaySupport.ReplayStatus.apply;
-            } else {
-                String replayVariant = replayArg.substring(REPLAY_OPTION.length() + 1);
-                try {
-                    replayStatus = ReplaySupport.ReplayStatus.valueOf(replayVariant);
-                } catch (IllegalArgumentException e) {
-                    String suggestedVariants = Arrays.stream(ReplaySupport.ReplayStatus.values())
-                                    .filter(ReplaySupport.ReplayStatus::show)
-                                    .map(v -> REPLAY_OPTION + "-" + v)
-                                    .collect(Collectors.joining(", "));
-                    throw NativeImage.showError("Unknown option " + replayArg + ". Valid variants are: " + suggestedVariants + ".");
-                }
-            }
-            if (replayStatus.loadBundle) {
-                String replayBundleFilename = args.poll();
-                nativeImage.replaySupport = new ReplaySupport(nativeImage, replayStatus, replayBundleFilename);
-                List<String> buildArgs = nativeImage.replaySupport.getBuildArgs();
-                for (int i = buildArgs.size() - 1; i >= 0; i--) {
-                    args.push(buildArgs.get(i));
-                }
-            } else {
-                List<String> filteredBuildArgs = new ArrayList<>();
-                boolean skipNext = false;
-                for (String arg : nativeImage.config.getBuildArgs()) {
-                    if (skipNext) {
-                        skipNext = false;
-                        continue;
-                    }
-                    if (arg.startsWith(REPLAY_OPTION)) {
-                        continue;
-                    }
-                    if (arg.startsWith("-Dllvm.bin.dir=")) {
-                        continue;
-                    }
-                    if (arg.equals("--configurations-path")) {
-                        // FIXME Provide proper --configurations-path support
-                        skipNext = true;
-                        continue;
-                    }
-                    filteredBuildArgs.add(arg);
-                }
-                nativeImage.replaySupport = new ReplaySupport(nativeImage, replayStatus, filteredBuildArgs);
-            }
+            nativeImage.replaySupport = ReplaySupport.create(nativeImage, replayArg, args);
             return true;
         }
 

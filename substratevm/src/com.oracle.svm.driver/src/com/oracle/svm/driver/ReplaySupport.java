@@ -32,14 +32,17 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.util.json.JSONParserException;
@@ -50,9 +53,10 @@ import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.util.json.JsonPrinter;
 import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.StringUtil;
 
 class ReplaySupport {
+
+    static final String REPLAY_OPTION = "--replay";
 
     enum ReplayStatus {
         prepare(false, false),
@@ -89,7 +93,54 @@ class ReplaySupport {
 
     private static final String replayTempDirPrefix = "replayRoot-";
 
-    ReplaySupport(NativeImage nativeImage, ReplayStatus status, List<String> buildArgs) {
+    static ReplaySupport create(NativeImage nativeImage, String replayArg, NativeImage.ArgumentQueue args) {
+        if (!nativeImage.userConfigProperties.isEmpty()) {
+            throw NativeImage.showError("Replay-bundle support cannot be combined with " + NativeImage.CONFIG_FILE_ENV_VAR_KEY + " environment variable use.");
+        }
+
+        ReplaySupport.ReplayStatus replayStatus;
+        if (replayArg.equals(REPLAY_OPTION)) {
+            /* Handle short form of --replay-apply */
+            replayStatus = ReplaySupport.ReplayStatus.apply;
+        } else {
+            String replayVariant = replayArg.substring(REPLAY_OPTION.length() + 1);
+            try {
+                replayStatus = ReplaySupport.ReplayStatus.valueOf(replayVariant);
+            } catch (IllegalArgumentException e) {
+                String suggestedVariants = Arrays.stream(ReplaySupport.ReplayStatus.values())
+                                .filter(ReplaySupport.ReplayStatus::show)
+                                .map(v -> REPLAY_OPTION + "-" + v)
+                                .collect(Collectors.joining(", "));
+                throw NativeImage.showError("Unknown option " + replayArg + ". Valid variants are: " + suggestedVariants + ".");
+            }
+        }
+        ReplaySupport replaySupport;
+        if (replayStatus.loadBundle) {
+            String replayBundleFilename = args.poll();
+            replaySupport = new ReplaySupport(nativeImage, replayStatus, replayBundleFilename);
+            List<String> buildArgs = replaySupport.getBuildArgs();
+            for (int i = buildArgs.size() - 1; i >= 0; i--) {
+                String buildArg = buildArgs.get(i);
+                if (buildArg.startsWith(REPLAY_OPTION)) {
+                    assert !ReplayStatus.valueOf(buildArg.substring(REPLAY_OPTION.length() + 1)).loadBundle;
+                    continue;
+                }
+                if (buildArg.startsWith("-Dllvm.bin.dir=")) {
+                    Optional<String> existing = nativeImage.config.getBuildArgs().stream().filter(arg -> arg.startsWith("-Dllvm.bin.dir=")).findFirst();
+                    if (existing.isPresent() && !existing.get().equals(buildArg)) {
+                        throw NativeImage.showError("Replay-bundle native-image argument '" + buildArg + "' conflicts with existing '" + existing.get() + "'.");
+                    }
+                    continue;
+                }
+                args.push(buildArg);
+            }
+        } else {
+            replaySupport = new ReplaySupport(nativeImage, replayStatus);
+        }
+        return replaySupport;
+    }
+
+    private ReplaySupport(NativeImage nativeImage, ReplayStatus status) {
         assert !status.loadBundle;
 
         this.nativeImage = nativeImage;
@@ -105,11 +156,10 @@ class ReplaySupport {
         } catch (IOException e) {
             throw NativeImage.showError("Unable to create replay-bundle directory layout", e);
         }
-
-        this.buildArgs = Collections.unmodifiableList(buildArgs);
+        this.buildArgs = Collections.unmodifiableList(nativeImage.config.getBuildArgs());
     }
 
-    ReplaySupport(NativeImage nativeImage, ReplayStatus status, String replayBundleFilename) {
+    private ReplaySupport(NativeImage nativeImage, ReplayStatus status, String replayBundleFilename) {
         assert status.loadBundle;
 
         this.nativeImage = nativeImage;
@@ -178,17 +228,25 @@ class ReplaySupport {
     }
 
     Path recordCanonicalization(Path before, Path after) {
+        if (before.startsWith(replayRootDir)) {
+            if (nativeImage.isVerbose()) {
+                System.out.println(("RecordCanonicalization Skip: " + before));
+            }
+            return before;
+        }
         if (after.startsWith(nativeImage.config.getJavaHome())) {
             return after;
         }
-        System.out.println("RecordCanonicalization src: " + before + ", dst: " + after);
+        if (nativeImage.isVerbose()) {
+            System.out.println("RecordCanonicalization src: " + before + ", dst: " + after);
+        }
         pathCanonicalizations.put(before, after);
         return after;
     }
 
     Path restoreCanonicalization(Path before) {
         Path after = pathCanonicalizations.get(before);
-        if (after != null) {
+        if (after != null && nativeImage.isVerbose()) {
             System.out.println("RestoreCanonicalization src: " + before + ", dst: " + after);
         }
         return after;
@@ -233,9 +291,18 @@ class ReplaySupport {
     private Path substitutePath(Path origPath, Path destinationDir) {
         assert destinationDir.startsWith(replayRootDir);
 
+        if (origPath.startsWith(replayRootDir)) {
+            if (nativeImage.isVerbose()) {
+                System.out.println(("RecordSubstitution/RestoreSubstitution Skip: " + origPath));
+            }
+            return origPath;
+        }
+
         Path previousRelativeSubstitutedPath = pathSubstitutions.get(origPath);
         if (previousRelativeSubstitutedPath != null) {
-            System.out.println("RestoreSubstitution src: " + origPath + ", dst: " + previousRelativeSubstitutedPath);
+            if (nativeImage.isVerbose()) {
+                System.out.println("RestoreSubstitution src: " + origPath + ", dst: " + previousRelativeSubstitutedPath);
+            }
             return replayRootDir.resolve(previousRelativeSubstitutedPath);
         }
 
@@ -271,9 +338,17 @@ class ReplaySupport {
 
         // TODO Report error if overlapping dir-trees are passed in
         // TODO add .endsWith(ClasspathUtils.cpWildcardSubstitute) handling (copy whole directory)
-        String[] baseNamePlusExtension = StringUtil.split(origPath.getFileName().toString(), ".", 2);
-        String baseName = baseNamePlusExtension[0];
-        String extension = baseNamePlusExtension.length == 2 ? "." + baseNamePlusExtension[1] : "";
+        String origFileName = origPath.getFileName().toString();
+        int extensionPos = origFileName.lastIndexOf('.');
+        String baseName;
+        String extension;
+        if (extensionPos > 0) {
+            baseName = origFileName.substring(0, extensionPos);
+            extension = origFileName.substring(extensionPos);
+        } else {
+            baseName = origFileName;
+            extension = "";
+        }
         String substitutedPathFilename = baseName + "_" + SubstrateUtil.digest(origPath.toString()) + extension;
         Path substitutedPath = destinationDir.resolve(substitutedPathFilename);
         if (Files.exists(substitutedPath)) {
@@ -291,7 +366,9 @@ class ReplaySupport {
             copyFile(origPath, substitutedPath);
         }
         Path relativeSubstitutedPath = replayRootDir.relativize(substitutedPath);
-        System.out.println("RecordSubstitution src: " + origPath + ", dst: " + relativeSubstitutedPath);
+        if (nativeImage.isVerbose()) {
+            System.out.println("RecordSubstitution src: " + origPath + ", dst: " + relativeSubstitutedPath);
+        }
         pathSubstitutions.put(origPath, relativeSubstitutedPath);
         return substitutedPath;
     }
@@ -339,7 +416,7 @@ class ReplaySupport {
             throw NativeImage.showError("Failed to write bundle-file " + pathSubstitutionsFile, e);
         }
 
-        Path bundleFile = Path.of(nativeImage.imagePath).resolve(nativeImage.imageName + ".replay.jar");
+        Path bundleFile = Path.of(nativeImage.imagePath).resolve(nativeImage.imageName + ".replay");
         try (JarOutputStream jarOutStream = new JarOutputStream(Files.newOutputStream(bundleFile), new Manifest())) {
             try (Stream<Path> walk = Files.walk(replayRootDir)) {
                 walk.forEach(bundleEntry -> {
