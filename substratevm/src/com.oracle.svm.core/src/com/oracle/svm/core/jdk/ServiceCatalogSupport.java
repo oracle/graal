@@ -34,16 +34,19 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.module.ServicesCatalog;
 
+@AutomaticallyRegisteredImageSingleton
+@Platforms(Platform.HOSTED_ONLY.class)
 public class ServiceCatalogSupport {
     final ConcurrentHashMap<String, Set<String>> omittedServiceProviders = new ConcurrentHashMap<>();
     boolean sealed;
 
-    public static ServiceCatalogSupport instance() {
+    public static ServiceCatalogSupport singleton() {
         return ImageSingletons.lookup(ServiceCatalogSupport.class);
     }
 
@@ -51,13 +54,13 @@ public class ServiceCatalogSupport {
         sealed = true;
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     public void removeServicesFromServicesCatalog(String serviceProvider, Set<String> services) {
+        VMError.guarantee(!sealed,
+                        "Removing services from a catalog is allowed only before analysis. ServiceCatalogSupport.removeServicesFromServicesCatalog called during or after analysis. ");
         omittedServiceProviders.put(serviceProvider, services);
     }
 
     @SuppressWarnings("unchecked")
-    @Platforms(Platform.HOSTED_ONLY.class)
     public void enableServiceCatalogMapTransformer(Feature.BeforeAnalysisAccess access) {
         access.registerFieldValueTransformer(ReflectionUtil.lookupField(ServicesCatalog.class, "map"), (receiver, original) -> {
             VMError.guarantee(sealed);
