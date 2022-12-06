@@ -43,10 +43,6 @@ package com.oracle.truffle.api.strings;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.GenerateInline;
-import com.oracle.truffle.api.dsl.GeneratePackagePrivate;
-import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString.Encoding;
@@ -318,10 +314,6 @@ public final class TruffleStringIterator {
      *
      * @since 22.1
      */
-    @ImportStatic(TStringGuards.class)
-    @GeneratePackagePrivate
-    @GenerateUncached
-    @GenerateInline(false)
     public abstract static class NextNode extends AbstractPublicNode {
 
         NextNode() {
@@ -374,10 +366,6 @@ public final class TruffleStringIterator {
      *
      * @since 22.1
      */
-    @ImportStatic(TStringGuards.class)
-    @GeneratePackagePrivate
-    @GenerateUncached
-    @GenerateInline(false)
     public abstract static class PreviousNode extends AbstractPublicNode {
 
         PreviousNode() {

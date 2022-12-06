@@ -55,7 +55,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
@@ -373,7 +372,7 @@ public final class TruffleStringBuilder {
         public abstract void execute(TruffleStringBuilder sb, int codepoint, int repeat, boolean allowUTF16Surrogates);
 
         @Specialization
-        static void append(TruffleStringBuilder sb, int c, int repeat, boolean allowUTF16Surrogates,
+        final void append(TruffleStringBuilder sb, int c, int repeat, boolean allowUTF16Surrogates,
                         @Cached AppendCodePointIntlNode appendCodePointIntlNode) {
             assert !allowUTF16Surrogates || isUTF16Or32(sb.encoding) : "allowUTF16Surrogates is only supported on UTF-16 and UTF-32";
             if (c < 0 || c > 0x10ffff) {
@@ -382,7 +381,7 @@ public final class TruffleStringBuilder {
             if (repeat < 1) {
                 throw InternalErrors.illegalArgument("number of repetitions must be at least 1");
             }
-            appendCodePointIntlNode.execute(sb, c, sb.encoding, repeat, allowUTF16Surrogates);
+            appendCodePointIntlNode.execute(this, sb, c, sb.encoding, repeat, allowUTF16Surrogates);
             sb.codePointLength += repeat;
         }
 
@@ -405,20 +404,19 @@ public final class TruffleStringBuilder {
         }
     }
 
-    @ImportStatic({TStringGuards.class, TruffleStringBuilder.class})
-    @GenerateUncached
-    abstract static class AppendCodePointIntlNode extends AbstractPublicNode {
+    @ImportStatic(TruffleStringBuilder.class)
+    abstract static class AppendCodePointIntlNode extends AbstractInternalNode {
 
-        abstract void execute(TruffleStringBuilder sb, int c, Encoding encoding, int n, boolean allowUTF16Surrogates);
+        abstract void execute(Node node, TruffleStringBuilder sb, int c, Encoding encoding, int n, boolean allowUTF16Surrogates);
 
         @Specialization(guards = "isAsciiBytesOrLatin1(enc)")
-        final void bytes(TruffleStringBuilder sb, int c, @SuppressWarnings("unused") Encoding enc, int n, @SuppressWarnings("unused") boolean allowUTF16Surrogates,
+        static void bytes(Node node, TruffleStringBuilder sb, int c, @SuppressWarnings("unused") Encoding enc, int n, @SuppressWarnings("unused") boolean allowUTF16Surrogates,
                         @Shared("bufferGrow") @Cached InlinedConditionProfile bufferGrowProfile,
                         @Shared("error") @Cached InlinedBranchProfile errorProfile) {
             if (c > 0xff) {
                 throw InternalErrors.invalidCodePoint(c);
             }
-            sb.ensureCapacityS0(this, n, bufferGrowProfile, errorProfile);
+            sb.ensureCapacityS0(node, n, bufferGrowProfile, errorProfile);
             if (c > 0x7f) {
                 sb.updateCodeRange(TSCodeRange.asciiLatinBytesNonAsciiCodeRange(sb.encoding));
             }
@@ -427,14 +425,14 @@ public final class TruffleStringBuilder {
         }
 
         @Specialization(guards = "isUTF8(enc)")
-        final void utf8(TruffleStringBuilder sb, int c, @SuppressWarnings("unused") Encoding enc, int n, @SuppressWarnings("unused") boolean allowUTF16Surrogates,
+        static void utf8(Node node, TruffleStringBuilder sb, int c, @SuppressWarnings("unused") Encoding enc, int n, @SuppressWarnings("unused") boolean allowUTF16Surrogates,
                         @Shared("bufferGrow") @Cached InlinedConditionProfile bufferGrowProfile,
                         @Shared("error") @Cached InlinedBranchProfile errorProfile) {
             if (Encodings.isUTF16Surrogate(c)) {
                 throw InternalErrors.invalidCodePoint(c);
             }
             int length = Encodings.utf8EncodedSize(c);
-            sb.ensureCapacityS0(this, length * n, bufferGrowProfile, errorProfile);
+            sb.ensureCapacityS0(node, length * n, bufferGrowProfile, errorProfile);
             for (int i = 0; i < n; i++) {
                 Encodings.utf8Encode(c, sb.buf, sb.length, length);
                 sb.length += length;
@@ -445,8 +443,7 @@ public final class TruffleStringBuilder {
         }
 
         @Specialization(guards = {"isUTF16(enc)", "cachedCurStride == sb.stride", "cachedNewStride == utf16Stride(sb, c)"}, limit = TStringOpsNodes.LIMIT_STRIDE)
-        static void utf16Cached(TruffleStringBuilder sb, int c, @SuppressWarnings("unused") Encoding enc, int n, boolean allowUTF16Surrogates,
-                        @Bind("this") Node node,
+        static void utf16Cached(Node node, TruffleStringBuilder sb, int c, @SuppressWarnings("unused") Encoding enc, int n, boolean allowUTF16Surrogates,
                         @Shared("bufferGrow") @Cached InlinedConditionProfile bufferGrowProfile,
                         @Shared("error") @Cached InlinedBranchProfile errorProfile,
                         @Cached("sb.stride") int cachedCurStride,
@@ -456,11 +453,11 @@ public final class TruffleStringBuilder {
         }
 
         @Specialization(guards = "isUTF16(enc)", replaces = "utf16Cached")
-        void utf16Uncached(TruffleStringBuilder sb, int c, @SuppressWarnings("unused") Encoding enc, int n, boolean allowUTF16Surrogates,
+        static void utf16Uncached(Node node, TruffleStringBuilder sb, int c, @SuppressWarnings("unused") Encoding enc, int n, boolean allowUTF16Surrogates,
                         @Shared("bufferGrow") @Cached InlinedConditionProfile bufferGrowProfile,
                         @Shared("error") @Cached InlinedBranchProfile errorProfile,
                         @Shared("bmp") @Cached InlinedConditionProfile bmpProfile) {
-            doUTF16(this, sb, c, n, allowUTF16Surrogates, bufferGrowProfile, errorProfile, sb.stride, utf16Stride(sb, c), bmpProfile);
+            doUTF16(node, sb, c, n, allowUTF16Surrogates, bufferGrowProfile, errorProfile, sb.stride, utf16Stride(sb, c), bmpProfile);
         }
 
         private static void doUTF16(Node node, TruffleStringBuilder sb, int c, int n, boolean allowUTF16Surrogates,
@@ -481,8 +478,7 @@ public final class TruffleStringBuilder {
         }
 
         @Specialization(guards = {"isUTF32(enc)", "cachedCurStride == sb.stride", "cachedNewStride == utf32Stride(sb, c)"}, limit = TStringOpsNodes.LIMIT_STRIDE)
-        static void utf32Cached(TruffleStringBuilder sb, int c, @SuppressWarnings("unused") Encoding enc, int n, boolean allowUTF16Surrogates,
-                        @Bind("this") Node node,
+        static void utf32Cached(Node node, TruffleStringBuilder sb, int c, @SuppressWarnings("unused") Encoding enc, int n, boolean allowUTF16Surrogates,
                         @Shared("bufferGrow") @Cached InlinedConditionProfile bufferGrowProfile,
                         @Shared("error") @Cached InlinedBranchProfile errorProfile,
                         @Cached(value = "sb.stride") int cachedCurStride,
@@ -491,10 +487,10 @@ public final class TruffleStringBuilder {
         }
 
         @Specialization(guards = "isUTF32(enc)", replaces = "utf32Cached")
-        void utf32Uncached(TruffleStringBuilder sb, int c, @SuppressWarnings("unused") Encoding enc, int n, boolean allowUTF16Surrogates,
+        static void utf32Uncached(Node node, TruffleStringBuilder sb, int c, @SuppressWarnings("unused") Encoding enc, int n, boolean allowUTF16Surrogates,
                         @Shared("bufferGrow") @Cached InlinedConditionProfile bufferGrowProfile,
                         @Shared("error") @Cached InlinedBranchProfile errorProfile) {
-            doUTF32(this, sb, c, n, allowUTF16Surrogates, bufferGrowProfile, errorProfile, sb.stride, utf32Stride(sb, c));
+            doUTF32(node, sb, c, n, allowUTF16Surrogates, bufferGrowProfile, errorProfile, sb.stride, utf32Stride(sb, c));
         }
 
         static void doUTF32(Node node, TruffleStringBuilder sb, int c, int n, boolean allowUTF16Surrogates, InlinedConditionProfile bufferGrowProfile, InlinedBranchProfile errorProfile,
@@ -509,7 +505,7 @@ public final class TruffleStringBuilder {
         }
 
         @Specialization(guards = "isUnsupportedEncoding(enc)")
-        final void unsupported(TruffleStringBuilder sb, int c, Encoding enc, int n, @SuppressWarnings("unused") boolean allowUTF16Surrogates,
+        static void unsupported(Node node, TruffleStringBuilder sb, int c, Encoding enc, int n, @SuppressWarnings("unused") boolean allowUTF16Surrogates,
                         @Shared("bufferGrow") @Cached InlinedConditionProfile bufferGrowProfile,
                         @Shared("error") @Cached InlinedBranchProfile errorProfile) {
             JCodings.Encoding jCodingsEnc = JCodings.getInstance().get(enc);
@@ -520,7 +516,7 @@ public final class TruffleStringBuilder {
             if (length < 1) {
                 throw InternalErrors.invalidCodePoint(c);
             }
-            sb.ensureCapacityS0(this, length * n, bufferGrowProfile, errorProfile);
+            sb.ensureCapacityS0(node, length * n, bufferGrowProfile, errorProfile);
             for (int i = 0; i < n; i++) {
                 int ret = JCodings.getInstance().writeCodePoint(jCodingsEnc, c, sb.buf, sb.length);
                 if (ret != length || JCodings.getInstance().getCodePointLength(jCodingsEnc, sb.buf, sb.length, sb.length + length) != ret ||

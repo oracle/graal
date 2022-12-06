@@ -51,10 +51,6 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateInline;
-import com.oracle.truffle.api.dsl.GeneratePackagePrivate;
-import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -141,11 +137,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
      *
      * @since 22.1
      */
-    @ImportStatic(TStringGuards.class)
-    @GeneratePackagePrivate
-    @GenerateUncached
-    @GenerateInline(false)
-    public abstract static class FromByteArrayNode extends Node {
+    public abstract static class FromByteArrayNode extends AbstractPublicNode {
 
         FromByteArrayNode() {
         }
@@ -214,11 +206,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
      *
      * @since 22.1
      */
-    @ImportStatic({TStringGuards.class, TStringAccessor.class})
-    @GeneratePackagePrivate
-    @GenerateUncached
-    @GenerateInline(false)
-    public abstract static class FromNativePointerNode extends Node {
+    public abstract static class FromNativePointerNode extends AbstractPublicNode {
 
         FromNativePointerNode() {
         }
@@ -307,11 +295,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
      *
      * @since 22.1
      */
-    @ImportStatic({TStringGuards.class, TStringAccessor.class})
-    @GeneratePackagePrivate
-    @GenerateUncached
-    @GenerateInline(false)
-    public abstract static class AsMutableTruffleStringNode extends Node {
+    public abstract static class AsMutableTruffleStringNode extends AbstractPublicNode {
 
         AsMutableTruffleStringNode() {
         }
@@ -364,11 +348,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
      *
      * @since 22.1
      */
-    @ImportStatic({TStringGuards.class, TStringAccessor.class})
-    @GeneratePackagePrivate
-    @GenerateUncached
-    @GenerateInline(false)
-    public abstract static class AsManagedNode extends Node {
+    public abstract static class AsManagedNode extends AbstractPublicNode {
 
         AsManagedNode() {
         }
@@ -418,11 +398,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
      *
      * @since 22.1
      */
-    @ImportStatic(TStringGuards.class)
-    @GeneratePackagePrivate
-    @GenerateUncached
-    @GenerateInline(false)
-    public abstract static class WriteByteNode extends Node {
+    public abstract static class WriteByteNode extends AbstractPublicNode {
 
         WriteByteNode() {
         }
@@ -542,11 +518,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
      *
      * @since 22.1
      */
-    @ImportStatic(TStringGuards.class)
-    @GeneratePackagePrivate
-    @GenerateUncached
-    @GenerateInline(false)
-    public abstract static class SubstringNode extends Node {
+    public abstract static class SubstringNode extends AbstractPublicNode {
 
         SubstringNode() {
         }
@@ -610,11 +582,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
      *
      * @since 22.1
      */
-    @ImportStatic(TStringGuards.class)
-    @GeneratePackagePrivate
-    @GenerateUncached
-    @GenerateInline(false)
-    public abstract static class SubstringByteIndexNode extends Node {
+    public abstract static class SubstringByteIndexNode extends AbstractPublicNode {
 
         SubstringByteIndexNode() {
         }
@@ -677,11 +645,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
      *
      * @since 22.1
      */
-    @ImportStatic(TStringGuards.class)
-    @GeneratePackagePrivate
-    @GenerateUncached
-    @GenerateInline(false)
-    public abstract static class SwitchEncodingNode extends Node {
+    public abstract static class SwitchEncodingNode extends AbstractPublicNode {
 
         SwitchEncodingNode() {
         }
@@ -737,11 +701,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
      *
      * @since 22.1
      */
-    @ImportStatic(TStringGuards.class)
-    @GeneratePackagePrivate
-    @GenerateUncached
-    @GenerateInline(false)
-    public abstract static class ForceEncodingNode extends Node {
+    public abstract static class ForceEncodingNode extends AbstractPublicNode {
 
         ForceEncodingNode() {
         }
