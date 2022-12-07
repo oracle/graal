@@ -35,6 +35,6 @@ import com.oracle.svm.core.SubstrateOptions;
 public class UseMarkAndCopyOrEpsilonGC implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return SubstrateOptions.UseMarkAndCopyOrEpsilonGC();
+        return SubstrateOptions.useMarkAndCopyOrEpsilonGC();
     }
 }

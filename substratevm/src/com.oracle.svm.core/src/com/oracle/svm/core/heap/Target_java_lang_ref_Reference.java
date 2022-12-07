@@ -232,6 +232,6 @@ class ComputeQueueValue implements FieldValueTransformer {
 class NotMarkAndCopyOrEpsilonGC implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return !SubstrateOptions.UseMarkAndCopyOrEpsilonGC();
+        return !SubstrateOptions.useMarkAndCopyOrEpsilonGC();
     }
 }

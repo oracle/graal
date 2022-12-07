@@ -80,7 +80,7 @@ public final class SerialAndEpsilonGCOptions {
     }
 
     private static void markAndCopyOrEpsilonGCOnly(OptionKey<?> optionKey) {
-        if (!SubstrateOptions.UseMarkAndCopyOrEpsilonGC()) {
+        if (!SubstrateOptions.useMarkAndCopyOrEpsilonGC()) {
             throw new InterruptImageBuilding("The option " + optionKey.getName() + " is garbage collector specific and cannot be specified if the " +
                             Heap.getHeap().getGC().getName() + " is used at runtime.");
         }

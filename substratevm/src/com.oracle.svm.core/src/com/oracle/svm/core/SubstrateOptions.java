@@ -350,12 +350,12 @@ public class SubstrateOptions {
     }
 
     @Fold
-    public static boolean useSerialOrParallelGC() {
+    public static boolean useMarkAndCopyGC() {
         return UseSerialGC.getValue() || UseParallelGC.getValue();
     }
 
     @Fold
-    public static boolean UseMarkAndCopyOrEpsilonGC() {
+    public static boolean useMarkAndCopyOrEpsilonGC() {
         return UseSerialGC.getValue() || UseParallelGC.getValue() || UseEpsilonGC.getValue();
     }
 
