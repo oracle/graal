@@ -695,6 +695,22 @@ suite = {
       "testProject" : False,
       "jacoco" : "exclude",
     },
+    "com.oracle.truffle.tck.tests.language" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "TRUFFLE_API",
+      ],
+      "requires" : [
+        "jdk.unsupported", # sun.misc.Unsafe
+      ],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "11+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "Truffle,Test",
+      "jacoco" : "exclude",
+      "testProject" : True,
+    },
     "com.oracle.truffle.tck.instrumentation" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1199,6 +1215,21 @@ suite = {
       "allowsJavadocWarnings": True,
       "testDistribution" : False,
       "maven": True,
+    },
+
+    "TRUFFLE_TCK_TESTS_LANGUAGE" : {
+      "subDir" : "src",
+      "javaCompliance" : "11+",
+      "dependencies" : [
+        "com.oracle.truffle.tck.tests.language"
+      ],
+      "distDependencies" : [
+        "TRUFFLE_API",
+      ],
+      "description" : "A language for Truffle TCK testing.",
+      "allowsJavadocWarnings": True,
+      "testDistribution" : True,
+      "maven": False,
     },
 
     "TRUFFLE_TCK_INSTRUMENTATION" : {
