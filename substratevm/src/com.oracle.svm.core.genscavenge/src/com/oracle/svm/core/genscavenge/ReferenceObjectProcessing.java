@@ -41,6 +41,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -48,7 +49,7 @@ import com.oracle.svm.core.util.UnsignedUtils;
 /** Discovers and handles {@link Reference} objects during garbage collection. */
 final class ReferenceObjectProcessing {
     /** Head of the linked list of discovered references that need to be revisited. */
-    private static Reference<?> rememberedRefsList;
+    private static final AtomicReference<Reference<?>> rememberedRefsList = new AtomicReference<>();
 
     /**
      * For a {@link SoftReference}, the longest duration after its last access to keep its referent
@@ -141,9 +142,11 @@ final class ReferenceObjectProcessing {
         // are revisited after the GC finished promoting all strongly reachable objects.
 
         // null link means undiscovered, avoid for the last node with a cyclic reference
-        Reference<?> next = (rememberedRefsList != null) ? rememberedRefsList : dr;
-        ReferenceInternals.setNextDiscovered(dr, next);
-        rememberedRefsList = dr;
+        Reference<?> expected;
+        do {
+            expected = rememberedRefsList.get();
+            ReferenceInternals.setNextDiscovered(dr, expected != null ? expected : dr);
+        } while (!rememberedRefsList.compareAndSet(expected, dr));
     }
 
     /**
@@ -154,8 +157,7 @@ final class ReferenceObjectProcessing {
      */
     static Reference<?> processRememberedReferences() {
         Reference<?> pendingHead = null;
-        Reference<?> current = rememberedRefsList;
-        rememberedRefsList = null;
+        Reference<?> current = rememberedRefsList.getAndSet(null);
 
         while (current != null) {
             // Get the next node (the last node has a cyclic reference to self).
@@ -180,7 +182,7 @@ final class ReferenceObjectProcessing {
     }
 
     static void afterCollection(UnsignedWord freeBytes) {
-        assert rememberedRefsList == null;
+        assert rememberedRefsList.get() == null;
         UnsignedWord unused = freeBytes.unsignedDivide(1024 * 1024 /* MB */);
         maxSoftRefAccessIntervalMs = unused.multiply(SerialGCOptions.SoftRefLRUPolicyMSPerMB.getValue());
         ReferenceInternals.updateSoftReferenceClock();
