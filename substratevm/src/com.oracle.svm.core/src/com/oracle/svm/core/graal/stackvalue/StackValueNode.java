@@ -99,11 +99,11 @@ public class StackValueNode extends AbstractStateSplit implements MemoryAccess, 
         this.checkVirtualThread = checkVirtualThread;
     }
 
-    public int sizeInBytes() {
+    public int getSizeInBytes() {
         return sizeInBytes;
     }
 
-    public int alignmentInBytes() {
+    public int getAlignmentInBytes() {
         return alignmentInBytes;
     }
 

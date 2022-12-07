@@ -48,7 +48,7 @@ public final class ReadReservedRegisterFloatingNode extends FloatingNode impleme
         this.register = register;
     }
 
-    public Register register() {
+    public Register getRegister() {
         return register;
     }
 

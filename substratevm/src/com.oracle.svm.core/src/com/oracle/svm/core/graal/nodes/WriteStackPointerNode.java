@@ -50,7 +50,7 @@ public class WriteStackPointerNode extends FixedWithNextNode implements LIRLower
         this.value = value;
     }
 
-    public ValueNode value() {
+    public ValueNode getValue() {
         return value;
     }
 

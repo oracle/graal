@@ -48,7 +48,7 @@ public final class ReadReservedRegisterFixedNode extends FixedWithNextNode imple
         this.register = register;
     }
 
-    public Register register() {
+    public Register getRegister() {
         return register;
     }
 

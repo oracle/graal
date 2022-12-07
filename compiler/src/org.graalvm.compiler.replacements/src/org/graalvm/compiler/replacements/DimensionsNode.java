@@ -55,7 +55,7 @@ public final class DimensionsNode extends FixedWithNextNode implements LIRLowera
         this.rank = rank;
     }
 
-    public int rank() {
+    public int getRank() {
         return rank;
     }
 

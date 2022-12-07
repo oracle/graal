@@ -51,7 +51,7 @@ public class VMThreadLocalSTHolderNode extends FixedWithNextNode implements LIRL
         this.threadLocalInfo = threadLocalInfo;
     }
 
-    public VMThreadLocalInfo threadLocalInfo() {
+    public VMThreadLocalInfo getThreadLocalInfo() {
         return threadLocalInfo;
     }
 
