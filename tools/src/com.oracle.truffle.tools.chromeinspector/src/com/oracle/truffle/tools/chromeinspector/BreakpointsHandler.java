@@ -59,7 +59,7 @@ final class BreakpointsHandler {
     private final ScriptsHandler slh;
     private final ResolvedHandler resolvedHandler;
     private final Map<Breakpoint, Long> bpIDs = new HashMap<>();
-    private final Map<Breakpoint, SourceSection> resolvedBreakpoints = new HashMap<>();
+    private final Map<Long, SourceSection> resolvedBreakpoints = new HashMap<>();
     private final Map<Long, LoadScriptListener> scriptListeners = new HashMap<>();
     private final AtomicReference<Breakpoint> exceptionBreakpoint = new AtomicReference<>();
 
@@ -81,26 +81,21 @@ final class BreakpointsHandler {
     }
 
     Params createURLBreakpoint(Object url, int line, int column, String condition) {
-        JSONArray locations = new JSONArray();
         long id;
         LoadScriptListener scriptListener;
         synchronized (bpIDs) {
             id = ++lastID;
+            resolvedBreakpoints.put(id, null);
             scriptListener = script -> {
                 if (url instanceof Pattern ? ((Pattern) url).matcher(script.getUrl()).matches() : ScriptsHandler.compareURLs((String) url, script.getUrl())) {
                     Breakpoint bp = createBuilder(script.getSourceLoaded(), line, column).resolveListener(resolvedHandler).build();
                     if (condition != null && !condition.isEmpty()) {
                         bp.setCondition(condition);
                     }
-                    bp = ds.install(bp);
                     synchronized (bpIDs) {
                         bpIDs.put(bp, id);
-                        SourceSection section = resolvedBreakpoints.remove(bp);
-                        if (section != null) {
-                            Location resolvedLocation = new Location(script.getId(), section.getStartLine(), section.getStartColumn());
-                            locations.put(resolvedLocation.toJSON());
-                        }
                     }
+                    ds.install(bp);
                 }
             };
             scriptListeners.put(id, scriptListener);
@@ -108,6 +103,16 @@ final class BreakpointsHandler {
         slh.addLoadScriptListener(scriptListener);
         JSONObject json = new JSONObject();
         json.put("breakpointId", Long.toString(id));
+        JSONArray locations = new JSONArray();
+        SourceSection section;
+        synchronized (bpIDs) {
+            section = resolvedBreakpoints.remove(id);
+        }
+        if (section != null) {
+            int scriptId = slh.getScriptId(section.getSource());
+            Location resolvedLocation = new Location(scriptId, section.getStartLine(), section.getStartColumn());
+            locations.put(resolvedLocation.toJSON());
+        }
         json.put("locations", locations);
         return new Params(json);
     }
@@ -121,13 +126,16 @@ final class BreakpointsHandler {
         if (condition != null && !condition.isEmpty()) {
             bp.setCondition(condition);
         }
-        bp = ds.install(bp);
-        Location resolvedLocation = location;
         long id;
         synchronized (bpIDs) {
             id = ++lastID;
             bpIDs.put(bp, id);
-            SourceSection section = resolvedBreakpoints.remove(bp);
+            resolvedBreakpoints.put(id, null);
+        }
+        bp = ds.install(bp);
+        Location resolvedLocation = location;
+        synchronized (bpIDs) {
+            SourceSection section = resolvedBreakpoints.remove(id);
             if (section != null) {
                 resolvedLocation = new Location(location.getScriptId(), section.getStartLine(), section.getStartColumn());
             }
@@ -243,8 +251,8 @@ final class BreakpointsHandler {
             Long breakpointId;
             synchronized (bpIDs) {
                 breakpointId = bpIDs.get(breakpoint);
-                if (breakpointId == null) {
-                    resolvedBreakpoints.put(breakpoint, section);
+                if (resolvedBreakpoints.containsKey(breakpointId)) {
+                    resolvedBreakpoints.put(breakpointId, section);
                     return;
                 }
             }

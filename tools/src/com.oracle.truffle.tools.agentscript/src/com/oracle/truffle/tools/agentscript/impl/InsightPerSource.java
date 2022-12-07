@@ -41,13 +41,12 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
-import com.oracle.truffle.api.instrumentation.ExecuteSourceEvent;
-import com.oracle.truffle.api.instrumentation.ExecuteSourceListener;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceListener;
+import com.oracle.truffle.api.instrumentation.NearestSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
@@ -56,7 +55,6 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 
 import org.graalvm.collections.EconomicMap;
 
@@ -256,7 +254,6 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
             if (line == 0) {
                 attachBinding(data, key, sourceFilter, needFactory);
             } else {
-                // We need to verify/adjust the location:
                 final InsightInstrument.Key theKey = key;
                 Supplier<ExecutionEventNodeFactory> factoryCreate = new Supplier<>() {
                     ExecutionEventNodeFactory factory;
@@ -269,34 +266,20 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
                         return factory;
                     }
                 };
-                EventBinding<?> binding = instrumenter.attachExecuteSourceListener(sourceFilter, new ExecuteSourceListener() {
-                    @Override
-                    public void onExecute(ExecuteSourceEvent event) {
-                        Source source = event.getSource();
-                        // @formatter:off
-                        SourceSectionFilter.Builder ssfb = SourceSectionFilter.newBuilder()
-                                .sourceIs(source)
-                                .tagIs(filter.getTags());
-                        // @formatter:on
-                        if (filter.getRootNameRegExp() != null) {
-                            ssfb.rootNameIs(new RegexNameFilter(filter.getRootNameRegExp()));
-                        } else if (data.rootNameFn != null) {
-                            ssfb.rootNameIs(new RootNameFilter(instrument, theKey));
-                        }
-                        int column = filter.getColumn();
-                        SourceSection section = InstrumentableLocationFinder.findNearest(source, filter.getTagsSet(), line, column, data.type == AgentType.ENTER, instrument.env());
-                        if (section != null) {
-                            ssfb.sourceSectionEquals(section);
-                        } else {
-                            ssfb.lineIs(line);
-                            if (column != 0) {
-                                ssfb.columnIn(column, 1);
-                            }
-                        }
-                        EventBinding<?> handle = instrumenter.attachExecutionEventFactory(ssfb.build(), factoryCreate.get());
-                        theKey.assign(handle);
-                    }
-                }, true);
+                SourceSectionFilter.Builder ssfb = SourceSectionFilter.newBuilder() //
+                                .sourceFilter(sourceFilter);
+                if (filter.getRootNameRegExp() != null) {
+                    ssfb.rootNameIs(new RegexNameFilter(filter.getRootNameRegExp()));
+                } else if (data.rootNameFn != null) {
+                    ssfb.rootNameIs(new RootNameFilter(instrument, theKey));
+                }
+                int column = filter.getColumn();
+                // We will adjust the location, if necessary
+                NearestSectionFilter nearestFilter = NearestSectionFilter.newBuilder(line, column) //
+                                .anchorStart(data.type == AgentType.ENTER) //
+                                .tagIs(filter.getTags()) //
+                                .build();
+                EventBinding<?> binding = instrumenter.attachExecutionEventFactory(nearestFilter, ssfb.build(), factoryCreate.get());
                 theKey.assign(binding);
             }
             bindings.put(filter, key);
