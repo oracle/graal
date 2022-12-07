@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.PosixSystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Stdlib;
 import com.oracle.svm.core.posix.headers.Utsname;
@@ -92,7 +93,8 @@ class LinuxSystemPropertiesFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        LinuxSystemPropertiesSupport systemPropertiesSupport = new LinuxSystemPropertiesSupport();
-        ImageSingletons.add(RuntimeSystemPropertiesSupport.class, systemPropertiesSupport);
+        ImageSingletons.add(RuntimeSystemPropertiesSupport.class, new LinuxSystemPropertiesSupport());
+        /* GR-42971 - Remove once SystemPropertiesSupport.class ImageSingletons use is gone. */
+        ImageSingletons.add(SystemPropertiesSupport.class, SystemPropertiesSupport.singleton());
     }
 }
