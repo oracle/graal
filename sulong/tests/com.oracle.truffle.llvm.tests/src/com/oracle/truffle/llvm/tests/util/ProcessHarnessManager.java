@@ -37,6 +37,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -252,7 +253,7 @@ public class ProcessHarnessManager {
         if (debug) {
             commandArgs.add("-agentlib:jdwp=transport=dt_socket,server=y,address=8000,suspend=y");
         }
-        Collections.addAll(commandArgs, "-esa", "-ea", "-Djava.awt.headless=true", "-cp", classpath,
+        Collections.addAll(commandArgs, "-Xss56m", "-Xms4g", "-Xmx4g", "-esa", "-ea", "-Djava.awt.headless=true", "-cp", classpath,
                         copyProperty("polyglot.engine.WarnInterpreterOnly"),
                         copyProperty("truffle.nfi.library"),
                         copyProperty("org.graalvm.language.llvm.home"),
