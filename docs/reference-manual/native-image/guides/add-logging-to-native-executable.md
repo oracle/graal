@@ -75,9 +75,9 @@ The logger can be initialized at executable build time with a custom _logging.pr
    `LoggerHolder.LOGGER` is also initialized at build time and is readily available at runtime, therefore improving the startup time. 
    Unless your application needs to process a custom _logging.properties_ configuration file at runtime, this approach is recommended.
 
-## Initializing a Logger at Runtime
+## Initializing a Logger at Run Time
 
-The logger can also be initialized at runtime, as shown in the following example.
+The logger can also be initialized at run time, as shown in the following example.
 
 1. Save the following Java code into a file named _LoggerRunTimeInit.java_, then compile it using `javac`:
 
