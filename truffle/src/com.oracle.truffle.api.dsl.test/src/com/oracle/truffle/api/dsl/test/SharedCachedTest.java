@@ -59,6 +59,7 @@ import com.oracle.truffle.api.dsl.test.SharedCachedTestFactory.UnboundExclusiveO
 import com.oracle.truffle.api.dsl.test.SharedCachedTestFactory.UnboundSharedObjectNodeGen;
 import com.oracle.truffle.api.dsl.test.SharedCachedTestFactory.UseGenerateInlineSharedNodeGen;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 @SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "unused"})
@@ -200,25 +201,6 @@ public class SharedCachedTest {
         assertEquals(42L, node.execute(42L));
         AbstractPolyglotTest.assertFails(() -> node.execute(""), UnsupportedSpecializationException.class);
     }
-
-// abstract static class InlineCacheSharingNode extends Node {
-//
-// abstract Object execute(Object arg);
-//
-// @Specialization(guards = "cachedArg == arg")
-// Object s0(int arg,
-// @Cached("arg") int cachedArg,
-// @Shared("group") @Cached InlinedBranchProfile node) {
-// return arg;
-// }
-//
-// @Specialization(guards = "cachedArg == arg")
-// Object s1(int arg,
-// @Cached("arg") int cachedArg,
-// @Shared("group") @Cached InlinedBranchProfile node) {
-// return arg;
-// }
-// }
 
     abstract static class UnboundCachedNodeNode extends Node {
 
