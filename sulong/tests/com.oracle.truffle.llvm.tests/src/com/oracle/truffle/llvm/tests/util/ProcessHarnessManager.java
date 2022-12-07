@@ -37,7 +37,6 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -50,6 +49,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil.ProcessResult;
 
 public class ProcessHarnessManager {
+    List<ProcessHarnessInstance> instances = new ArrayList<>();
     BlockingQueue<Task> tasks = new LinkedBlockingQueue<>();
     ExecutorService executor = Executors.newCachedThreadPool();
 
@@ -273,6 +273,7 @@ public class ProcessHarnessManager {
         ProcessHarnessInstance instance = new ProcessHarnessInstance(process, reader, error, writer);
         instance.thread = new Thread(instance::runThread);
         instance.thread.start();
+        instances.add(instance);
         return instance;
     }
 
@@ -288,5 +289,8 @@ public class ProcessHarnessManager {
 
     public void shutdown() {
         executor.shutdownNow();
+        for (ProcessHarnessInstance instance : instances) {
+            instance.shutdownProcess();
+        }
     }
 }
