@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
@@ -86,8 +85,7 @@ public class FileSystemProviderTest {
         existingRelative = workDir.relativize(existingAbsolute);
         // Use FileSystem.setCurrentWorkingDirectory to verify that all FileSystem operations are
         // correctly using current working directory
-        fs = FileSystem.newDefaultFileSystem();
-        fs.setCurrentWorkingDirectory(workDir);
+        fs = newFullIOFileSystem(workDir);
     }
 
     @After
@@ -249,13 +247,8 @@ public class FileSystemProviderTest {
     }
 
     static FileSystem newFullIOFileSystem(final Path workDir) {
-        try {
-            final Class<?> clz = Class.forName("com.oracle.truffle.polyglot.FileSystems");
-            final Method m = clz.getDeclaredMethod("newDefaultFileSystem", Path.class);
-            m.setAccessible(true);
-            return (FileSystem) m.invoke(null, workDir);
-        } catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e);
-        }
+        FileSystem res = FileSystem.newDefaultFileSystem();
+        res.setCurrentWorkingDirectory(workDir);
+        return res;
     }
 }

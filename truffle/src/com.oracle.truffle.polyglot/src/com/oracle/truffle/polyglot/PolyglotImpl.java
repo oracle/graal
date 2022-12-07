@@ -476,6 +476,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
+    public FileSystem newNIOFileSystem(java.nio.file.FileSystem fileSystem) {
+        return FileSystems.newNIOFileSystem(fileSystem);
+    }
+
+    @Override
     public ProcessHandler newDefaultProcessHandler() {
         if (PolyglotEngineImpl.ALLOW_CREATE_PROCESS) {
             return ProcessHandlers.newDefaultProcessHandler();

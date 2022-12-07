@@ -3330,7 +3330,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             context.threadLocalActions.prepareContextStore();
             ((PreInitializeContextFileSystem) fileSystemConfig.fileSystem).onPreInitializeContextEnd();
             ((PreInitializeContextFileSystem) fileSystemConfig.internalFileSystem).onPreInitializeContextEnd();
-            FileSystems.resetDefaultFileSystemProvider();
             if (!config.logLevels.isEmpty()) {
                 EngineAccessor.LANGUAGE.configureLoggers(context, null, context.getAllLoggers());
             }
