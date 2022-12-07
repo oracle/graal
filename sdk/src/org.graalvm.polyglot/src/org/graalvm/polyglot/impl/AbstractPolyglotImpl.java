@@ -1145,6 +1145,10 @@ public abstract class AbstractPolyglotImpl {
         return getNext().newReadOnlyFileSystem(fileSystem);
     }
 
+    public FileSystem newNIOFileSystem(java.nio.file.FileSystem fileSystem) {
+        return getNext().newNIOFileSystem(fileSystem);
+    }
+
     public ProcessHandler newDefaultProcessHandler() {
         return getNext().newDefaultProcessHandler();
     }

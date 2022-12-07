@@ -1056,6 +1056,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public FileSystem newNIOFileSystem(java.nio.file.FileSystem fileSystem) {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
         public ProcessHandler newDefaultProcessHandler() {
             throw noPolyglotImplementationFound();
         }

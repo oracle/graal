@@ -70,7 +70,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.function.Function;
 
@@ -84,25 +83,23 @@ import org.graalvm.polyglot.io.FileSystem;
 
 final class FileSystems {
 
-    static final String FILE_SCHEME = "file";
     /**
      * A file system written into a native image heap as a
      * {@link PreInitializeContextFileSystem#delegate}. This file system is replaced by a real file
      * system configured on Context when the pre-initialized Context is patched.
      */
     static final FileSystem INVALID_FILESYSTEM = new InvalidFileSystem();
-    private static final AtomicReference<FileSystemProvider> DEFAULT_FILE_SYSTEM_PROVIDER = new AtomicReference<>();
 
     private FileSystems() {
         throw new IllegalStateException("No instance allowed");
     }
 
     static FileSystem newDefaultFileSystem() {
-        return newFileSystem(findDefaultFileSystemProvider());
+        return new NIOFileSystem(findDefaultFileSystem(), true);
     }
 
-    static FileSystem newDefaultFileSystem(Path userDir) {
-        return newFileSystem(findDefaultFileSystemProvider(), userDir);
+    static FileSystem newNIOFileSystem(java.nio.file.FileSystem fileSystem) {
+        return new NIOFileSystem(fileSystem, false);
     }
 
     static FileSystem allowLanguageHomeAccess(FileSystem fileSystem) {
@@ -136,14 +133,6 @@ final class FileSystems {
 
     static Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> newFileTypeDetectorsSupplier(Iterable<LanguageCache> languageCaches) {
         return new FileTypeDetectorsSupplier(languageCaches);
-    }
-
-    /**
-     * Called after context pre-initialization before native image is written to remove the
-     * {@link FileSystemProvider} reference from native image heap.
-     */
-    static void resetDefaultFileSystemProvider() {
-        DEFAULT_FILE_SYSTEM_PROVIDER.set(null);
     }
 
     static String getRelativePathInLanguageHome(TruffleFile file) {
@@ -192,29 +181,10 @@ final class FileSystems {
         return null;
     }
 
-    private static FileSystem newFileSystem(final FileSystemProvider fileSystemProvider) {
-        return new NIOFileSystem(fileSystemProvider);
-    }
-
-    private static FileSystem newFileSystem(final FileSystemProvider fileSystemProvider, final Path userDir) {
-        return new NIOFileSystem(fileSystemProvider, userDir);
-    }
-
-    private static FileSystemProvider findDefaultFileSystemProvider() {
-        FileSystemProvider defaultFsProvider = DEFAULT_FILE_SYSTEM_PROVIDER.get();
-        if (defaultFsProvider == null) {
-            for (FileSystemProvider fsp : FileSystemProvider.installedProviders()) {
-                if (FILE_SCHEME.equals(fsp.getScheme())) {
-                    defaultFsProvider = fsp;
-                    break;
-                }
-            }
-            if (defaultFsProvider == null) {
-                throw new IllegalStateException("No FileSystemProvider for scheme 'file'.");
-            }
-            DEFAULT_FILE_SYSTEM_PROVIDER.set(defaultFsProvider);
-        }
-        return defaultFsProvider;
+    private static java.nio.file.FileSystem findDefaultFileSystem() {
+        java.nio.file.FileSystem fs = java.nio.file.FileSystems.getDefault();
+        assert "file".equals(fs.provider().getScheme());
+        return fs;
     }
 
     private static boolean isFollowLinks(final LinkOption... linkOptions) {
@@ -734,34 +704,29 @@ final class FileSystems {
 
     private static final class NIOFileSystem implements PolyglotFileSystem {
 
-        private final FileSystemProvider hostfs;
-        private final boolean explicitUserDir;
+        private final java.nio.file.FileSystem fileSystem;
+        private final FileSystemProvider fileSystemProvider;
+
+        private final boolean isDefault;
+
         private volatile Path userDir;
         private volatile Path tmpDir;
 
-        NIOFileSystem(final FileSystemProvider fileSystemProvider) {
-            this(fileSystemProvider, false, null);
-        }
-
-        NIOFileSystem(final FileSystemProvider fileSystemProvider, final Path userDir) {
-            this(fileSystemProvider, true, userDir);
-        }
-
-        private NIOFileSystem(final FileSystemProvider fileSystemProvider, final boolean explicitUserDir, final Path userDir) {
-            Objects.requireNonNull(fileSystemProvider, "FileSystemProvider must be non null.");
-            this.hostfs = fileSystemProvider;
-            this.explicitUserDir = explicitUserDir;
-            this.userDir = userDir;
+        NIOFileSystem(java.nio.file.FileSystem fileSystem, boolean isDefault) {
+            Objects.requireNonNull(fileSystem, "FileSystem must be non null.");
+            this.fileSystem = fileSystem;
+            this.fileSystemProvider = fileSystem.provider();
+            this.isDefault = isDefault;
         }
 
         @Override
         public boolean isInternal() {
-            return true;
+            return isDefault;
         }
 
         @Override
         public boolean hasAllAccess() {
-            return FILE_SCHEME.equals(hostfs.getScheme());
+            return isDefault;
         }
 
         @Override
@@ -772,7 +737,7 @@ final class FileSystems {
         @Override
         public Path parsePath(URI uri) {
             try {
-                return hostfs.getPath(uri);
+                return fileSystemProvider.getPath(uri);
             } catch (IllegalArgumentException | FileSystemNotFoundException e) {
                 throw new UnsupportedOperationException(e);
             }
@@ -780,18 +745,15 @@ final class FileSystems {
 
         @Override
         public Path parsePath(String path) {
-            if (!"file".equals(hostfs.getScheme())) {
-                throw new IllegalStateException("The ParsePath(String path) should be called only for file scheme.");
-            }
-            return Paths.get(path);
+            return fileSystem.getPath(path);
         }
 
         @Override
         public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
             if (isFollowLinks(linkOptions)) {
-                hostfs.checkAccess(resolveRelative(path), modes.toArray(new AccessMode[0]));
+                fileSystemProvider.checkAccess(resolveRelative(path), modes.toArray(new AccessMode[0]));
             } else if (modes.isEmpty()) {
-                hostfs.readAttributes(path, "isRegularFile", LinkOption.NOFOLLOW_LINKS);
+                fileSystemProvider.readAttributes(path, "isRegularFile", LinkOption.NOFOLLOW_LINKS);
             } else {
                 throw new UnsupportedOperationException("CheckAccess for NIO Provider is unsupported with non empty AccessMode and NOFOLLOW_LINKS.");
             }
@@ -799,31 +761,31 @@ final class FileSystems {
 
         @Override
         public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
-            hostfs.createDirectory(resolveRelative(dir), attrs);
+            fileSystemProvider.createDirectory(resolveRelative(dir), attrs);
         }
 
         @Override
         public void delete(Path path) throws IOException {
-            hostfs.delete(resolveRelative(path));
+            fileSystemProvider.delete(resolveRelative(path));
         }
 
         @Override
         public void copy(Path source, Path target, CopyOption... options) throws IOException {
-            hostfs.copy(resolveRelative(source), resolveRelative(target), options);
+            fileSystemProvider.copy(resolveRelative(source), resolveRelative(target), options);
         }
 
         @Override
         public void move(Path source, Path target, CopyOption... options) throws IOException {
-            hostfs.move(resolveRelative(source), resolveRelative(target), options);
+            fileSystemProvider.move(resolveRelative(source), resolveRelative(target), options);
         }
 
         @Override
         public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
             final Path resolved = resolveRelative(path);
             try {
-                return hostfs.newFileChannel(resolved, options, attrs);
+                return fileSystemProvider.newFileChannel(resolved, options, attrs);
             } catch (UnsupportedOperationException uoe) {
-                return hostfs.newByteChannel(resolved, options, attrs);
+                return fileSystemProvider.newByteChannel(resolved, options, attrs);
             }
         }
 
@@ -839,7 +801,7 @@ final class FileSystems {
                 resolvedPath = dir;
                 relativize = false;
             }
-            DirectoryStream<Path> result = hostfs.newDirectoryStream(resolvedPath, filter);
+            DirectoryStream<Path> result = fileSystemProvider.newDirectoryStream(resolvedPath, filter);
             if (relativize) {
                 result = new RelativizeDirectoryStream(cwd, result);
             }
@@ -848,27 +810,27 @@ final class FileSystems {
 
         @Override
         public void createLink(Path link, Path existing) throws IOException {
-            hostfs.createLink(resolveRelative(link), resolveRelative(existing));
+            fileSystemProvider.createLink(resolveRelative(link), resolveRelative(existing));
         }
 
         @Override
         public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) throws IOException {
-            hostfs.createSymbolicLink(resolveRelative(link), target, attrs);
+            fileSystemProvider.createSymbolicLink(resolveRelative(link), target, attrs);
         }
 
         @Override
         public Path readSymbolicLink(Path link) throws IOException {
-            return hostfs.readSymbolicLink(resolveRelative(link));
+            return fileSystemProvider.readSymbolicLink(resolveRelative(link));
         }
 
         @Override
         public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
-            return hostfs.readAttributes(resolveRelative(path), attributes, options);
+            return fileSystemProvider.readAttributes(resolveRelative(path), attributes, options);
         }
 
         @Override
         public void setAttribute(Path path, String attribute, Object value, LinkOption... options) throws IOException {
-            hostfs.setAttribute(resolveRelative(path), attribute, value, options);
+            fileSystemProvider.setAttribute(resolveRelative(path), attribute, value, options);
         }
 
         @Override
@@ -878,9 +840,6 @@ final class FileSystems {
             }
             Path cwd = userDir;
             if (cwd == null) {
-                if (explicitUserDir) {  // Forbidden read of current working directory
-                    throw new SecurityException("Access to user.dir is not allowed.");
-                }
                 return path.toAbsolutePath();
             } else {
                 return cwd.resolve(path);
@@ -895,16 +854,13 @@ final class FileSystems {
             }
             boolean nonDirectory;
             try {
-                nonDirectory = Boolean.FALSE.equals(hostfs.readAttributes(currentWorkingDirectory, "isDirectory").get("isDirectory"));
+                nonDirectory = Boolean.FALSE.equals(fileSystemProvider.readAttributes(currentWorkingDirectory, "isDirectory").get("isDirectory"));
             } catch (IOException ioe) {
                 // Support non-existent working directory.
                 nonDirectory = false;
             }
             if (nonDirectory) {
                 throw new IllegalArgumentException("Current working directory must be directory.");
-            }
-            if (explicitUserDir && userDir == null) { // Forbidden set of current working directory
-                throw new SecurityException("Modification of current working directory is not allowed.");
             }
             userDir = currentWorkingDirectory;
         }
@@ -934,7 +890,7 @@ final class FileSystems {
             if (isFollowLinks(options)) {
                 Path absolutePath1 = resolveRelative(path1);
                 Path absolutePath2 = resolveRelative(path2);
-                return hostfs.isSameFile(absolutePath1, absolutePath2);
+                return fileSystemProvider.isSameFile(absolutePath1, absolutePath2);
             } else {
                 // The FileSystemProvider.isSameFile always resolves symlinks
                 // we need to use the default implementation comparing the canonical paths
@@ -997,7 +953,7 @@ final class FileSystems {
         private final FileSystemProvider defaultFileSystemProvider;
 
         DeniedIOFileSystem() {
-            defaultFileSystemProvider = findDefaultFileSystemProvider();
+            defaultFileSystemProvider = findDefaultFileSystem().provider();
         }
 
         @Override
