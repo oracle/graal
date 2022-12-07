@@ -567,14 +567,13 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
             }
             if (usesInlinedNodes) {
-                boolean firstParameterNode = false;
-                for (Parameter p : specialization.getSignatureParameters()) {
-                    firstParameterNode = p.isDeclared();
-                    break;
-                }
-
                 boolean isStatic = element.getModifiers().contains(Modifier.STATIC);
                 if (node.isGenerateInline()) {
+                    boolean firstParameterNode = false;
+                    for (Parameter p : specialization.getSignatureParameters()) {
+                        firstParameterNode = p.isDeclared();
+                        break;
+                    }
                     if (!isStatic || !firstParameterNode) {
                         specialization.addError("For @%s annotated nodes all specialization methods with inlined cached values must be static and declare the a 'Node node' parameter. " +
                                         "When using inlinable nodes it is a common mistake to pass the wrong inline target node to inlined cached values. " +
@@ -583,7 +582,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                                         "Use the first node parameter and pass it along to inlined caches. ",
                                         getSimpleName(types.GenerateInline));
                     }
-                } else if (FlatNodeGenFactory.useSpecializationClass(specialization)) {
+                } else if (FlatNodeGenFactory.useSpecializationClass(specialization) || mode == ParseMode.EXPORTED_MESSAGE) {
 
                     boolean hasNodeParameter = false;
                     for (CacheExpression cache : specialization.getCaches()) {
@@ -595,25 +594,27 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
                     if (!isStatic || !hasNodeParameter) {
                         if (!hasNodeParameter) {
+                            String nodeParameter;
+                            if (mode == ParseMode.EXPORTED_MESSAGE) {
+                                nodeParameter = String.format("@%s(\"$node\") Node node", getSimpleName(types.Bind));
+                            } else {
+                                nodeParameter = String.format("@%s(\"this\") Node node", getSimpleName(types.Bind));
+                            }
+
                             String message = String.format(
-                                            "For this specialization with inlined cache parameters a '@%s(\"this\") Node node' parameter must be declared. " + //
+                                            "For this specialization with inlined cache parameters a '%s' parameter must be declared. " + //
                                                             "With inlined caches it is a common mistake to pass the wrong inline target node to inlined cached nodes or profiles. " +
-                                                            "To resolve this add a '@%s(\"this\") Node node' parameter to the specialization method. " +
+                                                            "To resolve this add a '%s' parameter to the specialization method. " +
                                                             "Use the new node parameter and pass it along to cached inlined nodes or profiles. ",
-                                            getSimpleName(types.Bind),
-                                            getSimpleName(types.Bind),
-                                            getSimpleName(types.Bind));
+                                            nodeParameter, nodeParameter);
 
                             specialization.addError(message);
-                        } else {
+                        } else if (mode != ParseMode.EXPORTED_MESSAGE) {
                             String message = String.format(
                                             "For this specialization with inlined cache parameters it is recommended to use the static modifier. " + //
                                                             "With inlined caches it is a common mistake to pass the wrong inline target node to inlined cached nodes or profiles. " +
                                                             "To resolve this add the static keyword to the method and fix potential misuses of the 'this' reference. " +
-                                                            "If a node needs to access instance fields it is recommended to suppress this warning.",
-                                            getSimpleName(types.Bind),
-                                            getSimpleName(types.Bind),
-                                            getSimpleName(types.Bind));
+                                                            "If a node needs to access instance fields it is recommended to suppress this warning.");
 
                             specialization.addSuppressableWarning(TruffleSuppressedWarnings.STATIC_METHOD, message);
                         }

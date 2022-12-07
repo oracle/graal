@@ -72,7 +72,7 @@ This node is a candidate for node object inlining. The memory footprint is estim
 
 Following the recommendation of this warning, we modify our example as follows by adding the `@GenerateInline` annotation:
  
-```
+```java
 @GenerateInline
 public abstract class AbsNode extends Node {
 
@@ -104,7 +104,7 @@ This is necessary as inlined nodes become singletons and no longer have their ow
 
 Again, we follow the error and modify our example as follows:
  
-```
+```java
 @GenerateInline
 public abstract class AbsNode extends Node {
 
@@ -151,7 +151,7 @@ The cached type 'AbsNode' supports object-inlining. The footprint is estimated t
 
 We follow the recommendation in this message and enable object inlining:
 
-```
+```java
 public abstract static class AddAbsNode extends Node {
 
     abstract long execute(long left, long right);
@@ -189,7 +189,7 @@ This node is a candidate for node object inlining. The memory footprint is estim
 
 Again, we follow the guide and add a `@GenerateInline` annotation to `AddAbsNode`. Just like before, we also add a `Node` parameter to the execute method:
 
-```
+```java
 @GenerateInline
 public abstract static class AddAbsNode extends Node {
 
@@ -213,7 +213,7 @@ In addition, the DSL complained about the `inline=true` attribute, which is now 
 To measure the overhead of our new inlinable `AddAbsNode` node, we declare a new operation called `Add4AbsNode` that adds four numbers using our `AddAbsNode` operation:
 
 
-```
+```java
 @GenerateCached(alwaysInlineCached = true)
 public abstract static class Add4AbsNode extends Node {
 
@@ -266,7 +266,7 @@ There is a last thing we should do. Since our `AddAbsNode` and `AbsNode` are no 
 
 This is the final example:
 
-```
+```java
 @GenerateInline
 @GenerateCached(false)
 public abstract static class AbsNode extends Node {
@@ -337,6 +337,99 @@ Examples:
 * [NodeInliningExample2_1.java](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.dsl.test/src/com/oracle/truffle/api/dsl/test/examples/NodeInliningExample2_1.java) shows an example without any inlining.
 * [NodeInliningExample2_2.java](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.dsl.test/src/com/oracle/truffle/api/dsl/test/examples/NodeInliningExample2_2.java) shows an example without partial inlining.
 * [NodeInliningExample2_3.java](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.dsl.test/src/com/oracle/truffle/api/dsl/test/examples/NodeInliningExample2_3.java) shows an example with full inlining.
+
+
+### Passing along Nodes correctly
+
+The usage of inlined nodes requires to access and pass the correct node to execute methods of the respective inlined nodes.
+It is a common mistake to pass the wrong node to execute methods.
+Typically such mistakes fail with an error at runtime, the DSL emits warnings and errors depending on the situation.
+
+
+_Inlined Nodes_
+
+For inlined nodes that use themselves inlined nodes it is sufficient to pass a long the `Node` dynamic parameter.
+For example. in the previous section we used `AddAbsNode` with a similar pattern:
+
+```java
+@GenerateInline
+@GenerateCached(false)
+public abstract static class AddAbsNode extends Node {
+
+    abstract long execute(Node node, long left, long right);
+
+    @Specialization
+    static long add(Node node, long left, long right,
+                    @Cached AbsNode leftAbs,
+                    @Cached AbsNode rightAbs) {
+        return leftAbs.execute(node, left) + rightAbs.execute(node, right);
+    }
+    // ...
+}
+```
+
+_Cached Nodes with Multiple Instances_
+
+For nodes with specializations that may have multiple instances a `@Bind("this") Node node` parameter must be used to access the inline target node.
+This is simliar to the `SumArrayNode` node in the advanced usage example.
+
+```java
+@ImportStatic(AbstractArray.class)
+public abstract static class SumArrayNode extends Node {
+
+    abstract int execute(Object v0);
+
+    @Specialization(guards = {"kind != null", "kind.type == array.getClass()"}, limit = "2", unroll = 2)
+    static int doDefault(Object array,
+                    @Bind("this") Node node,
+                    @Cached("resolve(array)") ArrayKind kind,
+                    @Cached GetStoreNode getStore) {
+        Object castStore = kind.type.cast(array);
+        int[] store = getStore.execute(node, castStore);
+        int sum = 0;
+        for (int element : store) {
+            sum += element;
+            TruffleSafepoint.poll(node);
+        }
+        return sum;
+    }
+
+    static Class<?> getCachedClass(Object array) {
+        if (array instanceof AbstractArray) {
+            return array.getClass();
+        }
+        return null;
+    }
+}
+```
+
+_Exported Library Messages_
+
+For exported library messages the `this` keyword is already reserved for the receiver value, so `$node` can be used instead.
+
+For example:
+
+```java
+    @ExportLibrary(ExampleArithmeticLibrary.class)
+    static class ExampleNumber {
+        
+        final long value;
+        
+        /* ... */ 
+
+        @ExportMessage
+        final long abs(@Bind("$node") Node node,
+                       @Cached InlinedConditionProfile profile) {
+            if (profile.profile(node, this.value >= 0)) {
+                return  this.value;
+            } else {
+                return  -this.value;
+            }
+        }
+
+    }
+```
+
 
 
 ### Limitations

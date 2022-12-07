@@ -109,7 +109,10 @@ import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseUncachedEncu
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -2188,6 +2191,43 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
                         @ExpectError("Static inline method with name 'doesNotExist' and parameter type 'InlineTarget' could not be resolved. %") //
                         @Cached(inlineMethod = "doesNotExist") Node inlinedNnode) {
             return "s0";
+        }
+
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"static-method", "unused"})
+    static class ErrorUseBindParamterInLibraryExport1 implements TruffleObject {
+
+        @ExportMessage
+        final boolean isPointer() {
+            return false;
+        }
+
+        @ExpectError("For this specialization with inlined cache parameters a '@Bind(\"$node\") Node node' parameter must be declared.%")
+        @ExportMessage
+        long asPointer(@Cached InlinedBranchProfile profile) {
+            return 0L;
+        }
+
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"static-method", "unused"})
+    static class ErrorUseBindParamterInLibraryExport2 implements TruffleObject {
+
+        @ExportMessage
+        final boolean isPointer() {
+            return false;
+        }
+
+        @ExportMessage
+        static class AsPointer {
+            @ExpectError("For this specialization with inlined cache parameters a '@Bind(\"$node\") Node node' parameter must be declared.%")
+            @Specialization
+            static long asPointer(ErrorUseBindParamterInLibraryExport2 receiver, @Cached InlinedBranchProfile profile) {
+                return 0L;
+            }
         }
 
     }
