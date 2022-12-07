@@ -100,18 +100,21 @@ public class ProcessHarnessManager {
         private int exitcode;
         private String command;
 
-        public TestHarnessError(String command, String stdout, String stderr, int exitcode) {
+        private boolean isAlive;
+
+        public TestHarnessError(String command, String stdout, String stderr, boolean isAlive, int exitcode) {
             this.command = command;
             this.stdout = stdout;
             this.stderr = stderr;
+            this.isAlive = isAlive;
             this.exitcode = exitcode;
         }
 
         @Override
         public String getMessage() {
             return String.format("The test harness failed fataly. This is likely because the test runner process crashed.\n" +
-                            "Command: %s\nStdout:\n%s\n\nStderr:\n%s\n\nExit code: %d", this.command, this.stdout, this.stderr,
-                            this.exitcode);
+                            "Command: %s\nStdout:\n%s\n\nStderr:\n%s\n\nExit code (isAlive %b): %d", this.command, this.stdout, this.stderr,
+                            isAlive, this.exitcode);
         }
     }
 
@@ -140,7 +143,7 @@ public class ProcessHarnessManager {
                 String line = reader.readLine();
                 if (line == null) {
                     // The process has probably died. Print the output and abort
-                    Error err = new TestHarnessError(currentCommand, stdoutBuffer.toString(), stderrBuffer.toString(), process.exitValue());
+                    Error err = new TestHarnessError(currentCommand, stdoutBuffer.toString(), stderrBuffer.toString(), process.isAlive(), process.exitValue());
                     err.printStackTrace();
                     shutdownProcess();
                     shutdown();
