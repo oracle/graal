@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.nodes.interop;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -48,7 +49,8 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.runtime.SLStrings;
@@ -73,11 +75,11 @@ public abstract class NodeObjectDescriptor implements TruffleObject {
         return new WriteDescriptor(name, sourceSection);
     }
 
-    Object readMember(String member, @Cached BranchProfile error) throws UnknownIdentifierException {
+    Object readMember(String member, @Bind("$node") Node node, @Cached InlinedBranchProfile error) throws UnknownIdentifierException {
         if (isMemberReadable(member)) {
             return name;
         } else {
-            error.enter();
+            error.enter(node);
             throw UnknownIdentifierException.create(member);
         }
     }
@@ -113,8 +115,8 @@ public abstract class NodeObjectDescriptor implements TruffleObject {
 
         @Override
         @ExportMessage
-        Object readMember(String member, @Cached(inline = false) BranchProfile error) throws UnknownIdentifierException {
-            return super.readMember(member, error);
+        Object readMember(String member, @Bind("$node") Node node, @Cached InlinedBranchProfile error) throws UnknownIdentifierException {
+            return super.readMember(member, node, error);
         }
 
     }
@@ -151,8 +153,8 @@ public abstract class NodeObjectDescriptor implements TruffleObject {
 
         @Override
         @ExportMessage
-        Object readMember(String member, @Cached(inline = false) BranchProfile error) throws UnknownIdentifierException {
-            super.readMember(member, error); // To verify readability
+        Object readMember(String member, @Bind("$node") Node node, @Cached InlinedBranchProfile error) throws UnknownIdentifierException {
+            super.readMember(member, node, error); // To verify readability
             return nameSymbol;
         }
     }
