@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,48 +22,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.thread;
+package com.oracle.svm.core.graal.nodes;
 
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
-import com.oracle.svm.core.threadlocal.VMThreadLocalSTSupport;
+import com.oracle.svm.core.FrameAccess;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_1)
-public class VMThreadLocalSTHolderNode extends FixedWithNextNode implements LIRLowerable {
-    public static final NodeClass<VMThreadLocalSTHolderNode> TYPE = NodeClass.create(VMThreadLocalSTHolderNode.class);
+import jdk.vm.ci.code.Register;
 
-    protected final VMThreadLocalInfo threadLocalInfo;
+@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+public final class ReadReservedRegisterFixedNode extends FixedWithNextNode implements LIRLowerable {
+    public static final NodeClass<ReadReservedRegisterFixedNode> TYPE = NodeClass.create(ReadReservedRegisterFixedNode.class);
 
-    public VMThreadLocalSTHolderNode(VMThreadLocalInfo threadLocalInfo) {
-        super(TYPE, StampFactory.objectNonNull());
-        this.threadLocalInfo = threadLocalInfo;
+    private final Register register;
+
+    protected ReadReservedRegisterFixedNode(Register register) {
+        super(TYPE, FrameAccess.getWordStamp());
+        this.register = register;
     }
 
-    public VMThreadLocalInfo getThreadLocalInfo() {
-        return threadLocalInfo;
+    public Register getRegister() {
+        return register;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Object holder;
-        if (threadLocalInfo.isObject) {
-            holder = ImageSingletons.lookup(VMThreadLocalSTSupport.class).objectThreadLocals;
-        } else {
-            holder = ImageSingletons.lookup(VMThreadLocalSTSupport.class).primitiveThreadLocals;
-        }
-        LIRKind kind = gen.getLIRGeneratorTool().getLIRKind(stamp(NodeView.DEFAULT));
-        gen.setResult(this, gen.getLIRGeneratorTool().emitLoadConstant(kind, SubstrateObjectConstant.forObject(holder)));
+        LIRKind lirKind = gen.getLIRGeneratorTool().getLIRKind(stamp);
+        gen.setResult(this, register.asValue(lirKind));
     }
 }
