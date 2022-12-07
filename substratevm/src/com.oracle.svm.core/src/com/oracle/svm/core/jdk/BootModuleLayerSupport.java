@@ -28,12 +28,15 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.heap.UnknownObjectField;
+
 public final class BootModuleLayerSupport {
 
     public static BootModuleLayerSupport instance() {
         return ImageSingletons.lookup(BootModuleLayerSupport.class);
     }
 
+    @UnknownObjectField(types = ModuleLayer.class) //
     private ModuleLayer bootLayer;
 
     @Platforms(Platform.HOSTED_ONLY.class)
