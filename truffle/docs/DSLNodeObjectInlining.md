@@ -263,6 +263,7 @@ In addition to the memory footprint advantages, interpreter-only execution may b
 After compilation using partial evaluation, both cached and uncached versions are expected to perform the same.
 
 There is a last thing we should do. Since our `AddAbsNode` and `AbsNode` are no longer used in their cached version, we can turn off cached generation using `@GenerateCached(false)` to save Java code footprint.
+After doing this we can omit the `alwaysInlineCached` property in the `@GenerateCached` annotation as nodes are automatically inlined if only an inlined version is available.
 
 This is the final example:
 
@@ -343,7 +344,7 @@ Examples:
 
 The usage of inlined nodes requires to access and pass the correct node to execute methods of the respective inlined nodes.
 It is a common mistake to pass the wrong node to execute methods.
-Typically such mistakes fail with an error at runtime, the DSL emits warnings and errors depending on the situation.
+Typically such mistakes fail with an error at runtime, but the DSL also emits warnings and errors depending on the situation at compile time.
 
 
 _Inlined Nodes_
