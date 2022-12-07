@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.thread.VMOperation;
+import org.graalvm.nativeimage.CurrentIsolate;
 
 public class JfrBufferNodeLinkedList {
     @RawStructure
@@ -55,6 +56,12 @@ public class JfrBufferNodeLinkedList {
 
         @RawField
         void setThread(IsolateThread thread);
+
+        @RawField
+        IsolateThread getLockOwner();
+
+        @RawField
+        void setLockOwner(IsolateThread owner);
 
         @RawField
         boolean getAlive();
@@ -80,6 +87,8 @@ public class JfrBufferNodeLinkedList {
         void setPrev(UninterruptibleEntry value);
     }
 
+    private static final int ACQUIRED = 1;
+    private static final int NOT_ACQUIRED = 0;
     private volatile JfrBufferNode head;
     private JfrBufferNode tail; // this never gets deleted until torn down
 
@@ -186,9 +195,8 @@ public class JfrBufferNodeLinkedList {
         JfrBufferNode prev = node.getPrev();
         // tail must always exist until torn down
         VMError.guarantee(next.isNonNull(), "Attmpted to remove tail node from JfrBufferNodeLinkedList");
-        VMError.guarantee(head.isNonNull(), "Head of JfrBufferNodeLinkedList must always exist.");
 
-        // make one attempt to get all the locks. If flushing, only target nodes already acquired.
+        // make one attempt to get all the locks. If flushing, must acquire adjacent nodes
         if (flushing && !VMOperation.isInProgressAtSafepoint() && !lockAdjacent(node)) {
             return false;
         }
@@ -217,16 +225,27 @@ public class JfrBufferNodeLinkedList {
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public void addNode(JfrBufferNode node) {
-        while (!acquire(head)) {
-            // spin until we acquire
+        JfrBufferNode oldHead;
+        // spin until we acquire
+        while (true) {
+            // update value from main memory
+            oldHead = head;
+            if (!acquire(oldHead)) {
+                continue;
+            }
+            if (!isHead(oldHead)) {
+                // head in main memory may have changed between setting and acquiring oldHead
+                release(oldHead);
+                continue;
+            }
+            break;
         }
-        JfrBufferNode oldHead = head;
+        VMError.guarantee(oldHead.getPrev().isNull(), "Adding node: Head should be first node in JfrBufferNodeLinkedList.");
         node.setPrev(WordFactory.nullPointer());
+        node.setNext(oldHead);
+        oldHead.setPrev(node);
 
-        VMError.guarantee(head.getPrev().isNull(), "Adding node: Head should be first node in JfrBufferNodeLinkedList.");
-        node.setNext(head);
-        head.setPrev(node);
-        head = node;
+        setHead(node);
         release(oldHead);
     }
 
@@ -236,7 +255,12 @@ public class JfrBufferNodeLinkedList {
             VMError.guarantee(!isAcquired(node), "JfrBufferNodes should not be in acquired state when entering safepoints.");
             return true;
         }
-        return ((org.graalvm.word.Pointer) node).logicCompareAndSwapInt(JfrBufferNode.offsetOfAcquired(), 0, 1, org.graalvm.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION);
+        boolean success = ((org.graalvm.word.Pointer) node).logicCompareAndSwapInt(JfrBufferNode.offsetOfAcquired(), NOT_ACQUIRED, ACQUIRED,
+                        org.graalvm.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION);
+        if (success) {
+            node.setLockOwner(CurrentIsolate.getCurrentThread());
+        }
+        return success;
     }
 
     @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
@@ -244,11 +268,13 @@ public class JfrBufferNodeLinkedList {
         if (VMOperation.isInProgressAtSafepoint()) {
             return;
         }
-        node.setAcquired(0);
+        VMError.guarantee(node.getLockOwner() == CurrentIsolate.getCurrentThread(), "Only the lock owner can release the lock");
+        VMError.guarantee(isAcquired(node), "JfrBufferNodes should only be released when in acquired state.");
+        node.setAcquired(NOT_ACQUIRED);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isAcquired(JfrBufferNode node) {
-        return node.getAcquired() == 1;
+        return node.getAcquired() == ACQUIRED;
     }
 }
