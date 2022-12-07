@@ -5172,14 +5172,10 @@ public class FlatNodeGenFactory {
         CodeExecutableElement parentMethod = (CodeExecutableElement) builder.findMethod();
 
         String boundaryMethodName;
-        if (specialization != null) {
-            if (generatorMode.equals(GeneratorMode.EXPORTED_MESSAGE)) {
-                boundaryMethodName = String.format("%s_%sBoundary", node.getNodeId(), specialization.getId());
-            } else {
-                boundaryMethodName = String.format("%sBoundary", specialization.getId());
-            }
+        if (generatorMode.equals(GeneratorMode.EXPORTED_MESSAGE)) {
+            boundaryMethodName = String.format("%s_%sBoundary", node.getNodeId(), specialization.getId());
         } else {
-            boundaryMethodName = "specializationBoundary";
+            boundaryMethodName = String.format("%sBoundary", specialization.getId());
         }
         boundaryMethodName = firstLetterLowerCase(boundaryMethodName);
 
@@ -5189,7 +5185,7 @@ public class FlatNodeGenFactory {
         usedBoundaryNames.add(boundaryMethodName);
 
         String includeFrameParameter = null;
-        if (specialization != null && specialization.getFrame() != null) {
+        if (specialization.getFrame() != null) {
             if (ElementUtils.typeEquals(types.MaterializedFrame, specialization.getFrame().getType())) {
                 includeFrameParameter = FRAME_VALUE;
             } else {
@@ -6035,7 +6031,7 @@ public class FlatNodeGenFactory {
                     NodeExecutionMode mode, SpecializationGroup group, GuardExpression guard) {
         SpecializationData specialization = group.getSpecialization();
         boolean guardStateBit = guardNeedsStateBit(specialization, guard);
-        if (!guardStateBit && guard.isConstantTrueInSlowPath(context, mode.isUncached())) {
+        if (!guardStateBit && guard.isConstantTrueInSlowPath(mode.isUncached())) {
             return Collections.emptyList();
         }
 
@@ -6647,7 +6643,7 @@ public class FlatNodeGenFactory {
             }
         } else if (mode.isSlowPath() || mode.isUncached()) {
             CodeTree guardExpression = writeExpression(frameState, specialization, expression);
-            if (guard.isConstantTrueInSlowPath(context, mode.isUncached())) {
+            if (guard.isConstantTrueInSlowPath(mode.isUncached())) {
                 assertion = CodeTreeBuilder.createBuilder().startStatement().string("// assert ").tree(guardExpression).end().build();
             } else {
                 condition.tree(guardExpression);
@@ -7049,14 +7045,12 @@ public class FlatNodeGenFactory {
         builder.tree(reference);
         if (frameState != null && frameState.isInlinedNode()) {
             if (value == null) {
-                builder.startCall(".get").tree(nodeReference).end().build();
+                builder.startCall(".get").tree(nodeReference).end();
             } else {
-                builder.startCall(".set").tree(nodeReference).tree(value).end().build();
+                builder.startCall(".set").tree(nodeReference).tree(value).end();
             }
         } else {
-            if (value == null) {
-                return builder.build();
-            } else {
+            if (value != null) {
                 builder.string(" = ").tree(value);
             }
         }
