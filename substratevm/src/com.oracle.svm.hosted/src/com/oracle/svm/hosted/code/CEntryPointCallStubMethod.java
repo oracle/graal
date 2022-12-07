@@ -149,7 +149,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         JavaType[] parameterLoadTypes = Arrays.copyOf(parameterTypes, parameterTypes.length);
         EnumInfo[] parameterEnumInfos;
 
-        parameterEnumInfos = adaptParameterTypes(providers, nativeLibraries, kit, parameterTypes, parameterLoadTypes, purpose);
+        parameterEnumInfos = adaptParameterTypes(providers, nativeLibraries, kit, parameterTypes, parameterLoadTypes);
 
         ValueNode[] args = kit.loadArguments(parameterLoadTypes).toArray(ValueNode.EMPTY_ARRAY);
 
@@ -311,7 +311,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
     }
 
     private EnumInfo[] adaptParameterTypes(HostedProviders providers, NativeLibraries nativeLibraries, HostedGraphKit kit,
-                    JavaType[] parameterTypes, JavaType[] parameterLoadTypes, Purpose purpose) {
+                    JavaType[] parameterTypes, JavaType[] parameterLoadTypes) {
 
         EnumInfo[] parameterEnumInfos = null;
         for (int i = 0; i < parameterTypes.length; i++) {
@@ -337,8 +337,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
                     ValueNode parameterNode = matchingNodes.next();
                     assert !matchingNodes.hasNext() && parameterNode.usages().filter(n -> n != initialState).isEmpty();
                     parameterNode.setStamp(StampFactory.forKind(cEnumParameterKind));
-                } else if (purpose != Purpose.ANALYSIS) {
-                    // for analysis test cases: abort only during compilation
+                } else {
                     throw UserError.abort("Entry point method parameter types are restricted to primitive types, word types and enumerations (@%s): %s",
                                     CEnum.class.getSimpleName(), targetMethod);
                 }
