@@ -302,4 +302,8 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
         ((PolyglotEngineImpl) engine).onVMShutdown();
     }
 
+    @Override
+    public RuntimeException hostToGuestException(Object engineReceiver, Throwable throwable) {
+        return PolyglotImpl.hostToGuestException((PolyglotEngineImpl) engineReceiver, throwable);
+    }
 }
