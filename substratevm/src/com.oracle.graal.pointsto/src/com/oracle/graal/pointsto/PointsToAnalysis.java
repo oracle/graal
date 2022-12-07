@@ -476,9 +476,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                 PointsToStats.registerTypeFlowQueuedUpdate(PointsToAnalysis.this, operation);
 
                 operation.inQueue = false;
-                if (operation.isValid()) {
-                    operation.update(PointsToAnalysis.this);
-                }
+                operation.update(PointsToAnalysis.this);
             }
 
             @Override

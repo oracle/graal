@@ -487,15 +487,6 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
      */
     final void removeInternalFlows(PointsToAnalysis bb) {
 
-        // Invalidate internal flows which will be cleared
-        flowsIterator(true).forEachRemaining(typeFlow -> {
-            // param and return flows will not be cleared
-            boolean skipInvalidate = typeFlow instanceof FormalParamTypeFlow || typeFlow instanceof FormalReturnTypeFlow;
-            if (!skipInvalidate) {
-                typeFlow.invalidate();
-            }
-        });
-
         // Clear out the parameter uses and observers
         for (var param : getParameters()) {
             if (param != null) {
