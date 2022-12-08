@@ -873,16 +873,20 @@ final class FileSystems {
 
         @Override
         public Path getTempDirectory() {
-            Path result = tmpDir;
-            if (result == null) {
-                String tmpDirPath = EngineAccessor.RUNTIME.getSavedProperty("java.io.tmpdir");
-                if (tmpDirPath == null) {
-                    throw new IllegalStateException("The java.io.tmpdir is not set.");
+            if (isDefault) {
+                Path result = tmpDir;
+                if (result == null) {
+                    String tmpDirPath = EngineAccessor.RUNTIME.getSavedProperty("java.io.tmpdir");
+                    if (tmpDirPath == null) {
+                        throw new IllegalStateException("The java.io.tmpdir is not set.");
+                    }
+                    result = parsePath(tmpDirPath);
+                    tmpDir = result;
                 }
-                result = parsePath(tmpDirPath);
-                tmpDir = result;
+                return result;
+            } else {
+                throw new UnsupportedOperationException("Temporary directories not supported");
             }
-            return result;
         }
 
         @Override
