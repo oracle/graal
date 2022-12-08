@@ -339,13 +339,8 @@ public class SubstrateOptions {
     };
 
     private static void validateParallelGC(OptionKey<?> unused) {
-        validateParallelGC(SubstrateOptions.MultiThreaded, true);
-        validateParallelGC(ConcealedOptions.UseRememberedSet, false);
-    }
-
-    private static void validateParallelGC(HostedOptionKey<Boolean> optionKey, boolean expected) {
-        if (optionKey.getValue() != expected) {
-            throw UserError.abort("ParallelGC requires the option %s to be %s", optionKey, expected);
+        if (!SubstrateOptions.MultiThreaded.getValue()) {
+            throw new InterruptImageBuilding("ParallelGC requires the option MultiThreaded to be set.");
         }
     }
 

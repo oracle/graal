@@ -167,14 +167,12 @@ public final class Space {
      */
     @AlwaysInline("GC performance")
     private Pointer allocateMemory(UnsignedWord objectSize) {
+        if (ParallelGC.isEnabled() && GCImpl.getGCImpl().isCompleteCollection()) {
+            return allocateMemoryParallel(objectSize);
+        }
         Pointer result = WordFactory.nullPointer();
         /* Fast-path: try allocating in the last chunk. */
-        AlignedHeapChunk.AlignedHeader oldChunk;
-        if (ParallelGC.isEnabled()) {
-            oldChunk = ParallelGCImpl.getThreadLocalChunk();
-        } else {
-            oldChunk = getLastAlignedHeapChunk();
-        }
+        AlignedHeapChunk.AlignedHeader oldChunk = getLastAlignedHeapChunk();
         if (oldChunk.isNonNull()) {
             result = AlignedHeapChunk.allocateMemory(oldChunk, objectSize);
         }
@@ -182,7 +180,22 @@ public final class Space {
             return result;
         }
         /* Slow-path: try allocating a new chunk for the requested memory. */
-        return allocateInNewChunk(oldChunk, objectSize);
+        return allocateInNewChunk(objectSize);
+    }
+
+    @AlwaysInline("GC performance")
+    private Pointer allocateMemoryParallel(UnsignedWord objectSize) {
+        Pointer result = WordFactory.nullPointer();
+        /* Fast-path: try allocating in the thread local allocation chunk. */
+        AlignedHeapChunk.AlignedHeader oldChunk = ParallelGCImpl.getAllocationChunk();
+        if (oldChunk.isNonNull()) {
+            result = AlignedHeapChunk.allocateMemory(oldChunk, objectSize);
+        }
+        if (result.isNonNull()) {
+            return result;
+        }
+        /* Slow-path: try allocating a new chunk for the requested memory. */
+        return allocateInNewChunkParallel(oldChunk, objectSize);
     }
 
     /**
@@ -191,24 +204,32 @@ public final class Space {
     @AlwaysInline("GC performance")
     private Pointer retractAllocation(UnsignedWord objectSize) {
         assert ParallelGCImpl.isEnabled() && ParallelGCImpl.isInParallelPhase();
-        AlignedHeapChunk.AlignedHeader oldChunk = ParallelGCImpl.getThreadLocalChunk();
+        AlignedHeapChunk.AlignedHeader oldChunk = ParallelGCImpl.getAllocationChunk();
         assert oldChunk.isNonNull();
         return AlignedHeapChunk.retractAllocation(oldChunk, objectSize);
     }
 
-    private Pointer allocateInNewChunk(AlignedHeapChunk.AlignedHeader oldChunk, UnsignedWord objectSize) {
-        if (ParallelGC.isEnabled()) {
-            ParallelGCImpl.mutex.lock();
+    private Pointer allocateInNewChunk(UnsignedWord objectSize) {
+        AlignedHeapChunk.AlignedHeader newChunk = requestAlignedHeapChunk();
+        if (newChunk.isNonNull()) {
+            return AlignedHeapChunk.allocateMemory(newChunk, objectSize);
+        }
+        return WordFactory.nullPointer();
+    }
+
+    private Pointer allocateInNewChunkParallel(AlignedHeapChunk.AlignedHeader oldChunk, UnsignedWord objectSize) {
+        AlignedHeapChunk.AlignedHeader newChunk;
+        ParallelGCImpl.mutex.lock();
+        try {
             if (oldChunk.notEqual(ParallelGCImpl.getThreadLocalScannedChunk())) {
                 ParallelGCImpl.singleton().push(HeapChunk.asPointer(oldChunk));
             }
-        }
-        AlignedHeapChunk.AlignedHeader newChunk = requestAlignedHeapChunk();
-        if (ParallelGC.isEnabled()) {
+            newChunk = requestAlignedHeapChunk();
+        } finally {
             ParallelGCImpl.mutex.unlock();
-            ParallelGCImpl.setThreadLocalChunk(newChunk);
         }
         if (newChunk.isNonNull()) {
+            ParallelGCImpl.setAllocationChunk(newChunk);
             return AlignedHeapChunk.allocateMemory(newChunk, objectSize);
         }
         return WordFactory.nullPointer();
@@ -379,7 +400,7 @@ public final class Space {
         assert this != originalSpace && originalSpace.isFromSpace();
 
         if (ParallelGCImpl.isEnabled() && ParallelGCImpl.isInParallelPhase()) {
-            return promoteAlignedObjectParallel(original, originalSpace);
+            return copyAlignedObjectParallel(original);
         }
 
         Object copy = copyAlignedObject(original);
@@ -390,7 +411,7 @@ public final class Space {
     }
 
     @AlwaysInline("GC performance")
-    Object promoteAlignedObjectParallel(Object original, Space originalSpace) {
+    Object copyAlignedObjectParallel(Object original) {
         assert VMOperation.isGCInProgress();
         assert ParallelGCImpl.isEnabled() && ParallelGCImpl.isInParallelPhase();
         assert ObjectHeaderImpl.isAlignedObject(original);
@@ -485,7 +506,7 @@ public final class Space {
         }
         originalSpace.extractAlignedHeapChunk(chunk);
         appendAlignedHeapChunk(chunk);
-        if (ParallelGCImpl.isEnabled()) {
+        if (ParallelGCImpl.isEnabled() && GCImpl.getGCImpl().isCompleteCollection()) {
             ParallelGCImpl.singleton().push(HeapChunk.asPointer(chunk));
             if (ParallelGCImpl.isInParallelPhase()) {
                 ParallelGCImpl.mutex.unlock();
@@ -511,7 +532,7 @@ public final class Space {
         }
         originalSpace.extractUnalignedHeapChunk(chunk);
         appendUnalignedHeapChunk(chunk);
-        if (ParallelGCImpl.isEnabled()) {
+        if (ParallelGCImpl.isEnabled() && GCImpl.getGCImpl().isCompleteCollection()) {
             ParallelGCImpl.singleton().push(HeapChunk.asPointer(chunk).or(ParallelGCImpl.UNALIGNED_BIT));
             if (ParallelGCImpl.isInParallelPhase()) {
                 ParallelGCImpl.mutex.unlock();

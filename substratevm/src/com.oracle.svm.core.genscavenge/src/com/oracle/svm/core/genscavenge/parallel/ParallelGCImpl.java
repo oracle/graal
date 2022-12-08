@@ -34,7 +34,6 @@ import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.genscavenge.HeapChunk;
-import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk;
 import com.oracle.svm.core.heap.ParallelGC;
 import com.oracle.svm.core.jdk.Jvm;
@@ -88,23 +87,21 @@ public class ParallelGCImpl extends ParallelGC {
         return singleton().inParallelPhase;
     }
 
-    public static void waitForIdle() {
-        singleton().waitForIdleImpl();
-    }
-
     public static AlignedHeapChunk.AlignedHeader getThreadLocalScannedChunk() {
         return scannedChunkTL.get();
     }
 
-    public static AlignedHeapChunk.AlignedHeader getThreadLocalChunk() {
+    public static AlignedHeapChunk.AlignedHeader getAllocationChunk() {
         return allocChunkTL.get();
     }
 
-    public static void setThreadLocalChunk(AlignedHeapChunk.AlignedHeader chunk) {
+    public static void setAllocationChunk(AlignedHeapChunk.AlignedHeader chunk) {
+        assert chunk.isNonNull();
         allocChunkTL.set(chunk);
     }
 
     public void push(Pointer ptr) {
+        assert ptr.isNonNull();
         buffer.push(ptr);
         if (inParallelPhase) {
             parPhase.signal();
@@ -168,7 +165,10 @@ public class ParallelGCImpl extends ParallelGC {
         return t;
     }
 
-    private void waitForIdleImpl() {
+    /**
+     * Start parallel phase and wait until all chunks have been processed. Used by complete collections.
+     */
+    public void waitForIdle() {
         assert allocChunkTL.get().isNonNull();
         push(HeapChunk.asPointer(allocChunkTL.get()));
         allocChunkTL.set(WordFactory.nullPointer());
