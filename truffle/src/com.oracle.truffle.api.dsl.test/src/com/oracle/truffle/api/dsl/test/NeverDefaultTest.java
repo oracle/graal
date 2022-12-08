@@ -830,7 +830,7 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
         }
 
         @Specialization(guards = {"obj.getClass() == cachedClass", "myGuard(cachedClass)"}, limit = "1")
-        static boolean doItCached(Object obj,
+        static boolean doItCached(@SuppressWarnings("unused") Object obj,
                         @Cached("obj.getClass()") @SuppressWarnings("unused") Class<?> cachedClass) {
             return myGuard(cachedClass);
         }

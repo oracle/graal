@@ -1635,7 +1635,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         abstract Object execute(Node node, Object arg);
 
-        @ExpectError("For @GenerateInline annotated nodes all specialization methods with inlined cached values must be static and declare the a 'Node node' parameter. %")
+        @ExpectError("For @GenerateInline annotated nodes all specialization methods with inlined cached values must be static%")
         @Specialization
         Object doInt(Node node, int arg,
                         @Cached SimpleNode simpleNode) {
@@ -1649,7 +1649,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         abstract Object execute(Node node, Object arg);
 
-        @ExpectError("For @GenerateInline annotated nodes all specialization methods with inlined cached values must be static and declare the a 'Node node' parameter. %")
+        @ExpectError("For @GenerateInline annotated nodes all specialization methods with inlined cached values must declare 'Node node' dynamic parameter.%")
         @Specialization
         static Object doInt(int arg,
                         @Cached SimpleNode simpleNode) {
