@@ -58,7 +58,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntFunction;
 
-import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionValues;
 
@@ -124,6 +123,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeGen;
@@ -776,7 +776,7 @@ public final class VM extends NativeEnv {
 
         // If the original object is finalizable, so is the copy.
         assert self.getKlass() instanceof ObjectKlass;
-        if (((ObjectKlass) self.getKlass()).hasFinalizer()) {
+        if (((ObjectKlass) self.getKlass()).hasFinalizer(meta.getContext())) {
             profiler.profile(2);
             meta.java_lang_ref_Finalizer_register.invokeDirect(null, clone);
         }

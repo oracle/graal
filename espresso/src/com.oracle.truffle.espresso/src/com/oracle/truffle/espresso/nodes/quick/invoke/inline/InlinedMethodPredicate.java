@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes.quick.invoke;
+
+package com.oracle.truffle.espresso.nodes.quick.invoke.inline;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.nodes.bytecodes.InvokeSpecial;
-import com.oracle.truffle.espresso.nodes.bytecodes.InvokeSpecialNodeGen;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 
-public final class InvokeSpecialQuickNode extends InvokeQuickNode {
+public interface InlinedMethodPredicate {
 
-    @Child InvokeSpecial.WithoutNullCheck invokeSpecial;
+    boolean isValid(EspressoContext context, Method.MethodVersion version, VirtualFrame frame, InlinedMethodNode node);
 
-    public InvokeSpecialQuickNode(Method method, int top, int callerBCI) {
-        super(method, top, callerBCI);
-        assert !method.isStatic();
-        this.invokeSpecial = insert(InvokeSpecialNodeGen.WithoutNullCheckNodeGen.create(method));
-    }
+    InlinedMethodPredicate ALWAYS_VALID = new InlinedMethodPredicate() {
+        @Override
+        public boolean isValid(EspressoContext context, Method.MethodVersion version, VirtualFrame frame, InlinedMethodNode node) {
+            return true;
+        }
+    };
 
-    @Override
-    public int execute(VirtualFrame frame) {
-        Object[] args = getArguments(frame);
-        nullCheck((StaticObject) args[0]);
-        return pushResult(frame, invokeSpecial.execute(args));
-    }
+    InlinedMethodPredicate LEAF_ASSUMPTION_CHECK = new InlinedMethodPredicate() {
+        @Override
+        public boolean isValid(EspressoContext context, Method.MethodVersion version, VirtualFrame frame, InlinedMethodNode node) {
+            return context.getClassHierarchyOracle().isLeafMethod(version).isValid();
+        }
+    };
+
 }

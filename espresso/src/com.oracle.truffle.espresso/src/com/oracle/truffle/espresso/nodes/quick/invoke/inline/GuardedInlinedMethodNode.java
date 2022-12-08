@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,38 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes.quick.invoke;
+
+package com.oracle.truffle.espresso.nodes.quick.invoke.inline;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.nodes.EspressoFrame;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class LeafAssumptionSetterNode extends InlinedSetterNode {
+public final class GuardedInlinedMethodNode extends InlinedMethodNode {
+    private final InlinedMethodPredicate guard;
 
-    private final int curBCI;
-    private final int opcode;
+    public GuardedInlinedMethodNode(Method inlinedMethod, int top, int opcode, int callerBCI, int statementIndex, BodyNode body, InlinedMethodPredicate guard) {
+        this(inlinedMethod.getMethodVersion(), top, opcode, callerBCI, statementIndex, body, guard);
+    }
 
-    protected LeafAssumptionSetterNode(Method inlinedMethod, int top, int opCode, int curBCI, int statementIndex) {
-        super(inlinedMethod, top, opCode, curBCI, statementIndex);
-        this.curBCI = curBCI;
-        this.opcode = opCode;
+    public GuardedInlinedMethodNode(Method.MethodVersion inlinedMethod, int top, int opcode, int callerBCI, int statementIndex, BodyNode body, InlinedMethodPredicate guard) {
+        super(inlinedMethod, top, opcode, callerBCI, statementIndex, body);
+        this.guard = guard;
     }
 
     @Override
     public int execute(VirtualFrame frame) {
-        BytecodeNode root = getBytecodeNode();
-        if (getContext().getClassHierarchyOracle().isLeafMethod(inlinedMethod.getMethodVersion()).isValid()) {
-            StaticObject receiver = field.isStatic()
-                            ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                            : nullCheck(EspressoFrame.popObject(frame, top - 1 - slotCount));
-            setFieldNode.setField(frame, root, receiver, top, statementIndex);
-            return -slotCount + stackEffect;
+        preludeChecks(frame);
+        if (guard.isValid(getContext(), method, frame, this)) {
+            return executeBody(frame);
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            return root.reQuickenInvoke(frame, top, curBCI, opcode, statementIndex, inlinedMethod);
+            return getBytecodeNode().reQuickenInvoke(frame, top, opcode, getCallerBCI(), statementIndex, method.getMethod());
         }
     }
 }

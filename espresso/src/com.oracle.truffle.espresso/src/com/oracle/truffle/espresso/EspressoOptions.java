@@ -290,7 +290,7 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") //
-    public static final OptionKey<Boolean> InlineFieldAccessors = new OptionKey<>(false);
+    public static final OptionKey<Boolean> BytecodeLevelInlining = new OptionKey<>(true);
 
     @Option(help = "Enable inlining through method handle calls.", //
                     category = OptionCategory.EXPERT, //

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes.quick.invoke;
+
+package com.oracle.truffle.espresso.nodes.quick.invoke.inline;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.nodes.bytecodes.InvokeSpecial;
-import com.oracle.truffle.espresso.nodes.bytecodes.InvokeSpecialNodeGen;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class InvokeSpecialQuickNode extends InvokeQuickNode {
+public interface InlinedFrameAccess {
+    int top();
 
-    @Child InvokeSpecial.WithoutNullCheck invokeSpecial;
+    int resultAt();
 
-    public InvokeSpecialQuickNode(Method method, int top, int callerBCI) {
-        super(method, top, callerBCI);
-        assert !method.isStatic();
-        this.invokeSpecial = insert(InvokeSpecialNodeGen.WithoutNullCheckNodeGen.create(method));
-    }
+    int statementIndex();
 
-    @Override
-    public int execute(VirtualFrame frame) {
-        Object[] args = getArguments(frame);
-        nullCheck((StaticObject) args[0]);
-        return pushResult(frame, invokeSpecial.execute(args));
-    }
+    BytecodeNode getBytecodeNode();
+
+    Method.MethodVersion inlinedMethod();
+
+    int pushResult(VirtualFrame frame, int result);
+
+    int pushResult(VirtualFrame frame, long result);
+
+    int pushResult(VirtualFrame frame, float result);
+
+    int pushResult(VirtualFrame frame, double result);
+
+    int pushResult(VirtualFrame frame, StaticObject result);
+
+    int pushResult(VirtualFrame frame, Object result);
 }

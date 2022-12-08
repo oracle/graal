@@ -310,5 +310,10 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Invoke dynamic already resolved.");
         }
+
+        @Override
+        public boolean isSuccess() {
+            return false;
+        }
     }
 }
