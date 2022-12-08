@@ -27,7 +27,6 @@ package org.graalvm.compiler.asm.amd64;
 import org.graalvm.compiler.asm.AbstractAddress;
 import org.graalvm.compiler.core.common.Stride;
 
-import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.Register;
 
 /**
