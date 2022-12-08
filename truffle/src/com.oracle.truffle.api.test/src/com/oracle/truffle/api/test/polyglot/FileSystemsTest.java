@@ -244,7 +244,7 @@ public class FileSystemsTest {
                         fullIO);
         AccessPredicate read = new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir));
         AccessPredicate write = new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir));
-        FileSystem fileSystem = new RestrictedFileSystem(FileSystemProviderTest.newFullIOFileSystem(accessibleDir), read, write);
+        FileSystem fileSystem = new RestrictedFileSystem(NIOFileSystemTest.newFullIOFileSystem(accessibleDir), read, write);
         read.setFileSystem(fileSystem);
         write.setFileSystem(fileSystem);
         ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
@@ -253,7 +253,7 @@ public class FileSystemsTest {
         read = new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir));
         write = new AccessPredicate(Collections.singleton(accessibleDir));
         fileSystem = new RestrictedFileSystem(
-                        FileSystemProviderTest.newFullIOFileSystem(readOnlyDir), read, write);
+                        NIOFileSystemTest.newFullIOFileSystem(readOnlyDir), read, write);
         read.setFileSystem(fileSystem);
         write.setFileSystem(fileSystem);
         ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
@@ -261,7 +261,7 @@ public class FileSystemsTest {
         cfgs.put(CONDITIONAL_IO_READ_ONLY_PART, new Configuration(CONDITIONAL_IO_READ_ONLY_PART, ctx, readOnlyDir, fullIO, false, true, false, true));
         read = new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir));
         write = new AccessPredicate(Collections.singleton(accessibleDir));
-        fileSystem = new RestrictedFileSystem(FileSystemProviderTest.newFullIOFileSystem(privateDir), read, write);
+        fileSystem = new RestrictedFileSystem(NIOFileSystemTest.newFullIOFileSystem(privateDir), read, write);
         read.setFileSystem(fileSystem);
         write.setFileSystem(fileSystem);
         ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
@@ -2421,7 +2421,7 @@ public class FileSystemsTest {
         preInitClose.invoke(fileSystem);
         Method patchStart = clazz.getDeclaredMethod("onLoadPreinitializedContext", FileSystem.class);
         patchStart.setAccessible(true);
-        patchStart.invoke(fileSystem, FileSystemProviderTest.newFullIOFileSystem(Paths.get(workDir)));
+        patchStart.invoke(fileSystem, NIOFileSystemTest.newFullIOFileSystem(Paths.get(workDir)));
     }
 
     static class ForwardingFileSystem implements FileSystem {
