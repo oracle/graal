@@ -747,8 +747,8 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         LLVMTypeRef castedExpectedType = expectedType;
         if (convertResult) {
             LLVMTypeRef cmpxchgType = LLVMIRBuilder.isFloatType(expectedType) ? builder.intType() : builder.longType();
-            castedExpectedValue = builder.buildFPToSI(expectedValue, cmpxchgType);
-            castedNewValue = builder.buildFPToSI(newValue, cmpxchgType);
+            castedExpectedValue = builder.buildBitcast(expectedValue, cmpxchgType);
+            castedNewValue = builder.buildBitcast(newValue, cmpxchgType);
             castedExpectedType = LLVMIRBuilder.typeOf(castedExpectedValue);
         }
 
@@ -762,7 +762,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
         LLVMValueRef result = builder.buildCmpxchg(castedAddress, castedExpectedValue, castedNewValue, memoryOrder, returnValue);
         if (returnValue && convertResult) {
-            return builder.buildSIToFP(result, expectedType);
+            return builder.buildBitcast(result, expectedType);
         } else {
             return result;
         }
