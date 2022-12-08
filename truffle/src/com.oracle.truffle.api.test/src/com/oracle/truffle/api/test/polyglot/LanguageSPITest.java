@@ -3069,6 +3069,22 @@ public class LanguageSPITest {
     }
 
     @Test
+    public void testHostLookup() throws Exception {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+        try (Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup((String s) -> true).build()) {
+            // Get the host language info:
+            TruffleInstrument.Env instrumentEnv = context.getEngine().getInstruments().get(ProxyInstrument.ID).lookup(ProxyInstrument.Initialize.class).getEnv();
+            @SuppressWarnings("unchecked")
+            Class<? extends TruffleLanguage<?>> hostLanguage = (Class<? extends TruffleLanguage<?>>) Class.forName("com.oracle.truffle.host.HostLanguage");
+            LanguageInfo hostInfo = instrumentEnv.getLanguageInfo(hostLanguage);
+
+            context.initialize(LanguageSPITestLanguage.ID);
+            langContext.env.initializeLanguage(hostInfo);
+            langContext.env.lookup(hostInfo, Runnable.class);
+        }
+    }
+
+    @Test
     public void testConcurrentLookupWhileInitializing() throws InterruptedException {
         TruffleTestAssumptions.assumeWeakEncapsulation();
 
