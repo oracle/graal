@@ -51,6 +51,7 @@ import java.util.function.Supplier;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -64,6 +65,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.CachedReachableFallbackTest.GuardNode;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.CachedGuardAndFallbackNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.FallbackManyCachesNodeGen;
+import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.FallbackWithCacheClassNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.GuardCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.MultiInstanceCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.MultiInstanceNodeCacheNodeGen;
@@ -817,6 +819,44 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
     public void testFallbackManyCachesNode() throws InterruptedException {
         assertInParallel(FallbackManyCachesNodeGen::create, (node, threadIndex, objectIndex) -> {
             node.execute(threadIndex);
+        });
+    }
+
+    abstract static class FallbackWithCacheClass extends Node {
+        abstract boolean execute(Object obj);
+
+        static boolean myGuard(Object obj) {
+            return !(obj instanceof Integer);
+        }
+
+        @Specialization(guards = {"obj.getClass() == cachedClass", "myGuard(cachedClass)"}, limit = "1")
+        static boolean doItCached(Object obj,
+                        @Cached("obj.getClass()") @SuppressWarnings("unused") Class<?> cachedClass) {
+            return myGuard(cachedClass);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        protected static boolean fromObjectGeneric(Object value) {
+            return true;
+        }
+    }
+
+    @Test
+    public void testFallbackWithCacheClass() throws InterruptedException {
+        assertInParallel(FallbackWithCacheClassNodeGen::create, (node, threadIndex, objectIndex) -> {
+            Object arg;
+            switch (threadIndex % 2) {
+                case 0:
+                    arg = "";
+                    break;
+                case 1:
+                    arg = 42;
+                    break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+            assertTrue(node.execute(arg));
         });
     }
 

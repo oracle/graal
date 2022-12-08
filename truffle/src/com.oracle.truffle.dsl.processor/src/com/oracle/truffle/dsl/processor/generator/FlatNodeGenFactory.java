@@ -6036,7 +6036,6 @@ public class FlatNodeGenFactory {
         }
 
         CodeTreeBuilder builder = new CodeTreeBuilder(null);
-        List<IfTriple> triples = new ArrayList<>();
         StateQuery query = StateQuery.create(GuardActive.class, guard);
         SpecializationStateReference stateRef = null;
         if (guardStateBit) {
@@ -6047,11 +6046,14 @@ public class FlatNodeGenFactory {
             stateRef = createStateReference(frameState, specialization, query);
         }
 
-        boolean store = !guardStateBit;
-
         Set<CacheExpression> boundCaches = group.getSpecialization().getBoundCaches(guard.getExpression(), true);
 
-        triples.addAll(initializeCaches(frameState, mode, group, boundCaches, store, guardStateBit));
+        List<IfTriple> triples = new ArrayList<>();
+
+        /*
+         * Initialize but not yet persist caches.
+         */
+        triples.addAll(initializeCaches(frameState, mode, group, boundCaches, true, false));
         triples.addAll(initializeCasts(frameState, group, guard.getExpression(), mode));
         IfTriple.materialize(builder, triples, true);
 
@@ -6062,6 +6064,14 @@ public class FlatNodeGenFactory {
             innerFrameState = frameState.copy();
 
             builder.startIf().tree(stateRef.bitSet.createNotContains(stateRef.reference, StateQuery.create(GuardActive.class, guard))).end().startBlock();
+
+            /*
+             * Persist caches now, Only if the guard bit has not yet been set.
+             */
+            triples = new ArrayList<>();
+            triples.addAll(initializeCaches(innerFrameState, mode, group, boundCaches, false, true));
+            triples.addAll(initializeCasts(innerFrameState, group, guard.getExpression(), mode));
+            IfTriple.materialize(builder, triples, true);
 
             builder.startStatement();
             builder.tree(stateRef.reference).string(" = ");
@@ -6636,7 +6646,18 @@ public class FlatNodeGenFactory {
         CodeTree assertion = null; // overrule with assertion
         if (mode.isFastPath()) {
             CodeTree guardExpression = writeExpression(frameState, specialization, expression);
-            if (!specialization.isDynamicParameterBound(expression, true) && !guard.isWeakReferenceGuard()) {
+
+            /*
+             * We do not need to invoke a guard on the fast-path if:
+             *
+             * (1) the guard does not bind any dynamic parameter, only cached valuees.
+             *
+             * (2) The guard is not a weak reference. Weak references do not bind dynamic
+             * parameters, but need to be checked each time.
+             *
+             * (3) The guard needs a state bit and may be partially initialized.
+             */
+            if (!specialization.isDynamicParameterBound(expression, true) && !guard.isWeakReferenceGuard() && !guardNeedsNodeStateBit(specialization, guard)) {
                 assertion = CodeTreeBuilder.createBuilder().startAssert().tree(guardExpression).end().build();
             } else {
                 condition.tree(guardExpression);
