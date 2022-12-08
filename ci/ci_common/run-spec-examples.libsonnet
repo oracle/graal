@@ -62,7 +62,7 @@ local r      = import "run-spec.libsonnet";
           "<all-os>" : r.exclude,
           "linux": {
             "amd64": {
-              "jdk19": r.task_spec({ "name": "task" }) + r.include,
+              "jdk20": r.task_spec({ "name": "task" }) + r.include,
             } +
             r.task_spec({ "target": "gate" }) + r.include,
           }
@@ -78,6 +78,9 @@ local r      = import "run-spec.libsonnet";
               "target": "gate",
             }),
             "jdk19": r.task_spec({
+              "target": "gate",
+            }),
+            "jdk20": r.task_spec({
               "name": "task",
               "target": "gate",
             }),
@@ -102,6 +105,7 @@ local r      = import "run-spec.libsonnet";
             "jdk11": {},
             "jdk17": {},
             "jdk19": {},
+            "jdk20": {},
           },
         },
       };
