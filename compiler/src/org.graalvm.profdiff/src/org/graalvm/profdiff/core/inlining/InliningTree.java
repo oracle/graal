@@ -127,6 +127,7 @@ public class InliningTree {
             writer.increaseIndent();
             root.forEach(node -> {
                 node.writeHead(writer);
+                node.writeReasoningIfEnabled(writer, null);
                 node.writeReceiverTypeProfile(writer, null);
                 writer.increaseIndent();
             }, node -> writer.decreaseIndent());

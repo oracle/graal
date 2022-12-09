@@ -83,9 +83,16 @@ public class OptionValues {
     private final boolean createFragments;
 
     /**
+     * Always print the reasoning for inlining decisions.
+     */
+    private final boolean alwaysPrintInlinerReasoning;
+
+    /**
      * Constructs option values.
      *
      * @param hotCompilationUnitPolicy the policy which designates hot compilation units
+     * @param optimizationContextTreeEnabled the optimization-context tree should be built and
+     *            displayed
      * @param diffCompilations compilations should be matched and diffed
      * @param bciLongForm byte code indices should be printed in the long form
      * @param sortInliningTree the nodes of each inlining tree should be sorted
@@ -95,10 +102,12 @@ public class OptionValues {
      *            individual impact should be removed
      * @param pruneIdentities only differences when trees are compared
      * @param createFragments create {@link CompilationFragment compilation fragments}
+     * @param alwaysPrintInlinerReasoning always print the reasoning for inlining decisions
      */
     public OptionValues(HotCompilationUnitPolicy hotCompilationUnitPolicy, boolean optimizationContextTreeEnabled,
                     boolean diffCompilations, boolean bciLongForm, boolean sortInliningTree, boolean sortUnorderedPhases,
-                    boolean removeVeryDetailedPhases, boolean pruneIdentities, boolean createFragments) {
+                    boolean removeVeryDetailedPhases, boolean pruneIdentities, boolean createFragments,
+                    boolean alwaysPrintInlinerReasoning) {
         this.hotCompilationUnitPolicy = hotCompilationUnitPolicy;
         this.optimizationContextTreeEnabled = optimizationContextTreeEnabled;
         this.diffCompilations = diffCompilations;
@@ -108,6 +117,7 @@ public class OptionValues {
         this.removeVeryDetailedPhases = removeVeryDetailedPhases;
         this.pruneIdentities = pruneIdentities;
         this.createFragments = createFragments;
+        this.alwaysPrintInlinerReasoning = alwaysPrintInlinerReasoning;
     }
 
     /**
@@ -173,5 +183,12 @@ public class OptionValues {
      */
     public boolean shouldCreateFragments() {
         return createFragments;
+    }
+
+    /**
+     * Returns {@code true} iff the reasoning for inlining decisions should be always printed.
+     */
+    public boolean shouldAlwaysPrintInlinerReasoning() {
+        return alwaysPrintInlinerReasoning;
     }
 }

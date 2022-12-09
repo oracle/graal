@@ -29,8 +29,10 @@ import java.util.List;
 import java.util.Objects;
 
 import org.graalvm.profdiff.core.ExperimentId;
+import org.graalvm.profdiff.core.OptionValues;
 import org.graalvm.profdiff.core.TreeNode;
 import org.graalvm.profdiff.core.Writer;
+import org.graalvm.profdiff.core.optimization.Optimization;
 
 /**
  * Represents a method in the inlining tree, which is a candidate for inlining. The method might
@@ -56,6 +58,18 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
      * The prefix of an abstract method.
      */
     public static final String ABSTRACT_PREFIX = "(abstract) ";
+
+    /**
+     * A phrase introducing the reasons for an inlining decision.
+     */
+    public static final String REASONING = "|_ reasoning";
+
+    /**
+     * A phrase used when there are no inlining decisions.
+     */
+    public static final String NO_INLINING_DECISIONS = "|_ no inlining decisions";
+
+    public static final String IN_EXPERIMENT = " in experiment ";
 
     /**
      * The bci of the parent method's callsite of this inlinee.
@@ -138,7 +152,12 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
         } else if (!positive) {
             writer.write(NOT_INLINED_PREFIX);
         }
-        writer.writeln((getName() == null ? UNKNOWN_NAME : getName()) + AT_BCI + bci);
+        writer.write(getName() == null ? UNKNOWN_NAME : getName());
+        if (bci == Optimization.UNKNOWN_BCI) {
+            writer.writeln();
+        } else {
+            writer.writeln(AT_BCI + bci);
+        }
     }
 
     @Override
@@ -195,6 +214,48 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
      */
     public InliningPath.PathElement pathElement() {
         return new InliningPath.PathElement(getName(), getBCI());
+    }
+
+    /**
+     * Writes the reasoning for the inlining decision, optionally including an {@link ExperimentId},
+     * if it is {@link OptionValues#shouldAlwaysPrintInlinerReasoning() always enabled} and this is
+     * not the root method.
+     *
+     * @param writer the destination writer
+     * @param experimentId an optional experiment ID
+     */
+    public void writeReasoningIfEnabled(Writer writer, ExperimentId experimentId) {
+        if (writer.getOptionValues().shouldAlwaysPrintInlinerReasoning() && getParent() != null) {
+            writeReasoning(writer, experimentId);
+        }
+    }
+
+    /**
+     * Writes the reasoning for the inlining decision, optionally including an {@link ExperimentId}.
+     *
+     * @param writer the destination writer
+     * @param experimentId an optional experiment ID
+     */
+    public void writeReasoning(Writer writer, ExperimentId experimentId) {
+        writer.increaseIndent();
+        if (reason.isEmpty()) {
+            writer.write(NO_INLINING_DECISIONS);
+        } else {
+            writer.write(REASONING);
+        }
+        if (experimentId != null) {
+            writer.write(IN_EXPERIMENT + experimentId);
+        }
+        if (reason.size() == 1) {
+            writer.write(": ");
+        } else {
+            writer.writeln();
+        }
+        writer.increaseIndent(2);
+        for (String reasonString : reason) {
+            writer.writeln(reasonString);
+        }
+        writer.decreaseIndent(3);
     }
 
     /**

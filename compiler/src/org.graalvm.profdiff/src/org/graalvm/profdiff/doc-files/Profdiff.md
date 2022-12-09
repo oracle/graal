@@ -170,6 +170,8 @@ default.
 The option `--create-fragments` controls the creation of compilation fragments. This is enabled by default. Read the
 section about compilation fragments to learn more.
 
+If `--inliner-reasoning` is enabled, reasons for all inlining decisions are printed. Disabled by default.
+
 ## Hot compilation units
 
 Proftool collects samples the number of cycles spent executing each compilation unit. The tool marks some of

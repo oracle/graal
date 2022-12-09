@@ -25,8 +25,8 @@
 package org.graalvm.profdiff.diff;
 
 import org.graalvm.profdiff.core.ExperimentId;
-import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.Writer;
+import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 
 /**
  * Writes a representation of an inlining delta tree (the diff of 2 inlining trees) to a writer.
@@ -42,11 +42,6 @@ public class InliningDeltaTreeWriterVisitor extends DeltaTreeWriterVisitor<Inlin
      */
     public static final String NOT_INLINED = "not inlined";
 
-    /**
-     * A phrase introducing the reasons for an inlining decision in an experiment.
-     */
-    public static final String REASONING_IN_EXPERIMENT = "|_ reasoning in experiment ";
-
     public InliningDeltaTreeWriterVisitor(Writer writer) {
         super(writer);
     }
@@ -56,6 +51,7 @@ public class InliningDeltaTreeWriterVisitor extends DeltaTreeWriterVisitor<Inlin
         adjustIndentLevel(node);
         writer.write(EditScript.DELETE_PREFIX);
         node.getLeft().writeHead(writer);
+        node.getLeft().writeReasoningIfEnabled(writer, null);
         node.getLeft().writeReceiverTypeProfile(writer, null);
     }
 
@@ -64,6 +60,7 @@ public class InliningDeltaTreeWriterVisitor extends DeltaTreeWriterVisitor<Inlin
         adjustIndentLevel(node);
         writer.write(EditScript.INSERT_PREFIX);
         node.getRight().writeHead(writer);
+        node.getRight().writeReasoningIfEnabled(writer, null);
         node.getRight().writeReceiverTypeProfile(writer, null);
     }
 
@@ -72,6 +69,8 @@ public class InliningDeltaTreeWriterVisitor extends DeltaTreeWriterVisitor<Inlin
         adjustIndentLevel(node);
         writer.write(EditScript.IDENTITY_PREFIX);
         node.getLeft().writeHead(writer);
+        node.getLeft().writeReasoningIfEnabled(writer, ExperimentId.ONE);
+        node.getRight().writeReasoningIfEnabled(writer, ExperimentId.TWO);
         node.getLeft().writeReceiverTypeProfile(writer, ExperimentId.ONE);
         node.getRight().writeReceiverTypeProfile(writer, ExperimentId.TWO);
     }
@@ -104,21 +103,12 @@ public class InliningDeltaTreeWriterVisitor extends DeltaTreeWriterVisitor<Inlin
         } else {
             writer.writeln(Integer.toString(node.getLeft().getBCI()));
         }
-        if (node.getLeft().isPositive() != node.getRight().isPositive()) {
-            writeReasoning(node.getLeft(), ExperimentId.ONE);
-            writeReasoning(node.getRight(), ExperimentId.TWO);
+        if (writer.getOptionValues().shouldAlwaysPrintInlinerReasoning() ||
+                        node.getLeft().isPositive() != node.getRight().isPositive()) {
+            node.getLeft().writeReasoning(writer, ExperimentId.ONE);
+            node.getRight().writeReasoning(writer, ExperimentId.TWO);
         }
         node.getLeft().writeReceiverTypeProfile(writer, ExperimentId.ONE);
         node.getRight().writeReceiverTypeProfile(writer, ExperimentId.TWO);
-    }
-
-    private void writeReasoning(InliningTreeNode node, ExperimentId experimentId) {
-        writer.increaseIndent();
-        writer.writeln(REASONING_IN_EXPERIMENT + experimentId);
-        writer.increaseIndent(2);
-        for (String reason : node.getReason()) {
-            writer.writeln(reason);
-        }
-        writer.decreaseIndent(3);
     }
 }

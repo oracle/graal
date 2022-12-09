@@ -66,6 +66,8 @@ public class Profdiff {
 
         private final BooleanArgument createFragmentsArgument;
 
+        private final BooleanArgument inlinerReasoningArgument;
+
         private final CommandGroup commandGroup;
 
         ProgramArguments() {
@@ -97,6 +99,8 @@ public class Profdiff {
                             "--prune-identities", true, "show only differences when trees are compared");
             createFragmentsArgument = argumentParser.addBooleanArgument(
                             "--create-fragments", true, "create compilation fragments from inlinees in hot compilation units");
+            inlinerReasoningArgument = argumentParser.addBooleanArgument(
+                            "--inliner-reasoning", false, "always print the reasoning for inlining decisions");
             commandGroup = argumentParser.addCommandGroup(
                             "command", "the action to invoke");
         }
@@ -142,7 +146,7 @@ public class Profdiff {
                             diffCompilationsArgument.getValue(), bciLongFormArgument.getValue(),
                             sortInliningTreeArgument.getValue(), sortUnorderedPhasesArgument.getValue(),
                             removeVeryDetailedPhasesArgument.getValue(), pruneIdentitiesArgument.getValue(),
-                            createFragmentsArgument.getValue());
+                            createFragmentsArgument.getValue(), inlinerReasoningArgument.getValue());
         }
     }
 
