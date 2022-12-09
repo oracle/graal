@@ -157,8 +157,6 @@ public class ExperimentPairTest {
      *              b() at bci 1
      *              c() at bci 2
      *              d() at bci 3
-     *              d() at bci 3
-     *              e() at bci 4
      * Experiment 2
      *      Compilation unit of a() (hot)
      *          a()
@@ -167,8 +165,6 @@ public class ExperimentPairTest {
      *          b()
      *      Compilation unit of c() (not hot)
      *          c()
-     *      Compilation unit of d() (hot)
-     *          d()
      * </pre>
      *
      * There should be no fragments created, because:
@@ -177,8 +173,7 @@ public class ExperimentPairTest {
      * <li>{@code b()} is inlined in the compilation units of {@code a()} (there is no inlining
      * difference),</li>
      * <li>{@code c()} is not hot in any of the experiments,</li>
-     * <li>{@code d()} does not have a unique path from root,</li>
-     * <li>{@code e()} does not have any compilation unit and thus it is not hot.</li>
+     * <li>{@code d()} does not have any compilation unit and thus it is not hot.</li>
      * </ul>
      */
     @Test
@@ -187,20 +182,15 @@ public class ExperimentPairTest {
         String b = "b()";
         String c = "c()";
         String d = "d()";
-        String e = "e()";
 
         Experiment experiment1 = new Experiment(ExperimentId.ONE, Experiment.CompilationKind.JIT);
         InliningTreeNode a1 = new InliningTreeNode(a, -1, true, null, false, null);
         InliningTreeNode b1 = new InliningTreeNode(b, 1, true, null, false, null);
         InliningTreeNode c1 = new InliningTreeNode(c, 2, true, null, false, null);
         InliningTreeNode d1 = new InliningTreeNode(d, 3, true, null, false, null);
-        InliningTreeNode d2 = new InliningTreeNode(d, 3, true, null, false, null);
-        InliningTreeNode e1 = new InliningTreeNode(e, 4, true, null, false, null);
         a1.addChild(b1);
         a1.addChild(c1);
         a1.addChild(d1);
-        a1.addChild(d2);
-        a1.addChild(e1);
         InliningTree inliningTree1 = new InliningTree(a1);
         experiment1.addCompilationUnit(a, "1", 0, () -> new CompilationUnit.TreePair(null, inliningTree1)).setHot(true);
 
@@ -220,15 +210,11 @@ public class ExperimentPairTest {
         InliningTree inliningTree4 = new InliningTree(c2);
         experiment2.addCompilationUnit(c, "3", 0, () -> new CompilationUnit.TreePair(null, inliningTree4));
 
-        InliningTreeNode d3 = new InliningTreeNode(d, -1, true, null, false, null);
-        InliningTree inliningTree5 = new InliningTree(d3);
-        experiment2.addCompilationUnit(d, "4", 0, () -> new CompilationUnit.TreePair(null, inliningTree5)).setHot(true);
-
         ExperimentPair experimentPair = new ExperimentPair(experiment1, experiment2);
         experimentPair.createCompilationFragments();
 
         for (Experiment experiment : List.of(experiment1, experiment2)) {
-            for (String methodName : List.of(a, b, c, d, e)) {
+            for (String methodName : List.of(a, b, c, d)) {
                 assertFalse(experiment.getMethodOrCreate(methodName).getCompilationFragments().iterator().hasNext());
             }
         }
