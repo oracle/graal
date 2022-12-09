@@ -110,6 +110,16 @@ public abstract class TreeNode<T extends TreeNode<T>> {
     }
 
     /**
+     * Returns {@code true} iff the node is an info node. Info nodes can be used to insert (warning)
+     * messages to the tree.
+     *
+     * @return {@code true} iff the node is an info node
+     */
+    public boolean isInfoNode() {
+        return false;
+    }
+
+    /**
      * Performs an operation on each node of the subtree of this node. The subtree is traversed
      * depth-first and the operation is performed when the node is first visited.
      *

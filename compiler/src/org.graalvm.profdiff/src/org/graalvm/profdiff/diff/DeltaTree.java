@@ -100,13 +100,16 @@ public class DeltaTree<T extends TreeNode<T>> {
     }
 
     /**
-     * Remove each node in the delta tree which does not contain a non-identity leaf node in its
-     * subtree. The result of this operation is a delta tree with exactly all differences from the
-     * original tree with their contexts (i.e. the ancestors in the original diffed trees).
+     * Removes nodes from the delta tree which do not have a non-identity delta node in its subtree.
+     * Some info nodes are kept as well.
+     *
+     * We say that a node is alive iff it is not an identity or it has a descendant which is alive.
+     * The method removes all nodes which are not alive and at the same time they are not
+     * {@link TreeNode#isInfoNode() info nodes} with a parents which is alive.
      */
     public void pruneIdentities() {
         LinkedList<DeltaTreeNode<T>> stack = new LinkedList<>();
-        EconomicSet<DeltaTreeNode<T>> keepAlive = EconomicSet.create(Equivalence.IDENTITY);
+        EconomicSet<DeltaTreeNode<T>> keepAlive = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
         forEach(deltaNode -> {
             if (!deltaNode.isIdentity()) {
                 keepAlive.add(deltaNode);
@@ -118,7 +121,12 @@ public class DeltaTree<T extends TreeNode<T>> {
                 keepAlive.add(stack.getLast());
             }
         });
-        removeIf(deltaNode -> !keepAlive.contains(deltaNode));
+        removeIf(deltaNode -> {
+            if (keepAlive.contains(deltaNode)) {
+                return false;
+            }
+            return !deltaNode.isInfoNode() || deltaNode.getParent() == null || !keepAlive.contains(deltaNode.getParent());
+        });
     }
 
     /**

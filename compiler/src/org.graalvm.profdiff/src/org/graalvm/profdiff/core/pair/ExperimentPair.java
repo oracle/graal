@@ -124,17 +124,20 @@ public class ExperimentPair {
      *                    (2) and there is not any hot compilation unit of M in the other experiment
      *                            or there exists a hot compilation unit of M in the other experiment
      *                                            where I is not inlined:
+     *                    (3) and the method I has a hot compilation unit in either experiment
      *                    create a fragment from CU rooted in I
      * </pre>
      *
      * The first condition (1) ensures that optimizations can be properly attributed to the
      * fragments. A path to an inlining {@code node} in a compilation unit's {@code inliningTree} is
      * unique iff {@code inliningTree.findNodesAt(InliningPath.fromRootToNode(node)).size() == 1}.
-     * In other words, the {@link InliningPath} lead exactly to our {@code node} and not any other
+     * In other words, the {@link InliningPath} leads exactly to our {@code node} and not any other
      * node. This property is usually violated after code duplication.
      *
-     * The second condition (2) reduces the set of created fragments to only those that are likely
-     * useful.
+     * The second condition (2) filters out the cases where there is clearly no inlining difference.
+     *
+     * The third condition (3) ensures that we are creating a fragment for a method that is
+     * important, i.e., it is hot in at least one of the experiments.
      *
      * @param destination the destination experiment where fragments are created
      * @param source the source experiments, which is only used to test requirements
@@ -160,10 +163,17 @@ public class ExperimentPair {
                     if (inliningTree.findNodesAt(pathToNode).size() != 1) {
                         return;
                     }
-                    // check that the method is either not hot in the other experiment or not
-                    // inlined in at least one hot compilation unit of the other experiment
-                    boolean notInlinedInAtLeastOneCompilationUnit = false;
+                    // make sure the method of the node (the root of the fragment to be created) is
+                    // hot in either
+                    // experiment
+                    if (!destination.getMethodOrCreate(node.getName()).isHot() && !source.getMethodOrCreate(node.getName()).isHot()) {
+                        return;
+                    }
+                    // make sure the parent method is either not hot in the other experiment
                     boolean hasHotCompilationUnit = false;
+                    // or there exists a hot compilation unit of the parent method where the node is
+                    // not inlined
+                    boolean notInlinedInAtLeastOneCompilationUnit = false;
                     for (CompilationUnit otherCompilationUnit : source.getMethodOrCreate(method.getMethodName()).getHotCompilationUnits()) {
                         if (otherCompilationUnit instanceof CompilationFragment) {
                             continue;

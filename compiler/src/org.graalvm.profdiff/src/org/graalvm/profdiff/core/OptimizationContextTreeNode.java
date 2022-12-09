@@ -124,6 +124,7 @@ public class OptimizationContextTreeNode extends TreeNode<OptimizationContextTre
      *
      * @return {@code true} iff the node is an info node
      */
+    @Override
     public boolean isInfoNode() {
         return originalNode == null;
     }

@@ -153,7 +153,7 @@ public class ExperimentPairTest {
      * <pre>
      * Experiment 1
      *      Compilation unit of a() (hot)
-     *          a() at bci -1
+     *          a()
      *              b() at bci 1
      *              c() at bci 2
      *              d() at bci 3
@@ -174,14 +174,15 @@ public class ExperimentPairTest {
      * There should be no fragments created, because:
      *
      * <ul>
-     * <li>{@code b()} is inlined in the compilation unit of {@code a()},</li>
-     * <li>{@code c()} is not hot in the other experiment,</li>
+     * <li>{@code b()} is inlined in the compilation units of {@code a()} (there is no inlining
+     * difference),</li>
+     * <li>{@code c()} is not hot in any of the experiments,</li>
      * <li>{@code d()} does not have a unique path from root,</li>
-     * <li>{@code e()} does not have any compilation unit in experiment 2.</li>
+     * <li>{@code e()} does not have any compilation unit and thus it is not hot.</li>
      * </ul>
      */
     @Test
-    public void unnecessaryFragmentsAreNotCreated() {
+    public void unnecessaryFragmentsAreNotCreated() throws ExperimentParserError {
         String a = "a()";
         String b = "b()";
         String c = "c()";
@@ -223,8 +224,13 @@ public class ExperimentPairTest {
         InliningTree inliningTree5 = new InliningTree(d3);
         experiment2.addCompilationUnit(d, "4", 0, () -> new CompilationUnit.TreePair(null, inliningTree5)).setHot(true);
 
-        for (String methodName : List.of(b, c, d, e)) {
-            assertFalse(experiment1.getMethodOrCreate(methodName).getCompilationFragments().iterator().hasNext());
+        ExperimentPair experimentPair = new ExperimentPair(experiment1, experiment2);
+        experimentPair.createCompilationFragments();
+
+        for (Experiment experiment : List.of(experiment1, experiment2)) {
+            for (String methodName : List.of(a, b, c, d, e)) {
+                assertFalse(experiment.getMethodOrCreate(methodName).getCompilationFragments().iterator().hasNext());
+            }
         }
     }
 

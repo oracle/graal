@@ -80,6 +80,11 @@ public class DeltaTreeNode<T extends TreeNode<T>> extends TreeNode<DeltaTreeNode
         this.right = right;
     }
 
+    @Override
+    public boolean isInfoNode() {
+        return (left != null && left.isInfoNode()) || (right != null && right.isInfoNode());
+    }
+
     /**
      * Add a child operation to this delta node.
      *

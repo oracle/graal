@@ -76,11 +76,13 @@ public class ExplanationWriter {
         if (!singleExperiment && writer.getOptionValues().shouldDiffCompilations()) {
             writer.writeln("hot compilations are paired by their fraction of execution");
         }
-        writer.writeln("a compilation refers to either a compilation unit or a compilation fragment");
-        writer.increaseIndent();
-        writer.writeln("a compilation unit is the result of a Graal compilation");
-        writer.writeln("a compilation fragment is created from a compilation unit");
-        writer.decreaseIndent();
+        if (writer.getOptionValues().shouldCreateFragments()) {
+            writer.writeln("a compilation refers to either a compilation unit or a compilation fragment");
+            writer.increaseIndent();
+            writer.writeln("a compilation unit is the result of a Graal compilation");
+            writer.writeln("a compilation fragment is created from a compilation unit");
+            writer.decreaseIndent();
+        }
         if (writer.getOptionValues().isOptimizationContextTreeEnabled()) {
             explainOptimizationContextTree();
         } else {

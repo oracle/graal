@@ -262,17 +262,17 @@ As an instance, consider the inlining and optimization tree below:
 ```
 A compilation unit of the method a()
     Inlining tree
-        a() at bci -1
+        a()
             b() at bci 1
                 d() at bci 3
             c() at bci 2
     Optimization tree
         RootPhase
             SomeOptimizationPhase
-                SomeOptimization OptimizationA at bci {a(): 3}
-                SomeOptimization OptimizationB at bci {b(): 4, a(): 1}
-                SomeOptimization OptimizationC at bci {c(): 5, a(): 2}
-                SomeOptimization OptimizationD at bci {d(): 6, b(): 3, a(): 1}
+                OptimizationA at bci {a(): 3}
+                OptimizationB at bci {b(): 4, a(): 1}
+                OptimizationC at bci {c(): 5, a(): 2}
+                OptimizationD at bci {d(): 6, b(): 3, a(): 1}
 ```
 
 By combining the trees, we obtain the following optimization-context tree:
@@ -280,14 +280,58 @@ By combining the trees, we obtain the following optimization-context tree:
 ```
 A compilation unit of the method a()
     Optimization-context tree
-        a() at bci -1
-            SomeOptimization OptimizationA at bci 3
+        a()
+            OptimizationA at bci 3
             b() at bci 1
-                SomeOptimization OptimizationB at bci 4
+                OptimizationB at bci 4
                 d() at bci 3
-                    SomeOptimization OptimizationD at bci 6
+                    OptimizationD at bci 6
             c() at bci 2
-              SomeOptimization OptimizationC at bci 5
+              OptimizationC at bci 5
+```
+
+However, code duplication makes the attribution of optimizations to the inlining tree ambiguous. For example, suppose
+that `b() at bci 1` is called in a loop, which gets peeled. The inlining tree then looks as follows:
+
+```
+A compilation unit of the method a() with duplication
+    Inlining tree
+        a()
+            b() at bci 1
+                d() at bci 3
+            b() at bci 1
+                d() at bci 3
+            c() at bci 2
+```
+
+It is not clear to which `b() at bci 1` the optimization `OptimizationB at bci {b(): 4, a(): 1}` belongs.
+If `OptimizationB` was performed before the duplication, it affects both calls to `b()`. For these reasons,
+
+- profdiff inserts warnings about the ambiguity to all calls whose *inlining path from root* is not unique in the
+  inlining tree,
+- the optimizations are always attributed to each matching inlining-tree node.
+
+The optimization optimization-context tree for the above example would look like this:
+
+```
+A compilation unit of the method a() with duplication
+    Optimization-context tree
+        a()
+            OptimizationA at bci 3
+            b() at bci 1
+                Warning
+                OptimizationB at bci 4
+                d() at bci 3
+                    Warning
+                    OptimizationD at bci 6
+            b() at bci 1
+                Warning
+                OptimizationB at bci 4
+                d() at bci 3
+                    Warning
+                    OptimizationD at bci 6
+            c() at bci 2
+              OptimizationC at bci 5
 ```
 
 ## Comparing experiments
@@ -459,7 +503,8 @@ def find_fragments():
                    (2) and there is not any hot compilation unit of M in the other experiment
                            or there exists a hot compilation unit of M in the other experiment
                                            where I is not inlined:
-                   create a fragment from CU rooted in I
+                   (3) and the method I has a hot compilation unit in either experiment
+                    create a fragment from CU rooted in I
 ```
 
 The first condition (1) ensures that optimizations can be properly attributed to the fragments. Consider the example
@@ -468,21 +513,23 @@ below:
 ```
 A compilation unit of the method a()
     Inlining tree
-        a() at bci -1
+        a()
             b() at bci 1
                 c() at bci 3
                 c() at bci 3
             c() at bci 2
     Optimization tree
         RootPhase
-            SomePhase SomeOptimization at bci {c(): 5, b(): 3, a(): 1}
+            SomeOptimization at bci {c(): 5, b(): 3, a(): 1}
 ```
 
 The method `b()` has 2 inlined callees `c() at bci 3`, which means they are not reachable via a unique path. This is a
 side effect of code duplication. It is not clear to which callee `c() at bci 3` the optimization from the example
 belongs.
 
-The second condition (2) reduces the set of created fragments to only those that are likely useful.
+The second condition (2) filters out the cases where there is clearly no inlining difference. The third condition (3)
+ensures that we are creating a fragment for a method that is important, i.e., it is hot in at least one of the
+experiments.
 
 A fragment is created from the parent compilation unit's inlining tree and optimization tree. A subtree of the inlining
 tree becomes the inlining tree of the newly created fragment. The optimization tree of the fragment is created by
