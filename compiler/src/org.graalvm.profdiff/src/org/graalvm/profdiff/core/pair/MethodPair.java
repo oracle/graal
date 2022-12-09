@@ -24,8 +24,12 @@
  */
 package org.graalvm.profdiff.core.pair;
 
+import java.util.Spliterator;
 import java.util.stream.StreamSupport;
 
+import org.graalvm.collections.Pair;
+import org.graalvm.profdiff.core.CompilationFragment;
+import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.Method;
 import org.graalvm.profdiff.core.Writer;
@@ -104,14 +108,19 @@ public class MethodPair {
     }
 
     /**
-     * Returns an iterable over all pairs of hot compilation units. The compilation units are sorted
-     * by their execution periods (the highest first).
+     * Returns an iterable over all pairs of compilations, excluding pairs where both compilations
+     * are fragments. The compilations are sorted by their execution periods (the highest first).
      *
-     * @return an iterable over pairs of hot compilation units
+     * @return an iterable over pairs of hot compilations
      */
     public Iterable<CompilationUnitPair> getHotCompilationUnitPairsByDescendingPeriod() {
-        return () -> StreamSupport.stream(CollectionsUtil.cartesianProduct(method1.getHotCompilationUnitsByDescendingPeriod(), method2.getHotCompilationUnitsByDescendingPeriod()).spliterator(),
-                        false).map(pair -> new CompilationUnitPair(pair.getLeft(), pair.getRight())).iterator();
+        return () -> {
+            Spliterator<Pair<CompilationUnit, CompilationUnit>> pairs = CollectionsUtil.cartesianProduct(
+                            method1.getHotCompilationUnitsByDescendingPeriod(),
+                            method2.getHotCompilationUnitsByDescendingPeriod()).spliterator();
+            return StreamSupport.stream(pairs, false).filter(pair -> !(pair.getLeft() instanceof CompilationFragment && pair.getRight() instanceof CompilationFragment)).map(
+                            pair -> new CompilationUnitPair(pair.getLeft(), pair.getRight())).iterator();
+        };
     }
 
     /**

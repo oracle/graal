@@ -367,6 +367,9 @@ marked as hot.
 If `--diff-compilations` is enabled, all pairs of *hot* compilations are diffed (in our case, there is only one pair).
 Otherwise, hot compilations are printed without any diffing.
 
+Note that a compilation fragment is a kind of compilation. However, fragments are diffed only with other compilation
+units, i.e., pairs of 2 compilation fragments are skipped.
+
 ### Optimization tree matching
 
 The tool displays the diff of optimization trees for each pair of hot compilations. The diff of 2 optimization trees is
