@@ -33,7 +33,6 @@ import java.util.function.IntUnaryOperator;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.core.common.GraalBailoutException;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.cfg.Loop;
@@ -58,7 +57,6 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.PEACustomPhiValueProviderNode;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -1166,13 +1164,12 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                             if (object != -1) {
                                 ValueNode field = states[i].getObjectState(object).getEntry(valueIndex);
                                 if (values[valueIndex] != field) {
-                                    Stamp phiStamp = findCustomPhiStamp(values[valueIndex], field);
-                                    phis[valueIndex] = createValuePhi(phiStamp.unrestricted());
+                                    phis[valueIndex] = createValuePhi(values[valueIndex].stamp(NodeView.DEFAULT).unrestricted());
                                 }
                             }
                         }
                     }
-                    if (phis[valueIndex] != null && !isNewOrCustomPhi(phis[valueIndex]) && !phis[valueIndex].stamp(NodeView.DEFAULT).isCompatible(values[valueIndex].stamp(NodeView.DEFAULT))) {
+                    if (phis[valueIndex] != null && !phis[valueIndex].stamp(NodeView.DEFAULT).isCompatible(values[valueIndex].stamp(NodeView.DEFAULT))) {
                         phis[valueIndex] = createValuePhi(values[valueIndex].stamp(NodeView.DEFAULT).unrestricted());
                     }
                     if (twoSlotKinds != null && twoSlotKinds[valueIndex] != null) {
@@ -1192,7 +1189,6 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         if (virtual.entryKind(tool.getMetaAccessExtensionProvider(), i) == JavaKind.Object) {
                             materialized |= mergeObjectEntry(getObject, states, phi, i);
                         } else {
-                            PEACustomPhiValueProviderNode customPhiValueProvider = null;
                             for (int i2 = 0; i2 < states.length; i2++) {
                                 int object = getObject.applyAsInt(i2);
                                 if (object == -1) {
@@ -1203,17 +1199,6 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                                         break;
                                     }
                                     ValueNode entry = state.getEntry(i);
-                                    if (entry instanceof PEACustomPhiValueProviderNode) {
-                                        if (customPhiValueProvider == null) {
-                                            customPhiValueProvider = (PEACustomPhiValueProviderNode) entry;
-                                        }
-                                        if (entry != customPhiValueProvider) {
-                                            throw new GraalBailoutException("PEA should not merge two different custom phi value providers.");
-                                        }
-                                    }
-                                    if (customPhiValueProvider != null) {
-                                        entry = customPhiValueProvider.transformEntry(entry, tool);
-                                    }
                                     setPhiInput(phi, i2, entry);
                                 }
                             }
@@ -1243,22 +1228,6 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 newState.addObject(resultObject, new ObjectState(materializedValuePhi, null, ensureVirtual));
                 return true;
             }
-        }
-
-        private Stamp findCustomPhiStamp(ValueNode value1, ValueNode value2) {
-            if (value1 instanceof PEACustomPhiValueProviderNode) {
-                return ((PEACustomPhiValueProviderNode) value1).phiStamp();
-            } else if (value2 instanceof PEACustomPhiValueProviderNode) {
-                return ((PEACustomPhiValueProviderNode) value2).phiStamp();
-            }
-            return value1.stamp(NodeView.DEFAULT);
-        }
-
-        private boolean isNewOrCustomPhi(PhiNode phi) {
-            if (phi.values().isEmpty()) {
-                return true;
-            }
-            return phi.values().filter((n) -> n instanceof PEACustomPhiValueProviderNode).isNotEmpty();
         }
 
         /**

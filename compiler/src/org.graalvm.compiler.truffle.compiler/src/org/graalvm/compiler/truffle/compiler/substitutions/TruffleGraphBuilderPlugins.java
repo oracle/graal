@@ -686,14 +686,12 @@ public class TruffleGraphBuilderPlugins {
     }
 
     private static void registerOSRFrameTransferMethods(Registration r) {
-        TruffleCompilerRuntime runtime = getRuntime();
-        int accessTag = runtime.getFrameSlotKindTagForJavaKind(JavaKind.Long);
-        r.register(new RequiredInvocationPlugin("transferOSRStaticPrimitiveSlot", Receiver.class, int.class, long.class) {
+        r.register(new RequiredInvocationPlugin("startOSRTransfer", Receiver.class) {
             @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode, ValueNode value) {
-                int frameSlotIndex = maybeGetConstantNumberedFrameSlotIndex(frameNode, frameSlotNode);
-                if (frameSlotIndex >= 0) {
-                    b.add(new VirtualFrameSetNode(frameNode, frameSlotIndex, accessTag, value, VirtualFrameAccessType.Indexed, VirtualFrameAccessFlags.STATIC_OSR));
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode) {
+                ValueNode frameNodeValue = frameNode.get(false);
+                if (frameNodeValue instanceof NewFrameNode) {
+                    ((NewFrameNode) frameNodeValue).setBytecodeOSRTransferTarget();
                     return true;
                 }
                 return false;

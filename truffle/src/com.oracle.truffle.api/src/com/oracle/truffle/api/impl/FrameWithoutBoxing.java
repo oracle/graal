@@ -747,6 +747,12 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     /**
+     * Marker method to be called before performing a frame transfer.
+     */
+    void startOSRTransfer() {
+    }
+
+    /**
      * This method is used to transfer a static slot from a source frame to a target frame before or
      * after OSR. This method must exclusively be used inside
      * {@code BytecodeOSRMetadata#transferIndexedFrameSlot}. It is necessary to support static
@@ -761,17 +767,13 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             indexedTags[slot] = STATIC_OBJECT_TAG;
             target.setObjectStatic(slot, getObjectStatic(slot));
             indexedTags[slot] = STATIC_LONG_TAG;
-            target.transferOSRStaticPrimitiveSlot(slot, getLongStatic(slot));
+            target.setLongStatic(slot, getLongStatic(slot));
             indexedTags[slot] = tag;
             target.setStaticSlotTag(slot, tag);
         } else {
             target.setObjectStatic(slot, getObjectStatic(slot));
-            target.transferOSRStaticPrimitiveSlot(slot, getLongStatic(slot));
+            target.setLongStatic(slot, getLongStatic(slot));
         }
-    }
-
-    private void transferOSRStaticPrimitiveSlot(int slot, long value) {
-        setLongStatic(slot, value);
     }
 
     private void setStaticSlotTag(int slot, byte tag) {

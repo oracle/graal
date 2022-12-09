@@ -27,20 +27,17 @@ package org.graalvm.compiler.truffle.compiler.nodes.frame;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.PEACustomPhiValueProviderNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
@@ -105,11 +102,7 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
                             tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag));
                         }
                     }
-                    ValueNode actualValue = value;
-                    if ((accessFlags & VirtualFrameAccessFlags.OSR_TRANSFER_FLAG) != 0) {
-                        assert valueKind == JavaKind.Long;
-                        actualValue = new PEAUnknownKindValueImplNode(actualValue);
-                    }
+                    ValueNode actualValue = maybeExtendForOSRStaticAccess(tool);
                     if (tool.setVirtualEntry(dataVirtual, frameSlotIndex, actualValue, valueKind == JavaKind.Object ? JavaKind.Object : JavaKind.Long, -1)) {
                         if (valueKind == JavaKind.Object) {
                             // clear out native entry
@@ -132,50 +125,40 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
         insertDeoptimization(tool);
     }
 
-    @NodeInfo(cycles = CYCLES_0, cyclesRationale = "Lives only during PEA", size = SIZE_0, sizeRationale = "Lives only during PEA")
-    static final class PEAUnknownKindValueImplNode extends FloatingNode implements PEACustomPhiValueProviderNode, Canonicalizable {
-        public static final NodeClass<PEAUnknownKindValueImplNode> TYPE = NodeClass.create(PEAUnknownKindValueImplNode.class);
-
-        @Input private ValueNode value;
-
-        protected PEAUnknownKindValueImplNode(ValueNode value) {
-            super(TYPE, StampFactory.forKind(JavaKind.Long));
-            this.value = value;
-        }
-
-        @Override
-        public ValueNode transformEntry(ValueNode entry, VirtualizerTool tool) {
-            if (entry == this) {
-                return entry;
-            }
-            // Extend to a long for correctness.
-            return extendForPhi(tool, entry);
-        }
-
-        @Override
-        public Node canonical(CanonicalizerTool tool) {
-            // This node should not outlive PEA.
+    private ValueNode maybeExtendForOSRStaticAccess(VirtualizerTool tool) {
+        if (!isOSRRawStaticAccess()) {
             return value;
         }
-
-        private static ValueNode extendForPhi(VirtualizerTool tool, ValueNode entry) {
-            JavaKind entryKind = entry.stamp(NodeView.DEFAULT).getStackKind();
-            if (entryKind == JavaKind.Long) {
-                return entry;
-            }
-            assert entryKind.isPrimitive();
-            ValueNode tmpValue = entry;
-            if (entryKind.isNumericFloat()) {
-                // Convert from numeric float to numeric integer
-                entryKind = entryKind == JavaKind.Float ? JavaKind.Int : JavaKind.Long;
-                tmpValue = new ReinterpretNode(entryKind, tmpValue);
-                tool.addNode(tmpValue);
-            }
-            if (entryKind != JavaKind.Long) {
-                tmpValue = new ZeroExtendNode(tmpValue, JavaKind.Long.getBitCount());
-                tool.addNode(tmpValue);
-            }
-            return tmpValue;
+        Stamp valueStamp = value.stamp(NodeView.DEFAULT);
+        if (!(valueStamp instanceof PrimitiveStamp)) {
+            return value;
         }
+        // Force all primitive to be long for bytecode OSR frame.
+        return extendForOSRStaticAccess(tool, tool.getAlias(value));
+    }
+
+    private static ValueNode extendForOSRStaticAccess(VirtualizerTool tool, ValueNode entry) {
+        JavaKind entryKind = entry.stamp(NodeView.DEFAULT).getStackKind();
+        if (entryKind == JavaKind.Long) {
+            return entry;
+        }
+        assert entryKind.isPrimitive();
+        ValueNode tmpValue = entry;
+        if (entryKind.isNumericFloat()) {
+            // Convert from numeric float to numeric integer
+            entryKind = entryKind == JavaKind.Float ? JavaKind.Int : JavaKind.Long;
+            tmpValue = new ReinterpretNode(entryKind, tmpValue);
+            tool.addNode(tmpValue);
+        }
+        if (entryKind != JavaKind.Long) {
+            tmpValue = new ZeroExtendNode(tmpValue, JavaKind.Long.getBitCount());
+            tool.addNode(tmpValue);
+        }
+        assert tmpValue.stamp(NodeView.DEFAULT).getStackKind() == JavaKind.Long;
+        return tmpValue;
+    }
+
+    private boolean isOSRRawStaticAccess() {
+        return ((accessFlags & VirtualFrameAccessFlags.STATIC_FLAG) != 0) && frame.isBytecodeOSRTransferTarget();
     }
 }

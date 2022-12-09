@@ -272,12 +272,18 @@ public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierCon
                      * Ignoring operations with invalid indexes - these will be handled during PEA.
                      */
                     byte[] entries = currentState.get(accessor);
+                    boolean isOSRStaticAccess = accessor.getFrame().isBytecodeOSRTransferTarget();
                     if (inRange(entries, accessor.getFrameSlotIndex())) {
                         if (node instanceof VirtualFrameSetNode) {
                             if (accessor.getAccessTag() == NewFrameNode.FrameSlotKindObjectTag) {
                                 entries[accessor.getFrameSlotIndex()] = cleared(NewFrameNode.FrameSlotKindLongTag);
                             } else {
-                                entries[accessor.getFrameSlotIndex()] = withValue(NewFrameNode.asStackTag((byte) accessor.getAccessTag()));
+                                if (isOSRStaticAccess) {
+                                    // Bytecode OSR PEA always uses long in the frame.
+                                    entries[accessor.getFrameSlotIndex()] = withValue(NewFrameNode.FrameSlotKindLongTag);
+                                } else {
+                                    entries[accessor.getFrameSlotIndex()] = withValue(NewFrameNode.asStackTag((byte) accessor.getAccessTag()));
+                                }
                             }
                         } else if (node instanceof VirtualFrameClearNode) {
                             entries[accessor.getFrameSlotIndex()] = cleared(NewFrameNode.FrameSlotKindLongTag);

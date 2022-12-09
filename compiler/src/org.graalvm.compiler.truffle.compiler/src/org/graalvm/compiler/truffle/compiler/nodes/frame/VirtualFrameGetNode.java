@@ -104,14 +104,7 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
                 }
 
                 ValueNode dataEntry = tool.getEntry(dataVirtual, frameSlotIndex);
-                if (staticAccess) {
-                    // bytecode OSR frame transfer puts raw longs in the virtual array. Trust usages
-                    // of static access to do the right thing.
-                    ValueNode narrowedEntry = maybeNarrowForOSRStaticAccess(tool, dataEntry);
-                    if (dataEntry != narrowedEntry) {
-                        dataEntry = narrowedEntry;
-                    }
-                }
+                dataEntry = maybeNarrowForOSRStaticAccess(tool, dataEntry);
 
                 if (dataEntry.getStackKind() == getStackKind()) {
                     tool.replaceWith(dataEntry);
@@ -133,13 +126,16 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
      * virtualized and fed into later {@link VirtualFrameGetNode}.
      */
     private ValueNode maybeNarrowForOSRStaticAccess(VirtualizerTool tool, ValueNode value) {
-        if (!accessKind.isPrimitive() || !isOSRRawStaticAccess(value)) {
+        if (!accessKind.isPrimitive() || !isOSRRawStaticAccess()) {
             return value;
         }
+        // bytecode OSR frame transfer puts raw longs in the virtual array. Trust usages
+        // of static access to do the right thing.
         Stamp valueStamp = value.stamp(NodeView.DEFAULT);
         if (!(valueStamp instanceof PrimitiveStamp)) {
             return value;
         }
+        assert valueStamp.getStackKind() == JavaKind.Long;
         return narrowForOSRStaticAccess(tool, value);
     }
 
@@ -180,16 +176,7 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
         return tmpValue;
     }
 
-    /*
-     * Best effort to guess if a given frame slot is filled by bytecode OSR frame transfer.
-     */
-    private boolean isOSRRawStaticAccess(ValueNode dataEntry) {
-        if ((accessFlags & VirtualFrameAccessFlags.STATIC_FLAG) == 0) {
-            return false;
-        }
-        if (dataEntry.stamp(NodeView.DEFAULT).getStackKind() == JavaKind.Long) {
-            return true;
-        }
-        return false;
+    private boolean isOSRRawStaticAccess() {
+        return ((accessFlags & VirtualFrameAccessFlags.STATIC_FLAG) != 0) && frame.isBytecodeOSRTransferTarget();
     }
 }

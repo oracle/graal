@@ -1428,7 +1428,8 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     }
 
     public static class FrameTransferringNodeWithMergingStaticAccess extends FrameTransferringWithStaticAccessNode {
-        private boolean TRUE = true;
+        private boolean true1 = true;
+        private boolean true2 = true;
 
         public FrameTransferringNodeWithMergingStaticAccess(FrameDescriptor.Builder builder) {
             super(builder);
@@ -1437,10 +1438,14 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         @Override
         public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
             checkRegularState(osrFrame);
-            if (TRUE) {
-                setOSRState(osrFrame);
+            if (true1) {
+                if (true2) {
+                    setOSRState(osrFrame);
+                }
+                // Merges regular state with OSR state.
+                boundaryCall();
             }
-            // Force merge.
+            // Merges previously merged state with regular state.
             boundaryCall();
             return 42;
         }
