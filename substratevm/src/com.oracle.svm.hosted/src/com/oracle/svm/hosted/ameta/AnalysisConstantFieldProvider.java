@@ -46,7 +46,7 @@ public class AnalysisConstantFieldProvider extends SharedConstantFieldProvider {
 
     public AnalysisConstantFieldProvider(AnalysisUniverse universe, AnalysisMetaAccess metaAccess, AnalysisConstantReflectionProvider constantReflection,
                     ClassInitializationSupport classInitializationSupport) {
-        super(metaAccess, classInitializationSupport);
+        super(metaAccess, classInitializationSupport, (SVMHost) universe.hostVM());
         this.universe = universe;
         this.constantReflection = constantReflection;
     }
