@@ -58,6 +58,7 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
         return selectMatchingOverloads(candidates, arguments, resolveParameterKlasses(candidates), toEspressoNode);
     }
 
+    @TruffleBoundary
     private CandidateMethodWithArgs selectMatchingOverloads(Method[] candidates, Object[] arguments, Klass[][] parameterKlasses, ToEspressoNode toEspressoNode) {
         ArrayList<CandidateMethodWithArgs> fitByType = new ArrayList<>(candidates.length);
         for (int i = 0; i < candidates.length; i++) {
