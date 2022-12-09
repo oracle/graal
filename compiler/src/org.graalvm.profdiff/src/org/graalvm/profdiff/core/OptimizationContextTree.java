@@ -181,6 +181,12 @@ public final class OptimizationContextTree {
      * enclosing method is not in the inlining tree. In that case, {@link #longestPrefix the longest
      * prefix} of the path which is still in the tree is considered instead.
      *
+     * If the path to the enclosing method is duplicated in the inlining tree (i.e. there are
+     * multiple inlining-tree nodes corresponding to the path), the optimization is added to each
+     * node which satisfies the path. If the optimization has a {@code null} position or if the
+     * position does not match the tree at all, the optimization is added as a child of the root
+     * node of the optimization-context tree.
+     *
      * @param optimizationTree the source optimization tree with optimizations
      */
     private void insertAllOptimizationNodes(InliningTree inliningTree, OptimizationTree optimizationTree,
@@ -191,16 +197,15 @@ public final class OptimizationContextTree {
             }
             Optimization optimization = (Optimization) node;
             InliningPath optimizationPath = InliningPath.ofEnclosingMethod(optimization);
-            OptimizationContextTreeNode lastNode = root;
             int prefixLength = longestPrefix(root, optimizationPath, 0);
             if (prefixLength > 0) {
                 InliningPath longestPathInTree = optimizationPath.prefix(prefixLength);
                 List<InliningTreeNode> found = inliningTree.findNodesAt(longestPathInTree);
                 assert found.size() >= 1;
-                lastNode = replacements.get(found.get(0));
+                found.forEach(original -> replacements.get(original).addChild(new OptimizationContextTreeNode(optimization)));
+            } else {
+                root.addChild(new OptimizationContextTreeNode(optimization));
             }
-            assert lastNode != null;
-            lastNode.addChild(new OptimizationContextTreeNode(optimization));
         });
     }
 

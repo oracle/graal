@@ -84,8 +84,10 @@ public class OptimizationContextTreeTest {
      *                 Optimization4 at {d(): 1, b(): 3, a(): 1}
      *         b() at bci 1
      *             Warning
+     *             Optimization3 at {b(): 2, a(): 1}
      *             d() at bci 3
      *                 Warning
+     *                 Optimization4 at {d(): 1, b(): 3, a(): 1}
      *         c() at bci 2
      *            Optimization5 at {c(): 4, a(): 2}
      *            Optimization8 at {y(): 3, c(): 5, a(): 2}
@@ -169,7 +171,9 @@ public class OptimizationContextTreeTest {
         OptimizationContextTreeNode co1 = new OptimizationContextTreeNode(o1);
         OptimizationContextTreeNode co2 = new OptimizationContextTreeNode(o2);
         OptimizationContextTreeNode co3 = new OptimizationContextTreeNode(o3);
+        OptimizationContextTreeNode co3d = new OptimizationContextTreeNode(o3);
         OptimizationContextTreeNode co4 = new OptimizationContextTreeNode(o4);
+        OptimizationContextTreeNode co4d = new OptimizationContextTreeNode(o4);
         OptimizationContextTreeNode co5 = new OptimizationContextTreeNode(o5);
         OptimizationContextTreeNode co6 = new OptimizationContextTreeNode(o6);
         OptimizationContextTreeNode co7 = new OptimizationContextTreeNode(o7);
@@ -186,6 +190,8 @@ public class OptimizationContextTreeTest {
         ca.addChild(co7);
         cb1.addChild(co3);
         cd1.addChild(co4);
+        cb2.addChild(co3d);
+        cd2.addChild(co4d);
         cc.addChild(co5);
         cc.addChild(co8);
         cf.addChild(co6);
