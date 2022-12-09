@@ -179,12 +179,8 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         return this.kind == AnalysisObjectKind.AllocationContextSensitive;
     }
 
-    public final boolean isConstantContextSensitiveObject() {
-        return this.kind == AnalysisObjectKind.ConstantContextSensitive;
-    }
-
-    public final boolean isConstantObject() {
-        return this.kind == AnalysisObjectKind.ConstantObject;
+    public JavaConstant asConstant() {
+        return null;
     }
 
     public ArrayElementsTypeStore getArrayElementsTypeStore() {
