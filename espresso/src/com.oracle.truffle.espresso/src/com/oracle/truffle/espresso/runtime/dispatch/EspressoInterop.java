@@ -70,9 +70,11 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.interop.CandidateMethodWithArgs;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupInstanceFieldNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupVirtualMethodNode;
+import com.oracle.truffle.espresso.nodes.interop.MethodArgsUtils;
 import com.oracle.truffle.espresso.nodes.interop.OverLoadedMethodSelectorNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -989,7 +991,8 @@ public class EspressoInterop extends BaseInterop {
                     Object[] arguments,
                     @Exclusive @Cached LookupVirtualMethodNode lookupMethod,
                     @Exclusive @Cached OverLoadedMethodSelectorNode selectorNode,
-                    @Exclusive @Cached InvokeEspressoNode invoke)
+                    @Exclusive @Cached InvokeEspressoNode invoke,
+                    @Exclusive @Cached ToEspressoNode toEspressoNode)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method[] candidates = lookupMethod.execute(receiver.getKlass(), member, arguments.length);
         if (candidates != null) {
@@ -998,12 +1001,22 @@ public class EspressoInterop extends BaseInterop {
                 Method m = candidates[0];
                 assert !m.isStatic() && m.isPublic();
                 assert member.startsWith(m.getNameAsString());
-                assert m.getParameterCount() == arguments.length;
-                return invoke.execute(m, receiver, arguments);
+                if (!m.isVarargs()) {
+                    assert m.getParameterCount() == arguments.length;
+                    return invoke.execute(m, receiver, arguments);
+                } else {
+                    CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(m, arguments, m.resolveParameterKlasses(), toEspressoNode);
+                    if (matched != null) {
+                        matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+                        if (matched != null) {
+                            return invoke.execute(matched.getMethod(), receiver, matched.getConvertedArgs(), true);
+                        }
+                    }
+                }
             } else {
                 // multiple overloaded methods found
                 // find method with type matches
-                OverLoadedMethodSelectorNode.OverloadedMethodWithArgs typeMatched = selectorNode.execute(candidates, arguments);
+                CandidateMethodWithArgs typeMatched = selectorNode.execute(candidates, arguments);
                 if (typeMatched != null) {
                     // single match found!
                     return invoke.execute(typeMatched.getMethod(), receiver, typeMatched.getConvertedArgs(), true);

@@ -31,7 +31,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -42,10 +42,10 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
 
     static final int LIMIT = 2;
 
-    public abstract OverloadedMethodWithArgs execute(Method[] candidates, Object[] arguments);
+    public abstract CandidateMethodWithArgs execute(Method[] candidates, Object[] arguments);
 
     @Specialization(guards = {"same(candidates, cachedCandidates)"}, limit = "LIMIT")
-    OverloadedMethodWithArgs doCached(Method[] candidates,
+    CandidateMethodWithArgs doCached(Method[] candidates,
                     Object[] arguments,
                     @SuppressWarnings("unused") @Cached(value = "candidates", dimensions = 1) Method[] cachedCandidates,
                     @Cached(value = "resolveParameterKlasses(candidates)", dimensions = 2) Klass[][] parameterKlasses,
@@ -54,55 +54,52 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
     }
 
     @Specialization(replaces = "doCached")
-    OverloadedMethodWithArgs doGeneric(Method[] candidates, Object[] arguments, @Cached ToEspressoNode toEspressoNode) {
+    CandidateMethodWithArgs doGeneric(Method[] candidates, Object[] arguments, @Cached ToEspressoNode toEspressoNode) {
         return selectMatchingOverloads(candidates, arguments, resolveParameterKlasses(candidates), toEspressoNode);
     }
 
-    private OverloadedMethodWithArgs selectMatchingOverloads(Method[] candidates, Object[] arguments, Klass[][] parameterKlasses, ToEspressoNode toEspressoNode) {
-        ArrayList<OverloadedMethodWithArgs> fitByType = new ArrayList<>(candidates.length);
-
+    private CandidateMethodWithArgs selectMatchingOverloads(Method[] candidates, Object[] arguments, Klass[][] parameterKlasses, ToEspressoNode toEspressoNode) {
+        ArrayList<CandidateMethodWithArgs> fitByType = new ArrayList<>(candidates.length);
         for (int i = 0; i < candidates.length; i++) {
-            Method candidate = candidates[i];
-            Klass[] parameters = parameterKlasses[i];
-            boolean canConvert = true;
-            Object[] convertedArgs = new Object[parameters.length];
-            for (int j = 0; j < parameters.length; j++) {
-                // try converting the parameters, if no exception
-                // the candidate stands
-                try {
-                    convertedArgs[j] = toEspressoNode.execute(arguments[j], parameters[j]);
-                } catch (UnsupportedTypeException e) {
-                    canConvert = false;
-                    break;
-                }
+            CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(candidates[i], arguments, parameterKlasses[i], toEspressoNode);
+            if (matched != null) {
+                fitByType.add(matched);
             }
-            if (canConvert) {
-                fitByType.add(new OverloadedMethodWithArgs(candidate, convertedArgs, parameters));
-            }
+        }
+        if (fitByType.isEmpty()) {
+            return null;
         }
         if (fitByType.size() == 1) {
-            return fitByType.get(0);
+            CandidateMethodWithArgs matched = fitByType.get(0);
+            if (matched.getMethod().isVarargs()) {
+                return MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+            }
+            return matched;
         }
         // still multiple candidates, so try to select the best one
-        return findMostSpecificOverload(fitByType, arguments, false);
+        CandidateMethodWithArgs mostSpecificOverload = findMostSpecificOverload(fitByType, arguments);
+        if (mostSpecificOverload != null && mostSpecificOverload.getMethod().isVarargs()) {
+            return MethodArgsUtils.ensureVarArgsArrayCreated(mostSpecificOverload, toEspressoNode);
+        }
+        return mostSpecificOverload;
     }
 
-    private static OverloadedMethodWithArgs findMostSpecificOverload(List<OverloadedMethodWithArgs> candidates, Object[] args, boolean varArgs) {
+    private static CandidateMethodWithArgs findMostSpecificOverload(List<CandidateMethodWithArgs> candidates, Object[] args) {
         assert candidates.size() >= 2;
         if (candidates.size() == 2) {
-            int res = compareOverloads(candidates.get(0), candidates.get(1), args, varArgs);
+            int res = compareOverloads(candidates.get(0), candidates.get(1), args);
             return res == 0 ? null : (res < 0 ? candidates.get(0) : candidates.get(1));
         }
 
-        Iterator<OverloadedMethodWithArgs> candIt = candidates.iterator();
-        List<OverloadedMethodWithArgs> best = new LinkedList<>();
+        Iterator<CandidateMethodWithArgs> candIt = candidates.iterator();
+        List<CandidateMethodWithArgs> best = new LinkedList<>();
         best.add(candIt.next());
 
         while (candIt.hasNext()) {
-            OverloadedMethodWithArgs cand = candIt.next();
+            CandidateMethodWithArgs cand = candIt.next();
             boolean add = false;
-            for (Iterator<OverloadedMethodWithArgs> bestIt = best.iterator(); bestIt.hasNext();) {
-                int res = compareOverloads(cand, bestIt.next(), args, varArgs);
+            for (Iterator<CandidateMethodWithArgs> bestIt = best.iterator(); bestIt.hasNext();) {
+                int res = compareOverloads(cand, bestIt.next(), args);
                 if (res == 0) {
                     add = true;
                 } else if (res < 0) {
@@ -124,18 +121,29 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
         return null; // ambiguous
     }
 
-    private static int compareOverloads(OverloadedMethodWithArgs m1, OverloadedMethodWithArgs m2, Object[] args, boolean varArgs) {
+    private static int compareOverloads(CandidateMethodWithArgs m1, CandidateMethodWithArgs m2, Object[] arguments) {
+        int exact = 0;
         int res = 0;
-        assert !varArgs || m1.getMethod().isVarargs() && m2.getMethod().isVarargs();
-        assert m1.getParameterTypes().length == m1.getParameterTypes().length;
-        for (int i = 0; i < m1.getParameterTypes().length; i++) {
-            Klass t1 = m1.getParameterTypes()[i];
-            Klass t2 = m2.getParameterTypes()[i];
+
+        for (int i = 0; i < arguments.length; i++) {
+            Klass t1 = getParameterType(i, m1);
+            Klass t2 = getParameterType(i, m2);
             if (t1 == t2) {
                 continue;
             }
-            int r = compareKnownTypesExact(t1, t2, args[i]);
-            if (r == 0) {
+            int r;
+            r = compareKnownTypesExact(t1, t2, arguments[i]);
+            if (r != 0) {
+                if (exact == 0) {
+                    exact = r;
+                } else if (exact != r) {
+                    // cannot determine definite ranking between these two overloads
+                    return 0;
+                }
+                r = 0;
+            }
+
+            if (exact == 0) {
                 r = compareAssignable(t1, t2);
             }
             if (r == 0) {
@@ -145,11 +153,19 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
                 res = r;
             } else if (res != r) {
                 // cannot determine definite ranking between these two overloads
-                res = 0;
-                break;
+                return 0;
             }
         }
-        return res;
+        return exact != 0 ? exact : res;
+    }
+
+    private static Klass getParameterType(int i, CandidateMethodWithArgs m1) {
+        int length = m1.getParameterTypes().length;
+        if (m1.getMethod().isVarargs() && i >= length - 1) {
+            return ((ArrayKlass) m1.getParameterTypes()[length - 1]).getComponentType();
+        } else {
+            return m1.getParameterTypes()[i];
+        }
     }
 
     // if an interop primitive is used, represented by a boxed host primitive
@@ -158,14 +174,32 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
         Meta meta = t1.getMeta();
         Class<?> hostClass = arg.getClass();
 
+        Klass compareType1;
+        Klass compareType2;
+
+        if (t1.isArray() && t2.isArray()) {
+            // compare element types
+            compareType1 = t1.getElementalType();
+            compareType2 = t2.getElementalType();
+            while (hostClass.isArray()) {
+                hostClass = hostClass.getComponentType();
+            }
+        } else {
+            compareType1 = t1;
+            compareType2 = t2;
+        }
+
         // primitives
-        boolean t1IsPrimitive = t1.isPrimitive();
-        Klass t1AsPrimitive = t1IsPrimitive ? t1 : boxedTypeToPrimitiveType(t1);
+        boolean t1IsPrimitive = compareType1.isPrimitive();
+        Klass t1AsPrimitive = t1IsPrimitive ? compareType1 : MethodArgsUtils.boxedTypeToPrimitiveType(compareType1);
 
         if (t1AsPrimitive != null) {
-            boolean t2Primitive = t2.isPrimitive();
-            Klass t2AsPrimitive = t2Primitive ? t2 : boxedTypeToPrimitiveType(t2);
-            assert t2AsPrimitive != null;
+            boolean t2Primitive = compareType2.isPrimitive();
+            Klass t2AsPrimitive = t2Primitive ? compareType2 : MethodArgsUtils.boxedTypeToPrimitiveType(compareType2);
+
+            if (t2AsPrimitive == null) {
+                return 0;
+            }
 
             if (hostClass == Boolean.class) {
                 if (t1AsPrimitive == meta._boolean) {
@@ -234,10 +268,10 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
         }
         // String
         if (hostClass == String.class) {
-            if (t1 == meta.java_lang_String) {
+            if (compareType1 == meta.java_lang_String) {
                 return -1;
             }
-            if (t2 == meta.java_lang_String) {
+            if (compareType2 == meta.java_lang_String) {
                 return 1;
             }
         }
@@ -263,91 +297,25 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
         Meta meta = toType.getMeta();
         boolean fromIsPrimitive = fromType.isPrimitive();
         boolean toIsPrimitive = toType.isPrimitive();
-        Klass fromAsPrimitive = fromIsPrimitive ? fromType : boxedTypeToPrimitiveType(fromType);
-        Klass toAsPrimitive = toIsPrimitive ? toType : boxedTypeToPrimitiveType(toType);
+        Klass fromAsPrimitive = fromIsPrimitive ? fromType : MethodArgsUtils.boxedTypeToPrimitiveType(fromType);
+        Klass toAsPrimitive = toIsPrimitive ? toType : MethodArgsUtils.boxedTypeToPrimitiveType(toType);
         if (toAsPrimitive != null && fromAsPrimitive != null) {
             if (toAsPrimitive == fromAsPrimitive) {
                 assert fromIsPrimitive != toIsPrimitive;
                 // primitive <: boxed
                 return fromIsPrimitive;
-            } else if (isWideningPrimitiveConversion(toAsPrimitive, fromAsPrimitive)) {
+            } else if (MethodArgsUtils.isWideningPrimitiveConversion(toAsPrimitive, fromAsPrimitive)) {
                 // primitive|boxed <: wider primitive|boxed
                 return true;
             }
         } else if (fromAsPrimitive == meta._char && (toType == meta.java_lang_String || toType == meta.java_lang_CharSequence)) {
             // char|Character <: String|CharSequence
             return true;
-        } else if (toAsPrimitive == null && fromAsPrimitive != null && toType.isAssignableFrom(primitiveTypeToBoxedType(fromAsPrimitive))) {
+        } else if (toAsPrimitive == null && fromAsPrimitive != null && toType.isAssignableFrom(MethodArgsUtils.primitiveTypeToBoxedType(fromAsPrimitive))) {
             // primitive|boxed <: Number et al
             return true;
         }
         return false;
-    }
-
-    static Klass boxedTypeToPrimitiveType(Klass primitiveType) {
-        Meta meta = primitiveType.getMeta();
-        if (primitiveType == meta.java_lang_Boolean) {
-            return meta._boolean;
-        } else if (primitiveType == meta.java_lang_Byte) {
-            return meta._byte;
-        } else if (primitiveType == meta.java_lang_Short) {
-            return meta._short;
-        } else if (primitiveType == meta.java_lang_Character) {
-            return meta._char;
-        } else if (primitiveType == meta.java_lang_Integer) {
-            return meta._int;
-        } else if (primitiveType == meta.java_lang_Long) {
-            return meta._long;
-        } else if (primitiveType == meta.java_lang_Float) {
-            return meta._float;
-        } else if (primitiveType == meta.java_lang_Double) {
-            return meta._double;
-        } else {
-            return null;
-        }
-    }
-
-    static Klass primitiveTypeToBoxedType(Klass primitiveType) {
-        Meta meta = primitiveType.getMeta();
-        if (primitiveType == meta._boolean) {
-            return meta.java_lang_Boolean;
-        } else if (primitiveType == meta._byte) {
-            return meta.java_lang_Byte;
-        } else if (primitiveType == meta._short) {
-            return meta.java_lang_Short;
-        } else if (primitiveType == meta._char) {
-            return meta.java_lang_Character;
-        } else if (primitiveType == meta._int) {
-            return meta.java_lang_Integer;
-        } else if (primitiveType == meta._long) {
-            return meta.java_lang_Long;
-        } else if (primitiveType == meta._float) {
-            return meta.java_lang_Float;
-        } else if (primitiveType == meta._double) {
-            return meta.java_lang_Double;
-        } else {
-            return null;
-        }
-    }
-
-    private static boolean isWideningPrimitiveConversion(Klass toType, Klass fromType) {
-        assert toType.isPrimitive();
-        Meta meta = toType.getMeta();
-        if (fromType == meta._byte) {
-            return toType == meta._short || toType == meta._int || toType == meta._long || toType == meta._float || toType == meta._double;
-        } else if (fromType == meta._short) {
-            return toType == meta._int || toType == meta._long || toType == meta._float || toType == meta._double;
-        } else if (fromType == meta._char) {
-            return toType == meta._int || toType == meta._long || toType == meta._float || toType == meta._double;
-        } else if (fromType == meta._int) {
-            return toType == meta._long || toType == meta._float || toType == meta._double;
-        } else if (fromType == meta._long) {
-            return toType == meta._float || toType == meta._double;
-        } else if (fromType == meta._float) {
-            return toType == meta._double;
-        } else {
-            return false;
-        }
     }
 
     static boolean same(Method[] methods, Method[] cachedMethods) {
@@ -374,27 +342,4 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
         return resolved;
     }
 
-    public final class OverloadedMethodWithArgs {
-        private final Method method;
-        private final Object[] convertedArgs;
-        private final Klass[] parameterTypes;
-
-        private OverloadedMethodWithArgs(Method method, Object[] convertedArgs, Klass[] paramaterTypes) {
-            this.method = method;
-            this.convertedArgs = convertedArgs;
-            this.parameterTypes = paramaterTypes;
-        }
-
-        public Method getMethod() {
-            return method;
-        }
-
-        public Object[] getConvertedArgs() {
-            return convertedArgs;
-        }
-
-        public Klass[] getParameterTypes() {
-            return parameterTypes;
-        }
-    }
 }
