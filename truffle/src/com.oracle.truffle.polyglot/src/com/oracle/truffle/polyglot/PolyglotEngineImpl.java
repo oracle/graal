@@ -77,7 +77,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.logging.Handler;
 import java.util.logging.Level;
 
 import org.graalvm.collections.EconomicSet;
@@ -91,7 +90,9 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.MessageTransport;
@@ -191,7 +192,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
      * that strong references for source caches should be used.
      */
     boolean storeEngine; // modified on patch
-    Handler logHandler;     // effectively final
+    LogHandler logHandler;     // effectively final
     final Exception createdLocation = DEBUG_MISSING_CLOSE ? new Exception() : null;
     private final EconomicSet<ContextWeakReference> contexts = EconomicSet.create(Equivalence.IDENTITY);
     final ReferenceQueue<PolyglotContextImpl> contextsReferenceQueue = new ReferenceQueue<>();
@@ -246,7 +247,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     Map<String, Level> logLevels,
                     EngineLoggerProvider engineLogger, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean boundEngine, boolean preInitialization,
-                    MessageTransport messageInterceptor, Handler logHandler,
+                    MessageTransport messageInterceptor, LogHandler logHandler,
                     TruffleLanguage<Object> hostImpl, boolean hostLanguageOnly, AbstractPolyglotHostService polyglotHostService) {
         this.messageInterceptor = messageInterceptor;
         this.impl = impl;
@@ -611,7 +612,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     EngineLoggerProvider logSupplier,
                     Map<String, String> newOptions,
                     boolean newAllowExperimentalOptions,
-                    boolean newBoundEngine, Handler newLogHandler,
+                    boolean newBoundEngine, LogHandler newLogHandler,
                     TruffleLanguage<?> newHostLanguage,
                     AbstractPolyglotHostService newPolyglotHostService) {
         CompilerAsserts.neverPartOfCompilation();
@@ -663,15 +664,15 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
     }
 
-    static Handler createLogHandler(LogConfig logConfig, DispatchOutputStream errDispatchOutputStream) {
+    static LogHandler createLogHandler(AbstractPolyglotImpl polyglot, LogConfig logConfig, DispatchOutputStream errDispatchOutputStream) {
         if (logConfig.logFile != null) {
             if (ALLOW_IO) {
-                return PolyglotLoggers.getFileHandler(logConfig.logFile);
+                return PolyglotLoggers.getFileHandler(polyglot, logConfig.logFile);
             } else {
                 throw PolyglotEngineException.illegalState("The `log.file` option is not allowed when the allowIO() privilege is removed at image build time.");
             }
         } else {
-            return PolyglotLoggers.createDefaultHandler(INSTRUMENT.getOut(errDispatchOutputStream));
+            return PolyglotLoggers.createDefaultHandler(polyglot, INSTRUMENT.getOut(errDispatchOutputStream));
         }
     }
 
@@ -864,6 +865,14 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         } else {
             return null;
         }
+    }
+
+    /**
+     * Finds a {@link PolyglotLanguage} for a guest or host language.
+     */
+    PolyglotLanguage findLanguage(LanguageInfo info) {
+        LanguageCache cache = (LanguageCache) EngineAccessor.NODES.getLanguageCache(info);
+        return languages[cache.getStaticIndex()];
     }
 
     private Map<String, PolyglotInstrument> initializeInstruments(Map<String, InstrumentInfo> infos) {
@@ -1650,7 +1659,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     public PolyglotContextImpl createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostLookup,
                     HostAccess hostAccess, PolyglotAccess polyglotAccess,
                     boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostClassLoading, boolean allowContextOptions, boolean allowExperimentalOptions,
-                    Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguagesArray, IOAccess ioAccess, Object logHandlerOrStream,
+                    Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguagesArray, IOAccess ioAccess, LogHandler handler,
                     boolean allowCreateProcess, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl,
                     String currentWorkingDirectory, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
         PolyglotContextImpl context;
@@ -1735,10 +1744,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             } else {
                 useErr = INSTRUMENT.createDelegatingOutput(configErr, this.err);
             }
-            Handler useHandler = PolyglotLoggers.asHandler(logHandlerOrStream);
-            useHandler = useHandler != null ? useHandler : logHandler;
+            LogHandler useHandler = handler != null ? handler : logHandler;
             useHandler = useHandler != null ? useHandler
-                            : PolyglotLoggers.createDefaultHandler(
+                            : PolyglotLoggers.createDefaultHandler(getImpl(),
                                             configErr == null ? INSTRUMENT.getOut(this.err) : configErr);
             final InputStream useIn = configIn == null ? this.in : configIn;
             final ProcessHandler useProcessHandler;

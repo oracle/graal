@@ -41,7 +41,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public class ConstantFoldUtil {
 
     public static ConstantNode tryConstantFold(ConstantFieldProvider fieldProvider, ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, ResolvedJavaField field,
-                    JavaConstant receiver, OptionValues options) {
+                    JavaConstant receiver, OptionValues options, Object reason) {
         if (!field.isStatic()) {
             if (receiver == null || receiver.isNull()) {
                 return null;
@@ -58,6 +58,11 @@ public class ConstantFoldUtil {
             @Override
             public JavaConstant getReceiver() {
                 return receiver;
+            }
+
+            @Override
+            public Object getReason() {
+                return reason;
             }
 
             @Override
@@ -89,7 +94,8 @@ public class ConstantFoldUtil {
      * Perform a constant folding read on a regular Java field that's already been lowered to a
      * {@link ReadNode}.
      */
-    public static ConstantNode tryConstantFold(CoreProviders tool, ResolvedJavaField field, JavaConstant receiver, long displacement, Stamp resultStamp, Stamp accessStamp, OptionValues options) {
+    public static ConstantNode tryConstantFold(CoreProviders tool, ResolvedJavaField field, JavaConstant receiver, long displacement, Stamp resultStamp, Stamp accessStamp, OptionValues options,
+                    Object reason) {
         if (!field.isStatic()) {
             if (receiver == null || receiver.isNull()) {
                 return null;
@@ -110,6 +116,11 @@ public class ConstantFoldUtil {
             @Override
             public JavaConstant getReceiver() {
                 return receiver;
+            }
+
+            @Override
+            public Object getReason() {
+                return reason;
             }
 
             @Override

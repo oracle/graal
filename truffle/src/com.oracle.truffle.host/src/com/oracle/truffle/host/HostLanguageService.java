@@ -44,7 +44,9 @@ import java.lang.reflect.Type;
 import java.util.function.Predicate;
 
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
 import org.graalvm.polyglot.proxy.Proxy;
 
@@ -62,9 +64,11 @@ import com.oracle.truffle.host.HostObject.GuestToHostCalls;
 public class HostLanguageService extends AbstractHostLanguageService {
 
     final HostLanguage language;
+    private final APIAccess api;
 
     HostLanguageService(AbstractPolyglotImpl polyglot, HostLanguage language) {
         super(polyglot);
+        api = polyglot.getAPIAccess();
         this.language = language;
     }
 
@@ -80,7 +84,7 @@ public class HostLanguageService extends AbstractHostLanguageService {
             useCl = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
         }
         language.initializeHostAccess(hostAccess, useCl);
-        context.initialize(internalContext, useCl, clFilter, hostCLAllowed, hostLookupAllowed);
+        context.initialize(internalContext, useCl, clFilter, hostCLAllowed, hostLookupAllowed, hostAccess != null ? api.getMutableTargetMappings(hostAccess) : new MutableTargetMapping[0]);
     }
 
     @Override

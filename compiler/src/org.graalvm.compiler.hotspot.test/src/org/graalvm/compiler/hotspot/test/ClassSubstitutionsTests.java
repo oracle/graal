@@ -186,7 +186,7 @@ public class ClassSubstitutionsTests extends GraalCompilerTest {
                     ResolvedJavaField field = b.getMetaAccess().lookupJavaField(f);
                     b.addPush(JavaKind.Object,
                                     LoadFieldNode.create(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(), b.getOptions(),
-                                                    b.getAssumptions(), clazz, field, false, false));
+                                                    b.getAssumptions(), clazz, field, false, false, b.getGraph().currentNodeSourcePosition()));
                     return true;
                 }
             });

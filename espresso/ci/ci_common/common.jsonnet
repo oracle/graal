@@ -1,8 +1,8 @@
-local graal_common = import '../../../common.jsonnet';
+local graal_common = import '../../../ci/ci_common/common.jsonnet';
 local base = import '../ci.jsonnet';
 local base_json = import '../../../common.json';
 
-local composable = (import "../../../common-utils.libsonnet").composable;
+local composable = (import "../../../ci/ci_common/common-utils.libsonnet").composable;
 local sulong_deps = composable(base_json.sulong.deps);
 
 local _version_suffix(java_version) = if java_version == 8 then '' else '-java' + java_version;

@@ -44,6 +44,8 @@ import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.
 import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -75,6 +77,7 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.HostAccess.Builder;
 import org.graalvm.polyglot.HostAccess.Export;
 import org.graalvm.polyglot.HostAccess.Implementable;
+import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.TypeLiteral;
@@ -87,7 +90,16 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.StopIterationException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import com.oracle.truffle.api.test.common.NullObject;
@@ -550,7 +562,7 @@ public class HostAccessTest extends AbstractHostAccessTest {
 
     @Test
     public void testMapAccessDisabled() {
-        setupEnv(HostAccess.newBuilder().allowIterableAccess(false));
+        setupEnv(HostAccess.newBuilder().allowMapAccess(false));
         assertMapAccessDisabled(context);
     }
 
@@ -1172,23 +1184,23 @@ public class HostAccessTest extends AbstractHostAccessTest {
         Function<Void, String> convertedFunction = (a) -> "ConvertedFunction";
 
         setupEnv(HostAccess.ALL);
-        assertEquals("OriginalFunction", ((Function<Void, String>) context.asValue(new TestProxyExecutable()).as(Function.class)).apply(null));
+        assertEquals("OriginalFunction", context.asValue(new TestProxyExecutable()).as(Function.class).apply(null));
 
         setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, Function.class, null,
                         (v) -> convertedFunction, TargetMappingPrecedence.HIGHEST));
-        assertEquals("ConvertedFunction", ((Function<Void, String>) context.asValue(new TestProxyExecutable()).as(Function.class)).apply(null));
+        assertEquals("ConvertedFunction", context.asValue(new TestProxyExecutable()).as(Function.class).apply(null));
 
         setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, Function.class, null,
                         (v) -> convertedFunction, TargetMappingPrecedence.HIGH));
-        assertEquals("ConvertedFunction", ((Function<Void, String>) context.asValue(new TestProxyExecutable()).as(Function.class)).apply(null));
+        assertEquals("ConvertedFunction", context.asValue(new TestProxyExecutable()).as(Function.class).apply(null));
 
         setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, Function.class, null,
                         (v) -> convertedFunction, TargetMappingPrecedence.LOW));
-        assertEquals("ConvertedFunction", ((Function<Void, String>) context.asValue(new TestProxyExecutable()).as(Function.class)).apply(null));
+        assertEquals("ConvertedFunction", context.asValue(new TestProxyExecutable()).as(Function.class).apply(null));
 
         setupEnv(HostAccess.newBuilder().targetTypeMapping(Value.class, Function.class, null,
                         (v) -> convertedFunction, TargetMappingPrecedence.LOWEST));
-        assertEquals("OriginalFunction", ((Function<Void, String>) context.asValue(new TestProxyExecutable()).as(Function.class)).apply(null));
+        assertEquals("OriginalFunction", context.asValue(new TestProxyExecutable()).as(Function.class).apply(null));
     }
 
     public static class NoCoercion {
@@ -2203,6 +2215,421 @@ public class HostAccessTest extends AbstractHostAccessTest {
             assertEquals(Class.class.getName() + ".getName", cxt.asValue(BigInteger.class).getMember("getName").toString());
             assertEquals(BigInteger.class.getName() + ".add", cxt.asValue(BigInteger.ZERO).getMember("add").toString());
             assertEquals(int[].class.getName() + ".clone", cxt.asValue(new int[0]).getMember("clone").toString());
+        }
+    }
+
+    public static class StringMapTestObject {
+
+        public String s0;
+        public String s1;
+
+        StringMapTestObject(String s0, String s1) {
+            this.s0 = s0;
+            this.s1 = s1;
+        }
+
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class Hash implements TruffleObject {
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasHashEntries() {
+            return true;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        long getHashSize() {
+            return 0;
+        }
+
+        @SuppressWarnings({"static-method", "unused"})
+        @ExportMessage(name = "isHashEntryReadable")
+        @ExportMessage(name = "isHashEntryModifiable")
+        @ExportMessage(name = "isHashEntryRemovable")
+        boolean isHashEntryExisting(Object key) {
+            return false;
+        }
+
+        @SuppressWarnings({"static-method", "unused"})
+        @ExportMessage
+        boolean isHashEntryInsertable(Object key) {
+            return false;
+        }
+
+        @SuppressWarnings({"static-method", "unused"})
+        @ExportMessage
+        Object readHashValue(Object key) throws UnknownKeyException, UnsupportedMessageException {
+            throw UnknownKeyException.create(key);
+        }
+
+        @SuppressWarnings("unused")
+        @ExportMessage
+        void writeHashEntry(Object key, Object value) throws UnsupportedMessageException {
+
+        }
+
+        @SuppressWarnings("unused")
+        @ExportMessage
+        void removeHashEntry(Object key) throws UnknownKeyException {
+        }
+
+        @SuppressWarnings({"static-method", "unused"})
+        @ExportMessage
+        Object getHashEntriesIterator() throws UnsupportedMessageException {
+            return null;
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class Executable implements TruffleObject {
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
+        }
+
+        @SuppressWarnings({"static-method", "unused"})
+        @ExportMessage
+        Object execute(Object[] arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+            return null;
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class Members implements TruffleObject {
+        Array members = new Array();
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
+        }
+
+        @SuppressWarnings({"static-method", "unused"})
+        @ExportMessage
+        Object getMembers(boolean includeInternal) {
+            return members;
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class Array implements TruffleObject {
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        public boolean hasArrayElements() {
+            return true;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        public Object readArrayElement(long index) throws InvalidArrayIndexException {
+            throw InvalidArrayIndexException.create(index);
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        public long getArraySize() {
+            return 0;
+        }
+
+        @SuppressWarnings({"static-method", "unused"})
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return false;
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class IteratorTO implements TruffleObject {
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        public boolean isIterator() {
+            return true;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasIteratorNextElement() {
+            return false;
+        }
+
+        @SuppressWarnings({"static-method", "unused"})
+        @ExportMessage
+        Object getIteratorNextElement() throws StopIterationException {
+            return null;
+        }
+
+    }
+
+    /*
+     * Referenced in proxys.json
+     */
+    @FunctionalInterface
+    interface FuncInterface {
+        void execute();
+    }
+
+    /*
+     * Referenced in proxys.json
+     */
+    interface HostMembers {
+    }
+
+    @Test
+    public void testMutableObjectMapping() {
+        for (MutableTargetMapping m : MutableTargetMapping.values()) {
+            testMutableObjectMappingEnabled(m);
+            testMutableObjectMappingDisabled(m);
+        }
+    }
+
+    public void testMutableObjectMappingDisabled(MutableTargetMapping mapping) {
+        MutableTargetMapping[] allowed = new MutableTargetMapping[MutableTargetMapping.values().length - 1];
+        int i = 0;
+        for (MutableTargetMapping m : MutableTargetMapping.values()) {
+            if (m != mapping) {
+                allowed[i++] = m;
+            }
+        }
+        setupEnv(HostAccess.newBuilder(HostAccess.ALL).allowMutableTargetMappings(allowed).build());
+
+        Array array = new Array();
+        StringMapTestObject stringMap = new StringMapTestObject("a", "b");
+
+        switch (mapping) {
+            case ARRAY_TO_JAVA_LIST:
+                Value v1 = context.asValue(array);
+                assertFails(() -> v1.as(List.class), ClassCastException.class);
+                break;
+            case ITERABLE_TO_JAVA_ITERABLE:
+                Value v2 = context.asValue(array);
+                assertFails(() -> v2.as(Iterable.class), ClassCastException.class);
+                break;
+            case ITERATOR_TO_JAVA_ITERATOR:
+                IteratorTO it = new IteratorTO();
+                Value v3 = context.asValue(it);
+                assertFails(() -> v3.as(Iterator.class), ClassCastException.class);
+                break;
+            case HASH_TO_JAVA_MAP:
+                Hash hash = new Hash();
+                Value v4 = context.asValue(hash);
+                assertFails(() -> v4.as(Map.class), ClassCastException.class);
+                break;
+            case MEMBERS_TO_JAVA_MAP:
+                Value v5 = context.asValue(stringMap);
+                assertFails(() -> v5.as(Map.class), ClassCastException.class);
+                break;
+            case EXECUTABLE_TO_JAVA_INTERFACE:
+                Value v6 = context.asValue(new Executable());
+                assertFails(() -> v6.as(FuncInterface.class), ClassCastException.class);
+                break;
+            case MEMBERS_TO_JAVA_INTERFACE:
+                Value v7 = context.asValue(new Members());
+                assertFails(() -> v7.as(HostMembers.class), ClassCastException.class);
+                break;
+            default:
+                fail("No test for target mapping " + mapping);
+        }
+    }
+
+    private void testMutableObjectMappingEnabled(MutableTargetMapping mapping) {
+        setupEnv(HostAccess.newBuilder(HostAccess.ALL).allowMutableTargetMappings(mapping).build());
+        Array array = new Array();
+        StringMapTestObject stringMap = new StringMapTestObject("a", "b");
+        Value v = null;
+        switch (mapping) {
+            case ARRAY_TO_JAVA_LIST:
+                v = context.asValue(array);
+                assertNotNull(v.as(List.class));
+                break;
+            case ITERABLE_TO_JAVA_ITERABLE:
+                v = context.asValue(array);
+                assertNotNull(v.as(Iterable.class));
+                break;
+            case ITERATOR_TO_JAVA_ITERATOR:
+                IteratorTO it = new IteratorTO();
+                v = context.asValue(it);
+                assertNotNull(v.as(Iterator.class));
+                break;
+            case HASH_TO_JAVA_MAP:
+                Hash hash = new Hash();
+                v = context.asValue(hash);
+                assertNotNull(v.as(Map.class));
+                break;
+            case MEMBERS_TO_JAVA_MAP:
+                v = context.asValue(stringMap);
+                assertNotNull(v.as(Map.class));
+                break;
+            case EXECUTABLE_TO_JAVA_INTERFACE:
+                v = context.asValue(new Executable());
+                assertNotNull(v.as(FuncInterface.class));
+                break;
+            case MEMBERS_TO_JAVA_INTERFACE:
+                v = context.asValue(new Members());
+                assertNotNull(v.as(HostMembers.class));
+                break;
+            default:
+                fail("No test for target mapping " + mapping);
+        }
+    }
+
+    /**
+     * Target type mappings with lower precedence than default are still applied even if mutable
+     * default mappings are disabled.
+     */
+
+    @Test
+    public void testMutableObjectWithCustomTargetType() {
+        for (MutableTargetMapping m : MutableTargetMapping.values()) {
+            testMutableObjectWithCustomTargetType(m, TargetMappingPrecedence.HIGHEST, true, false);
+            testMutableObjectWithCustomTargetType(m, TargetMappingPrecedence.HIGH, true, false);
+            testMutableObjectWithCustomTargetType(m, TargetMappingPrecedence.LOW, true, false);
+            testMutableObjectWithCustomTargetType(m, TargetMappingPrecedence.LOWEST, true, true);
+            testMutableObjectWithCustomTargetType(m, TargetMappingPrecedence.HIGHEST, false, false);
+            testMutableObjectWithCustomTargetType(m, TargetMappingPrecedence.HIGH, false, false);
+            testMutableObjectWithCustomTargetType(m, TargetMappingPrecedence.LOW, false, false);
+            testMutableObjectWithCustomTargetType(m, TargetMappingPrecedence.LOWEST, false, false);
+        }
+    }
+
+    private void testMutableObjectWithCustomTargetType(MutableTargetMapping mapping, TargetMappingPrecedence precedence, boolean defaultEnabled, boolean defaultApplied) {
+        HostAccess.Builder habuilder = HostAccess.newBuilder(HostAccess.ALL);
+        if (!defaultEnabled) {
+            habuilder.allowMutableTargetMappings();
+        }
+        Value v;
+        switch (mapping) {
+            case ARRAY_TO_JAVA_LIST:
+                habuilder = setupTargetTypeMapping(habuilder, List.class, precedence);
+                setupEnv(habuilder.build());
+                v = context.asValue(new Array());
+                assertTargetType(List.class, v, defaultApplied);
+                break;
+            case ITERABLE_TO_JAVA_ITERABLE:
+                habuilder = setupTargetTypeMapping(habuilder, Iterable.class, precedence);
+                setupEnv(habuilder.build());
+                v = context.asValue(new Array());
+                assertTargetType(Iterable.class, v, defaultApplied);
+                break;
+            case ITERATOR_TO_JAVA_ITERATOR:
+                habuilder = setupTargetTypeMapping(habuilder, Iterator.class, precedence);
+                setupEnv(habuilder.build());
+                v = context.asValue(new IteratorTO());
+                assertTargetType(Iterator.class, v, defaultApplied);
+                break;
+            case HASH_TO_JAVA_MAP:
+                habuilder = setupTargetTypeMapping(habuilder, Map.class, precedence);
+                setupEnv(habuilder.build());
+                v = context.asValue(new Hash());
+                assertTargetType(Map.class, v, defaultApplied);
+                break;
+            case MEMBERS_TO_JAVA_MAP:
+                habuilder = setupTargetTypeMapping(habuilder, Map.class, precedence);
+                setupEnv(habuilder.build());
+                v = context.asValue(new StringMapTestObject("a", "b"));
+                assertTargetType(Map.class, v, defaultApplied);
+                break;
+            case EXECUTABLE_TO_JAVA_INTERFACE:
+                habuilder = setupTargetTypeMapping(habuilder, FuncInterface.class, precedence);
+                setupEnv(habuilder.build());
+                v = context.asValue(new Executable());
+                assertTargetType(FuncInterface.class, v, defaultApplied);
+                break;
+            case MEMBERS_TO_JAVA_INTERFACE:
+                habuilder = setupTargetTypeMapping(habuilder, HostMembers.class, precedence);
+                setupEnv(habuilder.build());
+                v = context.asValue(new Members());
+                assertTargetType(HostMembers.class, v, defaultApplied);
+                break;
+            default:
+                fail("No test for target mapping " + mapping);
+        }
+    }
+
+    private static final Map<?, ?> customMap = Map.of("replaced", "a");
+    private static final List<?> customList = List.of("replaced");
+    private static final Iterable<?> customIterable = new Iterable<>() {
+        public Iterator<Object> iterator() {
+            return customIterator;
+        }
+    };
+    private static final Iterator<Object> customIterator = new Iterator<>() {
+        public boolean hasNext() {
+            return false;
+        }
+
+        public Object next() {
+            return null;
+        }
+    };
+    private static final FuncInterface customFunctional = new FuncInterface() {
+        public void execute() {
+        }
+    };
+    private static final HostMembers customHostMembers = new HostMembers() {
+    };
+
+    private static HostAccess.Builder setupTargetTypeMapping(HostAccess.Builder builder, Class<?> c, TargetMappingPrecedence precedence) {
+        if (c == Map.class) {
+            return builder.targetTypeMapping(Value.class, Map.class, null, (s) -> {
+                return customMap;
+            }, precedence);
+        }
+        if (c == List.class) {
+            return builder.targetTypeMapping(Value.class, List.class, null, (s) -> {
+                return customList;
+            }, precedence);
+        }
+        if (c == Iterable.class) {
+            return builder.targetTypeMapping(Value.class, Iterable.class, null, (s) -> {
+                return customIterable;
+            }, precedence);
+        }
+        if (c == Iterator.class) {
+            return builder.targetTypeMapping(Value.class, Iterator.class, null, (s) -> {
+                return customIterator;
+            }, precedence);
+        }
+        if (c == FuncInterface.class) {
+            return builder.targetTypeMapping(Value.class, FuncInterface.class, null, (s) -> {
+                return customFunctional;
+            }, precedence);
+        }
+        if (c == HostMembers.class) {
+            return builder.targetTypeMapping(Value.class, HostMembers.class, null, (s) -> {
+                return customHostMembers;
+            }, precedence);
+        }
+        fail("No target type mapping for " + c.getName());
+        return null;
+    }
+
+    private static void assertTargetType(Class<?> c, Value v, boolean defaultApplied) {
+        Object customTarget = null;
+        if (c == Map.class) {
+            customTarget = customMap;
+        } else if (c == List.class) {
+            customTarget = customList;
+        } else if (c == Iterable.class) {
+            customTarget = customIterable;
+        } else if (c == Iterator.class) {
+            customTarget = customIterator;
+        } else if (c == FuncInterface.class) {
+            customTarget = customFunctional;
+        } else if (c == HostMembers.class) {
+            customTarget = customHostMembers;
+        } else {
+            fail("No target type assert for " + c.getName());
+        }
+
+        if (defaultApplied) {
+            assertNotEquals(customTarget, v.as(c));
+        } else {
+            assertEquals(customTarget, v.as(c));
         }
     }
 }

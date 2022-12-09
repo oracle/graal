@@ -52,14 +52,6 @@ public class PolyglotNativeAPITypes {
     public enum PolyglotStatus {
         poly_ok,
 
-        poly_string_expected,
-
-        poly_number_expected,
-
-        poly_boolean_expected,
-
-        poly_array_expected,
-
         poly_generic_failure,
 
         poly_pending_exception;

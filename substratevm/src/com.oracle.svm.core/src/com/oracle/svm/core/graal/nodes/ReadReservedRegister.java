@@ -24,19 +24,9 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.meta.SharedMethod;
 
@@ -70,41 +60,5 @@ public class ReadReservedRegister {
         } else {
             return new ReadReservedRegisterFloatingNode(register);
         }
-    }
-}
-
-@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-final class ReadReservedRegisterFloatingNode extends FloatingNode implements LIRLowerable {
-    public static final NodeClass<ReadReservedRegisterFloatingNode> TYPE = NodeClass.create(ReadReservedRegisterFloatingNode.class);
-
-    private final Register register;
-
-    protected ReadReservedRegisterFloatingNode(Register register) {
-        super(TYPE, FrameAccess.getWordStamp());
-        this.register = register;
-    }
-
-    @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        LIRKind lirKind = gen.getLIRGeneratorTool().getLIRKind(stamp);
-        gen.setResult(this, register.asValue(lirKind));
-    }
-}
-
-@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-final class ReadReservedRegisterFixedNode extends FixedWithNextNode implements LIRLowerable {
-    public static final NodeClass<ReadReservedRegisterFixedNode> TYPE = NodeClass.create(ReadReservedRegisterFixedNode.class);
-
-    private final Register register;
-
-    protected ReadReservedRegisterFixedNode(Register register) {
-        super(TYPE, FrameAccess.getWordStamp());
-        this.register = register;
-    }
-
-    @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        LIRKind lirKind = gen.getLIRGeneratorTool().getLIRKind(stamp);
-        gen.setResult(this, register.asValue(lirKind));
     }
 }

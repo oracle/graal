@@ -92,6 +92,12 @@ suite = {
             "optional": True,
           }
         },
+        "windows": {
+          "<others>" : {
+            "path": "tests/support.txt",
+            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+          },
+        },
         "<others>": {
           "<others>": {
             "optional": True,
@@ -407,6 +413,14 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
       "jacoco" : "exclude",
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "ldflags" : ["-shared"]
+          },
+        },
+        "<others>" : {"<others" : {}},
+      },
     },
 
     "com.oracle.truffle.llvm.nfi.test.native.isolation" : {
@@ -421,6 +435,14 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
       "jacoco" : "exclude",
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "ldflags" : ["-shared"]
+          },
+        },
+        "<others>" : {"<others" : {}},
+      },
     },
 
     "com.oracle.truffle.llvm.nativemode" : {
@@ -572,18 +594,26 @@ suite = {
     },
 
     "toolchain-launchers-tests": {
+      "class" : "CMakeNinjaProject",
       "subDir": "tests",
-      "native": True,
       "vpath": True,
       "platformDependent": True,
-      "max_jobs": "1",
-      "buildEnv" : {
+      "ninja_targets" : ["all"],
+      "ninja_install_targets" : ["test"],
+      "results" : ["main.out"],
+      "cmakeConfig" : {
         "SULONG_EXE" : "<mx_exe> lli",
-        "CLANG": "<toolchainGetToolPath:native,CC>",
-        "CLANGXX": "<toolchainGetToolPath:native,CXX>",
-        "TOOLCHAIN_LD": "<toolchainGetToolPath:native,LD>",
-        "OS": "<os>",
-        "JACOCO": "<jacoco>",
+        "CMAKE_C_COMPILER": "<toolchainGetToolPath:native,CC>",
+        "CMAKE_CXX_COMPILER": "<toolchainGetToolPath:native,CXX>",
+        "SULONG_C_COMPILER": "<toolchainGetToolPath:native,CC>",
+        "SULONG_CXX_COMPILER": "<toolchainGetToolPath:native,CXX>",
+        "SULONG_LINKER": "<toolchainGetToolPath:native,LD>",
+        "SULONG_LIB" : "<path:SULONG_HOME>/native/lib",
+        "SULONG_OBJDUMP" : "<path:LLVM_TOOLCHAIN>/bin/<exe:llvm-objdump>",
+        "SULONG_NATIVE_BUILD" : "True",
+      },
+      "buildEnv" : {
+        "CTEST_PARALLEL_LEVEL" : "16",
       },
       "buildDependencies" : [
         "SULONG_CORE",
@@ -1478,7 +1508,7 @@ suite = {
       "cmakeConfig" : {
         "CMAKE_BUILD_TYPE" : "Sulong",
         "CMAKE_C_COMPILER": "<toolchainGetToolPath:native,CC>",
-        "CMAKE_CXX_COMPILER": "<toolchainGetToolPath:native,CC>",
+        "CMAKE_CXX_COMPILER": "<toolchainGetToolPath:native,CXX>",
         "GRAALVM_LLVM_INCLUDE_DIR": "<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
         "GRAALVM_LLVM_LIB_DIR" : "<path:SULONG_NATIVE_HOME>/native/lib",
       },
@@ -1678,18 +1708,31 @@ suite = {
       "vpath" : True,
       "variants" : ["executable-O0"],
       "buildRef" : True,
-      "cmakeConfig" : {
-        "CMAKE_C_FLAGS" : "-Wno-everything",
-        "CMAKE_CXX_FLAGS" : "-Wno-everything",
-      },
       "os_arch" : {
         "darwin": {
           "aarch64" : {
             "cmakeConfig" : {
+              "CMAKE_C_FLAGS" : "-Wno-everything",
+              "CMAKE_CXX_FLAGS" : "-Wno-everything",
               "CMAKE_EXE_LINKER_FLAGS" : "-L/opt/homebrew/lib -lm -lgmp",
             },
           },
           "amd64": {
+            "cmakeConfig" : {
+              "CMAKE_C_FLAGS" : "-Wno-everything",
+              "CMAKE_CXX_FLAGS" : "-Wno-everything",
+            },
+            "buildEnv" : {
+              "CMAKE_EXE_LINKER_FLAGS" : "-lm -lgmp",
+            },
+          },
+        },
+		"windows": {
+          "<others>": {
+            "cmakeConfig" : {
+              "CMAKE_C_FLAGS" : "-Wno-everything -include stdio.h",
+              "CMAKE_CXX_FLAGS" : "-Wno-everything -include stdio.h",
+            },
             "buildEnv" : {
               "CMAKE_EXE_LINKER_FLAGS" : "-lm -lgmp",
             },
@@ -1697,6 +1740,10 @@ suite = {
         },
 		"<others>": {
           "<others>": {
+            "cmakeConfig" : {
+              "CMAKE_C_FLAGS" : "-Wno-everything",
+              "CMAKE_CXX_FLAGS" : "-Wno-everything",
+            },
             "buildEnv" : {
               "CMAKE_EXE_LINKER_FLAGS" : "-lm -lgmp",
             },
@@ -1722,7 +1769,7 @@ suite = {
       "variants" : ["executable-O1"],
       "buildRef" : True,
       "cmakeConfig" : {
-        "CMAKE_C_FLAGS" : "-Wno-everything",
+        "CMAKE_C_FLAGS" : "-Wno-everything -include stdio.h",
         "CMAKE_EXE_LINKER_FLAGS" : "-lm -lgmp",
       },
       "dependencies" : [
@@ -1744,8 +1791,21 @@ suite = {
       "vpath" : True,
       "variants" : ["bitcode-O0"],
       "buildRef" : True,
-      "cmakeConfig" : {
-        "CMAKE_C_FLAGS" : "-Wno-everything",
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "cmakeConfig" : {
+              "CMAKE_C_FLAGS" : "-Wno-everything -include stdio.h -include memory.h",
+            },
+          },
+        },
+        "<others>" : {
+          "<others>" : {
+            "cmakeConfig" : {
+              "CMAKE_C_FLAGS" : "-Wno-everything",
+            },
+          },
+        },
       },
       "dependencies" : [
         "SULONG_TEST",

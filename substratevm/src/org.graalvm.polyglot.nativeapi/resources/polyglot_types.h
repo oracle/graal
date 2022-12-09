@@ -29,10 +29,6 @@
 
 typedef enum {
   poly_ok,
-  poly_string_expected,
-  poly_number_expected,
-  poly_boolean_expected,
-  poly_array_expected,
   poly_generic_failure,
   poly_pending_exception,
 } poly_status;

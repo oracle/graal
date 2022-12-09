@@ -136,7 +136,7 @@ public final class Substitutions extends ContextAccessImpl {
         }
     }
 
-    private static final EconomicMap<MethodRef, EspressoRootNodeFactory> STATIC_SUBSTITUTIONS = EconomicMap.create();
+    private static final EconomicMap<MethodRef, JavaSubstitution.Factory> STATIC_SUBSTITUTIONS = EconomicMap.create();
 
     private final ConcurrentHashMap<MethodRef, EspressoRootNodeFactory> runtimeSubstitutions = new ConcurrentHashMap<>();
 
@@ -205,41 +205,17 @@ public final class Substitutions extends ContextAccessImpl {
         Symbol<Type> returnType = StaticSymbols.putType(substitutorFactory.returnType());
         Symbol<Signature> signature = StaticSymbols.putSignature(returnType, parameterTypes.toArray(Symbol.EMPTY_ARRAY));
 
-        EspressoRootNodeFactory factory = new EspressoRootNodeFactory() {
-            @Override
-            public EspressoRootNode createNodeIfValid(Method methodToSubstitute, boolean forceValid) {
-                if (!substitutorFactory.isValidFor(methodToSubstitute.getJavaVersion())) {
-                    return null;
-                }
-                StaticObject classLoader = methodToSubstitute.getDeclaringKlass().getDefiningClassLoader();
-                ClassLoadingEnv env = methodToSubstitute.getContext().getClassLoadingEnv();
-                if (forceValid || env.loaderIsBootOrPlatform(classLoader)) {
-                    return EspressoRootNode.createSubstitution(methodToSubstitute.getMethodVersion(), substitutorFactory);
-                }
-
-                getLogger().warning(new Supplier<String>() {
-                    @Override
-                    public String get() {
-                        StaticObject givenLoader = methodToSubstitute.getDeclaringKlass().getDefiningClassLoader();
-                        return "Static substitution for " + methodToSubstitute + " does not apply.\n" +
-                                        "\tExpected class loader: Boot (null) or platform class loader\n" +
-                                        "\tGiven class loader: " + EspressoInterop.toDisplayString(givenLoader, false) + "\n";
-                    }
-                });
-                return null;
-            }
-        };
         String[] classNames = substitutorFactory.substitutionClassNames();
         String[] methodNames = substitutorFactory.getMethodNames();
         for (int i = 0; i < classNames.length; i++) {
             assert classNames[i].startsWith("Target_");
             Symbol<Type> classType = StaticSymbols.putType("L" + classNames[i].substring("Target_".length()).replace('_', '/') + ";");
             Symbol<Name> methodName = StaticSymbols.putName(methodNames[i]);
-            registerStaticSubstitution(classType, methodName, signature, factory, true);
+            registerStaticSubstitution(classType, methodName, signature, substitutorFactory, true);
         }
     }
 
-    private static void registerStaticSubstitution(Symbol<Type> type, Symbol<Name> methodName, Symbol<Signature> signature, EspressoRootNodeFactory factory, boolean throwIfPresent) {
+    private static void registerStaticSubstitution(Symbol<Type> type, Symbol<Name> methodName, Symbol<Signature> signature, JavaSubstitution.Factory factory, boolean throwIfPresent) {
         MethodRef key = new MethodRef(type, methodName, signature);
         if (throwIfPresent && STATIC_SUBSTITUTIONS.containsKey(key)) {
             throw EspressoError.shouldNotReachHere("substitution already registered" + key);
@@ -265,20 +241,51 @@ public final class Substitutions extends ContextAccessImpl {
         runtimeSubstitutions.remove(key);
     }
 
+    public static JavaSubstitution.Factory lookupSubstitution(Method m) {
+        return STATIC_SUBSTITUTIONS.get(getMethodKey(m));
+    }
+
     /**
      * Returns a node with a substitution for the given method, or <code>null</code> if the
      * substitution does not exist or does not apply.
      */
     public EspressoRootNode get(Method method) {
+        // Look into the static substitutions.
         MethodRef key = getMethodKey(method);
-        EspressoRootNodeFactory factory = STATIC_SUBSTITUTIONS.get(key);
-        if (factory == null) {
-            factory = runtimeSubstitutions.get(key);
+        JavaSubstitution.Factory staticSubstitutionFactory = STATIC_SUBSTITUTIONS.get(key);
+        if (staticSubstitutionFactory != null && staticSubstitutionFactory.isValidFor(method.getJavaVersion())) {
+            EspressoRootNode root = createRootNodeFromSubstitution(method, staticSubstitutionFactory);
+            if (root != null) {
+                return root;
+            }
         }
-        if (factory == null) {
-            return null;
+
+        // Look into registered substitutions at runtime (through JNI RegisterNatives)
+        EspressoRootNodeFactory factory = runtimeSubstitutions.get(key);
+        if (factory != null) {
+            return factory.createNodeIfValid(method);
         }
-        return factory.createNodeIfValid(method);
+
+        // Failed to find a substitution.
+        return null;
+    }
+
+    private static EspressoRootNode createRootNodeFromSubstitution(Method method, JavaSubstitution.Factory staticSubstitutionFactory) {
+        StaticObject classLoader = method.getDeclaringKlass().getDefiningClassLoader();
+        ClassLoadingEnv env = method.getContext().getClassLoadingEnv();
+        if (env.loaderIsBootOrPlatform(classLoader)) {
+            return EspressoRootNode.createSubstitution(method.getMethodVersion(), staticSubstitutionFactory);
+        }
+        getLogger().warning(new Supplier<String>() {
+            @Override
+            public String get() {
+                StaticObject givenLoader = method.getDeclaringKlass().getDefiningClassLoader();
+                return "Static substitution for " + method + " does not apply.\n" +
+                                "\tExpected class loader: Boot (null) or platform class loader\n" +
+                                "\tGiven class loader: " + EspressoInterop.toDisplayString(givenLoader, false) + "\n";
+            }
+        });
+        return null;
     }
 
     public boolean hasSubstitutionFor(Method method) {

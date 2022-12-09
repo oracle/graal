@@ -210,9 +210,7 @@ public class GraalCompiler {
                 TTY.printf("[%s] delaying compilation of %s for %d ms%n", Thread.currentThread().getName(), matchedLabel, delay);
                 while (System.currentTimeMillis() - start < delay) {
                     try {
-                        // Spinning is better for RecurringCallback than one long sleep as it's
-                        // based on safepoints
-                        Thread.sleep(1);
+                        Thread.sleep(100);
                     } catch (InterruptedException e) {
                     }
                 }

@@ -1024,9 +1024,11 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
     }
 
+    @SuppressWarnings("unlikely-arg-type")
     private static ForeignCallDescriptor chooseCPUFeatureVariant(ForeignCallDescriptor descriptor, TargetDescription target, EnumSet<?> runtimeCheckedCPUFeatures) {
         EnumSet<?> buildtimeCPUFeatures = ImageSingletons.lookup(CPUFeatureAccess.class).buildtimeCPUFeatures();
-        if (buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) || !((AMD64) target.arch).getFeatures().containsAll(runtimeCheckedCPUFeatures)) {
+        EnumSet<?> amd64Features = ((AMD64) target.arch).getFeatures();
+        if (buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) || !amd64Features.containsAll(runtimeCheckedCPUFeatures)) {
             return descriptor;
         } else {
             GraalError.guarantee(DeoptimizationSupport.enabled(), "should be reached in JIT mode only");

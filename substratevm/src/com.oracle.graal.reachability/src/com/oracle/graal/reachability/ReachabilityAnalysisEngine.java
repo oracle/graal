@@ -32,7 +32,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 
-import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -57,8 +56,8 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * Core class of the Reachability Analysis. Contains the crucial part: resolving virtual methods.
  * The resolving is done in two directions. Whenever a new method is marked as virtually invoked,
- * see {@link #onMethodInvoked(ReachabilityAnalysisMethod)}, and whenever a new type is marked as
- * instantiated, see {@link #onTypeInstantiated(ReachabilityAnalysisType)}.
+ * see {@link #onMethodInvoked(ReachabilityAnalysisMethod, Object)}, and whenever a new type is
+ * marked as instantiated, see {@link #onTypeInstantiated(ReachabilityAnalysisType,Object)}.
  *
  * @see MethodSummary
  * @see MethodSummaryProvider
@@ -96,7 +95,6 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     @Override
     public AnalysisType addRootClass(Class<?> clazz, boolean addFields, boolean addArrayClass) {
         AnalysisType type = metaAccess.lookupJavaType(clazz);
-        type.registerAsReachable();
         return addRootClass(type, addFields, addArrayClass);
     }
 
@@ -108,21 +106,18 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     @SuppressWarnings("try")
     @Override
     public AnalysisType addRootClass(AnalysisType type, boolean addFields, boolean addArrayClass) {
-        try (Indent indent = debug.logAndIndent("add root class %s", type.getName())) {
-            for (AnalysisField field : type.getInstanceFields(false)) {
-                if (addFields) {
-                    field.registerAsAccessed();
-                }
+        type.registerAsReachable("root class");
+        for (AnalysisField field : type.getInstanceFields(false)) {
+            if (addFields) {
+                field.registerAsAccessed("field of root class");
             }
+        }
 
-            markTypeAsReachable(type);
-
-            if (type.getSuperclass() != null) {
-                addRootClass(type.getSuperclass(), addFields, addArrayClass);
-            }
-            if (addArrayClass) {
-                addRootClass(type.getArrayClass(), false, false);
-            }
+        if (type.getSuperclass() != null) {
+            addRootClass(type.getSuperclass(), addFields, addArrayClass);
+        }
+        if (addArrayClass) {
+            addRootClass(type.getArrayClass(), false, false);
         }
         return type;
     }
@@ -133,9 +128,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
         AnalysisType type = addRootClass(clazz, false, false);
         for (AnalysisField field : type.getInstanceFields(true)) {
             if (field.getName().equals(fieldName)) {
-                try (Indent indent = debug.logAndIndent("add root field %s in class %s", fieldName, clazz.getName())) {
-                    field.registerAsAccessed();
-                }
+                field.registerAsAccessed("root field");
                 return field.getType();
             }
         }
@@ -149,28 +142,28 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
             if (!method.registerAsDirectRootMethod()) {
                 return method;
             }
-            markMethodImplementationInvoked(method);
+            markMethodImplementationInvoked(method, "root method");
         } else if (invokeSpecial) {
             AnalysisError.guarantee(!method.isAbstract(), "Abstract methods cannot be registered as special invoke entry point.");
             if (!method.registerAsDirectRootMethod()) {
                 return method;
             }
-            markMethodImplementationInvoked(method);
+            markMethodImplementationInvoked(method, "root method");
         } else {
             if (!method.registerAsVirtualRootMethod()) {
                 return method;
             }
-            markMethodInvoked(method);
+            markMethodInvoked(method, "root method");
         }
         return method;
     }
 
-    public void markMethodImplementationInvoked(ReachabilityAnalysisMethod method) {
+    public void markMethodImplementationInvoked(ReachabilityAnalysisMethod method, Object reason) {
         // Unlinked methods cannot be parsed
         if (!method.getWrapped().getDeclaringClass().isLinked()) {
             return;
         }
-        if (!method.registerAsImplementationInvoked()) {
+        if (!method.registerAsImplementationInvoked(reason)) {
             return;
         }
         schedule(() -> onMethodImplementationInvoked(method));
@@ -192,7 +185,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
             return false;
         }
         if (type.registerAsInstantiated()) {
-            schedule(() -> onTypeInstantiated(type));
+            schedule(() -> onTypeInstantiated(type, reason));
         }
         return true;
     }
@@ -204,7 +197,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
             return false;
         }
         if (type.registerAsInstantiated()) {
-            schedule(() -> onTypeInstantiated(type));
+            schedule(() -> onTypeInstantiated(type, reason));
         }
         return true;
     }
@@ -229,11 +222,11 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
      * We collect all instantiated subtypes of each type and then use this set to resolve the
      * virtual call.
      */
-    private void onMethodInvoked(ReachabilityAnalysisMethod method) {
+    private void onMethodInvoked(ReachabilityAnalysisMethod method, Object reason) {
         ReachabilityAnalysisType clazz = method.getDeclaringClass();
 
         if (method.isStatic()) {
-            markMethodImplementationInvoked(method);
+            markMethodImplementationInvoked(method, reason);
             return;
         }
 
@@ -243,7 +236,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
             if (resolvedMethod == null) {
                 continue;
             }
-            markMethodImplementationInvoked(resolvedMethod);
+            markMethodImplementationInvoked(resolvedMethod, reason);
         }
     }
 
@@ -257,23 +250,23 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
      * NUMBER_OF_INVOKED_METHODS_ON_TYPE). and is one of the places that we should try to optimize
      * in near future.
      */
-    private void onTypeInstantiated(ReachabilityAnalysisType type) {
+    private void onTypeInstantiated(ReachabilityAnalysisType type, Object reason) {
         type.forAllSuperTypes(current -> {
             Set<ReachabilityAnalysisMethod> invokedMethods = ((ReachabilityAnalysisType) current).getInvokedVirtualMethods();
             for (ReachabilityAnalysisMethod curr : invokedMethods) {
                 ReachabilityAnalysisMethod method = type.resolveConcreteMethod(curr, current);
                 if (method != null) {
-                    markMethodImplementationInvoked(method);
+                    markMethodImplementationInvoked(method, reason);
                 }
             }
         });
     }
 
-    public void markMethodInvoked(ReachabilityAnalysisMethod method) {
-        if (!method.registerAsInvoked()) {
+    public void markMethodInvoked(ReachabilityAnalysisMethod method, Object reason) {
+        if (!method.registerAsInvoked(reason)) {
             return;
         }
-        schedule(() -> onMethodInvoked(method));
+        schedule(() -> onMethodInvoked(method, reason));
     }
 
     @Override

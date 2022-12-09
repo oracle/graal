@@ -165,6 +165,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     private final boolean isSimplifiable;
     private final boolean isLeafNode;
     private final boolean isNodeWithIdentity;
+    private final boolean isMemoryKill;
 
     private final int leafId;
 
@@ -183,6 +184,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         this.isCommutative = BinaryCommutativeMarker.class.isAssignableFrom(clazz);
         this.isSimplifiable = SimplifiableMarker.class.isAssignableFrom(clazz);
         this.isNodeWithIdentity = NodeWithIdentity.class.isAssignableFrom(clazz);
+        this.isMemoryKill = MemoryKillMarker.class.isAssignableFrom(clazz);
 
         NodeFieldsScanner fs = new NodeFieldsScanner(calcOffset, superNodeClass, debug);
         try (DebugCloseable t = Init_FieldScanning.start(debug)) {
@@ -972,6 +974,13 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     public int getLeafId() {
         return this.leafId;
+    }
+
+    /**
+     * @return {@code true} if the node implements {@link MemoryKillMarker}
+     */
+    public boolean isMemoryKill() {
+        return isMemoryKill;
     }
 
     public NodeClass<? super T> getSuperNodeClass() {

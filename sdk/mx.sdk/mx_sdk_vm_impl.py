@@ -89,28 +89,6 @@ def unicode_utf8(string):
         return str(string)
     return string
 
-
-def _with_metaclass(meta, *bases):
-    """Create a base class with a metaclass."""
-
-    # Copyright (c) 2010-2018 Benjamin Peterson
-    # Taken from six, Python compatibility library
-    # MIT license
-
-    # This requires a bit of explanation: the basic idea is to make a dummy
-    # metaclass for one level of class instantiation that replaces itself with
-    # the actual metaclass.
-    class MetaClass(type):
-
-        def __new__(mcs, name, this_bases, d):
-            return meta(name, bases, d)
-
-        @classmethod
-        def __prepare__(mcs, name, this_bases):
-            return meta.__prepare__(name, bases)
-    return type.__new__(MetaClass, '_with_metaclass({}, {})'.format(meta, bases), (), {}) #pylint: disable=unused-variable
-
-
 _suite = mx.suite('sdk')
 """:type: mx.SourceSuite | mx.Suite"""
 
@@ -347,7 +325,7 @@ def _jlink_libraries():
 def get_graalvm_edition():
     return 'ee' if mx_sdk_vm.graalvm_component_by_name('cmpee', fatalIfMissing=False) else 'ce'
 
-class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistribution)):
+class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
     def __init__(self, suite, name, deps, components, is_graalvm, exclLibs, platformDependent, theLicense, testDistribution,
                  add_jdk_base=False,
                  base_dir=None,
@@ -1653,7 +1631,7 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
         return self.subject.output_directory() + '.config'
 
 
-class GraalVmNativeImage(_with_metaclass(ABCMeta, GraalVmProject)):
+class GraalVmNativeImage(GraalVmProject, metaclass=ABCMeta):
     def __init__(self, component, name, deps, native_image_config, **kw_args): # pylint: disable=super-init-not-called
         """
         :type component: mx_sdk.GraalVmComponent | None
@@ -1713,7 +1691,7 @@ class GraalVmNativeImage(_with_metaclass(ABCMeta, GraalVmProject)):
         return True
 
 
-class GraalVmLauncher(_with_metaclass(ABCMeta, GraalVmNativeImage)):
+class GraalVmLauncher(GraalVmNativeImage, metaclass=ABCMeta):
     def __init__(self, component, name, deps, native_image_config, stage1=False, **kw_args): # pylint: disable=super-init-not-called
         """
         :type native_image_config: mx_sdk.LauncherConfig
@@ -1828,7 +1806,7 @@ class GraalVmLanguageLauncher(GraalVmLauncher):  # pylint: disable=too-many-ance
         yield out, basename(out)
 
 
-class PolyglotConfig(_with_metaclass(ABCMeta, GraalVmProject)):
+class PolyglotConfig(GraalVmProject, metaclass=ABCMeta):
     def __init__(self, component, native_image_config, **kw_args):
         super(PolyglotConfig, self).__init__(component, PolyglotConfig.project_name(native_image_config), [], **kw_args)
         self.native_image_config = native_image_config
@@ -1851,7 +1829,7 @@ class PolyglotConfig(_with_metaclass(ABCMeta, GraalVmProject)):
         return "org.graalvm.launcher." + language_library_config.language + ".config"
 
 
-class PolyglotConfigBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask)):
+class PolyglotConfigBuildTask(mx.ProjectBuildTask, metaclass=ABCMeta):
     def __init__(self, project, args):
         super(PolyglotConfigBuildTask, self).__init__(args, 1, project)
         self._polyglot_config_contents = None
@@ -1887,7 +1865,7 @@ class PolyglotConfigBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask)):
     def __str__(self):
         return 'Building {}'.format(self.subject.name)
 
-class NativeImageResourcesFileList(_with_metaclass(ABCMeta, GraalVmProject)):
+class NativeImageResourcesFileList(GraalVmProject, metaclass=ABCMeta):
     def __init__(self, component, components, language_dir, deps, **kw_args):
         super(NativeImageResourcesFileList, self).__init__(component, NativeImageResourcesFileList.project_name(language_dir), deps, **kw_args)
         self.language_dir = language_dir
@@ -1911,7 +1889,7 @@ class NativeImageResourcesFileList(_with_metaclass(ABCMeta, GraalVmProject)):
         return "org.graalvm.langugage." + language_dir + ".ni_resources_filelist"
 
 
-class NativeImageResourcesFileListBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask)):
+class NativeImageResourcesFileListBuildTask(mx.ProjectBuildTask, metaclass=ABCMeta):
     def __init__(self, project, args):
         super(NativeImageResourcesFileListBuildTask, self).__init__(args, 1, project)
         self._native_image_resources_filelist_contents = None
@@ -1956,7 +1934,7 @@ class NativeImageResourcesFileListBuildTask(_with_metaclass(ABCMeta, mx.ProjectB
     def __str__(self):
         return 'Building {}'.format(self.subject.name)
 
-class GraalVmNativeImageBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask)):
+class GraalVmNativeImageBuildTask(mx.ProjectBuildTask, metaclass=ABCMeta):
     def __init__(self, args, parallelism, project):
         super(GraalVmNativeImageBuildTask, self).__init__(args, parallelism, project)
         self._polyglot_config_contents = None
@@ -2285,7 +2263,7 @@ class JmodModifier(mx.Project):
         return JmodModifierBuildTask(self, args)
 
 
-class JmodModifierBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask)):
+class JmodModifierBuildTask(mx.ProjectBuildTask, metaclass=ABCMeta):
     def __init__(self, subject, args):
         """
         Add native libraries defined by the native projects to a jmod file copied from a jimage

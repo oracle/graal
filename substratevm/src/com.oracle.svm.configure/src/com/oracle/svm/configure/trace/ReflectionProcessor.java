@@ -58,7 +58,7 @@ class ReflectionProcessor extends AbstractProcessor {
     public void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
         ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
-        if (invalidResult && !reportReflectiveFailure(entry)) {
+        if (invalidResult) {
             return;
         }
 
@@ -310,16 +310,5 @@ class ReflectionProcessor extends AbstractProcessor {
         interfaces.addAll(checkedInterfaces);
         interfaces.addAll(uncheckedInterfaces);
         proxyConfiguration.add(ConfigurationCondition.alwaysTrue(), interfaces);
-    }
-
-    private static boolean reportReflectiveFailure(EconomicMap<String, ?> entry) {
-        String function = (String) entry.get("function");
-        switch (function) {
-            case "forName":
-                List<?> args = (List<?>) entry.get("args");
-                String name = singleElement(args);
-                return name != null;
-        }
-        return false;
     }
 }

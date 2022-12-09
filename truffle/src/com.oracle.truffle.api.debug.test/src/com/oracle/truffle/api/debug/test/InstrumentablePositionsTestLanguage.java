@@ -54,6 +54,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -64,6 +65,7 @@ import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -73,6 +75,7 @@ import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import java.net.URI;
 
 /**
  * A language for testing instruments on various positions of instrumentable nodes.
@@ -82,7 +85,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * nodes and the root. The keywords have following meaning:
  * <ul>
  * <li><b>F</b> - a function, {@link RootNode}</li>
- * <li><b>B</b> - a function body, instrumentable node that is tagged with {@link RootTag}</li>
+ * <li><b>R</b> - a function body, instrumentable node that is tagged with {@link RootTag}</li>
+ * <li><b>B</b> - a function body, instrumentable node that is tagged with {@link RootBodyTag}</li>
  * <li><b>C</b> - a call node, instrumentable node that is tagged with {@link CallTag}</li>
  * <li><b>E</b> - an expression, instrumentable node that is tagged with {@link ExpressionTag}</li>
  * <li><b>S</b> - a statement, instrumentable node that is tagged with {@link StatementTag}</li>
@@ -91,7 +95,12 @@ import com.oracle.truffle.api.source.SourceSection;
  * When the opening brace is not followed by any keyword, it represents a {@link Node} which is not
  * {@link InstrumentableNode}. Multiple keywords can be used. Braces represent a single node (which
  * have multiple tags when multiple keywords are specified), brackets represent a list of nodes, one
- * for each keyword. An example of a possible source code: <code>
+ * for each keyword. The whole source is wrapped into an implicit function. '<code>&lt;</code>'
+ * character can be used to mark the start position of the source section of the implicit function.
+ * An example of a possible source code:
+ * 
+ * <pre>
+ * {@code
  * {F
  *   {B
  *     {S}
@@ -101,16 +110,20 @@ import com.oracle.truffle.api.source.SourceSection;
  *     { }
  *   }
  * }
- * </code>
+ * }
+ * </pre>
  */
 @TruffleLanguage.Registration(id = InstrumentablePositionsTestLanguage.ID, name = "", version = "1.0")
-@ProvidedTags({StandardTags.CallTag.class, StandardTags.ExpressionTag.class, StandardTags.RootTag.class, StandardTags.StatementTag.class})
+@ProvidedTags({StandardTags.CallTag.class, StandardTags.ExpressionTag.class, StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
 public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context> {
 
     public static final String ID = "instrumentable-positions-test-language";
 
     @Option(help = "Preform pre-materialization of AST nodes. (default:0, 1 - materialize in head recursion order, 2 - materialize in tail recursion order)", category = OptionCategory.EXPERT) //
     static final OptionKey<Integer> PreMaterialize = new OptionKey<>(0);
+
+    @Option(help = "Set relative soure paths with respect to this source root.", category = OptionCategory.EXPERT) //
+    static final OptionKey<String> SourceRoot = new OptionKey<>("");
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
@@ -131,8 +144,7 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
     }
 
     public TestNode parse(Source code) {
-        int preMaterialization = Context.get(null).getPreMaterialization();
-        return new Parser(this, code, preMaterialization).parse();
+        return new Parser(this, code).parse();
     }
 
     private static final class Parser {
@@ -143,21 +155,52 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
         private final Source source;
         private final String code;
         private final int preMaterialization;
+        private final String sourceRoot;
         private int current;
+        private int currentLine = 1;
+        private int currentColumn = 1;
 
-        Parser(InstrumentablePositionsTestLanguage lang, Source source, int preMaterialization) {
+        Parser(InstrumentablePositionsTestLanguage lang, Source source) {
             this.lang = lang;
-            this.source = source;
-            this.preMaterialization = preMaterialization;
+            Context context = Context.get(null);
+            this.preMaterialization = context.getPreMaterialization();
+            this.sourceRoot = context.getSourceRoot();
             this.code = source.getCharacters().toString();
+            if (!sourceRoot.isEmpty()) {
+                URI rootURI = URI.create(sourceRoot);
+                URI relativeURI = source.getURI().relativize(rootURI);
+                TruffleFile file;
+                if (relativeURI.getScheme() == null) {
+                    file = context.getEnv().getPublicTruffleFile(relativeURI.getPath());
+                } else {
+                    file = context.getEnv().getPublicTruffleFile(relativeURI);
+                }
+                this.source = Source.newBuilder(InstrumentablePositionsTestLanguage.ID, file).content(Source.CONTENT_NONE).mimeType(source.getMimeType()).build();
+            } else {
+                this.source = source;
+            }
         }
 
         public TestNode parse() {
+            int startLine;
+            int startColumn;
+            int endLine;
+            int endColumn;
             int rootFrom = code.indexOf('<');
             if (rootFrom < 0) {
-                rootFrom = 0;
+                startLine = 1;
+                startColumn = 1;
+            } else {
+                startLine = 1 + numOf('\n', code.substring(0, rootFrom));
+                startColumn = rootFrom - ((startLine > 1) ? code.lastIndexOf('\n', rootFrom) : 0);
             }
-            NodeDescriptor sourceDescriptor = new NodeDescriptor(lang, "F", source, rootFrom, source.getLength() - 1);
+            endLine = 1 + numOf('\n', code);
+            endColumn = code.length() - ((endLine > 1) ? code.lastIndexOf('\n') : 0);
+            if (code.endsWith("\n")) {
+                endLine--;
+                endColumn = code.length() - 1 - ((endLine > 1) ? code.lastIndexOf('\n', code.length() - 2) : 0);
+            }
+            NodeDescriptor sourceDescriptor = new NodeDescriptor(lang, "F", source, startLine, startColumn, endLine, endColumn);
             NodeDescriptor nd;
             while ((nd = nextNode()) != null) {
                 sourceDescriptor.addChild(nd);
@@ -168,9 +211,20 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
             return sourceDescriptor.getNode();
         }
 
+        private static int numOf(char c, String str) {
+            int n = 0;
+            for (int i = 0; i < str.length(); i++) {
+                if (str.charAt(i) == c) {
+                    n++;
+                }
+            }
+            return n;
+        }
+
         NodeDescriptor nextNode() {
             skipWhiteSpace();
-            int startIndex = current;
+            int startLine = currentLine;
+            int startColumn = currentColumn;
 
             if (current() == EOF) {
                 return null;
@@ -193,12 +247,12 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
                     tags.append(current());
                     next();
                 }
-                ndFirst = ndLast = new NodeDescriptor(lang, tags.toString(), source, startIndex, -1);
+                ndFirst = ndLast = new NodeDescriptor(lang, tags.toString(), source, startLine, startColumn, -1, -1);
                 descriptors = Collections.singletonList(ndFirst);
             } else {
                 descriptors = new ArrayList<>();
                 while (Character.isAlphabetic(current())) {
-                    NodeDescriptor d = new NodeDescriptor(lang, Character.toString(current()), source, startIndex, -1);
+                    NodeDescriptor d = new NodeDescriptor(lang, Character.toString(current()), source, startLine, startColumn, -1, -1);
                     descriptors.add(d);
                     if (ndFirst == null) {
                         ndFirst = d;
@@ -222,7 +276,7 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
                 throw new IllegalStateException("Expecting '}' at position " + current + " character: " + current());
             }
             for (NodeDescriptor d : descriptors) {
-                d.setEndPos(current);
+                d.setEndPos(currentLine, currentColumn);
             }
             next();
             return ndFirst;
@@ -235,7 +289,12 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
         }
 
         private void next() {
+            if (code.charAt(current) == '\n') {
+                currentLine++;
+                currentColumn = 0;
+            }
             current++;
+            currentColumn++;
         }
 
         private char current() {
@@ -265,21 +324,26 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
         private InstrumentablePositionsTestLanguage lang;
         private final char[] tags;
         private final Source source;
-        private final int startPos;
-        private int endPos;
+        private final int startLine;
+        private final int startColumn;
+        private int endLine;
+        private int endColumn;
         private List<NodeDescriptor> children;
         private volatile TestNode node;
 
-        NodeDescriptor(InstrumentablePositionsTestLanguage lang, String tags, Source source, int startPos, int endPos) {
+        NodeDescriptor(InstrumentablePositionsTestLanguage lang, String tags, Source source, int startLine, int startColumn, int endLine, int endColumn) {
             this.lang = lang;
             this.tags = tags.toCharArray();
             this.source = source;
-            this.startPos = startPos;
-            this.endPos = endPos;
+            this.startLine = startLine;
+            this.startColumn = startColumn;
+            this.endLine = endLine;
+            this.endColumn = endColumn;
         }
 
-        private void setEndPos(int pos) {
-            this.endPos = pos;
+        private void setEndPos(int line, int column) {
+            this.endLine = line;
+            this.endColumn = column;
         }
 
         void addChild(NodeDescriptor child) {
@@ -320,16 +384,16 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
         }
 
         SourceSection getSourceSection() {
-            return source.createSection(startPos, endPos - startPos + 1);
+            return source.createSection(startLine, startColumn, endLine, endColumn);
         }
 
         @Override
         public String toString() {
-            return "NodeDescriptor(" + new String(tags) + " <" + startPos + " - " + endPos + ">)";
+            return "NodeDescriptor(" + new String(tags) + " <" + startLine + ":" + startColumn + " - " + endLine + ":" + endColumn + ">)";
         }
 
         private NodeDescriptor cloneShallow() {
-            return new NodeDescriptor(lang, new String(tags), source, startPos, endPos);
+            return new NodeDescriptor(lang, new String(tags), source, startLine, startColumn, endLine, endColumn);
         }
 
     }
@@ -428,6 +492,8 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
             } else if (tag == ExpressionTag.class) {
                 return nodeDescriptor.hasTag('E');
             } else if (tag == RootTag.class) {
+                return nodeDescriptor.hasTag('R');
+            } else if (tag == RootBodyTag.class) {
                 return nodeDescriptor.hasTag('B');
             } else if (tag == StatementTag.class) {
                 return nodeDescriptor.hasTag('S');
@@ -502,16 +568,28 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
 
 final class Context {
 
+    final TruffleLanguage.Env env;
     final Object nul;
     final int preMaterialization;
+    final String sourceRoot;
 
     Context(TruffleLanguage.Env env) {
+        this.env = env;
         nul = env.asGuestValue(null);
         preMaterialization = env.getOptions().get(InstrumentablePositionsTestLanguage.PreMaterialize);
+        sourceRoot = env.getOptions().get(InstrumentablePositionsTestLanguage.SourceRoot);
     }
 
     int getPreMaterialization() {
         return preMaterialization;
+    }
+
+    String getSourceRoot() {
+        return sourceRoot;
+    }
+
+    TruffleLanguage.Env getEnv() {
+        return env;
     }
 
     private static final ContextReference<Context> REFERENCE = ContextReference.create(InstrumentablePositionsTestLanguage.class);

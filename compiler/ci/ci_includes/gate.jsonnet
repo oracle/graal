@@ -1,7 +1,7 @@
 {
-  local common = import '../../../common.jsonnet',
-  local utils = import '../../../common-utils.libsonnet',
-  local config = import '../../../repo-configuration.libsonnet',
+  local common = import '../../../ci/ci_common/common.jsonnet',
+  local utils = import '../../../ci/ci_common/common-utils.libsonnet',
+  local config = import '../../../ci/repo-configuration.libsonnet',
 
   local gate_math_stubs_listener = {
     name: 'daily-hotspot-mathstubs-listener-' + utils.prefixed_jdk(self.jdk_version),

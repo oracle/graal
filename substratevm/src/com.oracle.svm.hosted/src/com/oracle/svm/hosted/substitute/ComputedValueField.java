@@ -233,7 +233,7 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
         switch (kind) {
             case FieldOffset:
                 AnalysisField target = aMetaAccess.lookupJavaField(targetField);
-                target.registerAsAccessed();
+                target.registerAsAccessed(this);
                 break;
         }
     }

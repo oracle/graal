@@ -22,13 +22,13 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import java.util.WeakHashMap;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-
-import java.util.WeakHashMap;
 
 public class RedefineAddedField extends Field {
 
@@ -135,7 +135,7 @@ public class RedefineAddedField extends Field {
     }
 
     @Override
-    protected StaticObject getObject(StaticObject obj, boolean forceVolatile) {
+    public StaticObject getObject(StaticObject obj, boolean forceVolatile) {
         if (hasCompatibleField()) {
             return getCompatibleField().getObject(obj, forceVolatile);
         } else {

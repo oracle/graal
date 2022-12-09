@@ -77,23 +77,23 @@ public class MethodSummaryBasedHandler implements ReachabilityMethodProcessingHa
      */
     private static void processSummary(ReachabilityAnalysisEngine bb, ReachabilityAnalysisMethod method, MethodSummary summary) {
         for (AnalysisMethod invokedMethod : summary.invokedMethods) {
-            bb.markMethodInvoked((ReachabilityAnalysisMethod) invokedMethod);
+            bb.markMethodInvoked((ReachabilityAnalysisMethod) invokedMethod, method);
         }
         for (AnalysisMethod invokedMethod : summary.implementationInvokedMethods) {
-            bb.markMethodImplementationInvoked((ReachabilityAnalysisMethod) invokedMethod);
+            bb.markMethodImplementationInvoked((ReachabilityAnalysisMethod) invokedMethod, method);
         }
         for (AnalysisType type : summary.accessedTypes) {
-            bb.markTypeAsReachable(type);
+            bb.registerTypeAsReachable(type, method);
         }
         for (AnalysisType type : summary.instantiatedTypes) {
             bb.registerTypeAsAllocated(type, method);
         }
         for (AnalysisField field : summary.readFields) {
             bb.markFieldRead(field, method);
-            bb.markTypeAsReachable(field.getType());
+            bb.registerTypeAsReachable(field.getType(), method);
         }
         for (AnalysisField field : summary.writtenFields) {
-            bb.markFieldWritten(field);
+            bb.markFieldWritten(field, method);
         }
         for (JavaConstant constant : summary.embeddedConstants) {
             bb.handleEmbeddedConstant(method, constant, method);

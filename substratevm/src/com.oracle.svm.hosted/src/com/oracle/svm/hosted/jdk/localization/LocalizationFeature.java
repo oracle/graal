@@ -72,6 +72,7 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
@@ -80,8 +81,6 @@ import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
 import com.oracle.svm.core.jdk.localization.substitutions.Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.OptionUtils;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -161,7 +160,7 @@ public class LocalizationFeature implements InternalFeature {
 
     public static class Options {
         @Option(help = "Comma separated list of bundles to be included into the image.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeResourceBundles = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeResourceBundles = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
         @Option(help = "Make all hosted charsets available at run time")//
         public static final HostedOptionKey<Boolean> AddAllCharsets = new HostedOptionKey<>(false);
@@ -174,7 +173,7 @@ public class LocalizationFeature implements InternalFeature {
         public static final HostedOptionKey<String> DefaultCharset = new HostedOptionKey<>(Charset.defaultCharset().name());
 
         @Option(help = "Comma separated list of locales to be included into the image. The default locale is included in the list automatically if not present.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeLocales = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeLocales = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
         @Option(help = "Make all hosted locales available at run time.", type = OptionType.User)//
         public static final HostedOptionKey<Boolean> IncludeAllLocales = new HostedOptionKey<>(false);
@@ -382,7 +381,7 @@ public class LocalizationFeature implements InternalFeature {
             /*- Fallthrough to also allow adding custom locales */
         }
         List<String> invalid = new ArrayList<>();
-        for (String tag : OptionUtils.flatten(",", Options.IncludeLocales.getValue().values())) {
+        for (String tag : Options.IncludeLocales.getValue().values()) {
             Locale locale = LocalizationSupport.parseLocaleFromTag(tag);
             if (locale != null) {
                 locales.add(locale);
@@ -498,7 +497,7 @@ public class LocalizationFeature implements InternalFeature {
             prepareBundle(bundleName);
         }
 
-        for (String bundleName : OptionUtils.flatten(",", Options.IncludeResourceBundles.getValue())) {
+        for (String bundleName : Options.IncludeResourceBundles.getValue().values()) {
             processRequestedBundle(bundleName);
         }
     }

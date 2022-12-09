@@ -346,7 +346,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     }
 
     /** Creates a synthetic position for the node in the given method. */
-    public static BytecodePosition syntheticSourcePosition(ValueNode node, ResolvedJavaMethod method) {
+    public static BytecodePosition syntheticSourcePosition(Node node, ResolvedJavaMethod method) {
         int bci = BytecodeFrame.UNKNOWN_BCI;
         if (node instanceof DeoptBciSupplier) {
             bci = ((DeoptBciSupplier) node).bci();

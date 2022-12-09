@@ -46,7 +46,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.deopt.DeoptTest;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -100,6 +102,7 @@ public interface PodSupport {
 }
 
 @AutomaticallyRegisteredFeature
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 final class PodFeature implements PodSupport, InternalFeature {
     private static final AtomicInteger GENERATED_COUNTER = new AtomicInteger();
 

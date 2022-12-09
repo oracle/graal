@@ -32,6 +32,7 @@ import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.lir.amd64.AMD64ArrayEqualsOp;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsWithMaskNode;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 
@@ -48,8 +49,8 @@ public final class AMD64IntrinsicStubs {
             return shouldInline((ArrayEqualsNode) valueNode, gen);
         } else if (valueNode instanceof ArrayRegionEqualsNode) {
             return shouldInline((ArrayRegionEqualsNode) valueNode, gen);
-        } else if (valueNode instanceof AMD64ArrayRegionEqualsWithMaskNode) {
-            return shouldInline((AMD64ArrayRegionEqualsWithMaskNode) valueNode, gen);
+        } else if (valueNode instanceof ArrayRegionEqualsWithMaskNode) {
+            return shouldInline((ArrayRegionEqualsWithMaskNode) valueNode, gen);
         }
         return false;
     }
@@ -81,7 +82,7 @@ public final class AMD64IntrinsicStubs {
     }
 
     @SuppressWarnings("unchecked")
-    private static boolean shouldInline(AMD64ArrayRegionEqualsWithMaskNode node, LIRGenerator gen) {
+    private static boolean shouldInline(ArrayRegionEqualsWithMaskNode node, LIRGenerator gen) {
         ValueNode length = node.getLength();
         if (node.getDirectStubCallIndex() >= 0 && length.isJavaConstant() && AMD64ArrayEqualsOp.canGenerateConstantLengthCompare(
                         gen.target(),

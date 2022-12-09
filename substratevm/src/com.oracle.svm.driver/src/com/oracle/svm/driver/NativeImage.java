@@ -110,6 +110,8 @@ public class NativeImage {
 
     static final String graalvmVersion = System.getProperty("org.graalvm.version", "dev");
     static final String graalvmConfig = System.getProperty("org.graalvm.config", "CE");
+    static final String graalvmVendor = System.getProperty("org.graalvm.vendor", "Oracle Corporation");
+    static final String graalvmVendorUrl = System.getProperty("org.graalvm.vendorurl", "https://www.graalvm.org/");
 
     private static Map<String, String[]> getCompilerFlags() {
         Map<String, String[]> result = new HashMap<>();
@@ -785,6 +787,8 @@ public class NativeImage {
         /* Prevent JVM that runs the image builder to steal focus */
         addImageBuilderJavaArgs("-Djava.awt.headless=true");
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
+        addImageBuilderJavaArgs("-Dorg.graalvm.vendor=" + graalvmVendor);
+        addImageBuilderJavaArgs("-Dorg.graalvm.vendorurl=" + graalvmVendorUrl);
         if (!NativeImage.IS_AOT) {
             addImageBuilderJavaArgs("-Dorg.graalvm.config=" + graalvmConfig);
         }

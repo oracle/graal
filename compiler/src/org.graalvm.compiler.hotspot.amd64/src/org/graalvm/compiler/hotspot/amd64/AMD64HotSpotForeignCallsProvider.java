@@ -51,15 +51,7 @@ import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.stubs.IntrinsicStubsGen;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.amd64.AMD64ArrayEqualsWithMaskForeignCalls;
-import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesForeignCalls;
-import org.graalvm.compiler.replacements.nodes.ArrayCompareToForeignCalls;
-import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsForeignCalls;
-import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
-import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
-import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
-import org.graalvm.compiler.replacements.nodes.VectorizedMismatchForeignCalls;
 import org.graalvm.compiler.word.WordTypes;
 
 import jdk.vm.ci.code.CallingConvention;
@@ -95,15 +87,7 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         register(new HotSpotForeignCallLinkageImpl(EXCEPTION_HANDLER, 0L, DESTROYS_ALL_CALLER_SAVE_REGISTERS, exceptionCc, null));
         register(new HotSpotForeignCallLinkageImpl(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, DESTROYS_ALL_CALLER_SAVE_REGISTERS, exceptionCc, null));
 
-        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayIndexOfForeignCalls.STUBS_AMD64);
-        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayEqualsForeignCalls.STUBS);
-        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayCompareToForeignCalls.STUBS);
-        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayRegionCompareToForeignCalls.STUBS);
-        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, VectorizedMismatchForeignCalls.STUB);
-        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayCopyWithConversionsForeignCalls.STUBS);
-        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, HasNegativesNode.STUB);
-        linkSnippetStubs(providers, options, AMD64HotspotIntrinsicStubsGen::new, AMD64ArrayEqualsWithMaskForeignCalls.STUBS);
-        linkSnippetStubs(providers, options, AMD64HotspotIntrinsicStubsGen::new, AMD64CalcStringAttributesForeignCalls.STUBS);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayEqualsForeignCalls.STUBS_AMD64);
 
         super.initialize(providers, options);
     }

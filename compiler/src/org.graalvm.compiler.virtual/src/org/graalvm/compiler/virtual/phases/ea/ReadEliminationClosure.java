@@ -95,7 +95,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
     @Override
     protected boolean processNode(Node node, ReadEliminationBlockState state, GraphEffectList effects, FixedWithNextNode lastFixedNode) {
         boolean deleted = false;
-        if (MemoryKill.isMemoryKill(node)) {
+        if (node.getNodeClass().isMemoryKill() && MemoryKill.isMemoryKill(node)) {
             if (MemoryKill.isSingleMemoryKill(node)) {
                 LocationIdentity identity = ((SingleMemoryKill) node).getKilledLocationIdentity();
                 if (identity.isSingle() && (node instanceof WriteNode || node instanceof StoreFieldNode || node instanceof RawStoreNode)) {

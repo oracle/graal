@@ -243,7 +243,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         ByteOrLargerAssertion(CPU, CPU, BYTE, WORD, DWORD, QWORD),
         WordOrLargerAssertion(CPU, CPU, WORD, DWORD, QWORD),
         DwordOrLargerAssertion(CPU, CPU, DWORD, QWORD),
-        WordOrDwordAssertion(CPU, CPU, WORD, QWORD),
+        WordOrQwordAssertion(CPU, CPU, WORD, QWORD),
         QwordAssertion(CPU, CPU, QWORD),
         FloatAssertion(XMM, XMM, SS, SD, PS, PD),
         ScalarFloatAssertion(XMM, XMM, SS, SD),
@@ -536,16 +536,20 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      */
     public static final class AMD64MOp extends AMD64Op {
         // @formatter:off
+        public static final AMD64MOp NOTB = new AMD64MOp("NOT",  0xF6, 2, OpAssertion.ByteAssertion);
+        public static final AMD64MOp NEGB = new AMD64MOp("NEG",  0xF6, 3, OpAssertion.ByteAssertion);
         public static final AMD64MOp NOT  = new AMD64MOp("NOT",  0xF7, 2);
         public static final AMD64MOp NEG  = new AMD64MOp("NEG",  0xF7, 3);
         public static final AMD64MOp MUL  = new AMD64MOp("MUL",  0xF7, 4);
         public static final AMD64MOp IMUL = new AMD64MOp("IMUL", 0xF7, 5);
         public static final AMD64MOp DIV  = new AMD64MOp("DIV",  0xF7, 6);
         public static final AMD64MOp IDIV = new AMD64MOp("IDIV", 0xF7, 7);
+        public static final AMD64MOp INCB = new AMD64MOp("INC",  0xFE, 0, OpAssertion.ByteAssertion);
+        public static final AMD64MOp DECB = new AMD64MOp("DEC",  0xFE, 1, OpAssertion.ByteAssertion);
         public static final AMD64MOp INC  = new AMD64MOp("INC",  0xFF, 0);
         public static final AMD64MOp DEC  = new AMD64MOp("DEC",  0xFF, 1);
-        public static final AMD64MOp PUSH = new AMD64MOp("PUSH", 0xFF, 6);
-        public static final AMD64MOp POP  = new AMD64MOp("POP",  0x8F, 0, OpAssertion.WordOrDwordAssertion);
+        public static final AMD64MOp PUSH = new AMD64MOp("PUSH", 0xFF, 6, OpAssertion.WordOrQwordAssertion);
+        public static final AMD64MOp POP  = new AMD64MOp("POP",  0x8F, 0, OpAssertion.WordOrQwordAssertion);
         // @formatter:on
 
         private final int ext;

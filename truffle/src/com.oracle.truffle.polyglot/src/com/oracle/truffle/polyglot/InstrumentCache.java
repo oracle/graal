@@ -91,6 +91,21 @@ final class InstrumentCache {
     }
 
     /**
+     * Collect tools included in a native image.
+     *
+     * NOTE: this method is called reflectively by TruffleBaseFeature
+     */
+    @SuppressWarnings("unused")
+    private static Set<String> collectInstruments() {
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        Set<String> res = new HashSet<>();
+        for (InstrumentCache instrumentCache : nativeImageCache) {
+            res.add(instrumentCache.id);
+        }
+        return res;
+    }
+
+    /**
      * Initializes state for native image generation.
      *
      * NOTE: this method is called reflectively by downstream projects.

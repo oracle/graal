@@ -43,7 +43,7 @@ public class PointsToCustomTypeFieldHandler extends CustomTypeFieldHandler {
     protected void injectFieldTypes(AnalysisField aField, AnalysisType... customTypes) {
         NativeImagePointsToAnalysis analysis = (NativeImagePointsToAnalysis) bb;
 
-        aField.registerAsWritten(null);
+        aField.registerAsWritten("@UnknownObjectField annotated field");
 
         /* Link the field with all declared types. */
         for (AnalysisType type : customTypes) {

@@ -1,8 +1,8 @@
 local vm = import '../ci_includes/vm.jsonnet';
-local common = import '../../../common.jsonnet';
+local common = import '../../../ci/ci_common/common.jsonnet';
 local vm_common = import '../ci_common/common.jsonnet';
 
-local repo_config = import '../../../repo-configuration.libsonnet';
+local repo_config = import '../../../ci/repo-configuration.libsonnet';
 
 {
   vm_bench_common: {
@@ -70,7 +70,7 @@ local repo_config = import '../../../repo-configuration.libsonnet';
     warmup_bench_cmd:: self.bench_cmd + ['--fork-count-file', 'ci/ci_common/benchmark-forks.json',  'polybench:r[warmup/.*]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
 
     downloads+: {
-      WABT_DIR: {name: 'wabt', version: '1.0.12', platformspecific: true},
+      WABT_DIR: {name: 'wabt', version: '1.0.23', platformspecific: true},
     },
     setup+: [
       self.base_cmd + ['build'],

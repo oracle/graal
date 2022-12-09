@@ -39,6 +39,15 @@ public class AtomicUtils {
         return updater.compareAndSet(holder, null, value);
     }
 
+    public static <T, V> boolean atomicSetAndRun(T holder, V value, AtomicReferenceFieldUpdater<T, V> updater, Runnable task) {
+        Objects.requireNonNull(value, "The value parameter of AtomicUtils.atomicSetAndRun() should not be null.");
+        boolean firstAttempt = updater.compareAndSet(holder, null, value);
+        if (firstAttempt) {
+            task.run();
+        }
+        return firstAttempt;
+    }
+
     public static <T, V> boolean isSet(T holder, AtomicReferenceFieldUpdater<T, V> updater) {
         return updater.get(holder) != null;
     }

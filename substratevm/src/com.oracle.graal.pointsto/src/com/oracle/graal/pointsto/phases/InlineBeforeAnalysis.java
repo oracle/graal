@@ -28,7 +28,6 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
@@ -52,6 +51,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.util.ClassUtil;
@@ -278,7 +278,9 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
         if (callerScope.policyScope != null) {
             policy.commitCalleeScope(callerScope.policyScope, inlineScope.policyScope);
         }
-        ((AnalysisMethod) invokeData.callTarget.targetMethod()).registerAsInlined();
+        Object reason = graph.currentNodeSourcePosition() != null ? graph.currentNodeSourcePosition() : graph.method();
+
+        ((AnalysisMethod) invokeData.callTarget.targetMethod()).registerAsInlined(reason);
 
         super.finishInlining(inlineScope);
     }

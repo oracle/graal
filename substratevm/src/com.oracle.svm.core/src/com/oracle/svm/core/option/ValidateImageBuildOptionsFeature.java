@@ -46,8 +46,8 @@ public class ValidateImageBuildOptionsFeature implements InternalFeature {
     }
 
     private static void validate(OptionKey<?> option) {
-        if (option instanceof ValidatableOptionKey) {
-            ValidatableOptionKey o = (ValidatableOptionKey) option;
+        if (option instanceof SubstrateOptionKey) {
+            SubstrateOptionKey<?> o = (SubstrateOptionKey<?>) option;
             if (o.hasBeenSet()) {
                 o.validate();
             }

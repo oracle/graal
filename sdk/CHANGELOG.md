@@ -9,6 +9,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * Deprecated `Context.Builder#allowIO(boolean)` To migrate, use `builder.allowIO(IOAccess.ALL)` to enable unrestricted IO operations on the host system, or `builder.allowIO(IOAccess.NONE)` to disable IO operations.
 * Deprecated `Context.Builder#fileSystem(FileSystem)`. To migrate, use `builder.allowIO(IOAccess.newBuilder().fileSystem(fileSystem).build())`.
 * Added automatic copying of language resources for embedding Truffle languages in native image. Documentation available [here](https://www.graalvm.org/reference-manual/embed-languages/#build-native-executables-from-polyglot-applications).
+* (GR-41716) Added `HostAccess.Builder.allowMutableTargetMappings(HostAccess.MutableTargetMapping[])` to explicitly enable type coercion from guest objects to mutable Java host objects such as `java.util.Map` or `java.util.List`.
 
 ## Version 22.3.0
 * (GR-39852) Native Image API: Added FieldValueTransformer API

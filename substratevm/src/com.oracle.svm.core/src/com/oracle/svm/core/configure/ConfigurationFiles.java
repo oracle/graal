@@ -40,7 +40,6 @@ import org.graalvm.compiler.options.OptionType;
 
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 
 /**
@@ -51,45 +50,45 @@ public final class ConfigurationFiles {
 
     public static final class Options {
         @Option(help = "Directories directly containing configuration files for dynamic features at runtime.", type = OptionType.User)//
-        static final HostedOptionKey<LocatableMultiOptionValue.Strings> ConfigurationFileDirectories = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        static final HostedOptionKey<LocatableMultiOptionValue.Strings> ConfigurationFileDirectories = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
         @Option(help = "Resource path above configuration resources for dynamic features at runtime.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ConfigurationResourceRoots = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ConfigurationResourceRoots = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
         @Option(help = "file:doc-files/ReflectionConfigurationFilesHelp.txt", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ReflectionConfigurationFiles = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> ReflectionConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.commaSeparated());
         @Option(help = "Resources describing program elements to be made available for reflection (see ReflectionConfigurationFiles).", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ReflectionConfigurationResources = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ReflectionConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
         @Option(help = "file:doc-files/ProxyConfigurationFilesHelp.txt", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DynamicProxyConfigurationFiles = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> DynamicProxyConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.commaSeparated());
         @Option(help = "Resources describing program elements to be made available for reflection (see ProxyConfigurationFiles).", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DynamicProxyConfigurationResources = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DynamicProxyConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
         @Option(help = "file:doc-files/SerializationConfigurationFilesHelp.txt", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SerializationConfigurationFiles = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> SerializationConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.commaSeparated());
         @Option(help = "Resources describing program elements to be made available for serialization (see SerializationConfigurationFiles).", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SerializationConfigurationResources = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SerializationConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
         @Option(help = "file:doc-files/SerializationConfigurationFilesHelp.txt", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SerializationDenyConfigurationFiles = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> SerializationDenyConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.commaSeparated());
         @Option(help = "Resources describing program elements that must not be made available for serialization.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SerializationDenyConfigurationResources = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SerializationDenyConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
         @Option(help = "Files describing Java resources to be included in the image.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ResourceConfigurationFiles = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> ResourceConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.commaSeparated());
         @Option(help = "Resources describing Java resources to be included in the image.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ResourceConfigurationResources = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ResourceConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
         @Option(help = "Files describing program elements to be made accessible via JNI (for syntax, see ReflectionConfigurationFiles)", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> JNIConfigurationFiles = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> JNIConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.commaSeparated());
         @Option(help = "Resources describing program elements to be made accessible via JNI (see JNIConfigurationFiles).", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> JNIConfigurationResources = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> JNIConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
         @Option(help = "Files describing predefined classes that can be loaded at runtime.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> PredefinedClassesConfigurationFiles = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> PredefinedClassesConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.commaSeparated());
         @Option(help = "Resources describing predefined classes that can be loaded at runtime.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> PredefinedClassesConfigurationResources = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> PredefinedClassesConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
         @Option(help = "Causes unknown attributes in configuration objects to abort the image build instead of emitting a warning.")//
         public static final HostedOptionKey<Boolean> StrictConfiguration = new HostedOptionKey<>(false);
@@ -97,7 +96,7 @@ public final class ConfigurationFiles {
 
     public static List<Path> findConfigurationFiles(String fileName) {
         List<Path> files = new ArrayList<>();
-        for (String directory : OptionUtils.flatten(",", Options.ConfigurationFileDirectories.getValue())) {
+        for (String directory : Options.ConfigurationFileDirectories.getValue().values()) {
             if (Files.exists(Paths.get(directory, ConfigurationFile.LOCK_FILE_NAME))) {
                 throw foundLockFile("Configuration file directory '" + directory + "'");
             }
@@ -111,7 +110,7 @@ public final class ConfigurationFiles {
 
     public static List<URL> findConfigurationResources(String fileName, ClassLoader classLoader) {
         List<URL> resources = new ArrayList<>();
-        for (String root : OptionUtils.flatten(",", Options.ConfigurationResourceRoots.getValue())) {
+        for (String root : Options.ConfigurationResourceRoots.getValue().values()) {
             /*
              * Resource path handling is cumbersome: we want users to be able to pass "/" or "." for
              * the classpath root, but only relative paths without "." are permitted, so we strip

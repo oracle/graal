@@ -1228,8 +1228,8 @@ public final class ObjectKlass extends Klass {
         }
     }
 
-    public boolean hasFinalizer() {
-        return (getModifiers() & ACC_FINALIZER) != 0;
+    public boolean hasFinalizer(EspressoContext context) {
+        return (getModifiers(context) & ACC_FINALIZER) != 0;
     }
 
     @TruffleBoundary

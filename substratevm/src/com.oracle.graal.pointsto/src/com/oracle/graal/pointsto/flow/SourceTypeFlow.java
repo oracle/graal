@@ -59,7 +59,7 @@ public final class SourceTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     public SourceTypeFlow(SourceTypeFlow original, MethodFlowsGraph methodFlows) {
-        super(original, methodFlows);
+        super(original, methodFlows, original.getState().canBeNull() ? TypeState.forNull() : TypeState.forEmpty());
     }
 
     @Override

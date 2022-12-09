@@ -187,7 +187,7 @@ public class StaticObject implements TruffleObject, Cloneable {
     }
 
     public final boolean isMirrorKlass() {
-        return getKlass().getType() == Type.java_lang_Class;
+        return getKlass().getType() == Type.java_lang_Class && !isStaticStorage();
     }
 
     /**
@@ -223,8 +223,11 @@ public class StaticObject implements TruffleObject, Cloneable {
         if (isArray()) {
             return unwrap(meta.getLanguage()).toString();
         }
-        if (getKlass() == meta.java_lang_Class) {
-            return "mirror: " + getMirrorKlass().toString();
+        if (isStaticStorage()) {
+            return "statics: " + getKlass().getType();
+        }
+        if (isMirrorKlass()) {
+            return "mirror: " + getMirrorKlass().getType();
         }
         return getKlass().getType().toString();
     }

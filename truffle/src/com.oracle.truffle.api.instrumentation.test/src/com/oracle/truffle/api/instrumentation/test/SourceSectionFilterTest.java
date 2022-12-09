@@ -564,6 +564,21 @@ public class SourceSectionFilterTest extends AbstractPolyglotTest {
         SourceSectionFilter.newBuilder().columnIn(3, -1);
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void testTagsFail1() {
+        SourceSectionFilter.newBuilder().tagIs((Class<?>[]) null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testTagsFail2() {
+        SourceSectionFilter.newBuilder().tagIs((Class<?>) null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testTagsFail3() {
+        SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class, null);
+    }
+
     @Test
     public void testMimeType() {
         String src = "line1\nline2\nline3\nline4";

@@ -216,7 +216,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
                     // normally not considered immutable.
                     ResolvedJavaField field = ((FieldLocationIdentity) locationIdentity).getField();
                     ConstantNode constantNode = ConstantFoldUtil.tryConstantFold(tool, field, object.asJavaConstant(), displacement, resultStamp,
-                                    accessStamp, read.getOptions());
+                                    accessStamp, read.getOptions(), read.getNodeSourcePosition());
                     if (constantNode != null) {
                         return constantNode;
                     }

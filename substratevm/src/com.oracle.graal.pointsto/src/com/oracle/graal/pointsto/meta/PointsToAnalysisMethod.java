@@ -26,8 +26,8 @@ package com.oracle.graal.pointsto.meta;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -48,8 +48,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class PointsToAnalysisMethod extends AnalysisMethod {
     private MethodTypeFlow typeFlow;
 
-    private ConcurrentMap<InvokeTypeFlow, Object> invokedBy;
-    private ConcurrentMap<InvokeTypeFlow, Object> implementationInvokedBy;
+    private Set<InvokeTypeFlow> invokedBy;
+    private Set<InvokeTypeFlow> implementationInvokedBy;
     /**
      * Unique, per method, context insensitive invoke. The context insensitive invoke uses the
      * receiver type of the method, i.e., its declaring-class. Therefore, this invoke will link with
@@ -66,10 +66,10 @@ public class PointsToAnalysisMethod extends AnalysisMethod {
     @Override
     public void startTrackInvocations() {
         if (invokedBy == null) {
-            invokedBy = new ConcurrentHashMap<>();
+            invokedBy = ConcurrentHashMap.newKeySet();
         }
         if (implementationInvokedBy == null) {
-            implementationInvokedBy = new ConcurrentHashMap<>();
+            implementationInvokedBy = ConcurrentHashMap.newKeySet();
         }
     }
 
@@ -77,24 +77,44 @@ public class PointsToAnalysisMethod extends AnalysisMethod {
         return typeFlow;
     }
 
-    public boolean registerAsInvoked(InvokeTypeFlow invoke) {
-        if (invokedBy != null && invoke != null) {
-            invokedBy.put(invoke, Boolean.TRUE);
+    @Override
+    public boolean registerAsInvoked(Object reason) {
+        assert reason instanceof InvokeTypeFlow || reason instanceof String;
+        if (invokedBy != null && reason instanceof InvokeTypeFlow) {
+            invokedBy.add((InvokeTypeFlow) reason);
         }
-        return super.registerAsInvoked();
+        return super.registerAsInvoked(unwrapInvokeReason(reason));
     }
 
-    public boolean registerAsImplementationInvoked(InvokeTypeFlow invoke) {
-        if (implementationInvokedBy != null && invoke != null) {
-            implementationInvokedBy.put(invoke, Boolean.TRUE);
+    @Override
+    public boolean registerAsImplementationInvoked(Object reason) {
+        assert reason instanceof InvokeTypeFlow || reason instanceof String;
+        if (implementationInvokedBy != null && reason instanceof InvokeTypeFlow) {
+            implementationInvokedBy.add((InvokeTypeFlow) reason);
         }
-        return super.registerAsImplementationInvoked();
+        return super.registerAsImplementationInvoked(unwrapInvokeReason(reason));
+    }
+
+    /**
+     * In general the reason for a method invocation is an {@link InvokeTypeFlow}. Special and
+     * virtual root methods have the corresponding context-insensitive invoke reason set. Static
+     * root method doesn't have any reason set.
+     */
+    public static Object unwrapInvokeReason(Object reason) {
+        if (reason == null) {
+            return "static root method";
+        }
+        if (reason instanceof InvokeTypeFlow) {
+            BytecodePosition source = ((InvokeTypeFlow) reason).getSource();
+            return source != null ? source : "root method";
+        }
+        return reason;
     }
 
     @Override
     public List<BytecodePosition> getInvokeLocations() {
         List<BytecodePosition> locations = new ArrayList<>();
-        for (InvokeTypeFlow invoke : implementationInvokedBy.keySet()) {
+        for (InvokeTypeFlow invoke : implementationInvokedBy) {
             if (InvokeTypeFlow.isContextInsensitiveVirtualInvoke(invoke)) {
                 locations.addAll(((AbstractVirtualInvokeTypeFlow) invoke).getInvokeLocations());
             } else if (invoke.getSource() != null) {

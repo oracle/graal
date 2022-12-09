@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
 import org.graalvm.compiler.core.common.BootstrapMethodIntrospection;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
@@ -40,6 +39,7 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.word.WordTypes;
 
+import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.util.ModuleSupport;
@@ -69,9 +69,13 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
         protected boolean tryInvocationPlugin(InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType) {
             boolean result = super.tryInvocationPlugin(invokeKind, args, targetMethod, resultType);
             if (result) {
-                ((AnalysisMethod) targetMethod).registerAsIntrinsicMethod();
+                ((AnalysisMethod) targetMethod).registerAsIntrinsicMethod(nonNullReason(graph.currentNodeSourcePosition()));
             }
             return result;
+        }
+
+        private static Object nonNullReason(Object reason) {
+            return reason == null ? "Unknown invocation location." : reason;
         }
 
         @Override

@@ -218,6 +218,19 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         assertNotNull("At least one Runnable found", start);
     }
 
+    @Test
+    public void queryHostLanguage() throws Exception {
+        @SuppressWarnings("unchecked")
+        Class<? extends TruffleLanguage<?>> hostLanguage = (Class<? extends TruffleLanguage<?>>) Class.forName("com.oracle.truffle.host.HostLanguage");
+        LanguageInfo hostInfo = instrumentEnv.getLanguageInfo(hostLanguage);
+        Runnable r = instrumentEnv.lookup(hostInfo, Runnable.class);
+        assertNull(r);
+        Object lv = instrumentEnv.getLanguageView(hostInfo, 42);
+        assertNotNull(lv);
+        Object scope = instrumentEnv.getScope(hostInfo);
+        assertNotNull(scope);
+    }
+
     @Test(expected = IllegalStateException.class) // IllegalStateException: Engine is already closed
     public void queryInstrumentsAfterDisposeDoesnotEnable() throws Exception {
         engine = Engine.newBuilder().err(err).build();

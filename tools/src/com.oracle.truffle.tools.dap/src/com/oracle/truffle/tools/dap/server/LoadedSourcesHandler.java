@@ -162,12 +162,12 @@ public final class LoadedSourcesHandler implements LoadSourceListener {
                 task = toRunOnLoad.remove(path);
             }
         }
-        if (task != null) {
-            task.accept(sourceLoaded);
-        }
         DebugProtocolClient client = context.getClient();
         if (client != null) {
             client.loadedSource(LoadedSourceEvent.EventBody.create("new", dapSource));
+        }
+        if (task != null) {
+            task.accept(sourceLoaded);
         }
         return dapSource;
     }

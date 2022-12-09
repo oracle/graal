@@ -57,8 +57,7 @@ public abstract class Heap {
 
     /**
      * Notifies the heap that a new thread was attached to the VM. This allows to initialize
-     * heap-specific datastructures, e.g., the TLAB. This method is called for every thread except
-     * the main thread (i.e., the one that maps the image heap).
+     * heap-specific datastructures, e.g., the TLAB.
      */
     @Uninterruptible(reason = "Called during startup.")
     public abstract void attachThread(IsolateThread isolateThread);

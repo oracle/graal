@@ -37,7 +37,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -92,7 +91,7 @@ public class TStringOpsRegionEqualsConstantTest extends TStringOpsRegionEqualsTe
 
     @Override
     protected void checkLowTierGraph(StructuredGraph graph) {
-        if (getTarget().arch instanceof AMD64) {
+        if (isSupportedArchitecture()) {
             if ((lengthCMP << Math.max(strideA, strideB)) < GraalOptions.ArrayRegionEqualsConstantLimit.getValue(graph.getOptions())) {
                 assertConstantReturn(graph);
             }

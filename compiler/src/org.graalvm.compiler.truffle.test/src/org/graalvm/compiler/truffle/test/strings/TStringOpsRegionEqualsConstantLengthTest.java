@@ -92,7 +92,7 @@ public class TStringOpsRegionEqualsConstantLengthTest extends TStringOpsRegionEq
         constantArgs[4] = strideA;
         constantArgs[9] = strideB;
         constantArgs[12] = lengthCMP;
-        test(getRegionEqualsWithOrMaskWithStrideIntl(), null, DUMMY_LOCATION,
+        testWithNative(getRegionEqualsWithOrMaskWithStrideIntl(), null, DUMMY_LOCATION,
                         arrayA, offsetA, lengthA, strideA, fromIndexA,
                         arrayB, offsetB, lengthB, strideB, fromIndexB, null, lengthCMP);
     }
