@@ -47,9 +47,4 @@ class LeafRange extends SubRange {
     public boolean isLeaf() {
         return true;
     }
-
-    @Override
-    public boolean includesInlineRanges() {
-        return false;
-    }
 }

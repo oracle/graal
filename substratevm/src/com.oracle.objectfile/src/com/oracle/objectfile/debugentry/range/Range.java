@@ -234,7 +234,13 @@ public abstract class Range {
 
     public abstract boolean isLeaf();
 
-    public abstract boolean includesInlineRanges();
+    public boolean includesInlineRanges() {
+        SubRange child = getFirstCallee();
+        while (child != null && child.isLeaf()) {
+            child = child.getSiblingCallee();
+        }
+        return child != null;
+    }
 
     public int getDepth() {
         return depth;

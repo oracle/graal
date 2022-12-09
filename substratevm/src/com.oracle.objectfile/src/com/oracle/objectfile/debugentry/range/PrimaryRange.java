@@ -41,21 +41,6 @@ public class PrimaryRange extends Range {
      * The last subrange in the range covered by this primary.
      */
     protected SubRange lastCallee;
-    /**
-     * Values for the associated method's local and parameter variables that are available or,
-     * alternatively, marked as invalid in this range.
-     */
-    private DebugInfoProvider.DebugLocalValueInfo[] localValueInfos;
-    /**
-     * The set of local or parameter variables with which each corresponding local value in field
-     * localValueInfos is associated. Local values which are associated with the same local or
-     * parameter variable will share the same reference in the corresponding array entries. Local
-     * values with which no local variable can be associated will have a null reference in the
-     * corresponding array. The latter case can happen when a local value has an invalid slot or
-     * when a local value that maps to a parameter slot has a different name or type to the
-     * parameter.
-     */
-    private DebugInfoProvider.DebugLocalInfo[] localInfos;
 
     protected PrimaryRange(MethodEntry methodEntry, int lo, int hi, int line) {
         super(methodEntry, lo, hi, line, -1);
@@ -97,51 +82,5 @@ public class PrimaryRange extends Range {
     @Override
     public boolean isLeaf() {
         return firstCallee == null;
-    }
-
-    @Override
-    public boolean includesInlineRanges() {
-        SubRange child = firstCallee;
-        while (child != null && child.isLeaf()) {
-            child = child.siblingCallee;
-        }
-        return child != null;
-    }
-
-    public int getLocalValueCount() {
-        assert !this.isPrimary() : "primary range does not have local values";
-        return localValueInfos.length;
-    }
-
-    public DebugInfoProvider.DebugLocalValueInfo getLocalValue(int i) {
-        assert !this.isPrimary() : "primary range does not have local values";
-        assert i >= 0 && i < localValueInfos.length : "bad index";
-        return localValueInfos[i];
-    }
-
-    public DebugInfoProvider.DebugLocalInfo getLocal(int i) {
-        assert !this.isPrimary() : "primary range does not have local vars";
-        assert i >= 0 && i < localInfos.length : "bad index";
-        return localInfos[i];
-    }
-
-    public void setLocalValueInfo(DebugInfoProvider.DebugLocalValueInfo[] localValueInfos) {
-        int len = localValueInfos.length;
-        this.localValueInfos = localValueInfos;
-        this.localInfos = (len > 0 ? new DebugInfoProvider.DebugLocalInfo[len] : EMPTY_LOCAL_INFOS);
-        // set up mapping from local values to local variables
-        for (int i = 0; i < len; i++) {
-            localInfos[i] = methodEntry.recordLocal(localValueInfos[i]);
-        }
-    }
-
-    public DebugInfoProvider.DebugLocalValueInfo lookupValue(DebugInfoProvider.DebugLocalInfo local) {
-        int localValueCount = getLocalValueCount();
-        for (int i = 0; i < localValueCount; i++) {
-            if (getLocal(i) == local) {
-                return getLocalValue(i);
-            }
-        }
-        return null;
     }
 }

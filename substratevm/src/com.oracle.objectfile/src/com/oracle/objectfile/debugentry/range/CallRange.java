@@ -70,13 +70,4 @@ class CallRange extends SubRange {
         assert firstCallee != null;
         return false;
     }
-
-    @Override
-    public boolean includesInlineRanges() {
-        SubRange child = firstCallee;
-        while (child != null && child.isLeaf()) {
-            child = child.siblingCallee;
-        }
-        return child != null;
-    }
 }
