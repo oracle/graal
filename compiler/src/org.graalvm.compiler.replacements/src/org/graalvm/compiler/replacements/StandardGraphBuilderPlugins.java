@@ -702,6 +702,34 @@ public class StandardGraphBuilderPlugins {
             r.register(new CacheWritebackPlugin(true, "writebackPreSync0", Receiver.class));
             r.register(new CacheWritebackPlugin(false, "writebackPostSync0", Receiver.class));
         }
+
+        r.register(new InvocationPlugin("arrayBaseOffset", Receiver.class, Class.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode arrayClass) {
+                return handleArrayBaseOffsetOrIndexScale(b, unsafe, arrayClass, true);
+            }
+        });
+        r.register(new InvocationPlugin("arrayIndexScale", Receiver.class, Class.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode arrayClass) {
+                return handleArrayBaseOffsetOrIndexScale(b, unsafe, arrayClass, false);
+            }
+        });
+    }
+
+    private static boolean handleArrayBaseOffsetOrIndexScale(GraphBuilderContext b, Receiver unsafe, ValueNode arrayClass, boolean arrayBaseOffset) {
+        var arrayClassConstant = arrayClass.asJavaConstant();
+        if (arrayClassConstant != null && arrayClassConstant.isNonNull()) {
+            var arrayType = b.getConstantReflection().asJavaType(arrayClassConstant);
+            if (arrayType != null && arrayType.isArray()) {
+                unsafe.get();
+                var elementKind = b.getMetaAccessExtensionProvider().getStorageKind(arrayType.getComponentType());
+                int result = arrayBaseOffset ? b.getMetaAccess().getArrayBaseOffset(elementKind) : b.getMetaAccess().getArrayIndexScale(elementKind);
+                b.addPush(JavaKind.Int, ConstantNode.forInt(result));
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void registerIntegerLongPlugins(InvocationPlugins plugins, JavaKind kind) {
