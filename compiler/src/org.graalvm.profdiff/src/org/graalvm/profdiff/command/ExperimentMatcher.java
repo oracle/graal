@@ -48,7 +48,7 @@ import org.graalvm.profdiff.core.Writer;
 
 /**
  * Matches and compares the methods and compilations of two experiments, writing the results
- * according to the given verbosity level to a {@link Writer}.
+ * according to the given {@link org.graalvm.profdiff.core.OptionValues} to a {@link Writer}.
  */
 public class ExperimentMatcher {
     /**
@@ -75,16 +75,19 @@ public class ExperimentMatcher {
     /**
      * Matches and compares the provided experiments, writing out the results.
      *
-     * It is assumed that the experiments have their hot methods already marked. Each method present
-     * in at least one of the experiments is listed. Hot compilation units of the method are paired.
-     * Their optimization/inlining trees are either printed or diffed, depending on the verbosity
-     * level. Unmatched compilation units are also listed, possibly including their
-     * optimization/inlining trees.
+     * It is assumed that the experiments have their hot methods already marked. Compilation
+     * fragments are created if they are enabled in the
+     * {@link org.graalvm.profdiff.core.OptionValues}. Each method present in at least one of the
+     * experiments is listed. Hot compilations of the method are paired. Their
+     * optimization/inlining/optimization-context trees are either printed or diffed, depending on
+     * the option values.
      *
      * @param experimentPair the pair of experiments to be matched
      */
     public void match(ExperimentPair experimentPair) throws ExperimentParserError {
-        experimentPair.createCompilationFragments();
+        if (writer.getOptionValues().shouldCreateFragments()) {
+            experimentPair.createCompilationFragments();
+        }
         for (MethodPair methodPair : experimentPair.getHotMethodPairsByDescendingPeriod()) {
             writer.writeln();
             methodPair.writeHeaderAndCompilationList(writer);

@@ -24,8 +24,6 @@
  */
 package org.graalvm.profdiff.core;
 
-import org.graalvm.profdiff.core.OptionValues;
-
 /**
  * An output writer that manages indentation and optional string prefixes that are prepended to each
  * written line. The writer holds the current {@link OptionValues} for convenience.

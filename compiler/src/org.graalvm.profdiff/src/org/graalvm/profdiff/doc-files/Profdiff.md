@@ -167,6 +167,9 @@ If `--prune-identities` is enabled, only the differences with context between tw
 optimization/inlining/optimization-context trees are displayed, i.e., the identities are pruned. This is enabled by
 default.
 
+The option `--create-fragments` controls the creation of compilation fragments. This is enabled by default. Read the
+section about compilation fragments to learn more.
+
 ## Hot compilation units
 
 Proftool collects samples the number of cycles spent executing each compilation unit. The tool marks some of

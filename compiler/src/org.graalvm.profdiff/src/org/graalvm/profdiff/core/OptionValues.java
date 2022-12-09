@@ -78,6 +78,11 @@ public class OptionValues {
     private final boolean pruneIdentities;
 
     /**
+     * Create {@link CompilationFragment compilation fragments}.
+     */
+    private final boolean createFragments;
+
+    /**
      * Constructs option values.
      *
      * @param hotCompilationUnitPolicy the policy which designates hot compilation units
@@ -89,10 +94,11 @@ public class OptionValues {
      * @param removeVeryDetailedPhases phases that perform a lot of optimizations with little
      *            individual impact should be removed
      * @param pruneIdentities only differences when trees are compared
+     * @param createFragments create {@link CompilationFragment compilation fragments}
      */
     public OptionValues(HotCompilationUnitPolicy hotCompilationUnitPolicy, boolean optimizationContextTreeEnabled,
                     boolean diffCompilations, boolean bciLongForm, boolean sortInliningTree, boolean sortUnorderedPhases,
-                    boolean removeVeryDetailedPhases, boolean pruneIdentities) {
+                    boolean removeVeryDetailedPhases, boolean pruneIdentities, boolean createFragments) {
         this.hotCompilationUnitPolicy = hotCompilationUnitPolicy;
         this.optimizationContextTreeEnabled = optimizationContextTreeEnabled;
         this.diffCompilations = diffCompilations;
@@ -101,6 +107,7 @@ public class OptionValues {
         this.sortUnorderedPhases = sortUnorderedPhases;
         this.removeVeryDetailedPhases = removeVeryDetailedPhases;
         this.pruneIdentities = pruneIdentities;
+        this.createFragments = createFragments;
     }
 
     /**
@@ -159,5 +166,12 @@ public class OptionValues {
      */
     public boolean shouldPruneIdentities() {
         return pruneIdentities;
+    }
+
+    /**
+     * Returns {@code true} iff {@link CompilationFragment compilation fragments} should be created.
+     */
+    public boolean shouldCreateFragments() {
+        return createFragments;
     }
 }

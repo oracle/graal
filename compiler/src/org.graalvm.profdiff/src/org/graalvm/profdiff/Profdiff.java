@@ -24,12 +24,6 @@
  */
 package org.graalvm.profdiff;
 
-import org.graalvm.profdiff.command.HelpCommand;
-import org.graalvm.profdiff.command.JITAOTCommand;
-import org.graalvm.profdiff.command.JITJITCommand;
-import org.graalvm.profdiff.command.ReportCommand;
-import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
-import org.graalvm.profdiff.core.OptionValues;
 import org.graalvm.profdiff.args.BooleanArgument;
 import org.graalvm.profdiff.args.CommandGroup;
 import org.graalvm.profdiff.args.DoubleArgument;
@@ -38,6 +32,12 @@ import org.graalvm.profdiff.args.InvalidArgumentException;
 import org.graalvm.profdiff.args.MissingArgumentException;
 import org.graalvm.profdiff.args.ProgramArgumentParser;
 import org.graalvm.profdiff.args.UnknownArgumentException;
+import org.graalvm.profdiff.command.HelpCommand;
+import org.graalvm.profdiff.command.JITAOTCommand;
+import org.graalvm.profdiff.command.JITJITCommand;
+import org.graalvm.profdiff.command.ReportCommand;
+import org.graalvm.profdiff.core.HotCompilationUnitPolicy;
+import org.graalvm.profdiff.core.OptionValues;
 import org.graalvm.profdiff.core.StdoutWriter;
 
 public class Profdiff {
@@ -62,7 +62,9 @@ public class Profdiff {
 
         private final BooleanArgument removeVeryDetailedPhasesArgument;
 
-        private final BooleanArgument prunIdentitiesArgument;
+        private final BooleanArgument pruneIdentitiesArgument;
+
+        private final BooleanArgument createFragmentsArgument;
 
         private final CommandGroup commandGroup;
 
@@ -91,8 +93,10 @@ public class Profdiff {
                             "--sort-unordered-phases", true, "sort the children of optimization phases where order is not important");
             removeVeryDetailedPhasesArgument = argumentParser.addBooleanArgument(
                             "--remove-detailed-phases", true, "remove phases which perform many optimizations");
-            prunIdentitiesArgument = argumentParser.addBooleanArgument(
+            pruneIdentitiesArgument = argumentParser.addBooleanArgument(
                             "--prune-identities", true, "show only differences when trees are compared");
+            createFragmentsArgument = argumentParser.addBooleanArgument(
+                            "--create-fragments", true, "create compilation fragments from inlinees in hot compilation units");
             commandGroup = argumentParser.addCommandGroup(
                             "command", "the action to invoke");
         }
@@ -137,7 +141,8 @@ public class Profdiff {
             return new OptionValues(getHotCompilationUnitPolicy(), optimizationContextTreeArgument.getValue(),
                             diffCompilationsArgument.getValue(), bciLongFormArgument.getValue(),
                             sortInliningTreeArgument.getValue(), sortUnorderedPhasesArgument.getValue(),
-                            removeVeryDetailedPhasesArgument.getValue(), prunIdentitiesArgument.getValue());
+                            removeVeryDetailedPhasesArgument.getValue(), pruneIdentitiesArgument.getValue(),
+                            createFragmentsArgument.getValue());
         }
     }
 
