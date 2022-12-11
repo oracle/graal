@@ -47,8 +47,7 @@ public class GCCause {
     @DuplicatedInNativeCode public static final GCCause TestGCInDeoptimizer = new GCCause("TestGCInDeoptimizer", 2);
     @DuplicatedInNativeCode public static final GCCause HintedGC = new GCCause("Hint", 3);
 
-    @UnknownObjectField(types = GCCause[].class) //
-    protected static GCCause[] GCCauses;
+    protected static GCCause[] GCCauses = new GCCause[]{JavaLangSystemGC, UnitTest, TestGCInDeoptimizer, HintedGC};
 
     private final int id;
     private final String name;
