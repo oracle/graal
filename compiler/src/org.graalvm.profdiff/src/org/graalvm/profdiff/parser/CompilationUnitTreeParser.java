@@ -84,7 +84,7 @@ public class CompilationUnitTreeParser implements CompilationUnit.TreeLoader {
                 reason.add(reasonItem.asString());
             }
         }
-        boolean isAbstract = map.property(OptimizationLogImpl.ABSTRACT_PROPERTY).asBoolean();
+        boolean isAbstract = Boolean.TRUE.equals(map.property(OptimizationLogImpl.ABSTRACT_PROPERTY).asNullableBoolean());
         InliningTreeNode inliningTreeNode = new InliningTreeNode(methodName, bci, positive, reason, isAbstract, parseProfilingInfo(map));
         ExperimentJSONParser.JSONLiteral invokes = map.property(OptimizationLogImpl.INVOKES_PROPERTY);
         if (invokes.isNull()) {

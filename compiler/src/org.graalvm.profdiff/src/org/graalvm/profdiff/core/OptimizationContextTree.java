@@ -102,6 +102,7 @@ public final class OptimizationContextTree {
         root.forEach(node -> {
             node.writeHead(writer);
             if (node.getOriginalInliningTreeNode() != null) {
+                node.getOriginalInliningTreeNode().writeReasoningIfEnabled(writer, null);
                 node.getOriginalInliningTreeNode().writeReceiverTypeProfile(writer, null);
             }
             writer.increaseIndent();
