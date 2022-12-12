@@ -1321,7 +1321,7 @@ public class FlatNodeGenFactory {
             docBuilder.string(String.valueOf(range.offset));
 
             if (range.length != 1) {
-                docBuilder.string("-").string(String.valueOf(range.offset + range.length));
+                docBuilder.string("-").string(String.valueOf(range.offset + range.length - 1));
             }
             docBuilder.string(": ");
             value.state.addStateDoc(docBuilder);
