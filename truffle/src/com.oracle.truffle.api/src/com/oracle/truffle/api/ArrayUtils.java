@@ -529,7 +529,7 @@ public final class ArrayUtils {
         if (fromIndex < 0 || length < 0) {
             illegalArgumentException("fromIndex and length must be positive");
         }
-        if (fromIndex + length > hayStackLength) {
+        if (Integer.toUnsignedLong(fromIndex) + Integer.toUnsignedLong(length) > hayStackLength) {
             illegalArgumentException("length out of range");
         }
     }
