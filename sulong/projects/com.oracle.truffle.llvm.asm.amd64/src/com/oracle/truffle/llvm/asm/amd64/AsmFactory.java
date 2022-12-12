@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -248,6 +248,7 @@ import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWrite
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI64NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWritePointerNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vars.StructLiteralNodeGen;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
@@ -1813,9 +1814,10 @@ public class AsmFactory {
                     slot = getRegisterSlot(reg);
                     todoRegisters.remove(reg);
                     LLVMExpressionNode argnode = LLVMArgNodeGen.create(arg.getInIndex());
-                    if (argTypes.get(arg.getInIndex()) instanceof PointerType) {
+                    Type type = argTypes.get(arg.getInIndex());
+                    if (type instanceof PointerType || type instanceof FunctionType) {
                         arguments.add(LLVMWritePointerNodeGen.create(slot, argnode));
-                    } else if (argTypes.get(arg.getInIndex()) instanceof VectorType) {
+                    } else if (type instanceof VectorType) {
                         arguments.add(LLVMWriteNodeFactory.LLVMWriteVectorNodeGen.create(slot, argnode));
                     } else {
                         LLVMExpressionNode node = CommonNodeFactory.createSignedCast(argnode, PrimitiveType.I64);
@@ -1829,7 +1831,7 @@ public class AsmFactory {
                     arguments.add(LLVMWriteI64NodeGen.create(slot, node));
                 } else if (arg.getType() instanceof VectorType) {
                     arguments.add(LLVMWriteNodeFactory.LLVMWriteVectorNodeGen.create(slot, argnode));
-                } else if (arg.getType() instanceof PointerType) {
+                } else if (arg.getType() instanceof PointerType || arg.getType() instanceof FunctionType) {
                     arguments.add(LLVMWritePointerNodeGen.create(slot, argnode));
                 } else {
                     throw invalidOperandType(arg.getType());
