@@ -1756,7 +1756,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization
         static int doDefault(Node node,
-                        @ExpectError("Message redirected from element GenerateInlineTest.ErrorIndirectRecursionNode2.doDefault(..., ErrorIndirectRecursionNode1 cachedNode):%")//
+                        @ExpectError("%")//
                         @Cached ErrorIndirectRecursionNode2 cachedNode) {
             return 42;
         }
