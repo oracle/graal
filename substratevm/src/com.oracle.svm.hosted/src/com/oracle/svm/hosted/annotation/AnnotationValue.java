@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.annotation;
 
 import java.lang.annotation.Annotation;
+import java.lang.annotation.AnnotationFormatError;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -73,6 +74,16 @@ public final class AnnotationValue extends AnnotationMemberValue {
         return new AnnotationValue(type, memberValues);
     }
 
+    /**
+     * When the byte[] array for the annotation cannot be parsed at build time, anything can be
+     * wrong - it could be just random garbage of bytes. We do not need to register exactly what
+     * went wrong during parsing, we just register a marker to throw an AnnotationFormatException
+     * when parsing the data at run time again.
+     */
+    static AnnotationValue forAnnotationFormatException() {
+        return new AnnotationValue(null, null);
+    }
+
     AnnotationValue(Annotation annotation) {
         this.type = annotation.annotationType();
         this.members = new LinkedHashMap<>();
@@ -96,6 +107,10 @@ public final class AnnotationValue extends AnnotationMemberValue {
         this.members = members;
     }
 
+    public boolean isAnnotationFormatException() {
+        return type == null && members == null;
+    }
+
     public Class<? extends Annotation> getType() {
         return type;
     }
@@ -110,6 +125,9 @@ public final class AnnotationValue extends AnnotationMemberValue {
 
     @Override
     public List<Class<?>> getTypes() {
+        if (isAnnotationFormatException()) {
+            return List.of();
+        }
         List<Class<?>> types = new ArrayList<>();
         types.add(type);
         for (AnnotationMemberValue memberValue : members.values()) {
@@ -120,6 +138,9 @@ public final class AnnotationValue extends AnnotationMemberValue {
 
     @Override
     public List<String> getStrings() {
+        if (isAnnotationFormatException()) {
+            return List.of();
+        }
         List<String> strings = new ArrayList<>();
         members.forEach((memberName, memberValue) -> {
             strings.add(memberName);
@@ -130,6 +151,9 @@ public final class AnnotationValue extends AnnotationMemberValue {
 
     @Override
     public List<JavaConstant> getExceptionProxies() {
+        if (isAnnotationFormatException()) {
+            return List.of();
+        }
         List<JavaConstant> exceptionProxies = new ArrayList<>();
         for (AnnotationMemberValue memberValue : members.values()) {
             exceptionProxies.addAll(memberValue.getExceptionProxies());
@@ -144,6 +168,9 @@ public final class AnnotationValue extends AnnotationMemberValue {
 
     @Override
     public Object get(Class<?> memberType) {
+        if (isAnnotationFormatException()) {
+            throw new AnnotationFormatError("Annotations could not be parsed at image build time");
+        }
         AnnotationType annotationType = AnnotationType.getInstance(type);
         Map<String, Object> memberValues = new LinkedHashMap<>(annotationType.memberDefaults());
         members.forEach((memberName, memberValue) -> memberValues.put(memberName, memberValue.get(annotationType.memberTypes().get(memberName))));
@@ -159,11 +186,11 @@ public final class AnnotationValue extends AnnotationMemberValue {
             return false;
         }
         AnnotationValue that = (AnnotationValue) o;
-        return Objects.equals(type, that.type) && members.equals(that.members);
+        return isAnnotationFormatException() == that.isAnnotationFormatException() && Objects.equals(type, that.type) && members.equals(that.members);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(type, members);
+        return Objects.hash(isAnnotationFormatException(), type, members);
     }
 }
