@@ -422,7 +422,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 throw new NoClassDefFoundError(className);
             }
         } else if (JAVA_SPECIFICATION_VERSION >= 19) {
-            String className = "jdk.internal.foreign.Scoped";
+            String className = "jdk.internal.misc.ScopedMemoryAccess$ScopedAccessError";
             try {
                 Class<?> c = Class.forName(className);
                 m.put(c.getName(), c);

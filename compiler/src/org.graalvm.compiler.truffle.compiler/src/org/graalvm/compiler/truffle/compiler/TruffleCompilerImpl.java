@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -92,6 +92,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompilation;
@@ -134,7 +135,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
     private volatile ExpansionStatistics expansionStatistics;
     private volatile boolean expansionStatisticsInitialized;
     private volatile boolean initialized;
-    // Effectivelly final, but initialized in #initialize
+    // Effectively final, but initialized in #initialize
     private TruffleTier truffleTier;
 
     public static final OptimisticOptimizations Optimizations = ALL.remove(
@@ -166,7 +167,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
 
     private ResolvedJavaType[] getSkippedExceptionTypes(TruffleCompilerRuntime runtime) {
         final MetaAccessProvider metaAccess = this.config.lastTier().providers().getMetaAccess();
-        ResolvedJavaType[] head = metaAccess.lookupJavaTypes(new Class<?>[]{
+        List<ResolvedJavaType> skippedExceptionTypes = new ArrayList<>(16);
+        Collections.addAll(skippedExceptionTypes, metaAccess.lookupJavaTypes(new Class<?>[]{
                         ArithmeticException.class,
                         IllegalArgumentException.class,
                         IllegalStateException.class,
@@ -176,15 +178,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
                         BufferUnderflowException.class,
                         BufferOverflowException.class,
                         ReadOnlyBufferException.class,
-        });
-        ResolvedJavaType[] tail = {
-                        runtime.resolveType(metaAccess, "com.oracle.truffle.api.nodes.UnexpectedResultException"),
-                        runtime.resolveType(metaAccess, "com.oracle.truffle.api.nodes.SlowPathException")
-        };
-        ResolvedJavaType[] skippedExceptionTypes = new ResolvedJavaType[head.length + tail.length];
-        System.arraycopy(head, 0, skippedExceptionTypes, 0, head.length);
-        System.arraycopy(tail, 0, skippedExceptionTypes, head.length, tail.length);
-        return skippedExceptionTypes;
+        }));
+        skippedExceptionTypes.add(runtime.resolveType(metaAccess, "com.oracle.truffle.api.nodes.UnexpectedResultException"));
+        skippedExceptionTypes.add(runtime.resolveType(metaAccess, "com.oracle.truffle.api.nodes.SlowPathException"));
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            skippedExceptionTypes.add(runtime.resolveType(metaAccess, "jdk.internal.misc.ScopedMemoryAccess$ScopedAccessError"));
+        }
+        return skippedExceptionTypes.toArray(ResolvedJavaType[]::new);
     }
 
     public TruffleCompilerConfiguration getConfig() {
