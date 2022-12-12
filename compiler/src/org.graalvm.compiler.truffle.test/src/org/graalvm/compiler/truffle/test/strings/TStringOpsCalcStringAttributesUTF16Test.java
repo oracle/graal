@@ -129,17 +129,20 @@ public class TStringOpsCalcStringAttributesUTF16Test extends TStringOpsTest<Calc
             ret.add(new Object[]{arr4, byteOffset, length});
         }
         // GR-42967
-        ret.add(buildString(new int[]{
-                        0x000000, 0x00002F,
-                        0x00003A, 0x10FFFF
-        }, new int[]{}));
+        byte[] build = buildString(new int[]{
+                        0x000000, 0x00002f,
+                        0x00003a, 0x00dbfe,
+                        0x10fc00, 0x10fc00,
+                        0x00dc01, 0x07a159,
+        }, new int[]{});
+        ret.add(new Object[]{build, 0, build.length / 2});
         return ret;
     }
 
-    private static Object[] buildString(int[] ranges, int[] loneCodePoints) {
+    private static byte[] buildString(int[] ranges, int[] loneCodePoints) {
         int length = 0;
-        for (int i = 0; i < loneCodePoints.length; i++) {
-            length += codePointByteLength(loneCodePoints[i]);
+        for (int c : loneCodePoints) {
+            length += codePointByteLength(c);
         }
         for (int i = 0; i < ranges.length; i += 2) {
             int lo = ranges[i];
@@ -166,7 +169,7 @@ public class TStringOpsCalcStringAttributesUTF16Test extends TStringOpsTest<Calc
             }
         }
         assert j == length / 2;
-        return new Object[]{array, 0, array.length / 2};
+        return array;
     }
 
     private static int codePointByteLength(int codePoint) {
