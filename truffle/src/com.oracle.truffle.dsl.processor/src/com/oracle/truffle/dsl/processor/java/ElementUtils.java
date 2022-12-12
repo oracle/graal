@@ -1803,10 +1803,10 @@ public class ElementUtils {
             case BYTE:
                 return 1;
             case SHORT:
+            case CHAR:
                 return 2;
             case INT:
             case FLOAT:
-            case CHAR:
                 return 4;
             case DOUBLE:
             case LONG:
