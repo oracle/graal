@@ -268,8 +268,14 @@ public final class VM extends NativeEnv {
                 return JavaVersion.forVersion(major);
             }
         } else {
-            // JDK 14+
-            return JavaVersion.latestSupported();
+            TruffleObject probeJDK19 = getNativeAccess().lookupSymbol(libJava, "Java_java_lang_ref_Finalizer_isFinalizationEnabled");
+            if (probeJDK19 != null) {
+                // JDK 19+
+                return JavaVersion.latestSupported();
+            } else {
+                // JDK 14-17
+                return JavaVersion.forVersion(17);
+            }
         }
     }
 
@@ -546,6 +552,7 @@ public final class VM extends NativeEnv {
     }
 
     @VmImpl(isJni = true)
+    @TruffleBoundary
     public @JavaType(String.class) StaticObject JVM_GetSystemPackage(@JavaType(String.class) StaticObject name) {
         String hostPkgName = getMeta().toHostString(name);
         if (hostPkgName.endsWith("/")) {

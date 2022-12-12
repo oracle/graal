@@ -115,7 +115,12 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
      * Returns the {@code Thread#threadStatus} field of the given guest thread.
      */
     public int getState(StaticObject guest) {
-        return meta.java_lang_Thread_threadStatus.getInt(guest);
+        if (meta.getJavaVersion().java17OrEarlier()) {
+            return meta.java_lang_Thread_threadStatus.getInt(guest);
+        } else {
+            StaticObject holder = meta.java_lang_Thread_holder.getObject(guest);
+            return meta.java_lang_Thread$FieldHolder_threadStatus.getInt(holder);
+        }
     }
 
     int fromRunnable(StaticObject self, State state) {
@@ -135,7 +140,39 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
     }
 
     void setState(StaticObject self, int state) {
-        meta.java_lang_Thread_threadStatus.setInt(self, state);
+        if (meta.getJavaVersion().java17OrEarlier()) {
+            meta.java_lang_Thread_threadStatus.setInt(self, state);
+        } else {
+            StaticObject holder = meta.java_lang_Thread_holder.getObject(self);
+            meta.java_lang_Thread$FieldHolder_threadStatus.setInt(holder, state);
+        }
+    }
+
+    void setPriority(StaticObject thread, int priority) {
+        if (meta.getJavaVersion().java17OrEarlier()) {
+            meta.java_lang_Thread_priority.setInt(thread, priority);
+        } else {
+            StaticObject holder = meta.java_lang_Thread_holder.getObject(thread);
+            meta.java_lang_Thread$FieldHolder_priority.setInt(holder, priority);
+        }
+    }
+
+    int getPriority(StaticObject thread) {
+        if (getJavaVersion().java17OrEarlier()) {
+            return meta.java_lang_Thread_priority.getInt(thread);
+        } else {
+            StaticObject holder = meta.java_lang_Thread_holder.getObject(thread);
+            return meta.java_lang_Thread$FieldHolder_priority.getInt(holder);
+        }
+    }
+
+    boolean getDaemon(StaticObject thread) {
+        if (getJavaVersion().java17OrEarlier()) {
+            return meta.java_lang_Thread_daemon.getBoolean(thread);
+        } else {
+            StaticObject holder = meta.java_lang_Thread_holder.getObject(thread);
+            return meta.java_lang_Thread$FieldHolder_daemon.getBoolean(holder);
+        }
     }
 
     @SuppressWarnings("unused")
@@ -270,8 +307,8 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         Thread host = getContext().getEnv().createThread(new GuestRunnable(getContext(), guest, exit, dispatch));
         initializeHiddenFields(guest, host, true);
         // Prepare host thread
-        host.setDaemon(meta.java_lang_Thread_daemon.getBoolean(guest));
-        host.setPriority(meta.java_lang_Thread_priority.getInt(guest));
+        host.setDaemon(getDaemon(guest));
+        host.setPriority(getPriority(guest));
         if (isInterrupted(guest, false)) {
             host.interrupt();
         }
@@ -279,7 +316,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         host.setName(guestName);
         // Make the thread known to the context
         getContext().registerThread(host, guest);
-        meta.java_lang_Thread_threadStatus.setInt(guest, State.RUNNABLE.value);
+        setState(guest, State.RUNNABLE.value);
         return host;
     }
 
@@ -425,6 +462,15 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
             }
         }
         return support;
+    }
+
+    public void setThreadGroup(StaticObject guestThread, StaticObject threadGroup) {
+        if (meta.getJavaVersion().java17OrEarlier()) {
+            meta.java_lang_ThreadGroup_add.invokeDirect(threadGroup, guestThread);
+        } else {
+            StaticObject holder = meta.java_lang_Thread_holder.getObject(guestThread);
+            meta.java_lang_Thread$FieldHolder_group.setObject(holder, threadGroup);
+        }
     }
 
     private final class DeprecationSupport {
