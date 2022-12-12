@@ -81,6 +81,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 @SuppressWarnings("truffle")
+@DisableStateBitWidthModfication
 public class ImplicitCastTest {
 
     @TypeSystem({int.class, String.class, boolean.class})

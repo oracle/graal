@@ -187,7 +187,6 @@ public class EnumEncodingTest extends AbstractPolyglotTest {
         Enum2 s1(Enum2 value, @Shared("cache") @Cached(value = "value", neverDefault = false) Enum2 enumValue) {
             return enumValue;
         }
-
     }
 
     @Test

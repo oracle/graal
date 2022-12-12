@@ -55,6 +55,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 @SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
+@DisableStateBitWidthModfication
 public class StatePackingTest extends AbstractPolyglotTest {
 
     @GenerateInline

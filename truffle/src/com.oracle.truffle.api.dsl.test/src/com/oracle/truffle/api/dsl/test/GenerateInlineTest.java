@@ -221,6 +221,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
     @GenerateInline
     @SuppressWarnings("unused")
+    @DisableStateBitWidthModfication
     public abstract static class Use32BitsNode extends UseStateNode {
 
         @Specialization
@@ -252,6 +253,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
     @GenerateInline
     @SuppressWarnings("unused")
+    @DisableStateBitWidthModfication
     public abstract static class Use128BitsNode extends UseStateNode {
 
         @Specialization
@@ -271,6 +273,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
     @GenerateInline
     @SuppressWarnings("unused")
+    @DisableStateBitWidthModfication
     public abstract static class Use512BitsNode extends UseStateNode {
 
         @Specialization
@@ -290,6 +293,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
     @GenerateInline
     @SuppressWarnings("unused")
+    @DisableStateBitWidthModfication
     public abstract static class Use2048BitsNode extends UseStateNode {
 
         @Specialization

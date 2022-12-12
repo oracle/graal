@@ -4962,6 +4962,17 @@ public class FlatNodeGenFactory {
         if (updateImplicitCast != null) {
             builder.tree(updateImplicitCast);
         }
+
+        for (CacheExpression cache : specialization.getCaches()) {
+            if (cache.isEncodedEnum() && cache.getSharedGroup() == null) {
+                BitSet bitSet = multiState.findSet(EncodedEnumState.class, cache);
+                if (bitSet != null) {
+                    builder.tree(bitSet.createLoad(innerFrameState));
+                    stateTransaction.markModified(bitSet);
+                }
+            }
+        }
+
         builder.tree(multiState.createSet(innerFrameState, stateTransaction, StateQuery.create(SpecializationActive.class, specialization), true, false));
         builder.tree(multiState.persistTransaction(innerFrameState, stateTransaction));
 
@@ -5452,6 +5463,7 @@ public class FlatNodeGenFactory {
                     b.end();
                     triples.add(new IfTriple(null, null, b.build()));
                 }
+
             }
         }
 
@@ -6227,6 +6239,9 @@ public class FlatNodeGenFactory {
 
                     builder.startStatement();
                     builder.tree(createCacheAccess(frameState, specialization, cache, CodeTreeBuilder.singleString(localName)));
+                    if (cache.isEncodedEnum()) {
+
+                    }
                     builder.end();
 
                     if (!cache.isEagerInitialize()) {
@@ -6943,7 +6958,14 @@ public class FlatNodeGenFactory {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         StateQuery query = StateQuery.create(EncodedEnumState.class, lookupSharedCacheKey(cache));
         SpecializationStateReference ref = createStateReference(frameState, specialization, query);
-        builder.tree(ref.bitSet.createSetInteger(ref.reference, query, innerValue.build()));
+
+        if (cache.getSharedGroup() != null) {
+            CodeTree stateRef = CodeTreeBuilder.createBuilder().string("this.", ref.bitSet.getName(), "_").build();
+            builder.tree(createInlinedAccess(frameState, specialization, stateRef, ref.bitSet.createSetInteger(ref.reference, query, innerValue.build())));
+        } else {
+            builder.tree(ref.bitSet.createSetInteger(ref.reference, query, innerValue.build()));
+            // persisted later when specialization is committed
+        }
 
         return builder.build();
     }
@@ -7548,7 +7570,7 @@ public class FlatNodeGenFactory {
                 }
             }
             for (SpecializationData specialization : usedSpecializations) {
-                if (bitSet.getStates().contains(StateQuery.create(EncodedEnumState.class, specialization.getCaches()))) {
+                if (bitSet.contains(StateQuery.create(EncodedEnumState.class, specialization.getCaches()))) {
                     return true;
                 }
             }

@@ -289,7 +289,7 @@ final class BitSet {
     }
 
     public CodeTree createSetZero(FrameState frameState, boolean persist) {
-        return createSet(frameState, persist, CodeTreeBuilder.singleString("0"), false);
+        return createPersist(frameState, persist, CodeTreeBuilder.singleString("0"), false);
     }
 
     public CodeTree createSetExpression(CodeTree receiver, StateQuery elements, Boolean value) {
@@ -316,10 +316,10 @@ final class BitSet {
             return valueBuilder.build();
         }
         valueBuilder.tree(createSetExpression(createReference(frameState), elements, value));
-        return createSet(frameState, persist, valueBuilder.build(), !isEmpty);
+        return createPersist(frameState, persist, valueBuilder.build(), !isEmpty);
     }
 
-    private CodeTree createSet(FrameState frameState, boolean persist, CodeTree valueTree, boolean update) {
+    private CodeTree createPersist(FrameState frameState, boolean persist, CodeTree valueTree, boolean update) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.startStatement();
         if (persist) {

@@ -43,6 +43,10 @@ package com.oracle.truffle.api.dsl.test;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
+/**
+ * Disables all state bit width modification in the DSL processor. This is useful if for example the
+ * internal state of a node needs to be asserted.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 public @interface DisableStateBitWidthModfication {
 

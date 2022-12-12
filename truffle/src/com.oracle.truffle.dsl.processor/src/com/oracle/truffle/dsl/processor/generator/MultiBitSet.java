@@ -101,6 +101,10 @@ class MultiBitSet {
 
         private final LinkedHashSet<BitSet> modified = new LinkedHashSet<>();
 
+        void markModified(BitSet bitSet) {
+            modified.add(bitSet);
+        }
+
     }
 
     public CodeTree persistTransaction(FrameState frameState, StateTransaction transaction) {
