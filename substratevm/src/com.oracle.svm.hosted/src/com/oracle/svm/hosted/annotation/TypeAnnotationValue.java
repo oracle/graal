@@ -137,7 +137,7 @@ public final class TypeAnnotationValue {
         return new TypeAnnotationValue(targetInfo, locationInfo, annotation);
     }
 
-    private TypeAnnotationValue(byte[] targetInfo, byte[] locationInfo, AnnotationValue annotation) {
+    TypeAnnotationValue(byte[] targetInfo, byte[] locationInfo, AnnotationValue annotation) {
         this.targetInfo = targetInfo;
         this.locationInfo = locationInfo;
         this.annotation = annotation;
