@@ -137,6 +137,10 @@ public class ProgressReporter {
     private boolean creationStageEndCompleted = false;
     private boolean reportStringBytes = true;
 
+    /**
+     * Build stages displayed as part of the Native Image build output. Changing this enum may
+     * require updating the doc entries for each stage in the BuildOutput.md.
+     */
     private enum BuildStage {
         INITIALIZING("Initializing"),
         ANALYSIS("Performing analysis", true, false),
