@@ -45,7 +45,6 @@ import static org.junit.Assert.assertSame;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -54,18 +53,12 @@ import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
-import com.oracle.truffle.api.dsl.test.EnumEncodingTest.TestSharedWrapper;
 import com.oracle.truffle.api.dsl.test.GenerateInlineTest.SimpleNode;
 import com.oracle.truffle.api.dsl.test.SharedCachedTestFactory.SharedStringInGuardNodeGen;
 import com.oracle.truffle.api.dsl.test.SharedCachedTestFactory.UnboundExclusiveObjectNodeGen;
 import com.oracle.truffle.api.dsl.test.SharedCachedTestFactory.UnboundSharedObjectNodeGen;
 import com.oracle.truffle.api.dsl.test.SharedCachedTestFactory.UseGenerateInlineSharedNodeGen;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 @SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "unused"})

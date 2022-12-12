@@ -6961,7 +6961,7 @@ public class FlatNodeGenFactory {
         StateQuery query = StateQuery.create(EncodedEnumState.class, lookupSharedCacheKey(cache));
         SpecializationStateReference ref = createStateReference(frameState, specialization, query);
 
-        if (cache.getSharedGroup() != null) {
+        if (cache.getSharedGroup() != null && !cache.isEagerInitialize()) {
             CodeTree stateRef = CodeTreeBuilder.createBuilder().string("this.", ref.bitSet.getName(), "_").build();
             builder.tree(createInlinedAccess(frameState, specialization, stateRef, ref.bitSet.createSetInteger(ref.reference, query, innerValue.build())));
         } else {
@@ -7753,6 +7753,10 @@ public class FlatNodeGenFactory {
         }
 
         public LocalVariable getCacheClassInitialized(CacheExpression cache) {
+            if (cache.getSharedGroup() == null) {
+                // only used for shared caches
+                return null;
+            }
             return get(createCacheClassInitializedKey(cache));
         }
 
