@@ -393,7 +393,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
             int expansionLength = 0;
             int remainingExpLength = 0;
             int oi = 0;
-            int overflowArea = 0;
+            long overflowArea = 0;
 
             for (int i = 0; i < vaList.realArguments.length; i++) {
                 final Object arg = vaList.realArguments[i];
@@ -596,7 +596,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
 
         final int vaLength = realArguments.length - numberOfExplicitArguments;
         if (vaLength > 0) {
-            int overflowOffset = 0;
+            long overflowOffset = 0;
 
             int ei = -1;
             int expansionStart = 0;
@@ -907,7 +907,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
             int expansionLength = 0;
             int remainingExpLength = 0;
 
-            int overflowArea = 0;
+            long overflowArea = 0;
             for (int i = 0; i < realArguments.length; i++) {
                 final Object arg = realArguments[i];
 
@@ -1068,7 +1068,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
 
         final int argsCnt;
 
-        OverflowArgArea(Object[] args, long[] offsets, int overflowAreaSize, int argsCnt) {
+        OverflowArgArea(Object[] args, long[] offsets, long overflowAreaSize, int argsCnt) {
             super(args, offsets, overflowAreaSize);
             this.argsCnt = argsCnt;
         }

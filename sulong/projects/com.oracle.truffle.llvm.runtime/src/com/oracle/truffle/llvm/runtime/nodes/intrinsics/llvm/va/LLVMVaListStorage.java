@@ -706,12 +706,12 @@ public class LLVMVaListStorage implements TruffleObject {
      */
     public abstract static class AbstractOverflowArgArea extends ArgsArea implements Cloneable {
         protected final long[] offsets;
-        public final int overflowAreaSize;
+        public final long overflowAreaSize;
 
         protected long previousOffset = -1;
         protected long currentOffset;
 
-        protected AbstractOverflowArgArea(Object[] args, long[] offsets, int overflowAreaSize) {
+        protected AbstractOverflowArgArea(Object[] args, long[] offsets, long overflowAreaSize) {
             super(args);
             this.overflowAreaSize = overflowAreaSize;
             this.offsets = offsets;
