@@ -504,12 +504,15 @@ public final class Space {
         if (ParallelGCImpl.isEnabled() && ParallelGCImpl.isInParallelPhase()) {
             ParallelGCImpl.mutex.lock();
         }
-        originalSpace.extractAlignedHeapChunk(chunk);
-        appendAlignedHeapChunk(chunk);
-        if (ParallelGCImpl.isEnabled() && GCImpl.getGCImpl().isCompleteCollection()) {
-            ParallelGCImpl.singleton().push(HeapChunk.asPointer(chunk));
-            if (ParallelGCImpl.isInParallelPhase()) {
-                ParallelGCImpl.mutex.unlock();
+        try {
+            originalSpace.extractAlignedHeapChunk(chunk);
+            appendAlignedHeapChunk(chunk);
+        } finally {
+            if (ParallelGCImpl.isEnabled() && GCImpl.getGCImpl().isCompleteCollection()) {
+                ParallelGCImpl.singleton().push(HeapChunk.asPointer(chunk));
+                if (ParallelGCImpl.isInParallelPhase()) {
+                    ParallelGCImpl.mutex.unlock();
+                }
             }
         }
 
@@ -530,12 +533,15 @@ public final class Space {
         if (ParallelGCImpl.isEnabled() && ParallelGCImpl.isInParallelPhase()) {
             ParallelGCImpl.mutex.lock();
         }
-        originalSpace.extractUnalignedHeapChunk(chunk);
-        appendUnalignedHeapChunk(chunk);
-        if (ParallelGCImpl.isEnabled() && GCImpl.getGCImpl().isCompleteCollection()) {
-            ParallelGCImpl.singleton().push(HeapChunk.asPointer(chunk).or(ParallelGCImpl.UNALIGNED_BIT));
-            if (ParallelGCImpl.isInParallelPhase()) {
-                ParallelGCImpl.mutex.unlock();
+        try {
+            originalSpace.extractUnalignedHeapChunk(chunk);
+            appendUnalignedHeapChunk(chunk);
+        } finally {
+            if (ParallelGCImpl.isEnabled() && GCImpl.getGCImpl().isCompleteCollection()) {
+                ParallelGCImpl.singleton().push(HeapChunk.asPointer(chunk).or(ParallelGCImpl.UNALIGNED_BIT));
+                if (ParallelGCImpl.isInParallelPhase()) {
+                    ParallelGCImpl.mutex.unlock();
+                }
             }
         }
 

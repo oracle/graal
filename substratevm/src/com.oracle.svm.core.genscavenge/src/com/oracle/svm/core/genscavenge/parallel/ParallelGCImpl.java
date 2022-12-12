@@ -53,7 +53,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 public class ParallelGCImpl extends ParallelGC {
@@ -61,7 +60,7 @@ public class ParallelGCImpl extends ParallelGC {
     public static final int UNALIGNED_BIT = 0x01;
 
     private List<Thread> workers;
-    private final AtomicInteger busyWorkers = new AtomicInteger();
+    private int busyWorkers;
 
     /**
      * Each GC worker allocates memory in its own thread local chunk, entering mutex only when new chunk needs to be allocated.
@@ -112,7 +111,7 @@ public class ParallelGCImpl extends ParallelGC {
     public void startWorkerThreadsImpl() {
         buffer = new ChunkBuffer();
         int workerCount = getWorkerCount();
-        busyWorkers.set(workerCount);
+        busyWorkers = workerCount;
         workers = IntStream.range(0, workerCount).mapToObj(this::startWorkerThread).toList();
     }
 
@@ -138,16 +137,19 @@ public class ParallelGCImpl extends ParallelGC {
                     try {
                         Pointer ptr;
                         while (!inParallelPhase || (ptr = buffer.pop()).isNull() && allocChunkTL.get().isNull()) {
-                            if (busyWorkers.decrementAndGet() == 0) {
-                                inParallelPhase = false;
-                                seqPhase.signal();
-                            }
-                            debugLog().string("WW idle ").unsigned(n).newline();
                             mutex.lock();
-                            parPhase.block();
-                            mutex.unlock();
-                            busyWorkers.incrementAndGet();
-                            debugLog().string("WW run ").unsigned(n).newline();
+                            try {
+                                if (--busyWorkers == 0) {
+                                    inParallelPhase = false;
+                                    seqPhase.signal();
+                                }
+                                debugLog().string("WW idle ").unsigned(n).newline();
+                                parPhase.block();
+                                ++busyWorkers;
+                                debugLog().string("WW run ").unsigned(n).newline();
+                            } finally {
+                                mutex.unlock();
+                            }
                         }
 
                         do {
@@ -174,15 +176,18 @@ public class ParallelGCImpl extends ParallelGC {
         allocChunkTL.set(WordFactory.nullPointer());
 
         debugLog().string("PP start workers\n");
-        inParallelPhase = true;
-        parPhase.broadcast();     // let worker threads run
-
         mutex.lock();
-        while (inParallelPhase) {
-            debugLog().string("PP wait\n");
-            seqPhase.block();     // wait for them to become idle
+        try {
+            inParallelPhase = true;
+            parPhase.broadcast();     // let worker threads run
+
+            while (inParallelPhase) {
+                debugLog().string("PP wait\n");
+                seqPhase.block();     // wait for them to become idle
+            }
+        } finally {
+            mutex.unlock();
         }
-        mutex.unlock();
     }
 
     private void scanChunk(Pointer ptr) {
