@@ -136,9 +136,9 @@ import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.cpufeature.Stubs;
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -1031,7 +1031,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         if (buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) || !amd64Features.containsAll(runtimeCheckedCPUFeatures)) {
             return descriptor;
         } else {
-            GraalError.guarantee(DeoptimizationSupport.enabled(), "should be reached in JIT mode only");
+            GraalError.guarantee(RuntimeCompilation.isEnabled(), "should be reached in JIT mode only");
             return new ForeignCallDescriptor(descriptor.getName() + Stubs.RUNTIME_CHECKED_CPU_FEATURES_NAME_SUFFIX, descriptor.getResultType(), descriptor.getArgumentTypes(),
                             descriptor.isReexecutable(), descriptor.getKilledLocations(), descriptor.canDeoptimize(), descriptor.isGuaranteedSafepoint());
         }
