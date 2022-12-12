@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.compiler.substitutions;
 
 import java.lang.invoke.MethodHandle;
+import java.nio.Buffer;
 import java.util.ArrayList;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -74,6 +75,8 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaField fieldNodeParent = findField(classNode, "parent");
 
     public final ResolvedJavaField fieldStringValue = findField(lookupType(String.class), "value");
+
+    public final ResolvedJavaField fieldBufferSegment = findField(lookupType(Buffer.class), "segment");
 
     public KnownTruffleTypes(MetaAccessProvider metaAccess) {
         super(metaAccess);
