@@ -50,11 +50,6 @@
     },
   }),
 
-  local linux_amd64_jdk17 = common.linux_amd64   + common.labsjdk17,
-  local linux_amd64_jdk19 = common.linux_amd64   + common.labsjdk19,
-  local darwin_jdk17      = common.darwin_amd64  + common.labsjdk17,
-  local windows_jdk17     = common.windows_amd64 + common.labsjdk17 + common.devkits["windows-jdk17"],
-
   // JDKs
   local jdk_name_to_dict = {
     "jdk17"+: common.labsjdk17,
@@ -82,23 +77,27 @@
       tools.delete_timelimit(jdk_name_to_dict[b.jdk] + default_os_arch[b.os][b.arch])
   })),
 
-  local no_jobs = {
-    "<all-os>"+: run_spec.exclude,
+  local all_jobs = {
+    "windows:aarch64"+: exclude,
   },
+  local no_jobs = all_jobs {
+    "*"+: exclude,
+  },
+
   local feature_map = {
     libc: {
-      musl: {
-        "<all-os>"+: exclude + use_musl,
+      musl: no_jobs {
+        "*"+: use_musl,
       },
     },
     optlevel: {
-      quickbuild: {
-        "<all-os>"+: exclude + add_quickbuild,
+      quickbuild: no_jobs {
+        "*"+: add_quickbuild,
       },
     },
     "java-compiler": {
-      ecj: {
-        "<all-os>"+: exclude + sg.use_ecj,
+      ecj: no_jobs {
+        "*"+: sg.use_ecj,
       },
     },
   },
