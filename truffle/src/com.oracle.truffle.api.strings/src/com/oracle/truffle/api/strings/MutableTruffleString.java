@@ -51,6 +51,7 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -175,6 +176,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static FromByteArrayNode create() {
             return MutableTruffleStringFactory.FromByteArrayNodeGen.create();
         }
@@ -265,6 +267,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static FromNativePointerNode create() {
             return MutableTruffleStringFactory.FromNativePointerNodeGen.create();
         }
@@ -326,6 +329,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static AsMutableTruffleStringNode create() {
             return MutableTruffleStringFactory.AsMutableTruffleStringNodeGen.create();
         }
@@ -379,6 +383,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static AsManagedNode create() {
             return MutableTruffleStringFactory.AsManagedNodeGen.create();
         }
@@ -426,6 +431,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static WriteByteNode create() {
             return MutableTruffleStringFactory.WriteByteNodeGen.create();
         }
@@ -488,6 +494,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static ConcatNode create() {
             return MutableTruffleStringFactory.ConcatNodeGen.create();
         }
@@ -553,6 +560,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static SubstringNode create() {
             return MutableTruffleStringFactory.SubstringNodeGen.create();
         }
@@ -615,6 +623,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static SubstringByteIndexNode create() {
             return MutableTruffleStringFactory.SubstringByteIndexNodeGen.create();
         }
@@ -680,6 +689,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static MutableTruffleString.SwitchEncodingNode create() {
             return MutableTruffleStringFactory.SwitchEncodingNodeGen.create();
         }
@@ -735,6 +745,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static MutableTruffleString.ForceEncodingNode create() {
             return MutableTruffleStringFactory.ForceEncodingNodeGen.create();
         }

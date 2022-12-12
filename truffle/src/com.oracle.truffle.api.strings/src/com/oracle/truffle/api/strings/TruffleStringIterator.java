@@ -42,6 +42,7 @@ package com.oracle.truffle.api.strings;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
@@ -337,6 +338,7 @@ public final class TruffleStringIterator {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static NextNode create() {
             return TruffleStringIteratorFactory.NextNodeGen.create();
         }
@@ -389,6 +391,7 @@ public final class TruffleStringIterator {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static PreviousNode create() {
             return TruffleStringIteratorFactory.PreviousNodeGen.create();
         }

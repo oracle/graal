@@ -80,6 +80,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -1355,6 +1356,7 @@ public final class TruffleString extends AbstractTruffleString {
              *
              * @since 22.1
              */
+            @NeverDefault
             public static TruffleString.WithMask.CreateNode create() {
                 return TruffleStringFactory.WithMaskFactory.CreateNodeGen.create();
             }
@@ -1415,6 +1417,7 @@ public final class TruffleString extends AbstractTruffleString {
              *
              * @since 22.1
              */
+            @NeverDefault
             public static TruffleString.WithMask.CreateUTF16Node create() {
                 return TruffleStringFactory.WithMaskFactory.CreateUTF16NodeGen.create();
             }
@@ -1477,6 +1480,7 @@ public final class TruffleString extends AbstractTruffleString {
              *
              * @since 22.1
              */
+            @NeverDefault
             public static TruffleString.WithMask.CreateUTF32Node create() {
                 return TruffleStringFactory.WithMaskFactory.CreateUTF32NodeGen.create();
             }
@@ -1699,6 +1703,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static FromCodePointNode create() {
             return TruffleStringFactory.FromCodePointNodeGen.create();
         }
@@ -1787,6 +1792,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static FromLongNode create() {
             return TruffleStringFactory.FromLongNodeGen.create();
         }
@@ -1865,6 +1871,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static FromByteArrayNode create() {
             return TruffleStringFactory.FromByteArrayNodeGen.create();
         }
@@ -1969,6 +1976,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static FromCharArrayUTF16Node create() {
             return TruffleStringFactory.FromCharArrayUTF16NodeGen.create();
         }
@@ -2055,6 +2063,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static FromJavaStringNode create() {
             return TruffleStringFactory.FromJavaStringNodeGen.create();
         }
@@ -2150,6 +2159,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static FromIntArrayUTF32Node create() {
             return TruffleStringFactory.FromIntArrayUTF32NodeGen.create();
         }
@@ -2243,6 +2253,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static FromNativePointerNode create() {
             return TruffleStringFactory.FromNativePointerNodeGen.create();
         }
@@ -2297,6 +2308,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static AsTruffleStringNode create() {
             return TruffleStringFactory.AsTruffleStringNodeGen.create();
         }
@@ -2420,6 +2432,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static AsManagedNode create() {
             return TruffleStringFactory.AsManagedNodeGen.create();
         }
@@ -2512,6 +2525,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static MaterializeNode create() {
             return TruffleStringFactory.MaterializeNodeGen.create();
         }
@@ -2555,6 +2569,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static GetCodeRangeNode create() {
             return TruffleStringFactory.GetCodeRangeNodeGen.create();
         }
@@ -2609,6 +2624,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static GetByteCodeRangeNode create() {
             return TruffleStringFactory.GetByteCodeRangeNodeGen.create();
         }
@@ -2665,6 +2681,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static CodeRangeEqualsNode create() {
             return TruffleStringFactory.CodeRangeEqualsNodeGen.create();
         }
@@ -2709,6 +2726,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static IsValidNode create() {
             return TruffleStringFactory.IsValidNodeGen.create();
         }
@@ -2833,6 +2851,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 23.0
          */
+        @NeverDefault
         public static GetStringCompactionLevelNode create() {
             return TruffleStringFactory.GetStringCompactionLevelNodeGen.create();
         }
@@ -2880,6 +2899,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static CodePointLengthNode create() {
             return TruffleStringFactory.CodePointLengthNodeGen.create();
         }
@@ -2936,6 +2956,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static HashCodeNode create() {
             return TruffleStringFactory.HashCodeNodeGen.create();
         }
@@ -2983,6 +3004,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static ReadByteNode create() {
             return TruffleStringFactory.ReadByteNodeGen.create();
         }
@@ -3034,6 +3056,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static ReadCharUTF16Node create() {
             return TruffleStringFactory.ReadCharUTF16NodeGen.create();
         }
@@ -3106,6 +3129,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static ByteLengthOfCodePointNode create() {
             return TruffleStringFactory.ByteLengthOfCodePointNodeGen.create();
         }
@@ -3161,6 +3185,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.2
          */
+        @NeverDefault
         public static ByteIndexToCodePointIndexNode create() {
             return TruffleStringFactory.ByteIndexToCodePointIndexNodeGen.create();
         }
@@ -3217,6 +3242,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static CodePointIndexToByteIndexNode create() {
             return TruffleStringFactory.CodePointIndexToByteIndexNodeGen.create();
         }
@@ -3295,6 +3321,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static CodePointAtIndexNode create() {
             return TruffleStringFactory.CodePointAtIndexNodeGen.create();
         }
@@ -3356,6 +3383,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static CodePointAtByteIndexNode create() {
             return TruffleStringFactory.CodePointAtByteIndexNodeGen.create();
         }
@@ -3427,6 +3455,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static ByteIndexOfAnyByteNode create() {
             return TruffleStringFactory.ByteIndexOfAnyByteNodeGen.create();
         }
@@ -3494,6 +3523,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static CharIndexOfAnyCharUTF16Node create() {
             return TruffleStringFactory.CharIndexOfAnyCharUTF16NodeGen.create();
         }
@@ -3560,6 +3590,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static IntIndexOfAnyIntUTF32Node create() {
             return TruffleStringFactory.IntIndexOfAnyIntUTF32NodeGen.create();
         }
@@ -3614,6 +3645,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static IndexOfCodePointNode create() {
             return TruffleStringFactory.IndexOfCodePointNodeGen.create();
         }
@@ -3666,6 +3698,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static ByteIndexOfCodePointNode create() {
             return TruffleStringFactory.ByteIndexOfCodePointNodeGen.create();
         }
@@ -3720,6 +3753,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static LastIndexOfCodePointNode create() {
             return TruffleStringFactory.LastIndexOfCodePointNodeGen.create();
         }
@@ -3772,6 +3806,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static LastByteIndexOfCodePointNode create() {
             return TruffleStringFactory.LastByteIndexOfCodePointNodeGen.create();
         }
@@ -3840,6 +3875,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static IndexOfStringNode create() {
             return TruffleStringFactory.IndexOfStringNodeGen.create();
         }
@@ -3931,6 +3967,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static ByteIndexOfStringNode create() {
             return TruffleStringFactory.ByteIndexOfStringNodeGen.create();
         }
@@ -3999,6 +4036,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static LastIndexOfStringNode create() {
             return TruffleStringFactory.LastIndexOfStringNodeGen.create();
         }
@@ -4090,6 +4128,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static LastByteIndexOfStringNode create() {
             return TruffleStringFactory.LastByteIndexOfStringNodeGen.create();
         }
@@ -4158,6 +4197,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static CompareBytesNode create() {
             return TruffleStringFactory.CompareBytesNodeGen.create();
         }
@@ -4224,6 +4264,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static CompareCharsUTF16Node create() {
             return TruffleStringFactory.CompareCharsUTF16NodeGen.create();
         }
@@ -4290,6 +4331,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static CompareIntsUTF32Node create() {
             return TruffleStringFactory.CompareIntsUTF32NodeGen.create();
         }
@@ -4362,6 +4404,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static RegionEqualNode create() {
             return TruffleStringFactory.RegionEqualNodeGen.create();
         }
@@ -4449,6 +4492,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static RegionEqualByteIndexNode create() {
             return TruffleStringFactory.RegionEqualByteIndexNodeGen.create();
         }
@@ -4583,6 +4627,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static ConcatNode create() {
             return TruffleStringFactory.ConcatNodeGen.create();
         }
@@ -4666,6 +4711,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static RepeatNode create() {
             return TruffleStringFactory.RepeatNodeGen.create();
         }
@@ -4729,6 +4775,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static SubstringNode create() {
             return TruffleStringFactory.SubstringNodeGen.create();
         }
@@ -4791,6 +4838,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static SubstringByteIndexNode create() {
             return TruffleStringFactory.SubstringByteIndexNodeGen.create();
         }
@@ -4897,6 +4945,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static EqualNode create() {
             return TruffleStringFactory.EqualNodeGen.create();
         }
@@ -5119,6 +5168,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static ParseIntNode create() {
             return TruffleStringFactory.ParseIntNodeGen.create();
         }
@@ -5170,6 +5220,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static ParseLongNode create() {
             return TruffleStringFactory.ParseLongNodeGen.create();
         }
@@ -5222,6 +5273,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static ParseDoubleNode create() {
             return TruffleStringFactory.ParseDoubleNodeGen.create();
         }
@@ -5310,6 +5362,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static GetInternalByteArrayNode create() {
             return TruffleStringFactory.GetInternalByteArrayNodeGen.create();
         }
@@ -5361,6 +5414,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static GetInternalNativePointerNode create() {
             return TruffleStringFactory.GetInternalNativePointerNodeGen.create();
         }
@@ -5419,6 +5473,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static CopyToByteArrayNode create() {
             return TruffleStringFactory.CopyToByteArrayNodeGen.create();
         }
@@ -5550,6 +5605,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static CopyToNativeMemoryNode create() {
             return TruffleStringFactory.CopyToNativeMemoryNodeGen.create();
         }
@@ -5640,6 +5696,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static ToJavaStringNode create() {
             return TruffleStringFactory.ToJavaStringNodeGen.create();
         }
@@ -5765,6 +5822,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 23.0
          */
+        @NeverDefault
         public static AsNativeNode create() {
             return TruffleStringFactory.AsNativeNodeGen.create();
         }
@@ -5823,6 +5881,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static SwitchEncodingNode create() {
             return TruffleStringFactory.SwitchEncodingNodeGen.create();
         }
@@ -5973,6 +6032,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static ForceEncodingNode create() {
             return TruffleStringFactory.ForceEncodingNodeGen.create();
         }
@@ -6033,6 +6093,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static CreateCodePointIteratorNode create() {
             return TruffleStringFactory.CreateCodePointIteratorNodeGen.create();
         }
@@ -6093,6 +6154,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static CreateBackwardCodePointIteratorNode create() {
             return TruffleStringFactory.CreateBackwardCodePointIteratorNodeGen.create();
         }

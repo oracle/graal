@@ -56,6 +56,7 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -193,6 +194,7 @@ public final class TruffleStringBuilder {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static AppendByteNode create() {
             return TruffleStringBuilderFactory.AppendByteNodeGen.create();
         }
@@ -267,6 +269,7 @@ public final class TruffleStringBuilder {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static AppendCharUTF16Node create() {
             return TruffleStringBuilderFactory.AppendCharUTF16NodeGen.create();
         }
@@ -390,6 +393,7 @@ public final class TruffleStringBuilder {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static AppendCodePointNode create() {
             return TruffleStringBuilderFactory.AppendCodePointNodeGen.create();
         }
@@ -609,6 +613,7 @@ public final class TruffleStringBuilder {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static AppendIntNumberNode create() {
             return TruffleStringBuilderFactory.AppendIntNumberNodeGen.create();
         }
@@ -674,6 +679,7 @@ public final class TruffleStringBuilder {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static AppendLongNumberNode create() {
             return TruffleStringBuilderFactory.AppendLongNumberNodeGen.create();
         }
@@ -738,6 +744,7 @@ public final class TruffleStringBuilder {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static AppendStringNode create() {
             return TruffleStringBuilderFactory.AppendStringNodeGen.create();
         }
@@ -825,6 +832,7 @@ public final class TruffleStringBuilder {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static AppendSubstringByteIndexNode create() {
             return TruffleStringBuilderFactory.AppendSubstringByteIndexNodeGen.create();
         }
@@ -917,6 +925,7 @@ public final class TruffleStringBuilder {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static AppendJavaStringUTF16Node create() {
             return TruffleStringBuilderFactory.AppendJavaStringUTF16NodeGen.create();
         }
@@ -1010,6 +1019,7 @@ public final class TruffleStringBuilder {
          *
          * @since 22.1
          */
+        @NeverDefault
         public static ToStringNode create() {
             return TruffleStringBuilderFactory.ToStringNodeGen.create();
         }
