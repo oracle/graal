@@ -48,6 +48,9 @@ import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.SegmentMode;
 
+/**
+ * A list for generating the GraalWasm runtime bytecode.
+ */
 public class BytecodeList {
     private final ByteArrayList bytecode;
 
@@ -63,12 +66,28 @@ public class BytecodeList {
         return value >= Byte.MIN_VALUE && value <= Byte.MAX_VALUE;
     }
 
+    private static boolean fitsIntoUnsignedValue(int value, int maxValue) {
+        return Integer.compareUnsigned(value, maxValue) <= 0;
+    }
+
     private static boolean fitsIntoUnsignedByte(int value) {
         return Integer.compareUnsigned(value, 255) <= 0;
     }
 
+    private static boolean fitsIntoUnsignedByte(long value) {
+        return Long.compareUnsigned(value, 255) <= 0;
+    }
+
     private static boolean fitsIntoUnsignedShort(int value) {
         return Integer.compareUnsigned(value, 65535) <= 0;
+    }
+
+    private static boolean fitsIntoUnsignedShort(long value) {
+        return Long.compareUnsigned(value, 65535) <= 0;
+    }
+
+    private static boolean fitsIntoUnsignedInt(long value) {
+        return Long.compareUnsigned(value, 4294967295L) <= 0;
     }
 
     private void add1(int value) {
@@ -89,7 +108,19 @@ public class BytecodeList {
         bytecode.add((byte) ((value >>> 8) & 0x0000_00FF));
     }
 
+    private void add2(long value) {
+        bytecode.add((byte) (value & 0x0000_00FF));
+        bytecode.add((byte) ((value >>> 8) & 0x0000_00FF));
+    }
+
     private void add4(int value) {
+        bytecode.add((byte) (value & 0x0000_00FF));
+        bytecode.add((byte) ((value >>> 8) & 0x0000_00FF));
+        bytecode.add((byte) ((value >>> 16) & 0x0000_00FF));
+        bytecode.add((byte) ((value >>> 24) & 0x0000_00FF));
+    }
+
+    private void add4(long value) {
         bytecode.add((byte) (value & 0x0000_00FF));
         bytecode.add((byte) ((value >>> 8) & 0x0000_00FF));
         bytecode.add((byte) ((value >>> 16) & 0x0000_00FF));
@@ -156,8 +187,8 @@ public class BytecodeList {
 
     /**
      * Adds an instruction and an immediate value to the bytecode. If the value fits into a signed
-     * i8 value, the i8Instruction and an i8 value is added. Otherwise, the i32Instruction and an
-     * i32 value is added.
+     * i8 value, the i8 instruction and an i8 value are added. Otherwise, the i32 instruction and an
+     * i32 value are added.
      * 
      * @param i8Instruction The i8 instruction
      * @param i32Instruction The i32 instruction
@@ -174,9 +205,9 @@ public class BytecodeList {
     }
 
     /**
-     * Adds an instruction and an immediate value to the bytecode. If the value fits into a signed
-     * i8 value, the i8Instruction and an i8 value is added. Otherwise, the i64Instruction and an
-     * i64 value is added.
+     * Adds an instruction and an immediate value to the bytecode. If the value fits into an i8
+     * value, the i8 instruction and an i8 value are added. Otherwise, the i64 instruction and an
+     * i64 value are added.
      *
      * @param i8Instruction The i8 instruction
      * @param i64Instruction The i64 instruction
@@ -193,21 +224,45 @@ public class BytecodeList {
     }
 
     /**
-     * Adds an instruction and an immediate value to the bytecode. If the value fits into an
-     * unsigned i8 value, the i8Instruction and an i8 value is added. Otherwise, the i32Instruction
-     * and an i32 value is added.
+     * Adds an instruction and an immediate value to the bytecode. If the value fits into a u8
+     * value, the u8 instruction and a u8 value are added. Otherwise, the i32 instruction and an i32
+     * value are added.
      *
-     * @param i8Instruction The i8 instruction
+     * @param u8Instruction The u8 instruction
      * @param i32Instruction The i32 instruction
      * @param value The immediate value
      */
-    public void addUnsignedImmediateInstruction(int i8Instruction, int i32Instruction, int value) {
+    public void addUnsignedImmediateInstruction(int u8Instruction, int i32Instruction, int value) {
         if (fitsIntoUnsignedByte(value)) {
-            add1(i8Instruction);
+            add1(u8Instruction);
             add1(value);
         } else {
             add1(i32Instruction);
             add4(value);
+        }
+    }
+
+    /**
+     * Adds an instruction and an immediate value to the bytecode. If the value fits into a u8
+     * value, the u8 instruction and a u8 value are added. If the value fits into a u32 value, the
+     * u32 instruction and a u32 value are added. Otherwise, the i64 instruction and an i64 value
+     * are added.
+     * 
+     * @param u8Instruction The u8 instruction
+     * @param u32Instruction The u32 instruction
+     * @param i64Instruction The i64 instruction
+     * @param value The immediate value
+     */
+    public void addUnsignedImmediateInstruction(int u8Instruction, int u32Instruction, int i64Instruction, long value) {
+        if (fitsIntoUnsignedByte(value)) {
+            add1(u8Instruction);
+            add1(value);
+        } else if (fitsIntoUnsignedInt(value)) {
+            add1(u32Instruction);
+            add4(value);
+        } else {
+            add1(i64Instruction);
+            add8(value);
         }
     }
 
@@ -457,7 +512,7 @@ public class BytecodeList {
         }
     }
 
-    private int addDataHeader(int mode, int length, int globalIndex, int offsetAddress) {
+    private void addDataHeader(int mode, int length, int globalIndex, long offsetAddress) {
         assert mode == SegmentMode.ACTIVE || mode == SegmentMode.PASSIVE;
         int location = bytecode.size();
         add1(0);
@@ -469,7 +524,7 @@ public class BytecodeList {
             flags |= Bytecode.DATA_SEG_LENGTH_U16;
             add2(length);
         } else {
-            flags |= Bytecode.DATA_SEG_LENGTH_U32;
+            flags |= Bytecode.DATA_SEG_LENGTH_I32;
             add4(length);
         }
         if (globalIndex != -1) {
@@ -480,7 +535,7 @@ public class BytecodeList {
                 flags |= Bytecode.DATA_SEG_GLOBAL_INDEX_U16;
                 add2(globalIndex);
             } else {
-                flags |= Bytecode.DATA_SEG_GLOBAL_INDEX_U32;
+                flags |= Bytecode.DATA_SEG_GLOBAL_INDEX_I32;
                 add4(globalIndex);
             }
         }
@@ -491,23 +546,76 @@ public class BytecodeList {
             } else if (fitsIntoUnsignedShort(offsetAddress)) {
                 flags |= Bytecode.DATA_SEG_OFFSET_ADDRESS_U16;
                 add2(offsetAddress);
-            } else {
+            } else if (fitsIntoUnsignedInt(offsetAddress)) {
                 flags |= Bytecode.DATA_SEG_OFFSET_ADDRESS_U32;
                 add4(offsetAddress);
+            } else {
+                flags |= Bytecode.DATA_SEG_OFFSET_ADDRESS_U64;
             }
         }
         bytecode.set(location, (byte) flags);
-        return bytecode.size();
     }
 
-    public int addDataHeader(int length, int globalIndex, int offsetAddress) {
-        return addDataHeader(SegmentMode.ACTIVE, length, globalIndex, offsetAddress);
+    /**
+     * Adds the header of a data segment to the bytecode.
+     * 
+     * @param length The length of the data segment
+     * @param globalIndex The global index of the data segment, -1 if missing
+     * @param offsetAddress The offset address of the data segment, -1 if missing
+     */
+    public void addDataHeader(int length, int globalIndex, long offsetAddress) {
+        addDataHeader(SegmentMode.ACTIVE, length, globalIndex, offsetAddress);
     }
 
-    public int addDataHeader(int mode, int length) {
-        return addDataHeader(mode, length, -1, -1);
+    /**
+     * Adds the header of a non-active data segment to the bytecode.
+     * 
+     * @param mode The segment mode of the data segment
+     * @param length The length of the data segment
+     */
+    public void addDataHeader(int mode, int length) {
+        addDataHeader(mode, length, -1, -1);
     }
 
+    /**
+     * Adds the runtime header of a data segment to the bytecode.
+     * 
+     * @param length The length of the data segment
+     * @param unsafeMemory If unsafe memory is enabled
+     */
+    public void addDataRuntimeHeader(int length, boolean unsafeMemory) {
+        int location = bytecode.size();
+        add1(0);
+        int flags = 0;
+        if (fitsIntoUnsignedValue(length, 31)) {
+            flags |= length << 3;
+        } else if (fitsIntoUnsignedByte(length)) {
+            flags |= Bytecode.DATA_SEG_RUNTIME_LENGTH_U8;
+            add1(length);
+        } else if (fitsIntoUnsignedShort(length)) {
+            flags |= Bytecode.DATA_SEG_RUNTIME_LENGTH_U16;
+            add2(length);
+        } else {
+            flags |= Bytecode.DATA_SEG_RUNTIME_LENGTH_I32;
+            add4(length);
+        }
+        if (unsafeMemory) {
+            add8(0);
+        }
+        bytecode.set(location, (byte) flags);
+    }
+
+    /**
+     * Adds the header of an elem segment to the bytecode.
+     * 
+     * @param mode The segment mode of the elem segment
+     * @param count The number of elements in the elem segment
+     * @param elemType The type of the elements in the elem segment
+     * @param tableIndex The table index of the elem segment
+     * @param globalIndex The global index of the elem segment, -1 if missing
+     * @param offsetAddress The offset address of the elem segment, -1 if missing
+     * @return The location after the header in the bytecode
+     */
     public int addElemHeader(int mode, int count, byte elemType, int tableIndex, int globalIndex, int offsetAddress) {
         int location = bytecode.size();
         add1(0);
@@ -532,7 +640,7 @@ public class BytecodeList {
             flags |= Bytecode.ELEM_SEG_COUNT_U16;
             add2(count);
         } else {
-            flags |= Bytecode.ELEM_SEG_COUNT_U32;
+            flags |= Bytecode.ELEM_SEG_COUNT_I32;
             add4(count);
         }
         if (tableIndex != 0) {
@@ -543,7 +651,7 @@ public class BytecodeList {
                 flags |= Bytecode.ELEM_SEG_TABLE_INDEX_U16;
                 add2(tableIndex);
             } else {
-                flags |= Bytecode.ELEM_SEG_TABLE_INDEX_U32;
+                flags |= Bytecode.ELEM_SEG_TABLE_INDEX_I32;
                 add4(tableIndex);
             }
         }
@@ -555,7 +663,7 @@ public class BytecodeList {
                 flags |= Bytecode.ELEM_SEG_GLOBAL_INDEX_U16;
                 add2(globalIndex);
             } else {
-                flags |= Bytecode.ELEM_SEG_GLOBAL_INDEX_U32;
+                flags |= Bytecode.ELEM_SEG_GLOBAL_INDEX_I32;
                 add4(globalIndex);
             }
         }
@@ -567,7 +675,7 @@ public class BytecodeList {
                 flags |= Bytecode.ELEM_SEG_OFFSET_ADDRESS_U16;
                 add2(offsetAddress);
             } else {
-                flags |= Bytecode.ELEM_SEG_OFFSET_ADDRESS_U32;
+                flags |= Bytecode.ELEM_SEG_OFFSET_ADDRESS_I32;
                 add4(offsetAddress);
             }
         }
@@ -575,14 +683,27 @@ public class BytecodeList {
         return bytecode.size();
     }
 
+    /**
+     * Adds a single byte to the bytecode.
+     * 
+     * @param value The byte that should be added
+     */
     public void addByte(byte value) {
         bytecode.add(value);
     }
 
+    /**
+     * Adds a null entry to the data of an elem segment.
+     */
     public void addElemNull() {
         add1(Bytecode.ELEM_ITEM_TYPE_FUNCTION_INDEX | Bytecode.ELEM_ITEM_NULL_FLAG);
     }
 
+    /**
+     * Adds a function index entry to the data of an elem segment.
+     * 
+     * @param functionIndex The function index of the element in the elem segment
+     */
     public void addElemFunctionIndex(int functionIndex) {
         if (functionIndex >= 0 && functionIndex <= 15) {
             add1(Bytecode.ELEM_ITEM_TYPE_FUNCTION_INDEX | Bytecode.ELEM_ITEM_LENGTH_U4 | functionIndex);
@@ -593,11 +714,16 @@ public class BytecodeList {
             add1(Bytecode.ELEM_ITEM_TYPE_FUNCTION_INDEX | Bytecode.ELEM_ITEM_LENGTH_U16);
             add2(functionIndex);
         } else {
-            add1(Bytecode.ELEM_ITEM_TYPE_FUNCTION_INDEX | Bytecode.ELEM_ITEM_LENGTH_U32);
+            add1(Bytecode.ELEM_ITEM_TYPE_FUNCTION_INDEX | Bytecode.ELEM_ITEM_LENGTH_I32);
             add4(functionIndex);
         }
     }
 
+    /**
+     * Adds a global index entry to the data of an elem segment.
+     * 
+     * @param globalIndex The global index of the element in the elem segment
+     */
     public void addElemGlobalIndex(int globalIndex) {
         if (globalIndex >= 0 && globalIndex <= 15) {
             add1(Bytecode.ELEM_ITEM_TYPE_GLOBAL_INDEX | Bytecode.ELEM_ITEM_LENGTH_U4 | globalIndex);
@@ -608,11 +734,20 @@ public class BytecodeList {
             add1(Bytecode.ELEM_ITEM_TYPE_GLOBAL_INDEX | Bytecode.ELEM_ITEM_LENGTH_U16);
             add2(globalIndex);
         } else {
-            add1(Bytecode.ELEM_ITEM_TYPE_GLOBAL_INDEX | Bytecode.ELEM_ITEM_LENGTH_U32);
+            add1(Bytecode.ELEM_ITEM_TYPE_GLOBAL_INDEX | Bytecode.ELEM_ITEM_LENGTH_I32);
             add4(globalIndex);
         }
     }
 
+    /**
+     * Adds additional information about a code entry to the bytecode.
+     * 
+     * @param functionIndex The function index
+     * @param maxStackSize The maximum stack size
+     * @param bytecodeStartOffset The start offset in the bytecode
+     * @param localCount The number of local values (parameters + locals) of the function
+     * @param resultCount The number of result values of the function
+     */
     public void addCodeEntry(int functionIndex, int maxStackSize, int bytecodeStartOffset, int localCount, int resultCount) {
         final int location = bytecode.size();
         add1(0);
@@ -625,7 +760,7 @@ public class BytecodeList {
                 flags |= Bytecode.CODE_ENTRY_FUNCTION_INDEX_U16;
                 add2(functionIndex);
             } else {
-                flags |= Bytecode.CODE_ENTRY_FUNCTION_INDEX_U32;
+                flags |= Bytecode.CODE_ENTRY_FUNCTION_INDEX_I32;
                 add4(functionIndex);
             }
         }
@@ -637,7 +772,7 @@ public class BytecodeList {
                 flags |= Bytecode.CODE_ENTRY_MAX_STACK_SIZE_U16;
                 add2(maxStackSize);
             } else {
-                flags |= Bytecode.CODE_ENTRY_MAX_STACK_SIZE_U32;
+                flags |= Bytecode.CODE_ENTRY_MAX_STACK_SIZE_I32;
                 add4(maxStackSize);
             }
         }
@@ -648,7 +783,7 @@ public class BytecodeList {
             flags |= Bytecode.CODE_ENTRY_START_OFFSET_U16;
             add2(bytecodeStartOffset);
         } else {
-            flags |= Bytecode.CODE_ENTRY_START_OFFSET_U32;
+            flags |= Bytecode.CODE_ENTRY_START_OFFSET_I32;
             add4(bytecodeStartOffset);
         }
         if (localCount != 0) {

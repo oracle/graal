@@ -246,23 +246,19 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     /**
      * Initializes the content of a byte array based memory with the given data instance.
      *
-     * @param dataInstance The source data instance that should be copied to the memory
+     * @param source The source data instance that should be copied to the memory
      * @param sourceOffset The offset in the source data segment
      * @param destinationOffset The offset in the memory
      * @param length The number of bytes that should be copied
      * 
      * @throws UnsupportedOperationException If this method is called on an unsafe wasm memory.
      */
-    @TruffleBoundary
-    public void initialize(byte[] dataInstance, int sourceOffset, long destinationOffset, int length) {
-        throw new UnsupportedOperationException();
-    }
+    public abstract void initialize(byte[] source, int sourceOffset, long destinationOffset, int length);
 
     /**
      * Initializes the content of an unsafe wasm memory with the given date instance.
      * 
-     * @param dataInstanceAddress The address of the memory portion that should be copied to the
-     *            memory
+     * @param sourceAddress The address of the memory portion that should be copied to the memory
      * @param sourceOffset The offset from the data instance address
      * @param destinationOffset The offset in the memory
      * @param length The number of bytes that should be copied
@@ -270,7 +266,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * @throws UnsupportedOperationException If the method is called on a byte array based memory
      */
     @TruffleBoundary
-    public void initialize(long dataInstanceAddress, int sourceOffset, long destinationOffset, int length) {
+    public void initializeUnsafe(long sourceAddress, int sourceOffset, long destinationOffset, int length) {
         throw new UnsupportedOperationException();
     }
 

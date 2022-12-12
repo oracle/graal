@@ -337,9 +337,9 @@ final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     @Override
-    public void initialize(byte[] dataInstance, int sourceOffset, long destinationOffset, int length) {
+    public void initialize(byte[] source, int sourceOffset, long destinationOffset, int length) {
         assert destinationOffset + length <= byteSize();
-        System.arraycopy(dataInstance, sourceOffset, byteArrayBuffer.buffer(), (int) destinationOffset, length);
+        System.arraycopy(source, sourceOffset, byteArrayBuffer.buffer(), (int) destinationOffset, length);
     }
 
     @Override

@@ -302,9 +302,16 @@ public final class UnsafeWasmMemory extends WasmMemory {
     }
 
     @Override
-    public void initialize(long dataInstanceAddress, int sourceOffset, long destinationOffset, int length) {
+    public void initialize(byte[] source, int sourceOffset, long destinationOffset, int length) {
+        for (int i = 0; i < length; i++) {
+            unsafe.putByte(startAddress + destinationOffset + i, source[sourceOffset + i]);
+        }
+    }
+
+    @Override
+    public void initializeUnsafe(long sourceAddress, int sourceOffset, long destinationOffset, int length) {
         assert destinationOffset + length <= byteSize();
-        unsafe.copyMemory(dataInstanceAddress + sourceOffset, startAddress + destinationOffset, length);
+        unsafe.copyMemory(sourceAddress + sourceOffset, startAddress + destinationOffset, length);
     }
 
     @Override

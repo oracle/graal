@@ -44,10 +44,11 @@ import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
 
-public class NativeDataInstanceStore {
+/**
+ * Collection of methods for handling the native representation of data segments at runtime.
+ */
+public final class NativeDataInstanceUtil {
     private static final Unsafe unsafe = initUnsafe();
-    private long[] addresses;
-    private int[] sizes;
 
     private static Unsafe initUnsafe() {
         try {
@@ -63,62 +64,19 @@ public class NativeDataInstanceStore {
         }
     }
 
-    public NativeDataInstanceStore() {
-        this.addresses = null;
-        this.sizes = null;
+    private NativeDataInstanceUtil() {
+        // no instantiation allowed
     }
 
-    private void ensureCapacity(int index) {
-        if (addresses == null) {
-            final int length = Math.max(Integer.highestOneBit(index) << 1, 2);
-            addresses = new long[length];
-            sizes = new int[length];
-        } else if (index >= addresses.length) {
-            final int length = Math.max(Integer.highestOneBit(index) << 1, 2 * addresses.length);
-            final long[] nAddresses = new long[length];
-            final int[] nSizes = new int[length];
-            System.arraycopy(addresses, 0, nAddresses, 0, addresses.length);
-            System.arraycopy(sizes, 0, nSizes, 0, sizes.length);
-            addresses = nAddresses;
-            sizes = nSizes;
+    public static long allocateNativeInstance(byte[] data, int offset, int length) {
+        final long address = unsafe.allocateMemory(length);
+        for (int i = 0; i < length; i++) {
+            unsafe.putByte(address + i, data[offset + i]);
         }
+        return address;
     }
 
-    public void setInstance(int index, byte[] dataInstance) {
-        assert dataInstance != null;
-        ensureCapacity(index);
-        final long address = unsafe.allocateMemory(dataInstance.length);
-        addresses[index] = address;
-        sizes[index] = dataInstance.length;
-        for (int i = 0; i < dataInstance.length; i++) {
-            unsafe.putByte(address + i, dataInstance[i]);
-        }
-    }
-
-    public void dropInstance(int index) {
-        if (addresses == null) {
-            return;
-        }
-        assert index < addresses.length;
-        final long address = addresses[index];
+    public static void freeNativeInstance(long address) {
         unsafe.freeMemory(address);
-        addresses[index] = 0L;
-        sizes[index] = 0;
-    }
-
-    public long instanceAddress(int index) {
-        if (addresses == null) {
-            return 0L;
-        }
-        assert index < addresses.length;
-        return addresses[index];
-    }
-
-    public int instanceSize(int index) {
-        if (sizes == null) {
-            return 0;
-        }
-        assert index < sizes.length;
-        return sizes[index];
     }
 }

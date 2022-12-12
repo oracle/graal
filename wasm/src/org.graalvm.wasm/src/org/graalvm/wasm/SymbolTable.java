@@ -359,6 +359,7 @@ public abstract class SymbolTable {
     @CompilationFinal(dimensions = 1) private int[] codeEntries;
     @CompilationFinal private boolean dataCountExists;
     @CompilationFinal private int dataSegmentCount;
+    @CompilationFinal private int droppedDataInstanceOffset;
 
     @CompilationFinal private int codeEntryCount;
 
@@ -1033,11 +1034,11 @@ public abstract class SymbolTable {
         return memory != null && memory.indexType64;
     }
 
-    public int memoryInitialSize() {
+    public long memoryInitialSize() {
         return memory.initialSize;
     }
 
-    public int memoryMaximumSize() {
+    public long memoryMaximumSize() {
         return memory.maximumSize;
     }
 
@@ -1120,6 +1121,14 @@ public abstract class SymbolTable {
 
     public int dataInstanceCount() {
         return dataSegmentCount;
+    }
+
+    void setDroppedDataInstanceOffset(int address) {
+        droppedDataInstanceOffset = address;
+    }
+
+    public int droppedDataInstanceOffset() {
+        return droppedDataInstanceOffset;
     }
 
     public void checkElemIndex(int elemIndex) {

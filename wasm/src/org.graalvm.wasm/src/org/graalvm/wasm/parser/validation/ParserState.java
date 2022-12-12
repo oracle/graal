@@ -465,15 +465,28 @@ public class ParserState {
     }
 
     /**
-     * Adds the i8 or i32 version of the given instruction to the bytecode based on the given
-     * immediate value. If the value fits into an unsigned i8 value, the i8 instruction and an i8
-     * value are added. Otherwise, the i32 instruction and i32 value are added.
+     * Adds the u8 or i32 version of the given instruction to the bytecode based on the given
+     * immediate value. If the value fits into a u8 value, the u8 instruction and a u8 value are
+     * added. Otherwise, the i32 instruction and an i32 value are added.
      * 
-     * @param instruction The i8 version of the instruction
+     * @param instruction The u8 version of the instruction
      * @param value The immediate value
      */
     public void addUnsignedInstruction(int instruction, int value) {
         bytecode.addUnsignedImmediateInstruction(instruction, instruction + 1, value);
+    }
+
+    /**
+     * Adds the u8, u32, or i64 version of the given instruction to the bytecode based on the given
+     * immediate value. If the value fits into a u8 value, the u8 instruction and a u8 value are
+     * added. If the value fits into a u32 value, the u32 instruction and a u32 value are added.
+     * Otherwise, the i64 instruction and an i64 value are added.
+     * 
+     * @param instruction The u8 version of the instruction
+     * @param value The immediate value
+     */
+    public void addUnsignedInstruction(int instruction, long value) {
+        bytecode.addUnsignedImmediateInstruction(instruction, instruction + 1, instruction + 2, value);
     }
 
     /**

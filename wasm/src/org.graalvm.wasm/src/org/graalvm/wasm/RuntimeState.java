@@ -43,6 +43,8 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import org.graalvm.wasm.constants.Bytecode;
+import org.graalvm.wasm.memory.NativeDataInstanceUtil;
 import org.graalvm.wasm.memory.WasmMemory;
 
 /**
@@ -101,10 +103,11 @@ public class RuntimeState {
 
     /**
      * The passive data instances that can be used to lazily initialize memory. They can potentially
-     * be dropped after using them. They can be set to null even in compiled code, therefore they
-     * cannot be compilation final.
+     * be dropped after using them, even in compiled code.
      */
-    @CompilationFinal(dimensions = 0) private long[] dataInstances;
+    @CompilationFinal(dimensions = 0) private int[] dataInstances;
+
+    private final int droppedDataInstanceOffset;
 
     @CompilationFinal private Linker.LinkState linkState;
 
@@ -124,7 +127,7 @@ public class RuntimeState {
         }
     }
 
-    public RuntimeState(WasmContext context, WasmModule module, int numberOfFunctions) {
+    public RuntimeState(WasmContext context, WasmModule module, int numberOfFunctions, int droppedDataInstanceOffset) {
         this.context = context;
         this.module = module;
         this.globalAddresses = new int[INITIAL_GLOBALS_SIZE];
@@ -134,6 +137,7 @@ public class RuntimeState {
         this.linkState = Linker.LinkState.nonLinked;
         this.dataInstances = null;
         this.elementInstances = null;
+        this.droppedDataInstanceOffset = droppedDataInstanceOffset;
     }
 
     private void checkNotLinked() {
@@ -253,28 +257,19 @@ public class RuntimeState {
     }
 
     private void ensureDataInstanceCapacity(int index) {
-        int size = index * 2;
         if (dataInstances == null) {
-            dataInstances = new long[Math.max(Integer.highestOneBit(size) << 1, 2)];
+            dataInstances = new int[Math.max(Integer.highestOneBit(index) << 1, 2)];
         } else if (index >= dataInstances.length) {
-            final long[] nDataInstances = new long[Math.max(Integer.highestOneBit(size) << 1, 2 * dataInstances.length)];
+            final int[] nDataInstances = new int[Math.max(Integer.highestOneBit(index) << 1, 2 * dataInstances.length)];
             System.arraycopy(dataInstances, 0, nDataInstances, 0, dataInstances.length);
             dataInstances = nDataInstances;
         }
     }
 
-    void setDataInstance(int index, int bytecodeOffset, int length) {
+    void setDataInstance(int index, int bytecodeOffset) {
         assert bytecodeOffset != -1;
         ensureDataInstanceCapacity(index);
         dataInstances[index] = bytecodeOffset;
-        dataInstances[index + 1] = length;
-    }
-
-    void setDataInstance(int index, long address, int length) {
-        assert address != 0;
-        ensureDataInstanceCapacity(index);
-        dataInstances[index] = address;
-        dataInstances[index + 1] = length;
     }
 
     public void dropDataInstance(int index) {
@@ -282,31 +277,67 @@ public class RuntimeState {
             return;
         }
         assert index < dataInstances.length;
-        dataInstances[index] = dataInstances[index] & 0xffff_ffff_0000_0000L;
+        dataInstances[index] = droppedDataInstanceOffset;
+    }
+
+    public void dropUnsafeDataInstance(int index) {
+        final long address = dataInstanceAddress(index);
+        if (address != 0) {
+            NativeDataInstanceUtil.freeNativeInstance(address);
+        }
+        dataInstances[index] = droppedDataInstanceOffset;
     }
 
     public int dataInstanceOffset(int index) {
-        if (dataInstances == null) {
+        if (dataInstances == null || dataInstances[index] == droppedDataInstanceOffset) {
             return 0;
         }
-        assert index < dataInstances.length;
-        return (int) (dataInstances[index]);
+        final int bytecodeOffset = dataInstances[index];
+        final byte[] bytecode = module().bytecode();
+        return bytecodeOffset + (bytecode[bytecodeOffset] & Bytecode.DATA_SEG_RUNTIME_LENGTH_FLAG) + 1;
     }
 
     public int dataInstanceLength(int index) {
-        if (dataInstances == null) {
+        if (dataInstances == null || dataInstances[index] == droppedDataInstanceOffset) {
             return 0;
         }
-        assert index < dataInstances.length;
-        return (int) dataInstances[index + 1];
+        final int bytecodeOffset = dataInstances[index];
+        final byte[] bytecode = module().bytecode();
+        final int flags = bytecode[bytecodeOffset];
+        final int lengthBytes = flags & Bytecode.DATA_SEG_RUNTIME_LENGTH_FLAG;
+        final int length;
+        switch (lengthBytes) {
+            case Bytecode.DATA_SEG_RUNTIME_LENGTH_ZERO:
+                length = (flags & Bytecode.DATA_SEG_RUNTIME_LENGTH_VALUE) >>> 3;
+                break;
+            case Bytecode.DATA_SEG_RUNTIME_LENGTH_U8:
+                length = BinaryStreamParser.rawPeekU8(bytecode, bytecodeOffset + 1);
+                break;
+            case Bytecode.DATA_SEG_RUNTIME_LENGTH_U16:
+                length = BinaryStreamParser.rawPeekU16(bytecode, bytecodeOffset + 1);
+                break;
+            case Bytecode.DATA_SEG_RUNTIME_LENGTH_I32:
+                length = BinaryStreamParser.rawPeekI32(bytecode, bytecodeOffset + 1);
+                break;
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+        return length;
     }
 
     public long dataInstanceAddress(int index) {
-        if (dataInstances == null) {
+        if (dataInstances == null || dataInstances[index] == droppedDataInstanceOffset) {
             return 0;
         }
-        assert index < dataInstances.length;
-        return dataInstances[index];
+        final int bytecodeOffset = dataInstances[index];
+        final byte[] bytecode = module().bytecode();
+        final byte flags = bytecode[bytecodeOffset];
+        final int lengthBytes = flags & Bytecode.DATA_SEG_RUNTIME_LENGTH_FLAG;
+        return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + lengthBytes + 1);
+    }
+
+    public int droppedDataInstanceOffset() {
+        return droppedDataInstanceOffset;
     }
 
     private void ensureElemInstanceCapacity(int index) {

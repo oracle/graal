@@ -387,6 +387,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         final int offsetDelta = rawPeekI32(bytecode, offset);
                         offset += offsetDelta;
                     }
+                    break;
                 }
                 case Bytecode.BR_I8: {
                     final int offsetDelta = rawPeekI8(bytecode, offset);
@@ -1663,7 +1664,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final long memOffset = rawPeekU8(bytecode, offset);
                             offset++;
 
-                            load64(memory, frame, stackPointer - 1, opcode, memOffset);
+                            load64(memory, frame, stackPointer - 1, miscOpcode, memOffset);
+                            break;
                         }
                         case Bytecode.I32_MEM64_LOAD_U32:
                         case Bytecode.I64_MEM64_LOAD_U32:
@@ -1682,7 +1684,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final long memOffset = rawPeekU32(bytecode, offset);
                             offset += 4;
 
-                            load64(memory, frame, stackPointer - 1, opcode, memOffset);
+                            load64(memory, frame, stackPointer - 1, miscOpcode, memOffset);
+                            break;
                         }
                         case Bytecode.I32_MEM64_LOAD_I64:
                         case Bytecode.I64_MEM64_LOAD_I64:
@@ -1701,7 +1704,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final long memOffset = rawPeekI64(bytecode, offset);
                             offset += 8;
 
-                            load64(memory, frame, stackPointer - 1, opcode, memOffset);
+                            load64(memory, frame, stackPointer - 1, miscOpcode, memOffset);
+                            break;
                         }
                         case Bytecode.I32_MEM64_STORE_U8:
                         case Bytecode.I64_MEM64_STORE_U8:
@@ -1715,7 +1719,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final long memOffset = rawPeekU8(bytecode, offset);
                             offset++;
 
-                            store64(memory, frame, stackPointer, opcode, memOffset);
+                            store64(memory, frame, stackPointer, miscOpcode, memOffset);
                             stackPointer -= 2;
 
                             break;
@@ -1732,7 +1736,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final long memOffset = rawPeekU32(bytecode, offset);
                             offset += 4;
 
-                            store64(memory, frame, stackPointer, opcode, memOffset);
+                            store64(memory, frame, stackPointer, miscOpcode, memOffset);
                             stackPointer -= 2;
 
                             break;
@@ -1749,7 +1753,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final long memOffset = rawPeekI64(bytecode, offset);
                             offset += 8;
 
-                            store64(memory, frame, stackPointer, opcode, memOffset);
+                            store64(memory, frame, stackPointer, miscOpcode, memOffset);
                             stackPointer -= 2;
 
                             break;
@@ -1762,6 +1766,12 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final int dst = popInt(frame, stackPointer - 3);
                             memory_init_unsafe(n, src, dst, dataIndex);
                             stackPointer -= 3;
+                            offset += 4;
+                            break;
+                        }
+                        case Bytecode.DATA_DROP_UNSAFE: {
+                            final int dataIndex = rawPeekI32(bytecode, offset);
+                            instance.dropUnsafeDataInstance(dataIndex);
                             offset += 4;
                             break;
                         }
@@ -3623,7 +3633,9 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 val = false;
             }
         }
-        return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
+        // Clamp probability
+        final double probability = Math.min((double) t / (double) sum, 1.0);
+        return CompilerDirectives.injectBranchProbability(probability, val);
     }
 
     /**

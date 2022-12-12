@@ -66,11 +66,15 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 public final class WasmInstance extends RuntimeState implements TruffleObject {
 
     public WasmInstance(WasmContext context, WasmModule module) {
-        this(context, module, module.numFunctions());
+        this(context, module, module.numFunctions(), module.droppedDataInstanceOffset());
     }
 
     public WasmInstance(WasmContext context, WasmModule module, int numberOfFunctions) {
-        super(context, module, numberOfFunctions);
+        super(context, module, numberOfFunctions, 0);
+    }
+
+    private WasmInstance(WasmContext context, WasmModule module, int numberOfFunctions, int droppedDataInstanceAddress) {
+        super(context, module, numberOfFunctions, droppedDataInstanceAddress);
     }
 
     public String name() {

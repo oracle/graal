@@ -52,6 +52,7 @@ import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.memory.NativeDataInstanceUtil;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.nodes.WasmFunctionNode;
 
@@ -379,7 +380,8 @@ public class Linker {
         });
     }
 
-    void resolveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, long offsetAddress, int offsetGlobalIndex, int byteLength, int bytecodeOffset) {
+    void resolveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, long offsetAddress, int offsetGlobalIndex, int byteLength, int bytecodeOffset,
+                    int droppedDataInstanceOffset) {
         assertTrue(instance.symbolTable().memoryExists(), String.format("No memory declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
         final Runnable resolveAction = () -> {
             if (context.getContextOptions().memoryOverheadMode()) {
@@ -399,11 +401,11 @@ public class Linker {
                 baseAddress = offsetAddress;
             }
 
-            Assert.assertUnsignedLongLessOrEqual(baseAddress, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-            Assert.assertUnsignedLongLessOrEqual(baseAddress + byteLength, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-            instance.setDataInstance(dataSegmentId, 0, 0);
+            Assert.assertUnsignedLongLessOrEqual(baseAddress, memory.byteSize(), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+            Assert.assertUnsignedLongLessOrEqual(baseAddress + byteLength, memory.byteSize(), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
             final byte[] bytecode = instance.module().bytecode();
             memory.initialize(bytecode, bytecodeOffset, baseAddress, byteLength);
+            instance.setDataInstance(dataSegmentId, droppedDataInstanceOffset);
         };
         final ArrayList<Sym> dependencies = new ArrayList<>();
         if (instance.symbolTable().importedMemory() != null) {
@@ -424,7 +426,13 @@ public class Linker {
                 // Do not initialize the data segment when in memory overhead mode.
                 return;
             }
-            instance.setDataInstance(dataSegmentId, bytecodeOffset, bytecodeLength);
+            if (context.getContextOptions().useUnsafeMemory()) {
+                final byte[] bytecode = instance.module().bytecode();
+                final int lengthBytes = bytecode[bytecodeOffset] & Bytecode.DATA_SEG_RUNTIME_LENGTH_FLAG;
+                final long instanceAddress = NativeDataInstanceUtil.allocateNativeInstance(instance.module().bytecode(), bytecodeOffset + lengthBytes + 9, bytecodeLength);
+                BinaryStreamParser.writeI64(bytecode, bytecodeOffset + lengthBytes + 1, instanceAddress);
+            }
+            instance.setDataInstance(dataSegmentId, bytecodeOffset);
         };
         final ArrayList<Sym> dependencies = new ArrayList<>();
         if (dataSegmentId > 0) {
@@ -499,7 +507,7 @@ public class Linker {
                     index = BinaryStreamParser.rawPeekU16(bytecode, elementOffset);
                     elementOffset += 2;
                     break;
-                case Bytecode.ELEM_ITEM_LENGTH_U32:
+                case Bytecode.ELEM_ITEM_LENGTH_I32:
                     index = BinaryStreamParser.rawPeekI32(bytecode, elementOffset);
                     elementOffset += 4;
                     break;
@@ -546,7 +554,7 @@ public class Linker {
                     index = BinaryStreamParser.rawPeekU16(bytecode, elementOffset);
                     elementOffset += 2;
                     break;
-                case Bytecode.ELEM_ITEM_LENGTH_U32:
+                case Bytecode.ELEM_ITEM_LENGTH_I32:
                     index = BinaryStreamParser.rawPeekI32(bytecode, elementOffset);
                     elementOffset += 4;
                     break;

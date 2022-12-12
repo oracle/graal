@@ -406,5 +406,23 @@ public abstract class BinaryStreamParser {
                         ((bytecode[offset + 7] & 0xFFL) << 56);
     }
 
+    /**
+     * Writes the signed long value to the given bytecode offset.
+     * 
+     * @param bytecode The bytecode
+     * @param offset The offset in the bytecode
+     * @param value The value that should be written
+     */
+    public static void writeI64(byte[] bytecode, int offset, long value) {
+        bytecode[offset] = (byte) (value & 0xFF);
+        bytecode[offset + 1] = (byte) ((value >> 8) & 0xFF);
+        bytecode[offset + 2] = (byte) ((value >> 16) & 0xFF);
+        bytecode[offset + 3] = (byte) ((value >> 24) & 0xFF);
+        bytecode[offset + 4] = (byte) ((value >> 32) & 0xFF);
+        bytecode[offset + 5] = (byte) ((value >> 40) & 0xFF);
+        bytecode[offset + 6] = (byte) ((value >> 48) & 0xFF);
+        bytecode[offset + 7] = (byte) ((value >> 56) & 0xFF);
+    }
+
     // endregion
 }

@@ -41,29 +41,29 @@
 
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.nodes.Node;
+import java.util.List;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.SegmentMode;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.memory.ByteArrayWasmMemory;
-import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.nodes.WasmFunctionNode;
+import org.graalvm.wasm.memory.WasmMemoryFactory;
 import org.graalvm.wasm.nodes.WasmCallStubNode;
+import org.graalvm.wasm.nodes.WasmFunctionNode;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 import org.graalvm.wasm.nodes.WasmMemoryOverheadModeRootNode;
 import org.graalvm.wasm.nodes.WasmRootNode;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 
-import java.util.List;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Creates wasm instances by converting parser nodes into Truffle nodes.
@@ -212,22 +212,18 @@ public class WasmInstantiator {
         }
 
         if (module.memoryExists()) {
-            final int memoryMinSize = module.memoryInitialSize();
-            final int memoryMaxSize = module.memoryMaximumSize();
+            final long memoryMinSize = module.memoryInitialSize();
+            final long memoryMaxSize = module.memoryMaximumSize();
+            final boolean memoryIndexType64 = module.memoryHasIndexType64();
             final ImportDescriptor memoryDescriptor = module.importedMemory();
             if (memoryDescriptor != null) {
-                module.addLinkAction((context, instance) -> context.linker().resolveMemoryImport(context, instance, memoryDescriptor, memoryMinSize, memoryMaxSize));
+                module.addLinkAction((context, instance) -> context.linker().resolveMemoryImport(context, instance, memoryDescriptor, memoryMinSize, memoryMaxSize, memoryIndexType64));
             } else {
                 module.addLinkAction((context, instance) -> {
                     final ModuleLimits limits = instance.module().limits();
-                    final int maxAllowedSize = WasmMath.minUnsigned(memoryMaxSize, limits.memoryInstanceSizeLimit());
-                    limits.checkMemoryInstanceSize(memoryMinSize);
-                    final WasmMemory wasmMemory;
-                    if (context.environment().getOptions().get(WasmOptions.UseUnsafeMemory)) {
-                        wasmMemory = new UnsafeWasmMemory(memoryMinSize, memoryMaxSize, maxAllowedSize);
-                    } else {
-                        wasmMemory = new ByteArrayWasmMemory(memoryMinSize, memoryMaxSize, maxAllowedSize);
-                    }
+                    final long maxAllowedSize = WasmMath.minUnsigned(memoryMaxSize, limits.memoryInstanceSizeLimit());
+                    limits.checkMemoryInstanceSize(memoryMinSize, memoryIndexType64);
+                    final WasmMemory wasmMemory = WasmMemoryFactory.createMemory(memoryMinSize, memoryMaxSize, maxAllowedSize, memoryIndexType64, context.getContextOptions().useUnsafeMemory());
                     final int address = context.memories().register(wasmMemory);
                     final WasmMemory allocatedMemory = context.memories().memory(address);
                     instance.setMemory(allocatedMemory);
@@ -260,7 +256,7 @@ public class WasmInstantiator {
                     dataLength = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
                     effectiveOffset += 2;
                     break;
-                case Bytecode.DATA_SEG_LENGTH_U32:
+                case Bytecode.DATA_SEG_LENGTH_I32:
                     dataLength = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
                     effectiveOffset += 3;
                     break;
@@ -268,7 +264,7 @@ public class WasmInstantiator {
                     throw CompilerDirectives.shouldNotReachHere();
             }
             if (dataMode == SegmentMode.ACTIVE) {
-                final int dataOffsetAddress;
+                final long dataOffsetAddress;
                 switch (flags & Bytecode.DATA_SEG_OFFSET_ADDRESS_FLAG) {
                     case Bytecode.DATA_SEG_OFFSET_ADDRESS_UNDEFINED:
                         dataOffsetAddress = -1;
@@ -282,8 +278,12 @@ public class WasmInstantiator {
                         effectiveOffset += 2;
                         break;
                     case Bytecode.DATA_SEG_OFFSET_ADDRESS_U32:
-                        dataOffsetAddress = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
+                        dataOffsetAddress = BinaryStreamParser.rawPeekU32(bytecode, effectiveOffset);
                         effectiveOffset += 4;
+                        break;
+                    case Bytecode.DATA_SEG_OFFSET_ADDRESS_U64:
+                        dataOffsetAddress = BinaryStreamParser.rawPeekI64(bytecode, effectiveOffset);
+                        effectiveOffset += 8;
                         break;
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
@@ -301,7 +301,7 @@ public class WasmInstantiator {
                         dataGlobalIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
                         effectiveOffset += 2;
                         break;
-                    case Bytecode.DATA_SEG_GLOBAL_INDEX_U32:
+                    case Bytecode.DATA_SEG_GLOBAL_INDEX_I32:
                         dataGlobalIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
                         effectiveOffset += 4;
                         break;
@@ -310,10 +310,10 @@ public class WasmInstantiator {
                 }
                 final int dataBytecodeOffset = effectiveOffset;
                 module.addLinkAction((context, instance) -> context.linker().resolveDataSegment(context, instance, dataIndex, dataOffsetAddress, dataGlobalIndex, dataLength,
-                                dataBytecodeOffset));
+                                dataBytecodeOffset, instance.droppedDataInstanceOffset()));
             } else {
                 final int dataBytecodeOffset = effectiveOffset;
-                module.addLinkAction((context, instance) -> context.linker().resolvePassiveDataSegment(instance, dataIndex, dataBytecodeOffset, dataLength));
+                module.addLinkAction((context, instance) -> context.linker().resolvePassiveDataSegment(context, instance, dataIndex, dataBytecodeOffset, dataLength));
             }
         }
 
@@ -339,7 +339,7 @@ public class WasmInstantiator {
                     elemCount = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
                     effectiveOffset += 2;
                     break;
-                case Bytecode.ELEM_SEG_COUNT_U32:
+                case Bytecode.ELEM_SEG_COUNT_I32:
                     elemCount = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
                     effectiveOffset += 4;
                     break;
@@ -360,7 +360,7 @@ public class WasmInstantiator {
                         tableIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
                         effectiveOffset += 2;
                         break;
-                    case Bytecode.ELEM_SEG_TABLE_INDEX_U32:
+                    case Bytecode.ELEM_SEG_TABLE_INDEX_I32:
                         tableIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
                         effectiveOffset += 4;
                         break;
@@ -380,7 +380,7 @@ public class WasmInstantiator {
                         offsetGlobalIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
                         effectiveOffset += 2;
                         break;
-                    case Bytecode.ELEM_SEG_GLOBAL_INDEX_U32:
+                    case Bytecode.ELEM_SEG_GLOBAL_INDEX_I32:
                         offsetGlobalIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
                         effectiveOffset += 4;
                         break;
@@ -400,7 +400,7 @@ public class WasmInstantiator {
                         offsetAddress = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
                         effectiveOffset += 2;
                         break;
-                    case Bytecode.ELEM_SEG_OFFSET_ADDRESS_U32:
+                    case Bytecode.ELEM_SEG_OFFSET_ADDRESS_I32:
                         offsetAddress = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
                         effectiveOffset += 4;
                         break;
