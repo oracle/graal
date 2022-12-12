@@ -5229,6 +5229,12 @@ public class FlatNodeGenFactory {
                 v.setName(createCacheLocalName(cache));
                 boundaryMethod.addParameter(v);
                 builder.tree(var.createReference());
+            } else {
+                var = frameState.getCacheClassInitialized(cache);
+                if (var != null) {
+                    boundaryMethod.addParameter(var.createParameter());
+                    builder.tree(var.createReference());
+                }
             }
         }
 
@@ -6239,9 +6245,6 @@ public class FlatNodeGenFactory {
 
                     builder.startStatement();
                     builder.tree(createCacheAccess(frameState, specialization, cache, CodeTreeBuilder.singleString(localName)));
-                    if (cache.isEncodedEnum()) {
-
-                    }
                     builder.end();
 
                     if (!cache.isEagerInitialize()) {
@@ -6872,19 +6875,18 @@ public class FlatNodeGenFactory {
             return null;
         }
 
-        String name = createFieldName(null, cache);
-        String key = name + "$wrapper";
-        LocalVariable var = frameState.get(key);
+        LocalVariable var = frameState.getCacheClassInitialized(cache);
         if (var != null) {
             // already initialized
             return var;
         }
         if (builder != null) {
             TypeMirror type = createCacheClassType(cache);
+            String name = createFieldName(null, cache);
             String localName = name + "_wrapper";
             builder.declaration(type, localName, createInlinedAccess(frameState, null, CodeTreeBuilder.singleString("this." + name), null));
             var = new LocalVariable(type, localName, CodeTreeBuilder.singleString(localName));
-            frameState.set(key, var);
+            frameState.set(frameState.createCacheClassInitializedKey(cache), var);
         }
 
         return var;
@@ -7748,6 +7750,16 @@ public class FlatNodeGenFactory {
         public LocalVariable getCacheInitialized(SpecializationData specialization, CacheExpression cache) {
             String name = factory.createFieldName(specialization, cache);
             return get(name);
+        }
+
+        public LocalVariable getCacheClassInitialized(CacheExpression cache) {
+            return get(createCacheClassInitializedKey(cache));
+        }
+
+        private String createCacheClassInitializedKey(CacheExpression cache) {
+            String name = factory.createFieldName(null, cache);
+            String key = name + "$wrapper";
+            return key;
         }
 
         public LocalVariable get(String id) {

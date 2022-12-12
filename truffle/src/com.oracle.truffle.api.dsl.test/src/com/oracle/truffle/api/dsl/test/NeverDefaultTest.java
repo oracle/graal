@@ -88,6 +88,8 @@ import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.SingleInstancePri
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.UseMultiInstanceNodeCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.UseSharedDefaultInlinedNodeNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.UseSharedNeverDefaultInlinedNodeNodeGen;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
@@ -920,6 +922,32 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
         assertInParallel(CachedGuardAndFallbackNodeGen::create, (node, threadIndex, objectIndex) -> {
             node.execute(threadIndex % 2);
         });
+    }
+
+    /*
+     * Compilation only test.
+     */
+    @SuppressWarnings({"unused", "truffle-unused"})
+    public abstract static class SharedWrapperWithBoundaryNode extends Node {
+
+        public abstract Object execute(Object arg0);
+
+        @Specialization
+        protected Object oneArg(int arg0,
+                        @Cached(neverDefault = false) @Shared("shared") GuardCacheNode sharedNode) {
+            return arg0;
+        }
+
+        /*
+         * This specialization forces a boundary method in combination with a shared wrapper.
+         */
+        @Specialization(limit = "3")
+        protected Object twoArgs(double arg0,
+                        @CachedLibrary("arg0") InteropLibrary interop,
+                        @Cached(neverDefault = false) @Shared("shared") GuardCacheNode sharedNode) {
+            return arg0;
+        }
+
     }
 
     static final int NODES = 10;
