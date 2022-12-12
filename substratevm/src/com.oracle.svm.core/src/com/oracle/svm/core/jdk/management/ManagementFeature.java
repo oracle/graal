@@ -54,6 +54,7 @@ import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 
 /** See {@link ManagementSupport} for documentation. */
 @AutomaticallyRegisteredFeature
@@ -90,6 +91,16 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
         RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.mbeanserver.DefaultMXBeanMappingFactory$IdentityMapping");
         RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.mbeanserver.DescriptorCache");
         RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.remote.util.ClassLogger");
+        // Adding FlightRecorderMXBean in ManagementSupport class requires the below policies
+        if (HasJfrSupport.get()) {
+            RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.remote.util.EnvHelp");
+            RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.mbeanserver.Introspector");
+            RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.mbeanserver.MXBeanIntrospector");
+            RuntimeClassInitialization.initializeAtBuildTime("java.beans.Introspector");
+            RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.mbeanserver.JavaBeansAccessor");
+            RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.mbeanserver.StandardMBeanIntrospector");
+        }
+
     }
 
     /**

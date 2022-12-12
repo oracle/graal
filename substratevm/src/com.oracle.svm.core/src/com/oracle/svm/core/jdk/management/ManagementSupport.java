@@ -158,7 +158,6 @@ public final class ManagementSupport implements ThreadListener {
          */
         doAddPlatformManagedObjectSingleton(getOsMXBeanInterface(), (PlatformManagedObjectSupplier) this::getOsMXBean);
         doAddPlatformManagedObjectSingleton(FlightRecorderMXBean.class, (PlatformManagedObjectSupplier) this::getFlightRecorderMXBean);
-
     }
 
     private static Class<?> getOsMXBeanInterface() {
@@ -368,7 +367,7 @@ public final class ManagementSupport implements ThreadListener {
      * {@linkplain #handleLazyPlatformManagedObjectSingleton special handling} when retrieving
      * stored platform objects.
      */
-    private interface PlatformManagedObjectSupplier extends Supplier<PlatformManagedObject>, PlatformManagedObject {
+    public interface PlatformManagedObjectSupplier extends Supplier<PlatformManagedObject>, PlatformManagedObject {
         @Override
         default ObjectName getObjectName() {
             throw VMError.shouldNotReachHere();

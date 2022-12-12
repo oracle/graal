@@ -99,10 +99,13 @@ public class JmxServerFeature implements InternalFeature {
          */
         Set<PlatformManagedObject> platformManagedObjects = com.oracle.svm.core.jdk.management.ManagementSupport
                         .getSingleton().getPlatformManagedObjects();
-        for (PlatformManagedObject p : platformManagedObjects) { // TODO: maybe its better to
-                                                                 // hardcode these because
-                                                                 // platform mbeans are lazily
-                                                                 // init at runtime
+        for (PlatformManagedObject p : platformManagedObjects) {
+
+            // PlatformManagedObjectSupplier objects are lazily initialized at runtime. Skip them
+            // here.
+            if (p instanceof com.oracle.svm.core.jdk.management.ManagementSupport.PlatformManagedObjectSupplier) {
+                continue;
+            }
             Class<?> clazz = p.getClass();
             RuntimeReflection.register(clazz);
             RuntimeReflection.register(clazz.getDeclaredConstructors());
