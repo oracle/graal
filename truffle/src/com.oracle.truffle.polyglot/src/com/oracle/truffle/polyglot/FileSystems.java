@@ -187,6 +187,15 @@ final class FileSystems {
         return fs;
     }
 
+    private static FileSystemProvider findDefaultFileSystemProvider() {
+        for (FileSystemProvider provider : FileSystemProvider.installedProviders()) {
+            if ("file".equals(provider.getScheme())) {
+                return provider;
+            }
+        }
+        return null;
+    }
+
     private static boolean isFollowLinks(final LinkOption... linkOptions) {
         for (LinkOption lo : linkOptions) {
             if (Objects.requireNonNull(lo) == LinkOption.NOFOLLOW_LINKS) {
@@ -957,7 +966,9 @@ final class FileSystems {
         private final FileSystemProvider defaultFileSystemProvider;
 
         DeniedIOFileSystem() {
-            defaultFileSystemProvider = findDefaultFileSystem().provider();
+            // The findDefaultFileSystem().provider() cannot be used because MLE forbids
+            // FileSystem#provider().
+            defaultFileSystemProvider = findDefaultFileSystemProvider();
         }
 
         @Override

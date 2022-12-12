@@ -70,6 +70,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.StreamSupport;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -113,9 +114,83 @@ public class NIOFileSystemTest {
     private final Path folderAbsolute;
     private final Path folderRelative;
 
+    /**
+     * A factory to create and dispose tested filesystem. SVM unit test runs the
+     * {@link #createParameters()} at image build time, and the {@code ZipFileSystem} cannot be
+     * stored in the image heap. So the {@link Config} can't hold the {@link FileSystem} instance as
+     * a final field, but it has to create it lazily at image execution time.
+     */
+    private interface FileSystemSupplier extends Supplier<Pair<FileSystem, Path>>, Closeable {
+    }
+
+    private static final class DefaultFileSystemSupplier implements FileSystemSupplier {
+
+        private volatile Path workDir;
+
+        @Override
+        public void close() throws IOException {
+            if (workDir != null) {
+                delete(workDir);
+            }
+        }
+
+        @Override
+        public Pair<FileSystem, Path> get() {
+            try {
+                workDir = Files.createTempDirectory(NIOFileSystemTest.class.getSimpleName());
+                Files.write(workDir.resolve(FILE), NIOFileSystemTest.class.getSimpleName().getBytes(StandardCharsets.UTF_8));
+                Files.createDirectory(workDir.resolve(FOLDER));
+                FileSystem hostFs = FileSystem.newDefaultFileSystem();
+                return Pair.create(hostFs, workDir);
+            } catch (IOException ioe) {
+                throw new AssertionError("Failed to prepare test file system", ioe);
+            }
+        }
+    }
+
+    private static final class ZipFileSystemSupplier implements FileSystemSupplier {
+
+        private volatile Path zipFile;
+        private volatile java.nio.file.FileSystem zipFs;
+
+        @Override
+        public void close() throws IOException {
+            if (zipFs != null) {
+                zipFs.close();
+            }
+            if (zipFile != null) {
+                delete(zipFile);
+            }
+        }
+
+        @Override
+        public Pair<FileSystem, Path> get() {
+            try {
+                zipFile = Files.createTempFile("archive", ".zip");
+                String workdir = "/workdir";
+                try (ZipOutputStream outputStream = new ZipOutputStream(Files.newOutputStream(zipFile, StandardOpenOption.CREATE))) {
+                    ZipEntry entry = new ZipEntry(workdir + "/" + FILE);
+                    outputStream.putNextEntry(entry);
+                    outputStream.write(NIOFileSystemTest.class.getSimpleName().getBytes(StandardCharsets.UTF_8));
+                    entry = new ZipEntry(workdir + "/" + FOLDER + "/");
+                    outputStream.putNextEntry(entry);
+                }
+                zipFs = FileSystems.newFileSystem(jarURI(zipFile), Collections.emptyMap());
+                return Pair.create(FileSystem.newFileSystem(zipFs), zipFs.getPath(workdir));
+            } catch (IOException ioe) {
+                throw new AssertionError("Failed to prepare test file system", ioe);
+            }
+        }
+    }
+
     private static final class Config {
         final String name;
-        final FileSystem fs;
+        final FileSystemSupplier fileSystemSupplier;
+        /**
+         * Separator used by the filesystem to separate path components. The default filesystem uses
+         * {@link File#separator}. The zip filesystem always uses {@code "/"}.
+         */
+        final String separator;
         /**
          * If {@code true} the filesystem supports links. If {@code false} the filesystem does not
          * support links and may not even verify {@link LinkOption} parameters.
@@ -160,16 +235,16 @@ public class NIOFileSystemTest {
          * throwing an {@link UnsupportedOperationException}.
          */
         final boolean strictCreateDirectoryAttrs;
-        final Path workDir;
-        final Path newWorkDir;
-        final Closeable closeOnTearDown;
 
-        Config(String name, FileSystem fileSystem,
+        private volatile FileSystem fsCache;
+        private volatile Path workDirCache;
+
+        Config(String name, FileSystemSupplier fileSystemSupplier, String separator,
                         boolean supportsLinks, boolean supportsTempDirectory, boolean strictReadAttributes, boolean strictCopyOptions,
-                        boolean strictMoveOptions, boolean strictNewByteChannelAttrs, boolean strictCreateDirectoryAttrs,
-                        Path actualWorkDir, Path newWorkDir, Closeable closeable) {
+                        boolean strictMoveOptions, boolean strictNewByteChannelAttrs, boolean strictCreateDirectoryAttrs) {
             this.name = name;
-            this.fs = fileSystem;
+            this.fileSystemSupplier = fileSystemSupplier;
+            this.separator = separator;
             this.supportsLinks = supportsLinks;
             this.supportsTempDirectory = supportsTempDirectory;
             this.strictReadAttributes = strictReadAttributes;
@@ -177,10 +252,30 @@ public class NIOFileSystemTest {
             this.strictMoveOptions = strictMoveOptions;
             this.strictNewByteChannelAttrs = strictNewByteChannelAttrs;
             this.strictCreateDirectoryAttrs = strictCreateDirectoryAttrs;
-            this.workDir = actualWorkDir;
-            this.newWorkDir = newWorkDir;
-            this.closeOnTearDown = closeable;
-            fs.setCurrentWorkingDirectory(workDir);
+        }
+
+        FileSystem fs() {
+            init();
+            return fsCache;
+        }
+
+        Path workDir() {
+            init();
+            return workDirCache;
+        }
+
+        private void init() {
+            if (fsCache == null) {
+                synchronized (this) {
+                    if (fsCache == null) {
+                        assert workDirCache == null;
+                        Pair<FileSystem, Path> pair = fileSystemSupplier.get();
+                        fsCache = pair.getLeft();
+                        workDirCache = pair.getRight();
+                        fsCache.setCurrentWorkingDirectory(workDirCache);
+                    }
+                }
+            }
         }
 
         @Override
@@ -195,28 +290,12 @@ public class NIOFileSystemTest {
     }
 
     @Parameterized.Parameters(name = "{0}")
-    public static Collection<Config> createParameters() throws IOException {
-        Path hostCwd = Files.createTempDirectory(NIOFileSystemTest.class.getSimpleName());
-        Path hostNewCwd = Files.createTempDirectory(NIOFileSystemTest.class.getSimpleName());
-        prepareContentOnHostFs(hostCwd);
-        FileSystem hostFs = FileSystem.newDefaultFileSystem();
-        Pair<Path, String[]> zipFile = prepareContentInZipFile();
-        java.nio.file.FileSystem zipFs = FileSystems.newFileSystem(jarURI(zipFile.getLeft()), Collections.emptyMap());
-        Path zipCwd = zipFs.getPath(zipFile.getRight()[0]);
-        Path zipNewCwd = zipFs.getPath(zipFile.getRight()[1]);
+    public static Collection<Config> createParameters() {
         Collection<Config> res = List.of(
-                        new Config("Default FS", hostFs,
-                                        true, true, true, true, true, true, true,
-                                        hostCwd, hostNewCwd, () -> {
-                                            delete(hostCwd);
-                                            delete(hostNewCwd);
-                                        }),
-                        new Config("Zip FS", FileSystem.newFileSystem(zipFs),
-                                        false, false, false, false, false, false, false,
-                                        zipCwd, zipNewCwd, () -> {
-                                            zipFs.close();
-                                            delete(zipFile.getLeft());
-                                        }));
+                        new Config("Default FS", new DefaultFileSystemSupplier(), File.separator,
+                                        true, true, true, true, true, true, true),
+                        new Config("Zip FS", new ZipFileSystemSupplier(), "/",
+                                        false, false, false, false, false, false, false));
         configurations = res;
         return res;
     }
@@ -226,299 +305,276 @@ public class NIOFileSystemTest {
         return URI.create("jar:" + path.toUri() + "!/");
     }
 
-    private static void prepareContentOnHostFs(Path workDir) throws IOException {
-        Files.write(workDir.resolve(FILE), NIOFileSystemTest.class.getSimpleName().getBytes(StandardCharsets.UTF_8));
-        Files.createDirectory(workDir.resolve(FOLDER));
-    }
-
-    private static Pair<Path, String[]> prepareContentInZipFile() throws IOException {
-        Path zipFile = Files.createTempFile("archive", ".zip");
-        String workdir1 = "/workdir1";
-        String workdir2 = "/workdir2";
-        try (ZipOutputStream outputStream = new ZipOutputStream(Files.newOutputStream(zipFile, StandardOpenOption.CREATE))) {
-            ZipEntry entry = new ZipEntry(workdir1 + "/" + FILE);
-            outputStream.putNextEntry(entry);
-            outputStream.write(NIOFileSystemTest.class.getSimpleName().getBytes(StandardCharsets.UTF_8));
-            entry = new ZipEntry(workdir1 + "/" + FOLDER + "/");
-            outputStream.putNextEntry(entry);
-            entry = new ZipEntry(workdir2 + "/");
-            outputStream.putNextEntry(entry);
-        }
-        return Pair.create(zipFile, new String[]{workdir1, workdir2});
-    }
-
     @AfterClass
     public static void tearDownClass() throws IOException {
         if (configurations != null) {
             for (Config configuration : configurations) {
-                if (configuration.closeOnTearDown != null) {
-                    configuration.closeOnTearDown.close();
-                }
+                configuration.fileSystemSupplier.close();
             }
         }
     }
 
     public NIOFileSystemTest(Config config) {
         this.config = config;
-        this.nonExistent = config.workDir.resolve("nonexistent");
+        this.nonExistent = config.workDir().resolve("nonexistent");
         Assert.assertFalse(Files.exists(nonExistent));
-        this.fileAbsolute = config.workDir.resolve(FILE);
+        this.fileAbsolute = config.workDir().resolve(FILE);
         Assert.assertTrue(Files.isRegularFile(fileAbsolute));
-        this.fileRelative = config.workDir.relativize(fileAbsolute);
-        this.folderAbsolute = config.workDir.resolve(FOLDER);
+        this.fileRelative = config.workDir().relativize(fileAbsolute);
+        this.folderAbsolute = config.workDir().resolve(FOLDER);
         Assert.assertTrue(Files.isDirectory(folderAbsolute));
-        this.folderRelative = config.workDir.relativize(folderAbsolute);
+        this.folderRelative = config.workDir().relativize(folderAbsolute);
     }
 
     @Test
     public void testParsePath() {
         String fileName = "test";
-        Path path = config.fs.parsePath(fileName);
+        Path path = config.fs().parsePath(fileName);
         Assert.assertEquals(fileName, path.getFileName().toString());
-        path = config.fs.parsePath(config.workDir.toAbsolutePath().toUri());
-        Assert.assertEquals(config.workDir.toAbsolutePath(), path);
-        expectException(() -> config.fs.parsePath((String) null), NullPointerException.class);
-        expectException(() -> config.fs.parsePath((URI) null), NullPointerException.class);
-        expectException(() -> config.fs.parsePath(new URI("unknownscheme:///tmp/")), UnsupportedOperationException.class);
+        path = config.fs().parsePath(config.workDir().toAbsolutePath().toUri());
+        Assert.assertEquals(config.workDir().toAbsolutePath(), path);
+        expectException(() -> config.fs().parsePath((String) null), NullPointerException.class);
+        expectException(() -> config.fs().parsePath((URI) null), NullPointerException.class);
+        expectException(() -> config.fs().parsePath(new URI("unknownscheme:///tmp/")), UnsupportedOperationException.class);
     }
 
     @Test
     public void testCheckAccess() throws IOException {
-        config.fs.checkAccess(fileAbsolute, EnumSet.noneOf(AccessMode.class));
-        config.fs.checkAccess(fileRelative, EnumSet.noneOf(AccessMode.class));
-        config.fs.checkAccess(folderAbsolute, EnumSet.of(AccessMode.READ));
-        config.fs.checkAccess(folderAbsolute, EnumSet.of(AccessMode.READ, AccessMode.WRITE));
-        config.fs.checkAccess(folderRelative, EnumSet.of(AccessMode.READ));
-        config.fs.checkAccess(fileAbsolute, EnumSet.of(AccessMode.READ));
-        config.fs.checkAccess(fileRelative, EnumSet.of(AccessMode.READ));
-        expectException(() -> config.fs.checkAccess(nonExistent, EnumSet.of(AccessMode.READ)), NoSuchFileException.class);
-        expectException(() -> config.fs.checkAccess(folderAbsolute, null), NullPointerException.class);
+        config.fs().checkAccess(fileAbsolute, EnumSet.noneOf(AccessMode.class));
+        config.fs().checkAccess(fileRelative, EnumSet.noneOf(AccessMode.class));
+        config.fs().checkAccess(folderAbsolute, EnumSet.of(AccessMode.READ));
+        config.fs().checkAccess(folderAbsolute, EnumSet.of(AccessMode.READ, AccessMode.WRITE));
+        config.fs().checkAccess(folderRelative, EnumSet.of(AccessMode.READ));
+        config.fs().checkAccess(fileAbsolute, EnumSet.of(AccessMode.READ));
+        config.fs().checkAccess(fileRelative, EnumSet.of(AccessMode.READ));
+        expectException(() -> config.fs().checkAccess(nonExistent, EnumSet.of(AccessMode.READ)), NoSuchFileException.class);
+        expectException(() -> config.fs().checkAccess(folderAbsolute, null), NullPointerException.class);
         if (config.supportsLinks) {
-            expectException(() -> config.fs.checkAccess(folderAbsolute, EnumSet.of(AccessMode.READ), (LinkOption[]) null), NullPointerException.class);
-            expectException(() -> config.fs.checkAccess(folderAbsolute, EnumSet.of(AccessMode.READ), new LinkOption[]{null}), NullPointerException.class);
+            expectException(() -> config.fs().checkAccess(folderAbsolute, EnumSet.of(AccessMode.READ), (LinkOption[]) null), NullPointerException.class);
+            expectException(() -> config.fs().checkAccess(folderAbsolute, EnumSet.of(AccessMode.READ), new LinkOption[]{null}), NullPointerException.class);
         }
     }
 
     @Test
     public void testCopy() throws IOException {
-        Path target = config.workDir.resolve("target");
+        Path target = config.workDir().resolve("target");
         if (config.strictCopyOptions) {
-            expectException(() -> config.fs.copy(fileAbsolute, target, new CopyOption() {
+            expectException(() -> config.fs().copy(fileAbsolute, target, new CopyOption() {
             }), UnsupportedOperationException.class);
         }
         Files.createDirectory(target);
-        expectException(() -> config.fs.copy(fileAbsolute, target), FileAlreadyExistsException.class);
-        expectException(() -> config.fs.copy(folderAbsolute, target), FileAlreadyExistsException.class);
+        expectException(() -> config.fs().copy(fileAbsolute, target), FileAlreadyExistsException.class);
+        expectException(() -> config.fs().copy(folderAbsolute, target), FileAlreadyExistsException.class);
         if (config.strictCopyOptions) {
             Path fileInTarget = Files.createFile(target.resolve("file"));
-            expectException(() -> config.fs.copy(fileAbsolute, target, StandardCopyOption.REPLACE_EXISTING), DirectoryNotEmptyException.class);
+            expectException(() -> config.fs().copy(fileAbsolute, target, StandardCopyOption.REPLACE_EXISTING), DirectoryNotEmptyException.class);
             Files.delete(fileInTarget);
         }
-        expectException(() -> config.fs.copy(null, target), NullPointerException.class);
-        expectException(() -> config.fs.copy(fileAbsolute, null), NullPointerException.class);
-        expectException(() -> config.fs.copy(fileAbsolute, target, (CopyOption[]) null), NullPointerException.class);
+        expectException(() -> config.fs().copy(null, target), NullPointerException.class);
+        expectException(() -> config.fs().copy(fileAbsolute, null), NullPointerException.class);
+        expectException(() -> config.fs().copy(fileAbsolute, target, (CopyOption[]) null), NullPointerException.class);
         if (config.strictCopyOptions) {
-            expectException(() -> config.fs.copy(fileAbsolute, target, new CopyOption[]{null}), NullPointerException.class);
+            expectException(() -> config.fs().copy(fileAbsolute, target, new CopyOption[]{null}), NullPointerException.class);
         }
 
-        Path targetAbsolute = config.workDir.resolve("testCopy1");
-        config.fs.copy(fileAbsolute, targetAbsolute);
+        Path targetAbsolute = config.workDir().resolve("testCopy1");
+        config.fs().copy(fileAbsolute, targetAbsolute);
         Assert.assertEquals(getClass().getSimpleName(), Files.readString(targetAbsolute));
-        targetAbsolute = config.workDir.resolve("testCopy2");
-        config.fs.copy(fileRelative, targetAbsolute);
+        targetAbsolute = config.workDir().resolve("testCopy2");
+        config.fs().copy(fileRelative, targetAbsolute);
         Assert.assertEquals(getClass().getSimpleName(), Files.readString(targetAbsolute));
-        Path targetRelative = config.fs.parsePath("testCopy3");
-        targetAbsolute = config.workDir.resolve(targetRelative);
-        config.fs.copy(fileAbsolute, targetRelative);
+        Path targetRelative = config.fs().parsePath("testCopy3");
+        targetAbsolute = config.workDir().resolve(targetRelative);
+        config.fs().copy(fileAbsolute, targetRelative);
         Assert.assertEquals(getClass().getSimpleName(), Files.readString(targetAbsolute));
-        targetRelative = config.fs.parsePath("testCopy4");
-        targetAbsolute = config.workDir.resolve(targetRelative);
-        config.fs.copy(fileRelative, targetRelative);
+        targetRelative = config.fs().parsePath("testCopy4");
+        targetAbsolute = config.workDir().resolve(targetRelative);
+        config.fs().copy(fileRelative, targetRelative);
         Assert.assertEquals(getClass().getSimpleName(), Files.readString(targetAbsolute));
 
-        config.fs.copy(fileRelative, targetAbsolute, StandardCopyOption.REPLACE_EXISTING);
+        config.fs().copy(fileRelative, targetAbsolute, StandardCopyOption.REPLACE_EXISTING);
         Assert.assertTrue(Files.isRegularFile(targetAbsolute));
-        config.fs.copy(fileAbsolute, targetRelative, StandardCopyOption.REPLACE_EXISTING);
+        config.fs().copy(fileAbsolute, targetRelative, StandardCopyOption.REPLACE_EXISTING);
         Assert.assertTrue(Files.isRegularFile(targetAbsolute));
     }
 
     @Test
     public void testCreateDirectory() throws IOException {
-        expectException(() -> config.fs.createDirectory(fileAbsolute), FileAlreadyExistsException.class);
-        Path target = config.fs.parsePath("testCreateDirectory");
+        expectException(() -> config.fs().createDirectory(fileAbsolute), FileAlreadyExistsException.class);
+        Path target = config.fs().parsePath("testCreateDirectory");
         if (config.strictCreateDirectoryAttrs) {
-            expectException(() -> config.fs.createDirectory(target, ATTR_UNKNOWN), UnsupportedOperationException.class);
+            expectException(() -> config.fs().createDirectory(target, ATTR_UNKNOWN), UnsupportedOperationException.class);
         }
-        expectException(() -> config.fs.createDirectory(null), NullPointerException.class);
-        Path targetRelative = config.fs.parsePath("testCreateDirectory1");
-        Path targetAbsolute = config.workDir.resolve(targetRelative);
-        expectException(() -> config.fs.createDirectory(targetAbsolute, (FileAttribute<?>[]) null), NullPointerException.class);
-        expectException(() -> config.fs.createDirectory(targetAbsolute, new FileAttribute<?>[]{null}), NullPointerException.class);
-        config.fs.createDirectory(targetRelative);
+        expectException(() -> config.fs().createDirectory(null), NullPointerException.class);
+        Path targetRelative = config.fs().parsePath("testCreateDirectory1");
+        Path targetAbsolute = config.workDir().resolve(targetRelative);
+        expectException(() -> config.fs().createDirectory(targetAbsolute, (FileAttribute<?>[]) null), NullPointerException.class);
+        expectException(() -> config.fs().createDirectory(targetAbsolute, new FileAttribute<?>[]{null}), NullPointerException.class);
+        config.fs().createDirectory(targetRelative);
         Assert.assertTrue(Files.isDirectory(targetAbsolute));
-        Path targetAbsolute2 = config.workDir.resolve("testCreateDirectory2");
-        config.fs.createDirectory(targetAbsolute2);
+        Path targetAbsolute2 = config.workDir().resolve("testCreateDirectory2");
+        config.fs().createDirectory(targetAbsolute2);
         Assert.assertTrue(Files.isDirectory(targetAbsolute2));
     }
 
     @Test
     public void testCreateLink() throws IOException {
         Assume.assumeTrue(config.supportsLinks);
-        Path targetRelative = config.workDir.resolve("testCreateLink");
-        Path target = config.fs.toAbsolutePath(config.workDir.resolve("testCreateLink2"));
+        Path targetRelative = config.workDir().resolve("testCreateLink");
+        Path target = config.fs().toAbsolutePath(config.workDir().resolve("testCreateLink2"));
         try {
-            config.fs.createLink(targetRelative, fileRelative);
+            config.fs().createLink(targetRelative, fileRelative);
         } catch (UnsupportedOperationException uoe) {
             // Links not supported by OS.
             return;
         }
-        expectException(() -> config.fs.createLink(targetRelative, null), NullPointerException.class);
-        expectException(() -> config.fs.createLink(null, fileAbsolute), NullPointerException.class);
-        config.fs.createLink(target, fileAbsolute);
+        expectException(() -> config.fs().createLink(targetRelative, null), NullPointerException.class);
+        expectException(() -> config.fs().createLink(null, fileAbsolute), NullPointerException.class);
+        config.fs().createLink(target, fileAbsolute);
     }
 
     @Test
     public void testCreateSymLink() throws IOException {
         Assume.assumeTrue(config.supportsLinks);
-        Path targetRelative = config.workDir.resolve("testCreateSymLink");
-        Path target = config.fs.toAbsolutePath(config.workDir.resolve("testCreateSymLink2"));
+        Path targetRelative = config.workDir().resolve("testCreateSymLink");
+        Path target = config.fs().toAbsolutePath(config.workDir().resolve("testCreateSymLink2"));
         try {
-            config.fs.createSymbolicLink(targetRelative, fileRelative);
+            config.fs().createSymbolicLink(targetRelative, fileRelative);
         } catch (UnsupportedOperationException uoe) {
             // Links not supported by OS.
             return;
         }
-        expectException(() -> config.fs.createSymbolicLink(targetRelative, null), NullPointerException.class);
-        expectException(() -> config.fs.createSymbolicLink(null, fileAbsolute), NullPointerException.class);
-        expectException(() -> config.fs.createSymbolicLink(targetRelative, fileAbsolute, (FileAttribute<?>[]) null), NullPointerException.class);
-        expectException(() -> config.fs.createSymbolicLink(targetRelative, fileAbsolute, new FileAttribute<?>[]{null}), NullPointerException.class);
-        expectException(() -> config.fs.createSymbolicLink(targetRelative, fileAbsolute, ATTR_UNKNOWN), UnsupportedOperationException.class);
-        config.fs.createSymbolicLink(target, fileAbsolute);
+        expectException(() -> config.fs().createSymbolicLink(targetRelative, null), NullPointerException.class);
+        expectException(() -> config.fs().createSymbolicLink(null, fileAbsolute), NullPointerException.class);
+        expectException(() -> config.fs().createSymbolicLink(targetRelative, fileAbsolute, (FileAttribute<?>[]) null), NullPointerException.class);
+        expectException(() -> config.fs().createSymbolicLink(targetRelative, fileAbsolute, new FileAttribute<?>[]{null}), NullPointerException.class);
+        expectException(() -> config.fs().createSymbolicLink(targetRelative, fileAbsolute, ATTR_UNKNOWN), UnsupportedOperationException.class);
+        config.fs().createSymbolicLink(target, fileAbsolute);
     }
 
     @Test
     public void testDelete() throws IOException {
-        Path targetRelative = config.fs.parsePath("testDelete");
-        Path targetAbsolute = config.workDir.resolve("testDelete");
-        expectException(() -> config.fs.delete(targetAbsolute), NoSuchFileException.class);
-        expectException(() -> config.fs.delete(null), NullPointerException.class);
+        Path targetRelative = config.fs().parsePath("testDelete");
+        Path targetAbsolute = config.workDir().resolve("testDelete");
+        expectException(() -> config.fs().delete(targetAbsolute), NoSuchFileException.class);
+        expectException(() -> config.fs().delete(null), NullPointerException.class);
         Files.createDirectory(targetAbsolute);
-        config.fs.delete(targetRelative);
+        config.fs().delete(targetRelative);
         Assert.assertFalse(Files.exists(targetAbsolute));
         Files.createDirectory(targetAbsolute);
-        config.fs.delete(targetAbsolute);
+        config.fs().delete(targetAbsolute);
         Assert.assertFalse(Files.exists(targetAbsolute));
         Files.createFile(targetAbsolute);
-        config.fs.delete(targetRelative);
+        config.fs().delete(targetRelative);
         Assert.assertFalse(Files.exists(targetAbsolute));
         Files.createFile(targetAbsolute);
-        config.fs.delete(targetAbsolute);
+        config.fs().delete(targetAbsolute);
         Assert.assertFalse(Files.exists(targetAbsolute));
     }
 
     @Test
     public void testGetEncoding() {
-        expectException(() -> config.fs.getEncoding(null), NullPointerException.class);
-        Assert.assertNull(config.fs.getEncoding(fileAbsolute));
-        Assert.assertNull(config.fs.getEncoding(fileRelative));
+        expectException(() -> config.fs().getEncoding(null), NullPointerException.class);
+        Assert.assertNull(config.fs().getEncoding(fileAbsolute));
+        Assert.assertNull(config.fs().getEncoding(fileRelative));
     }
 
     @Test
     public void testMimeType() {
-        expectException(() -> config.fs.getMimeType(null), NullPointerException.class);
-        Assert.assertNull(config.fs.getMimeType(fileAbsolute));
-        Assert.assertNull(config.fs.getMimeType(fileRelative));
+        expectException(() -> config.fs().getMimeType(null), NullPointerException.class);
+        Assert.assertNull(config.fs().getMimeType(fileAbsolute));
+        Assert.assertNull(config.fs().getMimeType(fileRelative));
     }
 
     @Test
     public void testGetPathSeparator() {
-        Assert.assertEquals(File.pathSeparator, config.fs.getPathSeparator());
+        Assert.assertEquals(File.pathSeparator, config.fs().getPathSeparator());
     }
 
     @Test
     public void testGetSeparator() {
-        Assert.assertEquals(File.separator, config.fs.getSeparator());
+        Assert.assertEquals(config.separator, config.fs().getSeparator());
     }
 
     @Test
     public void testGetTempDirectory() {
         if (config.supportsTempDirectory) {
-            Path tmp = config.fs.getTempDirectory();
+            Path tmp = config.fs().getTempDirectory();
             Assert.assertNotNull(tmp);
             Assert.assertTrue(Files.isDirectory(tmp));
         } else {
-            expectException(config.fs::getTempDirectory, UnsupportedOperationException.class);
+            expectException(config.fs()::getTempDirectory, UnsupportedOperationException.class);
         }
     }
 
     @Test
     public void testMove() throws IOException {
-        Path sourceFile = Files.createFile(config.workDir.resolve("testMoveFile1"));
-        Path sourceFolder = Files.createDirectory(config.workDir.resolve("testMoveFolder1"));
-        Path target = config.workDir.resolve("testMoveTarget1");
+        Path sourceFile = Files.createFile(config.workDir().resolve("testMoveFile1"));
+        Path sourceFolder = Files.createDirectory(config.workDir().resolve("testMoveFolder1"));
+        Path target = config.workDir().resolve("testMoveTarget1");
         if (config.strictMoveOptions) {
-            expectException(() -> config.fs.move(sourceFile, target, new CopyOption() {
+            expectException(() -> config.fs().move(sourceFile, target, new CopyOption() {
             }), UnsupportedOperationException.class);
         }
         Files.createDirectory(target);
-        expectException(() -> config.fs.move(sourceFile, target), FileAlreadyExistsException.class);
-        expectException(() -> config.fs.move(sourceFolder, target), FileAlreadyExistsException.class);
+        expectException(() -> config.fs().move(sourceFile, target), FileAlreadyExistsException.class);
+        expectException(() -> config.fs().move(sourceFolder, target), FileAlreadyExistsException.class);
         if (config.strictMoveOptions) {
             Path fileInTarget = Files.createFile(target.resolve("file"));
-            expectException(() -> config.fs.move(sourceFile, target, StandardCopyOption.REPLACE_EXISTING), DirectoryNotEmptyException.class);
+            expectException(() -> config.fs().move(sourceFile, target, StandardCopyOption.REPLACE_EXISTING), DirectoryNotEmptyException.class);
             Files.delete(fileInTarget);
         }
-        expectException(() -> config.fs.move(null, target), NullPointerException.class);
-        expectException(() -> config.fs.move(sourceFile, null), NullPointerException.class);
-        expectException(() -> config.fs.move(sourceFile, target, (CopyOption[]) null), NullPointerException.class);
+        expectException(() -> config.fs().move(null, target), NullPointerException.class);
+        expectException(() -> config.fs().move(sourceFile, null), NullPointerException.class);
+        expectException(() -> config.fs().move(sourceFile, target, (CopyOption[]) null), NullPointerException.class);
         if (config.strictMoveOptions) {
-            expectException(() -> config.fs.move(sourceFile, target, new CopyOption[]{null}), NullPointerException.class);
+            expectException(() -> config.fs().move(sourceFile, target, new CopyOption[]{null}), NullPointerException.class);
         }
 
-        Path sourceFileAbsolute = Files.createFile(config.workDir.resolve("testMoveFile2"));
-        Path sourceFileRelative = config.workDir.relativize(sourceFileAbsolute);
-        Path targetAbsolute = config.workDir.resolve("testMoveTarget2");
-        Path targetRelative = config.workDir.relativize(targetAbsolute);
-        config.fs.move(sourceFileRelative, targetRelative);
+        Path sourceFileAbsolute = Files.createFile(config.workDir().resolve("testMoveFile2"));
+        Path sourceFileRelative = config.workDir().relativize(sourceFileAbsolute);
+        Path targetAbsolute = config.workDir().resolve("testMoveTarget2");
+        Path targetRelative = config.workDir().relativize(targetAbsolute);
+        config.fs().move(sourceFileRelative, targetRelative);
         Assert.assertFalse(Files.exists(sourceFileAbsolute));
         Assert.assertTrue(Files.exists(targetAbsolute));
-        sourceFileAbsolute = Files.createFile(config.workDir.resolve("testMoveFile3"));
-        targetAbsolute = config.workDir.resolve("testMoveTarget3");
-        targetRelative = config.workDir.relativize(targetAbsolute);
-        config.fs.move(sourceFileAbsolute, targetRelative);
+        sourceFileAbsolute = Files.createFile(config.workDir().resolve("testMoveFile3"));
+        targetAbsolute = config.workDir().resolve("testMoveTarget3");
+        targetRelative = config.workDir().relativize(targetAbsolute);
+        config.fs().move(sourceFileAbsolute, targetRelative);
         Assert.assertFalse(Files.exists(sourceFileAbsolute));
         Assert.assertTrue(Files.exists(targetAbsolute));
-        sourceFileAbsolute = Files.createFile(config.workDir.resolve("testMoveFile4"));
-        targetAbsolute = config.workDir.resolve("testMoveTarget4");
-        config.fs.move(sourceFileAbsolute, targetAbsolute, StandardCopyOption.REPLACE_EXISTING);
+        sourceFileAbsolute = Files.createFile(config.workDir().resolve("testMoveFile4"));
+        targetAbsolute = config.workDir().resolve("testMoveTarget4");
+        config.fs().move(sourceFileAbsolute, targetAbsolute, StandardCopyOption.REPLACE_EXISTING);
         Assert.assertFalse(Files.exists(sourceFileAbsolute));
         Assert.assertTrue(Files.exists(targetAbsolute));
     }
 
     @Test
     public void testNewByteChannel() throws IOException {
-        expectException(() -> config.fs.newByteChannel(null, Collections.emptySet()).close(), NullPointerException.class);
-        expectException(() -> config.fs.newByteChannel(fileAbsolute, null).close(), NullPointerException.class);
-        expectException(() -> config.fs.newByteChannel(fileAbsolute, Collections.singleton(null)).close(), NullPointerException.class);
-        Path target = config.workDir.resolve("testNewByteChannel1");
-        expectException(() -> config.fs.newByteChannel(target, EnumSet.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE), (FileAttribute<?>[]) null).close(), NullPointerException.class);
-        expectException(() -> config.fs.newByteChannel(target, EnumSet.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE), new FileAttribute<?>[]{null}).close(), NullPointerException.class);
+        expectException(() -> config.fs().newByteChannel(null, Collections.emptySet()).close(), NullPointerException.class);
+        expectException(() -> config.fs().newByteChannel(fileAbsolute, null).close(), NullPointerException.class);
+        expectException(() -> config.fs().newByteChannel(fileAbsolute, Collections.singleton(null)).close(), NullPointerException.class);
+        Path target = config.workDir().resolve("testNewByteChannel1");
+        expectException(() -> config.fs().newByteChannel(target, EnumSet.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE), (FileAttribute<?>[]) null).close(), NullPointerException.class);
+        expectException(() -> config.fs().newByteChannel(target, EnumSet.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE), new FileAttribute<?>[]{null}).close(), NullPointerException.class);
         if (config.strictNewByteChannelAttrs) {
-            expectException(() -> config.fs.newByteChannel(target, EnumSet.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE), ATTR_UNKNOWN).close(), UnsupportedOperationException.class);
+            expectException(() -> config.fs().newByteChannel(target, EnumSet.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE), ATTR_UNKNOWN).close(), UnsupportedOperationException.class);
         }
-        expectException(() -> config.fs.newByteChannel(fileAbsolute, EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW)).close(), FileAlreadyExistsException.class);
-        expectException(() -> config.fs.newByteChannel(target, Collections.emptySet()).close(), NoSuchFileException.class);
+        expectException(() -> config.fs().newByteChannel(fileAbsolute, EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW)).close(), FileAlreadyExistsException.class);
+        expectException(() -> config.fs().newByteChannel(target, Collections.emptySet()).close(), NoSuchFileException.class);
 
-        Path targetRelative = config.fs.parsePath("testNewByteChannel2");
-        Path targetAbsolute = config.workDir.resolve(targetRelative);
-        try (SeekableByteChannel ch = config.fs.newByteChannel(targetRelative, EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.WRITE))) {
+        Path targetRelative = config.fs().parsePath("testNewByteChannel2");
+        Path targetAbsolute = config.workDir().resolve(targetRelative);
+        try (SeekableByteChannel ch = config.fs().newByteChannel(targetRelative, EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.WRITE))) {
             Assert.assertTrue(ch instanceof FileChannel);
             try (PrintWriter writer = new PrintWriter(Channels.newWriter(ch, StandardCharsets.UTF_8))) {
                 writer.print(getClass().getSimpleName());
             }
         }
         Assert.assertEquals(getClass().getSimpleName(), Files.readString(targetAbsolute));
-        try (SeekableByteChannel ch = config.fs.newByteChannel(targetAbsolute, EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.WRITE))) {
+        try (SeekableByteChannel ch = config.fs().newByteChannel(targetAbsolute, EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.WRITE))) {
             Assert.assertTrue(ch instanceof FileChannel);
             try (PrintWriter writer = new PrintWriter(Channels.newWriter(ch, StandardCharsets.UTF_8))) {
                 writer.print(getClass().getSimpleName());
@@ -526,7 +582,7 @@ public class NIOFileSystemTest {
         }
         Assert.assertEquals(getClass().getSimpleName(), Files.readString(targetAbsolute));
 
-        try (SeekableByteChannel ch = config.fs.newByteChannel(fileAbsolute, EnumSet.of(StandardOpenOption.READ))) {
+        try (SeekableByteChannel ch = config.fs().newByteChannel(fileAbsolute, EnumSet.of(StandardOpenOption.READ))) {
             Assert.assertTrue(ch instanceof FileChannel);
             ByteBuffer buffer = ByteBuffer.allocate(1024);
             ch.read(buffer);
@@ -534,7 +590,7 @@ public class NIOFileSystemTest {
             Assert.assertEquals(getClass().getSimpleName(), StandardCharsets.UTF_8.decode(buffer).toString());
 
         }
-        try (SeekableByteChannel ch = config.fs.newByteChannel(fileRelative, EnumSet.of(StandardOpenOption.READ))) {
+        try (SeekableByteChannel ch = config.fs().newByteChannel(fileRelative, EnumSet.of(StandardOpenOption.READ))) {
             Assert.assertTrue(ch instanceof FileChannel);
             ByteBuffer buffer = ByteBuffer.allocate(1024);
             ch.read(buffer);
@@ -549,19 +605,19 @@ public class NIOFileSystemTest {
         DirectoryStream.Filter<Path> errFilter = entry -> {
             throw new RuntimeException();
         };
-        Path targetAbsolute = Files.createDirectory(config.workDir.resolve("testNewDirectoryStream"));
-        Path targetRelative = config.workDir.relativize(targetAbsolute);
+        Path targetAbsolute = Files.createDirectory(config.workDir().resolve("testNewDirectoryStream"));
+        Path targetRelative = config.workDir().relativize(targetAbsolute);
         Path fileInTarget = Files.createFile(targetAbsolute.resolve("file"));
-        expectException(() -> config.fs.newDirectoryStream(null, allFilter).close(), NullPointerException.class);
-        expectException(() -> config.fs.newDirectoryStream(fileInTarget, allFilter).close(), NotDirectoryException.class);
-        try (DirectoryStream<Path> dir = config.fs.newDirectoryStream(targetRelative, allFilter)) {
+        expectException(() -> config.fs().newDirectoryStream(null, allFilter).close(), NullPointerException.class);
+        expectException(() -> config.fs().newDirectoryStream(fileInTarget, allFilter).close(), NotDirectoryException.class);
+        try (DirectoryStream<Path> dir = config.fs().newDirectoryStream(targetRelative, allFilter)) {
             Assert.assertTrue(StreamSupport.stream(dir.spliterator(), false).anyMatch((p) -> p.getFileName().toString().equals("file")));
         }
-        try (DirectoryStream<Path> dir = config.fs.newDirectoryStream(targetAbsolute, allFilter)) {
+        try (DirectoryStream<Path> dir = config.fs().newDirectoryStream(targetAbsolute, allFilter)) {
             Assert.assertTrue(StreamSupport.stream(dir.spliterator(), false).anyMatch((p) -> p.getFileName().toString().equals("file")));
         }
         expectException(() -> {
-            try (DirectoryStream<Path> dir = config.fs.newDirectoryStream(targetRelative, errFilter)) {
+            try (DirectoryStream<Path> dir = config.fs().newDirectoryStream(targetRelative, errFilter)) {
                 StreamSupport.stream(dir.spliterator(), false).toArray();
             }
         }, RuntimeException.class);
@@ -569,106 +625,109 @@ public class NIOFileSystemTest {
 
     @Test
     public void testReadAttributes() throws IOException {
-        expectException(() -> config.fs.readAttributes(null, "basic:*"), NullPointerException.class);
-        expectException(() -> config.fs.readAttributes(fileAbsolute, null), NullPointerException.class);
+        expectException(() -> config.fs().readAttributes(null, "basic:*"), NullPointerException.class);
+        expectException(() -> config.fs().readAttributes(fileAbsolute, null), NullPointerException.class);
         if (config.supportsLinks) {
-            expectException(() -> config.fs.readAttributes(fileAbsolute, "basic:*", (LinkOption[]) null), NullPointerException.class);
-            expectException(() -> config.fs.readAttributes(fileAbsolute, "basic:*", new LinkOption[]{null}), NullPointerException.class);
+            expectException(() -> config.fs().readAttributes(fileAbsolute, "basic:*", (LinkOption[]) null), NullPointerException.class);
+            expectException(() -> config.fs().readAttributes(fileAbsolute, "basic:*", new LinkOption[]{null}), NullPointerException.class);
         }
-        expectException(() -> config.fs.readAttributes(fileAbsolute, "extended:*"), UnsupportedOperationException.class);
+        expectException(() -> config.fs().readAttributes(fileAbsolute, "extended:*"), UnsupportedOperationException.class);
         if (config.strictReadAttributes) {
-            expectException(() -> config.fs.readAttributes(fileAbsolute, ""), IllegalArgumentException.class);
-            expectException(() -> config.fs.readAttributes(fileAbsolute, "basic:size+creationTime"), IllegalArgumentException.class);
-            expectException(() -> config.fs.readAttributes(fileAbsolute, "basic:size,creationTime,unknownAttr"), IllegalArgumentException.class);
+            expectException(() -> config.fs().readAttributes(fileAbsolute, ""), IllegalArgumentException.class);
+            expectException(() -> config.fs().readAttributes(fileAbsolute, "basic:size+creationTime"), IllegalArgumentException.class);
+            expectException(() -> config.fs().readAttributes(fileAbsolute, "basic:size,creationTime,unknownAttr"), IllegalArgumentException.class);
         }
-        Assert.assertTrue((Boolean) config.fs.readAttributes(fileAbsolute, "basic:isRegularFile").get("isRegularFile"));
-        Assert.assertTrue((Boolean) config.fs.readAttributes(fileRelative, "basic:isRegularFile").get("isRegularFile"));
-        Assert.assertEquals(1, config.fs.readAttributes(fileAbsolute, "basic:size").size());
-        Assert.assertEquals(2, config.fs.readAttributes(fileAbsolute, "basic:size,creationTime").size());
-        Assert.assertEquals(1, config.fs.readAttributes(fileAbsolute, "size").size());
-        Assert.assertFalse(config.fs.readAttributes(fileAbsolute, "basic:*").isEmpty());
-        Assert.assertFalse(config.fs.readAttributes(fileAbsolute, "*").isEmpty());
-        Assert.assertFalse(config.fs.readAttributes(fileRelative, "*").isEmpty());
+        Assert.assertTrue((Boolean) config.fs().readAttributes(fileAbsolute, "basic:isRegularFile").get("isRegularFile"));
+        Assert.assertTrue((Boolean) config.fs().readAttributes(fileRelative, "basic:isRegularFile").get("isRegularFile"));
+        Assert.assertEquals(1, config.fs().readAttributes(fileAbsolute, "basic:size").size());
+        Assert.assertEquals(2, config.fs().readAttributes(fileAbsolute, "basic:size,creationTime").size());
+        Assert.assertEquals(1, config.fs().readAttributes(fileAbsolute, "size").size());
+        Assert.assertFalse(config.fs().readAttributes(fileAbsolute, "basic:*").isEmpty());
+        Assert.assertFalse(config.fs().readAttributes(fileAbsolute, "*").isEmpty());
+        Assert.assertFalse(config.fs().readAttributes(fileRelative, "*").isEmpty());
     }
 
     @Test
     public void testReadSymLink() throws IOException {
         Assume.assumeTrue(config.supportsLinks);
-        Path targetRelative = config.workDir.resolve("testReadSymLink");
-        Path target = config.fs.toAbsolutePath(config.workDir.resolve("testReadSymLink"));
+        Path targetRelative = config.workDir().resolve("testReadSymLink");
+        Path target = config.fs().toAbsolutePath(config.workDir().resolve("testReadSymLink"));
         try {
-            config.fs.createSymbolicLink(targetRelative, fileAbsolute);
+            config.fs().createSymbolicLink(targetRelative, fileAbsolute);
         } catch (UnsupportedOperationException uoe) {
             // Links not supported by OS.
             return;
         }
-        expectException(() -> config.fs.readSymbolicLink(null), NullPointerException.class);
-        expectException(() -> config.fs.readSymbolicLink(fileAbsolute), NotLinkException.class);
-        Assert.assertEquals(fileAbsolute, config.fs.readSymbolicLink(targetRelative));
-        Assert.assertEquals(fileAbsolute, config.fs.readSymbolicLink(target));
+        expectException(() -> config.fs().readSymbolicLink(null), NullPointerException.class);
+        expectException(() -> config.fs().readSymbolicLink(fileAbsolute), NotLinkException.class);
+        Assert.assertEquals(fileAbsolute, config.fs().readSymbolicLink(targetRelative));
+        Assert.assertEquals(fileAbsolute, config.fs().readSymbolicLink(target));
     }
 
     @Test
     public void testSetAttribute() throws IOException {
-        expectException(() -> config.fs.setAttribute(null, "basic:lastModifiedTime", FileTime.fromMillis(System.currentTimeMillis())), NullPointerException.class);
-        expectException(() -> config.fs.setAttribute(fileAbsolute, null, FileTime.fromMillis(System.currentTimeMillis())), NullPointerException.class);
+        expectException(() -> config.fs().setAttribute(null, "basic:lastModifiedTime", FileTime.fromMillis(System.currentTimeMillis())), NullPointerException.class);
+        expectException(() -> config.fs().setAttribute(fileAbsolute, null, FileTime.fromMillis(System.currentTimeMillis())), NullPointerException.class);
         if (config.supportsLinks) {
-            expectException(() -> config.fs.setAttribute(fileAbsolute, "basic:lastModifiedTime", FileTime.fromMillis(System.currentTimeMillis()), (LinkOption[]) null), NullPointerException.class);
-            expectException(() -> config.fs.setAttribute(fileAbsolute, "basic:lastModifiedTime", FileTime.fromMillis(System.currentTimeMillis()), new LinkOption[]{null}), NullPointerException.class);
+            expectException(() -> config.fs().setAttribute(fileAbsolute, "basic:lastModifiedTime", FileTime.fromMillis(System.currentTimeMillis()), (LinkOption[]) null), NullPointerException.class);
+            expectException(() -> config.fs().setAttribute(fileAbsolute, "basic:lastModifiedTime", FileTime.fromMillis(System.currentTimeMillis()), new LinkOption[]{null}),
+                            NullPointerException.class);
         }
-        expectException(() -> config.fs.setAttribute(fileAbsolute, "basic:lastModifiedTime", System.currentTimeMillis()), ClassCastException.class);
+        expectException(() -> config.fs().setAttribute(fileAbsolute, "basic:lastModifiedTime", System.currentTimeMillis()), ClassCastException.class);
         // According to Javadoc the FileSystemProvider#setAttribute should throw
         // IllegalArgumentException if the attribute name is not specified, or is not recognized and
         // UnsupportedOperationException if the attribute view is not available. But the
         // ZipFileSystem throws UnsupportedOperationException in all cases.
-        expectException(() -> config.fs.setAttribute(fileAbsolute, "", System.currentTimeMillis()), IllegalArgumentException.class, UnsupportedOperationException.class);
-        expectException(() -> config.fs.setAttribute(fileAbsolute, "*", System.currentTimeMillis()), IllegalArgumentException.class, UnsupportedOperationException.class);
-        expectException(() -> config.fs.setAttribute(fileAbsolute, "basic:*", System.currentTimeMillis()), IllegalArgumentException.class, UnsupportedOperationException.class);
-        expectException(() -> config.fs.setAttribute(fileAbsolute, "basic:lastModifiedTime,creationTime", System.currentTimeMillis()), IllegalArgumentException.class,
+        expectException(() -> config.fs().setAttribute(fileAbsolute, "", System.currentTimeMillis()), IllegalArgumentException.class, UnsupportedOperationException.class);
+        expectException(() -> config.fs().setAttribute(fileAbsolute, "*", System.currentTimeMillis()), IllegalArgumentException.class, UnsupportedOperationException.class);
+        expectException(() -> config.fs().setAttribute(fileAbsolute, "basic:*", System.currentTimeMillis()), IllegalArgumentException.class, UnsupportedOperationException.class);
+        expectException(() -> config.fs().setAttribute(fileAbsolute, "basic:lastModifiedTime,creationTime", System.currentTimeMillis()), IllegalArgumentException.class,
                         UnsupportedOperationException.class);
-        expectException(() -> config.fs.setAttribute(fileAbsolute, "basic:unknownAttr", System.currentTimeMillis()), IllegalArgumentException.class, UnsupportedOperationException.class);
-        expectException(() -> config.fs.setAttribute(fileAbsolute, "extended:lastModifiedTime", System.currentTimeMillis()), UnsupportedOperationException.class);
-        config.fs.setAttribute(fileAbsolute, "basic:lastModifiedTime", FileTime.fromMillis(System.currentTimeMillis()));
-        config.fs.setAttribute(fileAbsolute, "lastModifiedTime", FileTime.fromMillis(System.currentTimeMillis()));
-        config.fs.setAttribute(fileRelative, "lastModifiedTime", FileTime.fromMillis(System.currentTimeMillis()));
+        expectException(() -> config.fs().setAttribute(fileAbsolute, "basic:unknownAttr", System.currentTimeMillis()), IllegalArgumentException.class, UnsupportedOperationException.class);
+        expectException(() -> config.fs().setAttribute(fileAbsolute, "extended:lastModifiedTime", System.currentTimeMillis()), UnsupportedOperationException.class);
+        config.fs().setAttribute(fileAbsolute, "basic:lastModifiedTime", FileTime.fromMillis(System.currentTimeMillis()));
+        config.fs().setAttribute(fileAbsolute, "lastModifiedTime", FileTime.fromMillis(System.currentTimeMillis()));
+        config.fs().setAttribute(fileRelative, "lastModifiedTime", FileTime.fromMillis(System.currentTimeMillis()));
     }
 
     @Test
     public void testToAbsolutePath() {
-        expectException(() -> config.fs.toAbsolutePath(null), NullPointerException.class);
-        Assert.assertEquals(fileAbsolute, config.fs.toAbsolutePath(fileAbsolute));
-        Assert.assertEquals(fileAbsolute, config.fs.toAbsolutePath(fileRelative));
+        expectException(() -> config.fs().toAbsolutePath(null), NullPointerException.class);
+        Assert.assertEquals(fileAbsolute, config.fs().toAbsolutePath(fileAbsolute));
+        Assert.assertEquals(fileAbsolute, config.fs().toAbsolutePath(fileRelative));
     }
 
     @Test
     public void testToRealPath() throws IOException {
-        expectException(() -> config.fs.toRealPath(null), NullPointerException.class);
+        expectException(() -> config.fs().toRealPath(null), NullPointerException.class);
         if (config.supportsLinks) {
-            expectException(() -> config.fs.toRealPath(fileAbsolute, (LinkOption[]) null), NullPointerException.class);
-            expectException(() -> config.fs.toRealPath(fileAbsolute, new LinkOption[]{null}), NullPointerException.class);
+            expectException(() -> config.fs().toRealPath(fileAbsolute, (LinkOption[]) null), NullPointerException.class);
+            expectException(() -> config.fs().toRealPath(fileAbsolute, new LinkOption[]{null}), NullPointerException.class);
         }
-        Assert.assertEquals(fileAbsolute.toRealPath(), config.fs.toRealPath(fileAbsolute));
-        Assert.assertEquals(fileAbsolute.toRealPath(), config.fs.toRealPath(fileRelative));
+        Assert.assertEquals(fileAbsolute.toRealPath(), config.fs().toRealPath(fileAbsolute));
+        Assert.assertEquals(fileAbsolute.toRealPath(), config.fs().toRealPath(fileRelative));
     }
 
     @Test
     public void testSetCurrentWorkingDirectory() throws IOException {
-        expectException(() -> config.fs.setCurrentWorkingDirectory(null), NullPointerException.class);
-        expectException(() -> config.fs.setCurrentWorkingDirectory(fileAbsolute), IllegalArgumentException.class);
-        expectException(() -> config.fs.setCurrentWorkingDirectory(folderRelative), IllegalArgumentException.class);
-        config.fs.checkAccess(fileRelative, EnumSet.noneOf(AccessMode.class));
+        expectException(() -> config.fs().setCurrentWorkingDirectory(null), NullPointerException.class);
+        expectException(() -> config.fs().setCurrentWorkingDirectory(fileAbsolute), IllegalArgumentException.class);
+        expectException(() -> config.fs().setCurrentWorkingDirectory(folderRelative), IllegalArgumentException.class);
+        config.fs().checkAccess(fileRelative, EnumSet.noneOf(AccessMode.class));
+        Path newWorkDir = config.workDir().resolve("newWorkDir");
+        config.fs().createDirectory(newWorkDir);
         try {
-            config.fs.setCurrentWorkingDirectory(config.newWorkDir);
+            config.fs().setCurrentWorkingDirectory(newWorkDir);
             try {
-                config.fs.checkAccess(fileRelative, EnumSet.noneOf(AccessMode.class));
+                config.fs().checkAccess(fileRelative, EnumSet.noneOf(AccessMode.class));
                 Assert.fail("Should not reach here, NoSuchFileException expected.");
             } catch (NoSuchFileException nsf) {
                 // expected
             }
         } finally {
-            config.fs.setCurrentWorkingDirectory(config.workDir);
+            config.fs().setCurrentWorkingDirectory(config.workDir());
         }
-        config.fs.checkAccess(fileRelative, EnumSet.noneOf(AccessMode.class));
+        config.fs().checkAccess(fileRelative, EnumSet.noneOf(AccessMode.class));
     }
 
     @FunctionalInterface
