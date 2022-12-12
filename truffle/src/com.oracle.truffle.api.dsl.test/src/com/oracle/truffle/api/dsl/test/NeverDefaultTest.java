@@ -691,13 +691,13 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
 
         static volatile boolean returnNull = false;
 
+        @NeverDefault
         static GuardCacheNode create() {
             if (returnNull) {
                 return null;
             }
             return GuardCacheNodeGen.create();
         }
-
     }
 
     @GenerateInline

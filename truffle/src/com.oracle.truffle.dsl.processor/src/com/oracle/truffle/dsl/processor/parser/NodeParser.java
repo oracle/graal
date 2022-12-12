@@ -3604,11 +3604,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return true;
         }
 
-        String initializer = getAnnotationValue(String.class, cache.getMessageAnnotation(), "value", false);
-        if (initializer == null || initializer.equals("create()")) {
-            return true;
-        }
-
         if (cache.isEncodedEnum()) {
             return true;
         }
@@ -3629,11 +3624,15 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
 
                 Element enclosing = executable.getEnclosingElement();
-                if (enclosing != null && typeEquals(enclosing.asType(), types.DirectCallNode)) {
-                    // cannot use NeverDefault annotation in certain TruffleTypes
-                    return true;
+                if (enclosing != null) {
+                    if (typeEquals(enclosing.asType(), types.DirectCallNode)) {
+                        // cannot use NeverDefault annotation in certain TruffleTypes
+                        return executable.getSimpleName().toString().equals("create");
+                    } else if (typeEquals(enclosing.asType(), types.IndirectCallNode)) {
+                        // cannot use NeverDefault annotation in certain TruffleTypes
+                        return executable.getSimpleName().toString().equals("create");
+                    }
                 }
-
             }
             VariableElement var = cache.getDefaultExpression().resolveVariable();
             if (var != null) {
