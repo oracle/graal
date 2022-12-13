@@ -28,8 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.profdiff.core.OptionValues;
-import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.Writer;
+import org.graalvm.profdiff.core.optimization.Optimization;
 
 /**
  * The inlining tree of a compilation unit. Each {@link InliningTreeNode node} in the tree
@@ -72,6 +72,9 @@ import org.graalvm.profdiff.core.Writer;
  *             d() at bci 0
  *             e() at bci 1
  * </pre>
+ *
+ * Note that the root uses bci -1 as a placeholder, because it represents the root method rather
+ * than a callsite.
  */
 public class InliningTree {
     /**

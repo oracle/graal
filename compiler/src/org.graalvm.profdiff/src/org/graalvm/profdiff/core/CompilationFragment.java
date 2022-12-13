@@ -34,9 +34,9 @@ import org.graalvm.profdiff.parser.ExperimentParserError;
  *
  * A fragment is created from the parent compilation unit's inlining tree and optimization tree. A
  * subtree of the inlining tree becomes the inlining tree of the newly created fragment. The
- * optimization tree of the fragment is created by cloning all internal nodes of the compilation
- * unit's optimization tree and cloning individual optimizations, whose position is in the
- * fragment's inlining subtree. This happens lazily only when the fragment's trees are
+ * optimization tree of the fragment is created by cloning all optimization phases of the
+ * compilation unit's optimization tree and cloning individual optimizations whose position is in
+ * the fragment's inlining subtree. This happens lazily only when the fragment's trees are
  * {@link #loadTrees() loaded}.
  *
  * Proftool provides execution data on the granularity of compilation units. For that reason, the

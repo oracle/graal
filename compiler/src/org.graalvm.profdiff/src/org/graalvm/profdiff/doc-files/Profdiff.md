@@ -456,8 +456,10 @@ Therefore, all possible combinations in the delta tree are:
 
 ### Compilation fragments
 
-A compilation fragment is a kind of compilation, which is defined as a part of a compilation unit. This enables the tool
-to compare a part of a compilation unit with a different compilation unit (or with another part of a compilation unit).
+A compilation fragment is created from a compilation unit's inlining tree and optimization tree. A subtree of the
+inlining tree becomes the inlining tree of the newly created fragment. The optimization tree of the fragment is created
+from a subgraph of the compilation's unit optimization tree. This enables the tool to compare a fragment of a
+compilation unit with a different compilation unit.
 
 Consider the following scenario. A method `a()` calls an important method `b()`. In experiment 1, the method `a()` is
 compiled and `b()` is inlined. In experiment 2, only the method `b()` is compiled.
@@ -465,35 +467,87 @@ compiled and `b()` is inlined. In experiment 2, only the method `b()` is compile
  ```
 Method a() is hot only in experiment 1
     Compilation unit X
-        a()
-            ...
+        Inlining tree
+            a()
                 ...
-                b()
                     ...
+                    b()
+                        ...
                 ...
 Method b() is hot only in experiment 2
     Compilation unit Y
-        b()
-            ...
+        Inlining tree
+            b()
+                ...
 ```
 
 We would like to compare the hot compilation of `b()` with the hot compilation of `a()`, which encompasses `b()`. Thus,
-the idea is to take only the `b()` part of the `a()` compilation. We denote the `b()` part of `a()` a compilation
+the idea is to take only the `b()` part of the `a()` compilation. The `b()` part of `a()` is a compilation
 fragment.
 
 ```
 Method b()
-    Compilation fragment X#1
-        b()
-          ...
-    Compilation unit Y
-        b()
-            ...
+    Compilation fragment X#1 in experiment 1
+        Inlining tree
+            b()
+                ...
+    Compilation unit Y in experiment 2
+        Inlining tree
+            b()
+                ...
 ```
 
 The compilation fragment of `a()` can be compared with the compilation unit of `b()` directly.
 
-#### Fragment implementation details
+To illustrate how the optimization tree of a fragment is constructed, consider the following compilation unit of `a()`.
+
+```
+Compilation unit X
+    Inlining tree
+        a()
+            b() at bci 1
+                d() at bci 3
+            c() at bci 2
+    Optimization tree
+         RootPhase
+             Tier1
+                 Optimization1 at null
+                 Optimization2 at {a(): 5}
+                 Optimization3 at {b(): 2, a(): 1}
+             Tier2
+                 Optimization4 at {d(): 1, b(): 3, a(): 1}
+                 Optimization5 at {c(): 4, a(): 2}
+                 Optimization6 at {b(): 4, a(): 1}
+             Tier3
+```
+
+The fragment rooted in `b()` is visualized below. The optimization tree of a fragment always contains all optimization
+phases from its original compilation unit. Individual optimizations are kept only if their position is in the subtree
+of `b()`. Notice that the positions of the optimizations in the fragment are corrected, so that they are relative
+to `b()`.
+
+```
+Compilation fragment X#1
+    Inlining tree
+         b()
+             d() at bci 3
+    Optimization tree
+         RootPhase
+             Tier1
+                 Optimization3 at {b(): 2}
+             Tier2
+                 Optimization4 at {d(): 1, b(): 3}
+                 Optimization6 at {b(): 4}
+             Tier3
+```
+
+Proftool provides execution data on the granularity of compilation units. For that reason, the reported execution
+fraction of a compilation fragment is inherited from its parent compilation unit.
+
+#### Identifying inlining subtrees for fragmentation
+
+It is possible create a fragment rooted in any inlining-tree node. However, it is not desirable to create too many
+fragments. Therefore, we have created a heuristic identifying fragments which might be useful.
 
 Definition: An *inlining path* is a list of pairs `m1 at -1, m2 at b2, ..., mn at bn`, where `mi` is a method name
 and `bi` is the bci of the `mi`'s callsite for `i` in `1, 2, ..., n`. If `n > 1`, we say that the path is *from `m1`
@@ -520,20 +574,19 @@ A compilation fragment is defined in terms of a parent compilation unit and an i
 Definition: Let `P` be an inlining path and let `C` be a compilation unit which has an inlined method at `P`.
 Then, `(C, P)` is a *compilation fragment*.
 
-Fragments are created by first identifying a set of suitable inlining paths, which we denote as fragmentation paths.
-Then, each fragmentation path `P` is paired with all hot compilation units having an inlined method at `P`.
+Note that it is sufficient to have `C` and `P` in order to create the optimization and inlining tree of a fragment. We
+create the trees lazily when they are needed.
+
+The heuristic considers each inlining path `P` separately and decides whether we should create all possible fragments
+using the path `P`. Such an inlining path is called a fragmentation path.
 
 Definition: Let us have 2 experiments. An inlining path `P` from `R` to `P` is a *fragmentation path* iff:
 
 - `|P| > 1` (i.e. `P` is not empty and does not contain just the root method),
 - and `M` has a hot compilation unit in at least one of the experiments,
 - and in any of the experiments, there exists a hot compilation unit of `R` with an inlined method at `P`,
-- and in the other experiment, it is not true that for each hot compilation unit of R there is an inlined method at `P`.
+- and in the other experiment, it is not true that for each hot compilation unit of `R` there is an inlined method
+  at `P`.
 
-The optimization and inlining trees of a fragment `(C, P)` are created from the `C`'s inlining tree and optimization
-tree. The inlining subtree rooted at `P` becomes the inlining tree of the fragment. The optimization tree of the
-fragment is created by cloning all internal nodes of the compilation unit's optimization tree and cloning individual
-optimizations, whose position is in the fragment's inlining subtree.
-
-Proftool provides execution data on the granularity of compilation units. For that reason, the reported execution
-fraction of a compilation fragment is inherited from its parent compilation unit.
+To sum up, the tool first identifies the set of all fragmentation paths. Then, it pairs each fragmentation path `P`
+with all hot compilation units having an inlined method at `P`.
