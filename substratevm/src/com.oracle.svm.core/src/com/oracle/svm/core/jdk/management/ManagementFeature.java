@@ -96,7 +96,7 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
         // policies. The policies are normally specified as part of JmxCommonFeature,
         // but if JmxServer and JmxClient are not included in the image build,
         // then we have to provide the policies here.
-        if (HasJfrSupport.get() && !VMInspectionOptions.hasJmxServerSupport() & !VMInspectionOptions.hasJmxClientSupport()) {
+        if (HasJfrSupport.get() && !VMInspectionOptions.hasJmxServerSupport() && !VMInspectionOptions.hasJmxClientSupport()) {
             RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.remote.util.EnvHelp");
             RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.mbeanserver.Introspector");
             RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.mbeanserver.MXBeanIntrospector");
