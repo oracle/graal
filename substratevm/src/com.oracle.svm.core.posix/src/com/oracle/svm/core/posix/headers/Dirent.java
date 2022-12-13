@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,49 +24,35 @@
  */
 package com.oracle.svm.core.posix.headers;
 
-import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
-
 import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.struct.CFieldAddress;
+import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CConst;
+import org.graalvm.word.PointerBase;
 
 // Checkstyle: stop
 
 /**
- * Definitions manually translated from the C header file fcntl.h.
+ * Definitions manually translated from the C header file dirent.h.
  */
 @CContext(PosixDirectives.class)
-public class Fcntl {
+public class Dirent {
+    @CFunction
+    public static native DIR fdopendir(int fd);
 
-    @CConstant
-    public static native int O_RDONLY();
+    @CFunction
+    public static native dirent readdir(DIR dir);
 
-    @CConstant
-    public static native int O_NOFOLLOW();
+    @CFunction
+    public static native int closedir(DIR dir);
 
-    @CConstant
-    public static native int O_RDWR();
+    public interface DIR extends PointerBase {
+    }
 
-    @CConstant
-    public static native int O_WRONLY();
-
-    @CConstant
-    public static native int O_CREAT();
-
-    public static class NoTransitions {
-        @CFunction(transition = Transition.NO_TRANSITION)
-        public static native int open(CCharPointer pathname, int flags, int mode);
-
-        @CFunction(transition = NO_TRANSITION)
-        public static native int openat(int dirfd, @CConst CCharPointer pathname, int flags, int mode);
-
-        @CFunction(transition = NO_TRANSITION)
-        public static native int unlink(@CConst CCharPointer pathname);
-
-        @CFunction(transition = NO_TRANSITION)
-        public static native int unlinkat(int dirfd, CCharPointer pathname, int flags);
-
+    @CStruct(addStructKeyword = true)
+    public interface dirent extends PointerBase {
+        @CFieldAddress
+        CCharPointer d_name();
     }
 }
