@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,10 +27,21 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
+#include <stdio.h>
 #include <stdlib.h>
-#include "exit.h"
+#include <string.h>
+#include "../abort.h"
 
-void __sulong_dispose_context() {
-    __sulong_exit(0);
+extern const char *__progname;
+
+void _assert(const char *message, const char *filename, unsigned line) {
+    fprintf(stderr, "%s: %s:%d: Assertion failed.\n", __progname, filename, line);
+    fflush(NULL);
+    __sulong_abort();
+}
+
+void _wassert(const wchar_t *message, const wchar_t *filename, unsigned line) {
+    fwprintf(stderr, L"%s: %s:%d: Assertion failed.\n", __progname, filename, line);
+    fflush(NULL);
+    __sulong_abort();
 }
