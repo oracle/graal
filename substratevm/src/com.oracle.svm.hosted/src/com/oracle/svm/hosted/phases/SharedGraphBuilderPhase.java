@@ -37,6 +37,7 @@ import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -59,6 +60,7 @@ import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.graal.nodes.DeoptEntryBeginNode;
@@ -73,8 +75,11 @@ import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
+import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
+import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
@@ -323,11 +328,30 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected void handleBootstrapMethodError(BootstrapMethodError be, JavaMethod javaMethod) {
+        protected void handleBootstrapMethodError(BootstrapMethodError bme, JavaMethod javaMethod) {
             if (linkAtBuildTime) {
-                reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"), be);
+                reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"), bme);
             } else {
-                ExceptionSynthesizer.throwException(this, be.getClass(), javaMethod.format("%H.%n"));
+                ConstantReflectionProvider constantReflection = getConstantReflection();
+                UniverseMetaAccess metaAccess = (UniverseMetaAccess) getMetaAccess();
+                FactoryMethodSupport fms = FactoryMethodSupport.singleton();
+                Throwable cause = bme.getCause();
+                if (cause != null) {
+                    ValueNode causeMessageNode = ConstantNode.forConstant(constantReflection.forString(cause.getMessage()), metaAccess, getGraph());
+                    var causeClassCtor = ReflectionUtil.lookupConstructor(cause.getClass(), String.class);
+                    ValueNode[] causeCtorArgs = {causeMessageNode};
+                    var causeCtorInvoke = appendInvoke(InvokeKind.Static, fms.lookup(metaAccess, metaAccess.lookupJavaMethod(causeClassCtor), false), causeCtorArgs);
+                    ValueNode messageNode = ConstantNode.forConstant(constantReflection.forString(bme.getMessage()), metaAccess, getGraph());
+                    var errorCtor = ReflectionUtil.lookupConstructor(bme.getClass(), String.class, Throwable.class);
+                    ValueNode[] errorArgs = {messageNode, causeCtorInvoke.asNode()};
+                    appendInvoke(InvokeKind.Static, fms.lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true), errorArgs);
+                } else {
+                    ValueNode messageNode = ConstantNode.forConstant(constantReflection.forString(bme.getMessage()), metaAccess, getGraph());
+                    var errorCtor = ReflectionUtil.lookupConstructor(bme.getClass(), String.class);
+                    ValueNode[] errorArgs = {messageNode};
+                    appendInvoke(InvokeKind.Static, fms.lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true), errorArgs);
+                }
+                add(new LoweredDeadEndNode());
             }
         }
 
