@@ -66,7 +66,7 @@ public abstract class CustomTypeFieldHandler {
         assert field.isAccessed();
         if (field.wrapped instanceof ComputedValueField) {
             ComputedValueField computedField = ((ComputedValueField) field.wrapped);
-            if (!computedField.isValueAvailableBeforeAnalysis()) {
+            if (!computedField.isValueAvailableBeforeAnalysis() && field.getJavaKind().isObject()) {
                 injectFieldTypes(field, field.getType());
             }
         } else {
