@@ -325,7 +325,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         @Override
         protected void handleBootstrapMethodError(BootstrapMethodError be, JavaMethod javaMethod) {
             if (linkAtBuildTime) {
-                reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"));
+                reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"), be);
             } else {
                 ExceptionSynthesizer.throwException(this, be.getClass(), javaMethod.format("%H.%n"));
             }
@@ -380,9 +380,13 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         private void reportUnresolvedElement(String elementKind, String elementAsString) {
+            reportUnresolvedElement(elementKind, elementAsString, null);
+        }
+
+        private void reportUnresolvedElement(String elementKind, String elementAsString, Throwable cause) {
             String message = "Discovered unresolved " + elementKind + " during parsing: " + elementAsString + ". " +
                             LinkAtBuildTimeSupport.singleton().errorMessageFor(method.getDeclaringClass());
-            throw new UnresolvedElementException(message);
+            throw new UnresolvedElementException(message, cause);
         }
 
         @Override
