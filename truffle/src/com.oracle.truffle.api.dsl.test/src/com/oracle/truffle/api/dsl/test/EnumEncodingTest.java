@@ -52,6 +52,7 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.test.EnumEncodingTestFactory.DefaultHandlingTestNodeGen;
 import com.oracle.truffle.api.dsl.test.EnumEncodingTestFactory.GuaranteedNeverDefaultNodeGen;
 import com.oracle.truffle.api.dsl.test.EnumEncodingTestFactory.NeverDefaultNodeGen;
 import com.oracle.truffle.api.dsl.test.EnumEncodingTestFactory.SpecializationClassNodeGen;
@@ -252,6 +253,34 @@ public class EnumEncodingTest extends AbstractPolyglotTest {
             return 42;
         }
 
+    }
+
+    @SuppressWarnings("unused")
+    @ImportStatic(Enum2.class)
+    abstract static class DefaultHandlingTestNode extends BaseNode {
+
+        abstract Enum8 execute(Node node, Enum8 value);
+
+        @Specialization
+        Enum8 s0(Enum8 value, @Cached("value") Enum8 cachedValue) {
+            return cachedValue;
+        }
+
+    }
+
+    @Test
+    public void testDefaultHandlingTestNode() {
+        BaseNode.specializeCounter = 0;
+        DefaultHandlingTestNode node = DefaultHandlingTestNodeGen.create();
+        assertEquals(Enum8.E0, node.execute(null, Enum8.E0));
+        assertEquals(Enum8.E0, node.execute(null, Enum8.E1));
+        assertEquals(1, BaseNode.specializeCounter);
+
+        BaseNode.specializeCounter = 0;
+        node = DefaultHandlingTestNodeGen.create();
+        assertEquals(null, node.execute(null, null));
+        assertEquals(null, node.execute(null, Enum8.E1));
+        assertEquals(1, BaseNode.specializeCounter);
     }
 
 }

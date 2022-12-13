@@ -664,7 +664,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
                                         getSimpleName(types.NeverDefault));
                     }
                 } else {
-                    if (!cache.isEagerInitialize() && (cache.getSharedGroup() != null || isLayoutBenefittingFromNeverDefault) && !isNeverDefaultImplied(cache)) {
+                    if (!cache.isEagerInitialize() && (cache.getSharedGroup() != null || isLayoutBenefittingFromNeverDefault) && !isNeverDefaultImplied(cache) &&
+                                    !isNeverDefaultEasilySupported(cache)) {
                         /*
                          * The exports parser adds a suppress warning when calling into the node
                          * parser for accepts messages. Normally suppression is calculated later,
@@ -3582,6 +3583,17 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     }
 
+    private static boolean isNeverDefaultEasilySupported(CacheExpression cache) {
+        if (cache.isEncodedEnum()) {
+            /*
+             * Encoded enums can just encode the never default state in a special bit so does not
+             * need to cause a warning for never default.
+             */
+            return true;
+        }
+        return false;
+    }
+
     private boolean isNeverDefaultImplied(CacheExpression cache) {
         /*
          * Never default is implied if there is no custom initializer expression set. Default
@@ -3601,10 +3613,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
 
         if (cache.isNeverDefaultGuaranteed()) {
-            return true;
-        }
-
-        if (cache.isEncodedEnum()) {
             return true;
         }
 
