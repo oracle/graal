@@ -176,15 +176,20 @@ public class ParallelGCImpl extends ParallelGC {
         push(HeapChunk.asPointer(allocChunkTL.get()));
         allocChunkTL.set(WordFactory.nullPointer());
 
-        debugLog().string("PP start workers\n");
         mutex.lock();
         try {
+            while (busyWorkers > 0) {   // wait for worker threads to become ready
+                debugLog().string("PP wait for workers\n");
+                seqPhase.block();
+            }
+
+            debugLog().string("PP start workers\n");
             inParallelPhase = true;
-            parPhase.broadcast();     // let worker threads run
+            parPhase.broadcast();       // let worker threads run
 
             while (inParallelPhase) {
                 debugLog().string("PP wait\n");
-                seqPhase.block();     // wait for them to become idle
+                seqPhase.block();       // wait for them to become idle
             }
         } finally {
             mutex.unlock();
