@@ -528,9 +528,7 @@ public interface FileSystem {
     /**
      * Creates a {@link FileSystem} implementation based on the given Java NIO filesystem. The
      * returned {@link FileSystem} delegates all operations to {@code fileSystem}'s
-     * {@link FileSystemProvider provider}. Although {@link Context}s share a
-     * {@link FileSystemProvider}, each {@link Context} can have its own
-     * {@link java.nio.file.FileSystem} instance with its own isolated content.
+     * {@link FileSystemProvider provider}.
      *
      * <p>
      * The following example shows how to configure {@link Context} so that languages read files

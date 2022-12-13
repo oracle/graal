@@ -883,19 +883,27 @@ final class FileSystems {
 
         @Override
         public Path getTempDirectory() {
-            if (isDefault) {
-                Path result = tmpDir;
-                if (result == null) {
-                    String tmpDirPath = EngineAccessor.RUNTIME.getSavedProperty("java.io.tmpdir");
-                    if (tmpDirPath == null) {
-                        throw new IllegalStateException("The java.io.tmpdir is not set.");
-                    }
-                    result = parsePath(tmpDirPath);
-                    tmpDir = result;
+            Path result = tmpDir;
+            if (result == null) {
+                String tmpDirPath = EngineAccessor.RUNTIME.getSavedProperty("java.io.tmpdir");
+                if (tmpDirPath == null) {
+                    throw new IllegalStateException("The java.io.tmpdir is not set.");
                 }
-                return result;
-            } else {
-                throw new UnsupportedOperationException("Temporary directories not supported");
+                result = parsePath(tmpDirPath);
+                if (isDefault || isDirectory(result)) {
+                    tmpDir = result;
+                } else {
+                    throw new UnsupportedOperationException("Temporary directories not supported");
+                }
+            }
+            return result;
+        }
+
+        private boolean isDirectory(Path path) {
+            try {
+                return (boolean) readAttributes(path, "isDirectory").get("isDirectory");
+            } catch (IOException ioe) {
+                return false;
             }
         }
 
