@@ -9,6 +9,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-41674) Class instanceOf and isAssignableFrom checks do need to make the checked type reachable.
 * (GR-41100) Add support for `-XX:HeapDumpPath` to control where heap dumps are created.
 * (GR-42148) Adjust build output to report types (primitives, classes, interfaces, and arrays) instead of classes and revise the output schema of `-H:BuildOutputJSONFile`.
+* (GR-34179) Improved debugging support on Windows: Debug information now includes information about Java types (contributed by Red Hat).
 
 ## Version 22.3.0
 * (GR-35721) Remove old build output style and the `-H:±BuildOutputUseNewStyle` option.
