@@ -39,7 +39,7 @@ Now follow these steps to create a Spring Boot REST-based application and compil
 
     - Go to [start.spring.io](https://start.spring.io/) and select the following values:
 
-        ![Spring Initializr](../assets/spring_initializr.png)
+        ![Spring Initializr](img/spring_initializr.png)
         
         Make sure you add the **GraalVM Native Support** dependency, and name the artifact and project "jibber".
 
