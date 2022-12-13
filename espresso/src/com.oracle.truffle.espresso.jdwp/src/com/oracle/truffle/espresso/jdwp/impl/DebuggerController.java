@@ -149,7 +149,7 @@ public final class DebuggerController implements ContextsListener {
 
     /**
      * Installs a line breakpoint within a given method.
-     * 
+     *
      * @param command the command that represents the breakpoint
      */
     public void submitLineBreakpoint(DebuggerCommand command) {
@@ -411,7 +411,7 @@ public final class DebuggerController implements ContextsListener {
     /**
      * Immediately suspend the current guest thread at its current location. Typically, this method
      * is used in response to class prepare events.
-     * 
+     *
      * @param eventThread the guest thread which must correspond to the current host thread
      * @param suspendPolicy the policy for which threads to suspend
      * @param callBack a callback that is to be run when threads have been marked as suspended
@@ -634,7 +634,7 @@ public final class DebuggerController implements ContextsListener {
         }
 
         checkThreadJobsAndRun(thread);
-
+        getGCPrevention().releaseActiveWhileSuspended(thread);
         JDWP.LOGGER.fine(() -> "lock wakeup for thread: " + getThreadName(thread));
     }
 
