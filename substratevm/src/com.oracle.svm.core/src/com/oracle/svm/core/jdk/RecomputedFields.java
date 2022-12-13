@@ -27,7 +27,6 @@ package com.oracle.svm.core.jdk;
 //Checkstyle: stop
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.AtomicFieldUpdaterOffset;
-import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FieldOffset;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
 
 import java.lang.ref.ReferenceQueue;
@@ -341,7 +340,6 @@ final class Target_java_util_concurrent_ForkJoinPool {
     private static Unsafe U;
 
     @Alias @TargetElement(onlyWith = JDK19OrLater.class) //
-    @RecomputeFieldValue(kind = FieldOffset, name = "poolIds") //
     private static long POOLIDS;
 
     @Substitute
