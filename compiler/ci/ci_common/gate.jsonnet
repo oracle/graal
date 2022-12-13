@@ -86,7 +86,7 @@
                   "-Dpolyglot.engine.CompileImmediately=true " +
                   "-Dpolyglot.engine.BackgroundCompilation=false " +
                   "-Dtck.inlineVerifierInstrument=false",
-    extra_unittest_args="--very-verbose truffle") + {
+    extra_unittest_args="--verbose truffle") + {
       environment+: {"TRACE_COMPILATION": "true"},
       logs+: ["*/*_compilation.log"]
     },
@@ -227,7 +227,7 @@
 
     "weekly-compiler-bootstrap_lite-labsjdk-17-darwin-amd64": t("1:00:00") + c.mach5_target,
 
-    "weekly-compiler-benchmarktest-labsjdk-20Debug-linux-amd64": {},
+    "weekly-compiler-benchmarktest-labsjdk-20Debug-linux-amd64": t("3:00:00"),
 
     "weekly-compiler-coverage*": {},
 
