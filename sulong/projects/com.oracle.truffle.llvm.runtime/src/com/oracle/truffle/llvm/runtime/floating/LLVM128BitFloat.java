@@ -148,15 +148,15 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
 
     public static LLVM128BitFloat fromBytesBigEndian(byte[] bytes) {
         assert bytes.length == BYTE_WIDTH;
-        long expSignFraction = ByteArraySupport.bigEndian().getShort(bytes, 0);
-        long fraction = ByteArraySupport.bigEndian().getLong(bytes, 2);
+        long expSignFraction = ByteArraySupport.bigEndian().getLong(bytes, 0);
+        long fraction = ByteArraySupport.bigEndian().getLong(bytes, 8);
         return new LLVM128BitFloat(expSignFraction, fraction);
     }
 
     public static LLVM128BitFloat fromBytes(byte[] bytes) {
         assert bytes.length == BYTE_WIDTH;
         long fraction = ByteArraySupport.littleEndian().getLong(bytes, 0);
-        long expSignFraction = ByteArraySupport.littleEndian().getShort(bytes, 8);
+        long expSignFraction = ByteArraySupport.littleEndian().getLong(bytes, 8);
         return new LLVM128BitFloat(expSignFraction, fraction);
     }
 

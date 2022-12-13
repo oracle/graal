@@ -194,7 +194,7 @@ public abstract class ForeignToLLVM extends LLVMNode {
                     return ForeignToLLVMType.DOUBLE;
                 case X86_FP80:
                     return ForeignToLLVMType.FP80;
-                case PPC_FP128:
+                case F128:
                     return ForeignToLLVMType.FP128;
                 default:
                     throw new IllegalStateException("unexpected primitive kind " + ((PrimitiveType) type).getPrimitiveKind());

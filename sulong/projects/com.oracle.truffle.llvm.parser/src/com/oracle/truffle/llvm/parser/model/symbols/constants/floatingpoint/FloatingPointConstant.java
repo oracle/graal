@@ -41,7 +41,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 public abstract class FloatingPointConstant extends AbstractConstant {
 
     private static final int X86_FP80_BYTES = Math.toIntExact(PrimitiveType.X86_FP80.getBitSize() / Byte.SIZE);
-    private static final int PPC_FP128_BYTES = Math.toIntExact(PrimitiveType.PPC_FP128.getBitSize() / Byte.SIZE);
+    private static final int FP128_BYTES = Math.toIntExact(PrimitiveType.F128.getBitSize() / Byte.SIZE);
 
 
     FloatingPointConstant(Type type) {
@@ -63,10 +63,10 @@ public abstract class FloatingPointConstant extends AbstractConstant {
                 short signExp = (short) buffer.read();
                 return new X86FP80Constant(ByteBuffer.allocate(X86_FP80_BYTES).putLong(fraction).putShort(signExp).array());
 
-            case PPC_FP128:
+            case F128:
                 fraction = buffer.read();
                 long signExpFraction = buffer.read();
-                return new FP128Constant(ByteBuffer.allocate(PPC_FP128_BYTES).putLong(fraction).putLong(signExpFraction).array());
+                return new FP128Constant(ByteBuffer.allocate(FP128_BYTES).putLong(fraction).putLong(signExpFraction).array());
 
             default:
                 throw new LLVMParserException("Unsupported Floating Point Type: " + type);

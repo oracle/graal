@@ -797,7 +797,7 @@ public class CommonNodeFactory {
                     return LLVMDoubleLoadNodeGen.create(loadTarget);
                 case X86_FP80:
                     return LLVM80BitFloatLoadNodeGen.create(loadTarget);
-                case PPC_FP128:
+                case F128:
                     return LLVM128BitFloatLoadNodeGen.create(loadTarget);
                 default:
                     throw new AssertionError(resultType);
@@ -1072,7 +1072,7 @@ public class CommonNodeFactory {
                     } else {
                         return LLVM80BitFloatLiteralNodeGen.create(LLVM80BitFloat.fromBytesBigEndian((byte[]) constant));
                     }
-                case PPC_FP128:
+                case F128:
                     return LLVM128BitFloatLiteralNodeGen.create(LLVM128BitFloat.fromBytesBigEndian((byte[]) constant));
                 case I64:
                     return LLVMI64LiteralNodeGen.create((long) constant);

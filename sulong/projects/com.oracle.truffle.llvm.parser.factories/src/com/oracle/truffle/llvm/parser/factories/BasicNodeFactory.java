@@ -1097,7 +1097,7 @@ public class BasicNodeFactory implements NodeFactory {
                 case X86_FP80:
                     store = LLVM80BitFloatStoreNode.create();
                     break;
-                case PPC_FP128:
+                case F128:
                     store = LLVM128BitFloatStoreNodeGen.create();
                     break;
                 default:
