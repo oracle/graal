@@ -322,6 +322,15 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             handleUnresolvedMethod(javaMethod);
         }
 
+        @Override
+        protected void handleBootstrapMethodError(BootstrapMethodError be, JavaMethod javaMethod) {
+            if (linkAtBuildTime) {
+                reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"));
+            } else {
+                ExceptionSynthesizer.throwException(this, be.getClass(), javaMethod.format("%H.%n"));
+            }
+        }
+
         private void handleUnresolvedType(JavaType type) {
             /*
              * If linkAtBuildTime was set for type, report the error during image building,
