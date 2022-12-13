@@ -123,15 +123,15 @@ class SystemCounters implements PerfDataHolder, VMOperationListener {
         loadedClasses.allocate(numberOfLoadedClasses());
         processors.allocate(getAvailableProcessors());
 
-        tempDir.allocate(System.getProperty("java.io.tmpdir"));
-        javaVersion.allocate(System.getProperty("java.version"));
-        vmName.allocate(System.getProperty("java.vm.name"));
-        vmVendor.allocate(System.getProperty("java.vm.vendor"));
-        vmVersion.allocate(System.getProperty("java.vm.version"));
-        osArch.allocate(System.getProperty("os.arch"));
-        osName.allocate(System.getProperty("os.name"));
-        userDir.allocate(System.getProperty("user.dir"));
-        userName.allocate(System.getProperty("user.name"));
+        tempDir.allocate(getSystemProperty("java.io.tmpdir"));
+        javaVersion.allocate(getSystemProperty("java.version"));
+        vmName.allocate(getSystemProperty("java.vm.name"));
+        vmVendor.allocate(getSystemProperty("java.vm.vendor"));
+        vmVersion.allocate(getSystemProperty("java.vm.version"));
+        osArch.allocate(getSystemProperty("os.arch"));
+        osName.allocate(getSystemProperty("os.name"));
+        userDir.allocate(getSystemProperty("user.dir"));
+        userName.allocate(getSystemProperty("user.name"));
 
         gcInProgress.allocate();
 
@@ -143,6 +143,15 @@ class SystemCounters implements PerfDataHolder, VMOperationListener {
         processCPUTimeCounter.allocate();
 
         initDoneTime.allocate(System.currentTimeMillis());
+    }
+
+    private static String getSystemProperty(String s) {
+        /* Certain system properties (e.g., "user.dir"), may throw an exception. */
+        try {
+            return System.getProperty(s);
+        } catch (Throwable e) {
+            return "";
+        }
     }
 
     @Override
