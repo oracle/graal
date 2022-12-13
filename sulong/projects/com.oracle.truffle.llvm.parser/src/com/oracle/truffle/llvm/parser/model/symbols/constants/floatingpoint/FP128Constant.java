@@ -15,7 +15,7 @@ public final class FP128Constant extends FloatingPointConstant {
     private final byte[] value;
 
     FP128Constant(byte[] value) {
-        super(PrimitiveType.PPC_FP128);
+        super(PrimitiveType.F128);
         this.value = value;
     }
 
