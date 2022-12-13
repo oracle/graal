@@ -160,6 +160,8 @@ public final class DataLayout {
                     return getDataTypeSpecification(DataLayoutType.FLOAT, 64);
                 case X86_FP80:
                     return getDataTypeSpecification(DataLayoutType.FLOAT, 80);
+                case F128:
+                    return getDataTypeSpecification(DataLayoutType.FLOAT, 128);
             }
         } else if (baseType instanceof VariableBitWidthType) {
             int bits = ((VariableBitWidthType) baseType).getBitSizeInt();
