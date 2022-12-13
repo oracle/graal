@@ -28,9 +28,12 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CConst;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
+import com.oracle.svm.core.util.VMError;
 
 // Checkstyle: stop
 
@@ -49,14 +52,47 @@ public class DarwinStat {
     @CStruct(addStructKeyword = true)
     public interface stat extends PointerBase {
         @CField
+        long st_ino();
+
+        @CField
+        int st_mode();
+
+        @CField
+        int st_uid();
+
+        @CField
         long st_size();
+
+        @CField
+        long st_nlink();
     }
 
     @CFunction("fstat$INODE64")
-    public static native int fstat(int fd, stat buf);
+   public static native int fstat(int fd, stat buf);
 
     public static class NoTransitions {
         @CFunction(value = "fstat$INODE64", transition = CFunction.Transition.NO_TRANSITION)
         public static native int fstat(int fd, stat buf);
+
+        @CFunction(value = "lstat$INODE64", transition = CFunction.Transition.NO_TRANSITION)
+        @Platforms(Platform.DARWIN_AMD64.class)
+        private static native int lstat_amd64(@CConst CCharPointer path, stat buf);
+
+        @CFunction(value = "lstat", transition = CFunction.Transition.NO_TRANSITION)
+        @Platforms(Platform.DARWIN_AARCH64.class)
+        private static native int lstat_aarch64(@CConst CCharPointer path, stat buf);
+
+        @Platforms(Platform.DARWIN.class)
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static int lstat(CCharPointer path, stat buf) {
+            if (Platform.includedIn(Platform.AMD64.class)) {
+                return lstat_amd64(path, buf);
+            } else if (Platform.includedIn(Platform.AARCH64.class)) {
+                return lstat_aarch64(path, buf);
+            } else {
+                throw VMError.shouldNotReachHere();
+            }
+        }
+
     }
 }

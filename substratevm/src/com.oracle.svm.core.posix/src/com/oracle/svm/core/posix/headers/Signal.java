@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.posix.headers;
 
+import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
@@ -386,5 +388,10 @@ public class Signal {
 
         @CEnumValue
         public native int getCValue();
+    }
+    
+    public static class NoTransitions {
+        @CFunction(transition = NO_TRANSITION)
+        public static native int kill(int pid, int sig);
     }
 }
