@@ -3933,22 +3933,29 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     protected void genLoadConstant(int cpi, int opcode) {
-        Object con = lookupConstant(cpi, opcode);
-
-        if (con instanceof JavaType) {
-            // this is a load of class constant which might be unresolved
-            JavaType type = (JavaType) con;
-            if (typeIsResolved(type)) {
-                frameState.push(JavaKind.Object, appendConstant(getConstantReflection().asJavaClass((ResolvedJavaType) type)));
+        try {
+            Object con = lookupConstant(cpi, opcode);
+            if (con instanceof JavaType) {
+                // this is a load of class constant which might be unresolved
+                JavaType type = (JavaType) con;
+                if (typeIsResolved(type)) {
+                    frameState.push(JavaKind.Object, appendConstant(getConstantReflection().asJavaClass((ResolvedJavaType) type)));
+                } else {
+                    handleUnresolvedLoadConstant(type);
+                }
+            } else if (con instanceof JavaConstant) {
+                JavaConstant constant = (JavaConstant) con;
+                frameState.push(constant.getJavaKind(), appendConstant(constant));
             } else {
-                handleUnresolvedLoadConstant(type);
+                throw new Error("lookupConstant returned an object of incorrect type: " + con);
             }
-        } else if (con instanceof JavaConstant) {
-            JavaConstant constant = (JavaConstant) con;
-            frameState.push(constant.getJavaKind(), appendConstant(constant));
-        } else {
-            throw new Error("lookupConstant returned an object of incorrect type: " + con);
+        } catch (BootstrapMethodError error) {
+            handleBootstrapMethodError(error, method);
         }
+    }
+
+    protected void handleBootstrapMethodError(BootstrapMethodError be, JavaMethod javaMethod) {
+        throw be;
     }
 
     private JavaKind refineComponentType(ValueNode array, JavaKind kind) {
