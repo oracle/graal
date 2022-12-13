@@ -6,9 +6,9 @@ local graal_suite_root = root_ci.graal_suite_root;
 
 {
   local mx = (import "../../../common.json").mx_version,
-  local common = (import "../../../common.jsonnet"),
+  local common = (import "../../../ci/ci_common/common.jsonnet"),
   local common_json = (import "../../../common.json"),
-  local utils = (import "../../../common-utils.libsonnet"),
+  local utils = (import "../../../ci/ci_common/common-utils.libsonnet"),
 
   devkits: utils.composable(common_json.devkits),
 
@@ -104,6 +104,16 @@ local graal_suite_root = root_ci.graal_suite_root;
     },
   },
 
+  nodejs: {
+    downloads+: {
+      NODE: {name: 'node', version: 'v16.13.2', platformspecific: true},
+    },
+    environment+: {
+      NODE_DIR: '${NODE}/bin',
+      PATH: '${NODE}/bin:${PATH}',
+    },
+  },
+
   local gate_cmd      = ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
   local gate_cmd_full = ['mx', '--strict-compliance', '--dynamicimports', graal_suite_root, 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
 
@@ -172,6 +182,7 @@ local graal_suite_root = root_ci.graal_suite_root;
   jdk17_gate_linux_wabt_emsdk               : common.labsjdk17 + self.gate  + self.linux   + self.wabt    + self.emsdk,
   jdk17_gate_linux_wabt_emsdk_ocamlbuild    : common.labsjdk17 + self.gate  + self.linux   + self.wabt    + self.emsdk + self.ocamlbuild,
   jdk17_bench_linux_wabt_emsdk              : common.labsjdk17 + self.bench + self.linux   + self.wabt    + self.emsdk,
+  jdk17_bench_linux_wabt_emsdk_nodejs       : common.labsjdk17 + self.bench + self.linux   + self.wabt    + self.emsdk + self.nodejs,
   jdk17_gate_windows_wabt                   : common.labsjdk17 + self.gate  + self.windows + self.wabt,
 
   jdk11_gate_linux_wabt                     : common.labsjdk11 + self.gate  + self.linux   + self.wabt,

@@ -1,8 +1,8 @@
 {
-  local common = import "../../../common.jsonnet",
-  local bench_common = import "../../../bench-common.libsonnet",
-  local config = import "../../../repo-configuration.libsonnet",
-  local ci_resources = import "../../../ci-resources.libsonnet",
+  local common = import "../../../ci/ci_common/common.jsonnet",
+  local bench_common = import "../../../ci/ci_common/bench-common.libsonnet",
+  local config = import "../../../ci/repo-configuration.libsonnet",
+  local ci_resources = import "../../../ci/ci_common/ci-resources.libsonnet",
 
   enable_profiling:: {
     environment+: {
@@ -141,6 +141,13 @@
     platform+:: "-no-tiered-comp",
     environment+: {
       "JVM_CONFIG"+: "-no-tiered-comp",
+    }
+  },
+
+  no_profile_info:: {
+    platform+:: "-no-profile-info",
+    environment+: {
+      "JVM_CONFIG"+: "-no-profile-info",
     }
   },
 

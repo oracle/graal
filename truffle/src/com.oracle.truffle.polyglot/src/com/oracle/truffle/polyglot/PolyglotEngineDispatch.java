@@ -60,6 +60,7 @@ import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.management.ExecutionEvent;
@@ -155,7 +156,7 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
                     HostAccess hostAccess, PolyglotAccess polyglotAccess, boolean allowNativeAccess,
                     boolean allowCreateThread, boolean allowHostClassLoading, boolean allowInnerContextOptions,
                     boolean allowExperimentalOptions, Predicate<String> classFilter,
-                    Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, IOAccess ioAccess, Object logHandlerOrStream, boolean allowCreateProcess,
+                    Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, IOAccess ioAccess, LogHandler logHandler, boolean allowCreateProcess,
                     ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory,
                     ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
@@ -163,7 +164,7 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
                         allowNativeAccess, allowCreateThread, allowHostClassLoading,
                         allowInnerContextOptions,
                         allowExperimentalOptions,
-                        classFilter, options, arguments, onlyLanguages, ioAccess, logHandlerOrStream, allowCreateProcess, processHandler, environmentAccess, environment, zone, limitsImpl,
+                        classFilter, options, arguments, onlyLanguages, ioAccess, logHandler, allowCreateProcess, processHandler, environmentAccess, environment, zone, limitsImpl,
                         currentWorkingDirectory, hostClassLoader, allowValueSharing, useSystemExit);
         return polyglot.getAPIAccess().newContext(polyglot.contextDispatch, context, context.engine.api);
     }
@@ -301,4 +302,8 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
         ((PolyglotEngineImpl) engine).onVMShutdown();
     }
 
+    @Override
+    public RuntimeException hostToGuestException(Object engineReceiver, Throwable throwable) {
+        return PolyglotImpl.hostToGuestException((PolyglotEngineImpl) engineReceiver, throwable);
+    }
 }

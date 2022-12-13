@@ -571,7 +571,12 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             PolyglotSharingLayer layer = context.layer;
             synchronized (context.engine.lock) {
                 if (language.isHost()) {
-                    languageInstance = layer.allocateHostLanguage(language);
+                    if (layer.isClaimed() && layer.hostLanguage == null) {
+                        // Patching layer created by context pre-initialization.
+                        languageInstance = layer.patchHostLanguage(language);
+                    } else {
+                        languageInstance = layer.allocateHostLanguage(language);
+                    }
                 } else {
                     context.claimSharingLayer(language);
                     languageInstance = layer.allocateInstance(context, language);

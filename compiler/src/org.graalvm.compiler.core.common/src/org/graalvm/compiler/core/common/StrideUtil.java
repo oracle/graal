@@ -60,6 +60,13 @@ public final class StrideUtil {
     }
 
     /**
+     * Compute the jump table index for two given strides {@code strideA} and {@code strideB}.
+     */
+    public static int getDirectStubCallIndex(Stride strideA, Stride strideB) {
+        return getDirectStubCallIndex(strideA.log2, strideB.log2);
+    }
+
+    /**
      * Encode the given stride values into one direct stub call index.
      */
     public static int getDirectStubCallIndex(int log2StrideA, int log2StrideB) {

@@ -51,13 +51,12 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.analysis.Inflation;
@@ -105,10 +104,10 @@ public class ServiceLoaderFeature implements InternalFeature {
         public static final HostedOptionKey<Boolean> TraceServiceLoaderFeature = new HostedOptionKey<>(false);
 
         @Option(help = "Comma-separated list of services that should be excluded", type = OptionType.Expert) //
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ServiceLoaderFeatureExcludeServices = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ServiceLoaderFeatureExcludeServices = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
         @Option(help = "Comma-separated list of service providers that should be excluded", type = OptionType.Expert) //
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ServiceLoaderFeatureExcludeServiceProviders = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ServiceLoaderFeatureExcludeServiceProviders = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
     }
 
@@ -163,8 +162,8 @@ public class ServiceLoaderFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         // TODO write a more sophisticated include/exclude filter to handle cases like GR-27605 ?
-        servicesToSkip.addAll(OptionUtils.flatten(",", Options.ServiceLoaderFeatureExcludeServices.getValue().values()));
-        serviceProvidersToSkip.addAll(OptionUtils.flatten(",", Options.ServiceLoaderFeatureExcludeServiceProviders.getValue().values()));
+        servicesToSkip.addAll(Options.ServiceLoaderFeatureExcludeServices.getValue().values());
+        serviceProvidersToSkip.addAll(Options.ServiceLoaderFeatureExcludeServiceProviders.getValue().values());
     }
 
     @Override

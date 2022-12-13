@@ -318,30 +318,33 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
 
                 // use the 1-byte-1-byte stride variant for the 2-2 and 4-4 cases by simply shifting
                 // the length
-                masm.align(crb.target.wordSize * 2);
-                masm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(Stride.S4, Stride.S4)]);
+                masm.align(preferredBranchTargetAlignment(crb));
+                masm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S4, Stride.S4)]);
                 masm.shll(length, 1);
-                masm.align(crb.target.wordSize * 2);
-                masm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(Stride.S2, Stride.S2)]);
+                masm.align(preferredBranchTargetAlignment(crb));
+                masm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S2, Stride.S2)]);
                 masm.shll(length, 1);
-                masm.align(crb.target.wordSize * 2);
-                masm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(Stride.S1, Stride.S1)]);
+                masm.align(preferredBranchTargetAlignment(crb));
+                masm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S1, Stride.S1)]);
                 emitArrayCompare(crb, masm, Stride.S1, Stride.S1, Stride.S1, result, arrayA, arrayB, mask, length, done, false);
                 masm.jmp(done);
 
                 for (Stride strideA : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
                     for (Stride strideB : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
-                        if (strideA.log2 <= strideB.log2) {
+                        if (strideA.log2 == strideB.log2 || !withMask() && strideA.log2 < strideB.log2) {
                             continue;
                         }
+                        if (!withMask()) {
+                            masm.align(preferredBranchTargetAlignment(crb));
+                            // use the same implementation for e.g. stride 1-2 and 2-1 by swapping
+                            // the arguments in one variant
+                            masm.bind(variants[StrideUtil.getDirectStubCallIndex(strideB, strideA)]);
+                            masm.movq(tmp, arrayA);
+                            masm.movq(arrayA, arrayB);
+                            masm.movq(arrayB, tmp);
+                        }
                         masm.align(crb.target.wordSize * 2);
-                        // use the same implementation for e.g. stride 1-2 and 2-1 by swapping the
-                        // arguments in one variant
-                        masm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(strideB, strideA)]);
-                        masm.movq(tmp, arrayA);
-                        masm.movq(arrayA, arrayB);
-                        masm.movq(arrayB, tmp);
-                        masm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(strideA, strideB)]);
+                        masm.bind(variants[StrideUtil.getDirectStubCallIndex(strideA, strideB)]);
                         emitArrayCompare(crb, masm, strideA, strideB, strideB, result, arrayA, arrayB, mask, length, done, false);
                         masm.jmp(done);
                     }
@@ -418,7 +421,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         masm.negq(length);
 
         // Align the main loop
-        masm.align(crb.target.wordSize * 2);
+        masm.align(preferredLoopAlignment(crb));
         masm.bind(loop);
         pmovSZx(masm, vectorSize, vector1, maxStride, arrayA, length, 0, strideA);
         pmovSZx(masm, vectorSize, vector2, maxStride, arrayB, length, 0, strideB);
@@ -519,7 +522,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         masm.negq(length);
 
         // Align the main loop
-        masm.align(crb.target.wordSize * 2);
+        masm.align(preferredLoopAlignment(crb));
         masm.bind(loop);
         masm.movq(temp, new AMD64Address(arrayA, length, strideA, 0));
         if (withMask()) {
@@ -667,7 +670,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         masm.negq(length);
 
         // Align the main loop
-        masm.align(crb.target.wordSize * 2);
+        masm.align(preferredLoopAlignment(crb));
         masm.bind(loop);
         for (int i = 0; i < elementsPerLoopIteration; i++) {
             masm.movSZx(strideA, extendMode, tmp1, new AMD64Address(array1, length, strideA, i << strideA.log2));
@@ -757,7 +760,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         masm.movq(i, range);
         masm.negq(i);
         // Align the main loop
-        masm.align(crb.target.wordSize * 2);
+        masm.align(preferredLoopAlignment(crb));
         masm.bind(loop);
         emitFloatCompare(masm, strideA, strideB, arrayA, arrayB, index, offset, falseLabel, range == 1);
         masm.incrementq(index, 1);

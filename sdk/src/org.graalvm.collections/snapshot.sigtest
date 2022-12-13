@@ -102,6 +102,7 @@ meth public {org.graalvm.collections.EconomicMap%1} putIfAbsent({org.graalvm.col
 CLSS public final org.graalvm.collections.EconomicMapUtil
 meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> boolean equals(org.graalvm.collections.UnmodifiableEconomicMap<{%%0},{%%1}>,org.graalvm.collections.UnmodifiableEconomicMap<{%%0},{%%1}>)
 meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> int hashCode(org.graalvm.collections.UnmodifiableEconomicMap<{%%0},{%%1}>)
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> java.util.Comparator<org.graalvm.collections.UnmodifiableEconomicMap<{%%0},{%%1}>> lexicographicalComparator(java.util.Comparator<{%%0}>,java.util.Comparator<{%%1}>)
 meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> org.graalvm.collections.EconomicSet<{%%0}> keySet(org.graalvm.collections.EconomicMap<{%%0},{%%1}>)
 supr java.lang.Object
 

@@ -355,3 +355,7 @@ For JavaScript, Python, R, and Ruby sources opened in the editor, all the `Polyg
 For example, having an R code snippet called via the Polyglot API from inside a JavaScript source, the R language code is embedded inside the corresponding JavaScript String and all VS Code's editing features (syntax highlighting, bracket matching, auto closing pairs, code completion, etc.) treat the content of the `String` as the R source code.
 
 ![Image Language Embedding](images/language-embedding-js.png)
+
+### Related Documentation
+
+- [Polyglot Programming](../../../reference-manual/polyglot-programming.md)

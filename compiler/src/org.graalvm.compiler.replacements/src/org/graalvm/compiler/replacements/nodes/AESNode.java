@@ -44,6 +44,8 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -63,6 +65,26 @@ public class AESNode extends MemoryKillStubIntrinsicNode {
 
     public static final NodeClass<AESNode> TYPE = NodeClass.create(AESNode.class);
     public static final LocationIdentity[] KILLED_LOCATIONS = {NamedLocationIdentity.getArrayLocation(JavaKind.Byte)};
+
+    public static final ForeignCallDescriptor STUB_ENCRYPT = new ForeignCallDescriptor("aesEncrypt",
+                    void.class,
+                    new Class<?>[]{Pointer.class, Pointer.class, Pointer.class},
+                    false,
+                    KILLED_LOCATIONS,
+                    false,
+                    false);
+    public static final ForeignCallDescriptor STUB_DECRYPT = new ForeignCallDescriptor("aesDecrypt",
+                    void.class,
+                    new Class<?>[]{Pointer.class, Pointer.class, Pointer.class},
+                    false,
+                    KILLED_LOCATIONS,
+                    false,
+                    false);
+
+    public static final ForeignCallDescriptor[] STUBS = {
+                    STUB_ENCRYPT,
+                    STUB_DECRYPT,
+    };
 
     private final CryptMode cryptMode;
 
@@ -103,12 +125,22 @@ public class AESNode extends MemoryKillStubIntrinsicNode {
         return KILLED_LOCATIONS;
     }
 
-    public static EnumSet<?> minFeaturesAMD64() {
+    public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64() {
         return EnumSet.of(AVX, AES);
     }
 
-    public static EnumSet<?> minFeaturesAARCH64() {
+    public static EnumSet<AArch64.CPUFeature> minFeaturesAARCH64() {
         return EnumSet.of(AArch64.CPUFeature.AES);
+    }
+
+    @SuppressWarnings("unlikely-arg-type")
+    public static boolean isSupported(Architecture arch) {
+        if (arch instanceof AMD64) {
+            return ((AMD64) arch).getFeatures().containsAll(minFeaturesAMD64());
+        } else if (arch instanceof AArch64) {
+            return ((AArch64) arch).getFeatures().containsAll(minFeaturesAARCH64());
+        }
+        return false;
     }
 
     @NodeIntrinsic
@@ -128,7 +160,7 @@ public class AESNode extends MemoryKillStubIntrinsicNode {
 
     @Override
     public ForeignCallDescriptor getForeignCallDescriptor() {
-        return cryptMode.isEncrypt() ? CryptoForeignCalls.STUB_AES_ENCRYPT : CryptoForeignCalls.STUB_AES_DECRYPT;
+        return cryptMode.isEncrypt() ? STUB_ENCRYPT : STUB_DECRYPT;
     }
 
     @Override

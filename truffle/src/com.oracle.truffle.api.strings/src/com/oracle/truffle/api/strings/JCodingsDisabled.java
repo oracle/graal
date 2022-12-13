@@ -120,7 +120,8 @@ final class JCodingsDisabled implements JCodings {
     }
 
     @Override
-    public long calcStringAttributes(Node location, Object array, int offset, int length, TruffleString.Encoding encoding, ConditionProfile validCharacterProfile, ConditionProfile fixedWidthProfile) {
+    public long calcStringAttributes(Node location, Object array, int offset, int length, TruffleString.Encoding encoding, int fromIndex, ConditionProfile validCharacterProfile,
+                    ConditionProfile fixedWidthProfile) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
     }
 

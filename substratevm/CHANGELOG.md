@@ -7,6 +7,8 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-41196) Provide `.debug.svm.imagebuild.*` sections that contain build options and properties used in the build of the image.
 * (GR-41978) Disallow `--initialize-at-build-time` without arguments. As a temporary workaround, `-H:+AllowDeprecatedInitializeAllClassesAtBuildTime` allows turning this error into a warning.
 * (GR-41674) Class instanceOf and isAssignableFrom checks do need to make the checked type reachable.
+* (GR-41100) Add support for `-XX:HeapDumpPath` to control where heap dumps are created.
+* (GR-42148) Adjust build output to report types (primitives, classes, interfaces, and arrays) instead of classes and revise the output schema of `-H:BuildOutputJSONFile`.
 
 ## Version 22.3.0
 * (GR-35721) Remove old build output style and the `-H:±BuildOutputUseNewStyle` option.

@@ -1105,28 +1105,46 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
-    public static Class<?> forName(String className) throws Throwable {
-        Class<?> caller = Reflection.getCallerClass();
-        return forName(className, true, caller.getClassLoader());
+    private static Class<?> forName(String className) throws Throwable {
+        return forName(className, Reflection.getCallerClass());
     }
 
-    @Substitute //
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
-    public static Class<?> forName(@SuppressWarnings("unused") Module module, String className) throws Throwable {
+    private static Class<?> forName(String className, Class<?> caller) throws Throwable {
+        return forName(className, true, caller.getClassLoader(), caller);
+    }
+
+    @Substitute
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
+    private static Class<?> forName(Module module, String className) throws Throwable {
+        return forName(module, className, Reflection.getCallerClass());
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
+    private static Class<?> forName(@SuppressWarnings("unused") Module module, String className, Class<?> caller) throws Throwable {
         /*
          * The module system is not supported for now, therefore the module parameter is ignored and
          * we use the class loader of the caller class instead of the module's loader.
          */
-        Class<?> caller = Reflection.getCallerClass();
         try {
-            return forName(className, false, caller.getClassLoader());
+            return forName(className, false, caller.getClassLoader(), caller);
         } catch (ClassNotFoundException e) {
             return null;
         }
     }
 
     @Substitute
-    public static Class<?> forName(String name, boolean initialize, ClassLoader loader) throws Throwable {
+    private static Class<?> forName(String name, boolean initialize, ClassLoader loader) throws Throwable {
+        return forName(name, initialize, loader, Reflection.getCallerClass());
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    private static Class<?> forName(String name, boolean initialize, ClassLoader loader, @SuppressWarnings("unused") Class<?> caller) throws Throwable {
         if (name == null) {
             throw new NullPointerException();
         }

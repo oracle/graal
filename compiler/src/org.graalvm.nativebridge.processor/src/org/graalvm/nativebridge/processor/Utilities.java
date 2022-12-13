@@ -33,6 +33,7 @@ import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.ArrayList;
@@ -90,6 +91,18 @@ final class Utilities {
                 throw new IllegalArgumentException(String.valueOf(type.getKind()));
         }
         into.append(desc);
+    }
+
+    static CharSequence encodeMethodSignature(Elements elements, Types types, TypeMirror returnType, TypeMirror... parameterTypes) {
+        Function<TypeElement, String> toBinaryName = (e) -> 'L' + elements.getBinaryName(e).toString().replace('.', '/') + ';';
+        StringBuilder builder = new StringBuilder();
+        builder.append('(');
+        for (TypeMirror parameterType : parameterTypes) {
+            encodeType(builder, types.erasure(parameterType), "[", toBinaryName);
+        }
+        builder.append(')');
+        encodeType(builder, types.erasure(returnType), "[", toBinaryName);
+        return builder;
     }
 
     static CharSequence getTypeName(TypeMirror type) {

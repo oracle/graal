@@ -34,6 +34,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.ExitStatus;
 
 public class DeadlockWatchdog implements Closeable {
 
@@ -94,7 +95,7 @@ public class DeadlockWatchdog implements Closeable {
                      * Since there is a likely deadlock somewhere, there is no less intrusive way to
                      * abort other than a hard exit of the image builder VM.
                      */
-                    System.exit(1);
+                    System.exit(ExitStatus.WATCHDOG_EXIT.getValue());
 
                 } else {
                     recordActivity();
@@ -102,7 +103,7 @@ public class DeadlockWatchdog implements Closeable {
             }
 
             try {
-                Thread.sleep(Math.min(nextDeadline - now, TimeUnit.SECONDS.toMillis(1)));
+                Thread.sleep(Math.max(Math.min(nextDeadline - now, TimeUnit.SECONDS.toMillis(1)), 1));
             } catch (InterruptedException e) {
                 /* Nothing to do, when close() was called then we will exit the loop. */
             }

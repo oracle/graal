@@ -52,6 +52,7 @@ import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationIdentifier.Verbosity;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -61,6 +62,7 @@ import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.java.StableMethodNameFormatter;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.asm.DataBuilder;
@@ -171,8 +173,8 @@ public class CompileQueue {
     private LIRSuites deoptTargetLIRSuites = null;
     private final ConcurrentMap<Constant, DataSection.Data> dataCache;
 
-    private SnippetReflectionProvider snippetReflection;
-    private final FeatureHandler featureHandler;
+    protected SnippetReflectionProvider snippetReflection;
+    protected final FeatureHandler featureHandler;
     protected final GlobalMetrics metricValues = new GlobalMetrics();
     private final AnalysisToHostedGraphTransplanter graphTransplanter;
 
@@ -1148,7 +1150,7 @@ public class CompileQueue {
 
                 CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.format("%H.%n(%p)"));
 
-                try (Indent indent = debug.logAndIndent("compile %s", method)) {
+                try (Indent indent = debug.logAndIndent("compile %s", method); DebugCloseable l = graph.getOptimizationLog().listen(new StableMethodNameFormatter(graph, backend.getProviders()))) {
                     GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, getOptimisticOpts(), method.getProfilingInfo(), suites, lirSuites, result,
                                     new HostedCompilationResultBuilderFactory(), false);
                 }

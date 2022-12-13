@@ -29,11 +29,14 @@ import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSIT
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.CHeader;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
+import org.graalvm.nativeimage.c.type.CConst;
+import org.graalvm.nativeimage.c.type.CTypedef;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsolate;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsolateParameters;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsolatePointer;
@@ -41,9 +44,6 @@ import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsola
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsolateThreadPointer;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.c.CConst;
-import com.oracle.svm.core.c.CHeader;
-import com.oracle.svm.core.c.CTypedef;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolatePointer;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolateThreadPointer;
@@ -73,7 +73,13 @@ public final class PolyglotNativeAPIEntryPoints {
     })
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = UnchangedNameTransformation.class)
     public static @CTypedef(name = "poly_status") int polySetIsolateParams(PolyglotIsolateParameters params, int argc, CCharPointerPointer argv) {
+        if (params.isNull()) {
+            return Poly.generic_failure();
+        }
         if (argc > 0) {
+            if (argv.isNull()) {
+                return Poly.generic_failure();
+            }
             CCharPointer arg = argv.read(0);
             if (arg.isNonNull()) {
                 return Poly.generic_failure();

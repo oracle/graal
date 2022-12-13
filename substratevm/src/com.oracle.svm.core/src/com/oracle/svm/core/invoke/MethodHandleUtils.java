@@ -38,7 +38,8 @@ public class MethodHandleUtils {
         if (type.isPrimitive()) {
             destinationWrapper = Wrapper.forPrimitiveType(type);
         } else if (Wrapper.isWrapperType(type)) {
-            destinationWrapper = Wrapper.forWrapperType(type);
+            /* Null values should remain null and not be converted to the wrapper's zero value. */
+            destinationWrapper = obj == null ? Wrapper.OBJECT : Wrapper.forWrapperType(type);
         } else {
             destinationWrapper = Wrapper.OBJECT;
         }

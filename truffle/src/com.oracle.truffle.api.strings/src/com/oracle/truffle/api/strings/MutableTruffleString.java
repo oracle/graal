@@ -257,7 +257,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
         MutableTruffleString fromNativePointer(Object pointerObject, int byteOffset, int byteLength, Encoding enc, boolean copy,
                         @Cached(value = "createInteropLibrary()", uncached = "getUncachedInteropLibrary()") Node interopLibrary) {
             checkByteLength(byteLength, enc);
-            NativePointer nativePointer = NativePointer.create(this, pointerObject, interopLibrary, byteOffset);
+            NativePointer nativePointer = NativePointer.create(this, pointerObject, interopLibrary);
             final Object array;
             final int offset;
             if (copy) {
@@ -841,7 +841,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
                     if (data instanceof NativePointer) {
                         ((NativePointer) data).materializeByteArray(a, exoticMaterializeNativeProfile);
                     }
-                    long attrs = JCodings.getInstance().calcStringAttributes(this, data, offset, length, Encoding.get(encoding), exoticValidProfile, exoticFixedWidthProfile);
+                    long attrs = JCodings.getInstance().calcStringAttributes(this, data, offset, length, Encoding.get(encoding), 0, exoticValidProfile, exoticFixedWidthProfile);
                     codeRange = StringAttributes.getCodeRange(attrs);
                     codePointLength = StringAttributes.getCodePointLength(attrs);
                 }

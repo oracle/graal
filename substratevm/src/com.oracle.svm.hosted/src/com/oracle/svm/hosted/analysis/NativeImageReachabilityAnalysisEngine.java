@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.hosted.analysis;
 
+import java.util.concurrent.ForkJoinPool;
+
+import org.graalvm.compiler.options.OptionValues;
+
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -35,9 +39,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
-import org.graalvm.compiler.options.OptionValues;
-
-import java.util.concurrent.ForkJoinPool;
 
 public class NativeImageReachabilityAnalysisEngine extends ReachabilityAnalysisEngine implements Inflation {
 
@@ -56,9 +57,10 @@ public class NativeImageReachabilityAnalysisEngine extends ReachabilityAnalysisE
         this.unknownFieldHandler = new CustomTypeFieldHandler(this, metaAccess) {
             @Override
             protected void injectFieldTypes(AnalysisField aField, AnalysisType... declaredTypes) {
-                markFieldAccessed(aField);
+                assert aField.getJavaKind().isObject();
+                markFieldAccessed(aField, "@UnknownObjectField annotated field.");
                 for (AnalysisType declaredType : declaredTypes) {
-                    markTypeReachable(declaredType);
+                    registerTypeAsReachable(declaredType, "injected field types for unknown annotated field " + aField.format("%H.%n"));
                 }
             }
         };

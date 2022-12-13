@@ -53,7 +53,6 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -320,12 +319,10 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
                 switch (cvField.getRecomputeValueKind()) {
                     case FieldOffset:
-                        AnalysisType targetFieldDeclaringType = bb.getMetaAccess().lookupJavaType(cvField.getTargetField().getDeclaringClass());
-                        targetFieldDeclaringType.registerAsReachable();
                         AnalysisField targetField = bb.getMetaAccess().lookupJavaField(cvField.getTargetField());
-                        targetField.registerAsAccessed();
+                        targetField.registerAsAccessed(cvField);
                         assert !AnnotationAccess.isAnnotationPresent(targetField, Delete.class);
-                        targetField.registerAsUnsafeAccessed();
+                        targetField.registerAsUnsafeAccessed(cvField);
                         break;
                 }
             }
@@ -432,6 +429,14 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
         int numAnnotations = (deleteAnnotation != null ? 1 : 0) + (substituteAnnotation != null ? 1 : 0) + (annotateOriginalAnnotation != null ? 1 : 0) + (aliasAnnotation != null ? 1 : 0);
         if (numAnnotations == 0) {
+            if (!(annotatedMethod instanceof Constructor) && annotatedMethod.getName().startsWith("lambda$")) {
+                String targetClass = annotatedMethod.getDeclaringClass().getName();
+                String[] methodNameParts = annotatedMethod.getName().split("[$]");
+                String method = methodNameParts.length > 1 ? methodNameParts[1] : annotatedMethod.getName();
+
+                throw UserError.abort("Lambda usage detected in the substitution method: %s#%s. Lambdas are not supported inside" +
+                                " substitution methods. To fix the issue, replace the culprit lambda with an equivalent anonymous class.", targetClass, method);
+            }
             guarantee(annotatedMethod instanceof Constructor, "One of @Delete, @Substitute, @AnnotateOriginal, or @Alias must be used: %s", annotatedMethod);
             return;
         }

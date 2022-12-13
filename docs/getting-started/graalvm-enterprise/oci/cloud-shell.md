@@ -24,24 +24,27 @@ Cloud Shell has several pre-installed JDKs, including GraalVM Enterprise JDK.
     ```shell
     csruntimectl java list
     ```
-    The output lists the JDKs preinstalled in Cloud Shell - GraalVM JDK for Java 17, OpenJDK for Java 11, and OpenJDK for Java 8. The JDK marked with an asterisk is the current JDK.
+    The output lists the JDKs preinstalled in Cloud Shell - GraalVM JDK for Java 17, Oracle JDK for Java 11, and Oracle JDK for Java 8. The JDK marked with an asterisk is the current JDK.
 
 3. Select GraalVM JDK for Java 17 as the current JDK:
 
     ```shell
     csruntimectl java set graalvmeejdk-17
     ```
-    You will see the confirmation message printed:
-    ```shell
-    The current managed java version is set to graalvmeejdk-17
-    ```
+    You will see the confirmation message printed `The current managed java version is set to graalvmeejdk-17`.
 
 4. Now confirm the values of the environment variables `PATH` and `JAVA_HOME`, and the version of `java`, the `native-image` generator:
 
     ```shell
     echo $JAVA_HOME
+    ```
+    ```shell
     echo $PATH
+    ```
+    ```shell
     java -version
+    ```
+    ```shell
     native-image --version
     ```
 
@@ -57,6 +60,8 @@ The [Spring AOT plugin](https://docs.spring.io/spring-native/docs/current/refere
 
     ```shell
     git clone https://github.com/graalvm/graalvm-demos.git
+    ```
+    ```shell
     cd graalvm-demos/spring-native-image
     ```
 2. Build the application with Maven (Apache Maven is also pre-installed in Cloud Shell):
@@ -88,16 +93,14 @@ The [Spring AOT plugin](https://docs.spring.io/spring-native/docs/current/refere
 4. Next build a native executable for this Spring Boot application using the [`native` Maven profile](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html#quickstart).
 
     ```shell
-    # export USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM=false
-    
-    mvn package -Dnative
+    mvn -Pnative native:compile
     ```
-    This will generate a native executable for Linux in the _target_ directory, named _jibber_.
+    This will generate a native executable for Linux in the _target_ directory, named _benchmark-jibber_.
 
 5. Run the native executable, using the following command:
 
     ```shell
-    ./target/jibber &
+   ./target/benchmark-jibber &
     ```
     
     Call the endpoint to test:
@@ -105,7 +108,6 @@ The [Spring AOT plugin](https://docs.spring.io/spring-native/docs/current/refere
     ```shell
     curl http://localhost:8080/jibber
     ```
-    
     Again, you should see some nonsense verse printed. 
     
     Bring the application to the foreground:
@@ -113,7 +115,6 @@ The [Spring AOT plugin](https://docs.spring.io/spring-native/docs/current/refere
     ```shell
     fg
     ```
-    
     Terminate the application by pressing Ctrl+C.
 
 Congratulations! You have successfully used GraalVM Enterprise JDK and Native Image to build and test a Spring Boot REST application in Cloud Shell. 

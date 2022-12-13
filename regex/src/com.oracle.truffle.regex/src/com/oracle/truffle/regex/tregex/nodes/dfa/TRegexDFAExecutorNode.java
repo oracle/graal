@@ -50,6 +50,7 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexRootNode;
@@ -242,7 +243,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
      */
     @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-    public Object execute(final TRegexExecutorLocals abstractLocals, final TruffleString.CodeRange codeRange, boolean tString) {
+    public Object execute(VirtualFrame frame, final TRegexExecutorLocals abstractLocals, final TruffleString.CodeRange codeRange, boolean tString) {
         TRegexDFAExecutorLocals locals = (TRegexDFAExecutorLocals) abstractLocals;
         CompilerDirectives.ensureVirtualized(locals);
         CompilerAsserts.partialEvaluationConstant(states);
@@ -620,7 +621,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     if (injectBranchProbability(EXIT_PROBABILITY, locals.getIndex() < 0)) {
                         break outer;
                     }
-                    if (injectBranchProbability(CONTINUE_PROBABILITY, innerLiteralPrefixMatcher == null || prefixMatcherMatches(innerLiteralPrefixMatcher, locals, codeRange, tString))) {
+                    if (injectBranchProbability(CONTINUE_PROBABILITY, innerLiteralPrefixMatcher == null || prefixMatcherMatches(frame, innerLiteralPrefixMatcher, locals, codeRange, tString))) {
                         if (innerLiteralPrefixMatcher == null && isSimpleCG()) {
                             locals.getCGData().results[0] = locals.getIndex();
                         }
@@ -646,8 +647,8 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         return locals.getResultInt();
     }
 
-    private static boolean prefixMatcherMatches(TRegexDFAExecutorNode prefixMatcher, TRegexDFAExecutorLocals locals, TruffleString.CodeRange codeRange, boolean tString) {
-        Object result = prefixMatcher.execute(locals.toInnerLiteralBackwardLocals(), codeRange, tString);
+    private static boolean prefixMatcherMatches(VirtualFrame frame, TRegexDFAExecutorNode prefixMatcher, TRegexDFAExecutorLocals locals, TruffleString.CodeRange codeRange, boolean tString) {
+        Object result = prefixMatcher.execute(frame, locals.toInnerLiteralBackwardLocals(), codeRange, tString);
         return prefixMatcher.isSimpleCG() ? result != null : (int) result != NO_MATCH;
     }
 

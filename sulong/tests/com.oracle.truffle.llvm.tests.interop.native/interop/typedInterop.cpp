@@ -28,6 +28,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <graalvm/llvm/polyglot.h>
 
@@ -62,8 +63,8 @@ extern "C" int distSquaredDesugared(struct DoublePoint a, struct DoublePoint b) 
 
 struct ByValPoint {
     int x;
-    long a;
-    long b;
+    int64_t a;
+    int64_t b;
     int y;
 };
 
@@ -73,15 +74,15 @@ extern "C" int distSquaredByVal(struct ByValPoint a, struct ByValPoint b) {
     return distX * distX + distY * distY;
 }
 
-extern "C" long byValGet(struct ByValPoint a) {
+extern "C" int64_t byValGet(struct ByValPoint a) {
     return a.a + a.b;
 }
 
 struct NestedPoint {
     int x;
     struct {
-        long a;
-        long b;
+        int64_t a;
+        int64_t b;
     } nested;
     int y;
 };
@@ -92,7 +93,7 @@ extern "C" int distSquaredNestedByVal(struct NestedPoint a, struct NestedPoint b
     return distX * distX + distY * distY;
 }
 
-extern "C" long nestedByValGetNested(struct NestedPoint a) {
+extern "C" int64_t nestedByValGetNested(struct NestedPoint a) {
     return a.nested.a + a.nested.b;
 }
 
@@ -103,7 +104,7 @@ struct SmallNested {
     } nested;
 };
 
-extern "C" long nestedByValGetSmallNested(struct SmallNested a) {
+extern "C" int64_t nestedByValGetSmallNested(struct SmallNested a) {
     return a.x + a.nested.y;
 }
 
@@ -265,12 +266,12 @@ struct Complex {
 POLYGLOT_DECLARE_STRUCT(Complex)
 #pragma clang diagnostic pop
 
-extern "C" long readTypeMismatch(struct Complex *c) {
-    long *ptr = (long *) c;
+extern "C" int64_t readTypeMismatch(struct Complex *c) {
+    int64_t *ptr = (int64_t *) c;
     return *ptr;
 }
 
-extern "C" void writeTypeMismatch(struct Complex *c, long rawValue) {
-    long *ptr = (long *) c;
+extern "C" void writeTypeMismatch(struct Complex *c, int64_t rawValue) {
+    int64_t *ptr = (int64_t *) c;
     *ptr = rawValue;
 }

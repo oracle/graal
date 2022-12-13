@@ -52,7 +52,7 @@ public final class CEntryPointEnterNode extends DeoptimizingFixedWithNextNode im
         CreateIsolate,
         AttachThread,
         Enter,
-        EnterIsolate,
+        EnterByIsolate,
     }
 
     protected final EnterAction enterAction;
@@ -74,8 +74,8 @@ public final class CEntryPointEnterNode extends DeoptimizingFixedWithNextNode im
         return new CEntryPointEnterNode(EnterAction.Enter, isolateThread, false, false, false);
     }
 
-    public static CEntryPointEnterNode enterIsolate(ValueNode isolate) {
-        return new CEntryPointEnterNode(EnterAction.EnterIsolate, isolate, false, false, false);
+    public static CEntryPointEnterNode enterByIsolate(ValueNode isolate) {
+        return new CEntryPointEnterNode(EnterAction.EnterByIsolate, isolate, false, false, false);
     }
 
     protected CEntryPointEnterNode(EnterAction enterAction, ValueNode parameter, boolean startedByCurrentIsolate, boolean ensureJavaThread, boolean isCrashHandler) {

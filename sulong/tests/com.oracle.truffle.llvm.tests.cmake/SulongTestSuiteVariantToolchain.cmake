@@ -43,7 +43,11 @@ macro(setupOptions)
     # this must be called after compiler checks
 
     set(OUTPUT "${SULONG_CURRENT_VARIANT}")
-    if(NOT SULONG_BUILD_SHARED_OBJECT)
+    if(SULONG_BUILD_SHARED_OBJECT)
+        if (WIN32)
+          set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+        endif()
+    else()
         set(SUFFIX ".bc")
     endif()
 

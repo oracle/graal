@@ -52,8 +52,10 @@ import org.graalvm.compiler.lir.aarch64.AArch64AESEncryptOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
 import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ArrayCompareToOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ArrayCopyWithConversionsOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ArrayEqualsOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ArrayIndexOfOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ArrayRegionCompareToOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndWriteOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.CompareAndSwapOp;
@@ -61,6 +63,9 @@ import org.graalvm.compiler.lir.aarch64.AArch64BigIntegerMultiplyToLenOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ByteSwap;
 import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackOp;
 import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackPostSyncOp;
+import org.graalvm.compiler.lir.aarch64.AArch64CalcStringAttributesOp;
+import org.graalvm.compiler.lir.aarch64.AArch64CipherBlockChainingAESDecryptOp;
+import org.graalvm.compiler.lir.aarch64.AArch64CipherBlockChainingAESEncryptOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Compare;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.BranchOp;
@@ -73,12 +78,14 @@ import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64CounterModeAESCryptOp;
 import org.graalvm.compiler.lir.aarch64.AArch64EncodeArrayOp;
 import org.graalvm.compiler.lir.aarch64.AArch64GHASHProcessBlocksOp;
+import org.graalvm.compiler.lir.aarch64.AArch64HasNegativesOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.MembarOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PauseOp;
 import org.graalvm.compiler.lir.aarch64.AArch64SpeculativeBarrier;
 import org.graalvm.compiler.lir.aarch64.AArch64StringLatin1InflateOp;
 import org.graalvm.compiler.lir.aarch64.AArch64StringUTF16CompressOp;
+import org.graalvm.compiler.lir.aarch64.AArch64VectorizedMismatchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ZapRegistersOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ZapStackOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ZeroMemoryOp;
@@ -525,44 +532,95 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         return result;
     }
 
+    private AllocatableValue emitConvertNullToZero(Value value) {
+        AllocatableValue result = newVariable(LIRKind.unknownReference(target().arch.getWordKind()));
+        emitConvertNullToZero(result, value);
+        return result;
+    }
+
+    @Override
+    public Variable emitArrayRegionCompareTo(Stride strideA, Stride strideB, EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64ArrayRegionCompareToOp(this, strideA, strideB, result,
+                        emitConvertNullToZero(arrayA), asAllocatable(offsetA), emitConvertNullToZero(arrayB), asAllocatable(offsetB), asAllocatable(length), null));
+        return result;
+    }
+
+    @Override
+    public Variable emitArrayRegionCompareTo(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, Value dynamicStrides) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64ArrayRegionCompareToOp(this, null, null, result,
+                        emitConvertNullToZero(arrayA), asAllocatable(offsetA), emitConvertNullToZero(arrayB), asAllocatable(offsetB), asAllocatable(length), asAllocatable(dynamicStrides)));
+        return result;
+    }
+
+    @Override
+    public void emitArrayCopyWithConversion(Stride strideSrc, Stride strideDst, EnumSet<?> runtimeCheckedCPUFeatures, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length) {
+        append(new AArch64ArrayCopyWithConversionsOp(this, strideSrc, strideDst,
+                        emitConvertNullToZero(arrayDst), asAllocatable(offsetDst), emitConvertNullToZero(arraySrc), asAllocatable(offsetSrc), asAllocatable(length), null));
+    }
+
+    @Override
+    public void emitArrayCopyWithConversion(EnumSet<?> runtimeCheckedCPUFeatures, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value dynamicStrides) {
+        append(new AArch64ArrayCopyWithConversionsOp(this, null, null,
+                        emitConvertNullToZero(arrayDst), asAllocatable(offsetDst), emitConvertNullToZero(arraySrc), asAllocatable(offsetSrc), asAllocatable(length), asAllocatable(dynamicStrides)));
+    }
+
     @Override
     public Variable emitArrayEquals(JavaKind kind, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length) {
         GraalError.guarantee(!kind.isNumericFloat(), "Float arrays comparison (bitwise_equal || both_NaN) isn't supported on AARCH64");
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
-        append(new AArch64ArrayEqualsOp(this, Stride.fromJavaKind(kind), result,
-                        asAllocatable(arrayA), asAllocatable(offsetA), asAllocatable(arrayB), asAllocatable(offsetB), asAllocatable(length)));
+        Stride stride = Stride.fromJavaKind(kind);
+        append(new AArch64ArrayEqualsOp(this, stride, stride, stride, result,
+                        emitConvertNullToZero(arrayA), asAllocatable(offsetA), emitConvertNullToZero(arrayB), asAllocatable(offsetB), asAllocatable(length), null, null));
         return result;
     }
 
     @Override
     public Variable emitArrayEquals(Stride strideA, Stride strideB, EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length) {
-        if (strideA != strideB) {
-            throw GraalError.unimplemented("arrayEquals with different strides not yet implemented on AARCH64");
-        }
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
-        append(new AArch64ArrayEqualsOp(this, strideA, result,
-                        asAllocatable(arrayA), asAllocatable(offsetA), asAllocatable(arrayB), asAllocatable(offsetB), asAllocatable(length)));
+        append(new AArch64ArrayEqualsOp(this, strideA, strideB, strideB, result,
+                        emitConvertNullToZero(arrayA), asAllocatable(offsetA), emitConvertNullToZero(arrayB), asAllocatable(offsetB), asAllocatable(length), null, null));
+        return result;
+    }
+
+    @Override
+    public Variable emitArrayEqualsDynamicStrides(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, Value dynamicStrides) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64ArrayEqualsOp(this, null, null, null, result,
+                        emitConvertNullToZero(arrayA), asAllocatable(offsetA), emitConvertNullToZero(arrayB), asAllocatable(offsetB), asAllocatable(length), null, asAllocatable(dynamicStrides)));
+        return result;
+    }
+
+    @Override
+    public Variable emitArrayEqualsWithMask(Stride strideA, Stride strideB, Stride strideMask, EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value offsetA, Value arrayB, Value offsetB,
+                    Value mask, Value length) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64ArrayEqualsOp(this, strideA, strideB, strideMask, result,
+                        emitConvertNullToZero(arrayA), asAllocatable(offsetA), emitConvertNullToZero(arrayB), asAllocatable(offsetB), asAllocatable(length), asAllocatable(mask), null));
+        return result;
+    }
+
+    @Override
+    public Variable emitArrayEqualsWithMaskDynamicStrides(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value mask, Value length,
+                    Value dynamicStrides) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64ArrayEqualsOp(this, null, null, null, result,
+                        emitConvertNullToZero(arrayA), asAllocatable(offsetA), emitConvertNullToZero(arrayB), asAllocatable(offsetB), asAllocatable(length), asAllocatable(mask),
+                        asAllocatable(dynamicStrides)));
         return result;
     }
 
     @Override
     public Variable emitArrayIndexOf(Stride stride, boolean findTwoConsecutive, boolean withMask, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value arrayPointer, Value arrayOffset, Value arrayLength, Value fromIndex, Value... searchValues) {
-        if (findTwoConsecutive) {
-            GraalError.guarantee(searchValues.length == 2, "findTwoConsecutive requires exactly two search values");
-        } else if (searchValues.length > 1) {
-            throw GraalError.unimplemented("arrayIndexOf with multiple search values not yet implemented on AARCH64");
-        }
-        if (withMask) {
-            throw GraalError.unimplemented("arrayIndexOf with mask parameter not yet implemented on AARCH64");
-        }
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         AllocatableValue[] allocatableSearchValues = new AllocatableValue[searchValues.length];
         for (int i = 0; i < searchValues.length; i++) {
             allocatableSearchValues[i] = asAllocatable(searchValues[i]);
         }
-        append(new AArch64ArrayIndexOfOp(stride, findTwoConsecutive, this, result, asAllocatable(arrayPointer), asAllocatable(arrayOffset), asAllocatable(arrayLength),
+        append(new AArch64ArrayIndexOfOp(stride, findTwoConsecutive, withMask, this, result, emitConvertNullToZero(arrayPointer), asAllocatable(arrayOffset), asAllocatable(arrayLength),
                         asAllocatable(fromIndex), allocatableSearchValues));
         return result;
     }
@@ -571,6 +629,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     public Variable emitEncodeArray(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value length, CharsetName charset) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new AArch64EncodeArrayOp(this, result, asAllocatable(src), asAllocatable(dst), asAllocatable(length), charset));
+        return result;
+    }
+
+    @Override
+    public Variable emitHasNegatives(EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value length) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64HasNegativesOp(this, result, asAllocatable(array), asAllocatable(length)));
         return result;
     }
 
@@ -600,6 +665,34 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public Variable emitCBCAESEncrypt(Value inAddr, Value outAddr, Value kAddr, Value rAddr, Value len) {
+        Variable result = newVariable(len.getValueKind());
+        append(new AArch64CipherBlockChainingAESEncryptOp(this,
+                        asAllocatable(inAddr),
+                        asAllocatable(outAddr),
+                        asAllocatable(kAddr),
+                        asAllocatable(rAddr),
+                        asAllocatable(len),
+                        result,
+                        getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+        return result;
+    }
+
+    @Override
+    public Variable emitCBCAESDecrypt(Value inAddr, Value outAddr, Value kAddr, Value rAddr, Value len) {
+        Variable result = newVariable(len.getValueKind());
+        append(new AArch64CipherBlockChainingAESDecryptOp(this,
+                        asAllocatable(inAddr),
+                        asAllocatable(outAddr),
+                        asAllocatable(kAddr),
+                        asAllocatable(rAddr),
+                        asAllocatable(len),
+                        result,
+                        getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+        return result;
+    }
+
+    @Override
     public void emitGHASHProcessBlocks(Value state, Value hashSubkey, Value data, Value blocks) {
         append(new AArch64GHASHProcessBlocksOp(this, asAllocatable(state), asAllocatable(hashSubkey), asAllocatable(data), asAllocatable(blocks)));
     }
@@ -607,6 +700,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public void emitBigIntegerMultiplyToLen(Value x, Value xlen, Value y, Value ylen, Value z, Value zlen) {
         append(new AArch64BigIntegerMultiplyToLenOp(asAllocatable(x), asAllocatable(xlen), asAllocatable(y), asAllocatable(ylen), asAllocatable(z), asAllocatable(zlen)));
+    }
+
+    @Override
+    public Variable emitCalcStringAttributes(CalcStringAttributesEncoding encoding, EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value offset, Value length, boolean assumeValid) {
+        Variable result = newVariable(LIRKind.value(encoding == CalcStringAttributesEncoding.UTF_8 || encoding == CalcStringAttributesEncoding.UTF_16 ? AArch64Kind.QWORD : AArch64Kind.DWORD));
+        append(new AArch64CalcStringAttributesOp(this, encoding, emitConvertNullToZero(array), asAllocatable(offset), asAllocatable(length), result, assumeValid));
+        return result;
     }
 
     @Override
@@ -618,6 +718,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     public Variable emitStringUTF16Compress(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value dst, Value len) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new AArch64StringUTF16CompressOp(this, asAllocatable(src), asAllocatable(dst), asAllocatable(len), result));
+        return result;
+    }
+
+    @Override
+    public Variable emitVectorizedMismatch(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value arrayB, Value length, Value stride) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64VectorizedMismatchOp(this, result, asAllocatable(arrayA), asAllocatable(arrayB), asAllocatable(length), asAllocatable(stride)));
         return result;
     }
 

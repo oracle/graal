@@ -159,6 +159,8 @@ def test():
     if os.environ.get('GDB_CAN_PRINT', '') == 'True':
         can_print_data = True
 
+    musl = os.environ.get('debuginfotest_musl', 'no') == 'yes'
+
     isolates = False
     if os.environ.get('debuginfotest_isolates', 'no') == 'yes':
         isolates = True
@@ -179,6 +181,8 @@ def test():
     execute("set print pretty on")
     # enable demangling of symbols in assembly code listings
     execute("set print asm-demangle on")
+    # disable printing of address symbols
+    execute("set print symbol off")
 
     # Print DefaultGreeter and check the modifiers of its methods and fields
     exec_string = execute("ptype 'hello.Hello$DefaultGreeter'")
@@ -211,14 +215,17 @@ def test():
     # expect "#0  hello.Hello.main(java.lang.String[] *).* at hello.Hello.java:76"
     # expect "#1  0x[0-9a-f]+ in com.oracle.svm.core.code.IsolateEnterStub.JavaMainWrapper_run_.* at [a-z/]+/JavaMainWrapper.java:[0-9]+"
     exec_string = execute("backtrace")
-    checker = Checker("backtrace hello.Hello::main",
-                      [r"#0%shello\.Hello::main%s %s at hello/Hello\.java:76"%(spaces_pattern, param_types_pattern, arg_values_pattern),
+    stacktraceRegex = [r"#0%shello\.Hello::main%s %s at hello/Hello\.java:76"%(spaces_pattern, param_types_pattern, arg_values_pattern),
                        r"#1%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
                        r"#2%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
                        r"#3%scom\.oracle\.svm\.core\.JavaMainWrapper::doRun%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, param_types_pattern, arg_values_pattern, package_pattern),
                        r"#4%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::run%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
                        r"#5%scom\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s %s"%(spaces_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern)
-                      ])
+                      ]
+    if musl:
+        # musl has a different entry point - drop the last two frames
+        stacktraceRegex = stacktraceRegex[:-2]
+    checker = Checker("backtrace hello.Hello::main", stacktraceRegex)
     checker.check(exec_string, skip_fails=False)
 
     # check input argument args is known
@@ -300,6 +307,45 @@ def test():
         checker = Checker("print static field value contents",
                           r"%s = 1000"%(wildcard_pattern))
         checker.check(exec_string, skip_fails=False)
+
+        # ensure we can print class constants
+        exec_string = execute("print /x 'hello.Hello.class'")
+        rexp = [r"%s = {"%(wildcard_pattern),
+                r"%s<java.lang.Object> = {"%(spaces_pattern),
+                r"%s<_objhdr> = {"%(spaces_pattern),
+                r"%shub = %s,"%(spaces_pattern, address_pattern),
+                r"%sidHash = %s"%(spaces_pattern, address_pattern),
+                r"%s}, <No data fields>},"%(spaces_pattern),
+                r"%smembers of java\.lang\.Class:"%(spaces_pattern),
+                r"%sname = %s,"%(spaces_pattern, address_pattern),
+                "}"]
+
+        checker = Checker("print hello.Hello.class", rexp)
+
+        checker.check(exec_string, skip_fails=True)
+
+        # ensure we can access fields of class constants
+        exec_string = execute("print 'java.lang.String[].class'.name->value->data")
+        rexp = r'%s = %s "\[Ljava.lang.String;"'%(wildcard_pattern, address_pattern)
+
+        checker = Checker("print 'java.lang.String[].class'.name->value->data", rexp)
+
+        checker.check(exec_string)
+
+        exec_string = execute("print 'long.class'.name->value->data")
+        rexp = r'%s = %s "long"'%(wildcard_pattern, address_pattern)
+
+        checker = Checker("print 'long.class'.name->value->data", rexp)
+
+        checker.check(exec_string)
+
+        exec_string = execute("print 'byte[].class'.name->value->data")
+        rexp = r'%s = %s "\[B"'%(wildcard_pattern, address_pattern)
+
+        checker = Checker("print 'byte[].class'.name->value->data", rexp)
+
+        checker.check(exec_string)
+
 
     # look up greet methods
     # expect "All functions matching regular expression "greet":"
@@ -412,15 +458,18 @@ def test():
 
     # run a backtrace
     exec_string = execute("backtrace")
-    checker = Checker("backtrace hello.Hello.Greeter::greeter",
-                      [r"#0%shello\.Hello\$Greeter::greeter%s %s at hello/Hello\.java:37"%(spaces_pattern, param_types_pattern, arg_values_pattern),
+    stacktraceRegex = [r"#0%shello\.Hello\$Greeter::greeter%s %s at hello/Hello\.java:37"%(spaces_pattern, param_types_pattern, arg_values_pattern),
                        r"#1%s%s in hello\.Hello::main%s %s at hello/Hello\.java:76"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern),
                        r"#2%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
                        r"#3%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
                        r"#4%scom\.oracle\.svm\.core\.JavaMainWrapper::doRun%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, param_types_pattern, arg_values_pattern, package_pattern),
                        r"#5%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::run%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
                        r"#6%scom\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s %s"%(spaces_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern)
-                      ])
+                      ]
+    if musl:
+        # musl has a different entry point - drop the last two frames
+        stacktraceRegex = stacktraceRegex[:-2]
+    checker = Checker("backtrace hello.Hello.Greeter::greeter", stacktraceRegex)
     checker.check(exec_string, skip_fails=False)
 
     # now step into inlined code

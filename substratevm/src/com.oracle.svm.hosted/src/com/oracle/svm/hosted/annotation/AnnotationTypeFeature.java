@@ -26,8 +26,8 @@ package com.oracle.svm.hosted.annotation;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
 @AutomaticallyRegisteredFeature
@@ -49,7 +49,7 @@ public class AnnotationTypeFeature implements InternalFeature {
                              * array of a requested annotation. We need to mark arrays of all
                              * reachable annotations as in heap.
                              */
-                            accessImpl.registerAsInHeap(annotationArray);
+                            accessImpl.registerAsInHeap(annotationArray, "Is the array type of a reachable annotation.");
                             access.requireAnalysisIteration();
                         });
     }

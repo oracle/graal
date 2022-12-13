@@ -446,7 +446,7 @@ final class FastDoubleParser {
             if (negExp) {
                 expNumber = -expNumber;
             }
-            exponent += expNumber;
+            exponent += (int) expNumber;
         }
 
         // Skip trailing whitespace
@@ -602,7 +602,7 @@ final class FastDoubleParser {
             if (negExp) {
                 expNumber = -expNumber;
             }
-            exponent += expNumber;
+            exponent += (int) expNumber;
         }
 
         // Skip trailing whitespace

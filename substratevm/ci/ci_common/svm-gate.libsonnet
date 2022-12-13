@@ -1,5 +1,5 @@
 {
-  local common     = import "../../../common.jsonnet",
+  local common     = import "../../../ci/ci_common/common.jsonnet",
   local tools      = import "tools.libsonnet",
   local run_spec   = import "../../../ci/ci_common/run-spec.libsonnet",
 
@@ -70,18 +70,24 @@
 
   use_musl:: require_musl + task_spec({
       mxgate_config+::["musl"],
-      mxgate_extra_args+: ["--use-musl"],
+      mxgate_extra_args+: ["--extra-image-builder-arguments=--libc=musl --static"],
   }),
 
   add_quickbuild:: task_spec({
       mxgate_config+::["quickbuild"],
-      mxgate_extra_args+: ["--extra-image-builder-arguments=-H:Optimize=b"],
+      mxgate_extra_args+: ["--extra-image-builder-arguments=-Ob"],
   }),
 
   use_llvm:: task_spec({
       mxgate_config+::["llvm"],
       mxgate_extra_args+: ["--extra-image-builder-arguments=-H:CompilerBackend=llvm"],
   }),
+
+  use_ecj:: task_spec({
+      mxgate_config+::["ecj"],
+  } + evaluate_late("05_ecj_gate", function(b) {
+      mxgate_tags:: [if tag == "build" then "ecjbuild" else tag for tag in b.mxgate_tags],
+  })),
 
   clone_js_benchmarks:: task_spec({
     setup+: [["git", "clone", "--depth", "1", ["mx", "urlrewrite", "https://github.com/graalvm/js-benchmarks.git"], "../../js-benchmarks"]],

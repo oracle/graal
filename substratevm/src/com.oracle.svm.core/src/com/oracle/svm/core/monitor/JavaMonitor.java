@@ -27,11 +27,13 @@
 package com.oracle.svm.core.monitor;
 
 import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.JavaMonitorEnterEvent;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
@@ -42,9 +44,16 @@ import jdk.internal.misc.Unsafe;
  *
  * Only the relevant methods from the JDK sources have been kept. Some additional Native
  * Image-specific functionality has been added.
+ *
+ * Main differences to the JDK implementation:
+ * <ul>
+ * <li>Uses the {@linkplain #setState synchronization state} to store a
+ * {@linkplain #getThreadIdentity numeric identifier of the owner thread} and {@link #acquisitions}
+ * to store the number of lock acquisitions, enabling various optimizations.</li>
+ * </ul>
  */
-public final class JavaMonitor extends JavaMonitorQueuedSynchronizer {
-    private long latestJfrTid;
+public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
+    protected long latestJfrTid;
 
     public JavaMonitor() {
         latestJfrTid = 0;
@@ -53,7 +62,7 @@ public final class JavaMonitor extends JavaMonitorQueuedSynchronizer {
     public void monitorEnter(Object obj) {
         if (!tryLock()) {
             long startTicks = JfrTicks.elapsedTicks();
-            lock();
+            acquire(1);
             JavaMonitorEnterEvent.emit(obj, latestJfrTid, startTicks);
         }
 
@@ -80,23 +89,6 @@ public final class JavaMonitor extends JavaMonitorQueuedSynchronizer {
         return newCondition;
     }
 
-    /**
-     * Creates a new {@link JavaMonitor} that is locked by the provided thread. This requires
-     * patching of internal state.
-     */
-    public static JavaMonitor newLockedMonitorForThread(Thread thread, int recursionDepth) {
-        JavaMonitor result = new JavaMonitor();
-        for (int i = 0; i < recursionDepth; i++) {
-            result.lock();
-        }
-
-        result.latestJfrTid = SubstrateJVM.getThreadId(thread);
-        assert result.getExclusiveOwnerThread() == Thread.currentThread() : "Must be locked by current thread";
-        result.setExclusiveOwnerThread(thread);
-
-        return result;
-    }
-
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void relockObject() {
         /*
@@ -105,22 +97,21 @@ public final class JavaMonitor extends JavaMonitorQueuedSynchronizer {
          * or the object must be unlocked (if the object was rematerialized during deoptimization).
          * If the object is locked by another thread, lock elimination in the compiler has a serious
          * bug.
-         */
-        Thread currentThread = Thread.currentThread();
-        Thread ownerThread = getExclusiveOwnerThread();
-        VMError.guarantee(ownerThread == null || ownerThread == currentThread, "Object that needs re-locking during deoptimization is already locked by another thread");
-
-        /*
+         *
          * Since this code must be uninterruptible, we cannot just call lock.tryLock() but instead
          * replicate that logic here by using only direct field accesses.
          */
-        int oldState = getState();
-        int newState = oldState + 1;
-        VMError.guarantee(newState > 0, "Maximum lock count exceeded");
+        long currentThread = getCurrentThreadIdentity();
+        long ownerThread = getState();
+        if (ownerThread == 0) {
+            boolean success = compareAndSetState(0, currentThread);
+            VMError.guarantee(success && acquisitions == 1, "Could not re-lock object during deoptimization");
+        } else {
+            VMError.guarantee(ownerThread == currentThread, "Object that needs re-locking during deoptimization is already locked by another thread");
 
-        boolean success = U.compareAndSetInt(this, JavaMonitorQueuedSynchronizer.STATE, oldState, newState);
-        VMError.guarantee(success, "Could not re-lock object during deoptimization");
-        setExclusiveOwnerThread(currentThread);
+            acquisitions++;
+            VMError.guarantee(acquisitions > 0, "Maximum lock count exceeded");
+        }
     }
 
     /*
@@ -134,29 +125,29 @@ public final class JavaMonitor extends JavaMonitorQueuedSynchronizer {
 
     private JavaMonitorConditionObject condition;
 
-    // see ReentrantLock.NonFairSync.initialTryLock()
-    boolean initialTryLock() {
-        Thread current = Thread.currentThread();
-        if (compareAndSetState(0, 1)) { // first attempt is unguarded
-            setExclusiveOwnerThread(current);
-            return true;
-        } else if (getExclusiveOwnerThread() == current) {
-            int c = getState() + 1;
-            if (c < 0) { // overflow
-                throw new Error("Maximum lock count exceeded");
-            }
-            setState(c);
-            return true;
-        } else {
-            return false;
-        }
+    /**
+     * We store the numeric identifier of the owner thread in the {@linkplain #setState
+     * synchronization state} rather than using it for the number of acquisitions (recursive
+     * entries) like {@code ReentrantLock} does. We use this field for the acquisition count
+     * instead, which is accessed only by the thread holding the lock so that it does not need
+     * {@code volatile} semantics. This also enables us to leave this field's value at 1 on release
+     * so that the next thread acquiring the lock does not need to immediately write it.
+     */
+    protected int acquisitions = 1;
+
+    /** {@inheritDoc} */
+    @Override
+    protected long getAcquisitions() {
+        return acquisitions;
     }
 
     // see ReentrantLock.NonFairSync.tryAcquire(int)
     @Override
-    protected boolean tryAcquire(int acquires) {
-        if (getState() == 0 && compareAndSetState(0, acquires)) {
-            setExclusiveOwnerThread(Thread.currentThread());
+    protected boolean tryAcquire(long acquires) {
+        assert acquires > 0 && acquires == (int) acquires;
+        if (getState() == 0 && compareAndSetState(0, getCurrentThreadIdentity())) {
+            assert acquisitions == 1;
+            acquisitions = (int) acquires;
             return true;
         }
         return false;
@@ -164,55 +155,70 @@ public final class JavaMonitor extends JavaMonitorQueuedSynchronizer {
 
     // see ReentrantLock.Sync.tryLock()
     boolean tryLock() {
-        Thread current = Thread.currentThread();
-        int c = getState();
+        long current = getCurrentThreadIdentity();
+        long c = getState();
         if (c == 0) {
-            if (compareAndSetState(0, 1)) {
-                setExclusiveOwnerThread(current);
+            if (compareAndSetState(0, current)) {
+                assert acquisitions == 1;
                 return true;
             }
-        } else if (getExclusiveOwnerThread() == current) {
-            if (++c < 0) { // overflow
+        } else if (c == current) {
+            int r = acquisitions + 1;
+            if (r < 0) { // overflow
                 throw new Error("Maximum lock count exceeded");
             }
-            setState(c);
+            // Note: protected by monitor and not required to be observable, no ordering needed
+            acquisitions = r;
             return true;
         }
         return false;
     }
 
-    // see ReentrantLock.Sync.lock()
-    void lock() {
-        if (!initialTryLock()) {
-            acquire(1);
-        }
-    }
-
     // see ReentrantLock.Sync.tryRelease()
     @Override
-    protected boolean tryRelease(int releases) {
-        int c = getState() - releases; // state must be 0 here
-        if (getExclusiveOwnerThread() != Thread.currentThread()) {
-            throw new IllegalMonitorStateException(); // owner is null and c =-1
+    protected boolean tryRelease(long releases) {
+        assert releases > 0;
+        long current = getCurrentThreadIdentity();
+        long c = getState();
+        if (c != current) {
+            throw new IllegalMonitorStateException();
         }
-        boolean free = (c == 0);
+        boolean free = (acquisitions == releases);
         if (free) {
-            setExclusiveOwnerThread(null);
+            acquisitions = 1;
+            setState(0);
+        } else {
+            // Note: protected by monitor and not required to be observable, no ordering needed
+            assert releases < acquisitions;
+            acquisitions -= (int) releases;
         }
-        setState(c);
         return free;
     }
 
     // see ReentrantLock.Sync.isHeldExclusively()
     @Override
     protected boolean isHeldExclusively() {
-        // While we must in general read state before owner,
-        // we don't need to do so to check if current thread is owner
-        return getExclusiveOwnerThread() == Thread.currentThread();
+        return getState() == getCurrentThreadIdentity();
     }
 
-    // see ReentrantLock.Sync.lock()
+    // see ReentrantLock.Sync.isLocked()
     boolean isLocked() {
         return getState() != 0;
+    }
+
+    /**
+     * Storing and comparing a {@link Thread} object to determine lock ownership needs heap address
+     * computations and GC barriers, while we don't actually need to access the object, so we use a
+     * unique numeric identifier instead. {@link IsolateThread} is readily available in a register,
+     * which makes for compact fast path code, but if virtual threads are enabled, they migrate
+     * between {@link IsolateThread}s, so we must use the unique ids assigned to {@link Thread}s.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected static long getCurrentThreadIdentity() {
+        return JavaThreads.getCurrentThreadId();
+    }
+
+    protected static long getThreadIdentity(Thread thread) {
+        return JavaThreads.getThreadId(thread);
     }
 }

@@ -30,72 +30,22 @@ import org.junit.Test;
 
 public class StandaloneAnalyzerReachabilityTest {
 
-    public static void main(String[] args) {
-        Object c;
-        if (args.length > 0) {
-            c = new C1("C1");
-        } else {
-            c = new C2("C2");
-        }
-        c.toString();
-    }
-
-    public abstract static class C {
-        protected String val;
-
-        @Override
-        public abstract String toString();
-    }
-
-    public static class C1 extends C {
-        public C1(String v) {
-            val = v;
-        }
-
-        @Override
-        public String toString() {
-            return val;
-        }
-    }
-
-    public static class C2 extends C {
-        public C2(String v) {
-            val = v;
-        }
-
-        @Override
-        public String toString() {
-            return val;
-        }
-    }
-
-    public static class D {
-        @SuppressWarnings("unused") private String val;
-
-        @Override
-        public String toString() {
-            return val = "D";
-        }
-    }
-
     @Test
-    public void testPointstoAnalyzer() {
-        PointstoAnalyzerTester tester = new PointstoAnalyzerTester(this.getClass());
+    public void testPointstoAnalyzer() throws NoSuchFieldException {
+        PointstoAnalyzerTester tester = new PointstoAnalyzerTester(StandaloneAnalyzerReachabilityCase.class);
         tester.setAnalysisArguments(tester.getTestClassName(),
                         "-H:AnalysisTargetAppCP=" + tester.getTestClassJar());
-        String classC = C.class.getName();
-        String classC1 = C1.class.getName();
-        String classC2 = C2.class.getName();
-        String classD = D.class.getName();
-        tester.setExpectedReachableTypes(classC, classC1, classC2);
+        Class<StandaloneAnalyzerReachabilityCase.C> classC = StandaloneAnalyzerReachabilityCase.C.class;
+        Class<StandaloneAnalyzerReachabilityCase.D> classD = StandaloneAnalyzerReachabilityCase.D.class;
+        tester.setExpectedReachableTypes(classC, StandaloneAnalyzerReachabilityCase.C1.class, StandaloneAnalyzerReachabilityCase.C2.class);
         tester.setExpectedUnreachableTypes(classD);
-        tester.setExpectedReachableFields(classC + ".val");
-        tester.setExpectedUnreachableFields(classD + ".val");
+        tester.setExpectedReachableFields(classC.getDeclaredField("val"));
+        tester.setExpectedUnreachableFields(classD.getDeclaredField("val"));
         tester.runAnalysisAndAssert();
     }
 
     @Test
-    public void testMultipleAnalysis() {
+    public void testMultipleAnalysis() throws NoSuchFieldException {
         int times = 5;
         int i = 0;
         while (i++ < times) {

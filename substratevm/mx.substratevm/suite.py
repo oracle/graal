@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion" : "6.9.9",
+    "mxversion" : "6.11.4",
     "name": "substratevm",
     "version" : "23.0.0",
     "release" : False,
@@ -40,35 +40,35 @@ suite = {
     "libraries" : {
         "RENAISSANCE_HARNESS_v0.9" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-harness_v0.9.0.tar.gz"],
-            "sha1" : "0bef46df4699d896034005d6f3f0422a7075482b",
+            "digest" : "sha512:068207adf6bbd0a934429f7d6ddba8810e55992d06e131479658a7933bb352ea892d4304f745806dc342a6f7187a434ff2f106c6f8a6ee35ee696ea4fc998f7b",
             "packedResource": True,
         },
         "RENAISSANCE_HARNESS_v0.10" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-harness_v0.10.0.tar.gz"],
-            "sha1" : "842e60f56d9871a1fa5700dcc446acbd041e875b",
+            "digest" : "sha512:f19f858ee491b61f4537126336b80c901896ecba6fdb1ce052c4f61d3249cc84730f8f44b77c679faceeee92a3874343ae596f0d91017d4fd215f90f9f33f31b",
             "packedResource": True,
         },
         "RENAISSANCE_HARNESS_v0.11" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-harness_v0.11.0.tar.gz"],
-            "sha1" : "8d402c1e7c972badfcffdd6c64ed4e791b0dea02",
+            "digest" : "sha512:23b40b3507f3af124a769d1f91b129ab3a3f4790eb615ad988578f2d21f78454f356c1289f3217cf569cb6d04d88fc37de1eb3dbc3122381328adbcd17de597a",
             "packedResource": True,
         },
         "RENAISSANCE_HARNESS_v0.12" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-harness_v0.12.0.tar.gz"],
-            "sha1" : "84592bedd6f0afa842aadb8813d395317b1fa385",
+            "digest" : "sha512:4592b04fa10e8dc41a2423c62118b4740e4ae35ffc6a87b4b0de2764b41b5139cc04e9ea67144f5df09bd87262dcf24d693c2a296f94c83004e7513232ef3a1a",
             "packedResource": True,
         },
         "RENAISSANCE_HARNESS_v0.13" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-harness_v0.13.0.tar.gz"],
-            "sha1" : "8edc1db5c7ea977e2a9c037b5324bb4cbee40082",
+            "digest" : "sha512:11b1c1effbca954948e8b51657c36aed60a806e4e5ded8a7eac8247cd217d05b6d0b761f6341438d137dfc18e16546e01e687f70a1a8cedbfbbc44e917dbf3aa",
             "packedResource": True,
         },
         "SPARK_BREEZE_PATCHED" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/breeze_2.11-0.11.2-patched.jar"],
-            "sha1" : "e3327f5d890b5af0f7363a8b3cd95b6ce24bc1ea",
+            "digest" : "sha512:754c06ddd1be0938d421ff332328e05ab754ea8fe95620c5d387fdf4bda6193455498ab82c6b449abadb7ca4aea4defc42ed00deb71fc40dfc619644b40990c3",
         },
         "XERCES_IMPL" : {
-            "sha1" : "006898f2bdfeca5ac996cfff1b76ef98af5aa6f2",
+            "digest" : "sha512:abc3cc088fba82c3ad02e18f8664c1aebed018cf39b835824ec2ff2eb9bf9ca4521d805ddfcb112cdfbd0e2ac093a7be1261e7c3d99560d30f8888da4ab0cc85",
             "maven" : {
                 "groupId" : "xerces",
                 "artifactId" : "xercesImpl",
@@ -76,8 +76,8 @@ suite = {
            },
         },
         "LLVM_WRAPPER_SHADOWED": {
-            "sha1" : "6e2ccf2127750962ac10fbedee7476fb392d967a",
-            "sourceSha1" : "f3e062834bd7eac4e7d7ec039e2961d07556a87b",
+            "digest" : "sha512:bcb73fed249ef14e61b7be4153cede889de7aba4344884a54a84fc2d78f59a0b56b5045f390c378ffb727f454f26e48f92d2f6d4bad8a94ff05ad3949335c7f6",
+            "sourceDigest" : "sha512:31796d30a17df22e6624300f360cef39ce4a8ab06605d31fa4809f16ce347ebfa94e87e2ddedaf4d6e7b7682fa3192d8561bb056d797f09b27c101a9a0d98cde",
             "dependencies" : ["JAVACPP_SHADOWED"],
             "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
             "urls": ["{urlbase}/llvm-shadowed-13.0.1-1.5.7.jar"],
@@ -86,8 +86,8 @@ suite = {
             "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm"
         },
         "JAVACPP_SHADOWED": {
-            "sha1" : "85ba34efaf9b0ce71b4d2a426637ba37b89cf05c",
-            "sourceSha1" : "99c5aaba05b0772577722f51ba3c9eb28ae6a435",
+            "digest" : "sha512:2b1d23f4c00f1ee04546aee4467622f78b0cca8d231e9bcb77e507ad6a3afb8bdad31a956d7a8bed801eae44c6f70215bf8f891156521768d9ee9726b3fd860f",
+            "sourceDigest" : "sha512:b84f22e2bd85407eb60fb6923d708d1928249064e2e405954558392f295fcb167738d095f4c926c4a470068409cb1db45d2da7729d1650769a68aa237492793f",
             "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/native-image",
             "urls": ["{urlbase}/javacpp-shadowed-1.5.7.jar"],
             "sourceUrls": ["{urlbase}/javacpp-shadowed-1.5.7-sources.jar"],
@@ -99,12 +99,12 @@ suite = {
             "os_arch": {
                 "linux": {
                     "amd64": {
-                        "sha1": "2ee54f786d4f4bb8f3e74106b33474203d9f09c1",
+                        "digest": "sha512:5cb593fe98d73fa7e40f10d4b4fb3dcb0a86dc23248089660ea48bb2fab5bb905ca6826eac3b3a9d1abaa41567b55ca809e4466f2b03721ecc6110ab460d5ae3",
                         "urls": ["{urlbase}/llvm-shadowed-13.0.1-1.5.7_1-linux-x86_64.jar"],
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.linux.x86_64"
                     },
                     "aarch64": {
-                        "sha1": "0aac89ebd1682f03372e566f00a8cd97af2eb75a",
+                        "digest": "sha512:1df4e6cbd1a7c7b643bf151b5155d7b553d458eed3b3d9fb058f3bb9c0aab3293308175d4a9eaef48262852e8063b4bae0f71fd5f64707a1b63f02d759073637",
                         "urls": ["{urlbase}/llvm-shadowed-13.0.1-1.5.7_1-linux-arm64.jar"],
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.linux.arm64"
                     },
@@ -114,7 +114,7 @@ suite = {
                 },
                 "darwin": {
                     "amd64": {
-                        "sha1": "a9b5fccebfb3110154cc3302ace53f86d00137f9",
+                        "digest": "sha512:e4ffea5a9f10a79b33b0981cc5e1ee84aa3200118ec4848b09c04ca882ad45fe8e30a495fcd57f829a2eb79a4e81930bfd137d12601df34b0d289d1883e471b8",
                         "urls": ["{urlbase}/llvm-shadowed-13.0.1-1.5.7_1-macosx-x86_64.jar"],
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.macosx.x86_64"
                     },
@@ -135,12 +135,12 @@ suite = {
             "os_arch": {
                 "linux": {
                     "amd64": {
-                        "sha1": "9b787a3e5422d06283f0138b937fd3054609cea0",
+                        "digest": "sha512:07b6e40e256ccd9905834c8cfad0fbd1bf351944332d15aaea309a830475c48f4ddb2133bbd4ce9c0322fd951ead097b9aac6ede4c6b798f4a71eee7e6983202",
                         "urls": ["{urlbase}/javacpp-shadowed-1.5.7_1-linux-x86_64.jar"],
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.javacpp.linux.x86_64"
                     },
                     "aarch64": {
-                        "sha1": "412d83d75de5660487c32eb4174dd8a1339ed701",
+                        "digest": "sha512:e8638d24b59f223f3a394d27ea13f393c6a263add1b3eefde9895eb2913cc1b317d813023100c3303266f0de9773f5ba49b9326159a091fb5916296b5113b1cb",
                         "urls": ["{urlbase}/javacpp-shadowed-1.5.7_1-linux-arm64.jar"],
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.javacpp.linux.arm64"
                     },
@@ -150,7 +150,7 @@ suite = {
                 },
                 "darwin": {
                     "amd64": {
-                        "sha1": "c8f8264563fd6d5598884182341da03aebfc01d6",
+                        "digest": "sha512:5d10565ab3139fb25708a1791cdbcaa0ad24ef03cdce15902f4ad1e1c4dd7e326d7232a3a08332c60bd66c0e1c9e45261080ddf51dda49bbf4ebb2f36f0b1d87",
                         "urls": ["{urlbase}/javacpp-shadowed-1.5.7_1-macosx-x86_64.jar"],
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.javacpp.macosx.x86_64"
                     },
@@ -428,6 +428,9 @@ suite = {
                 "com.oracle.svm.core.graal.aarch64",
             ],
             "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.misc",
+                ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
                 ],
@@ -974,6 +977,7 @@ suite = {
                     "jdk.internal.misc",
                 ],
                 "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.aarch64",
                     "jdk.vm.ci.meta",
                 ]
             },

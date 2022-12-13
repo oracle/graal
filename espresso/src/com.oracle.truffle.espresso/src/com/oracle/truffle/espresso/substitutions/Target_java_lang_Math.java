@@ -27,6 +27,7 @@ package com.oracle.truffle.espresso.substitutions;
  * avoiding expensive guest native calls.
  */
 @EspressoSubstitutions
+@InlineInBytecode
 public final class Target_java_lang_Math {
 
     @Substitution

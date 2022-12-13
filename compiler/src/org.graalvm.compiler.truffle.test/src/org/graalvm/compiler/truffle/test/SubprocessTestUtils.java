@@ -24,6 +24,12 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.test.SubprocessUtil;
@@ -31,12 +37,6 @@ import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.junit.Assert;
 import org.junit.Test;
-
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Support for executing Truffle tests in a sub-process with filtered compilation failure options.
@@ -62,6 +62,8 @@ public final class SubprocessTestUtils {
 
     private static final String CONFIGURED_PROPERTY = SubprocessTestUtils.class.getSimpleName() + ".configured";
 
+    private static final String TO_REMOVE_PREFIX = "~~";
+
     private SubprocessTestUtils() {
     }
 
@@ -70,7 +72,8 @@ public final class SubprocessTestUtils {
      *
      * @param testClass the test enclosing class.
      * @param action the test to execute.
-     * @param additionalVmOptions additional vm option prepended to java arguments.
+     * @param additionalVmOptions additional vm option added to java arguments. Prepend
+     *            {@link #TO_REMOVE_PREFIX} to remove item from existing vm options.
      * @return {@link Subprocess} if it's called by a test that is not executing in a sub-process.
      *         Returns {@code null} for a caller run in a sub-process.
      * @see SubprocessTestUtils
@@ -86,7 +89,8 @@ public final class SubprocessTestUtils {
      * @param action the test to execute.
      * @param failOnNonZeroExitCode if {@code true}, the test fails if the sub-process ends with a
      *            non-zero return value.
-     * @param additionalVmOptions additional vm option prepended to java arguments.
+     * @param additionalVmOptions additional vm option added to java arguments. Prepend
+     *            {@link #TO_REMOVE_PREFIX} to remove item from existing vm options.
      * @return {@link Subprocess} if it's called by a test that is not executing in a sub-process.
      *         Returns {@code null} for a caller run in a sub-process.
      * @see SubprocessTestUtils
@@ -148,10 +152,17 @@ public final class SubprocessTestUtils {
                     return false;
                 }
             }
+            for (String additionalVmOption : additionalVmOptions) {
+                if (additionalVmOption.startsWith(TO_REMOVE_PREFIX) && vmArg.startsWith(additionalVmOption.substring(2))) {
+                    return false;
+                }
+            }
             return true;
         }).collect(Collectors.toList()));
         for (String additionalVmOption : additionalVmOptions) {
-            newVmArgs.add(1, additionalVmOption);
+            if (!additionalVmOption.startsWith(TO_REMOVE_PREFIX)) {
+                newVmArgs.add(1, additionalVmOption);
+            }
         }
         newVmArgs.add(1, String.format("-D%s=%s", CONFIGURED_PROPERTY, "true"));
         return newVmArgs;

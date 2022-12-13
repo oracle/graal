@@ -50,7 +50,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
@@ -64,7 +63,6 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.ClassLoadingExceptionSupport;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -248,6 +246,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         for (Field reflectField : reflectionFields) {
             if (!registeredFields.containsKey(reflectField) && !SubstitutionReflectivityFilter.shouldExclude(reflectField, access.getMetaAccess(), access.getUniverse())) {
                 AnalysisField analysisField = access.getMetaAccess().lookupJavaField(reflectField);
+                access.requireAnalysisIteration();
                 registerTypesForField(access, analysisField, reflectField);
                 registeredFields.put(reflectField, analysisField);
             }
@@ -261,6 +260,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             }
             if (!registeredMethods.containsKey(method)) {
                 AnalysisMethod analysisMethod = access.getMetaAccess().lookupJavaMethod(method);
+                access.requireAnalysisIteration();
                 registerTypesForMethod(access, analysisMethod, method);
                 registeredMethods.put(method, analysisMethod);
             }
@@ -285,12 +285,14 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     Field field = (Field) object;
                     if (!SubstitutionReflectivityFilter.shouldExclude(field, access.getMetaAccess(), access.getUniverse())) {
                         analysisElement = access.getMetaAccess().lookupJavaField(field);
+                        access.requireAnalysisIteration();
                         registerTypesForField(access, (AnalysisField) analysisElement, field);
                     }
                 } else if (object instanceof Executable) {
                     Executable executable = (Executable) object;
                     if (!SubstitutionReflectivityFilter.shouldExclude(executable, access.getMetaAccess(), access.getUniverse())) {
                         analysisElement = access.getMetaAccess().lookupJavaMethod(executable);
+                        access.requireAnalysisIteration();
                         registerTypesForMethod(access, (AnalysisMethod) analysisElement, executable);
                     }
                 }
@@ -399,16 +401,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerTypesForClass(DuringAnalysisAccessImpl access, AnalysisType analysisType, Class<?> clazz) {
-        makeTypeReachable(access, query(clazz::getGenericSuperclass, null));
-        Type[] genericInterfaces = query(clazz::getGenericInterfaces, null);
-        if (genericInterfaces != null) {
-            for (Type genericInterface : genericInterfaces) {
-                try {
-                    makeTypeReachable(access, genericInterface);
-                } catch (TypeNotPresentException | LinkageError ignored) {
-                }
-            }
-        }
+        /*
+         * The generic signature is parsed at run time, so we need to make all the types necessary
+         * for parsing also available at run time.
+         */
+        registerTypesForGenericSignature(access, queryGenericInfo(clazz::getTypeParameters));
+        registerTypesForGenericSignature(access, queryGenericInfo(clazz::getGenericSuperclass));
+        registerTypesForGenericSignature(access, queryGenericInfo(clazz::getGenericInterfaces));
 
         registerTypesForEnclosingMethodInfo(access, clazz);
 
@@ -439,7 +438,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         } catch (TypeNotPresentException | LinkageError | InternalError e) {
             /*
              * These are rethrown at run time. However, note that `LinkageError` is rethrown as
-             * `InternalError`, which should be fine for now.
+             * `InternalError` due to GR-40122.
              */
             return;
         }
@@ -476,14 +475,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * registered as unsafe-accessible, whether they have been explicitly registered or their
          * Field object is reachable in the image heap.
          */
-        if (!analysisField.isUnsafeAccessed() && !AnnotationAccess.isAnnotationPresent(analysisField, InjectAccessors.class)) {
-            analysisField.registerAsAccessed();
-            analysisField.registerAsUnsafeAccessed();
-        }
+        access.registerAsUnsafeAccessed(analysisField, "is registered for reflection");
 
-        makeAnalysisTypeReachable(access, analysisField.getDeclaringClass());
-        makeAnalysisTypeReachable(access, analysisField.getType());
-        makeTypeReachable(access, reflectField.getGenericType());
+        /*
+         * The generic signature is parsed at run time, so we need to make all the types necessary
+         * for parsing also available at run time.
+         */
+        registerTypesForGenericSignature(access, queryGenericInfo(reflectField::getGenericType));
 
         /*
          * Enable runtime instantiation of annotations
@@ -493,19 +491,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerTypesForMethod(DuringAnalysisAccessImpl access, AnalysisMethod analysisMethod, Executable reflectMethod) {
-        makeAnalysisTypeReachable(access, analysisMethod.getDeclaringClass());
-
-        for (TypeVariable<?> type : reflectMethod.getTypeParameters()) {
-            makeTypeReachable(access, type);
-        }
-        for (Type paramType : analysisMethod.getGenericParameterTypes()) {
-            makeTypeReachable(access, paramType);
-        }
+        /*
+         * The generic signature is parsed at run time, so we need to make all the types necessary
+         * for parsing also available at run time.
+         */
+        registerTypesForGenericSignature(access, queryGenericInfo(reflectMethod::getTypeParameters));
+        registerTypesForGenericSignature(access, queryGenericInfo(reflectMethod::getGenericParameterTypes));
+        registerTypesForGenericSignature(access, queryGenericInfo(reflectMethod::getGenericExceptionTypes));
         if (!analysisMethod.isConstructor()) {
-            makeTypeReachable(access, ((Method) reflectMethod).getGenericReturnType());
-        }
-        for (Type exceptionType : reflectMethod.getGenericExceptionTypes()) {
-            makeTypeReachable(access, exceptionType);
+            registerTypesForGenericSignature(access, queryGenericInfo(((Method) reflectMethod)::getGenericReturnType));
         }
 
         /*
@@ -530,60 +524,66 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
     }
 
-    private void makeTypeReachable(DuringAnalysisAccessImpl access, Type type) {
-        makeTypeReachable(access, type, 0);
+    private void registerTypesForGenericSignature(DuringAnalysisAccessImpl access, Type[] types) {
+        if (types != null) {
+            for (Type type : types) {
+                registerTypesForGenericSignature(access, type);
+            }
+        }
+    }
+
+    private void registerTypesForGenericSignature(DuringAnalysisAccessImpl access, Type type) {
+        registerTypesForGenericSignature(access, type, 0);
     }
 
     /*
      * We need the dimension argument to keep track of how deep in the stack of GenericArrayType
      * instances we are so we register the correct array type once we get to the leaf Class object.
      */
-    private void makeTypeReachable(DuringAnalysisAccessImpl access, Type type, int dimension) {
-        try {
-            if (type == null || processedTypes.getOrDefault(type, -1) >= dimension) {
-                return;
-            }
-        } catch (TypeNotPresentException e) {
-            /* Hash code computation can trigger an exception if the type is missing */
+    private void registerTypesForGenericSignature(DuringAnalysisAccessImpl access, Type type, int dimension) {
+        if (type == null) {
             return;
         }
-        processedTypes.put(type, dimension);
+
+        try {
+            if (processedTypes.getOrDefault(type, -1) >= dimension) {
+                return; /* Already processed. */
+            }
+            processedTypes.put(type, dimension);
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError e) {
+            /*
+             * Hash code computation can trigger an exception if a type in wildcard bounds is
+             * missing, in which case we cannot add `type` to `processedTypes`, but even so, we
+             * still have to process it. Otherwise, we might fail to make some type reachable.
+             */
+        }
+
         if (type instanceof Class<?> && !shouldExcludeClass(access, (Class<?>) type)) {
             Class<?> clazz = (Class<?>) type;
-            makeAnalysisTypeReachable(access, access.getMetaAccess().lookupJavaType(clazz).getArrayClass(dimension));
-
-            /*
-             * Reflection signature parsing will try to instantiate classes via Class.forName().
-             */
-            if (ClassForNameSupport.forNameOrNull(clazz.getName(), null) == null) {
-                access.requireAnalysisIteration();
+            if (dimension > 0) {
+                /*
+                 * We only need to register the array type here, since it is the one that gets
+                 * stored in the heap. The component type will be registered elsewhere if needed.
+                 */
+                makeAnalysisTypeReachable(access, access.getMetaAccess().lookupJavaType(clazz).getArrayClass(dimension));
             }
+            /* Generic signature parsing will try to instantiate classes via Class.forName(). */
             ClassForNameSupport.registerClass(clazz);
         } else if (type instanceof TypeVariable<?>) {
-            for (Type bound : ((TypeVariable<?>) type).getBounds()) {
-                makeTypeReachable(access, bound);
-            }
+            /* Bounds are reified lazily. */
+            registerTypesForGenericSignature(access, queryGenericInfo(((TypeVariable<?>) type)::getBounds));
         } else if (type instanceof GenericArrayType) {
-            /*
-             * We only need to register the array type here, since it is the one that gets stored in
-             * the heap. The component type will be registered elsewhere if needed.
-             */
-            makeTypeReachable(access, ((GenericArrayType) type).getGenericComponentType(), dimension + 1);
+            registerTypesForGenericSignature(access, ((GenericArrayType) type).getGenericComponentType(), dimension + 1);
         } else if (type instanceof ParameterizedType) {
             ParameterizedType parameterizedType = (ParameterizedType) type;
-            for (Type actualType : parameterizedType.getActualTypeArguments()) {
-                makeTypeReachable(access, actualType);
-            }
-            makeTypeReachable(access, parameterizedType.getRawType(), dimension);
-            makeTypeReachable(access, parameterizedType.getOwnerType());
+            registerTypesForGenericSignature(access, parameterizedType.getActualTypeArguments());
+            registerTypesForGenericSignature(access, parameterizedType.getRawType(), dimension);
+            registerTypesForGenericSignature(access, parameterizedType.getOwnerType());
         } else if (type instanceof WildcardType) {
+            /* Bounds are reified lazily. */
             WildcardType wildcardType = (WildcardType) type;
-            for (Type lowerBound : wildcardType.getLowerBounds()) {
-                makeTypeReachable(access, lowerBound);
-            }
-            for (Type upperBound : wildcardType.getUpperBounds()) {
-                makeTypeReachable(access, upperBound);
-            }
+            registerTypesForGenericSignature(access, queryGenericInfo(wildcardType::getLowerBounds));
+            registerTypesForGenericSignature(access, queryGenericInfo(wildcardType::getUpperBounds));
         }
     }
 
@@ -674,13 +674,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
              * Exception proxies are stored as-is in the image heap
              */
             if (ExceptionProxy.class.isAssignableFrom(type)) {
-                analysisType.registerAsInHeap();
+                analysisType.registerAsInHeap("Is used by annotation of element registered for reflection.");
             }
         }
     }
 
     private static void makeAnalysisTypeReachable(DuringAnalysisAccessImpl access, AnalysisType type) {
-        if (type.registerAsReachable()) {
+        if (type.registerAsReachable("registered as side effect of reflection registration")) {
             access.requireAnalysisIteration();
         }
     }
@@ -718,19 +718,21 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * Make sure the class is registered as reachable before its fields are accessed below to
          * build the reflection metadata.
          */
-        type.registerAsReachable();
+        type.registerAsReachable("is registered for reflection");
         if (unsafeInstantiatedClasses.contains(clazz)) {
-            type.registerAsAllocated(null);
+            type.registerAsAllocated("Is registered for reflection.");
         }
 
         if (reflectionClasses.contains(clazz)) {
             ClassForNameSupport.registerClass(clazz);
 
-            List<Throwable> errors = new ArrayList<>();
-            if (query(clazz::getEnclosingClass, errors) != null) {
-                innerClasses.computeIfAbsent(access.getMetaAccess().lookupJavaType(clazz.getEnclosingClass()).getJavaClass(), (enclosingType) -> ConcurrentHashMap.newKeySet()).add(clazz);
+            try {
+                if (clazz.getEnclosingClass() != null) {
+                    innerClasses.computeIfAbsent(access.getMetaAccess().lookupJavaType(clazz.getEnclosingClass()).getJavaClass(), (enclosingType) -> ConcurrentHashMap.newKeySet()).add(clazz);
+                }
+            } catch (LinkageError e) {
+                reportLinkingErrors(clazz, List.of(e));
             }
-            reportLinkingErrors(clazz, errors);
         }
 
         if (type.isAnnotation()) {
@@ -754,17 +756,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
     }
 
-    private static <T> T query(Callable<T> callable, List<Throwable> errors) {
+    private static <T> T queryGenericInfo(Callable<T> callable) {
         try {
             return callable.call();
         } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError e) {
-            if (errors != null) {
-                errors.add(e);
-            }
-        } catch (Exception e) {
-            throw VMError.shouldNotReachHere(e);
+            /* These are rethrown at run time, so we can simply ignore them when querying. */
+            return null;
+        } catch (Throwable t) {
+            throw VMError.shouldNotReachHere(t);
         }
-        return null;
     }
 
     private Object[] buildRecordComponents(Class<?> clazz, DuringAnalysisAccessImpl access) {

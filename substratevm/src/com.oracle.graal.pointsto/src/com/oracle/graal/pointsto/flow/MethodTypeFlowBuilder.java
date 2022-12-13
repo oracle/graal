@@ -179,10 +179,10 @@ public class MethodTypeFlowBuilder {
     }
 
     @SuppressWarnings("try")
-    private boolean parse() {
+    private boolean parse(Object reason) {
         AnalysisParsedGraph analysisParsedGraph = method.ensureGraphParsed(bb);
         if (analysisParsedGraph.isIntrinsic()) {
-            method.registerAsIntrinsicMethod();
+            method.registerAsIntrinsicMethod(reason);
         }
 
         if (analysisParsedGraph.getEncodedGraph() == null) {
@@ -231,18 +231,18 @@ public class MethodTypeFlowBuilder {
                 InstanceOfNode node = (InstanceOfNode) n;
                 AnalysisType type = (AnalysisType) node.type().getType();
                 if (!ignoreInstanceOfType(type)) {
-                    type.registerAsReachable();
+                    type.registerAsReachable(AbstractAnalysisEngine.sourcePosition(node));
                 }
 
             } else if (n instanceof NewInstanceNode) {
                 NewInstanceNode node = (NewInstanceNode) n;
                 AnalysisType type = (AnalysisType) node.instanceClass();
-                type.registerAsAllocated(node);
+                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof VirtualObjectNode) {
                 VirtualObjectNode node = (VirtualObjectNode) n;
                 AnalysisType type = (AnalysisType) node.type();
-                type.registerAsAllocated(node);
+                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof CommitAllocationNode) {
                 CommitAllocationNode node = (CommitAllocationNode) n;
@@ -255,7 +255,7 @@ public class MethodTypeFlowBuilder {
                             ValueNode value = values.get(objectStartIndex + i);
                             if (!value.isJavaConstant() || !value.asJavaConstant().isDefaultForKind()) {
                                 AnalysisField field = (AnalysisField) ((VirtualInstanceNode) virtualObject).field(i);
-                                field.registerAsWritten(method);
+                                field.registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
                             }
                         }
                     }
@@ -265,20 +265,20 @@ public class MethodTypeFlowBuilder {
             } else if (n instanceof NewArrayNode) {
                 NewArrayNode node = (NewArrayNode) n;
                 AnalysisType type = ((AnalysisType) node.elementType()).getArrayClass();
-                type.registerAsAllocated(node);
+                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof NewMultiArrayNode) {
                 NewMultiArrayNode node = (NewMultiArrayNode) n;
                 AnalysisType type = ((AnalysisType) node.type());
                 for (int i = 0; i < node.dimensionCount(); i++) {
-                    type.registerAsAllocated(node);
+                    type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
                     type = type.getComponentType();
                 }
 
             } else if (n instanceof BoxNode) {
                 BoxNode node = (BoxNode) n;
                 AnalysisType type = (AnalysisType) StampTool.typeOrNull(node);
-                type.registerAsAllocated(node);
+                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof LoadFieldNode) {
                 LoadFieldNode node = (LoadFieldNode) n;
@@ -288,14 +288,14 @@ public class MethodTypeFlowBuilder {
             } else if (n instanceof StoreFieldNode) {
                 StoreFieldNode node = (StoreFieldNode) n;
                 AnalysisField field = (AnalysisField) node.field();
-                field.registerAsWritten(method);
+                field.registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof ConstantNode) {
                 ConstantNode cn = (ConstantNode) n;
                 if (cn.hasUsages() && cn.isJavaConstant() && cn.asJavaConstant().getJavaKind() == JavaKind.Object && cn.asJavaConstant().isNonNull()) {
                     assert StampTool.isExactType(cn);
                     AnalysisType type = (AnalysisType) StampTool.typeOrNull(cn);
-                    type.registerAsInHeap();
+                    type.registerAsInHeap(AbstractAnalysisEngine.sourcePosition(cn));
                     if (registerEmbeddedRoots && !ignoreConstant(cn)) {
                         registerEmbeddedRoot(cn);
                     }
@@ -311,7 +311,7 @@ public class MethodTypeFlowBuilder {
                      * metadata is only constructed after AOT compilation, so the image heap
                      * scanning during static analysis does not see these classes.
                      */
-                    frameStateMethod.getDeclaringClass().registerAsReachable();
+                    frameStateMethod.getDeclaringClass().registerAsReachable(AbstractAnalysisEngine.syntheticSourcePosition(node, method));
                 }
 
             } else if (n instanceof ForeignCall) {
@@ -357,6 +357,8 @@ public class MethodTypeFlowBuilder {
                 if (((BytecodeExceptionNode) usage).getExceptionKind() != BytecodeExceptionKind.CLASS_CAST) {
                     return false;
                 }
+            } else if (usage instanceof FrameState) {
+                /* FrameState usages are only for debugging and not necessary for correctness. */
             } else {
                 return false;
             }
@@ -392,7 +394,7 @@ public class MethodTypeFlowBuilder {
         targetMethod.ifPresent(analysisMethod -> bb.addRootMethod(analysisMethod, true));
     }
 
-    protected void apply() {
+    protected void apply(Object reason) {
         // assert method.getAnnotation(Fold.class) == null : method;
         if (AnnotationAccess.isAnnotationPresent(method, NodeIntrinsic.class)) {
             graph.getDebug().log("apply MethodTypeFlow on node intrinsic %s", method);
@@ -415,7 +417,7 @@ public class MethodTypeFlowBuilder {
             return;
         }
 
-        if (!parse()) {
+        if (!parse(reason)) {
             return;
         }
 

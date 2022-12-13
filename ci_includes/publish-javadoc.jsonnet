@@ -1,6 +1,6 @@
 {
-  local common = import '../common.jsonnet',
-  local utils = import '../common-utils.libsonnet',
+  local common = import '../ci/ci_common/common.jsonnet',
+  local utils = import '../ci/ci_common/common-utils.libsonnet',
   local linux_amd64 = common.linux_amd64,
 
   local javadoc_publisher = {

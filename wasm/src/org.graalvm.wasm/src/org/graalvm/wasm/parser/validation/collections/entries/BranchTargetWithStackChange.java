@@ -51,28 +51,42 @@ import org.graalvm.wasm.util.ExtraDataUtil;
  * returns a value.
  */
 public abstract class BranchTargetWithStackChange extends BranchTarget {
+
+    private int unwindType;
     private int resultCount;
     private int stackSize;
 
-    protected BranchTargetWithStackChange(ExtraDataFormatHelper formatHelper, int byteCodeOffset, int extraDataOffset, int extraDataIndex) {
+    protected BranchTargetWithStackChange(ExtraDataFormatHelper formatHelper, int byteCodeOffset, int extraDataOffset, int extraDataIndex, int unwindType) {
         super(formatHelper, byteCodeOffset, extraDataOffset, extraDataIndex);
+        this.unwindType = unwindType;
     }
 
     /**
      * Sets the information about the stack change.
-     * 
+     *
+     * @param returnUnwindType The unwind type
      * @param resultCount The number of result values
      * @param stackSize The stack size after the jump
      */
-    public void setStackInfo(int resultCount, int stackSize) {
+    public void setStackInfo(int returnUnwindType, int resultCount, int stackSize) {
+        this.unwindType |= returnUnwindType;
         this.resultCount = resultCount;
         this.stackSize = stackSize;
-        if (ExtraDataUtil.exceedsUnsignedByteValue(resultCount) || ExtraDataUtil.exceedsUnsignedByteValue(stackSize)) {
+        assert ExtraDataUtil.isValidUnwindType(returnUnwindType) : "Invalid value type indicator";
+        if (ExtraDataUtil.exceedsUnsigned7BitValue(resultCount) || ExtraDataUtil.exceedsUnsigned7BitValue(stackSize)) {
             if (ExtraDataUtil.exceedsPositiveIntValue(resultCount) || ExtraDataUtil.exceedsPositiveIntValue(stackSize)) {
                 throw WasmException.create(Failure.NON_REPRESENTABLE_EXTRA_DATA_VALUE);
             }
             extendFormat();
         }
+    }
+
+    void updateUnwindType(int updatedUnwindType) {
+        this.unwindType |= updatedUnwindType;
+    }
+
+    protected int unwindType() {
+        return unwindType;
     }
 
     protected int resultCount() {

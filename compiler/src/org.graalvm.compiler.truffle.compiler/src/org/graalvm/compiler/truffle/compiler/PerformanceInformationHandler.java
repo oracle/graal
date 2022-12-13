@@ -61,6 +61,12 @@ import org.graalvm.options.OptionValues;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * This class handles reporting of performance warning.
+ *
+ * One instance is installed ({@link #install(OptionValues)} for each compilation before the
+ * {@link org.graalvm.compiler.truffle.compiler.phases.TruffleTier} and closed after.
+ */
 public final class PerformanceInformationHandler implements Closeable {
 
     private static final ThreadLocal<PerformanceInformationHandler> instance = new ThreadLocal<>();

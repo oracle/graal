@@ -1,8 +1,8 @@
-local graal_common = import '../../../common.jsonnet';
+local graal_common = import '../../../ci/ci_common/common.jsonnet';
 local base = import '../ci.jsonnet';
 local base_json = import '../../../common.json';
 
-local composable = (import "../../../common-utils.libsonnet").composable;
+local composable = (import "../../../ci/ci_common/common-utils.libsonnet").composable;
 local sulong_deps = composable(base_json.sulong.deps);
 
 local _version_suffix(java_version) = if java_version == 8 then '' else '-java' + java_version;
@@ -90,6 +90,8 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk17_on_demand_bench_linux   : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.onDemandBench + self.x52,
   jdk17_on_demand_bench_darwin  : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.onDemandBench + self.darwin_amd64,
   jdk17_on_demand_bench_windows : graal_common.labsjdk17                              + self.onDemandBench + base.windows_17,
+
+  jdk19_gate_linux              : graal_common.labsjdk19 + graal_common.labsjdk19LLVM + self.gate          + self.linux,
 
   // shared snippets
   eclipse: {

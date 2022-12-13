@@ -53,10 +53,6 @@ public class CallSiteSensitiveMethodTypeFlow extends MethodTypeFlow {
     /**
      * Add the context, if not already added, and return the method flows clone from that context.
      */
-    public MethodFlowsGraph addContext(PointsToAnalysis bb, AnalysisContext calleeContext) {
-        return addContext(bb, calleeContext, null);
-    }
-
     public MethodFlowsGraph addContext(PointsToAnalysis bb, AnalysisContext calleeContext, InvokeTypeFlow reason) {
 
         /* Ensure that the method is parsed before attempting to clone it. */

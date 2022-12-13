@@ -52,21 +52,52 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
      * instances of partially evaluated classes.
      */
     protected final JavaConstant hostedObject;
+    protected final int identityHashCode;
 
     protected final boolean compressed;
 
-    public ImageHeapConstant(ResolvedJavaType type) {
-        this(type, null, false);
-    }
-
-    ImageHeapConstant(ResolvedJavaType type, JavaConstant object) {
-        this(type, object, false);
-    }
-
-    ImageHeapConstant(ResolvedJavaType type, JavaConstant object, boolean compressed) {
+    ImageHeapConstant(ResolvedJavaType type, JavaConstant object, int identityHashCode, boolean compressed) {
         this.type = type;
         this.hostedObject = object;
+        this.identityHashCode = identityHashCode;
         this.compressed = compressed;
+    }
+
+    static int createIdentityHashCode(JavaConstant object) {
+        if (object == null) {
+            /*
+             * No backing object in the heap of the image builder VM. We want a "virtual" identity
+             * hash code that has the same properties as the image builder VM, so we use the
+             * identity hash code of a new and otherwise unused object in the image builder VM.
+             */
+            return System.identityHashCode(new Object());
+        } else {
+            /* Lazily looked up from the hostedObject when requested. */
+            return -1;
+        }
+    }
+
+    @Override
+    public int getIdentityHashCode() {
+        if (hostedObject != null) {
+            if (hostedObject.isNull()) {
+                /*
+                 * According to the JavaDoc of System.identityHashCode, the identity hash code of
+                 * null is 0.
+                 */
+                return 0;
+            } else {
+                return ((TypedConstant) hostedObject).getIdentityHashCode();
+            }
+        } else {
+            /*
+             * No backing object in the heap of the image builder VM. We want a "virtual" identity
+             * hash code that has the same properties as the image builder VM, so we use the
+             * identity hash code of a new and otherwise unused object in the image builder VM.
+             */
+            assert identityHashCode > 0 : "The Java HotSpot VM only returns positive numbers for the identity hash code, so we want to have the same restriction on Substrate VM in order to not surprise users";
+            return identityHashCode;
+        }
     }
 
     public JavaConstant getHostedObject() {

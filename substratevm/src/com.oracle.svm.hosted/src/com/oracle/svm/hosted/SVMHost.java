@@ -46,8 +46,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
 
-import com.oracle.svm.core.jdk.InternalVMMethod;
-import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -105,6 +103,8 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.ReferenceType;
 import com.oracle.svm.core.jdk.ClassLoaderSupport;
+import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
 import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.jdk.SealedClassSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -116,6 +116,7 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.InliningUtilities;
 import com.oracle.svm.hosted.code.UninterruptibleAnnotationChecker;
 import com.oracle.svm.hosted.heap.PodSupport;
+import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
@@ -156,6 +157,8 @@ public class SVMHost extends HostVM {
     private final ConcurrentMap<AnalysisMethod, Boolean> classInitializerSideEffect = new ConcurrentHashMap<>();
     private final ConcurrentMap<AnalysisMethod, Set<AnalysisType>> initializedClasses = new ConcurrentHashMap<>();
     private final ConcurrentMap<AnalysisMethod, Boolean> analysisTrivialMethods = new ConcurrentHashMap<>();
+
+    private final Set<AnalysisField> finalFieldsInitializedOutsideOfConstructor = ConcurrentHashMap.newKeySet();
 
     public SVMHost(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
                     UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform, SnippetReflectionProvider originalSnippetReflection) {
@@ -219,7 +222,7 @@ public class SVMHost extends HostVM {
 
     @Override
     public Instance createGraphBuilderPhase(HostedProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
-        return new AnalysisGraphBuilderPhase(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, providers.getWordTypes());
+        return new AnalysisGraphBuilderPhase(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, providers.getWordTypes(), this);
     }
 
     @Override
@@ -773,5 +776,30 @@ public class SVMHost extends HostVM {
         return (Comparator<ResolvedJavaType>) (o1, o2) -> {
             return HostedUniverse.TYPE_COMPARATOR.compare((HostedType) o1, (HostedType) o2);
         };
+    }
+
+    /**
+     * According to the Java VM specification, final instance fields are only allowed to be written
+     * in a constructor. But some compilers violate the spec, notably the Scala compiler. This means
+     * final fields of image heap objects can be modified at image run time, and constant folding
+     * such fields at image build time would fold in the wrong value. As a workaround, we record
+     * which final instance fields are written outside of a constructor, and disable constant
+     * folding for those fields.
+     *
+     * Note that there can be races: A constant folding can happen during bytecode parsing before
+     * the store was recorded. Currently, we do not encounter that problem because constant folding
+     * only happens after static analysis. But there would not be a good solution other than
+     * aborting the image build, because a constant folding cannot be reversed.
+     */
+    public void recordFieldStore(ResolvedJavaField field, ResolvedJavaMethod method) {
+        if (!field.isStatic() && field.isFinal() && (!method.isConstructor() || !field.getDeclaringClass().equals(method.getDeclaringClass()))) {
+            AnalysisField aField = field instanceof HostedField ? ((HostedField) field).getWrapped() : (AnalysisField) field;
+            finalFieldsInitializedOutsideOfConstructor.add(aField);
+        }
+    }
+
+    public boolean preventConstantFolding(ResolvedJavaField field) {
+        AnalysisField aField = field instanceof HostedField ? ((HostedField) field).getWrapped() : (AnalysisField) field;
+        return finalFieldsInitializedOutsideOfConstructor.contains(aField);
     }
 }

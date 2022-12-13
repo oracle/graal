@@ -39,6 +39,7 @@ import com.oracle.truffle.api.TruffleOptions;
 
 public class TruffleOptionsByClassLoaderTest {
 
+    @SuppressWarnings("deprecation")
     @Test
     public void loadTruffleOptionsByOwnClassLoader() throws Exception {
         URL url = TruffleOptions.class.getResource("TruffleOptions.class");

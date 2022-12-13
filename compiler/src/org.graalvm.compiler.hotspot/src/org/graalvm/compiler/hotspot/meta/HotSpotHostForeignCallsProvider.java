@@ -32,8 +32,6 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_DECODE_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BIGINTEGER_LEFT_SHIFT_WORKER;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BIGINTEGER_RIGHT_SHIFT_WORKER;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.CIPHER_BLOCK_CHAINING_DECRYPT_AESCRYPT;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.CIPHER_BLOCK_CHAINING_ENCRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.CONTINUATION_DO_YIELD;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT;
@@ -107,7 +105,6 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
@@ -131,14 +128,24 @@ import org.graalvm.compiler.hotspot.stubs.VerifyOopStub;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AESCryptPlugin;
-import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.GHASHPlugin;
 import org.graalvm.compiler.replacements.StringLatin1InflateNode;
 import org.graalvm.compiler.replacements.StringUTF16CompressNode;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
+import org.graalvm.compiler.replacements.nodes.AESNode;
+import org.graalvm.compiler.replacements.nodes.ArrayCompareToForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayEqualsForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayEqualsWithMaskForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
 import org.graalvm.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
-import org.graalvm.compiler.replacements.nodes.CryptoForeignCalls;
+import org.graalvm.compiler.replacements.nodes.CalcStringAttributesForeignCalls;
+import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
+import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
+import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
+import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
+import org.graalvm.compiler.replacements.nodes.VectorizedMismatchForeignCalls;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
@@ -573,26 +580,19 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             registerForeignCall(CONTINUATION_DO_YIELD, c.contDoYield, NativeCall);
         }
 
-        if (c.useAESIntrinsics) {
-            try {
-                // These stubs do callee saving
-                registerForeignCall(CIPHER_BLOCK_CHAINING_ENCRYPT_AESCRYPT, c.cipherBlockChainingEncryptAESCryptStub, NativeCall);
-                registerForeignCall(CIPHER_BLOCK_CHAINING_DECRYPT_AESCRYPT, c.cipherBlockChainingDecryptAESCryptStub, NativeCall);
-            } catch (GraalError e) {
-                if (!(e.getCause() instanceof ClassNotFoundException)) {
-                    throw e;
-                }
-            }
-        }
-
         TargetDescription target = providers.getCodeCache().getTarget();
 
-        if (AESCryptPlugin.isSupported(target.arch)) {
-            linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CryptoForeignCalls.AES_STUBS);
+        if (AESNode.isSupported(target.arch)) {
+            linkSnippetStubs(providers, options, IntrinsicStubsGen::new, AESNode.STUBS);
         }
-
-        if (GHASHPlugin.isSupported(target.arch)) {
-            linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CryptoForeignCalls.STUB_GHASH_PROCESS_BLOCKS);
+        if (CounterModeAESNode.isSupported(target.arch)) {
+            linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CounterModeAESNode.STUB);
+        }
+        if (CipherBlockChainingAESNode.isSupported(target.arch)) {
+            linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CipherBlockChainingAESNode.STUBS);
+        }
+        if (GHASHProcessBlocksNode.isSupported(target.arch)) {
+            linkSnippetStubs(providers, options, IntrinsicStubsGen::new, GHASHProcessBlocksNode.STUB);
         }
 
         registerSnippetStubs(providers, options);
@@ -611,9 +611,18 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
     }
 
     private void registerSnippetStubs(HotSpotProviders providers, OptionValues options) {
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayIndexOfForeignCalls.STUBS);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayEqualsForeignCalls.STUBS);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayEqualsWithMaskForeignCalls.STUBS);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayCompareToForeignCalls.STUBS);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayRegionCompareToForeignCalls.STUBS);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayCopyWithConversionsForeignCalls.STUBS);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CalcStringAttributesForeignCalls.STUBS);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, StringLatin1InflateNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, StringUTF16CompressNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, EncodeArrayNode.STUBS);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, HasNegativesNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, VectorizedMismatchForeignCalls.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, BigIntegerMultiplyToLenNode.STUB);
     }
 

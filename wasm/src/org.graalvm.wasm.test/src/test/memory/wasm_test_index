@@ -1,3 +1,7 @@
+data_drop
 dynamic_load
+memory_copy
+memory_fill
+passive_init
 store-load
 simple-global

@@ -68,6 +68,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.logging.LogRecord;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicSet;
@@ -76,6 +77,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
@@ -254,6 +256,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void engineClosed(Engine engine);
 
+        public abstract MutableTargetMapping[] getMutableTargetMappings(HostAccess access);
+
     }
 
     // shared SPI
@@ -325,16 +329,16 @@ public abstract class AbstractPolyglotImpl {
 
     public Engine buildEngine(String[] permittedLanguages, OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties,
                     boolean allowExperimentalOptions,
-                    boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly, boolean registerInActiveEngines,
+                    boolean boundEngine, MessageTransport messageInterceptor, LogHandler logHandler, Object hostLanguage, boolean hostLanguageOnly, boolean registerInActiveEngines,
                     AbstractPolyglotHostService polyglotHostService) {
-        return getNext().buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandlerOrStream, hostLanguage,
+        return getNext().buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandler, hostLanguage,
                         hostLanguageOnly, registerInActiveEngines, polyglotHostService);
     }
 
     public abstract int getPriority();
 
-    public void preInitializeEngine(Object hostLanguage) {
-        getNext().preInitializeEngine(hostLanguage);
+    public void preInitializeEngine() {
+        getNext().preInitializeEngine();
     }
 
     public Object createHostLanguage(AbstractHostAccess access) {
@@ -575,7 +579,7 @@ public abstract class AbstractPolyglotImpl {
                         boolean allowCreateThread, boolean allowHostClassLoading, boolean allowInnerContextOptions, boolean allowExperimentalOptions,
                         Predicate<String> classFilter,
                         Map<String, String> options,
-                        Map<String, String[]> arguments, String[] onlyLanguages, IOAccess ioAccess, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
+                        Map<String, String[]> arguments, String[] onlyLanguages, IOAccess ioAccess, LogHandler logHandler, boolean allowCreateProcess, ProcessHandler processHandler,
                         EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader,
                         boolean allowValueSharing, boolean useSystemExit);
 
@@ -593,6 +597,8 @@ public abstract class AbstractPolyglotImpl {
                         Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions);
 
         public abstract void shutdown(Object engine);
+
+        public abstract RuntimeException hostToGuestException(Object engineReceiver, Throwable throwable);
 
     }
 
@@ -754,8 +760,6 @@ public abstract class AbstractPolyglotImpl {
             Objects.requireNonNull(polyglot);
         }
 
-        public abstract void patch(AbstractPolyglotHostService otherService);
-
         public abstract void notifyClearExplicitContextStack(Object contextReceiver);
 
         public abstract void notifyContextCancellingOrExiting(Object contextReceiver, boolean exit, int exitCode, boolean resourceLimit, String message);
@@ -763,6 +767,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract void notifyContextClosed(Object contextReceiver, boolean cancelIfExecuting, boolean resourceLimit, String message);
 
         public abstract void notifyEngineClosed(Object engineReceiver, boolean cancelIfExecuting);
+
+        public abstract RuntimeException hostToGuestException(AbstractHostLanguageService hostLanguageService, Throwable throwable);
     }
 
     public abstract static class AbstractHostLanguageService extends AbstractDispatchClass {
@@ -1151,6 +1157,10 @@ public abstract class AbstractPolyglotImpl {
         return getNext().createThreadScope();
     }
 
+    public LogHandler newLogHandler(Object logHandlerOrStream) {
+        return getNext().newLogHandler(logHandlerOrStream);
+    }
+
     /**
      * Creates a union of all available option descriptors including prev implementations. This
      * allows to validate the full set of options.
@@ -1192,6 +1202,20 @@ public abstract class AbstractPolyglotImpl {
 
         @Override
         public abstract void close();
+    }
+
+    public abstract static class LogHandler {
+
+        protected LogHandler(AbstractPolyglotImpl polyglot) {
+            Objects.requireNonNull(polyglot);
+        }
+
+        public abstract void publish(LogRecord logRecord);
+
+        public abstract void flush();
+
+        public abstract void close();
+
     }
 
 }

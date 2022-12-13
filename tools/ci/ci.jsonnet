@@ -1,7 +1,8 @@
 {
   local common_json = import '../../common.json',
-  local common = import '../../common.jsonnet',
-  local composable = (import '../../common-utils.libsonnet').composable,
+  local common = import '../../ci/ci_common/common.jsonnet',
+  local composable = (import '../../ci/ci_common/common-utils.libsonnet').composable,
+  local top_level_ci = (import '../../ci/ci_common/common-utils.libsonnet').top_level_ci,
   local devkits = composable(common_json.devkits),
 
   local tools_common = composable(common_json.deps.common) + common.mx + {
@@ -13,7 +14,7 @@
 
   local common_guard = {
     guard+: {
-      includes+: ["<graal>/tools/**"]
+      includes+: ["<graal>/tools/**"] + top_level_ci,
     }
   },
   local gate_guard = common_guard + {
@@ -26,8 +27,8 @@
     name: 'gate-tools-oraclejdk' + self.jdk_version + '-' + self.os + '-' + self.arch,
     run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
     targets: ["gate"],
-    guard: {
-        includes: ["<graal>/sdk/**", "<graal>/truffle/**", "<graal>/tools/**", "**.jsonnet"],
+    guard+: {
+        includes+: ["**.jsonnet"],
     }
   },
 
@@ -63,7 +64,7 @@
     run: [
       ["mx"] + coverage_whitelisting + [
         "--strict-compliance",
-        "gate", 
+        "gate",
         "--strict-mode",
         "--jacoco-omit-excluded",
         "--jacoco-relativize-paths",
@@ -82,17 +83,17 @@
   },
 
   builds: [
-    common.linux_amd64   + common.oraclejdk11 + tools_gate,
+    common.linux_amd64   + common.oraclejdk20 + tools_gate,
     common.linux_amd64   + common.oraclejdk17 + tools_gate,
 
-    common.linux_amd64   + common.oraclejdk11 + tools_javadoc,
+    common.linux_amd64   + common.oraclejdk20 + tools_javadoc,
     common.linux_amd64   + common.oraclejdk17 + tools_coverage_weekly,
     common.linux_aarch64 + common.labsjdk17   + tools_gate_lite,
 
-    common.windows_amd64 + common.oraclejdk11 + tools_gate_lite + devkits["windows-jdk11"],
+    common.windows_amd64 + common.oraclejdk20 + tools_gate_lite + devkits["windows-jdk20"],
     common.windows_amd64 + common.oraclejdk17 + tools_gate_lite + devkits["windows-jdk17"],
 
-    common.darwin_amd64  + common.oraclejdk11 + tools_gate_lite,
+    common.darwin_amd64  + common.oraclejdk20 + tools_gate_lite,
     common.darwin_amd64  + common.oraclejdk17 + tools_gate_lite,
   ],
 }

@@ -33,6 +33,7 @@ import static org.graalvm.compiler.options.OptionType.Debug;
 import static org.graalvm.compiler.options.OptionType.Expert;
 import static org.graalvm.compiler.options.OptionType.User;
 
+import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -64,7 +65,6 @@ import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.UserError;
@@ -92,7 +92,7 @@ public class SubstrateOptions {
     @Option(help = "Preserve the local variable information for every Java source line to allow line-by-line stepping in the debugger. Allow the lookup of Java-level method information, e.g., in stack traces.")//
     public static final HostedOptionKey<Boolean> SourceLevelDebug = new HostedOptionKey<>(false);
     @Option(help = "Constrain debug info generation to the comma-separated list of package prefixes given to this option.")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SourceLevelDebugFilter = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SourceLevelDebugFilter = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
     public static boolean parseOnce() {
         /*
@@ -187,9 +187,8 @@ public class SubstrateOptions {
         if (definedFilters.isEmpty()) {
             return javaName -> true;
         }
-        List<String> wildCardList = OptionUtils.flatten(",", definedFilters);
         return javaName -> {
-            for (String wildCard : wildCardList) {
+            for (String wildCard : definedFilters) {
                 if (javaName.startsWith(wildCard)) {
                     return true;
                 }
@@ -209,7 +208,8 @@ public class SubstrateOptions {
         BUILD_TIME
     }
 
-    @Option(help = "Control native-image code optimizations: b - optimize for shortest build time, 0 - no optimizations, 1 - basic optimizations, 2 - aggressive optimizations.", type = OptionType.User)//
+    @APIOption(name = "-O", valueSeparator = APIOption.NO_SEPARATOR)//
+    @Option(help = "Control code optimizations: b - quick build mode for development, 0 - no optimizations, 1 - basic optimizations, 2 - aggressive optimizations (default).", type = OptionType.User)//
     public static final HostedOptionKey<String> Optimize = new HostedOptionKey<>("2") {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
@@ -282,10 +282,10 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> IncludeNodeSourcePositions = new HostedOptionKey<>(false);
 
     @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CLibraryPath = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CLibraryPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
     @Option(help = "Path passed to the linker as the -rpath (list of comma-separated directories)")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkerRPath = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkerRPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
     @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
     public static final HostedOptionKey<String> Path = new HostedOptionKey<>(null);
@@ -397,16 +397,19 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = "At CEntryPoints check that the passed IsolateThread is valid.") //
+    public static final HostedOptionKey<Boolean> CheckIsolateThreadAtEntry = new HostedOptionKey<>(false);
+
     @Option(help = "Trace VMOperation execution.")//
     public static final HostedOptionKey<Boolean> TraceVMOperations = new HostedOptionKey<>(false);
 
     @APIOption(name = "trace-class-initialization")//
     @Option(help = "Comma-separated list of fully-qualified class names that class initialization is traced for.")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> TraceClassInitialization = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> TraceClassInitialization = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
     @APIOption(name = "trace-object-instantiation")//
     @Option(help = "Comma-separated list of fully-qualified class names that object instantiation is traced for.")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> TraceObjectInstantiation = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> TraceObjectInstantiation = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
     @Option(help = "Trace all native tool invocations as part of image building", type = User)//
     public static final HostedOptionKey<Boolean> TraceNativeToolUsage = new HostedOptionKey<>(false);
@@ -421,10 +424,10 @@ public class SubstrateOptions {
     @APIOption(name = "enable-https", fixedValue = "https", customHelp = "enable https support in the generated image")//
     @APIOption(name = "enable-url-protocols")//
     @Option(help = "List of comma separated URL protocols to enable.")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableURLProtocols = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableURLProtocols = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
     @Option(help = "List of comma separated URL protocols that must never be included.")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DisableURLProtocols = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DisableURLProtocols = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
     @SuppressWarnings("unused") //
     @APIOption(name = "enable-all-security-services")//
@@ -470,7 +473,7 @@ public class SubstrateOptions {
 
     @Option(help = "Print build output statistics as JSON to the specified file. " +
                     "The output is according to the JSON schema located at: " +
-                    "docs/reference-manual/native-image/assets/build-output-schema-v0.9.0.json", type = OptionType.User)//
+                    "docs/reference-manual/native-image/assets/build-output-schema-v0.9.1.json", type = OptionType.User)//
     public static final HostedOptionKey<String> BuildOutputJSONFile = new HostedOptionKey<>("");
 
     /*
@@ -595,6 +598,11 @@ public class SubstrateOptions {
         return "llvm".equals(CompilerBackend.getValue());
     }
 
+    @Fold
+    public static boolean useLIRBackend() {
+        return "lir".equals(CompilerBackend.getValue());
+    }
+
     /*
      * RemoveUnusedSymbols is not enabled on Darwin by default, because the linker sometimes
      * segfaults when the -dead_strip option is used.
@@ -681,7 +689,7 @@ public class SubstrateOptions {
     }
 
     @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DebugInfoSourceSearchPath = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DebugInfoSourceSearchPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
     @Option(help = "Directory under which to create source file cache for Application or GraalVM classes")//
     public static final HostedOptionKey<String> DebugInfoSourceCacheRoot = new HostedOptionKey<>("sources");
@@ -800,6 +808,22 @@ public class SubstrateOptions {
             return getValueOrDefault(values.getMap());
         }
     };
+
+    @Option(help = "The path (filename or directory) where heap dumps are created (defaults to the working directory).")//
+    public static final RuntimeOptionKey<String> HeapDumpPath = new RuntimeOptionKey<>("", Immutable);
+
+    /* Utility method that follows the `-XX:HeapDumpPath` behavior of the JVM. */
+    public static final String getHeapDumpPath(String defaultFilename) {
+        String heapDumpFilenameOrDirectory = HeapDumpPath.getValue();
+        if (heapDumpFilenameOrDirectory.isEmpty()) {
+            return defaultFilename;
+        }
+        var targetPath = Paths.get(heapDumpFilenameOrDirectory);
+        if (Files.isDirectory(targetPath)) {
+            targetPath = targetPath.resolve(defaultFilename);
+        }
+        return targetPath.toFile().getAbsolutePath();
+    }
 
     @Option(help = "Create a heap dump and exit.")//
     public static final RuntimeOptionKey<Boolean> DumpHeapAndExit = new RuntimeOptionKey<>(false, Immutable);

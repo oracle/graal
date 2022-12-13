@@ -27,10 +27,10 @@ To enable the system, start a recording, and configure logging at run time, the 
 * `-XX:StartFlightRecording`: use to start a recording on application's startup
 * `-XX:FlightRecorderLogging`: use to configure the log output for the JFR system
 
-To enable JFR and start a recording, use `-XX:+FlightRecorder` and `-XX:StartFlightRecording` together. 
+To enable JFR and start a recording, simply use `-XX:StartFlightRecording`. 
 For example:
 ```shell
-./javaapplication -XX:+FlightRecorder -XX:StartFlightRecording="filename=recording.jfr"
+./javaapplication -XX:StartFlightRecording="filename=recording.jfr"
 ```
 
 ### Run a Demo

@@ -68,6 +68,10 @@ char buffer[10240];
 FILE *open_buffer() {
     return fmemopen(buffer, sizeof(buffer), "w");
 }
+#else
+FILE *open_buffer() {
+    return tmpfile();
+}
 #endif
 
 void concurrent_put(FILE *f, int id) {
@@ -78,6 +82,8 @@ void concurrent_put(FILE *f, int id) {
 
 void *finalize_buffer(FILE *f) {
     int length = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    fread(buffer, 1, length, f);
     fclose(f);
 
     return polyglot_from_string_n(buffer, length, "ASCII");

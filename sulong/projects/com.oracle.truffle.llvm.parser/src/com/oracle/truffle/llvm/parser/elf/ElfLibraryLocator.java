@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -104,8 +104,12 @@ public final class ElfLibraryLocator extends LibraryLocator {
                 Path absPath = Paths.get(p, lib);
                 traceTry(context, absPath);
                 TruffleFile file = context.getEnv().getInternalTruffleFile(absPath.toUri());
-                if (file.exists()) {
-                    return file;
+                try {
+                    if (file.exists()) {
+                        return file;
+                    }
+                } catch (SecurityException e) {
+                    // swallow exceptions thrown when FileSystem denies the operation
                 }
             }
         }

@@ -39,10 +39,8 @@ import org.graalvm.nativeimage.Platform.WINDOWS;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.UserError.UserException;
 
 public final class VMInspectionOptions {
     private static final String ENABLE_MONITORING_OPTION = "enable-monitoring";
@@ -56,7 +54,7 @@ public final class VMInspectionOptions {
     @APIOption(name = ENABLE_MONITORING_OPTION, defaultValue = MONITORING_ALL_NAME) //
     @Option(help = "Enable monitoring features that allow the VM to be inspected at run time. Comma-separated list can contain " + MONITORING_ALLOWED_VALUES + ". " +
                     "For example: `--" + ENABLE_MONITORING_OPTION + "=" + MONITORING_HEAPDUMP_NAME + "," + MONITORING_JVMSTAT_NAME + "`.", type = OptionType.User) //
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableMonitoringFeatures = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings(),
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableMonitoringFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated(),
                     VMInspectionOptions::validateEnableMonitoringFeatures);
 
     public static void validateEnableMonitoringFeatures(OptionKey<?> optionKey) {
@@ -73,7 +71,7 @@ public final class VMInspectionOptions {
     }
 
     public static Set<String> getEnabledMonitoringFeatures() {
-        return new HashSet<>(OptionUtils.flatten(",", EnableMonitoringFeatures.getValue()));
+        return new HashSet<>(EnableMonitoringFeatures.getValue().values());
     }
 
     private static boolean hasAllOrKeywordMonitoringSupport(String keyword) {
@@ -97,27 +95,16 @@ public final class VMInspectionOptions {
     }
 
     @Option(help = "Dumps all runtime compiled methods on SIGUSR2.", type = OptionType.User) //
-    public static final HostedOptionKey<Boolean> DumpRuntimeCompilationOnSignal = new HostedOptionKey<>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            if (newValue && !SubstrateOptions.EnableSignalAPI.getValueOrDefault(values)) {
-                throw signalAPIRequiredError("SIGUSR2");
-            }
-        }
-    };
+    public static final HostedOptionKey<Boolean> DumpRuntimeCompilationOnSignal = new HostedOptionKey<>(false, VMInspectionOptions::validateOnSignalOption);
 
     @Option(help = "Dumps all thread stacktraces on SIGQUIT/SIGBREAK.", type = OptionType.User) //
-    public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            if (newValue && !SubstrateOptions.EnableSignalAPI.getValueOrDefault(values)) {
-                throw signalAPIRequiredError("SIGQUIT/SIGBREAK");
-            }
-        }
-    };
+    public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false, VMInspectionOptions::validateOnSignalOption);
 
-    private static UserException signalAPIRequiredError(String requiredSignals) {
-        return UserError.abort("Cannot install signal handler for %s when Signal API is disabled. Please enable with `-H:+%s`.", requiredSignals, SubstrateOptions.EnableSignalAPI.getName());
+    private static void validateOnSignalOption(HostedOptionKey<Boolean> optionKey) {
+        if (optionKey.getValue() && !SubstrateOptions.EnableSignalAPI.getValue()) {
+            throw UserError.abort("The option %s requires the Signal API, but the Signal API is disabled. Please enable with `-H:+%s`.",
+                            optionKey.getName(), SubstrateOptions.EnableSignalAPI.getName());
+        }
     }
 
     static class DeprecatedOptions {

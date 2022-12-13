@@ -48,14 +48,14 @@ public final class SubstrateKnownTruffleTypes extends KnownTruffleTypes {
     @Override
     protected ResolvedJavaType lookupType(String className) {
         AnalysisType type = (AnalysisType) super.lookupType(className);
-        type.registerAsReachable();
+        type.registerAsReachable("known Truffle type");
         return type;
     }
 
     @Override
     protected ResolvedJavaType lookupType(Class<?> c) {
         AnalysisType type = (AnalysisType) super.lookupType(c);
-        type.registerAsReachable();
+        type.registerAsReachable("known Truffle type");
         return type;
     }
 

@@ -579,12 +579,13 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     with Task(prefix + 'DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test, report=True) as t:
         if t: _gate_dacapo('pmd', 1, benchVmArgs + ['-Xbatch'])
 
-    # ensure benchmark counters still work but omit this test on
+    # Ensure benchmark counters still work but omit this test on
     # fastdebug as benchmark counter threads may not produce
-    # output in a timely manner
+    # output in a timely manner. Also omit the test on libgraal
+    # as it does not support TimedDynamicCounters.
     out = mx.OutputCapture()
     mx.run([jdk.java, '-version'], err=subprocess.STDOUT, out=out)
-    if 'fastdebug' not in out.data:
+    if 'fastdebug' not in out.data and '-XX:+UseJVMCINativeLibrary' not in (extraVMarguments or []):
         with Task(prefix + 'DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test, report=True) as t:
             if t:
                 fd, logFile = tempfile.mkstemp()
@@ -624,7 +625,7 @@ _registers = {
 if mx.get_arch() not in _registers:
     mx.warn('No registers for register pressure tests are defined for architecture ' + mx.get_arch())
 
-_defaultFlags = ['-Dgraal.CompilationWatchDogStartDelay=60.0D']
+_defaultFlags = ['-Dgraal.CompilationWatchDogStartDelay=60']
 _assertionFlags = ['-esa', '-Dgraal.DetailedAsserts=true']
 _graalErrorFlags = _compiler_error_options()
 _graalEconomyFlags = ['-Dgraal.CompilerConfiguration=economy']

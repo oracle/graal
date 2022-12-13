@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes to the WebAssembly engine implemented in GraalVM (GraalWasm).
 
+## Version 23.0.0
+
+* Implemented the [Bulk-Memory](https://github.com/WebAssembly/bulk-memory-operations) and [Reference-Types](https://github.com/WebAssembly/reference-types) proposal. They can be disabled with the option `--wasm.BulkMemoryAndRefTypes`.
+
 ## Version 22.3.0
 
 * Implemented the [Multi-Value](https://github.com/WebAssembly/multi-value) proposal. It can be disabled with the

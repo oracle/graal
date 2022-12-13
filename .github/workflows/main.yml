@@ -56,16 +56,16 @@ jobs:
         include:
           # /compiler
           - env:
-              JDK_VERSION: "19"
+              JDK_VERSION: "20"
               GATE_TAGS: "style,fullbuild,test"
               PRIMARY: "compiler"
           - env:
-              JDK_VERSION: "19"
+              JDK_VERSION: "20"
               GATE_TAGS: "build,bootstraplite"
               PRIMARY: "compiler"
           # /espresso
           - env:
-              JDK_VERSION: "17" # espresso does not support JDK19 yet
+              JDK_VERSION: "17" # espresso does not support JDK20 yet
               GATE_TAGS: "style,fullbuild"
               PRIMARY: "espresso"
           # /substratevm
@@ -96,7 +96,7 @@ jobs:
               PRIMARY: "sulong"
           # /truffle
           - env:
-              JDK_VERSION: "19"
+              JDK_VERSION: "20"
               GATE_TAGS: "" # Truffle does not use tags
               PRIMARY: "truffle"
           # /vm

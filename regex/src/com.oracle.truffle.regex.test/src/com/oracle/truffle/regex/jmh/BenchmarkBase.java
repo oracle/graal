@@ -44,14 +44,14 @@ import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Warmup;
 
-@Warmup(iterations = BenchmarkBase.Defaults.WARMUP_ITERATIONS)
-@Measurement(iterations = BenchmarkBase.Defaults.MEASUREMENT_ITERATIONS)
+@Warmup(iterations = BenchmarkBase.Defaults.WARMUP_ITERATIONS, time = 2)
+@Measurement(iterations = BenchmarkBase.Defaults.MEASUREMENT_ITERATIONS, time = 2)
 @Fork(BenchmarkBase.Defaults.FORKS)
 public class BenchmarkBase {
 
     public static class Defaults {
-        public static final int MEASUREMENT_ITERATIONS = 5;
-        public static final int WARMUP_ITERATIONS = 5;
+        public static final int MEASUREMENT_ITERATIONS = 3;
+        public static final int WARMUP_ITERATIONS = 3;
         public static final int FORKS = 1;
     }
 }

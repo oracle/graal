@@ -33,14 +33,14 @@ import static java.lang.Character.MIN_LOW_SURROGATE;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
+import org.graalvm.compiler.replacements.nodes.CalcStringAttributesNode;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
-public class TStringOpsCalcStringAttributesUTF32Test extends TStringOpsTest<AMD64CalcStringAttributesNode> {
+public class TStringOpsCalcStringAttributesUTF32Test extends TStringOpsTest<CalcStringAttributesNode> {
 
     @Parameters(name = "{index}: args: {1}, {2}")
     public static Iterable<Object[]> data() {
@@ -96,7 +96,7 @@ public class TStringOpsCalcStringAttributesUTF32Test extends TStringOpsTest<AMD6
     private final int length;
 
     public TStringOpsCalcStringAttributesUTF32Test(byte[] array, int offset, int length) {
-        super(AMD64CalcStringAttributesNode.class);
+        super(CalcStringAttributesNode.class);
         this.array = array;
         this.offset = offset;
         this.length = length;
@@ -104,7 +104,7 @@ public class TStringOpsCalcStringAttributesUTF32Test extends TStringOpsTest<AMD6
 
     @Test
     public void testUTF32() {
-        test(getTStringOpsMethod("calcStringAttributesUTF32", Object.class, int.class, int.class), null, DUMMY_LOCATION, array, offset, length);
+        testWithNative(getTStringOpsMethod("calcStringAttributesUTF32", Object.class, int.class, int.class), null, DUMMY_LOCATION, array, offset, length);
     }
 
     @Test

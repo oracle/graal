@@ -209,9 +209,6 @@ def _unittest_config_participant(config):
     # in turn allows us to dynamically open fields/methods to reflection.
     vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
 
-    if mx.get_jdk().javaCompliance >= '1.9':
-        vmArgs = ["--enable-preview"] + vmArgs # for virtual thread tests
-
     # The arguments below are only actually needed if Truffle is deployed as a
     # module. However, that's determined by the compiler suite which may not
     # be present. In that case, adding these options results in annoying
@@ -917,10 +914,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dir_name='nfi-libffi',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle', 'Truffle NFI'],
+    dependencies=['Truffle NFI'],
     truffle_jars=['truffle:TRUFFLE_NFI_LIBFFI'],
-    support_distributions=['truffle:TRUFFLE_NFI_GRAALVM_SUPPORT'],
-    support_libraries_distributions=['truffle:TRUFFLE_NFI_NATIVE_GRAALVM_SUPPORT'],
     installable=False,
     stability="supported",
 ))

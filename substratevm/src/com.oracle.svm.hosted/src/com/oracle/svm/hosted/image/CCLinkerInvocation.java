@@ -50,7 +50,6 @@ import com.oracle.svm.core.c.libc.BionicLibC;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
@@ -553,7 +552,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             inv.addLibPath(libraryPath);
         }
 
-        for (String rPath : OptionUtils.flatten(",", SubstrateOptions.LinkerRPath.getValue())) {
+        for (String rPath : SubstrateOptions.LinkerRPath.getValue().values()) {
             inv.addRPath(rPath);
         }
 

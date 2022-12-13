@@ -1,12 +1,12 @@
-local composable = (import '../../../common-utils.libsonnet').composable;
+local composable = (import '../../../ci/ci_common/common-utils.libsonnet').composable;
 local vm = import '../ci_includes/vm.jsonnet';
-local graal_common = import '../../../common.jsonnet';
-local repo_config = import '../../../repo-configuration.libsonnet';
+local graal_common = import '../../../ci/ci_common/common.jsonnet';
+local repo_config = import '../../../ci/repo-configuration.libsonnet';
 local common_json = composable(import '../../../common.json');
 local devkits = common_json.devkits;
 local c = import 'common.jsonnet';
 local g = vm.compiler_gate;
-local utils = import '../../../common-utils.libsonnet';
+local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
 {
   local underscore(s) = std.strReplace(s, "-", "_"),
@@ -25,6 +25,10 @@ local utils = import '../../../common-utils.libsonnet';
     run+: [
       ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Compiler'],
     ],
+    logs+: [
+      '*/graal-compiler.log',
+      '*/graal-compiler-ctw.log'
+    ],
     timelimit: '1:00:00',
   },
 
@@ -41,7 +45,10 @@ local utils = import '../../../common-utils.libsonnet';
     run+: [
       ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Truffle'] + if coverage then g.jacoco_gate_args else [],
     ],
-    logs+: ['*/graal-compiler.log'],
+    logs+: [
+      '*/graal-compiler.log',
+      '*/graal-compiler-ctw.log'
+    ],
     timelimit: '1:00:00',
     teardown+: if coverage then [
       g.upload_coverage
@@ -97,7 +104,6 @@ local utils = import '../../../common-utils.libsonnet';
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
     for jdk in [
-      "11",
       "17",
       "19"
     ]

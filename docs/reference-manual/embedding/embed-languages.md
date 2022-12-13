@@ -390,15 +390,26 @@ native-image --language:js -cp . HelloPolyglot
 
 Please note that some languages (e.g. Python, Ruby) need their language home directories to work without limitations.
 If the polyglot application runs on a JVM (e.g. [here](#compile-and-run-a-polyglot-application)), the language homes are discovered automatically.
-However, for native images, the language homes have to be specified. We are currently working on a feature that will enable the `native-image` builder to automatically bundle
-the necessary language homes to the same directory as the produced executable/library. Until that feature is available, we recommend specifying
-a GraalVM home at runtime using the option `-Dorg.graalvm.home=$GRAALVM_HOME`, assuming the environment variable `GRAALVM_HOME` is populated with an absolute path to a GraalVM home directory.
-Language homes are automatically discovered in the specified directory. For example:
+However, for native images, paths to language homes have to be stored in the image or specified at runtime.
+
+By default, the `native-image` builder copies the necessary language homes to the `resources` directory located in the same directory as the produced image.
+The paths to the copied homes are written to the image's build artifacts file and also stored in the image itself so that the homes are automatically discovered as long as their relative paths with respect to the image file stay the same.
+That means that the `resources` directory should be always distributed together with the image file.     
 
 ```shell
 native-image --language:python -cp . HelloPolyglot
+./hellopolyglot
+```
+
+In case an installed GraalVM is available, it is possible to use language homes from the GraalVM home directory. A GraalVM home can be specified at runtime using the option `-Dorg.graalvm.home=$GRAALVM_HOME`, assuming the environment variable `GRAALVM_HOME` is populated with an absolute path to the GraalVM home directory.
+Language homes are automatically discovered in the specified directory. For example:
+
+```shell
 ./hellopolyglot -Dorg.graalvm.home=$GRAALVM_HOME
 ```
+
+> Note: The `-Dorg.graalvm.home` option has precedence over any relative language home paths stored in the image.
+
 > Note: The version of GraalVM the home of which is specified at runtime must match the version of GraalVM used to build the native executable/library. 
 
 ### Excluding the JIT compiler 

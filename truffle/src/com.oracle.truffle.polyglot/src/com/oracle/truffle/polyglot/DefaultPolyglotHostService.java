@@ -40,9 +40,13 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractPolyglotHostService;
+import static com.oracle.truffle.polyglot.PolyglotEngineImpl.HOST_LANGUAGE_INDEX;
+import static com.oracle.truffle.polyglot.PolyglotFastThreadLocals.LANGUAGE_CONTEXT_OFFSET;
+import static com.oracle.truffle.polyglot.PolyglotFastThreadLocals.computeLanguageIndexFromStaticIndex;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractPolyglotHostService;
 
 /**
  * Polyglot host service is needed for polyglot isolates. In case it is used for a non-isolated
@@ -52,10 +56,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 class DefaultPolyglotHostService extends AbstractPolyglotHostService {
     DefaultPolyglotHostService(AbstractPolyglotImpl polyglot) {
         super(polyglot);
-    }
-
-    @Override
-    public void patch(AbstractPolyglotHostService otherService) {
     }
 
     @Override
@@ -72,5 +72,11 @@ class DefaultPolyglotHostService extends AbstractPolyglotHostService {
 
     @Override
     public void notifyEngineClosed(Object engineReceiver, boolean cancelIfExecuting) {
+    }
+
+    @Override
+    public RuntimeException hostToGuestException(AbstractHostLanguageService host, Throwable throwable) {
+        assert !host.isHostException(throwable);
+        return host.toHostException(PolyglotFastThreadLocals.getLanguageContext(null, computeLanguageIndexFromStaticIndex(HOST_LANGUAGE_INDEX, LANGUAGE_CONTEXT_OFFSET)), throwable);
     }
 }

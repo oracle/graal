@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -116,6 +116,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         size = declaredMinSize;
         buffer = allocateBuffer(byteSize());
         startAddress = getBufferAddress(buffer);
+        currentMinSize = declaredMinSize;
     }
 
     @Override
@@ -145,6 +146,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
             buffer = updatedBuffer;
             startAddress = updatedStartAddress;
             size += extraPageSize;
+            currentMinSize = size;
             invokeGrowCallback();
             return true;
         } else {
@@ -304,6 +306,27 @@ public final class UnsafeWasmMemory extends WasmMemory {
     public void store_i64_32(Node node, long address, int value) {
         validateAddress(node, address, 4);
         unsafe.putInt(startAddress + address, value);
+    }
+
+    @Override
+    public void initialize(byte[] dataInstance, int sourceOffset, int destinationOffset, int length) {
+        assert destinationOffset + length <= byteSize();
+        buffer.position(destinationOffset);
+        buffer.put(dataInstance, sourceOffset, length);
+    }
+
+    @Override
+    public void fill(int offset, int length, byte value) {
+        assert offset + length <= byteSize();
+        unsafe.setMemory(startAddress + offset, length, value);
+    }
+
+    @Override
+    public void copyFrom(WasmMemory source, int sourceOffset, int destinationOffset, int length) {
+        assert source instanceof UnsafeWasmMemory;
+        assert destinationOffset + length < byteSize();
+        final UnsafeWasmMemory s = (UnsafeWasmMemory) source;
+        unsafe.copyMemory(s.startAddress + sourceOffset, this.startAddress + destinationOffset, length);
     }
 
     @Override

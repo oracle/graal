@@ -40,8 +40,13 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.util.VMError;
 
+import sun.reflect.generics.repository.ConstructorRepository;
+
 @TargetClass(value = Constructor.class)
 public final class Target_java_lang_reflect_Constructor {
+    /** Generic info is created on demand at run time. */
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    private ConstructorRepository genericInfo;
 
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = AnnotationsComputer.class)//
     byte[] annotations;

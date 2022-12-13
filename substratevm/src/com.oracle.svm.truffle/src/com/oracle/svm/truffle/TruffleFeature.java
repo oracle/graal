@@ -120,10 +120,10 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.amd64.substitutions.AMD64TruffleInvocationPlugins;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleHostInliningPhase;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
+import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPlugins;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -170,7 +170,9 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -251,8 +253,9 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
-        if (providers.getLowerer().getTarget().arch instanceof AMD64) {
-            AMD64TruffleInvocationPlugins.register(providers.getLowerer().getTarget().arch, plugins.getInvocationPlugins(), providers.getReplacements());
+        Architecture arch = providers.getLowerer().getTarget().arch;
+        if (arch instanceof AMD64 || arch instanceof AArch64) {
+            TruffleInvocationPlugins.register(arch, plugins.getInvocationPlugins(), providers.getReplacements());
         }
     }
 
@@ -340,7 +343,7 @@ public class TruffleFeature implements InternalFeature {
         ImageSingletons.lookup(TruffleBaseFeature.class).setProfilingEnabled(truffleRuntime.isProfilingEnabled());
 
         for (Class<?> initType : truffleRuntime.getLookupTypes()) {
-            access.registerAsUsed(initType);
+            config.registerAsUsed(initType, "Truffle runtime init type.");
         }
 
         // register thread local foreign poll as compiled otherwise the stub won't work
@@ -412,7 +415,7 @@ public class TruffleFeature implements InternalFeature {
          * adds it as a root and non-static root methods are only compiled if types implementing
          * them or any of their subtypes are allocated.
          */
-        access.registerAsInHeap(TruffleSupport.singleton().getOptimizedCallTargetClass());
+        config.registerAsInHeap(TruffleSupport.singleton().getOptimizedCallTargetClass(), "Concrete subclass of OptimizedCallTarget registered by TruffleFeature.");
 
         /*
          * This effectively initializes the Truffle fallback engine which does all the system
@@ -504,7 +507,7 @@ public class TruffleFeature implements InternalFeature {
                     try {
                         Object value = field.get(knownTruffleFields);
                         if (value instanceof ResolvedJavaField) {
-                            config.registerAsAccessed((AnalysisField) value);
+                            config.registerAsAccessed((AnalysisField) value, "known truffle field");
                         }
                     } catch (IllegalAccessException ex) {
                         throw VMError.shouldNotReachHere(ex);

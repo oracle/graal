@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "6.9.9",
+  "mxversion" : "6.11.4",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -22,23 +22,23 @@ suite = {
         "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/test-suite-3.2.src.tar.gz",
         "https://llvm.org/releases/3.2/test-suite-3.2.src.tar.gz",
       ],
-      "sha1" : "e370255ca2540bcd66f316fe5b96f459382f3e8a",
+      "digest" : "sha512:8cc9b4fc97d87a16a5f5b0bd91ebc8a4e7865a50dbfd98f1456f5830fa121860145b6b9aaabf624d9fd5eb5164e2a909e7ccb21375daf54dc24e990db7d716ba",
     },
     "GCC_SOURCE" : {
       "packedResource" : True,
       # original: https://mirrors-usa.go-parts.com/gcc/releases/gcc-5.2.0/gcc-5.2.0.tar.gz
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/gcc-5.2.0.tar.gz"],
-      "sha1" : "713211883406b3839bdba4a22e7111a0cff5d09b",
+      "digest" : "sha512:d2cf088c08754af0f06cd36cef83544a05bf75c2fa5d9486eec4babece8b32258449f04bcb6506bf3ea6681948574ba56812bc9881497ba0f5460f8358e8fce5",
     },
     "SHOOTOUT_SUITE" : {
       "packedResource" : True,
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/benchmarksgame-scm-latest.tar.gz"],
-      "sha1" : "9684ca5aaa38ff078811f9b42f15ee65cdd259fc",
+      "digest" : "sha512:1a94a02b1633320c2078f6adbe33b31052676fa1c07217f2fb3b3792bfb6a94410812ac6382295a9f4d8828cdb19dd31d1485f264535e01beb0230b79acc7068",
     },
     "NWCC_SUITE" : {
       "packedResource" : True,
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/nwcc_0.8.3.tar.gz"],
-      "sha1" : "2ab1825dc1f8bd5258204bab19e8fafad93fef26",
+      "digest" : "sha512:f6af50bd18e13070b512bfac6659f49d10d3ad65ea2c4c5ca3f199c8b87540ec145c7dbbe97272f48903ca1c8afaf58c146ec763c851da0b352d5980746f94f6",
     },
     # Support Libraries.
     # Projects depending on these will *not be built* if the 'optional' is 'True' for the given OS/architecture.
@@ -48,7 +48,7 @@ suite = {
         "linux" : {
           "amd64" : {
             "path": "tests/support.txt",
-            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
           "<others>": {
             "optional": True,
@@ -67,7 +67,7 @@ suite = {
         "linux" : {
           "amd64" : {
             "path": "tests/support.txt",
-            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
           "<others>": {
             "optional": True,
@@ -86,11 +86,17 @@ suite = {
         "linux" : {
           "amd64" : {
             "path": "tests/support.txt",
-            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
           "<others>": {
             "optional": True,
           }
+        },
+        "windows": {
+          "<others>" : {
+            "path": "tests/support.txt",
+            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+          },
         },
         "<others>": {
           "<others>": {
@@ -105,7 +111,7 @@ suite = {
         "linux" : {
           "amd64" : {
             "path": "tests/support.txt",
-            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
           "<others>": {
             "optional": True,
@@ -124,7 +130,7 @@ suite = {
         "<others>" : {
           "amd64" : {
             "path": "tests/support.txt",
-            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
           "<others>": {
             "optional": True,
@@ -138,7 +144,7 @@ suite = {
         "<others>" : {
           "aarch64" : {
             "path": "tests/support.txt",
-            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
           "<others>": {
             "optional": True,
@@ -152,7 +158,7 @@ suite = {
         "<others>" : {
           "<others>" : {
             "path": "tests/support.txt",
-            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
         },
         "windows" : {
@@ -168,7 +174,7 @@ suite = {
         "<others>" : {
           "<others>" : {
             "path": "tests/support.txt",
-            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
         },
         "windows" : {
@@ -184,7 +190,7 @@ suite = {
         "windows" : {
           "<others>" : {
             "path": "tests/support.txt",
-            "sha1": "9b3f44dd60da58735fce6b7346b4b3ef571b768e",
+            "digest": "sha512:c02b248975b267f4200603ff2ae40b9d0cdefad4a792f386d610f2b14fb4e67e288c235fd11ed596dd8c91a3dae62fdd741bf97b5c01b5f085485f221702f0a1",
           },
         },
         "<others>" : {
@@ -271,6 +277,9 @@ suite = {
               "<lib:sulongtest>",
               "<staticlib:sulongtest>",
             ],
+            "cmakeConfig" : {
+              "CMAKE_BUILD_TYPE" : "RelWithDebInfo",
+            },
           },
         },
         "<others>" : {
@@ -310,6 +319,7 @@ suite = {
       ],
       "buildDependencies" : [
         "NATIVE_MODE_SUPPORT",
+        "SULONG_TCK_NATIVE",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "11+",
@@ -322,6 +332,7 @@ suite = {
       "subDir" : "tests",
       "native" : True,
       "vpath" : True,
+      "defaultBuild" : False,
       "results" : [
         "bin/"
       ],
@@ -402,6 +413,14 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
       "jacoco" : "exclude",
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "ldflags" : ["-shared"]
+          },
+        },
+        "<others>" : {"<others" : {}},
+      },
     },
 
     "com.oracle.truffle.llvm.nfi.test.native.isolation" : {
@@ -416,6 +435,14 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
       "jacoco" : "exclude",
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "ldflags" : ["-shared"]
+          },
+        },
+        "<others>" : {"<others" : {}},
+      },
     },
 
     "com.oracle.truffle.llvm.nativemode" : {
@@ -567,18 +594,26 @@ suite = {
     },
 
     "toolchain-launchers-tests": {
+      "class" : "CMakeNinjaProject",
       "subDir": "tests",
-      "native": True,
       "vpath": True,
       "platformDependent": True,
-      "max_jobs": "1",
-      "buildEnv" : {
+      "ninja_targets" : ["all"],
+      "ninja_install_targets" : ["test"],
+      "results" : ["main.out"],
+      "cmakeConfig" : {
         "SULONG_EXE" : "<mx_exe> lli",
-        "CLANG": "<toolchainGetToolPath:native,CC>",
-        "CLANGXX": "<toolchainGetToolPath:native,CXX>",
-        "TOOLCHAIN_LD": "<toolchainGetToolPath:native,LD>",
-        "OS": "<os>",
-        "JACOCO": "<jacoco>",
+        "CMAKE_C_COMPILER": "<toolchainGetToolPath:native,CC>",
+        "CMAKE_CXX_COMPILER": "<toolchainGetToolPath:native,CXX>",
+        "SULONG_C_COMPILER": "<toolchainGetToolPath:native,CC>",
+        "SULONG_CXX_COMPILER": "<toolchainGetToolPath:native,CXX>",
+        "SULONG_LINKER": "<toolchainGetToolPath:native,LD>",
+        "SULONG_LIB" : "<path:SULONG_HOME>/native/lib",
+        "SULONG_OBJDUMP" : "<path:LLVM_TOOLCHAIN>/bin/<exe:llvm-objdump>",
+        "SULONG_NATIVE_BUILD" : "True",
+      },
+      "buildEnv" : {
+        "CTEST_PARALLEL_LEVEL" : "16",
       },
       "buildDependencies" : [
         "SULONG_CORE",
@@ -781,6 +816,16 @@ suite = {
         "MX_OS" : "<os>",
         "MX_ARCH" : "<arch>",
       },
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "cmakeConfig" : {
+              "GRAALVM_PTHREAD_INCLUDE_DIR" : "<path:com.oracle.truffle.llvm.libraries.pthread>/include",
+            },
+          },
+        },
+        "<others>" : {"<others>" : {}},
+      },
       "license" : "BSD-new",
     },
     "com.oracle.truffle.llvm.libraries.graalvm.llvm" : {
@@ -969,6 +1014,32 @@ suite = {
             "ninja_install_targets" : ["install-cxxabi", "install-cxx"],
             "results" : ["native"],
             "cmakeConfig" : {
+              # the only difference to darwin is CMAKE_INSTALL_RPATH
+              "CMAKE_INSTALL_RPATH" : "\\$ORIGIN",
+              "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
+              "LIBCXXABI_INCLUDE_TESTS": "NO",
+              "LIBCXXABI_ENABLE_STATIC" : "NO",
+              "LIBCXX_INCLUDE_BENCHMARKS": "NO",
+              "LIBCXX_INCLUDE_TESTS": "NO",
+              "LIBCXX_ENABLE_STATIC" : "NO",
+              "LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY" : "NO",
+              "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
+              "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang++>",
+              "CMAKE_INSTALL_PREFIX" : "native",
+              # workaround for build problem with cmake >=3.22
+              # see https://lists.llvm.org/pipermail/llvm-dev/2021-December/154144.html
+              "CMAKE_BUILD_WITH_INSTALL_RPATH" : "YES",
+            },
+          },
+        },
+        "darwin" : {
+          "<others>" : {
+            "ninja_targets" : ["cxxabi", "cxx"],
+            "ninja_install_targets" : ["install-cxxabi", "install-cxx"],
+            "results" : ["native"],
+            "cmakeConfig" : {
+              # the only difference to the other unixes is CMAKE_INSTALL_RPATH
+              "CMAKE_INSTALL_RPATH" : "@loader_path/",
               "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
               "LIBCXXABI_INCLUDE_TESTS": "NO",
               "LIBCXXABI_ENABLE_STATIC" : "NO",
@@ -1252,6 +1323,7 @@ suite = {
             },
           },
         },
+        "<others>" : {"<others>": {}},
       },
       "testProject" : True,
       "defaultBuild" : False,
@@ -1434,8 +1506,9 @@ suite = {
         "default",
       ],
       "cmakeConfig" : {
+        "CMAKE_BUILD_TYPE" : "Sulong",
         "CMAKE_C_COMPILER": "<toolchainGetToolPath:native,CC>",
-        "CMAKE_CXX_COMPILER": "<toolchainGetToolPath:native,CC>",
+        "CMAKE_CXX_COMPILER": "<toolchainGetToolPath:native,CXX>",
         "GRAALVM_LLVM_INCLUDE_DIR": "<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
         "GRAALVM_LLVM_LIB_DIR" : "<path:SULONG_NATIVE_HOME>/native/lib",
       },
@@ -1635,18 +1708,31 @@ suite = {
       "vpath" : True,
       "variants" : ["executable-O0"],
       "buildRef" : True,
-      "cmakeConfig" : {
-        "CMAKE_C_FLAGS" : "-Wno-everything",
-        "CMAKE_CXX_FLAGS" : "-Wno-everything",
-      },
       "os_arch" : {
         "darwin": {
           "aarch64" : {
             "cmakeConfig" : {
+              "CMAKE_C_FLAGS" : "-Wno-everything",
+              "CMAKE_CXX_FLAGS" : "-Wno-everything",
               "CMAKE_EXE_LINKER_FLAGS" : "-L/opt/homebrew/lib -lm -lgmp",
             },
           },
           "amd64": {
+            "cmakeConfig" : {
+              "CMAKE_C_FLAGS" : "-Wno-everything",
+              "CMAKE_CXX_FLAGS" : "-Wno-everything",
+            },
+            "buildEnv" : {
+              "CMAKE_EXE_LINKER_FLAGS" : "-lm -lgmp",
+            },
+          },
+        },
+		"windows": {
+          "<others>": {
+            "cmakeConfig" : {
+              "CMAKE_C_FLAGS" : "-Wno-everything -include stdio.h",
+              "CMAKE_CXX_FLAGS" : "-Wno-everything -include stdio.h",
+            },
             "buildEnv" : {
               "CMAKE_EXE_LINKER_FLAGS" : "-lm -lgmp",
             },
@@ -1654,6 +1740,10 @@ suite = {
         },
 		"<others>": {
           "<others>": {
+            "cmakeConfig" : {
+              "CMAKE_C_FLAGS" : "-Wno-everything",
+              "CMAKE_CXX_FLAGS" : "-Wno-everything",
+            },
             "buildEnv" : {
               "CMAKE_EXE_LINKER_FLAGS" : "-lm -lgmp",
             },
@@ -1679,7 +1769,7 @@ suite = {
       "variants" : ["executable-O1"],
       "buildRef" : True,
       "cmakeConfig" : {
-        "CMAKE_C_FLAGS" : "-Wno-everything",
+        "CMAKE_C_FLAGS" : "-Wno-everything -include stdio.h",
         "CMAKE_EXE_LINKER_FLAGS" : "-lm -lgmp",
       },
       "dependencies" : [
@@ -1701,8 +1791,21 @@ suite = {
       "vpath" : True,
       "variants" : ["bitcode-O0"],
       "buildRef" : True,
-      "cmakeConfig" : {
-        "CMAKE_C_FLAGS" : "-Wno-everything",
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "cmakeConfig" : {
+              "CMAKE_C_FLAGS" : "-Wno-everything -include stdio.h -include memory.h",
+            },
+          },
+        },
+        "<others>" : {
+          "<others>" : {
+            "cmakeConfig" : {
+              "CMAKE_C_FLAGS" : "-Wno-everything",
+            },
+          },
+        },
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -1790,6 +1893,7 @@ suite = {
     },
 
     "SULONG_NATIVE_HOME" : {
+      "fileListPurpose": 'native-image-resources',
       "native" : True,
       "relpath" : False,
       "platformDependent" : True,
@@ -1832,6 +1936,7 @@ suite = {
     },
 
     "SULONG_BITCODE_HOME" : {
+      "fileListPurpose": 'native-image-resources',
       "native": True,
       "relpath": False,
       "license": "BSD-new",
@@ -1844,6 +1949,7 @@ suite = {
     },
 
     "SULONG_CORE_HOME" : {
+      "fileListPurpose": 'native-image-resources',
       "native" : True,
       "relpath" : False,
       "platformDependent" : True,
@@ -1936,6 +2042,7 @@ suite = {
 
     "SULONG_TEST" : {
       "subDir" : "tests",
+      "defaultBuild" : False,
       "dependencies" : [
         "com.oracle.truffle.llvm.tests",
         "com.oracle.truffle.llvm.tests.types",
@@ -2059,6 +2166,8 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.bitcode.other.native/*",
           # the reload tests are not only ran as standalone test (SulongSuite) but also as embedded test (LoaderTest)
           "dependency:com.oracle.truffle.llvm.tests.linker.native/reload",
+          # these are hand-crafted invalid bitcode files
+          "file:tests/com.oracle.truffle.llvm.tests.bitcodeformat.invalid/invalid",
         ],
       },
       "license" : "BSD-new",
@@ -2179,6 +2288,7 @@ suite = {
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
+      "defaultBuild" : False,
       "layout" : {
         "./" : [
           "dependency:com.oracle.truffle.llvm.tests.tck.native/*",

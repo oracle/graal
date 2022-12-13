@@ -48,6 +48,7 @@ import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.core.common.Stride;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -58,14 +59,14 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64.cpp",
-          lineStart = 2748,
-          lineEnd   = 2809,
-          commit    = "5d48da4574f6aacb0db445dd5750566330aa383d",
+          lineStart = 2792,
+          lineEnd   = 2853,
+          commit    = "df81b3c66a3b17fc5d10098ce879416affbddd40",
           sha1      = "8ada7fcdb170eda06a7852fc90450193b2a0f7a0")
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
-          lineStart = 6087,
-          lineEnd   = 6544,
-          commit    = "5d48da4574f6aacb0db445dd5750566330aa383d",
+          lineStart = 6100,
+          lineEnd   = 6557,
+          commit    = "2afb4c3327b6830a009ee1ab8a1eb7803ef53007",
           sha1      = "3b967007055fd0134e74b90898a6ab12dc531653")
 // @formatter:on
 public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
@@ -126,12 +127,12 @@ public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        assert xValue.getPlatformKind().equals(AMD64Kind.QWORD) : xValue;
-        assert xlenValue.getPlatformKind().equals(AMD64Kind.DWORD) : xlenValue;
-        assert yValue.getPlatformKind().equals(AMD64Kind.QWORD) : yValue;
-        assert ylenValue.getPlatformKind().equals(AMD64Kind.DWORD) : ylenValue;
-        assert zValue.getPlatformKind().equals(AMD64Kind.QWORD) : zValue;
-        assert zlenValue.getPlatformKind().equals(AMD64Kind.DWORD) : zlenValue;
+        GraalError.guarantee(xValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid xValue kind: %s", xValue);
+        GraalError.guarantee(xlenValue.getPlatformKind().equals(AMD64Kind.DWORD), "Invalid xlenValue kind: %s", xlenValue);
+        GraalError.guarantee(yValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid yValue kind: %s", yValue);
+        GraalError.guarantee(ylenValue.getPlatformKind().equals(AMD64Kind.DWORD), "Invalid ylenValue kind: %s", ylenValue);
+        GraalError.guarantee(zValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid zValue kind: %s", zValue);
+        GraalError.guarantee(zlenValue.getPlatformKind().equals(AMD64Kind.DWORD), "Invalid zlenValue kind: %s", zlenValue);
 
         Register x = asRegister(xValue);
         Register xlen = asRegister(xlenValue);

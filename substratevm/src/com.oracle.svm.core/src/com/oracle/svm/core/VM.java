@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -33,14 +32,20 @@ import com.oracle.svm.core.util.VMError;
 public final class VM {
 
     public final String version;
+    public final String vendor;
+    public final String vendorUrl;
+    public final String runtimeName;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public VM(String config) {
         String versionStr = System.getProperty("org.graalvm.version");
         VMError.guarantee(versionStr != null);
         versionStr = "GraalVM " + versionStr;
-        versionStr += " Java " + JavaVersionUtil.JAVA_SPEC;
+        versionStr += " Java " + Runtime.version().toString();
         versionStr += " " + config;
         version = versionStr;
+        vendor = System.getProperty("org.graalvm.vendor", "Oracle Corporation");
+        vendorUrl = System.getProperty("org.graalvm.vendorurl", "https://www.graalvm.org/");
+        runtimeName = System.getProperty("java.runtime.name", "Unknown Runtime Environment");
     }
 }

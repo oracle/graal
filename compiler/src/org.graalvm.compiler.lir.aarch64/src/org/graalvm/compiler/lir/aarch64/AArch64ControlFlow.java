@@ -29,8 +29,10 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
+import java.util.Arrays;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler;
@@ -432,30 +434,31 @@ public class AArch64ControlFlow {
                 // Jump to default target if index is not within the jump table
                 masm.branchConditionally(ConditionFlag.HI, defaultTarget.label());
 
-                Label jumpTable = new Label();
-                // load start of jump table
-                masm.adr(scratch1, jumpTable);
-                /*
-                 * Note scratch1 holds the start of the jump table and scratch2 stores the
-                 * normalized index. Because each jumpTable index is 4 bytes large, scratch2 should
-                 * be scaled.
-                 */
-                AArch64Address jumpTableEntryAddr = AArch64Address.createExtendedRegisterOffsetAddress(32, scratch1, scratch2, true, ExtendType.UXTW);
-                // load relative target offset
-                masm.ldrs(64, 32, scratch2, jumpTableEntryAddr);
-                // compute target address (jumpTableStart + target offset)
-                masm.add(64, scratch1, scratch1, scratch2);
-                // jump to target
-                masm.jmp(scratch1);
-
-                masm.bind(jumpTable);
-                // emit jump table entries
-                for (LabelRef target : targets) {
-                    masm.emitJumpTableOffset(jumpTable, target.label());
-                }
-                JumpTable jt = new JumpTable(jumpTable.position(), lowKey, highKey, EntryFormat.OFFSET_ONLY);
-                crb.compilationResult.addAnnotation(jt);
+                emitJumpTable(crb, masm, scratch1, scratch2, lowKey, highKey, Arrays.stream(targets).map(LabelRef::label));
             }
+        }
+
+        public static void emitJumpTable(CompilationResultBuilder crb, AArch64MacroAssembler masm, Register scratch, Register index, int lowKey, int highKey, Stream<Label> targets) {
+            Label jumpTable = new Label();
+            // load start of jump table
+            masm.adr(scratch, jumpTable);
+            /*
+             * Note scratch holds the start of the jump table and index stores the normalized index.
+             * Because each jumpTable index is 4 bytes large, index should be scaled.
+             */
+            AArch64Address jumpTableEntryAddr = AArch64Address.createExtendedRegisterOffsetAddress(32, scratch, index, true, ExtendType.UXTW);
+            // load relative target offset
+            masm.ldrs(64, 32, index, jumpTableEntryAddr);
+            // compute target address (jumpTableStart + target offset)
+            masm.add(64, scratch, scratch, index);
+            // jump to target
+            masm.jmp(scratch);
+
+            masm.bind(jumpTable);
+            // emit jump table entries
+            targets.forEach(label -> masm.emitJumpTableOffset(jumpTable, label));
+            JumpTable jt = new JumpTable(jumpTable.position(), lowKey, highKey, EntryFormat.OFFSET_ONLY);
+            crb.compilationResult.addAnnotation(jt);
         }
     }
 

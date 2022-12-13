@@ -74,15 +74,19 @@ add_library(sulong SHARED)
 target_sources(sulong PRIVATE
   src/crt0.c
   src/exit.c
+  src/pthreads.c
+  src/string.c
   src/sulong_dispose_context.c
 )
 
 if(WIN32)
     check_var(LIBCXX_ISYSTEM)
     check_var(GRAALVM_LLVM_LIB_DIR)
+    check_var(GRAALVM_PTHREAD_INCLUDE_DIR)
 
     target_link_directories(sulong PRIVATE ${GRAALVM_LLVM_LIB_DIR})
     target_link_libraries(sulong graalvm-llvm)
+    target_include_directories(sulong PRIVATE ${GRAALVM_PTHREAD_INCLUDE_DIR})
     target_sources(sulong PRIVATE sulong.def)
 else()
     target_sources(sulong PRIVATE
@@ -94,12 +98,10 @@ else()
       src/exec.c
       src/fork.c
       src/memcpy.c
-      src/pthreads.c
       src/qsort.c
       src/setjmp.c
       src/signals.c
       src/stat.c
-      src/string.c
     )
 endif()
 

@@ -20,22 +20,23 @@ Below is the example output when building a native executable of the `HelloWorld
 ================================================================================
 GraalVM Native Image: Generating 'helloworld' (executable)...
 ================================================================================
-[1/7] Initializing...                                            (2.5s @ 0.21GB)
+[1/8] Initializing...                                            (2.5s @ 0.21GB)
  Version info: 'GraalVM dev Java 11 CE'
  C compiler: gcc (linux, x86_64, 9.3.0)
  Garbage collector: Serial GC
-[2/7] Performing analysis...  [*******]                          (5.6s @ 0.46GB)
-   2,718 (72.93%) of  3,727 classes reachable
+[2/8] Performing analysis...  [*******]                          (5.6s @ 0.46GB)
+   2,718 (72.93%) of  3,727 types reachable
    3,442 (53.43%) of  6,442 fields reachable
   12,128 (44.82%) of 27,058 methods reachable
-      27 classes,     0 fields, and   271 methods registered for reflection
-      58 classes,    59 fields, and    52 methods registered for JNI access
+      27 types,     0 fields, and   271 methods registered for reflection
+      58 types,    59 fields, and    52 methods registered for JNI access
        4 native libraries: dl, pthread, rt, z
-[3/7] Building universe...                                       (0.5s @ 0.61GB)
-[4/7] Parsing methods...      [*]                                (0.5s @ 0.86GB)
-[5/7] Inlining methods...     [****]                             (0.5s @ 0.73GB)
-[6/7] Compiling methods...    [**]                               (3.7s @ 2.38GB)
-[7/7] Creating image...                                          (2.1s @ 1.04GB)
+[3/8] Building universe...                                       (0.5s @ 0.61GB)
+[4/8] Parsing methods...      [*]                                (0.5s @ 0.86GB)
+[5/8] Inlining methods...     [****]                             (0.5s @ 0.73GB)
+[6/8] Compiling methods...    [**]                               (3.7s @ 2.38GB)
+[7/8] Layouting methods...    [*]                                (0.5s @ 0.71GB)
+[8/8] Creating image...                                          (2.1s @ 1.04GB)
    4.00MB (28.31%) for code area:     7,073 compilation units
    5.90MB (41.70%) for image heap:   83,319 objects and 5 resources
    3.24MB (22.91%) for debug info generated in 1.0s
@@ -103,17 +104,17 @@ In this stage, a [points-to analysis](https://dl.acm.org/doi/10.1145/3360610) is
 The progress indicator visualizes the number of analysis iterations.
 A large number of iterations can indicate problems in the analysis likely caused by misconfiguration or a misbehaving feature.
 
-#### <a name="glossary-reachability"></a>Reachable Classes, Fields, and Methods
-The number of classes, fields, and methods that are reachable versus the total number of classes and methods loaded as part of the build process.
-A significantly larger number of loaded classes that are not reachable can indicate a configuration problem.
-To reduce overhead, please ensure that the classpath only contains entries that are needed for building the application.
+#### <a name="glossary-reachability"></a>Reachable Types, Fields, and Methods
+The number of types (primitives, classes, interfaces, and arrays), fields, and methods that are reachable versus the total number of types, fields, and methods loaded as part of the build process.
+A significantly larger number of loaded elements that are not reachable can indicate a configuration problem.
+To reduce overhead, please ensure that your class path and module path only contain entries that are needed for building the application.
 
 #### <a name="glossary-reflection-registrations"></a>Reflection Registrations
-The number of classes, fields, and methods that are registered for reflection.
+The number of types, fields, and methods that are registered for reflection.
 Large numbers can cause significant reflection overheads, slow down the build process, and increase the size of the native binary (see [reflection metadata](#glossary-reflection-metadata)).
 
 #### <a name="glossary-jni-access-registrations"></a>JNI Access Registrations
-The number of classes, fields, and methods that are registered for [JNI](JNI.md) access.
+The number of types, fields, and methods that are registered for [JNI](JNI.md) access.
 
 #### <a name="glossary-runtime-methods"></a>Runtime Compiled Methods
 The number of methods marked for runtime compilation.
@@ -121,7 +122,7 @@ This number is only shown if runtime compilation is built into the executable, f
 Runtime-compiled methods account for [graph encodings](#glossary-graph-encodings) in the heap.
 
 ### <a name="stage-universe"></a>Building Universe
-In this stage, a universe with all classes, fields, and methods is built, which is then used to create the native binary.
+In this stage, a universe with all types, fields, and methods is built, which is then used to create the native binary.
 
 ### <a name="stage-parsing"></a>Parsing Methods
 In this stage, the Graal compiler parses all reachable methods.
@@ -133,6 +134,10 @@ The progress indicator visualizes the number of inlining iterations.
 
 ### <a name="stage-compiling"></a>Compiling Methods
 In this stage, the Graal compiler compiles all reachable methods to machine code.
+The progress indicator is printed periodically at an increasing interval.
+
+### <a name="stage-layouting"></a>Layouting Methods
+In this stage, compiled methods are layouted.
 The progress indicator is printed periodically at an increasing interval.
 
 ### <a name="stage-creating"></a>Creating Image
@@ -158,7 +163,7 @@ The total size of all `byte[]` objects used for metadata for the [code area](#gl
 Therefore, reducing the number of [reachable methods](#glossary-reachability) also reduces the size of this metadata.
 
 ##### <a name="glossary-reflection-metadata"></a>Reflection Metadata Stored in `byte[]`
-The total size of all `byte[]` objects used for reflection metadata, including class, field, method, and constructor data.
+The total size of all `byte[]` objects used for reflection metadata, including types, field, method, and constructor data.
 To reduce the amount of reflection metadata, reduce the number of [elements registered for reflection](#glossary-reflection-registrations).
 
 ##### <a name="glossary-graph-encodings"></a>Graph Encodings Stored in `byte[]`
@@ -187,13 +192,13 @@ If the [GC statistics](#glossary-garbage-collection) do not show any problems, t
 
 #### <a name="glossary-cpu-load"></a>CPU load
 The CPU time used by the process divided by the total process time.
-Increase the number of CPU threads to reduce the time to build the native binary.
+Increase the number of CPU cores to reduce the time to build the native binary.
 
 ## Machine-Readable Build Output
 
 The build output produced by the `native-image` builder is designed for humans, can evolve with new releases, and should thus not be parsed in any way by tools.
 Instead, use the `-H:BuildOutputJSONFile=<file.json>` option to instruct the builder to produce machine-readable build output in JSON format that can be used, for example, for building monitoring tools.
-The JSON files validate against the JSON schema defined in [`build-output-schema-v0.9.0.json`](https://github.com/oracle/graal/tree/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.0.json).
+The JSON files validate against the JSON schema defined in [`build-output-schema-v0.9.1.json`](https://github.com/oracle/graal/tree/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.1.json).
 Note that a JSON file is produced if and only if a build succeeds.
 
 The following example illustrates how this could be used in a CI/CD build pipeline to check that the number of reachable methods does not exceed a certain threshold:
@@ -216,7 +221,7 @@ Run `native-image --expert-options-all | grep "BuildOutput"` to see all build ou
 -H:±BuildOutputColorful      Colorize build output. Default: + (enabled).
 -H:±BuildOutputGCWarnings    Print GC warnings as part of build output. Default: + (enabled).
 -H:BuildOutputJSONFile=""    Print build output statistics as JSON to the specified file. The output is according to the JSON schema located at:
-                             docs/reference-manual/native-image/assets/build-output-schema-v0.9.0.json.
+                             docs/reference-manual/native-image/assets/build-output-schema-v0.9.1.json.
 -H:±BuildOutputLinks         Show links in build output. Default: + (enabled).
 -H:±BuildOutputPrefix        Prefix build output with '<pid>:<name of binary>'. Default: - (disabled).
 -H:±BuildOutputProgress      Report progress in build output. Default: + (enabled).

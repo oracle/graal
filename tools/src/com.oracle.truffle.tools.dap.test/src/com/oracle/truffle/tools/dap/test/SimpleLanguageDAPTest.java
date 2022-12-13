@@ -524,7 +524,7 @@ public final class SimpleLanguageDAPTest {
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":6,\"command\":\"stackTrace\",\"seq\":12}");
         // Set function breakpoint:
         tester.sendMessage("{\"command\":\"setFunctionBreakpoints\",\"arguments\":{\"breakpoints\":[{\"name\":\"foo0\"}]},\"type\":\"request\",\"seq\":7}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"breakpoints\":[{\"endLine\":1,\"endColumn\":1,\"line\":1,\"verified\":true,\"column\":1,\"id\":1}]},\"type\":\"response\",\"request_seq\":7,\"command\":\"setFunctionBreakpoints\",\"seq\":13}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"breakpoints\":[{\"verified\":false,\"id\":1}]},\"type\":\"response\",\"request_seq\":7,\"command\":\"setFunctionBreakpoints\",\"seq\":13}");
         // Continue and suspend at the breakpoint:
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":8}");
         tester.compareReceivedMessages(
@@ -577,7 +577,7 @@ public final class SimpleLanguageDAPTest {
         tester.compareReceivedMessages("{\"success\":true,\"body\":{\"stackFrames\":[{\"line\":2,\"name\":\"main\",\"column\":3,\"id\":1,\"source\":{\"sourceReference\":2,\"path\":\"" + testFilePath + "\",\"name\":\"SLTest.sl\"}}],\"totalFrames\":1},\"type\":\"response\",\"request_seq\":6,\"command\":\"stackTrace\",\"seq\":12}");
         // Set function breakpoint:
         tester.sendMessage("{\"command\":\"setFunctionBreakpoints\",\"arguments\":{\"breakpoints\":[{\"name\":\"isNull\"}]},\"type\":\"request\",\"seq\":7}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"breakpoints\":[{\"endLine\":1,\"endColumn\":1,\"line\":1,\"verified\":true,\"column\":1,\"id\":1}]},\"type\":\"response\",\"request_seq\":7,\"command\":\"setFunctionBreakpoints\",\"seq\":13}");
+        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"breakpoints\":[{\"verified\":false,\"id\":1}]},\"type\":\"response\",\"request_seq\":7,\"command\":\"setFunctionBreakpoints\",\"seq\":13}");
         // Continue and suspend at the breakpoint:
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":8}");
         tester.compareReceivedMessages(

@@ -153,7 +153,7 @@ final class NativeAPIImpl {
     static class GetTruffleEnvPrologue implements CEntryPointOptions.Prologue {
         @Uninterruptible(reason = "prologue")
         static int enter(NativeTruffleContext context) {
-            return CEntryPointActions.enterIsolate(context.isolate());
+            return CEntryPointActions.enterByIsolate(context.isolate());
         }
     }
 
@@ -189,7 +189,7 @@ final class NativeAPIImpl {
 
         @Uninterruptible(reason = "prologue")
         static void enter(NativeTruffleContext context) {
-            int code = CEntryPointActions.enterIsolate(context.isolate());
+            int code = CEntryPointActions.enterByIsolate(context.isolate());
             if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,19 +41,44 @@
 package org.graalvm.wasm.constants;
 
 public final class Section {
-    public static final int CUSTOM = 0x00;
-    public static final int TYPE = 0x01;
-    public static final int IMPORT = 0x02;
-    public static final int FUNCTION = 0x03;
-    public static final int TABLE = 0x04;
-    public static final int MEMORY = 0x05;
-    public static final int GLOBAL = 0x06;
-    public static final int EXPORT = 0x07;
-    public static final int START = 0x08;
-    public static final int ELEMENT = 0x09;
-    public static final int CODE = 0x0A;
-    public static final int DATA = 0x0B;
+    public static final int CUSTOM = 0;
+    public static final int TYPE = 1;
+    public static final int IMPORT = 2;
+    public static final int FUNCTION = 3;
+    public static final int TABLE = 4;
+    public static final int MEMORY = 5;
+    public static final int GLOBAL = 6;
+    public static final int EXPORT = 7;
+    public static final int START = 8;
+    public static final int ELEMENT = 9;
+    public static final int CODE = 10;
+    public static final int DATA = 11;
+    public static final int DATA_COUNT = 12;
+
+    private static final int[] SECTION_ORDER = new int[13];
+    public static final int LAST_SECTION_ID = SECTION_ORDER.length - 1;
+
+    static {
+        SECTION_ORDER[CUSTOM] = 0;
+        SECTION_ORDER[TYPE] = 1;
+        SECTION_ORDER[IMPORT] = 2;
+        SECTION_ORDER[FUNCTION] = 3;
+        SECTION_ORDER[TABLE] = 4;
+        SECTION_ORDER[MEMORY] = 5;
+        SECTION_ORDER[GLOBAL] = 6;
+        SECTION_ORDER[EXPORT] = 7;
+        SECTION_ORDER[START] = 8;
+        SECTION_ORDER[ELEMENT] = 9;
+        SECTION_ORDER[DATA_COUNT] = 10;
+        SECTION_ORDER[CODE] = 11;
+        SECTION_ORDER[DATA] = 12;
+    }
 
     private Section() {
+    }
+
+    public static boolean isNextSectionOrderValid(int sectionID, int lastSectionID) {
+        // Undefined section ids and custom section ids are seen as valid and will be handled later
+        return Integer.compareUnsigned(sectionID, SECTION_ORDER.length) >= 0 || SECTION_ORDER[sectionID] > SECTION_ORDER[lastSectionID];
     }
 }

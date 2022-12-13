@@ -1557,8 +1557,12 @@ public class FileSystemsTest {
                 Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canWrite);
                 Assert.assertEquals(time, file.getAttribute(TruffleFile.LAST_MODIFIED_TIME));
                 Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
-                file.setAttribute(TruffleFile.LAST_ACCESS_TIME, time);
-                Assert.assertEquals(time, file.getAttribute(TruffleFile.LAST_ACCESS_TIME));
+                // Workaround for issue JDK-8298187: The file last access time does not work on
+                // JDK-20 on macOS with the hfs file system.
+                if (supportsSetLastAccessTime()) {
+                    file.setAttribute(TruffleFile.LAST_ACCESS_TIME, time);
+                    Assert.assertEquals(time, file.getAttribute(TruffleFile.LAST_ACCESS_TIME));
+                }
                 file.setAttribute(TruffleFile.CREATION_TIME, time);
                 Assert.assertEquals(time, file.getAttribute(TruffleFile.CREATION_TIME));
                 file.setAttribute(TruffleFile.UNIX_PERMISSIONS, EnumSet.of(PosixFilePermission.OWNER_READ));
@@ -1584,6 +1588,18 @@ public class FileSystemsTest {
             }
         };
         ctx.eval(LANGUAGE_ID, "");
+    }
+
+    /**
+     * Setting file last access time does not work on JDK-20 on macOS with the hfs file system,
+     * issue JDK-8298187.
+     */
+    private boolean supportsSetLastAccessTime() throws IOException {
+        if (Runtime.version().feature() == 20 && OSUtils.getCurrent() == OSUtils.OS.Darwin) {
+            Path unwrappedPath = Paths.get(cfg.path.toString());
+            return !Files.exists(unwrappedPath) || !"hfs".equals(Files.getFileStore(unwrappedPath).type());
+        }
+        return true;
     }
 
     @Test

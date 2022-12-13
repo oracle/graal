@@ -46,6 +46,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.FileSystem;
@@ -552,7 +553,11 @@ public final class CompileTheWorld {
 
         @Override
         public URL createURL() throws IOException {
-            return new URL("jar", "", "file:" + name + "!/");
+            try {
+                return new URI("jar:file:" + name + "!/").toURL();
+            } catch (URISyntaxException e) {
+                throw new IOException(e);
+            }
         }
 
         /**

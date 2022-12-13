@@ -31,11 +31,21 @@ import static com.oracle.svm.core.cpufeature.Stubs.AArch64Features.GHASH_CPU_FEA
 import org.graalvm.compiler.replacements.StringLatin1InflateNode;
 import org.graalvm.compiler.replacements.StringUTF16CompressNode;
 import org.graalvm.compiler.replacements.nodes.AESNode;
+import org.graalvm.compiler.replacements.nodes.ArrayCompareToForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayEqualsForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayEqualsWithMaskForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
 import org.graalvm.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
-import org.graalvm.compiler.replacements.nodes.CryptoForeignCalls;
+import org.graalvm.compiler.replacements.nodes.CalcStringAttributesForeignCalls;
+import org.graalvm.compiler.replacements.nodes.CalcStringAttributesNode;
+import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
+import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
+import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
+import org.graalvm.compiler.replacements.nodes.VectorizedMismatchForeignCalls;
 import org.graalvm.nativeimage.Platform.AARCH64;
 import org.graalvm.nativeimage.Platforms;
 
@@ -47,12 +57,22 @@ public class AArch64StubForeignCallsFeature extends StubForeignCallsFeatureBase 
 
     public AArch64StubForeignCallsFeature() {
         super(SVMIntrinsicStubsGen.class, new StubDescriptor[]{
-                        new StubDescriptor(ArrayIndexOfForeignCalls.STUBS_AARCH64, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
+                        new StubDescriptor(ArrayCopyWithConversionsForeignCalls.STUBS, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
+                        new StubDescriptor(ArrayCompareToForeignCalls.STUBS, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
+                        new StubDescriptor(ArrayRegionCompareToForeignCalls.STUBS, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
+                        new StubDescriptor(ArrayEqualsForeignCalls.STUBS, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
+                        new StubDescriptor(ArrayEqualsWithMaskForeignCalls.STUBS, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
+                        new StubDescriptor(ArrayIndexOfForeignCalls.STUBS, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
+                        new StubDescriptor(CalcStringAttributesForeignCalls.STUBS, CalcStringAttributesNode.minFeaturesAARCH64(), EMPTY_CPU_FEATURES_AARCH64),
                         new StubDescriptor(StringLatin1InflateNode.STUB, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
                         new StubDescriptor(StringUTF16CompressNode.STUB, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
                         new StubDescriptor(EncodeArrayNode.STUBS, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
-                        new StubDescriptor(CryptoForeignCalls.AES_STUBS, AESNode.minFeaturesAARCH64(), AES_CPU_FEATURES_AARCH64),
-                        new StubDescriptor(CryptoForeignCalls.STUB_GHASH_PROCESS_BLOCKS, GHASHProcessBlocksNode.minFeaturesAARCH64(), GHASH_CPU_FEATURES_AARCH64),
+                        new StubDescriptor(HasNegativesNode.STUB, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
+                        new StubDescriptor(VectorizedMismatchForeignCalls.STUB, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
+                        new StubDescriptor(AESNode.STUBS, AESNode.minFeaturesAARCH64(), AES_CPU_FEATURES_AARCH64),
+                        new StubDescriptor(CounterModeAESNode.STUB, CounterModeAESNode.minFeaturesAARCH64(), AES_CPU_FEATURES_AARCH64),
+                        new StubDescriptor(CipherBlockChainingAESNode.STUBS, CipherBlockChainingAESNode.minFeaturesAARCH64(), AES_CPU_FEATURES_AARCH64),
+                        new StubDescriptor(GHASHProcessBlocksNode.STUB, GHASHProcessBlocksNode.minFeaturesAARCH64(), GHASH_CPU_FEATURES_AARCH64),
                         new StubDescriptor(BigIntegerMultiplyToLenNode.STUB, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
         });
     }

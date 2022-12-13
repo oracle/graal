@@ -25,6 +25,7 @@
 package com.oracle.svm.core.posix.thread;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
@@ -39,6 +40,8 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
@@ -57,6 +60,7 @@ import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.monitor.JavaMonitor;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Errno;
@@ -72,8 +76,11 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ParkEvent;
 import com.oracle.svm.core.thread.ParkEvent.ParkEventFactory;
 import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.internal.misc.Unsafe;
 
 @AutomaticallyRegisteredImageSingleton(PlatformThreads.class)
 public final class PosixPlatformThreads extends PlatformThreads {
@@ -284,84 +291,116 @@ final class Target_java_lang_Thread {
     Pthread.pthread_t pthreadIdentifier;
 }
 
-class PosixParkEvent extends ParkEvent {
+/**
+ * {@link PosixParkEvent} is based on HotSpot class {@code Parker} in {@code os_posix.cpp}, as of
+ * JDK 19 (git commit hash: f640fc5a1eb876a657d0de011dcd9b9a42b88eec, JDK tag: jdk-19+30).
+ * <p>
+ * HotSpot has two constructs with a similar purpose: {@code ParkEvent} and {@code Parker}. The
+ * latter implements JSR 166 synchronization primitives {@link Unsafe#park} and
+ * {@link Unsafe#unpark}, just like we do here, therefore we base this implementation on
+ * {@code Parker}. Our implementation of Java object monitors, {@link JavaMonitor}, uses the JSR 166
+ * primitives, so it can potentially experience interference from unrelated calls to
+ * {@link Unsafe#unpark}. This is a difference to HotSpot's {@code ObjectMonitor}, which uses a
+ * separate HotSpot {@code ParkEvent} instance. Another difference is that {@code Parker} and the
+ * code below return control to the caller on spurious wakeups, unlike HotSpot's {@code ParkEvent}.
+ * This does not affect correctness.
+ */
+final class PosixParkEvent extends ParkEvent {
+    private static final Unsafe U = Unsafe.getUnsafe();
+    private static final long EVENT_OFFSET = U.objectFieldOffset(PosixParkEvent.class, "event");
 
-    /** A mutex: from the operating system. */
-    private final Pthread.pthread_mutex_t mutex;
-    /** A condition variable: from the operating system. */
-    private final Pthread.pthread_cond_t cond;
+    private Pthread.pthread_mutex_t mutex;
+    private Pthread.pthread_cond_t cond;
 
-    /**
-     * The ticket: false implies unavailable, true implies available. Volatile so it can be safely
-     * updated in {@link #reset()} without holding the lock.
-     */
-    protected volatile boolean event;
+    /** Permit: 1 if an unpark is pending, otherwise 0. */
+    private volatile int event = 0;
+
+    /** Whether the owner is currently parked. Guarded by {@link #mutex}. */
+    private boolean parked = false;
 
     PosixParkEvent() {
-        /* Create a mutex. */
-        mutex = UnmanagedMemory.malloc(SizeOf.unsigned(Pthread.pthread_mutex_t.class));
-        /* The attributes for the mutex. Can be null. */
+        // Allocate mutex and condition in a single step so that they are adjacent in memory.
+        UnsignedWord mutexSize = SizeOf.unsigned(Pthread.pthread_mutex_t.class);
+        Pointer memory = UnmanagedMemory.malloc(mutexSize.add(SizeOf.unsigned(Pthread.pthread_cond_t.class)));
+        mutex = (Pthread.pthread_mutex_t) memory;
+        cond = (Pthread.pthread_cond_t) memory.add(mutexSize);
+
         final Pthread.pthread_mutexattr_t mutexAttr = WordFactory.nullPointer();
         PosixUtils.checkStatusIs0(Pthread.pthread_mutex_init(mutex, mutexAttr), "mutex initialization");
-
-        /* Create a condition variable. */
-        cond = UnmanagedMemory.malloc(SizeOf.unsigned(Pthread.pthread_cond_t.class));
         PosixUtils.checkStatusIs0(PthreadConditionUtils.initCondition(cond), "condition variable initialization");
+        // Note: HotSpot has another pthread_cond_t without CLOCK_MONOTONIC for absolute timed waits
     }
 
     @Override
     protected void reset() {
-        event = false;
+        event = 0;
     }
 
     @Override
     protected void condWait() {
-        StackOverflowCheck.singleton().makeYellowZoneAvailable();
-        try {
-            PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "park(): mutex lock");
-            try {
-                while (!event) {
-                    int status = Pthread.pthread_cond_wait(cond, mutex);
-                    PosixUtils.checkStatusIs0(status, "park(): condition variable wait");
-                }
-                event = false;
-            } finally {
-                PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "park(): mutex unlock");
-            }
-        } finally {
-            StackOverflowCheck.singleton().protectYellowZone();
+        park(false, 0);
+    }
+
+    @Override
+    protected void condTimedWait(long durationNanos) {
+        if (durationNanos > 0) {
+            park(false, durationNanos);
         }
     }
 
     @Override
-    protected void condTimedWait(long delayNanos) {
+    protected boolean tryFastPark() {
+        // We depend on getAndSet having full barrier semantics since we are not locking
+        return U.getAndSetInt(this, EVENT_OFFSET, 0) != 0;
+    }
+
+    @Override
+    protected void park(boolean isAbsolute, long time) {
+        if (time < 0 || (isAbsolute && time == 0)) {
+            return; // don't wait at all
+        }
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
-            /* Encode the delay as a deadline in a Time.timespec. */
-            Time.timespec deadlineTimespec = UnsafeStackValue.get(Time.timespec.class);
-            PthreadConditionUtils.delayNanosToDeadlineTimespec(delayNanos, deadlineTimespec);
-
-            PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "park(long): mutex lock");
+            int status = Pthread.pthread_mutex_trylock_no_transition(mutex);
+            if (status == Errno.EBUSY()) {
+                return; // can only mean another thread is unparking us: don't wait
+            }
+            PosixUtils.checkStatusIs0(status, "park: mutex trylock");
             try {
-                while (!event) {
-                    int status = Pthread.pthread_cond_timedwait(cond, mutex, deadlineTimespec);
-                    if (status == Errno.ETIMEDOUT()) {
-                        break;
-                    } else if (status != 0) {
-                        Log.log().newline()
-                                        .string("[PosixParkEvent.condTimedWait(delayNanos: ").signed(delayNanos).string("): Should not reach here.")
-                                        .string("  mutex: ").hex(mutex)
-                                        .string("  cond: ").hex(cond)
-                                        .string("  deadlineTimeSpec.tv_sec: ").signed(deadlineTimespec.tv_sec())
-                                        .string("  deadlineTimespec.tv_nsec: ").signed(deadlineTimespec.tv_nsec())
-                                        .string("  status: ").signed(status).string(" ").string(Errno.strerror(status))
-                                        .string("]").newline();
-                        PosixUtils.checkStatusIs0(status, "park(long): condition variable timed wait");
+                if (event == 0) {
+                    assert !parked;
+                    parked = true;
+                    if (!isAbsolute && time == 0) {
+                        status = Pthread.pthread_cond_wait(cond, mutex);
+                        PosixUtils.checkStatusIs0(status, "park(): condition variable wait");
+                    } else {
+                        long durationNanos = TimeUtils.durationNanos(isAbsolute, time);
+                        Time.timespec deadlineTimespec = UnsafeStackValue.get(Time.timespec.class);
+                        PthreadConditionUtils.durationNanosToDeadlineTimespec(durationNanos, deadlineTimespec);
+
+                        status = Pthread.pthread_cond_timedwait(cond, mutex, deadlineTimespec);
+                        if (status != 0 && status != Errno.ETIMEDOUT()) {
+                            Log.log().newline()
+                                            .string("[PosixParkEvent.park(durationNanos: ").signed(durationNanos).string("): Should not reach here.")
+                                            .string("  mutex: ").hex(mutex)
+                                            .string("  cond: ").hex(cond)
+                                            .string("  deadlineTimeSpec.tv_sec: ").signed(deadlineTimespec.tv_sec())
+                                            .string("  deadlineTimespec.tv_nsec: ").signed(deadlineTimespec.tv_nsec())
+                                            .string("  status: ").signed(status).string(" ").string(Errno.strerror(status))
+                                            .string("]").newline();
+                            PosixUtils.checkStatusIs0(status, "park(boolean, long): condition variable timed wait");
+                        }
                     }
+                    parked = false;
                 }
-                event = false;
+                event = 0;
+
             } finally {
-                PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "park(long): mutex unlock");
+                PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "park: mutex unlock");
+
+                // Paranoia to ensure our locked and lock-free paths interact
+                // correctly with each other and Java-level accesses.
+                U.fullFence();
             }
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
@@ -372,23 +411,41 @@ class PosixParkEvent extends ParkEvent {
     protected void unpark() {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
+            int s;
+            boolean p;
             PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "PosixParkEvent.unpark(): mutex lock");
             try {
-                event = true;
-                PosixUtils.checkStatusIs0(Pthread.pthread_cond_broadcast(cond), "PosixParkEvent.unpark(): condition variable broadcast");
+                s = event;
+                event = 1;
+                p = parked;
             } finally {
                 PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "PosixParkEvent.unpark(): mutex unlock");
+            }
+            if (s == 0 && p) {
+                /*
+                 * Signal without holding the mutex, which is safe and avoids futile wakeups if the
+                 * platform does not implement wait morphing.
+                 */
+                PosixUtils.checkStatusIs0(Pthread.pthread_cond_signal(cond), "PosixParkEvent.unpark(): condition variable signal");
             }
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
         }
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected void release() {
+        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(mutex);
+        mutex = WordFactory.nullPointer();
+        cond = WordFactory.nullPointer(); // allocated and freed together with mutex
     }
 }
 
 @AutomaticallyRegisteredImageSingleton(ParkEventFactory.class)
 class PosixParkEventFactory implements ParkEventFactory {
     @Override
-    public ParkEvent create() {
+    public ParkEvent acquire() {
         return new PosixParkEvent();
     }
 }

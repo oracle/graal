@@ -581,7 +581,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                 if (value.isJavaConstant()) {
                     long valueCst = value.asJavaConstant().asLong();
                     if (NumUtil.isInt(valueCst)) {
-                        AMD64Assembler.AMD64MOp mop = AMD64ArithmeticLIRGenerator.getMOp(arithmeticOp, (int) valueCst);
+                        AMD64Assembler.AMD64MOp mop = AMD64ArithmeticLIRGenerator.getMOp(arithmeticOp, size, (int) valueCst);
                         if (mop != null) {
                             return builder -> {
                                 AMD64AddressValue addressValue = (AMD64AddressValue) operand(write.getAddress());

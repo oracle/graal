@@ -445,7 +445,10 @@ class ClangVm(GccLikeVm):
         super(ClangVm, self).prepare_env(env)
         env["CXXFLAGS"] = env.get("CXXFLAGS", "") + " -stdlib=libc++"
         if "LIBCXXPATH" not in env:
-            env["LIBCXXPATH"] = os.path.join(mx.distribution("LLVM_TOOLCHAIN").get_output(), "lib")
+            toolchainPath = mx.distribution("LLVM_TOOLCHAIN").get_output()
+            out = mx.LinesOutputCapture()
+            mx.run([os.path.join(toolchainPath, "bin", "llvm-config"), "--libdir", "--host-target"], out=out)
+            env["LIBCXXPATH"] = os.path.join(*out.lines)  # os.path.join(libdir, host-target)
         return env
 
 

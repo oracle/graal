@@ -45,22 +45,22 @@ public class BigIntParams01 extends JTTTest {
             sum += testA(7, 1, 2, 3, 4, 5, 6, 7, 8, 9);
             sum += testA(8, 1, 2, 3, 4, 5, 6, 7, 8, 9);
         } else if (num == 1) {
-            sum += testB(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
-            sum += testB(1, 1, 2, 3, 4, 5, 6, 7, 8, 9);
-            sum += testB(2, 1, 2, 3, 4, 5, 6, 7, 8, 9);
-            sum += testB(3, 1, 2, 3, 4, 5, 6, 7, 8, 9);
-            sum += testB(4, 1, 2, 3, 4, 5, 6, 7, 8, 9);
-            sum += testB(5, 1, 2, 3, 4, 5, 6, 7, 8, 9);
-            sum += testB(6, 1, 2, 3, 4, 5, 6, 7, 8, 9);
-            sum += testB(7, 1, 2, 3, 4, 5, 6, 7, 8, 9);
-            sum += testB(8, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+            sum += (int) testB(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+            sum += (int) testB(1, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+            sum += (int) testB(2, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+            sum += (int) testB(3, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+            sum += (int) testB(4, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+            sum += (int) testB(5, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+            sum += (int) testB(6, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+            sum += (int) testB(7, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+            sum += (int) testB(8, 1, 2, 3, 4, 5, 6, 7, 8, 9);
         } else if (num == 2) {
             for (int i = 0; i < 9; i++) {
                 sum += testA(i, 1, 2, 3, 4, 5, 6, 7, 8, 9);
             }
         } else if (num == 3) {
             for (int i = 0; i < 9; i++) {
-                sum += testB(i, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+                sum += (int) testB(i, 1, 2, 3, 4, 5, 6, 7, 8, 9);
             }
         }
         return sum;

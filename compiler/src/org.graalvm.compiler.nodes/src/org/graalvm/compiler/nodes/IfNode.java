@@ -2394,4 +2394,21 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     public int getSuccessorCount() {
         return 2;
     }
+
+    /**
+     * Predict if {@code successor} will be eliminated by the next round of
+     * {@linkplain Canonicalizable canonicalization}. A return value {@code false} can indicate that
+     * it is statically impossible to predict if the {@code successor} will be eliminated, i.e., it
+     * is unknown.
+     */
+    public boolean successorWillBeEliminated(AbstractBeginNode successor) {
+        assert successor == trueSuccessor || successor == falseSuccessor;
+        if (condition instanceof LogicConstantNode) {
+            LogicConstantNode c = (LogicConstantNode) condition;
+            boolean trueSuccessorWillBeEliminated = !c.getValue();
+            return trueSuccessorWillBeEliminated ? successor == trueSuccessor : successor == falseSuccessor;
+        }
+        // unknown
+        return false;
+    }
 }

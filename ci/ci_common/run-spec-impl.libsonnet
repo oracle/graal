@@ -3,7 +3,7 @@ local supported_oss_names = r.supported_oss_names;
 local supported_archs_names = r.supported_archs_names;
 local supported_jdks_names = r.supported_jdks_names;
 
-local std_get = (import "../../common-utils.libsonnet").std_get;
+local std_get = (import "../../ci/ci_common/common-utils.libsonnet").std_get;
 {
   //
   local CONFIG_KEY = "<build-config>",
@@ -65,6 +65,69 @@ local std_get = (import "../../common-utils.libsonnet").std_get;
     ] + supported_oss_names + supported_archs_names + supported_jdks_names
   ,
 
+  // generate variants
+  generate_variants(s, feature_map, order=null)::
+    local feature_order = if order != null then
+      order
+    else
+      std.objectFieldsAll(feature_map);
+    assert std.assertEqual(std.set(feature_order), std.set(std.objectFieldsAll(feature_map)));
+    assert std.assertEqual(std.length(std.set(feature_order)), std.length(feature_order));
+    local mergeArray(arr) = std.foldl( function(a, b) a + b, arr, {});
+    local get_feature_value_pair(key) =
+       local split = std.split(key, ":");
+       {
+         feature: split[0],
+         values:
+           assert std.length(split) > 1 : "feature map keys must have the form 'feature_name:feature_value', got '%s'" % [key];
+           if std.length(split) == 2 && split[1] == "*" then
+             std.objectFieldsAll(feature_map[self.feature])
+           else
+             split[1:std.length(split)]
+         }
+       ;
+    local is_feature_desc(key) = std.member(feature_order, get_feature_value_pair(key).feature);
+    // return a list of objects containing features and a spec
+    local expand_features(obj, features={}) = std.flattenArrays([
+      if is_feature_desc(field) then
+        // feature description -> recurse
+        local inner_obj = obj[field];
+        local p = get_feature_value_pair(field);
+        std.flattenArrays([expand_features(inner_obj, features + {[p.feature]: feature_value}) for feature_value in p.values])
+      else
+        // no feature description -> create features+spec object
+        [{
+          features: features,
+          spec: { [field]+: obj[field] }
+        }]
+      for field in std.objectFieldsAll(obj)
+    ]);
+    // create a stable name from features
+    local variant_name_from_features(features) = std.join("_", ["%s:%s" % [f, features[f]] for f in feature_order if std.member(std.objectFieldsAll(features), f)]);
+    // turn the features list into a variants dictionary
+    local features_to_variant(arr) = [
+      {
+        [variant_name_from_features(s.features)]+: s.spec
+      }
+      for s in arr
+    ];
+    // get feature spec
+    local feature_spec(features) = mergeArray([feature_map[f][features[f]] for f in feature_order if std.member(std.objectFieldsAll(features), f)]);
+    local get_feature_spec(arr) = mergeArray([
+      {
+        [variant_name_from_features(s.features)]: feature_spec(s.features)
+      }
+      for s in arr
+    ]);
+    $.platform_spec({
+      local feature_list = expand_features(s),
+      local variants_dict = mergeArray(features_to_variant(feature_list)),
+      local feature_spec_dict = get_feature_spec(feature_list),
+      variants+: {[variant]: feature_spec_dict[variant] + variants_dict[variant] for variant in std.objectFieldsAll(variants_dict)}
+    })
+  ,
+
+  //
   local desugar_spec_impl(spec) =
     local _star_to_long(parts) = std.mapWithIndex(function(idx, part)
       if part == "*" then

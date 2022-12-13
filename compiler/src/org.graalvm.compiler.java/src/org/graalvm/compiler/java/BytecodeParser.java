@@ -1560,10 +1560,10 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         StampPair stamp = graphBuilderConfig.getPlugins().getOverridingStamp(this, field.getType(), false);
         if (stamp == null) {
             return LoadFieldNode.create(getConstantFieldProvider(), getConstantReflection(), getMetaAccess(), getOptions(),
-                            getAssumptions(), receiver, field, false, false);
+                            getAssumptions(), receiver, field, false, false, createBytecodePosition());
         } else {
             return LoadFieldNode.createOverrideStamp(getConstantFieldProvider(), getConstantReflection(), getMetaAccess(), getOptions(),
-                            stamp, receiver, field, false, false);
+                            stamp, receiver, field, false, false, createBytecodePosition());
         }
     }
 

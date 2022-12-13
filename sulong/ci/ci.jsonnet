@@ -2,7 +2,7 @@
 # `jsonnetfmt --indent 2 --max-blank-lines 2 --sort-imports --string-style d --comment-style h -i ci.jsonnet`
 local sc = (import "ci_common/sulong-common.jsonnet");
 {
-  local common = import "../../common.jsonnet",
+  local common = import "../../ci/ci_common/common.jsonnet",
 
   local linux_amd64 = common.linux_amd64,
 
@@ -48,7 +48,8 @@ local sc = (import "ci_common/sulong-common.jsonnet");
 
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.darwin_aarch64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTagsNoNWCC) + { name: "gate-sulong-basic-llvm-jdk17-darwin-aarch64", timelimit: "30:00" },
 
-    sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.windows_amd64 + sc.llvmBundled + sc.gateTags("build,sulongStandalone") + { name: "gate-sulong-standalone-jdk17-windows-amd64", timelimit: "30:00" },
+    sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.windows_amd64 + sc.llvmBundled + sc.gateTags("build,sulongStandalone,interop") + { name: "gate-sulong-standalone-interop-jdk17-windows-amd64", timelimit: "30:00" },
+    sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.windows_amd64 + sc.llvmBundled + sc.gateTags("build,nwcc,llvm,toolchain") + { name: "gate-sulong-nwcc-llvm-toolchain-jdk17-windows-amd64" },
   ],
 
   coverage_builds::

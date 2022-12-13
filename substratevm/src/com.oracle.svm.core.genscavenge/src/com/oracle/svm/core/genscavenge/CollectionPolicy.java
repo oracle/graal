@@ -158,6 +158,12 @@ public interface CollectionPolicy {
      */
     UnsignedWord getSurvivorSpacesCapacity();
 
+    /** The capacity of the young generation, comprising the eden and survivor spaces. */
+    UnsignedWord getYoungGenerationCapacity();
+
+    /** The capacity of the old generation. */
+    UnsignedWord getOldGenerationCapacity();
+
     /**
      * The maximum number of bytes that should be kept readily available for allocation or copying
      * during collections.

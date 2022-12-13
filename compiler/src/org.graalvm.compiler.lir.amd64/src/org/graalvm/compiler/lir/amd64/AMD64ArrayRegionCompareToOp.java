@@ -202,8 +202,8 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
             AMD64ControlFlow.RangeTableSwitchOp.emitJumpTable(crb, masm, tmp1, asRegister(dynamicStridesValue), 0, 8, Arrays.stream(variants));
             for (Stride strideA : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
                 for (Stride strideB : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
-                    masm.align(crb.target.wordSize * 2);
-                    masm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(strideA, strideB)]);
+                    masm.align(preferredBranchTargetAlignment(crb));
+                    masm.bind(variants[StrideUtil.getDirectStubCallIndex(strideA, strideB)]);
                     emitArrayCompare(crb, masm, strideA, strideB, result, arrayA, arrayB, length, tmp1, tmp2);
                     masm.jmp(done);
                 }
@@ -265,7 +265,7 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
         masm.negq(length);
 
         // main loop
-        masm.align(crb.target.wordSize * 2);
+        masm.align(preferredLoopAlignment(crb));
         masm.bind(loop);
         // load and extend elements of arrayB to match the stride of arrayA
         masm.pmovSZx(vectorSize, extendMode, vector1, maxStride, arrayA, strideA, length, 0);
@@ -383,7 +383,7 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
         masm.leaq(arrayB, new AMD64Address(arrayB, length, strideB));
         masm.negq(length);
 
-        masm.align(crb.target.wordSize * 2);
+        masm.align(preferredLoopAlignment(crb));
         masm.bind(loop);
         masm.movSZx(strideA, extendMode, result, new AMD64Address(arrayA, length, strideA));
         masm.movSZx(strideB, extendMode, tmp, new AMD64Address(arrayB, length, strideB));

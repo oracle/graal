@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.core.common.util;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -205,5 +207,25 @@ public class Util {
             bytes[i] = (byte) val;
         }
         return bytes;
+    }
+
+    /**
+     * Prints the stack trace represented by {@code ste} to a string.
+     */
+    public static String toString(Throwable throwable) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        throwable.printStackTrace(new PrintStream(baos));
+        return baos.toString();
+    }
+
+    /**
+     * Formats the stack trace represented by {@code ste} to a string.
+     */
+    public static String toString(StackTraceElement[] ste) {
+        StringBuilder sb = new StringBuilder();
+        for (StackTraceElement e : ste) {
+            sb.append('\t').append(e).append(System.lineSeparator());
+        }
+        return sb.toString();
     }
 }

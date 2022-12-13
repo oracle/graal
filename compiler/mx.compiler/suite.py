@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "6.9.9",
+  "mxversion" : "6.11.4",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -27,6 +27,10 @@ suite = {
         "urls" : [
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
          ]
+      },
+      {
+        "name" : "regex",
+        "subdir": True
       },
       {
         "name" : "java-benchmarks",
@@ -81,7 +85,7 @@ suite = {
     # ------------- Libraries -------------
 
     "JAVA_ALLOCATION_INSTRUMENTER" : {
-      "sha1" : "d0bdc21c5e6404726b102998e44c66a738897905",
+      "digest" : "sha512:25fe57cd6d3ecabb52f411c884f801109ece37570a2dd19fa1e5b83cc2039ed02a90787600eb9303eaa730aabf0dc70b506fb9fe40ca6c3417428bb89c2c8940",
       "maven" : {
         "groupId" : "com.google.code.java-allocation-instrumenter",
         "artifactId" : "java-allocation-instrumenter",
@@ -92,17 +96,17 @@ suite = {
 
     "HCFDIS" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/hcfdis/hcfdis-3.jar"],
-      "sha1" : "a71247c6ddb90aad4abf7c77e501acc60674ef57",
+      "digest" : "sha512:207b178aaab27754e331e9ce9e931ccda1cd4906aeb96f425028f58b3865f8527e8564757c10a8acdcbba9808abaaf5d55d9663d597dab029785da1e12cae20d",
     },
 
     "C1VISUALIZER_DIST" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/c1visualizer/c1visualizer-1.10.zip"],
-      "sha1" : "548e383a732944a84456c2caf36b163b9a8db495",
+      "digest" : "sha512:40c505dd03ca0bb102f1091b89b90672126922f290bd8370eef9a7afc5d9c1e7b5db08c448a0948ef46bf57d850e166813e2d68bf7b1c88a46256d839b6b0201",
       "packedResource": True,
     },
 
     "JOL_CLI" : {
-      "sha1" : "45dd0cf195b16e70710a8d6d763cda614cf6f31e",
+      "digest" : "sha512:aeefbf80b51e6aa546f7522b7dfd6a405529fc0d07be4b11fda56103b5b187a03f3b202c1d7ab65ffaa166630a0ec9a4684efccdf224743a3f79b4ca7504819c",
       "maven" : {
         "groupId" : "org.openjdk.jol",
         "artifactId" : "jol-cli",
@@ -112,12 +116,12 @@ suite = {
     },
 
     "BATIK" : {
-      "sha1" : "122b87ca88e41a415cf8b523fd3d03b4325134a3",
+      "digest" : "sha512:cefc274dab0f3cd8064f135a8a3bccb59b8168864acd2143f8a5563c6feacd9651a740bcfc9998031d78b6c219168b7e5ba3341d1d11e429f1bf53629000566d",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/batik-all-1.7.jar"],
     },
 
     "ASM_9.1" : {
-      "sha1" : "a99500cf6eea30535eeac6be73899d048f8d12a8",
+      "digest" : "sha512:0a586544f3053ec8425d252b6f7e3e6772f010eb81d75020b4fd4759a561a4534dab4f805ffd18130594d1abbeb1ad7116b9d3a1e2e643d427e12bb866655954",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm",
@@ -126,7 +130,7 @@ suite = {
     },
 
     "ASM_TREE_9.1" : {
-      "sha1" : "c333f2a855069cb8eb17a40a3eb8b1b67755d0eb",
+      "digest" : "sha512:2e7c7e2453b4453db83aa5f13a7a9ec9fa7896d3b13670b171f6e8f186f3ec2f382a985c69018a510ea1b14a2e986f00e1bd3dd6e77a59a28f82b7fbe738916d",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm-tree",
@@ -136,7 +140,7 @@ suite = {
     },
 
     "ASM_UTIL_9.1" : {
-      "sha1" : "36464a45d871779f3383a8a9aba2b26562a86729",
+      "digest" : "sha512:2182c016c5547cd9e904a4a6d803c45a2c481533e1ffb5b0e18109b40a3d12e106654bbf0673da28ce9ac46cae3b7cfc016dfec68adf5d444917188c70f8b534",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm-util",
@@ -151,27 +155,27 @@ suite = {
       "os_arch" : {
         "linux" : {
           "amd64" : {
-            "sha1" : "124fdfe42933ec6f529af5df4062d83e9d0570dc",
+            "digest" : "sha512:38c2af202546d2c2fd2bb6936f028b1feda8a5da40e2e374f2ad9caddb639988fac26bacf87925ff76cf7f88537f4f55206c50e0f9dffb290f0c630992582e76",
             "urls" : ["{urlbase}/intel/hsdis-amd64-linux-0d031013db9a80d6c88330c42c983fbfa7053193.tar.gz"],
           },
           "aarch64" : {
-            "sha1" : "fb71a14c57a6e6f494aaaa5a84773a3e35344b9b",
+            "digest" : "sha512:422e1078fe5d9e2f71c04ca2bbefef4e09cf9675d132c7531f1fb17330e2b1f9441470541b66c8db2f3d8e105d167e25a78dc11aada524ed623b1ae9a4cfdeeb",
             "urls" : ["{urlbase}/hsdis-aarch64-linux-fcc9b70ac91c00db8a50b0d4345490a68e3743e1.tar.gz"],
           },
         },
         "darwin" : {
           "amd64" : {
-            "sha1" : "5026b67af00cc876db1ed194b91d7cc2ba06710d",
+            "digest" : "sha512:754931b55975ceb47f46d4803930c915d48aaf04d6633944751ff9e7f8c2df076473f0a134f77aab80d54159ec6a011ada6b44cf10a3bbe55d0356c9c22cfa86",
             "urls" : ["{urlbase}/intel/hsdis-amd64-darwin-67f6d23cbebd8998450a88b5bef362171f66f11a.tar.gz"],
           },
           "aarch64" : {
-            "sha1" : "23ac713e1e93bb18199cff777b5d99dc3c91061f",
+            "digest" : "sha512:2ce96d16865a180cb6352377aea1c2e4a85ebbd8b57bd157eafb551188d3bd005d1ca7118fe99480ccca0f59d1c128c25a5612bc809077cbac3c19b6a6d4246b",
             "urls" : ["{urlbase}/hsdis-aarch64-darwin-073b5f6f10a4c8530417f165d03c19093a2c0680.tar.gz"],
           }
         },
         "windows" : {
           "amd64" : {
-            "sha1" : "b603814c8136e0086f33355d38a5f67d115101da",
+            "digest" : "sha512:92d79ec235cbe4480c6887d92003519f0340f571a55207d326b59d42163ecb984752d5d614d590400542a9097f1ea8233720c18f85728eaccce86225930918fe",
             "urls" : ["{urlbase}/intel/hsdis-amd64-windows-6a388372cdd5fe905c1a26ced614334e405d1f30-2.zip"],
           },
           "aarch64" : {
@@ -1291,6 +1295,11 @@ suite = {
         "org.graalvm.compiler.virtual",
         "org.graalvm.compiler.loop.phases",
       ],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.services",
+        ],
+      },
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "11+",
       "annotationProcessors" : [
@@ -1547,21 +1556,13 @@ suite = {
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
       ],
-      "javaCompliance" : "11+",
-      "workingSets" : "Graal,Truffle",
-    },
-
-    "org.graalvm.compiler.truffle.compiler.amd64" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.replacements.amd64",
-        "truffle:TRUFFLE_API",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "annotationProcessors" : [
-        "GRAAL_PROCESSOR",
-      ],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.aarch64",
+          "jdk.vm.ci.amd64",
+          "jdk.vm.ci.code",
+        ],
+      },
       "javaCompliance" : "11+",
       "workingSets" : "Graal,Truffle",
     },
@@ -1637,7 +1638,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.hotspot",
         "org.graalvm.compiler.truffle.compiler",
-        "org.graalvm.compiler.truffle.compiler.amd64",
         "org.graalvm.compiler.truffle.runtime",
         "org.graalvm.compiler.core.test",
         "org.graalvm.compiler.replacements.test",
@@ -1648,6 +1648,13 @@ suite = {
         "jdk.unsupported", # sun.misc.Unsafe
         "java.logging"
       ],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.aarch64",
+          "jdk.vm.ci.amd64",
+          "jdk.vm.ci.code",
+        ],
+      },
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
         "truffle:TRUFFLE_DSL_PROCESSOR"
@@ -1672,7 +1679,7 @@ suite = {
       "multiReleaseJarVersion" : "19",
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "19+",
-      "javaPreviewNeeded": "19",
+      "javaPreviewNeeded": "19+",
       "checkPackagePrefix" : "false",
       "workingSets" : "Graal,HotSpot",
       "testProject" : True,
@@ -1831,7 +1838,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.truffle.compiler.amd64",
         "org.graalvm.compiler.truffle.compiler.hotspot",
         "org.graalvm.compiler.hotspot.amd64",
       ],
@@ -1876,7 +1882,9 @@ suite = {
     "org.graalvm.profdiff" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["org.graalvm.util"],
+      "dependencies" : [
+        "org.graalvm.compiler.nodes",
+      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "11+",
     },
@@ -1950,11 +1958,13 @@ suite = {
         "GRAAL_ONLY_TEST",
         "truffle:TRUFFLE_SL_TEST",
         "truffle:TRUFFLE_TEST",
+        "regex:TREGEX"
       ],
       "exclude" : [
         "mx:JUNIT",
         "JAVA_ALLOCATION_INSTRUMENTER",
       ],
+      "testDistribution" : True,
       "maven": False,
     },
 
@@ -2097,7 +2107,6 @@ suite = {
         "org.graalvm.compiler.hotspot.amd64",
         "org.graalvm.compiler.hotspot",
         "org.graalvm.compiler.lir.aarch64",
-        "org.graalvm.compiler.truffle.compiler.amd64",
         "org.graalvm.compiler.truffle.runtime.serviceprovider",
         "org.graalvm.compiler.truffle.runtime.hotspot",
         "org.graalvm.compiler.truffle.runtime.hotspot.java",
@@ -2199,8 +2208,6 @@ suite = {
       ],
       "distDependencies" : [
         "sdk:GRAAL_SDK",
-      ],
-      "overlaps" : [
         "GRAAL",
       ],
       "maven" : False,

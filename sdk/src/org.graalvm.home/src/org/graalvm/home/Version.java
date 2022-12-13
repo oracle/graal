@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -248,6 +248,94 @@ public final class Version implements Comparable<Version> {
             b.append("-").append(suffix);
         }
         return b.toString();
+    }
+
+    private String processFormat(String format) {
+        StringBuilder ret = new StringBuilder(format.length());
+        int idx = 0;
+        while (idx < format.length()) {
+            char ch = format.charAt(idx++);
+            if (ch == '%') {
+                ch = format.charAt(idx++);
+                if (ch == '[') {
+                    ch = format.charAt(idx++);
+                    boolean include = false;
+                    switch (ch) {
+                        case 'R':
+                            include = isRelease();
+                            break;
+                        case 'S':
+                            include = isSnapshot();
+                            break;
+                        default:
+                            if ('0' <= ch && ch <= '9') {
+                                int num = ch - '0';
+                                include = versions.length >= num;
+                            }
+                    }
+                    int start = idx;
+                    idx = format.indexOf(']', start);
+                    if (idx < 0) {
+                        idx = format.length();
+                    }
+                    if (include) {
+                        ret.append(format.substring(start, idx));
+                    }
+                    idx++; // skip closing ]
+                } else {
+                    ret.append('%');
+                    ret.append(ch);
+                }
+            } else {
+                ret.append(ch);
+            }
+        }
+        return ret.toString();
+    }
+
+    /**
+     * Format the GraalVM version with a custom format string.
+     * <p>
+     * The format string can contain any of the standard conversions of {@link java.util.Formatter}.
+     * At least four version components (possibly zero) are available as formatter arguments.
+     * <p>
+     * In addition to the standard conversions, these special conversions are available:
+     * <ul>
+     * <li>{@code "%[R...]"} includes a given part only if {@link #isRelease}
+     * <li>{@code "%[S...]"} includes a given part only if {@link #isSnapshot}
+     * <li>{@code "%[<digit>...]"} includes a given part only if the version contains at least
+     * {@code <digit>} non-zero version components ({@code <digit>} can be 0 to 9)
+     * </ul>
+     *
+     * <h3>Examples:</h3>
+     *
+     * <pre>
+     * Version.parse("22.3.0.1").format("%d.%d"); // returns "22.3"
+     * Version.parse("22.3.0.1").format("%4$d"); // returns "1"
+     * Version.parse("22.3.0.1").format("%[R%d.%d]%[Sdev]"); // returns "22.3"
+     * Version.parse("22.3.0.1").format("%[2XX]"); // returns "XX"
+     * Version.parse("23.0-dev").format("%3$d"); // returns "0"
+     * Version.parse("23.0-dev").format("%[R%d.%d]%[Sdev]"); // returns "dev"
+     * Version.parse("23.0-dev").format("%[2XX]"); // returns ""
+     * </pre>
+     *
+     * @since 23.0
+     */
+    public String format(String format) {
+        int len = versions.length;
+        if (len < 4) {
+            len = 4;
+        }
+        Object[] args = new Object[len];
+        int i = 0;
+        for (int v : versions) {
+            args[i++] = v;
+        }
+        for (; i < len; i++) {
+            args[i] = 0;
+        }
+
+        return String.format(processFormat(format), args);
     }
 
     /**

@@ -119,6 +119,10 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     }
 
     public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
+        return compute(graph, connectBlocks, true, computeLoops, computeDominators, computePostdominators);
+    }
+
+    public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeFrequency, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
         ControlFlowGraph cfg = new ControlFlowGraph(graph);
 
         cfg.identifyBlocks();
@@ -131,7 +135,9 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             loopInfoComputed = true;
         }
 
-        cfg.computeFrequencies();
+        if (computeFrequency) {
+            cfg.computeFrequencies();
+        }
 
         if (computeLoops && !loopInfoComputed) {
             cfg.computeLoopInformation();

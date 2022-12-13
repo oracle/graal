@@ -60,28 +60,6 @@ from argparse import ArgumentParser
 
 from mx_javamodules import as_java_module, JavaModuleDescriptor
 
-
-def _with_metaclass(meta, *bases):
-    """Create a base class with a metaclass."""
-
-    # Copyright (c) 2010-2018 Benjamin Peterson
-    # Taken from six, Python compatibility library
-    # MIT license
-
-    # This requires a bit of explanation: the basic idea is to make a dummy
-    # metaclass for one level of class instantiation that replaces itself with
-    # the actual metaclass.
-    class MetaClass(type):
-
-        def __new__(mcs, name, this_bases, d):
-            return meta(name, bases, d)
-
-        @classmethod
-        def __prepare__(mcs, name, this_bases):
-            return meta.__prepare__(name, bases)
-    return type.__new__(MetaClass, '_with_metaclass({}, {})'.format(meta, bases), (), {})  # pylint: disable=unused-variable
-
-
 _suite = mx.suite('sdk')
 _graalvm_components = dict()  # By short_name
 _graalvm_components_by_name = dict()
@@ -98,7 +76,7 @@ _known_vms = set()
 _base_jdk = None
 
 
-class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
+class AbstractNativeImageConfig(object, metaclass=ABCMeta):
     def __init__(self, destination, jar_distributions, build_args, use_modules=None, links=None, is_polyglot=False, dir_jars=False, home_finder=False, build_time=1, build_args_enterprise=None):  # pylint: disable=super-init-not-called
         """
         :type destination: str
@@ -201,24 +179,26 @@ class LanguageLauncherConfig(LauncherConfig):
 
 
 class LibraryConfig(AbstractNativeImageConfig):
-    def __init__(self, destination, jar_distributions, build_args, jvm_library=False, use_modules=None, add_to_module=None, home_finder=False, **kwargs):
+    def __init__(self, destination, jar_distributions, build_args, jvm_library=False, use_modules=None, add_to_module=None, home_finder=False, headers=True, **kwargs):
         """
         :param bool jvm_library
         :param str add_to_module: the simple name of a module that should be modified to include this native library. It must not be a path or end with `.jmod`
+        :param bool headers: whether headers produced by the native image build should be placed next to the native image.
         """
         super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, use_modules=use_modules, home_finder=home_finder, **kwargs)
         self.jvm_library = jvm_library
         self.add_to_module = add_to_module
+        self.headers = headers
 
 
 class LanguageLibraryConfig(LibraryConfig):
-    def __init__(self, jar_distributions, build_args, language, main_class=None, is_sdk_launcher=True, launchers=None, option_vars=None, **kwargs):
+    def __init__(self, jar_distributions, build_args, language, main_class=None, is_sdk_launcher=True, launchers=None, option_vars=None, headers=False, **kwargs):
         """
         :param str language
         :param str main_class
         """
         kwargs.pop('destination', None)
-        super(LanguageLibraryConfig, self).__init__('lib/<lib:' + language + 'vm>', jar_distributions, build_args, home_finder=True, **kwargs)
+        super(LanguageLibraryConfig, self).__init__('lib/<lib:' + language + 'vm>', jar_distributions, build_args, home_finder=True, headers=headers, **kwargs)
         if not launchers:
             assert not main_class
         self.is_sdk_launcher = is_sdk_launcher
@@ -397,6 +377,11 @@ class GraalVmTruffleComponent(GraalVmComponent):
 
 
 class GraalVmLanguage(GraalVmTruffleComponent):
+    """
+    :param support_distributions: distributions the contents of which is added to the language's home directory.
+    The contents of support distributions setting the `fileListPurpose` attribute to `native-image-resources` will end up as file list in the `native-image-resources.filelist` file in this language's home directory.
+    As a part of a native image build that includes this language, the files in the merged file list will be copied as resources to a directory named `resources` next to the produced image.
+    """
     pass
 
 

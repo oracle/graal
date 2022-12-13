@@ -251,12 +251,12 @@ public final class Symbol<T> extends ByteSequence {
 
         // j.l.Thread
         public static final Symbol<Name> add = StaticSymbols.putName("add");
-        public static final Symbol<Name> blockerLock = StaticSymbols.putName("blockerLock");
         public static final Symbol<Name> checkAccess = StaticSymbols.putName("checkAccess");
         public static final Symbol<Name> daemon = StaticSymbols.putName("daemon");
         public static final Symbol<Name> dispatchUncaughtException = StaticSymbols.putName("dispatchUncaughtException");
         public static final Symbol<Name> getStackTrace = StaticSymbols.putName("getStackTrace");
         public static final Symbol<Name> group = StaticSymbols.putName("group");
+        public static final Symbol<Name> holder = StaticSymbols.putName("holder");
         public static final Symbol<Name> inheritedAccessControlContext = StaticSymbols.putName("inheritedAccessControlContext");
         public static final Symbol<Name> maxPriority = StaticSymbols.putName("maxPriority");
         public static final Symbol<Name> parkBlocker = StaticSymbols.putName("parkBlocker");
@@ -694,6 +694,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_reflect_InvocationTargetException = StaticSymbols.putType("Ljava/lang/reflect/InvocationTargetException;");
 
         public static final Symbol<Type> java_lang_Thread = StaticSymbols.putType("Ljava/lang/Thread;");
+        public static final Symbol<Type> java_lang_Thread_FieldHolder = StaticSymbols.putType("Ljava/lang/Thread$FieldHolder;");
         public static final Symbol<Type> java_lang_ThreadGroup = StaticSymbols.putType("Ljava/lang/ThreadGroup;");
         public static final Symbol<Type> java_lang_Runnable = StaticSymbols.putType("Ljava/lang/Runnable;");
 
@@ -1019,12 +1020,18 @@ public final class Symbol<T> extends ByteSequence {
                         Type.java_lang_Object,
                         Type.java_lang_Object,
                         Type.java_lang_Object);
+        public static final Symbol<Signature> Object_Object_Object_Object_Object_Object = StaticSymbols.putSignature(
+                        Type.java_lang_Object,
+                        Type.java_lang_Object,
+                        Type.java_lang_Object,
+                        Type.java_lang_Object,
+                        Type.java_lang_Object,
+                        Type.java_lang_Object);
         public static final Symbol<Signature> MethodHandles$Lookup = StaticSymbols.putSignature(Type.java_lang_invoke_MethodHandles$Lookup);
 
         public static final Symbol<Signature> Field_Object_long_Class = StaticSymbols.putSignature(Type.java_lang_reflect_Field, Type.java_lang_Object, Type._long, Type.java_lang_Class);
 
         public static final Symbol<Signature> Thread$State_int = StaticSymbols.putSignature(Type.java_lang_Thread$State, Type._int);
-        public static final Symbol<Signature> _void_ThreadGroup = StaticSymbols.putSignature(Type._void, Type.java_lang_ThreadGroup);
         public static final Symbol<Signature> _void_ThreadGroup_String = StaticSymbols.putSignature(Type._void, Type.java_lang_ThreadGroup, Type.java_lang_String);
         public static final Symbol<Signature> _void_ThreadGroup_Runnable = StaticSymbols.putSignature(Type._void, Type.java_lang_ThreadGroup, Type.java_lang_Runnable);
         public static final Symbol<Signature> _void_Thread = StaticSymbols.putSignature(Type._void, Type.java_lang_Thread);

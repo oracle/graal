@@ -272,6 +272,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.Assumption;
@@ -357,14 +358,14 @@ import com.oracle.truffle.espresso.nodes.quick.interop.ReferenceArrayLoadQuickNo
 import com.oracle.truffle.espresso.nodes.quick.interop.ReferenceArrayStoreQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ShortArrayLoadQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ShortArrayStoreQuickNode;
-import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedGetterNode;
-import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedSetterNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeDynamicCallSiteNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeHandleNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeInterfaceQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeSpecialQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeStaticQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeVirtualQuickNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodNode;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -1280,7 +1281,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                             case RET: {
                                 // Use final local variables to pass in lambdas.
                                 final int retOpBci = curBCI;
-                                final int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex1(curBCI));
+                                final int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex2(curBCI));
                                 livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
 
                                 // Safely obtain the known targets mappings.
@@ -1562,11 +1563,11 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         // block while class redefinition is ongoing
         quickNode.getContext().getClassRedefinition().check();
         BaseQuickNode result = quickNode;
-        synchronized (this) {
+        result = atomic(() -> {
             // re-check if node was already replaced by another thread
-            if (result != nodes[readCPI(curBCI)]) {
+            if (quickNode != nodes[readCPI(curBCI)]) {
                 // another thread beat us
-                result = nodes[readCPI(curBCI)];
+                return nodes[readCPI(curBCI)];
             } else {
                 // other threads might still have beat us but if
                 // so, the resolution failed and so will we below
@@ -1574,10 +1575,11 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 char cpi = original.readCPI(curBCI);
                 int nodeOpcode = original.currentBC(curBCI);
                 Method resolutionSeed = resolveMethodNoCache(nodeOpcode, cpi);
-                result = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().InlineFieldAccessors));
-                nodes[readCPI(curBCI)] = result;
+                BaseQuickNode toInsert = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().bytecodeLevelInlining));
+                nodes[readCPI(curBCI)] = toInsert;
+                return toInsert;
             }
-        }
+        });
         return result;
     }
 
@@ -1643,6 +1645,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 info = this.instrumentation;
                 // double checked locking
                 if (info == null) {
+                    generifyBytecodeLevelInlining();
                     this.instrumentation = info = insert(new InstrumentationSupport(getMethodVersion()));
                     // the debug info contains instrumentable nodes so we need to notify for
                     // instrumentation updates.
@@ -1842,11 +1845,11 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     private void referenceArrayStore(VirtualFrame frame, int top, int index, StaticObject array) {
         if (refArrayStoreNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            synchronized (this) {
+            atomic(() -> {
                 if (refArrayStoreNode == null) {
                     refArrayStoreNode = insert(new EspressoReferenceArrayStoreNode());
                 }
-            }
+            });
         }
         refArrayStoreNode.arrayStore(getLanguage(), getContext().getMeta(), popObject(frame, top - 1), index, array);
     }
@@ -1968,8 +1971,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     // region Bytecode quickening
 
     private char readCPI(int curBCI) {
-        assert (!Bytecodes.isQuickenable(bs.currentBC(curBCI)) || Thread.holdsLock(this)) : "Reading the CPI for a quickenable bytecode must be done under the BytecodeNode lock. " +
-                        "Please obtain the lock, or use readOriginalCPI.";
+        assert (!Bytecodes.isQuickenable(bs.currentBC(curBCI)) ||
+                        lockIsHeld()) : "Reading the CPI for a quickenable bytecode must be done under the BytecodeNode lock. Please obtain the lock, or use readOriginalCPI.";
         return bs.readCPI(curBCI);
     }
 
@@ -2028,13 +2031,13 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     }
 
     private BaseQuickNode tryPatchQuick(int curBCI, Supplier<BaseQuickNode> newQuickNode) {
-        synchronized (this) {
+        return atomic(() -> {
             if (bs.currentVolatileBC(curBCI) == QUICK) {
                 return nodes[readCPI(curBCI)];
             } else {
                 return injectQuick(curBCI, newQuickNode.get(), QUICK);
             }
-        }
+        });
     }
 
     private int quickenCheckCast(VirtualFrame frame, int top, int curBCI, int opcode) {
@@ -2064,7 +2067,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
             char cpi = readCPI(curBCI);
             Method resolutionSeed = resolveMethod(opcode, cpi);
-            return dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().InlineFieldAccessors);
+            return dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().bytecodeLevelInlining);
         });
         // Perform the call outside of the lock.
         return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
@@ -2074,18 +2077,67 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
      * Revert speculative quickening e.g. revert inlined fields accessors to a normal invoke.
      * INVOKEVIRTUAL -> QUICK (InlinedGetter/SetterNode) -> QUICK (InvokeVirtualNode)
      */
-    public int reQuickenInvoke(VirtualFrame frame, int top, int curBCI, int opcode, int statementIndex, Method resolutionSeed) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
+    public int reQuickenInvoke(VirtualFrame frame, int top, int opcode, int curBCI, int statementIndex, Method resolutionSeed) {
+        CompilerAsserts.neverPartOfCompilation();
         assert Bytecodes.isInvoke(opcode);
-        BaseQuickNode invoke = null;
-        synchronized (this) {
-            assert bs.currentBC(curBCI) == QUICK;
-            char nodeIndex = readCPI(curBCI);
-            invoke = dispatchQuickened(top, curBCI, readOriginalCPI(curBCI), opcode, statementIndex, resolutionSeed, false);
-            nodes[nodeIndex] = nodes[nodeIndex].replace(invoke);
-        }
+        BaseQuickNode invoke = generifyInlinedMethodNode(top, opcode, curBCI, statementIndex, resolutionSeed);
         // Perform the call outside of the lock.
         return invoke.execute(frame);
+    }
+
+    /**
+     * Atomically replaces a quick node with another one.
+     */
+    public int replaceQuickAt(VirtualFrame frame, int opcode, int curBCI, BaseQuickNode old, BaseQuickNode replacement) {
+        CompilerAsserts.neverPartOfCompilation();
+        assert Bytecodes.isInvoke(opcode);
+        BaseQuickNode invoke = atomic(() -> {
+            assert bs.currentBC(curBCI) == QUICK;
+            char nodeIndex = readCPI(curBCI);
+            BaseQuickNode currentQuick = nodes[nodeIndex];
+            if (currentQuick != old) {
+                // Another thread might have already replaced our node at this point.
+                return currentQuick;
+            }
+            nodes[nodeIndex] = currentQuick.replace(replacement);
+            return replacement;
+        });
+        // Perform the call outside of the lock.
+        return invoke.execute(frame);
+    }
+
+    /**
+     * Reverts Bytecode-level method inlining at the current bci, in case instrumentation starts
+     * happening on this node.
+     */
+    public BaseQuickNode generifyInlinedMethodNode(int top, int opcode, int curBCI, int statementIndex, Method resolutionSeed) {
+        CompilerAsserts.neverPartOfCompilation();
+        return atomic(() -> {
+            assert bs.currentBC(curBCI) == QUICK;
+            char nodeIndex = readCPI(curBCI);
+            BaseQuickNode currentQuick = nodes[nodeIndex];
+            if (!(currentQuick instanceof InlinedMethodNode)) {
+                // Another thread might have already generify-ed our node at this point.
+                // Might be racy, as read is not volatile, but redoing the work should be OK.
+                return currentQuick;
+            }
+            BaseQuickNode invoke = dispatchQuickened(top, curBCI, readOriginalCPI(curBCI), opcode, statementIndex, resolutionSeed, false);
+            nodes[nodeIndex] = currentQuick.replace(invoke);
+            return invoke;
+        });
+    }
+
+    /**
+     * Reverts all bytecode-level inlining to a generic invoke quick node.
+     */
+    private void generifyBytecodeLevelInlining() {
+        atomic(() -> {
+            for (BaseQuickNode quick : nodes) {
+                if (quick instanceof InlinedMethodNode) {
+                    notifyInserted(((InlinedMethodNode) quick).revertToGeneric(this));
+                }
+            }
+        });
     }
 
     // region quickenForeign
@@ -2105,80 +2157,78 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     private int quickenArrayLength(VirtualFrame frame, int top, int curBCI) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        BaseQuickNode arrayLengthNode;
-        synchronized (this) {
+        BaseQuickNode arrayLengthNode = atomic(() -> {
             if (bs.currentVolatileBC(curBCI) == SLIM_QUICK) {
-                arrayLengthNode = sparseNodes[curBCI];
+                return sparseNodes[curBCI];
             } else {
-                arrayLengthNode = injectQuick(curBCI, new ArrayLengthQuickNode(top, curBCI), SLIM_QUICK);
+                return injectQuick(curBCI, new ArrayLengthQuickNode(top, curBCI), SLIM_QUICK);
             }
-        }
+        });
         return arrayLengthNode.execute(frame) - Bytecodes.stackEffectOf(ARRAYLENGTH);
     }
 
     private int quickenArrayLoad(VirtualFrame frame, int top, int curBCI, int loadOpcode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert IALOAD <= loadOpcode && loadOpcode <= SALOAD;
-        BaseQuickNode arrayLoadNode;
-        synchronized (this) {
+        BaseQuickNode arrayLoadNode = atomic(() -> {
             if (bs.currentVolatileBC(curBCI) == SLIM_QUICK) {
-                arrayLoadNode = sparseNodes[curBCI];
+                return sparseNodes[curBCI];
             } else {
                 // @formatter:off
+                BaseQuickNode quickNode;
                 switch (loadOpcode)  {
-                    case BALOAD: arrayLoadNode = new ByteArrayLoadQuickNode(top, curBCI);   break;
-                    case SALOAD: arrayLoadNode = new ShortArrayLoadQuickNode(top, curBCI);  break;
-                    case CALOAD: arrayLoadNode = new CharArrayLoadQuickNode(top, curBCI);   break;
-                    case IALOAD: arrayLoadNode = new IntArrayLoadQuickNode(top, curBCI);    break;
-                    case FALOAD: arrayLoadNode = new FloatArrayLoadQuickNode(top, curBCI);  break;
-                    case LALOAD: arrayLoadNode = new LongArrayLoadQuickNode(top, curBCI);   break;
-                    case DALOAD: arrayLoadNode = new DoubleArrayLoadQuickNode(top, curBCI); break;
-                    case AALOAD: arrayLoadNode = new ReferenceArrayLoadQuickNode(top, curBCI); break;
+                    case BALOAD: quickNode = new ByteArrayLoadQuickNode(top, curBCI);   break;
+                    case SALOAD: quickNode = new ShortArrayLoadQuickNode(top, curBCI);  break;
+                    case CALOAD: quickNode = new CharArrayLoadQuickNode(top, curBCI);   break;
+                    case IALOAD: quickNode = new IntArrayLoadQuickNode(top, curBCI);    break;
+                    case FALOAD: quickNode = new FloatArrayLoadQuickNode(top, curBCI);  break;
+                    case LALOAD: quickNode = new LongArrayLoadQuickNode(top, curBCI);   break;
+                    case DALOAD: quickNode = new DoubleArrayLoadQuickNode(top, curBCI); break;
+                    case AALOAD: quickNode = new ReferenceArrayLoadQuickNode(top, curBCI); break;
                     default:
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.shouldNotReachHere("unexpected kind");
                 }
                 // @formatter:on
-                arrayLoadNode = injectQuick(curBCI, arrayLoadNode, SLIM_QUICK);
+                return injectQuick(curBCI, quickNode, SLIM_QUICK);
             }
-        }
+        });
         return arrayLoadNode.execute(frame) - Bytecodes.stackEffectOf(loadOpcode);
     }
 
     private int quickenArrayStore(final VirtualFrame frame, int top, int curBCI, int storeOpcode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert IASTORE <= storeOpcode && storeOpcode <= SASTORE;
-        BaseQuickNode arrayStoreNode;
-        synchronized (this) {
+        BaseQuickNode arrayStoreNode = atomic(() -> {
             if (bs.currentVolatileBC(curBCI) == SLIM_QUICK) {
-                arrayStoreNode = sparseNodes[curBCI];
+                return sparseNodes[curBCI];
             } else {
+                BaseQuickNode quickNode;
                 // @formatter:off
                 switch (storeOpcode)  {
-                    case BASTORE: arrayStoreNode = new ByteArrayStoreQuickNode(top, curBCI);   break;
-                    case SASTORE: arrayStoreNode = new ShortArrayStoreQuickNode(top, curBCI);  break;
-                    case CASTORE: arrayStoreNode = new CharArrayStoreQuickNode(top, curBCI);   break;
-                    case IASTORE: arrayStoreNode = new IntArrayStoreQuickNode(top, curBCI);    break;
-                    case FASTORE: arrayStoreNode = new FloatArrayStoreQuickNode(top, curBCI);  break;
-                    case LASTORE: arrayStoreNode = new LongArrayStoreQuickNode(top, curBCI);   break;
-                    case DASTORE: arrayStoreNode = new DoubleArrayStoreQuickNode(top, curBCI); break;
-                    case AASTORE: arrayStoreNode = new ReferenceArrayStoreQuickNode(top, curBCI); break;
+                    case BASTORE: quickNode = new ByteArrayStoreQuickNode(top, curBCI);   break;
+                    case SASTORE: quickNode = new ShortArrayStoreQuickNode(top, curBCI);  break;
+                    case CASTORE: quickNode = new CharArrayStoreQuickNode(top, curBCI);   break;
+                    case IASTORE: quickNode = new IntArrayStoreQuickNode(top, curBCI);    break;
+                    case FASTORE: quickNode = new FloatArrayStoreQuickNode(top, curBCI);  break;
+                    case LASTORE: quickNode = new LongArrayStoreQuickNode(top, curBCI);   break;
+                    case DASTORE: quickNode = new DoubleArrayStoreQuickNode(top, curBCI); break;
+                    case AASTORE: quickNode = new ReferenceArrayStoreQuickNode(top, curBCI); break;
                     default:
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.shouldNotReachHere("unexpected kind");
                 }
                 // @formatter:on
-                arrayStoreNode = injectQuick(curBCI, arrayStoreNode, SLIM_QUICK);
+                return injectQuick(curBCI, quickNode, SLIM_QUICK);
             }
-        }
+        });
         return arrayStoreNode.execute(frame) - Bytecodes.stackEffectOf(storeOpcode);
     }
 
     // endregion quickenForeign
 
-    private BaseQuickNode dispatchQuickened(int top, int curBCI, char cpi, int opcode, int statementIndex, Method resolutionSeed, boolean allowFieldAccessInlining) {
-        assert !allowFieldAccessInlining || getContext().getEspressoEnv().InlineFieldAccessors;
-        BaseQuickNode invoke;
+    private BaseQuickNode dispatchQuickened(int top, int curBCI, char cpi, int opcode, int statementIndex, Method resolutionSeed, boolean allowBytecodeInlining) {
+        InvokeQuickNode invoke;
         Method resolved = resolutionSeed;
         switch (opcode) {
             case INVOKESTATIC:
@@ -2241,9 +2291,12 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 if (!resolved.isConstructor()) {
                     Klass declaringKlass = getMethod().getDeclaringKlass();
                     Klass symbolicRef = ((MethodRefConstant.Indexes) getConstantPool().methodAt(cpi)).getResolvedHolderKlass(declaringKlass, getConstantPool());
-                    if (!symbolicRef.isInterface() && symbolicRef != declaringKlass && declaringKlass.getSuperKlass() != null && symbolicRef != declaringKlass.getSuperKlass() &&
+                    if (!symbolicRef.isInterface() &&
+                                    symbolicRef != declaringKlass &&
+                                    declaringKlass.getSuperKlass() != null &&
+                                    symbolicRef != declaringKlass.getSuperKlass() &&
                                     symbolicRef.isAssignableFrom(declaringKlass)) {
-                        resolved = declaringKlass.getSuperKlass().lookupMethod(resolved.getName(), resolved.getRawSignature(), declaringKlass);
+                        resolved = declaringKlass.getSuperKlass().lookupMethod(resolved.getName(), resolved.getRawSignature(), declaringKlass, Klass.LookupMode.INSTANCE_ONLY);
                     }
                 }
                 break;
@@ -2251,12 +2304,18 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opcode));
         }
+        // Skip inlined nodes if instrumentation is live.
+        // Lock must be owned for correctness.
+        assert lockIsHeld();
+        boolean tryBytecodeLevelInlining = this.instrumentation == null && allowBytecodeInlining;
+        if (tryBytecodeLevelInlining) {
+            invoke = InlinedMethodNode.createFor(resolutionSeed, top, opcode, curBCI, statementIndex);
+            if (invoke != null) {
+                return invoke;
+            }
+        }
 
-        if (allowFieldAccessInlining && resolved.isInlinableGetter()) {
-            invoke = InlinedGetterNode.create(resolved, top, opcode, curBCI, statementIndex);
-        } else if (allowFieldAccessInlining && resolved.isInlinableSetter()) {
-            invoke = InlinedSetterNode.create(resolved, top, opcode, curBCI, statementIndex);
-        } else if (resolved.isPolySignatureIntrinsic()) {
+        if (resolved.isPolySignatureIntrinsic()) {
             invoke = new InvokeHandleNode(resolved, getDeclaringKlass(), top, curBCI);
         } else if (opcode == INVOKEINTERFACE && resolved.getITableIndex() < 0) {
             if (resolved.isPrivate()) {
@@ -2306,7 +2365,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         RuntimeConstantPool pool = getConstantPool();
         BaseQuickNode quick = null;
         int indyIndex = -1;
-        synchronized (this) {
+        Lock lock = getLock();
+        try {
+            lock.lock();
             if (bs.currentVolatileBC(curBCI) == QUICK) {
                 // Check if someone did the job for us. Defer the call until we are out of the lock.
                 quick = nodes[readCPI(curBCI)];
@@ -2314,6 +2375,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 // fetch indy under lock.
                 indyIndex = readCPI(curBCI);
             }
+        } finally {
+            lock.unlock();
         }
         if (quick != null) {
             // Do invocation outside of the lock.
@@ -2324,14 +2387,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         InvokeDynamicConstant.CallSiteLink link = pool.linkInvokeDynamic(getMethod().getDeclaringKlass(), indyIndex);
 
         // re-lock to check if someone did the job for us, since this was a heavy operation.
-        synchronized (this) {
+        quick = atomic(() -> {
             if (bs.currentVolatileBC(curBCI) == QUICK) {
                 // someone beat us to it, just trust him.
-                quick = nodes[readCPI(curBCI)];
+                return nodes[readCPI(curBCI)];
             } else {
-                quick = injectQuick(curBCI, new InvokeDynamicCallSiteNode(link.getMemberName(), link.getUnboxedAppendix(), link.getParsedSignature(), getMeta(), top, curBCI), QUICK);
+                return injectQuick(curBCI, new InvokeDynamicCallSiteNode(link.getMemberName(), link.getUnboxedAppendix(), link.getParsedSignature(), getMeta(), top, curBCI), QUICK);
             }
-        }
+        });
         return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
     }
 
@@ -2785,6 +2848,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         if (instrumentation != null && (noForeignObjects.isValid() || receiver.isEspressoObject())) {
             instrumentation.notifyFieldAccess(frame, index, field, receiver);
         }
+    }
+
+    private boolean lockIsHeld() {
+        return ((ReentrantLock) getLock()).isHeldByCurrentThread();
     }
 
     static final class InstrumentationSupport extends EspressoNode {
