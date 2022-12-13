@@ -632,7 +632,7 @@ public class PointsToStats {
             return "<Null>";
         }
 
-        String sKind = s.isAllocation() ? "Alloc" : s.isConstant() ? "Const" : s instanceof SingleTypeState ? "Single" : s instanceof MultiTypeState ? "Multi" : "";
+        String sKind = s.isAllocation() ? "Alloc" : s.asConstant() != null ? "Const" : s instanceof SingleTypeState ? "Single" : s instanceof MultiTypeState ? "Multi" : "";
         String sSizeOrType = s instanceof MultiTypeState ? s.typesCount() + "" : s.exactType().toJavaName(false);
         int objectsNumber = s.objectsCount();
         String canBeNull = s.canBeNull() ? "null" : "!null";

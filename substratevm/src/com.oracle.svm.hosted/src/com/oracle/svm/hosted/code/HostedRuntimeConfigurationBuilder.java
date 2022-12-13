@@ -106,7 +106,7 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
 
     @Override
     protected ConstantFieldProvider createConstantFieldProvider(Providers p) {
-        return new HostedConstantFieldProvider(p.getMetaAccess(), classInitializationSupport);
+        return new HostedConstantFieldProvider(p.getMetaAccess(), classInitializationSupport, universe.hostVM());
     }
 
 }
