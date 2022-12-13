@@ -517,8 +517,7 @@ public class StateBitTest {
     }
 
     public static int getStateBitWidth() {
-        Integer width = Integer.getInteger("truffle.dsl.StateBitWidth");
-        int stateBitWidth = width == null ? DEFAULT_MAX_BIT_WIDTH : width;
+        int stateBitWidth = DEFAULT_MAX_BIT_WIDTH;
         return stateBitWidth;
     }
 

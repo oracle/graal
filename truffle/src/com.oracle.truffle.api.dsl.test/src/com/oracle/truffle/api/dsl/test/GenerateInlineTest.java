@@ -1771,9 +1771,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization
         static int doDefault(Node node,
-                        @ExpectError("Message redirected from element GenerateInlineTest.ErrorIndirectRecursionNode1.doDefault(..., ErrorIndirectRecursionNode2 cachedNode):\n" +
-                                        "Detected recursive inlined cache with type 'ErrorIndirectRecursionNode2'. Recursive inlining cannot be supported. " +
-                                        "Remove the recursive declaration or disable inlining with @Cached(..., inline=false) to resolve this.") //
+                        @ExpectError("%") //
                         @Cached ErrorIndirectRecursionNode1 cachedNode) {
             return 42;
         }
