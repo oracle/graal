@@ -86,7 +86,8 @@ public class ParallelGCImpl extends ParallelGC {
         return singleton().inParallelPhase;
     }
 
-    public static AlignedHeapChunk.AlignedHeader getThreadLocalScannedChunk() {
+    public static AlignedHeapChunk.AlignedHeader getScannedChunk() {
+        assert ParallelGCImpl.isEnabled() && GCImpl.getGCImpl().isCompleteCollection();
         return scannedChunkTL.get();
     }
 

@@ -221,7 +221,7 @@ public final class Space {
         AlignedHeapChunk.AlignedHeader newChunk;
         ParallelGCImpl.mutex.lock();
         try {
-            if (oldChunk.notEqual(ParallelGCImpl.getThreadLocalScannedChunk())) {
+            if (oldChunk.notEqual(ParallelGCImpl.getScannedChunk())) {
                 ParallelGCImpl.singleton().push(HeapChunk.asPointer(oldChunk));
             }
             newChunk = requestAlignedHeapChunk();
