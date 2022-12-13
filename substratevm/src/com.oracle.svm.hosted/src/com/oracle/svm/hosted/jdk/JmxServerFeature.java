@@ -44,6 +44,7 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jdk.management.ManagementAgentStartupHook;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.VMInspectionOptions;
+import com.oracle.svm.core.jdk.management.ManagementSupport;
 
 @AutomaticallyRegisteredFeature
 public class JmxServerFeature implements InternalFeature {
@@ -97,13 +98,12 @@ public class JmxServerFeature implements InternalFeature {
          * Register all the custom substrate MXBeans. They won't be accounted for by the native
          * image tracing agent so a user may not know they need to register them.
          */
-        Set<PlatformManagedObject> platformManagedObjects = com.oracle.svm.core.jdk.management.ManagementSupport
-                        .getSingleton().getPlatformManagedObjects();
+        Set<PlatformManagedObject> platformManagedObjects = ManagementSupport.getSingleton().getPlatformManagedObjects();
         for (PlatformManagedObject p : platformManagedObjects) {
 
-            // PlatformManagedObjectSupplier objects are lazily initialized at runtime. Skip them
-            // here.
-            if (p instanceof com.oracle.svm.core.jdk.management.ManagementSupport.PlatformManagedObjectSupplier) {
+            // The platformManagedObjects list contains some PlatformManagedObjectSupplier objects
+            // that are meant to help initialize some MXBeans at runtime. Skip them here.
+            if (p instanceof ManagementSupport.PlatformManagedObjectSupplier) {
                 continue;
             }
             Class<?> clazz = p.getClass();
