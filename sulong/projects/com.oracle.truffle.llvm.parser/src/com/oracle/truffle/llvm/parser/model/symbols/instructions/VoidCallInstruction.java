@@ -46,13 +46,16 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
 
     private final OperandBundle operandBundle;
 
+    private boolean mustTail;
+
     private final FunctionType functionType;
 
-    private VoidCallInstruction(AttributesCodeEntry paramAtt, int argCount, OperandBundle operandBundle, FunctionType functionType) {
+    private VoidCallInstruction(AttributesCodeEntry paramAtt, int argCount, OperandBundle operandBundle, FunctionType functionType, boolean mustTail) {
         this.arguments = argCount == 0 ? NO_ARGS : new SymbolImpl[argCount];
         this.paramAttr = paramAtt;
         this.operandBundle = operandBundle;
         this.functionType = functionType;
+        this.mustTail = mustTail;
     }
 
     @Override
@@ -107,8 +110,13 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
         }
     }
 
-    public static VoidCallInstruction fromSymbols(IRScope scope, int targetIndex, int[] arguments, AttributesCodeEntry paramAttr, OperandBundle operandBundle, FunctionType functionType) {
-        final VoidCallInstruction inst = new VoidCallInstruction(paramAttr, arguments.length, operandBundle, functionType);
+    public boolean getMustTail() {
+        return mustTail;
+    }
+
+    public static VoidCallInstruction fromSymbols(IRScope scope, int targetIndex, int[] arguments, AttributesCodeEntry paramAttr, OperandBundle operandBundle, FunctionType functionType,
+                    boolean mustTail) {
+        final VoidCallInstruction inst = new VoidCallInstruction(paramAttr, arguments.length, operandBundle, functionType, mustTail);
         inst.target = scope.getSymbols().getForwardReferenced(targetIndex, inst);
         Call.parseArguments(scope, inst, inst.arguments, arguments, functionType);
         return inst;
