@@ -950,6 +950,33 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
 
     }
 
+    @SuppressWarnings({"unused", "truffle-unused"})
+    public abstract static class SharedWrapperInFallbackNode extends Node {
+
+        public abstract Object execute(Object arg0);
+
+        @Specialization(guards = {"arg0 == 2", "guardNode.execute(arg0)"}, limit = "1")
+        protected Object oneArg(int arg0,
+                        @Shared("guard") @Cached(neverDefault = false) GuardCacheNode guardNode) {
+            return arg0;
+        }
+
+        @Specialization(guards = {"arg0 == 1", "guardNode.execute(arg0)"}, limit = "1")
+        protected Object twoArg(int arg0,
+                        @Shared("guard") @Cached(neverDefault = false) GuardCacheNode guardNode) {
+            return arg0;
+        }
+
+        /*
+         * This specialization forces a boundary method in combination with a shared wrapper.
+         */
+        @Fallback
+        protected Object twoArgs(Object arg0) {
+            return arg0;
+        }
+
+    }
+
     static final int NODES = 10;
     static final int THREADS = 10;
 

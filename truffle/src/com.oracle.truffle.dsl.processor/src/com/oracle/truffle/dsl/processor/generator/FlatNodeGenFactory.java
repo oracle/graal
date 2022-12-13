@@ -6630,23 +6630,32 @@ public class FlatNodeGenFactory {
 
                 for (CacheExpression cache : getNullCachesDueToFallback(specialization, guard)) {
                     String localName = createCacheLocalName(cache);
-                    if (!isCacheInitialized(frameState, specialization, cache)) {
-                        init.startStatement();
-                        init.type(cache.getParameter().getType());
-                        init.string(" ", localName, " = ");
+                    LocalVariable cacheWrapper = createCacheClassAccess(frameState, init, cache);
+                    if (cacheWrapper == null) {
 
-                        if (useSpecializationClass(specialization) && cache.getSharedGroup() == null) {
-                            init.tree(createGetSpecializationClass(frameState, specialization, true));
-                            init.string(" == null ? null : ");
+                        if (!isCacheInitialized(frameState, specialization, cache)) {
+                            init.startStatement();
+                            init.type(cache.getParameter().getType());
+                            init.string(" ", localName, " = ");
+
+                            if (useSpecializationClass(specialization) && cache.getSharedGroup() == null) {
+                                init.tree(createGetSpecializationClass(frameState, specialization, true));
+                                init.string(" == null ? null : ");
+                            }
+
+                            init.tree(createCacheAccess(frameState, specialization, cache, null));
+                            init.end();
+                            setCacheInitialized(frameState, specialization, cache, true);
                         }
 
-                        init.tree(createCacheAccess(frameState, specialization, cache, null));
-                        init.end();
-                        setCacheInitialized(frameState, specialization, cache, true);
+                        condition.string(localName).string(" == ").defaultValue(cache.getParameter().getType());
+                        condition.string(" || ");
+
+                    } else {
+                        condition.tree(cacheWrapper.createReference()).string(" == null");
+                        condition.string(" || ");
                     }
 
-                    condition.string(localName).string(" == ").defaultValue(cache.getParameter().getType());
-                    condition.string(" || ");
                 }
 
                 condition.tree(writeExpression(frameState, specialization, expression));
