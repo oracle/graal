@@ -62,6 +62,7 @@ import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.CPUFeatureAccess;
@@ -86,6 +87,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -94,6 +96,7 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
+import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -103,6 +106,7 @@ import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
+import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
@@ -204,6 +208,14 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         CPUFeatureAccess cpuFeatureAccess = ImageSingletons.lookup(CPUFeatureAccess.class);
         if (cpuFeatureAccess.verifyHostSupportsArchitectureEarly() != 0) {
             return CEntryPointErrors.CPU_FEATURE_CHECK_FAILED;
+        }
+
+        UnsignedWord runtimePageSize = VirtualMemoryProvider.get().getGranularity();
+        UnsignedWord imagePageSize = WordFactory.unsigned(SubstrateOptions.getPageSize());
+        boolean validPageSize = runtimePageSize.equal(imagePageSize) ||
+                        (Heap.getHeap().allowPageSizeMismatch() && UnsignedUtils.isAMultiple(imagePageSize, runtimePageSize));
+        if (!validPageSize) {
+            return CEntryPointErrors.PAGE_SIZE_CHECK_FAILED;
         }
         CLongPointer parsedArgs = StackValue.get(IsolateArgumentParser.getStructSize());
         IsolateArgumentParser.parse(parameters, parsedArgs);
