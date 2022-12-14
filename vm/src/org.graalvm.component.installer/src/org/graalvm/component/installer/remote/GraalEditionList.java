@@ -233,10 +233,10 @@ public final class GraalEditionList implements CatalogFactory {
         }
         for (String s : parts) {
             try {
-            SoftwareChannelSource chs = new SoftwareChannelSource(s);
-            chs.setPriority(priority);
-            chs.setParameter("edition", id);
-            sources.add(chs);
+                SoftwareChannelSource chs = new SoftwareChannelSource(s);
+                chs.setPriority(priority);
+                chs.setParameter("edition", id);
+                sources.add(chs);
             } catch (MalformedURLException ex) {
                 feedback.error("REMOTE_FailedToParseParameter", ex, s); // NOI18N
             }

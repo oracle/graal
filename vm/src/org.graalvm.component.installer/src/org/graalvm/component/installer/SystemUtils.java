@@ -513,11 +513,11 @@ public class SystemUtils {
                     url.append('=');
                     url.append(URLEncoder.encode(val, "UTF-8"));
                     url.append('&');
-            } catch (UnsupportedEncodingException ex) {
-                MalformedURLException newEx = new MalformedURLException(ex.getLocalizedMessage());
-                newEx.initCause(ex);
-                throw newEx;
-            }
+                } catch (UnsupportedEncodingException ex) {
+                    MalformedURLException newEx = new MalformedURLException(ex.getLocalizedMessage());
+                    newEx.initCause(ex);
+                    throw newEx;
+                }
             }
         }
         return url.substring(0, url.length() - 1);
