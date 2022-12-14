@@ -535,7 +535,7 @@ public interface FileSystem {
      * from a prepared zip file.
      *
      * <pre>
-     * Path zipFile = Paths.get("sandbox.zip");
+     * Path zipFile = Paths.get("filesystem.zip");
      * try (java.nio.file.FileSystem nioFs = FileSystems.newFileSystem(zipFile)) {
      *     IOAccess ioAccess = IOAccess.newBuilder().fileSystem(FileSystem.newFileSystem(nioFs)).build();
      *     try (Context ctx = Context.newBuilder().allowIO(ioAccess).build()) {

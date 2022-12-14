@@ -159,6 +159,27 @@ suite = {
       },
     },
 
+    "JIMFS" : {
+      "sha1": "48462eb319817c90c27d377341684b6b81372e08",
+      "sourceSha1": "bc1cd4901ef5f6ed1f62fe2e876758ce081e2aba",
+      "maven": {
+        "groupId": "com.google.jimfs",
+        "artifactId": "jimfs",
+        "version": "1.2",
+      },
+    },
+
+    "GUAVA": { # JIMFS dependency
+      "moduleName": "com.google.common",
+      "sha1": "119ea2b2bc205b138974d351777b20f02b92704b",
+      "sourceSha1": "d34772c01bd6637982d1aafe895c4fcd8b42e139",
+      "maven": {
+        "groupId": "com.google.guava",
+        "artifactId": "guava",
+        "version": "31.0.1-jre",
+      },
+    },
+
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
   "projects" : {
@@ -252,6 +273,8 @@ suite = {
         "TRUFFLE_API",
         "TRUFFLE_SL",
         "VISUALVM-LIB-JFLUID-HEAP",
+        "GUAVA",
+        "JIMFS",
         "mx:JUNIT",
       ],
       "requires" : [
@@ -1369,7 +1392,14 @@ suite = {
          "com.oracle.truffle.nfi.test",
          "com.oracle.truffle.api.staticobject.test",
        ],
-       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21", "VISUALVM-LIB-JFLUID-HEAP"],
+       "exclude" : [
+         "mx:HAMCREST",
+         "mx:JUNIT",
+         "mx:JMH_1_21",
+         "VISUALVM-LIB-JFLUID-HEAP",
+         "JIMFS",
+         "GUAVA"
+       ],
        "distDependencies" : [
          "TRUFFLE_API",
          "TRUFFLE_SL",

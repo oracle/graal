@@ -205,6 +205,12 @@ final class FileSystems {
         return true;
     }
 
+    private static void validateLinkOptions(LinkOption... linkOptions) {
+        for (LinkOption linkOption : linkOptions) {
+            Objects.requireNonNull(linkOption);
+        }
+    }
+
     static final class PreInitializeContextFileSystem implements PolyglotFileSystem {
 
         private FileSystem delegate; // effectively final after patch context
@@ -747,6 +753,7 @@ final class FileSystems {
                 throw new UnsupportedOperationException("Unsupported URI scheme " + uri.getScheme());
             }
             try {
+                Objects.requireNonNull(uri);
                 return fileSystemProvider.getPath(uri);
             } catch (FileSystemNotFoundException e) {
                 throw new UnsupportedOperationException(e);
@@ -755,11 +762,14 @@ final class FileSystems {
 
         @Override
         public Path parsePath(String path) {
+            Objects.requireNonNull(path);
             return fileSystem.getPath(path);
         }
 
         @Override
         public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
+            Objects.requireNonNull(path);
+            Objects.requireNonNull(modes);
             if (isFollowLinks(linkOptions)) {
                 fileSystemProvider.checkAccess(resolveRelative(path), modes.toArray(new AccessMode[0]));
             } else if (modes.isEmpty()) {
@@ -771,26 +781,38 @@ final class FileSystems {
 
         @Override
         public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
+            Objects.requireNonNull(dir);
+            Objects.requireNonNull(attrs);
             fileSystemProvider.createDirectory(resolveRelative(dir), attrs);
         }
 
         @Override
         public void delete(Path path) throws IOException {
+            Objects.requireNonNull(path);
             fileSystemProvider.delete(resolveRelative(path));
         }
 
         @Override
         public void copy(Path source, Path target, CopyOption... options) throws IOException {
+            Objects.requireNonNull(source);
+            Objects.requireNonNull(target);
+            Objects.requireNonNull(options);
             fileSystemProvider.copy(resolveRelative(source), resolveRelative(target), options);
         }
 
         @Override
         public void move(Path source, Path target, CopyOption... options) throws IOException {
+            Objects.requireNonNull(source);
+            Objects.requireNonNull(target);
+            Objects.requireNonNull(options);
             fileSystemProvider.move(resolveRelative(source), resolveRelative(target), options);
         }
 
         @Override
         public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+            Objects.requireNonNull(path);
+            Objects.requireNonNull(options);
+            Objects.requireNonNull(attrs);
             final Path resolved = resolveRelative(path);
             try {
                 return fileSystemProvider.newFileChannel(resolved, options, attrs);
@@ -801,6 +823,7 @@ final class FileSystems {
 
         @Override
         public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
+            Objects.requireNonNull(dir);
             Path cwd = userDir;
             Path resolvedPath;
             boolean relativize;
@@ -820,31 +843,42 @@ final class FileSystems {
 
         @Override
         public void createLink(Path link, Path existing) throws IOException {
+            Objects.requireNonNull(link);
+            Objects.requireNonNull(existing);
             fileSystemProvider.createLink(resolveRelative(link), resolveRelative(existing));
         }
 
         @Override
         public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) throws IOException {
+            Objects.requireNonNull(link);
+            Objects.requireNonNull(target);
+            Objects.requireNonNull(attrs);
             fileSystemProvider.createSymbolicLink(resolveRelative(link), target, attrs);
         }
 
         @Override
         public Path readSymbolicLink(Path link) throws IOException {
+            Objects.requireNonNull(link);
             return fileSystemProvider.readSymbolicLink(resolveRelative(link));
         }
 
         @Override
         public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
+            Objects.requireNonNull(path);
+            validateLinkOptions(options);
             return fileSystemProvider.readAttributes(resolveRelative(path), attributes, options);
         }
 
         @Override
         public void setAttribute(Path path, String attribute, Object value, LinkOption... options) throws IOException {
+            Objects.requireNonNull(path);
+            validateLinkOptions(options);
             fileSystemProvider.setAttribute(resolveRelative(path), attribute, value, options);
         }
 
         @Override
         public Path toAbsolutePath(Path path) {
+            Objects.requireNonNull(path);
             if (path.isAbsolute()) {
                 return path;
             }
@@ -877,6 +911,8 @@ final class FileSystems {
 
         @Override
         public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
+            Objects.requireNonNull(path);
+            validateLinkOptions(linkOptions);
             final Path resolvedPath = resolveRelative(path);
             return resolvedPath.toRealPath(linkOptions);
         }
@@ -909,6 +945,8 @@ final class FileSystems {
 
         @Override
         public boolean isSameFile(Path path1, Path path2, LinkOption... options) throws IOException {
+            Objects.requireNonNull(path1);
+            Objects.requireNonNull(path2);
             if (isFollowLinks(options)) {
                 Path absolutePath1 = resolveRelative(path1);
                 Path absolutePath2 = resolveRelative(path2);
