@@ -1628,6 +1628,16 @@ suite = {
       "license" : "BSD-new",
     },
 
+    "SULONG_CMAKE_TOOLCHAIN" : {
+      "native" : True,
+      "relpath" : False,
+      "platformDependent" : True,
+      "license" : "BSD-new",
+      "layout" : {
+        "./cmake/" : ["file:cmake/toolchain.cmake"],
+      }
+    },
+
     "SULONG_NATIVE_HOME" : {
       "fileListPurpose": 'native-image-resources',
       "native" : True,
@@ -1635,7 +1645,7 @@ suite = {
       "platformDependent" : True,
       "license" : "BSD-new",
       "layout" : {
-        "./native/cmake/" : ["file:cmake/toolchain.cmake"],
+        "./native/" : "extracted-dependency:SULONG_CMAKE_TOOLCHAIN/*",
         "./native/lib/" : [
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
           "dependency:com.oracle.truffle.llvm.libraries.graalvm.llvm.libs/bin/*",
@@ -1729,9 +1739,9 @@ suite = {
       "relpath": False,
       "platformDependent": True,
       "layout": {
-        "./": "dependency:bootstrap-toolchain-launchers/*",
-        "./cmake/" : [
-          "file:cmake/toolchain.cmake",
+        "./": [
+          "dependency:bootstrap-toolchain-launchers/*",
+          "extracted-dependency:SULONG_CMAKE_TOOLCHAIN/*"
         ],
       },
       "asm_requires_cpp": False,
@@ -1745,8 +1755,10 @@ suite = {
       "relpath": False,
       "platformDependent": True,
       "layout": {
-        "./": "dependency:bootstrap-toolchain-launchers-no-home/*",
-        "./cmake/" : ["file:cmake/toolchain.cmake"],
+        "./": [
+          "dependency:bootstrap-toolchain-launchers-no-home/*",
+          "extracted-dependency:SULONG_CMAKE_TOOLCHAIN/*"
+        ],
       },
       "buildDependencies": [
         "SULONG_TOOLCHAIN_LAUNCHERS",
