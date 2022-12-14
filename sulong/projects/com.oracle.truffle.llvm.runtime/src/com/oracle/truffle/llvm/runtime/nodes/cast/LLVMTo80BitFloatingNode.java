@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -239,7 +239,7 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
             for (int i = 0; i < LLVM80BitFloat.BYTE_WIDTH; i++) {
                 byte value = 0;
                 for (int j = 0; j < Byte.SIZE; j++) {
-                    value |= (from.getValue(i * Byte.SIZE + j) ? 1L : 0L) << j;
+                    value |= (byte) ((from.getValue(i * Byte.SIZE + j) ? 1 : 0) << j);
                 }
                 result[i] = value;
             }
