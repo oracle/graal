@@ -1467,9 +1467,7 @@ public class FlatNodeGenFactory {
 
         for (SpecializationData specialization : filteredSpecializations) {
 
-            if (hasMultipleNodes()) {
-                builder.startBlock(); // local can overlap between nodes
-            }
+            builder.startBlock(); // local can overlap between nodes
 
             // we need to copy otherwise local variables of caches may conflict.
             FrameState innerFrameState = frameState.copy();
@@ -1572,9 +1570,7 @@ public class FlatNodeGenFactory {
             builder.tree(multiState.createSet(innerFrameState, null, StateQuery.create(SpecializationActive.class, specialization), true, true));
             builder.end(blockState.blockCount);
 
-            if (hasMultipleNodes()) {
-                builder.end();
-            }
+            builder.end();
         }
         StateTransaction transaction = new StateTransaction();
         builder.tree(multiState.createForceLoad(frameState,
