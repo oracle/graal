@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk17;
 
-import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
+package com.oracle.svm.core.jdk;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK17OrLater;
+public class CgroupMetricsJDK implements BooleanSupplier {
 
-@Platforms(Platform.LINUX.class)
-@TargetClass(className = "jdk.internal.platform.CgroupMetrics", onlyWith = JDK17OrLater.class)
-public final class Target_jdk_internal_platform_CgroupMetrics_JDK17OrLater {
-    @Substitute
-    public static boolean isUseContainerSupport() {
-        return UseContainerSupport.getValue();
+    static final String CGROUP_METRICS_CLASS = "jdk.internal.platform.CgroupMetrics";
+
+    @Override
+    public boolean getAsBoolean() {
+        Module javaBase = ModuleLayer.boot().findModule("java.base").orElseThrow();
+        Class<?> cgroupMetrics = Class.forName(javaBase, CGROUP_METRICS_CLASS);
+        return cgroupMetrics != null;
     }
+
 }
