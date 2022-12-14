@@ -75,6 +75,8 @@ import java.util.stream.StreamSupport;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import com.google.common.jimfs.Jimfs;
+import com.oracle.truffle.api.test.OSUtils;
 import org.graalvm.collections.Pair;
 import org.graalvm.polyglot.io.FileSystem;
 import org.junit.AfterClass;
@@ -175,8 +177,34 @@ public class NIOFileSystemTest {
                     entry = new ZipEntry(workdir + "/" + FOLDER + "/");
                     outputStream.putNextEntry(entry);
                 }
-                zipFs = FileSystems.newFileSystem(jarURI(zipFile), Collections.emptyMap());
+                zipFs = FileSystems.newFileSystem(zipFile, getClass().getClassLoader());
                 return Pair.create(FileSystem.newFileSystem(zipFs), zipFs.getPath(workdir));
+            } catch (IOException ioe) {
+                throw new AssertionError("Failed to prepare test file system", ioe);
+            }
+        }
+    }
+
+    private static final class MemFileSystemSupplier implements FileSystemSupplier {
+
+        private volatile java.nio.file.FileSystem memFs;
+
+        @Override
+        public void close() throws IOException {
+            if (memFs != null) {
+                memFs.close();
+            }
+        }
+
+        @Override
+        public Pair<FileSystem, Path> get() {
+            try {
+                memFs = Jimfs.newFileSystem();
+                Path workdir = OSUtils.isWindows() ? memFs.getPath("C:\\workdir") : memFs.getPath("/workdir");
+                Files.createDirectory(workdir);
+                Files.write(workdir.resolve(FILE), NIOFileSystemTest.class.getSimpleName().getBytes(StandardCharsets.UTF_8));
+                Files.createDirectory(workdir.resolve(FOLDER));
+                return Pair.create(FileSystem.newFileSystem(memFs), workdir);
             } catch (IOException ioe) {
                 throw new AssertionError("Failed to prepare test file system", ioe);
             }
@@ -191,6 +219,11 @@ public class NIOFileSystemTest {
          * {@link File#separator}. The zip filesystem always uses {@code "/"}.
          */
         final String separator;
+
+        /**
+         * If {@code true} the filesystem supports parsing a Path from an URI.
+         */
+        final boolean supportsURI;
         /**
          * If {@code true} the filesystem supports links. If {@code false} the filesystem does not
          * support links and may not even verify {@link LinkOption} parameters.
@@ -236,15 +269,24 @@ public class NIOFileSystemTest {
          */
         final boolean strictCreateDirectoryAttrs;
 
+        /**
+         * Exception thrown by readAttributes. According to Javadoc it should be
+         * {@link UnsupportedOperationException}. But jimfs throws a {@link NullPointerException},
+         * see https://github.com/google/jimfs/issues/212.
+         */
+        final Class<? extends Exception> readUnsupportedViewException;
+
         private volatile FileSystem fsCache;
         private volatile Path workDirCache;
 
         Config(String name, FileSystemSupplier fileSystemSupplier, String separator,
-                        boolean supportsLinks, boolean supportsTempDirectory, boolean strictReadAttributes, boolean strictCopyOptions,
-                        boolean strictMoveOptions, boolean strictNewByteChannelAttrs, boolean strictCreateDirectoryAttrs) {
+                        boolean supportsURI, boolean supportsLinks, boolean supportsTempDirectory, boolean strictReadAttributes,
+                        boolean strictCopyOptions, boolean strictMoveOptions, boolean strictNewByteChannelAttrs, boolean strictCreateDirectoryAttrs,
+                        Class<? extends Exception> readUnsupportedViewException) {
             this.name = name;
             this.fileSystemSupplier = fileSystemSupplier;
             this.separator = separator;
+            this.supportsURI = supportsURI;
             this.supportsLinks = supportsLinks;
             this.supportsTempDirectory = supportsTempDirectory;
             this.strictReadAttributes = strictReadAttributes;
@@ -252,6 +294,7 @@ public class NIOFileSystemTest {
             this.strictMoveOptions = strictMoveOptions;
             this.strictNewByteChannelAttrs = strictNewByteChannelAttrs;
             this.strictCreateDirectoryAttrs = strictCreateDirectoryAttrs;
+            this.readUnsupportedViewException = readUnsupportedViewException != null ? readUnsupportedViewException : UnsupportedOperationException.class;
         }
 
         FileSystem fs() {
@@ -293,16 +336,13 @@ public class NIOFileSystemTest {
     public static Collection<Config> createParameters() {
         Collection<Config> res = List.of(
                         new Config("Default FS", new DefaultFileSystemSupplier(), File.separator,
-                                        true, true, true, true, true, true, true),
+                                        true, true, true, true, true, true, true, true, null),
                         new Config("Zip FS", new ZipFileSystemSupplier(), "/",
-                                        false, false, false, false, false, false, false));
+                                        false, false, false, false, false, false, false, false, null),
+                        new Config("Memory FS", new MemFileSystemSupplier(), File.separator,
+                                        false, true, false, true, false, false, true, true, NullPointerException.class));
         configurations = res;
         return res;
-    }
-
-    private static URI jarURI(Path path) {
-        assert Files.isRegularFile(path);
-        return URI.create("jar:" + path.toUri() + "!/");
     }
 
     @AfterClass
@@ -331,11 +371,13 @@ public class NIOFileSystemTest {
         String fileName = "test";
         Path path = config.fs().parsePath(fileName);
         Assert.assertEquals(fileName, path.getFileName().toString());
-        path = config.fs().parsePath(config.workDir().toAbsolutePath().toUri());
-        Assert.assertEquals(config.workDir().toAbsolutePath(), path);
         expectException(() -> config.fs().parsePath((String) null), NullPointerException.class);
-        expectException(() -> config.fs().parsePath((URI) null), NullPointerException.class);
-        expectException(() -> config.fs().parsePath(new URI("unknownscheme:///tmp/")), UnsupportedOperationException.class);
+        if (config.supportsURI) {
+            path = config.fs().parsePath(config.workDir().toAbsolutePath().toUri());
+            Assert.assertEquals(config.workDir().toAbsolutePath(), path);
+            expectException(() -> config.fs().parsePath((URI) null), NullPointerException.class);
+            expectException(() -> config.fs().parsePath(new URI("unknownscheme:///tmp/")), UnsupportedOperationException.class);
+        }
     }
 
     @Test
@@ -349,10 +391,8 @@ public class NIOFileSystemTest {
         config.fs().checkAccess(fileRelative, EnumSet.of(AccessMode.READ));
         expectException(() -> config.fs().checkAccess(nonExistent, EnumSet.of(AccessMode.READ)), NoSuchFileException.class);
         expectException(() -> config.fs().checkAccess(folderAbsolute, null), NullPointerException.class);
-        if (config.supportsLinks) {
-            expectException(() -> config.fs().checkAccess(folderAbsolute, EnumSet.of(AccessMode.READ), (LinkOption[]) null), NullPointerException.class);
-            expectException(() -> config.fs().checkAccess(folderAbsolute, EnumSet.of(AccessMode.READ), new LinkOption[]{null}), NullPointerException.class);
-        }
+        expectException(() -> config.fs().checkAccess(folderAbsolute, EnumSet.of(AccessMode.READ), (LinkOption[]) null), NullPointerException.class);
+        expectException(() -> config.fs().checkAccess(folderAbsolute, EnumSet.of(AccessMode.READ), new LinkOption[]{null}), NullPointerException.class);
     }
 
     @Test
@@ -420,14 +460,14 @@ public class NIOFileSystemTest {
     @Test
     public void testCreateLink() throws IOException {
         Assume.assumeTrue(config.supportsLinks);
-        Path targetRelative = config.workDir().resolve("testCreateLink");
-        Path target = config.fs().toAbsolutePath(config.workDir().resolve("testCreateLink2"));
         try {
-            config.fs().createLink(targetRelative, fileRelative);
+            config.fs().createLink(config.workDir().resolve("testCreateLink"), fileRelative);
         } catch (UnsupportedOperationException uoe) {
             // Links not supported by OS.
             return;
         }
+        Path targetRelative = config.fs().parsePath("testCreateLink1");
+        Path target = config.workDir().resolve("testCreateLink2");
         expectException(() -> config.fs().createLink(targetRelative, null), NullPointerException.class);
         expectException(() -> config.fs().createLink(null, fileAbsolute), NullPointerException.class);
         config.fs().createLink(target, fileAbsolute);
@@ -436,14 +476,14 @@ public class NIOFileSystemTest {
     @Test
     public void testCreateSymLink() throws IOException {
         Assume.assumeTrue(config.supportsLinks);
-        Path targetRelative = config.workDir().resolve("testCreateSymLink");
-        Path target = config.fs().toAbsolutePath(config.workDir().resolve("testCreateSymLink2"));
         try {
-            config.fs().createSymbolicLink(targetRelative, fileRelative);
+            config.fs().createSymbolicLink(config.workDir().resolve("testCreateSymLink"), fileRelative);
         } catch (UnsupportedOperationException uoe) {
             // Links not supported by OS.
             return;
         }
+        Path targetRelative = config.fs().parsePath("testCreateSymLink1");
+        Path target = config.workDir().resolve("testCreateSymLink2");
         expectException(() -> config.fs().createSymbolicLink(targetRelative, null), NullPointerException.class);
         expectException(() -> config.fs().createSymbolicLink(null, fileAbsolute), NullPointerException.class);
         expectException(() -> config.fs().createSymbolicLink(targetRelative, fileAbsolute, (FileAttribute<?>[]) null), NullPointerException.class);
@@ -555,7 +595,6 @@ public class NIOFileSystemTest {
     public void testNewByteChannel() throws IOException {
         expectException(() -> config.fs().newByteChannel(null, Collections.emptySet()).close(), NullPointerException.class);
         expectException(() -> config.fs().newByteChannel(fileAbsolute, null).close(), NullPointerException.class);
-        expectException(() -> config.fs().newByteChannel(fileAbsolute, Collections.singleton(null)).close(), NullPointerException.class);
         Path target = config.workDir().resolve("testNewByteChannel1");
         expectException(() -> config.fs().newByteChannel(target, EnumSet.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE), (FileAttribute<?>[]) null).close(), NullPointerException.class);
         expectException(() -> config.fs().newByteChannel(target, EnumSet.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE), new FileAttribute<?>[]{null}).close(), NullPointerException.class);
@@ -627,11 +666,9 @@ public class NIOFileSystemTest {
     public void testReadAttributes() throws IOException {
         expectException(() -> config.fs().readAttributes(null, "basic:*"), NullPointerException.class);
         expectException(() -> config.fs().readAttributes(fileAbsolute, null), NullPointerException.class);
-        if (config.supportsLinks) {
-            expectException(() -> config.fs().readAttributes(fileAbsolute, "basic:*", (LinkOption[]) null), NullPointerException.class);
-            expectException(() -> config.fs().readAttributes(fileAbsolute, "basic:*", new LinkOption[]{null}), NullPointerException.class);
-        }
-        expectException(() -> config.fs().readAttributes(fileAbsolute, "extended:*"), UnsupportedOperationException.class);
+        expectException(() -> config.fs().readAttributes(fileAbsolute, "basic:*", (LinkOption[]) null), NullPointerException.class);
+        expectException(() -> config.fs().readAttributes(fileAbsolute, "basic:*", new LinkOption[]{null}), NullPointerException.class);
+        expectException(() -> config.fs().readAttributes(fileAbsolute, "extended:*"), config.readUnsupportedViewException);
         if (config.strictReadAttributes) {
             expectException(() -> config.fs().readAttributes(fileAbsolute, ""), IllegalArgumentException.class);
             expectException(() -> config.fs().readAttributes(fileAbsolute, "basic:size+creationTime"), IllegalArgumentException.class);
@@ -668,12 +705,10 @@ public class NIOFileSystemTest {
     public void testSetAttribute() throws IOException {
         expectException(() -> config.fs().setAttribute(null, "basic:lastModifiedTime", FileTime.fromMillis(System.currentTimeMillis())), NullPointerException.class);
         expectException(() -> config.fs().setAttribute(fileAbsolute, null, FileTime.fromMillis(System.currentTimeMillis())), NullPointerException.class);
-        if (config.supportsLinks) {
-            expectException(() -> config.fs().setAttribute(fileAbsolute, "basic:lastModifiedTime", FileTime.fromMillis(System.currentTimeMillis()), (LinkOption[]) null), NullPointerException.class);
-            expectException(() -> config.fs().setAttribute(fileAbsolute, "basic:lastModifiedTime", FileTime.fromMillis(System.currentTimeMillis()), new LinkOption[]{null}),
-                            NullPointerException.class);
-        }
-        expectException(() -> config.fs().setAttribute(fileAbsolute, "basic:lastModifiedTime", System.currentTimeMillis()), ClassCastException.class);
+        expectException(() -> config.fs().setAttribute(fileAbsolute, "basic:lastModifiedTime", FileTime.fromMillis(System.currentTimeMillis()), (LinkOption[]) null), NullPointerException.class);
+        expectException(() -> config.fs().setAttribute(fileAbsolute, "basic:lastModifiedTime", FileTime.fromMillis(System.currentTimeMillis()), new LinkOption[]{null}),
+                        NullPointerException.class);
+        expectException(() -> config.fs().setAttribute(fileAbsolute, "basic:lastModifiedTime", System.currentTimeMillis()), ClassCastException.class, IllegalArgumentException.class);
         // According to Javadoc the FileSystemProvider#setAttribute should throw
         // IllegalArgumentException if the attribute name is not specified, or is not recognized and
         // UnsupportedOperationException if the attribute view is not available. But the
@@ -700,10 +735,8 @@ public class NIOFileSystemTest {
     @Test
     public void testToRealPath() throws IOException {
         expectException(() -> config.fs().toRealPath(null), NullPointerException.class);
-        if (config.supportsLinks) {
-            expectException(() -> config.fs().toRealPath(fileAbsolute, (LinkOption[]) null), NullPointerException.class);
-            expectException(() -> config.fs().toRealPath(fileAbsolute, new LinkOption[]{null}), NullPointerException.class);
-        }
+        expectException(() -> config.fs().toRealPath(fileAbsolute, (LinkOption[]) null), NullPointerException.class);
+        expectException(() -> config.fs().toRealPath(fileAbsolute, new LinkOption[]{null}), NullPointerException.class);
         Assert.assertEquals(fileAbsolute.toRealPath(), config.fs().toRealPath(fileAbsolute));
         Assert.assertEquals(fileAbsolute.toRealPath(), config.fs().toRealPath(fileRelative));
     }
