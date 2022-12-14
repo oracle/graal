@@ -169,7 +169,7 @@ class GDSRESTConnector {
         return baseURL + ENDPOINT_LICENSE + licenseId;
     }
 
-    public String makeArtifactsURL(String javaVersion) {
+    public String makeArtifactsURL(String javaVersion) throws MalformedURLException {
         fillArtifacts();
         fillMetaJava(javaVersion);
         String out = SystemUtils.buildUrlStringWithParameters(baseURL + ENDPOINT_ARTIFACTS, getParams());
@@ -177,7 +177,7 @@ class GDSRESTConnector {
         return out;
     }
 
-    public String makeReleaseCatalogURL(String releaseVersion, String javaVersion) {
+    public String makeReleaseCatalogURL(String releaseVersion, String javaVersion) throws MalformedURLException {
         fillArtifacts();
         fillMetaJava(javaVersion);
         fillMetaRelease(releaseVersion);

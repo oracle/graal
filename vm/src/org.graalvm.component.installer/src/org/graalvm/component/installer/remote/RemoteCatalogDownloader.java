@@ -24,6 +24,7 @@
  */
 package org.graalvm.component.installer.remote;
 
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -107,7 +108,11 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
         }
         String[] parts = overrideSpec.split("\\|"); // NOI18N
         for (String s : parts) {
-            sources.add(new SoftwareChannelSource(s)); // NOI18N
+            try {
+                sources.add(new SoftwareChannelSource(s)); // NOI18N
+            } catch (MalformedURLException ex) {
+                feedback.error("REMOTE_FailedToParseParameter", ex, s); // NOI18N
+            }
         }
         return sources;
     }

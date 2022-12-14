@@ -24,6 +24,7 @@
  */
 package org.graalvm.component.installer.remote;
 
+import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -231,10 +232,14 @@ public final class GraalEditionList implements CatalogFactory {
             id = targetGraal.getGraalCapabilities().get(CommonConstants.CAP_EDITION);
         }
         for (String s : parts) {
+            try {
             SoftwareChannelSource chs = new SoftwareChannelSource(s);
             chs.setPriority(priority);
             chs.setParameter("edition", id);
             sources.add(chs);
+            } catch (MalformedURLException ex) {
+                feedback.error("REMOTE_FailedToParseParameter", ex, s); // NOI18N
+            }
             priority++;
         }
         return sources;

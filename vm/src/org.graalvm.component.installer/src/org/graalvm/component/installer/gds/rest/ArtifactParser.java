@@ -27,6 +27,7 @@ package org.graalvm.component.installer.gds.rest;
 
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
+import java.net.MalformedURLException;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
@@ -159,7 +160,7 @@ class ArtifactParser {
         return getMetadata(META_WORK_DIR);
     }
 
-    public ComponentInfo asComponentInfo(GDSRESTConnector connector, Feedback fb) {
+    public ComponentInfo asComponentInfo(GDSRESTConnector connector, Feedback fb) throws MalformedURLException {
         return fillInComponent(
                         new ComponentInfo(
                                         getLabel(),
@@ -170,7 +171,7 @@ class ArtifactParser {
                         fb);
     }
 
-    private ComponentInfo fillInComponent(ComponentInfo info, GDSRESTConnector connector, Feedback fb) {
+    private ComponentInfo fillInComponent(ComponentInfo info, GDSRESTConnector connector, Feedback fb) throws MalformedURLException {
         info.addRequiredValues(translateRequiredValues(fb));
         info.addProvidedValues(translateProvidedValues(fb));
         info.setDependencies(translateDependency(fb));
