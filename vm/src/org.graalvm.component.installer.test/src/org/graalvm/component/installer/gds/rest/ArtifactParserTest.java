@@ -182,7 +182,7 @@ public class ArtifactParserTest extends TestBase {
     }
 
     @Test
-    public void testAsComponentInfo() {
+    public void testAsComponentInfo() throws Exception{
         JSONObject jo = prepareJO();
         ArtifactParser ap = new ArtifactParser(jo);
         ComponentInfo ci = ap.asComponentInfo(conn, this);

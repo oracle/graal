@@ -214,7 +214,7 @@ public class GDSRESTConnectorTest extends TestBase {
     }
 
     @Test
-    public void testMakeArtifactsURL() {
+    public void testMakeArtifactsURL() throws Exception {
         String artURL = testConnector.makeArtifactsURL(TEST_JAVA);
         assertTrue(artURL.equals(testURL + GDSRESTConnector.ENDPOINT_ARTIFACTS));
         Map<String, List<String>> params = testConnector.testParams;
@@ -230,7 +230,7 @@ public class GDSRESTConnectorTest extends TestBase {
     }
 
     @Test
-    public void testMakeReleaseCatalogURL() {
+    public void testMakeReleaseCatalogURL() throws Exception {
         String artURL = testConnector.makeReleaseCatalogURL(VERSION_STRING, TEST_JAVA);
         assertTrue(artURL.equals(testURL + GDSRESTConnector.ENDPOINT_ARTIFACTS));
         Map<String, List<String>> params = testConnector.testParams;

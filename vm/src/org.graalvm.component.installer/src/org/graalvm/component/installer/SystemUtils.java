@@ -458,7 +458,7 @@ public class SystemUtils {
         return licenseTracking;
     }
 
-    public static String parseURLParameters(String s, Map<String, String> params) {
+    public static String parseURLParameters(String s, Map<String, String> params) throws MalformedURLException {
         int q = s.indexOf('?'); // NOI18N
         if (q == -1) {
             return s;
@@ -470,14 +470,16 @@ public class SystemUtils {
                 String[] nameAndVal = parSpec.split("="); // NOI18N
                 String n;
                 String v;
-                n = URLDecoder.decode(nameAndVal[0], "UTF_8");
+                n = URLDecoder.decode(nameAndVal[0], "UTF-8");
                 if (n.isEmpty()) {
                     continue;
                 }
-                v = nameAndVal.length > 1 ? URLDecoder.decode(nameAndVal[1], "UTF_8") : "";
+                v = nameAndVal.length > 1 ? URLDecoder.decode(nameAndVal[1], "UTF-8") : "";
                 params.put(n, v);
             } catch (UnsupportedEncodingException ex) {
-                Logger.getLogger(SystemUtils.class.getName()).log(Level.SEVERE, null, ex);
+                MalformedURLException newEx = new MalformedURLException(ex.getLocalizedMessage());
+                newEx.initCause(ex);
+                throw newEx;
             }
         }
         return s.substring(0, q);
@@ -495,7 +497,7 @@ public class SystemUtils {
         }
     }
 
-    public static String buildUrlStringWithParameters(String baseURL, Map<String, ? extends Collection<String>> params) {
+    public static String buildUrlStringWithParameters(String baseURL, Map<String, ? extends Collection<String>> params) throws MalformedURLException {
         if (params == null || params.isEmpty()) {
             return baseURL;
         }
@@ -509,13 +511,15 @@ public class SystemUtils {
             }
             for (String val : vals) {
                 try {
-                    url.append(URLEncoder.encode(entry.getKey(), "UTF_8"));
+                    url.append(URLEncoder.encode(entry.getKey(), "UTF-8"));
                     url.append('=');
-                    url.append(URLEncoder.encode(val, "UTF_8"));
+                    url.append(URLEncoder.encode(val, "UTF-8"));
                     url.append('&');
-                } catch (UnsupportedEncodingException ex) {
-                    Logger.getLogger(SystemUtils.class.getName()).log(Level.SEVERE, null, ex);
-                }
+            } catch (UnsupportedEncodingException ex) {
+                MalformedURLException newEx = new MalformedURLException(ex.getLocalizedMessage());
+                newEx.initCause(ex);
+                throw newEx;
+            }
             }
         }
         return url.substring(0, url.length() - 1);
