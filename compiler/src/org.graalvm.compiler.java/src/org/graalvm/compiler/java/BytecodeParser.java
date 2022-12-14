@@ -3958,6 +3958,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         }
     }
 
+    @SuppressWarnings("unused")
     protected void handleBootstrapMethodError(BootstrapMethodError be, JavaMethod javaMethod) {
         throw be;
     }
