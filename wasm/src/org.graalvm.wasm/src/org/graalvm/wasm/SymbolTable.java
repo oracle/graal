@@ -991,7 +991,7 @@ public abstract class SymbolTable {
             final WasmMemory wasmMemory;
             if (context.getContextOptions().memoryOverheadMode()) {
                 // Initialize an empty memory when in memory overhead mode.
-                wasmMemory = WasmMemoryFactory.createMemory(0, 0,0, false, context.getContextOptions().useUnsafeMemory())
+                wasmMemory = WasmMemoryFactory.createMemory(0, 0, 0, false, context.getContextOptions().useUnsafeMemory());
             } else {
                 wasmMemory = WasmMemoryFactory.createMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64, context.getContextOptions().useUnsafeMemory());
             }

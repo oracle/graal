@@ -422,7 +422,7 @@ public class Linker {
 
     void resolvePassiveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, int bytecodeOffset, int bytecodeLength) {
         final Runnable resolveAction = () -> {
-            if(context.getContextOptions().memoryOverheadMode()) {
+            if (context.getContextOptions().memoryOverheadMode()) {
                 // Do not initialize the data segment when in memory overhead mode.
                 return;
             }
