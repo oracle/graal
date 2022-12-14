@@ -1744,7 +1744,7 @@ public class FlatNodeGenFactory {
 
             BlockState blocks = BlockState.NONE;
             if (needsRewrites) {
-                builder.startIf().tree(multiState.createContains(innerFrameState, StateQuery.create(SpecializationActive.class, specialization))).end().startBlock();
+                builder.startIf().tree(createSpecializationActiveCheck(frameState, Arrays.asList(specialization))).end().startBlock();
                 List<IfTriple> tripples = createFastPathNeverDefaultGuards(innerFrameState, specialization);
                 blocks = IfTriple.materialize(builder, tripples, false);
             }
@@ -4840,9 +4840,11 @@ public class FlatNodeGenFactory {
         final boolean stateGuaranteed = group.isLast() && allowedSpecializations != null && allowedSpecializations.size() == 1 &&
                         group.getAllSpecializations().size() == allowedSpecializations.size();
         if (needsRewrites()) {
-            CodeTree stateCheck = multiState.createContains(frameState, StateQuery.create(SpecializationActive.class, specializations));
-            CodeTree stateGuard = null;
+
+            CodeTree stateCheck = createSpecializationActiveCheck(frameState, specializations);
+
             CodeTree assertCheck = null;
+            CodeTree stateGuard = null;
             if (stateGuaranteed) {
                 assertCheck = CodeTreeBuilder.createBuilder().startAssert().tree(stateCheck).end().build();
             } else {
@@ -4851,6 +4853,38 @@ public class FlatNodeGenFactory {
             return Arrays.asList(new IfTriple(null, stateGuard, assertCheck));
         }
         return Collections.emptyList();
+    }
+
+    private CodeTree createSpecializationActiveCheck(FrameState frameState, List<SpecializationData> specializations) {
+        StateQuery query = StateQuery.create(SpecializationActive.class, specializations);
+        CodeTree stateCheck = multiState.createContains(frameState, query);
+
+        if (specializations.size() == 1) {
+            Set<SpecializationData> replacedBy = specializations.get(0).getReplacedBy();
+            if (!replacedBy.isEmpty()) {
+                BitSet set = multiState.findSet(query);
+                CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+                b.tree(stateCheck);
+                Set<BitSet> checkBitSets = new LinkedHashSet<>();
+
+                for (SpecializationData replaced : replacedBy) {
+                    StateQuery replacedQuery = StateQuery.create(SpecializationActive.class, replaced);
+                    BitSet bitSet = multiState.findSet(replacedQuery);
+                    if (!bitSet.equals(set)) {
+                        checkBitSets.add(bitSet);
+                    }
+                }
+                StateQuery replacedQuery = StateQuery.create(SpecializationActive.class, replacedBy);
+                for (BitSet bitSet : checkBitSets) {
+                    b.string(" && ");
+                    b.tree(bitSet.createNotContains(frameState, replacedQuery));
+                }
+
+                stateCheck = b.build();
+            }
+
+        }
+        return stateCheck;
     }
 
     private boolean buildSpecializationSlowPath(final CodeTreeBuilder builder, FrameState frameState, SpecializationGroup group, NodeExecutionMode mode,
@@ -5379,7 +5413,7 @@ public class FlatNodeGenFactory {
         if (useSpecializationClass) {
             builder.startWhile().string(specializationLocalName, " != null").end().startBlock();
         } else {
-            duplicationTriples.add(new IfTriple(null, state.activeState.createContains(innerFrameState, StateQuery.create(SpecializationActive.class, specialization)), null));
+            duplicationTriples.add(new IfTriple(null, createSpecializationActiveCheck(innerFrameState, Arrays.asList(specialization)), null));
         }
 
         duplicationTriples.addAll(createFastPathNeverDefaultGuards(innerFrameState, group.getSpecialization()));
