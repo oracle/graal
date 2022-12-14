@@ -358,14 +358,7 @@ public abstract class NativeImageCodeCache {
             System.out.println("encoded during call entry points           ; " + frameInfoCustomization.numDuringCallEntryPoints);
         }
 
-        HostedImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
-        codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new InstantReferenceAdjuster());
-        reflectionMetadataEncoder.encodeAllAndInstall();
-        imageCodeInfo.setCodeStart(firstMethod);
-        imageCodeInfo.setCodeSize(codeSize);
-        imageCodeInfo.setDataOffset(codeSize);
-        imageCodeInfo.setDataSize(WordFactory.zero()); // (only for data immediately after code)
-        imageCodeInfo.setCodeAndDataMemorySize(codeSize);
+        HostedImageCodeInfo imageCodeInfo = installCodeInfo(firstMethod, codeSize, codeInfoEncoder, reflectionMetadataEncoder);
 
         if (CodeInfoEncoder.Options.CodeInfoEncoderCounters.getValue()) {
             System.out.println("****Start Code Info Encoder Counters****");
@@ -384,6 +377,18 @@ public abstract class NativeImageCodeCache {
         }
 
         assert verifyMethods(codeInfoEncoder, imageCodeInfo);
+    }
+
+    protected HostedImageCodeInfo installCodeInfo(CFunctionPointer firstMethod, UnsignedWord codeSize, CodeInfoEncoder codeInfoEncoder, ReflectionMetadataEncoder reflectionMetadataEncoder) {
+        HostedImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
+        codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new InstantReferenceAdjuster());
+        reflectionMetadataEncoder.encodeAllAndInstall();
+        imageCodeInfo.setCodeStart(firstMethod);
+        imageCodeInfo.setCodeSize(codeSize);
+        imageCodeInfo.setDataOffset(codeSize);
+        imageCodeInfo.setDataSize(WordFactory.zero()); // (only for data immediately after code)
+        imageCodeInfo.setCodeAndDataMemorySize(codeSize);
+        return imageCodeInfo;
     }
 
     protected void encodeMethod(CodeInfoEncoder codeInfoEncoder, Pair<HostedMethod, CompilationResult> pair) {
