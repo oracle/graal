@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm;
 
+import org.graalvm.wasm.constants.BytecodeFlags;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
@@ -121,8 +122,8 @@ public class WasmType implements TruffleObject {
     public static int getCommonValueType(byte[] types) {
         int type = 0;
         for (byte resultType : types) {
-            type |= WasmType.isNumberType(resultType) ? 0x10 : 0;
-            type |= WasmType.isReferenceType(resultType) ? 0x20 : 0;
+            type |= WasmType.isNumberType(resultType) ? BytecodeFlags.LABEL_RESULT_TYPE_NUM : 0;
+            type |= WasmType.isReferenceType(resultType) ? BytecodeFlags.LABEL_RESULT_TYPE_REF : 0;
         }
         return type;
     }

@@ -45,7 +45,7 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.wasm.constants.Bytecode;
+import org.graalvm.wasm.constants.BytecodeFlags;
 import org.graalvm.wasm.constants.SegmentMode;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -242,21 +242,21 @@ public class WasmInstantiator {
             final int flags = bytecode[dataOffset];
             int effectiveOffset = dataOffset + 1;
 
-            final int dataMode = flags & Bytecode.DATA_SEG_MODE;
+            final int dataMode = flags & BytecodeFlags.DATA_SEG_MODE;
             final int dataLength;
-            switch (flags & Bytecode.DATA_SEG_LENGTH_FLAG) {
-                case Bytecode.DATA_SEG_LENGTH_ZERO:
+            switch (flags & BytecodeFlags.DATA_SEG_LENGTH_FLAG) {
+                case BytecodeFlags.DATA_SEG_LENGTH_ZERO:
                     dataLength = 0;
                     break;
-                case Bytecode.DATA_SEG_LENGTH_U8:
+                case BytecodeFlags.DATA_SEG_LENGTH_U8:
                     dataLength = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
                     effectiveOffset++;
                     break;
-                case Bytecode.DATA_SEG_LENGTH_U16:
+                case BytecodeFlags.DATA_SEG_LENGTH_U16:
                     dataLength = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
                     effectiveOffset += 2;
                     break;
-                case Bytecode.DATA_SEG_LENGTH_I32:
+                case BytecodeFlags.DATA_SEG_LENGTH_I32:
                     dataLength = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
                     effectiveOffset += 3;
                     break;
@@ -265,23 +265,23 @@ public class WasmInstantiator {
             }
             if (dataMode == SegmentMode.ACTIVE) {
                 final long dataOffsetAddress;
-                switch (flags & Bytecode.DATA_SEG_OFFSET_ADDRESS_FLAG) {
-                    case Bytecode.DATA_SEG_OFFSET_ADDRESS_UNDEFINED:
+                switch (flags & BytecodeFlags.DATA_SEG_OFFSET_ADDRESS_FLAG) {
+                    case BytecodeFlags.DATA_SEG_OFFSET_ADDRESS_UNDEFINED:
                         dataOffsetAddress = -1;
                         break;
-                    case Bytecode.DATA_SEG_OFFSET_ADDRESS_U8:
+                    case BytecodeFlags.DATA_SEG_OFFSET_ADDRESS_U8:
                         dataOffsetAddress = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
                         effectiveOffset++;
                         break;
-                    case Bytecode.DATA_SEG_OFFSET_ADDRESS_U16:
+                    case BytecodeFlags.DATA_SEG_OFFSET_ADDRESS_U16:
                         dataOffsetAddress = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
                         effectiveOffset += 2;
                         break;
-                    case Bytecode.DATA_SEG_OFFSET_ADDRESS_U32:
+                    case BytecodeFlags.DATA_SEG_OFFSET_ADDRESS_U32:
                         dataOffsetAddress = BinaryStreamParser.rawPeekU32(bytecode, effectiveOffset);
                         effectiveOffset += 4;
                         break;
-                    case Bytecode.DATA_SEG_OFFSET_ADDRESS_U64:
+                    case BytecodeFlags.DATA_SEG_OFFSET_ADDRESS_U64:
                         dataOffsetAddress = BinaryStreamParser.rawPeekI64(bytecode, effectiveOffset);
                         effectiveOffset += 8;
                         break;
@@ -289,19 +289,19 @@ public class WasmInstantiator {
                         throw CompilerDirectives.shouldNotReachHere();
                 }
                 final int dataGlobalIndex;
-                switch (flags & Bytecode.DATA_SEG_GLOBAL_INDEX_FLAG) {
-                    case Bytecode.DATA_SEG_GLOBAL_INDEX_UNDEFINED:
+                switch (flags & BytecodeFlags.DATA_SEG_GLOBAL_INDEX_FLAG) {
+                    case BytecodeFlags.DATA_SEG_GLOBAL_INDEX_UNDEFINED:
                         dataGlobalIndex = -1;
                         break;
-                    case Bytecode.DATA_SEG_GLOBAL_INDEX_U8:
+                    case BytecodeFlags.DATA_SEG_GLOBAL_INDEX_U8:
                         dataGlobalIndex = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
                         effectiveOffset++;
                         break;
-                    case Bytecode.DATA_SEG_GLOBAL_INDEX_U16:
+                    case BytecodeFlags.DATA_SEG_GLOBAL_INDEX_U16:
                         dataGlobalIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
                         effectiveOffset += 2;
                         break;
-                    case Bytecode.DATA_SEG_GLOBAL_INDEX_I32:
+                    case BytecodeFlags.DATA_SEG_GLOBAL_INDEX_I32:
                         dataGlobalIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
                         effectiveOffset += 4;
                         break;
@@ -324,22 +324,22 @@ public class WasmInstantiator {
             final int typeAndMode = bytecode[elemOffset + 1];
             int effectiveOffset = elemOffset + 2;
 
-            final int elemMode = typeAndMode & Bytecode.ELEM_SEG_MODE;
+            final int elemMode = typeAndMode & BytecodeFlags.ELEM_SEG_MODE;
 
             final int elemCount;
-            switch (flags & Bytecode.ELEM_SEG_COUNT_FLAG) {
-                case Bytecode.ELEM_SEG_COUNT_ZERO:
+            switch (flags & BytecodeFlags.ELEM_SEG_COUNT_FLAG) {
+                case BytecodeFlags.ELEM_SEG_COUNT_ZERO:
                     elemCount = 0;
                     break;
-                case Bytecode.ELEM_SEG_COUNT_U8:
+                case BytecodeFlags.ELEM_SEG_COUNT_U8:
                     elemCount = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
                     effectiveOffset++;
                     break;
-                case Bytecode.ELEM_SEG_COUNT_U16:
+                case BytecodeFlags.ELEM_SEG_COUNT_U16:
                     elemCount = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
                     effectiveOffset += 2;
                     break;
-                case Bytecode.ELEM_SEG_COUNT_I32:
+                case BytecodeFlags.ELEM_SEG_COUNT_I32:
                     elemCount = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
                     effectiveOffset += 4;
                     break;
@@ -348,19 +348,19 @@ public class WasmInstantiator {
             }
             if (elemMode == SegmentMode.ACTIVE) {
                 final int tableIndex;
-                switch (flags & Bytecode.ELEM_SEG_TABLE_INDEX_FLAG) {
-                    case Bytecode.ELEM_SEG_TABLE_INDEX_ZERO:
+                switch (flags & BytecodeFlags.ELEM_SEG_TABLE_INDEX_FLAG) {
+                    case BytecodeFlags.ELEM_SEG_TABLE_INDEX_ZERO:
                         tableIndex = 0;
                         break;
-                    case Bytecode.ELEM_SEG_TABLE_INDEX_U8:
+                    case BytecodeFlags.ELEM_SEG_TABLE_INDEX_U8:
                         tableIndex = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
                         effectiveOffset++;
                         break;
-                    case Bytecode.ELEM_SEG_TABLE_INDEX_U16:
+                    case BytecodeFlags.ELEM_SEG_TABLE_INDEX_U16:
                         tableIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
                         effectiveOffset += 2;
                         break;
-                    case Bytecode.ELEM_SEG_TABLE_INDEX_I32:
+                    case BytecodeFlags.ELEM_SEG_TABLE_INDEX_I32:
                         tableIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
                         effectiveOffset += 4;
                         break;
@@ -368,19 +368,19 @@ public class WasmInstantiator {
                         throw CompilerDirectives.shouldNotReachHere();
                 }
                 final int offsetGlobalIndex;
-                switch (flags & Bytecode.ELEM_SEG_GLOBAL_INDEX_FLAG) {
-                    case Bytecode.ELEM_SEG_GLOBAL_INDEX_UNDEFINED:
+                switch (flags & BytecodeFlags.ELEM_SEG_GLOBAL_INDEX_FLAG) {
+                    case BytecodeFlags.ELEM_SEG_GLOBAL_INDEX_UNDEFINED:
                         offsetGlobalIndex = -1;
                         break;
-                    case Bytecode.ELEM_SEG_GLOBAL_INDEX_U8:
+                    case BytecodeFlags.ELEM_SEG_GLOBAL_INDEX_U8:
                         offsetGlobalIndex = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
                         effectiveOffset++;
                         break;
-                    case Bytecode.ELEM_SEG_GLOBAL_INDEX_U16:
+                    case BytecodeFlags.ELEM_SEG_GLOBAL_INDEX_U16:
                         offsetGlobalIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
                         effectiveOffset += 2;
                         break;
-                    case Bytecode.ELEM_SEG_GLOBAL_INDEX_I32:
+                    case BytecodeFlags.ELEM_SEG_GLOBAL_INDEX_I32:
                         offsetGlobalIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
                         effectiveOffset += 4;
                         break;
@@ -388,19 +388,19 @@ public class WasmInstantiator {
                         throw CompilerDirectives.shouldNotReachHere();
                 }
                 final int offsetAddress;
-                switch (flags & Bytecode.ELEM_SEG_OFFSET_ADDRESS_FLAG) {
-                    case Bytecode.ELEM_SEG_OFFSET_ADDRESS_UNDEFINED:
+                switch (flags & BytecodeFlags.ELEM_SEG_OFFSET_ADDRESS_FLAG) {
+                    case BytecodeFlags.ELEM_SEG_OFFSET_ADDRESS_UNDEFINED:
                         offsetAddress = -1;
                         break;
-                    case Bytecode.ELEM_SEG_OFFSET_ADDRESS_U8:
+                    case BytecodeFlags.ELEM_SEG_OFFSET_ADDRESS_U8:
                         offsetAddress = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
                         effectiveOffset++;
                         break;
-                    case Bytecode.ELEM_SEG_OFFSET_ADDRESS_U16:
+                    case BytecodeFlags.ELEM_SEG_OFFSET_ADDRESS_U16:
                         offsetAddress = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
                         effectiveOffset += 2;
                         break;
-                    case Bytecode.ELEM_SEG_OFFSET_ADDRESS_I32:
+                    case BytecodeFlags.ELEM_SEG_OFFSET_ADDRESS_I32:
                         offsetAddress = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
                         effectiveOffset += 4;
                         break;

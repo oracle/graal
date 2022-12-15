@@ -43,7 +43,7 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import org.graalvm.wasm.constants.Bytecode;
+import org.graalvm.wasm.constants.BytecodeFlags;
 import org.graalvm.wasm.memory.NativeDataInstanceUtil;
 import org.graalvm.wasm.memory.WasmMemory;
 
@@ -294,7 +294,7 @@ public class RuntimeState {
         }
         final int bytecodeOffset = dataInstances[index];
         final byte[] bytecode = module().bytecode();
-        return bytecodeOffset + (bytecode[bytecodeOffset] & Bytecode.DATA_SEG_RUNTIME_LENGTH_FLAG) + 1;
+        return bytecodeOffset + (bytecode[bytecodeOffset] & BytecodeFlags.DATA_SEG_RUNTIME_LENGTH_FLAG) + 1;
     }
 
     public int dataInstanceLength(int index) {
@@ -304,19 +304,19 @@ public class RuntimeState {
         final int bytecodeOffset = dataInstances[index];
         final byte[] bytecode = module().bytecode();
         final int flags = bytecode[bytecodeOffset];
-        final int lengthBytes = flags & Bytecode.DATA_SEG_RUNTIME_LENGTH_FLAG;
+        final int lengthBytes = flags & BytecodeFlags.DATA_SEG_RUNTIME_LENGTH_FLAG;
         final int length;
         switch (lengthBytes) {
-            case Bytecode.DATA_SEG_RUNTIME_LENGTH_ZERO:
-                length = (flags & Bytecode.DATA_SEG_RUNTIME_LENGTH_VALUE) >>> 3;
+            case BytecodeFlags.DATA_SEG_RUNTIME_LENGTH_ZERO:
+                length = (flags & BytecodeFlags.DATA_SEG_RUNTIME_LENGTH_VALUE) >>> 3;
                 break;
-            case Bytecode.DATA_SEG_RUNTIME_LENGTH_U8:
+            case BytecodeFlags.DATA_SEG_RUNTIME_LENGTH_U8:
                 length = BinaryStreamParser.rawPeekU8(bytecode, bytecodeOffset + 1);
                 break;
-            case Bytecode.DATA_SEG_RUNTIME_LENGTH_U16:
+            case BytecodeFlags.DATA_SEG_RUNTIME_LENGTH_U16:
                 length = BinaryStreamParser.rawPeekU16(bytecode, bytecodeOffset + 1);
                 break;
-            case Bytecode.DATA_SEG_RUNTIME_LENGTH_I32:
+            case BytecodeFlags.DATA_SEG_RUNTIME_LENGTH_I32:
                 length = BinaryStreamParser.rawPeekI32(bytecode, bytecodeOffset + 1);
                 break;
             default:
@@ -332,7 +332,7 @@ public class RuntimeState {
         final int bytecodeOffset = dataInstances[index];
         final byte[] bytecode = module().bytecode();
         final byte flags = bytecode[bytecodeOffset];
-        final int lengthBytes = flags & Bytecode.DATA_SEG_RUNTIME_LENGTH_FLAG;
+        final int lengthBytes = flags & BytecodeFlags.DATA_SEG_RUNTIME_LENGTH_FLAG;
         return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + lengthBytes + 1);
     }
 

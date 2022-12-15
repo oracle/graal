@@ -48,7 +48,7 @@ import org.graalvm.wasm.Linker.ResolutionDag.ImportMemorySym;
 import org.graalvm.wasm.Linker.ResolutionDag.Resolver;
 import org.graalvm.wasm.Linker.ResolutionDag.Sym;
 import org.graalvm.wasm.SymbolTable.FunctionType;
-import org.graalvm.wasm.constants.Bytecode;
+import org.graalvm.wasm.constants.BytecodeFlags;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -428,7 +428,7 @@ public class Linker {
             }
             if (context.getContextOptions().useUnsafeMemory()) {
                 final byte[] bytecode = instance.module().bytecode();
-                final int lengthBytes = bytecode[bytecodeOffset] & Bytecode.DATA_SEG_RUNTIME_LENGTH_FLAG;
+                final int lengthBytes = bytecode[bytecodeOffset] & BytecodeFlags.DATA_SEG_RUNTIME_LENGTH_FLAG;
                 final long instanceAddress = NativeDataInstanceUtil.allocateNativeInstance(instance.module().bytecode(), bytecodeOffset + lengthBytes + 9, bytecodeLength);
                 BinaryStreamParser.writeI64(bytecode, bytecodeOffset + lengthBytes + 1, instanceAddress);
             }
@@ -488,33 +488,33 @@ public class Linker {
         for (int elementIndex = 0; elementIndex != elementCount; elementIndex++) {
             int opcode = BinaryStreamParser.rawPeekU8(bytecode, elementOffset);
             elementOffset++;
-            final int type = opcode & Bytecode.ELEM_ITEM_TYPE;
-            final int length = opcode & Bytecode.ELEM_ITEM_LENGTH;
-            if ((opcode & Bytecode.ELEM_ITEM_NULL_FLAG) != 0) {
+            final int type = opcode & BytecodeFlags.ELEM_ITEM_TYPE;
+            final int length = opcode & BytecodeFlags.ELEM_ITEM_LENGTH;
+            if ((opcode & BytecodeFlags.ELEM_ITEM_NULL_FLAG) != 0) {
                 // null constant
                 continue;
             }
             final int index;
             switch (length) {
-                case Bytecode.ELEM_ITEM_LENGTH_U4:
-                    index = opcode & Bytecode.ELEM_ITEM_DIRECT_VALUE;
+                case BytecodeFlags.ELEM_ITEM_LENGTH_U4:
+                    index = opcode & BytecodeFlags.ELEM_ITEM_DIRECT_VALUE;
                     break;
-                case Bytecode.ELEM_ITEM_LENGTH_U8:
+                case BytecodeFlags.ELEM_ITEM_LENGTH_U8:
                     index = BinaryStreamParser.rawPeekU8(bytecode, elementOffset);
                     elementOffset++;
                     break;
-                case Bytecode.ELEM_ITEM_LENGTH_U16:
+                case BytecodeFlags.ELEM_ITEM_LENGTH_U16:
                     index = BinaryStreamParser.rawPeekU16(bytecode, elementOffset);
                     elementOffset += 2;
                     break;
-                case Bytecode.ELEM_ITEM_LENGTH_I32:
+                case BytecodeFlags.ELEM_ITEM_LENGTH_I32:
                     index = BinaryStreamParser.rawPeekI32(bytecode, elementOffset);
                     elementOffset += 4;
                     break;
                 default:
                     throw CompilerDirectives.shouldNotReachHere();
             }
-            if (type == Bytecode.ELEM_ITEM_TYPE_FUNCTION_INDEX) {
+            if (type == BytecodeFlags.ELEM_ITEM_TYPE_FUNCTION_INDEX) {
                 // function index
                 final WasmFunction function = instance.module().function(index);
                 if (function.importDescriptor() != null) {
@@ -534,34 +534,34 @@ public class Linker {
         for (int elementIndex = 0; elementIndex != elementCount; ++elementIndex) {
             int opcode = BinaryStreamParser.rawPeekU8(bytecode, elementOffset);
             elementOffset++;
-            final int type = opcode & Bytecode.ELEM_ITEM_TYPE;
-            final int length = opcode & Bytecode.ELEM_ITEM_LENGTH;
-            if ((opcode & Bytecode.ELEM_ITEM_NULL_FLAG) != 0) {
+            final int type = opcode & BytecodeFlags.ELEM_ITEM_TYPE;
+            final int length = opcode & BytecodeFlags.ELEM_ITEM_LENGTH;
+            if ((opcode & BytecodeFlags.ELEM_ITEM_NULL_FLAG) != 0) {
                 // null constant
                 elemItems[elementIndex] = WasmConstant.NULL;
                 continue;
             }
             final int index;
             switch (length) {
-                case Bytecode.ELEM_ITEM_LENGTH_U4:
-                    index = opcode & Bytecode.ELEM_ITEM_DIRECT_VALUE;
+                case BytecodeFlags.ELEM_ITEM_LENGTH_U4:
+                    index = opcode & BytecodeFlags.ELEM_ITEM_DIRECT_VALUE;
                     break;
-                case Bytecode.ELEM_ITEM_LENGTH_U8:
+                case BytecodeFlags.ELEM_ITEM_LENGTH_U8:
                     index = BinaryStreamParser.rawPeekU8(bytecode, elementOffset);
                     elementOffset++;
                     break;
-                case Bytecode.ELEM_ITEM_LENGTH_U16:
+                case BytecodeFlags.ELEM_ITEM_LENGTH_U16:
                     index = BinaryStreamParser.rawPeekU16(bytecode, elementOffset);
                     elementOffset += 2;
                     break;
-                case Bytecode.ELEM_ITEM_LENGTH_I32:
+                case BytecodeFlags.ELEM_ITEM_LENGTH_I32:
                     index = BinaryStreamParser.rawPeekI32(bytecode, elementOffset);
                     elementOffset += 4;
                     break;
                 default:
                     throw CompilerDirectives.shouldNotReachHere();
             }
-            if (type == Bytecode.ELEM_ITEM_TYPE_FUNCTION_INDEX) {
+            if (type == BytecodeFlags.ELEM_ITEM_TYPE_FUNCTION_INDEX) {
                 // function index
                 final WasmFunction function = instance.module().function(index);
                 elemItems[elementIndex] = instance.functionInstance(function);
