@@ -28,7 +28,6 @@ import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.PrimitiveConstant;
 
 /**
@@ -91,6 +90,7 @@ public enum Condition {
         this.operator = operator;
     }
 
+    // utility that might only be used for debugging
     public boolean check(int left, int right) {
         switch (this) {
             case EQ:
@@ -364,20 +364,6 @@ public enum Condition {
      */
     public final boolean isCommutative() {
         return this == EQ || this == NE;
-    }
-
-    /**
-     * Attempts to fold a comparison between two constants and return the result.
-     *
-     * @param lt the constant on the left side of the comparison
-     * @param rt the constant on the right side of the comparison
-     * @param constantReflection needed to compare constants
-     * @return {@link Boolean#TRUE} if the comparison is known to be true, {@link Boolean#FALSE} if
-     *         the comparison is known to be false
-     */
-    public boolean foldCondition(JavaConstant lt, JavaConstant rt, ConstantReflectionProvider constantReflection) {
-        assert !lt.getJavaKind().isNumericFloat() && !rt.getJavaKind().isNumericFloat();
-        return foldCondition(lt, rt, constantReflection, false);
     }
 
     /**

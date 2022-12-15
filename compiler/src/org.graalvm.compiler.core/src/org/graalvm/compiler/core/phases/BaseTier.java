@@ -30,17 +30,12 @@ import org.graalvm.compiler.nodes.loop.LoopPolicies;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.PhaseSuite;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
 public class BaseTier<C> extends PhaseSuite<C> {
 
     public LoopPolicies createLoopPolicies(@SuppressWarnings("unused") OptionValues options) {
         return new DefaultLoopPolicies();
-    }
-
-    public CanonicalizerPhase createCanonicalizerPhase() {
-        return CanonicalizerPhase.create();
     }
 
     @Override

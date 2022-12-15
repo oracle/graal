@@ -120,12 +120,6 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements Foreign
         assert descriptor.getArgumentTypes().length == this.arguments.size() : "wrong number of arguments to " + this;
     }
 
-    public ForeignCallNode(ForeignCallDescriptor descriptor, Stamp stamp) {
-        super(TYPE, stamp);
-        this.arguments = new NodeInputList<>(this);
-        this.descriptor = descriptor;
-    }
-
     protected ForeignCallNode(NodeClass<? extends ForeignCallNode> c, ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(c, StampFactory.forKind(JavaKind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);

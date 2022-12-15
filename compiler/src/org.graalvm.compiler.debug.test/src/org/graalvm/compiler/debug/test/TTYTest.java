@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,45 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.extended;
+package org.graalvm.compiler.debug.test;
 
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.StartNode;
-import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.compiler.debug.TTY;
+import org.junit.Test;
 
-@NodeInfo
-public final class OSRStartNode extends StartNode implements Lowerable {
-    public static final NodeClass<OSRStartNode> TYPE = NodeClass.create(OSRStartNode.class);
+public class TTYTest {
 
-    public OSRStartNode() {
-        super(TYPE);
+    @Test
+    @SuppressWarnings("try")
+    public void testTTYFiltered() throws Exception {
+        try (AutoCloseable c = new TTY.Filter()) {
+            printAll();
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testTTYNoFilter() throws Exception {
+        printAll();
+    }
+
+    private static void printAll() {
+        TTY.print(Integer.MAX_VALUE);
+        TTY.print('A');
+        TTY.print(Long.MAX_VALUE);
+        TTY.print(Float.MAX_VALUE);
+        TTY.print(Double.MAX_VALUE);
+        TTY.print(true);
+
+        TTY.println();
+        TTY.println(Integer.MAX_VALUE);
+        TTY.println('A');
+        TTY.println(Long.MAX_VALUE);
+        TTY.println(Float.MAX_VALUE);
+        TTY.println(Double.MAX_VALUE);
+        TTY.println(true);
+
+        TTY.fillTo(10);
+
+        TTY.flush();
     }
 }

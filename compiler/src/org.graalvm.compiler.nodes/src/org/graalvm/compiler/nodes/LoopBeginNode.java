@@ -30,6 +30,7 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -326,17 +327,9 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         return result;
     }
 
-    public boolean isSingleEntryLoop() {
-        return (forwardEndCount() == 1);
-    }
-
     public EndNode forwardEnd() {
         assert forwardEndCount() == 1;
         return forwardEndAt(0);
-    }
-
-    public int splits() {
-        return splits;
     }
 
     public void incrementSplits() {
@@ -391,7 +384,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         } else {
             return super.forwardEndIndex((EndNode) pred);
         }
-        throw ValueNodeUtil.shouldNotReachHere("unknown pred : " + pred);
+        throw GraalError.shouldNotReachHere("unknown pred : " + pred);
     }
 
     @Override
@@ -406,7 +399,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
                 return end;
             }
         }
-        throw ValueNodeUtil.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere("unknown index: " + index);
     }
 
     @Override
