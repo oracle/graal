@@ -43,7 +43,6 @@ package com.oracle.truffle.dsl.processor.model;
 import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -390,7 +389,7 @@ public final class SpecializationData extends TemplateMethod {
     }
 
     public Set<CacheExpression> getBoundCaches(DSLExpression guardExpression, boolean transitiveCached) {
-        return getBoundCachesImpl(new HashSet<>(), guardExpression, transitiveCached);
+        return getBoundCachesImpl(new LinkedHashSet<>(), guardExpression, transitiveCached);
     }
 
     private Set<CacheExpression> getBoundCachesImpl(Set<DSLExpression> visitedExpressions, DSLExpression guardExpression, boolean transitiveCached) {

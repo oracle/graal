@@ -54,6 +54,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.ImplicitCast;
@@ -74,6 +75,7 @@ import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback9NodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.FallbackWithAssumptionArrayNodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.FallbackWithAssumptionNodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.FallbackWithCachedNodeGen;
+import com.oracle.truffle.api.dsl.test.FallbackTestFactory.GuardNodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.ImplicitCastInFallbackNodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.InvertedGuardNodeGen;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
@@ -794,6 +796,47 @@ public class FallbackTest extends AbstractPolyglotTest {
         @Fallback
         protected String f(Object arg0) {
             return "f";
+        }
+
+    }
+
+    abstract static class GuardNode extends Node {
+
+        public abstract boolean execute(Object left);
+
+        @Specialization
+        protected boolean s0(@SuppressWarnings("unused") int arg0) {
+            return true;
+        }
+
+        @Fallback
+        protected boolean s0(@SuppressWarnings("unused") Object arg0) {
+            return false;
+        }
+
+        // intentionally no never default
+        static GuardNode create() {
+            return GuardNodeGen.create();
+        }
+
+    }
+
+    @SuppressWarnings("unused")
+    public abstract static class SharedGuardReachesFallback extends Node {
+
+        public abstract String execute(Object left);
+
+        @Specialization(guards = {"shared.execute(arg0)", "notShared.execute(arg0)"}, limit = "1")
+        protected String s0(Object arg0,
+                        @Cached(neverDefault = false) GuardNode notShared,
+                        @Shared("shared") @Cached(neverDefault = false) GuardNode shared) {
+            return "s0";
+        }
+
+        @Fallback
+        protected String f0(Object arg0,
+                        @Shared("shared") @Cached(neverDefault = false) GuardNode shared) {
+            return "f0";
         }
 
     }

@@ -2758,7 +2758,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
 
             // transitively resolve includes
-            Set<SpecializationData> foundSpecializations = new HashSet<>();
+            Set<SpecializationData> foundSpecializations = new LinkedHashSet<>();
             collectIncludes(specialization, foundSpecializations, new HashSet<SpecializationData>());
             specialization.getReplaces().addAll(foundSpecializations);
         }

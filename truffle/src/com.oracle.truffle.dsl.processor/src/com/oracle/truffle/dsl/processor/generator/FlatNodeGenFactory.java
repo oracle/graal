@@ -5154,7 +5154,14 @@ public class FlatNodeGenFactory {
         }
         Set<CacheExpression> boundCaches = specialization.getBoundCaches(guard.getExpression(), false);
         if (useSpecializationClass(specialization)) {
-            return Collections.emptyList();
+            // with a specialization class only shared guards may be null.
+            Set<CacheExpression> filteredCaches = new LinkedHashSet<>();
+            for (CacheExpression cache : boundCaches) {
+                if (cache.getSharedGroup() != null) {
+                    filteredCaches.add(cache);
+                }
+            }
+            return filteredCaches;
         } else {
             return boundCaches;
         }
@@ -6643,7 +6650,39 @@ public class FlatNodeGenFactory {
         CodeTreeBuilder condition = CodeTreeBuilder.createBuilder();
         DSLExpression expression = optimizeExpression(guard.getExpression());
 
-        if (mode.isGuardFallback()) {
+        CodeTree assertion = null; // overrule with assertion
+        if (mode.isFastPath()) {
+            CodeTree guardExpression = writeExpression(frameState, specialization, expression);
+
+            /*
+             * We do not need to invoke a guard on the fast-path if:
+             *
+             * (1) the guard does not bind any dynamic parameter, only cached valuees.
+             *
+             * (2) The guard is not a weak reference. Weak references do not bind dynamic
+             * parameters, but need to be checked each time.
+             *
+             * (3) The guard needs a state bit and may be partially initialized.
+             */
+            if (!specialization.isDynamicParameterBound(expression, true) && !guard.isWeakReferenceGuard() && !guardNeedsNodeStateBit(specialization, guard)) {
+                assertion = CodeTreeBuilder.createBuilder().startAssert().tree(guardExpression).end().build();
+            } else {
+                condition.tree(guardExpression);
+            }
+        } else if (mode.isSlowPath() || mode.isUncached()) {
+
+            if (mode.isSlowPath() && specialization.isNodeReceiverBound(expression) && substituteNodeWithSpecializationClass(specialization)) {
+                init.tree(initializeSpecializationClass(frameState, specialization, false));
+            }
+
+            CodeTree guardExpression = writeExpression(frameState, specialization, expression);
+            if (guard.isConstantTrueInSlowPath(mode.isUncached())) {
+                assertion = CodeTreeBuilder.createBuilder().startStatement().string("// assert ").tree(guardExpression).end().build();
+            } else {
+                condition.tree(guardExpression);
+            }
+        } else if (mode.isGuardFallback()) {
+
             GuardExpression guardWithBit = getGuardThatNeedsStateBit(specialization, guard);
             if (guardWithBit != null) {
                 condition.string("(");
@@ -6693,38 +6732,6 @@ public class FlatNodeGenFactory {
                 fallbackNeedsState = true;
             } else {
                 condition.tree(writeExpression(frameState, specialization, expression));
-            }
-        }
-
-        if (mode.isSlowPath() && specialization.isNodeReceiverBound(expression) && substituteNodeWithSpecializationClass(specialization)) {
-            init.tree(initializeSpecializationClass(frameState, specialization, false));
-        }
-
-        CodeTree assertion = null; // overrule with assertion
-        if (mode.isFastPath()) {
-            CodeTree guardExpression = writeExpression(frameState, specialization, expression);
-
-            /*
-             * We do not need to invoke a guard on the fast-path if:
-             *
-             * (1) the guard does not bind any dynamic parameter, only cached valuees.
-             *
-             * (2) The guard is not a weak reference. Weak references do not bind dynamic
-             * parameters, but need to be checked each time.
-             *
-             * (3) The guard needs a state bit and may be partially initialized.
-             */
-            if (!specialization.isDynamicParameterBound(expression, true) && !guard.isWeakReferenceGuard() && !guardNeedsNodeStateBit(specialization, guard)) {
-                assertion = CodeTreeBuilder.createBuilder().startAssert().tree(guardExpression).end().build();
-            } else {
-                condition.tree(guardExpression);
-            }
-        } else if (mode.isSlowPath() || mode.isUncached()) {
-            CodeTree guardExpression = writeExpression(frameState, specialization, expression);
-            if (guard.isConstantTrueInSlowPath(mode.isUncached())) {
-                assertion = CodeTreeBuilder.createBuilder().startStatement().string("// assert ").tree(guardExpression).end().build();
-            } else {
-                condition.tree(guardExpression);
             }
         }
 
