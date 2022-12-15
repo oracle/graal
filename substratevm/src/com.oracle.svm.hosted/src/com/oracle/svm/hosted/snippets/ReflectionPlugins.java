@@ -637,7 +637,7 @@ public final class ReflectionPlugins {
 
         String message = originalMessage + ". This exception was synthesized during native image building from a call to " + targetMethod.format("%H.%n(%p)") +
                         " with constant arguments.";
-        ExceptionSynthesizer.throwException(b, exceptionMethod, message);
+        ExceptionSynthesizer.throwException(b, b.getMetaAccess().lookupJavaMethod(exceptionMethod), message);
         traceException(b, targetMethod, targetParameters, exceptionClass);
         return true;
     }

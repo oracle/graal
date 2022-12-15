@@ -39,11 +39,14 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -109,21 +112,54 @@ public final class ExceptionSynthesizer {
         return exceptionMethods.get(Key.from(methodDescriptor));
     }
 
-    public static void throwException(GraphBuilderContext b, Class<?> exceptionClass, String message) {
-        /* Get the exception throwing method that has a message parameter. */
-        throwException(b, throwExceptionMethod(exceptionClass, String.class), message);
-    }
-
-    public static void throwException(GraphBuilderContext b, Method throwExceptionMethod, String message) {
+    public static void throwException(GraphBuilderContext b, ResolvedJavaMethod throwExceptionMethod, String message) {
+        assert throwExceptionMethod.isStatic();
         ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(message), b.getMetaAccess(), b.getGraph());
-        ResolvedJavaMethod exceptionMethod = b.getMetaAccess().lookupJavaMethod(throwExceptionMethod);
-        assert exceptionMethod.isStatic();
-
-        StampPair returnStamp = StampFactory.forDeclaredType(b.getGraph().getAssumptions(), exceptionMethod.getSignature().getReturnType(null), false);
-        MethodCallTargetNode callTarget = b.add(new SubstrateMethodCallTargetNode(InvokeKind.Static, exceptionMethod, new ValueNode[]{messageNode}, returnStamp, null, null, null));
-        b.add(new InvokeWithExceptionNode(callTarget, null, b.bci()));
+        b.handleReplacedInvoke(InvokeKind.Static, throwExceptionMethod, new ValueNode[]{messageNode}, false);
         /* The invoked method always throws an exception, i.e., never returns. */
         b.add(new LoweredDeadEndNode());
+    }
+
+    /**
+     * This method is used to delay errors from image build-time to run-time. It does so by invoking
+     * a synthesized method that throws an instance like the one given as throwable in the given
+     * GraphBuilderContext. If the given throwable has a non-null cause, a cause-instance of the
+     * same type with a proper cause-message is created first that is then passed to the method that
+     * creates and throws the outer throwable-instance.
+     */
+    public static <T extends Throwable> void replaceWithThrowingAtRuntime(GraphBuilderContext b, T throwable) {
+        Throwable cause = throwable.getCause();
+        if (cause != null) {
+            var metaAccess = (UniverseMetaAccess) b.getMetaAccess();
+            /* Invoke method that creates a cause-instance with cause-message */
+            var causeCtor = ReflectionUtil.lookupConstructor(cause.getClass(), String.class);
+            ResolvedJavaMethod causeCtorMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(causeCtor), false);
+            ValueNode causeMessageNode = ConstantNode.forConstant(b.getConstantReflection().forString(cause.getMessage()), metaAccess, b.getGraph());
+            StampPair returnStamp = StampFactory.forDeclaredType(b.getGraph().getAssumptions(), causeCtorMethod.getSignature().getReturnType(null), false);
+            MethodCallTargetNode callTarget = b.add(new SubstrateMethodCallTargetNode(InvokeKind.Static, causeCtorMethod, new ValueNode[]{causeMessageNode}, returnStamp, null, null, null));
+            InvokeWithExceptionNode causeCtorInvoke = new InvokeWithExceptionNode(callTarget, null, b.bci());
+            b.add(causeCtorInvoke);
+            /* Invoke method that creates and throws throwable-instance with message and cause */
+            var errorCtor = ReflectionUtil.lookupConstructor(throwable.getClass(), String.class, Throwable.class);
+            ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
+            ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwable.getMessage()), metaAccess, b.getGraph());
+            b.handleReplacedInvoke(InvokeKind.Static, throwingMethod, new ValueNode[]{messageNode, causeCtorInvoke.asNode()}, false);
+            b.add(new LoweredDeadEndNode());
+        } else {
+            replaceWithThrowingAtRuntime(b, throwable.getClass(), throwable.getMessage());
+        }
+    }
+
+    /**
+     * This method is used to delay errors from image build-time to run-time. It does so by invoking
+     * a synthesized method that creates an instance of type throwableClass with throwableMessage as
+     * argument and then throws that instance in the given GraphBuilderContext.
+     */
+    public static void replaceWithThrowingAtRuntime(GraphBuilderContext b, Class<? extends Throwable> throwableClass, String throwableMessage) {
+        var errorCtor = ReflectionUtil.lookupConstructor(throwableClass, String.class);
+        var metaAccess = (UniverseMetaAccess) b.getMetaAccess();
+        ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
+        throwException(b, throwingMethod, throwableMessage);
     }
 
     /**

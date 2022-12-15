@@ -37,7 +37,6 @@ import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -62,7 +61,6 @@ import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.graal.nodes.DeoptEntryBeginNode;
@@ -78,11 +76,8 @@ import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
-import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
@@ -246,7 +241,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                                 LinkAtBuildTimeSupport.singleton().errorMessageFor(method.getDeclaringClass());
                 throw new TypeInstantiationException(message);
             } else {
-                ExceptionSynthesizer.throwException(this, InstantiationError.class, type.toJavaName());
+                ExceptionSynthesizer.replaceWithThrowingAtRuntime(this, InstantiationError.class, type.toJavaName());
             }
         }
 
@@ -335,26 +330,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             if (linkAtBuildTime) {
                 reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"), bme);
             } else {
-                ConstantReflectionProvider constantReflection = getConstantReflection();
-                UniverseMetaAccess metaAccess = (UniverseMetaAccess) getMetaAccess();
-                FactoryMethodSupport fms = FactoryMethodSupport.singleton();
-                Throwable cause = bme.getCause();
-                if (cause != null) {
-                    ValueNode causeMessageNode = ConstantNode.forConstant(constantReflection.forString(cause.getMessage()), metaAccess, getGraph());
-                    var causeClassCtor = ReflectionUtil.lookupConstructor(cause.getClass(), String.class);
-                    ValueNode[] causeCtorArgs = {causeMessageNode};
-                    var causeCtorInvoke = appendInvoke(InvokeKind.Static, fms.lookup(metaAccess, metaAccess.lookupJavaMethod(causeClassCtor), false), causeCtorArgs);
-                    ValueNode messageNode = ConstantNode.forConstant(constantReflection.forString(bme.getMessage()), metaAccess, getGraph());
-                    var errorCtor = ReflectionUtil.lookupConstructor(bme.getClass(), String.class, Throwable.class);
-                    ValueNode[] errorArgs = {messageNode, causeCtorInvoke.asNode()};
-                    appendInvoke(InvokeKind.Static, fms.lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true), errorArgs);
-                } else {
-                    ValueNode messageNode = ConstantNode.forConstant(constantReflection.forString(bme.getMessage()), metaAccess, getGraph());
-                    var errorCtor = ReflectionUtil.lookupConstructor(bme.getClass(), String.class);
-                    ValueNode[] errorArgs = {messageNode};
-                    appendInvoke(InvokeKind.Static, fms.lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true), errorArgs);
-                }
-                add(new LoweredDeadEndNode());
+                ExceptionSynthesizer.replaceWithThrowingAtRuntime(this, bme);
             }
         }
 
@@ -366,7 +342,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             if (linkAtBuildTime) {
                 reportUnresolvedElement("type", type.toJavaName());
             } else {
-                ExceptionSynthesizer.throwException(this, NoClassDefFoundError.class, type.toJavaName());
+                ExceptionSynthesizer.replaceWithThrowingAtRuntime(this, NoClassDefFoundError.class, type.toJavaName());
             }
         }
 
@@ -383,7 +359,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 if (linkAtBuildTime) {
                     reportUnresolvedElement("field", field.format("%H.%n"));
                 } else {
-                    ExceptionSynthesizer.throwException(this, NoSuchFieldError.class, field.format("%H.%n"));
+                    ExceptionSynthesizer.replaceWithThrowingAtRuntime(this, NoSuchFieldError.class, field.format("%H.%n"));
                 }
             }
         }
@@ -401,7 +377,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 if (linkAtBuildTime) {
                     reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"));
                 } else {
-                    ExceptionSynthesizer.throwException(this, NoSuchMethodError.class, javaMethod.format("%H.%n(%P)"));
+                    ExceptionSynthesizer.replaceWithThrowingAtRuntime(this, NoSuchMethodError.class, javaMethod.format("%H.%n(%P)"));
                 }
             }
         }
@@ -531,7 +507,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         protected void clearNonLiveLocalsAtTargetCreation(BciBlockMapping.BciBlock block, FrameStateBuilder state) {
             /*
              * In order to match potential DeoptEntryNodes, within runtime compiled code it is not
-             * possible to clear non-live locals at the start of a exception dispatch block if
+             * possible to clear non-live locals at the start of an exception dispatch block if
              * deoptimizations can be present, as exception dispatch blocks have the same deopt bci
              * as the exception.
              */
