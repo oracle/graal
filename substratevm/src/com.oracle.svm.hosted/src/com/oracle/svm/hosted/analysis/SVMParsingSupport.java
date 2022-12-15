@@ -22,27 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.flow;
+package com.oracle.svm.hosted.analysis;
 
+import org.graalvm.compiler.nodes.StructuredGraph;
+
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
-import jdk.vm.ci.code.BytecodePosition;
+/**
+ * {@link com.oracle.graal.pointsto.api.HostVM} methods which may be overwritten by substratevm
+ * features.
+ */
+public interface SVMParsingSupport {
 
-public abstract class AbstractStaticInvokeTypeFlow extends DirectInvokeTypeFlow {
-    protected AbstractStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
-    }
+    Object parseGraph(BigBang bb, AnalysisMethod method);
 
-    protected AbstractStaticInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, AbstractStaticInvokeTypeFlow original) {
-        super(bb, methodFlows, original);
-    }
+    boolean validateGraph(PointsToAnalysis bb, StructuredGraph graph);
 
-    @Override
-    public String toString() {
-        return "StaticInvoke<" + targetMethod.format("%h.%n") + ">" + ":" + getState();
-    }
+    boolean allowAssumptions(AnalysisMethod method);
 }

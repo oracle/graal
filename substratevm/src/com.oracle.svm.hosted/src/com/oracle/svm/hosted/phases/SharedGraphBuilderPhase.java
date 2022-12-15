@@ -59,6 +59,8 @@ import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
+import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.graal.nodes.DeoptEntryBeginNode;
@@ -66,13 +68,14 @@ import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntrySupport;
 import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
-import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -455,12 +458,31 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             return DeoptimizationSupport.enabled() && !SubstrateUtil.isBuildingLibgraal();
         }
 
-        protected boolean isMethodDeoptTarget() {
-            return method instanceof SharedMethod && ((SharedMethod) method).isDeoptTarget();
+        protected final boolean isMethodDeoptTarget() {
+            return MultiMethod.isDeoptTarget(method);
         }
 
         @Override
         protected boolean asyncExceptionLiveness() {
+            if (SubstrateOptions.parseOnce()) {
+                /*
+                 * Only methods which can deoptimize need to consider live locals from asynchronous
+                 * exception handlers.
+                 */
+                if (method instanceof MultiMethod) {
+                    return ((MultiMethod) method).getMultiMethodKey() == SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
+                }
+
+            } else {
+                if (method instanceof HostedMethod) {
+                    /*
+                     * Only methods which can deoptimize need to consider live locals from
+                     * asynchronous exception handlers.
+                     */
+                    return ((HostedMethod) method).canDeoptimize();
+                }
+            }
+
             /*
              * If deoptimization is enabled, then must assume that any method can deoptimize at any
              * point while throwing an exception.

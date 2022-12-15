@@ -38,6 +38,7 @@ import org.graalvm.compiler.nodes.java.LoadFieldNode;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder;
@@ -51,7 +52,6 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -60,21 +60,16 @@ import jdk.vm.ci.meta.JavaKind;
 
 public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
 
-    public SVMMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method) {
-        super(bb, method);
-    }
-
-    public SVMMethodTypeFlowBuilder(PointsToAnalysis bb, StructuredGraph graph) {
-        super(bb, graph);
+    public SVMMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
+        super(bb, method, flowsGraph, graphKind);
     }
 
     protected SVMHost getHostVM() {
         return (SVMHost) bb.getHostVM();
     }
 
-    @Override
-    public void registerUsedElements(boolean registerEmbeddedRoots) {
-        super.registerUsedElements(registerEmbeddedRoots);
+    public static void registerUsedElements(PointsToAnalysis bb, StructuredGraph graph, boolean registerEmbeddedRoots) {
+        MethodTypeFlowBuilder.registerUsedElements(bb, graph, registerEmbeddedRoots);
 
         for (Node n : graph.getNodes()) {
             if (n instanceof ConstantNode) {
@@ -83,7 +78,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
                 if (cn.hasUsages() && cn.isJavaConstant() && constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
                     if (constant instanceof ImageHeapConstant) {
                         /* No replacement for ImageHeapObject. */
-                    } else if (!ignoreConstant(cn)) {
+                    } else if (!ignoreConstant(bb, cn)) {
                         /*
                          * Constants that are embedded into graphs via constant folding of static
                          * fields have already been replaced. But constants embedded manually by
@@ -106,20 +101,6 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
                 }
             }
         }
-    }
-
-    @Override
-    protected boolean ignoreInstanceOfType(AnalysisType type) {
-        if (ClassInitializationOptions.AllowDeprecatedInitializeAllClassesAtBuildTime.getValue()) {
-            /*
-             * Compatibility mode for Helidon MP: It initializes all classes at build time, and
-             * relies on the side effect of a class initializer of a class that is only used in an
-             * instanceof. See https://github.com/oracle/graal/pull/5224#issuecomment-1279586997 for
-             * details.
-             */
-            return false;
-        }
-        return super.ignoreInstanceOfType(type);
     }
 
     @SuppressWarnings("serial")

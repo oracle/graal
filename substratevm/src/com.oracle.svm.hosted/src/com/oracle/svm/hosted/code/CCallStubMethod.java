@@ -34,7 +34,7 @@ import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumLookup;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -66,7 +66,7 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         NativeLibraries nativeLibraries = CEntryPointCallStubSupport.singleton().getNativeLibraries();
-        boolean deoptimizationTarget = method instanceof SharedMethod && ((SharedMethod) method).isDeoptTarget();
+        boolean deoptimizationTarget = MultiMethod.isDeoptTarget(method);
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         FrameStateBuilder state = kit.getFrameState();
         List<ValueNode> arguments = kit.loadArguments(getParameterTypesForLoad(method));

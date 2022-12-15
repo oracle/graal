@@ -45,9 +45,11 @@ import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
+import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.deopt.DeoptTest;
 import com.oracle.svm.core.graal.nodes.DeoptEntryBeginNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
@@ -67,7 +69,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.nativeimage.AnnotationAccess;
 
 final class PodFactorySubstitutionProcessor extends SubstitutionProcessor {
     private final ConcurrentMap<ResolvedJavaMethod, PodFactorySubstitutionMethod> substitutions = new ConcurrentHashMap<>();
@@ -113,8 +114,10 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
 
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method, trackNodeSourcePosition);
         CompilationInfo deoptTargetInfo = null;
-        if ((method instanceof HostedMethod) && ((HostedMethod) method).isDeoptTarget()) {
-            deoptTargetInfo = ((HostedMethod) method).compilationInfo;
+        if (MultiMethod.isDeoptTarget(method)) {
+            if (method instanceof HostedMethod) {
+                deoptTargetInfo = ((HostedMethod) method).compilationInfo;
+            }
         }
 
         ResolvedJavaType factoryType = method.getDeclaringClass();

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -41,6 +39,7 @@ import org.graalvm.compiler.lir.phases.FinalCodeAnalysisPhase;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.graal.lir.DeoptEntryOp;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
 import jdk.vm.ci.code.BytecodeFrame;
@@ -51,12 +50,15 @@ import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.JavaValue;
 
 /**
- * Verification that deoptimization target frame states do not have live values that are not in the
- * state, i.e., that do not correspond to a Java local variable or expression stack value. Such live
- * values would not be restored during deoptimization, so the value would be undefined after
- * deoptimization.
+ * Verifies that at deoptimization entry points all live values are contained in the entry point's
+ * LIRFrameState. Live values missing from the LIRFrameState would not be restored during
+ * deoptimization, so the value would be undefined after deoptimization.
+ *
+ * The verification is performed by looking at the reference map for each deoptimization entry point
+ * and comparing it with what is captured within the LIRFrameState. All stack slots present within
+ * the reference map should also be in the LIRFrameState.
  */
-public class VerifyDeoptFrameStatesLIRPhase extends FinalCodeAnalysisPhase {
+public class VerifyDeoptLIRFrameStatesPhase extends FinalCodeAnalysisPhase {
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, FinalCodeAnalysisContext context) {
         new Instance().run(lirGenRes);
@@ -64,12 +66,12 @@ public class VerifyDeoptFrameStatesLIRPhase extends FinalCodeAnalysisPhase {
 
     @Override
     protected CharSequence createName() {
-        return "VerifyDeoptFrameStatesLIRPhase";
+        return "VerifyDeoptLIRFrameStatesPhase";
     }
 }
 
 class Instance {
-    private Map<Integer, Object> allowedStackSlots;
+    private StringBuilder errors;
 
     public void run(LIRGenerationResult lirGenRes) {
         LIR ir = lirGenRes.getLIR();
@@ -83,34 +85,64 @@ class Instance {
                 op.forEachState((instruction, state) -> doState(debug, frameMap, instruction, state));
             }
         }
+        if (errors != null) {
+            throw VMError.shouldNotReachHere(errors.toString());
+        }
+    }
+
+    private void reportError(LIRFrameState state, LIRInstruction op, String message) {
+        if (errors == null) {
+            errors = new StringBuilder();
+            errors.append("\nProblems found within VerifyDeoptLIRFrameStatesPhase\n");
+        }
+        errors.append("\nProblem: ").append(message);
+        BytecodeFrame frame = state.topFrame;
+        while (frame.caller() != null) {
+            frame = frame.caller();
+        }
+        errors.append("\nMethod: ").append(frame.getMethod());
+        errors.append("\nop id: ").append(op.id()).append(", ").append(op);
+        frame = state.topFrame;
+        do {
+            errors.append("\nat: bci ").append(frame.getBCI()).append(", duringCall: ").append(frame.duringCall).append(", rethrowException: ").append(frame.rethrowException).append(", method: ")
+                            .append(frame.getMethod());
+
+            frame = frame.caller();
+        } while (frame != null);
+        errors.append("\nEnd Problem\n");
+    }
+
+    private static boolean isImplicitDeoptEntry(BytecodeFrame frame) {
+        boolean isDeoptEntry = ((HostedMethod) frame.getMethod()).compilationInfo.isDeoptEntry(frame.getBCI(), frame.duringCall, frame.rethrowException);
+
+        return frame.duringCall && isDeoptEntry;
     }
 
     private void doState(DebugContext debug, FrameMap frameMap, LIRInstruction op, LIRFrameState state) {
-        SubstrateReferenceMap refMap = (SubstrateReferenceMap) state.debugInfo().getReferenceMap();
-
         /*
-         * We want to verify explicit deoptimization entry points, and implicit deoptimization entry
-         * points at call sites. Unfortunately, just checking isDeoptEntry gives us false positives
-         * for some runtime calls that re-use a state (which is not marked as "during call").
+         * We want to verify explicit deoptimization entry points and implicit deoptimization entry
+         * points at call sites.
+         *
+         * Explicit deoptimization entrypoints are represented with a DeoptEntryOp whereas implicit
+         * entry points must query the compilation information.
          */
-        boolean isDeoptEntry = ((HostedMethod) state.topFrame.getMethod()).compilationInfo.isDeoptEntry(state.topFrame.getBCI(), state.topFrame.duringCall, state.topFrame.rethrowException);
-        if (op instanceof DeoptEntryOp || (state.topFrame.duringCall && isDeoptEntry)) {
-            BytecodeFrame frame = state.topFrame;
+        if (op instanceof DeoptEntryOp || isImplicitDeoptEntry(state.topFrame)) {
+            SubstrateReferenceMap refMap = (SubstrateReferenceMap) state.debugInfo().getReferenceMap();
+            Map<Integer, Object> refMapRegisters = refMap.getDebugAllUsedRegisters();
+            Map<Integer, Object> refMapStackSlots = refMap.getDebugAllUsedStackSlots();
 
-            Map<Integer, Object> allUsedRegisters = refMap.getDebugAllUsedRegisters();
-            Map<Integer, Object> allUsedStackSlots = refMap.getDebugAllUsedStackSlots();
-
-            if (allUsedRegisters != null && !allUsedRegisters.isEmpty()) {
-                throw shouldNotReachHere("Deoptimization target must not use any registers");
+            if (refMapRegisters != null && !refMapRegisters.isEmpty()) {
+                reportError(state, op, "Deoptimization target must not use any registers");
             }
 
-            if (allUsedStackSlots != null) {
-                Map<Integer, Object> cleanedStackSlots = new HashMap<>(allUsedStackSlots);
+            if (refMapStackSlots != null) {
+                Map<Integer, Object> missingStackSlots = new HashMap<>(refMapStackSlots);
+                /*
+                 * Remove stack slot information for all slots which have a representative in the
+                 * bytecode frame (and callers when there is inlining).
+                 */
+                BytecodeFrame frame = state.topFrame;
                 do {
-                    /*
-                     * Remove stack slot information for all slots which already have a
-                     * representative in the bytecode frame.
-                     */
                     for (JavaValue v : frame.values) {
                         JavaValue value = v;
                         if (value instanceof StackLockValue) {
@@ -122,40 +154,20 @@ class Instance {
                             StackSlot stackSlot = (StackSlot) value;
                             int offset = stackSlot.getOffset(frameMap.totalFrameSize());
                             debug.log("remove slot %d: %s", offset, stackSlot);
-                            cleanedStackSlots.remove(offset);
+                            missingStackSlots.remove(offset);
                         } else if (ValueUtil.isConstantJavaValue(value) || ValueUtil.isIllegalJavaValue(value)) {
                             /* Nothing to do. */
                         } else if (ReservedRegisters.singleton().isAllowedInFrameState(value)) {
                             /* Nothing to do. */
                         } else {
-                            throw shouldNotReachHere("unknown value in deopt target: " + value);
+                            reportError(state, op, "unknown value in deopt target: " + value);
                         }
                     }
                     frame = frame.caller();
                 } while (frame != null);
 
-                int firstBci = state.topFrame.getMethod().isSynchronized() ? BytecodeFrame.BEFORE_BCI : 0;
-                if (state.topFrame.getBCI() == firstBci && state.topFrame.caller() == null && state.topFrame.duringCall == false && state.topFrame.rethrowException == false) {
-                    /*
-                     * Some stack slots, e.g., the return address and manually allocated stack
-                     * memory, are alive the whole method. So all stack slots that are registered
-                     * for the method entry are allowed to be registered in all subsequent states.
-                     */
-                    assert op instanceof DeoptEntryOp;
-                    assert allowedStackSlots == null;
-                    allowedStackSlots = new HashMap<>(cleanedStackSlots);
-
-                } else {
-                    if (allowedStackSlots == null) {
-                        allowedStackSlots = new HashMap<>();
-                    }
-                    for (Integer key : allowedStackSlots.keySet()) {
-                        cleanedStackSlots.remove(key);
-                    }
-
-                    if (!cleanedStackSlots.isEmpty()) {
-                        throw shouldNotReachHere("unknown values in stack slots: method " + state.topFrame.getMethod().toString() + ", op " + op.id() + " " + op + ": " + cleanedStackSlots);
-                    }
+                if (!missingStackSlots.isEmpty()) {
+                    reportError(state, op, "LIRFrameState is missing live stack slot values: " + missingStackSlots);
                 }
             }
         }

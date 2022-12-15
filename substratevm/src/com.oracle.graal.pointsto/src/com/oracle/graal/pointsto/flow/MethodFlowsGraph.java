@@ -49,7 +49,25 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.code.BytecodePosition;
 
-public class MethodFlowsGraph {
+public class MethodFlowsGraph implements MethodFlowsGraphInfo {
+    /**
+     * The type of method flows graph.
+     */
+    public enum GraphKind {
+        /**
+         * A stub MethodFlowsGraph is a graph which only has typeflows for parameter and return
+         * values, but does not have an internal flow. Stubs are used as a placeholder and may be
+         * dynamically replaced with a full flows graph throughout the analysis phase.
+         */
+        STUB,
+        /**
+         * A full MethodFlowsGraph has the full internal flow. Whether the graph flows for all
+         * object parameters and return values, regardless of whether they are linked to the
+         * internal flows, is dependent on
+         * {@code HostVM.MultiMethodAnalysisPolicy#insertPlaceholderParamAndReturnFlows}.
+         */
+        FULL,
+    }
 
     protected final int id;
     protected final PointsToAnalysisMethod method;
@@ -71,17 +89,19 @@ public class MethodFlowsGraph {
     protected FormalReturnTypeFlow returnFlow;
 
     protected volatile boolean isLinearized;
-    protected boolean sealed;
+
+    private GraphKind graphKind;
 
     /**
      * Constructor for the 'original' method flows graph. This is used as a source for creating
      * clones. It has a <code>null</code> context and <code>null</code> original method flows.
      */
-    public MethodFlowsGraph(PointsToAnalysisMethod analysisMethod) {
+    public MethodFlowsGraph(PointsToAnalysisMethod method, GraphKind graphKind) {
 
         id = TypeFlow.nextId.incrementAndGet();
 
-        method = analysisMethod;
+        this.method = method;
+        this.graphKind = graphKind;
 
         // parameters
         boolean isStatic = Modifier.isStatic(method.getModifiers());
@@ -115,7 +135,7 @@ public class MethodFlowsGraph {
         }
     }
 
-    public static boolean nonCloneableFlow(TypeFlow<?> flow) {
+    protected static boolean nonCloneableFlow(TypeFlow<?> flow) {
         /*
          * References to field flows and to array elements flows are not part of the method itself;
          * field and indexed load and store flows will instead be cloned, and used to access the
@@ -124,7 +144,7 @@ public class MethodFlowsGraph {
         return flow instanceof FieldTypeFlow || flow instanceof ArrayElementsTypeFlow;
     }
 
-    public static boolean crossMethodUse(TypeFlow<?> flow, TypeFlow<?> use) {
+    protected static boolean crossMethodUse(TypeFlow<?> flow, TypeFlow<?> use) {
         /*
          * Formal returns and unwinds are method exit points. Formal parameters are entry points
          * into callees.
@@ -132,7 +152,7 @@ public class MethodFlowsGraph {
         return flow instanceof FormalReturnTypeFlow || use instanceof FormalParamTypeFlow;
     }
 
-    public static boolean nonMethodFlow(TypeFlow<?> flow) {
+    private static boolean nonMethodFlow(TypeFlow<?> flow) {
         /*
          * All-instantiated flow doesn't belong to any method, but it can be reachable from a use.
          */
@@ -150,17 +170,22 @@ public class MethodFlowsGraph {
 
     protected void ensureLinearized() {
         if (!isLinearized) {
-            linearizeGraph();
+            linearizeGraph(false);
         }
     }
 
-    private synchronized void linearizeGraph() {
+    private synchronized void linearizeGraph(boolean isRedo) {
         /* Synchronize access to ensure that the slot is set only once. */
-        if (!isLinearized) {
+        if (isRedo || !isLinearized) {
             List<TypeFlow<?>> resultFlows = new ArrayList<>();
             for (TypeFlow<?> flow : flows()) {
-                AnalysisError.guarantee(flow.getSlot() == -1, "Flow already discovered: " + flow);
-                flow.setSlot(resultFlows.size());
+                int slotNum = flow.getSlot();
+                if (slotNum != -1) {
+                    assert flow instanceof FormalParamTypeFlow || flow instanceof FormalReturnTypeFlow : "Unexpected flow " + flow;
+                    AnalysisError.guarantee(isRedo && flow.getSlot() == resultFlows.size(), "Flow already discovered: " + flow);
+                } else {
+                    flow.setSlot(resultFlows.size());
+                }
                 resultFlows.add(flow);
             }
             linearizedGraph = resultFlows.toArray(new TypeFlow<?>[0]);
@@ -168,21 +193,37 @@ public class MethodFlowsGraph {
         }
     }
 
-    public Iterable<TypeFlow<?>> flows() {
-        return this::flowsIterator;
+    /**
+     * creates an iterator containing all flows which are internal to this method. This does not
+     * include the following types of flows:
+     * <ul>
+     * <li>A cloned flow</li>
+     * <li>A flow which is from another method</li>
+     * <li>A flow which does not belong to any method</li>
+     * </ul>
+     */
+    public final Iterable<TypeFlow<?>> flows() {
+        return () -> flowsIterator(false);
     }
 
-    protected Iterator<TypeFlow<?>> flowsIterator() {
+    private Iterator<TypeFlow<?>> flowsIterator(boolean iterateClones) {
         return new Iterator<>() {
             final Deque<TypeFlow<?>> worklist = new ArrayDeque<>();
             final Set<TypeFlow<?>> seen = new HashSet<>();
             TypeFlow<?> next;
 
             {
+                /*
+                 * Note parameter and return flows must be processed first to ensure they have a
+                 * stable id if the graph is updated.
+                 */
                 for (TypeFlow<?> param : parameters) {
                     if (param != null) {
                         worklist.add(param);
                     }
+                }
+                if (returnFlow != null) {
+                    worklist.add(returnFlow);
                 }
                 if (nodeFlows != null) {
                     for (var value : nodeFlows.getValues()) {
@@ -201,9 +242,6 @@ public class MethodFlowsGraph {
                     for (var value : invokeFlows.getValues()) {
                         worklist.add(value);
                     }
-                }
-                if (returnFlow != null) {
-                    worklist.add(returnFlow);
                 }
 
                 /* Initialize next. */
@@ -238,7 +276,7 @@ public class MethodFlowsGraph {
 
             private void expand(TypeFlow<?> flow) {
                 for (TypeFlow<?> use : flow.getUses()) {
-                    if (use.isClone() || crossMethodUse(flow, use) || nonCloneableFlow(use) || nonMethodFlow(use)) {
+                    if ((!iterateClones && use.isClone()) || crossMethodUse(flow, use) || nonCloneableFlow(use) || nonMethodFlow(use)) {
                         continue;
                     }
                     worklist.add(use);
@@ -251,10 +289,21 @@ public class MethodFlowsGraph {
         return id;
     }
 
+    @Override
     public PointsToAnalysisMethod getMethod() {
         return method;
     }
 
+    @Override
+    public boolean isStub() {
+        return graphKind == GraphKind.STUB;
+    }
+
+    public GraphKind getGraphKind() {
+        return graphKind;
+    }
+
+    @Override
     public FormalReceiverTypeFlow getFormalReceiver() {
         return (FormalReceiverTypeFlow) getParameter(0);
     }
@@ -264,6 +313,7 @@ public class MethodFlowsGraph {
         parameters[index] = parameter;
     }
 
+    @Override
     public FormalParamTypeFlow getParameter(int idx) {
         assert idx >= 0 && idx < this.parameters.length;
         return parameters[idx];
@@ -308,6 +358,7 @@ public class MethodFlowsGraph {
         this.returnFlow = returnFlow;
     }
 
+    @Override
     public FormalReturnTypeFlow getReturnFlow() {
         return this.returnFlow;
     }
@@ -389,9 +440,9 @@ public class MethodFlowsGraph {
                     InvokeTypeFlow invoke = callerInvoke;
                     if (InvokeTypeFlow.isContextInsensitiveVirtualInvoke(callerInvoke)) {
                         /* The invoke has been replaced by the context insensitive one. */
-                        invoke = callerInvoke.getTargetMethod().getContextInsensitiveVirtualInvoke();
+                        invoke = callerInvoke.getTargetMethod().getContextInsensitiveVirtualInvoke(method.getMultiMethodKey());
                     }
-                    for (MethodFlowsGraph calleeFlowGraph : invoke.getCalleesFlows(bb)) {
+                    for (MethodFlowsGraph calleeFlowGraph : invoke.getOriginalCalleesFlows(bb)) {
                         // 'this' method graph was found among the callees of an invoke flow in one
                         // of the clones of the caller methods, hence we regiter that clone as a
                         // caller for 'this' method clone
@@ -414,7 +465,7 @@ public class MethodFlowsGraph {
      */
     public InvokeTypeFlow invokeFlow(MethodFlowsGraph callerFlowGraph, PointsToAnalysis bb) {
         for (InvokeTypeFlow callerInvoke : callerFlowGraph.getInvokes().getValues()) {
-            for (MethodFlowsGraph calleeFlowGraph : callerInvoke.getCalleesFlows(bb)) {
+            for (MethodFlowsGraph calleeFlowGraph : callerInvoke.getOriginalCalleesFlows(bb)) {
                 // 'this' method graph was found among the callees of an invoke flow in the caller
                 // method clone, hence we register return it
                 if (calleeFlowGraph.equals(this)) {
@@ -428,5 +479,47 @@ public class MethodFlowsGraph {
     @Override
     public String toString() {
         return "MethodFlowsGraph<" + method.format("%h.%n(%p)") + ">";
+    }
+
+    /**
+     * Removes all internal flows of the graph and leave behind only the parameter and return flows.
+     * This is expected to only be used by {@link MethodTypeFlow#updateFlowsGraph}.
+     */
+    final void removeInternalFlows(PointsToAnalysis bb) {
+
+        // Clear out the parameter uses and observers
+        for (var param : getParameters()) {
+            if (param != null) {
+                param.clearUses();
+                param.clearObservers();
+            }
+        }
+
+        // Clear out the return value inputs and observees
+        if (returnFlow != null && bb.trackTypeFlowInputs()) {
+            returnFlow.clearInputs();
+            returnFlow.clearObservees();
+        }
+
+        // Clearing out all other flows
+        miscEntryFlows = null;
+        nodeFlows = null;
+
+        nonUniqueBcis = null;
+        instanceOfFlows = null;
+        invokeFlows = null;
+    }
+
+    /**
+     * Updates the graphkind and relinearizes the graph if necessary. This is expected to only be
+     * used by {@link MethodTypeFlow#updateFlowsGraph}.
+     */
+    void updateInternalState(GraphKind newGraphKind) {
+
+        graphKind = newGraphKind;
+
+        if (isLinearized) {
+            linearizeGraph(true);
+        }
     }
 }

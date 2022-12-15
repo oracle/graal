@@ -576,7 +576,7 @@ public class LibGraalFeature implements InternalFeature {
                 disallowedTypes.add(msg.toString());
             }
             for (InvokeInfo invoke : m.getInvokes()) {
-                for (AnalysisMethod callee : invoke.getCallees()) {
+                for (AnalysisMethod callee : invoke.getOriginalCallees()) {
                     if (seen.putIfAbsent(callee, m) == null) {
                         todo.add(callee);
                     }

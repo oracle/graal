@@ -222,7 +222,7 @@ public final class CallTreePrinter {
         InvokeNode invokeNode = new InvokeNode(invokeInfo.getTargetMethod(), invokeInfo.isDirectInvoke(), sourceReference(invokeInfo.getPosition()));
         callerNode.addInvoke(invokeNode);
 
-        invokeInfo.getCallees().stream().sorted(methodComparator).forEach(callee -> {
+        invokeInfo.getAllCallees().stream().sorted(methodComparator).forEach(callee -> {
             if (methodToNode.containsKey(callee)) {
                 MethodNodeReference calleeNode = new MethodNodeReference(methodToNode.get(callee));
                 invokeNode.addCallee(calleeNode);

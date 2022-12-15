@@ -22,27 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.flow;
+package com.oracle.graal.pointsto.typestate;
+
+import java.util.Collection;
+import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
+import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 
-import jdk.vm.ci.code.BytecodePosition;
+public final class DefaultInvokeTypeFlowUtil {
 
-public abstract class AbstractStaticInvokeTypeFlow extends DirectInvokeTypeFlow {
-    protected AbstractStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
-    }
-
-    protected AbstractStaticInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, AbstractStaticInvokeTypeFlow original) {
-        super(bb, methodFlows, original);
-    }
-
-    @Override
-    public String toString() {
-        return "StaticInvoke<" + targetMethod.format("%h.%n") + ">" + ":" + getState();
+    static Collection<MethodFlowsGraph> getAllCalleesFlows(InvokeTypeFlow typeFlow) {
+        return typeFlow.getAllCallees().stream().map(method -> {
+            MethodFlowsGraph graph = (PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow()).getMethodFlowsGraph();
+            assert !graph.isStub();
+            return graph;
+        }).collect(Collectors.toUnmodifiableList());
     }
 }

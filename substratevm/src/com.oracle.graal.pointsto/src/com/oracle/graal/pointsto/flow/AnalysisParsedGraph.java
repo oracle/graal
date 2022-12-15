@@ -44,6 +44,7 @@ import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider.Purpose;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -95,6 +96,16 @@ public final class AnalysisParsedGraph {
         DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(bb.getProviders().getSnippetReflection())).description(description).build();
 
         try (Indent indent = debug.logAndIndent("parse graph %s", method)) {
+
+            Object result = bb.getHostVM().parseGraph(bb, method);
+            if (result != HostVM.PARSING_UNHANDLED) {
+                if (result instanceof StructuredGraph) {
+                    return optimizeAndEncode(bb, method, (StructuredGraph) result, false);
+                } else {
+                    assert result == HostVM.PARSING_FAILED;
+                    return EMPTY;
+                }
+            }
 
             StructuredGraph graph = method.buildGraph(debug, method, bb.getProviders(), Purpose.ANALYSIS);
             if (graph != null) {
