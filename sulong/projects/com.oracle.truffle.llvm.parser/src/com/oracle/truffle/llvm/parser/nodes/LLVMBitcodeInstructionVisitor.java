@@ -118,6 +118,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMVoidStatementNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNode.LLVMTailReturnNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCatchPadNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCatchSwitchNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCatchSwitchNode.CatchPadEntryNode;
@@ -678,7 +679,11 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             }
         }
 
-        addStatement(result, call, intent);
+        if (call.getMustTail()) {
+            setControlFlowNode(nodeFactory.createRetTail(result), call, intent);
+        } else {
+            addStatement(result, call, intent);
+        }
     }
 
     @Override
@@ -1327,6 +1332,11 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     }
 
     private void setControlFlowNode(LLVMControlFlowNode controlFlowNode, Instruction sourceInstruction, SourceInstrumentationStrategy intention) {
+        if (this.controlFlowNode instanceof LLVMTailReturnNode) {
+            // If the block contains a tail call node then this control flow
+            // node will never be reached so ignore it.
+            return;
+        }
         assert this.controlFlowNode == null;
         this.controlFlowNode = controlFlowNode;
         assignSourceLocation(controlFlowNode, sourceInstruction, intention);
