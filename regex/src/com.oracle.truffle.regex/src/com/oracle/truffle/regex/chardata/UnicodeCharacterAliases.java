@@ -49,7 +49,7 @@ import org.graalvm.collections.EconomicMap;
 
 public class UnicodeCharacterAliases {
 
-    public static final EconomicMap<String, Integer> CHARACTER_ALIASES = EconomicMap.create(470);
+    public static final EconomicMap<String, Integer> CHARACTER_ALIASES = EconomicMap.create(473);
 
     static {
         CHARACTER_ALIASES.put("ACK", 0x0006);
@@ -58,6 +58,7 @@ public class UnicodeCharacterAliases {
         CHARACTER_ALIASES.put("ALM", 0x061C);
         CHARACTER_ALIASES.put("APC", 0x009F);
         CHARACTER_ALIASES.put("APPLICATION PROGRAM COMMAND", 0x009F);
+        CHARACTER_ALIASES.put("ARABIC SMALL HIGH LIGATURE ALEF WITH YEH BARREE", 0x0616);
         CHARACTER_ALIASES.put("BACKSPACE", 0x0008);
         CHARACTER_ALIASES.put("BEL", 0x0007);
         CHARACTER_ALIASES.put("BOM", 0xFEFF);
@@ -94,6 +95,7 @@ public class UnicodeCharacterAliases {
         CHARACTER_ALIASES.put("DEVICE CONTROL THREE", 0x0013);
         CHARACTER_ALIASES.put("DEVICE CONTROL TWO", 0x0012);
         CHARACTER_ALIASES.put("DLE", 0x0010);
+        CHARACTER_ALIASES.put("EM", 0x0019);
         CHARACTER_ALIASES.put("END OF GUARDED AREA", 0x0097);
         CHARACTER_ALIASES.put("END OF LINE", 0x000A);
         CHARACTER_ALIASES.put("END OF MEDIUM", 0x0019);
@@ -248,6 +250,7 @@ public class UnicodeCharacterAliases {
         CHARACTER_ALIASES.put("STX", 0x0002);
         CHARACTER_ALIASES.put("SUB", 0x001A);
         CHARACTER_ALIASES.put("SUBSTITUTE", 0x001A);
+        CHARACTER_ALIASES.put("SUNDANESE LETTER ARCHAIC I", 0x1BBD);
         CHARACTER_ALIASES.put("SYN", 0x0016);
         CHARACTER_ALIASES.put("SYNCHRONOUS IDLE", 0x0016);
         CHARACTER_ALIASES.put("SYRIAC SUBLINEAR COLON SKEWED LEFT", 0x0709);

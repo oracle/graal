@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between TRegex versions relevant to language implementors integrating TRegex into their language. This document will focus on API changes relevant to integrators of TRegex.
 
+## Version 23.0.0
+
+* Updated Unicode data (case-folding, character properties) to version 15 of the Unicode standard.
+
 ## Version 22.2.0
 
 * Added support for atomic groups and possessive quantifiers in Ruby regular expressions by using the backtracking.
