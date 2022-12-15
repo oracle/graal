@@ -71,9 +71,6 @@ local r      = import "run-spec.libsonnet";
       local _result = {
         "linux": {
           "amd64": {
-            "jdk11": r.task_spec({
-              "target": "gate",
-            }),
             "jdk17": r.task_spec({
               "target": "gate",
             }),
@@ -102,7 +99,6 @@ local r      = import "run-spec.libsonnet";
       local _result = {
         "linux": {
           "amd64": {
-            "jdk11": {},
             "jdk17": {},
             "jdk19": {},
             "jdk20": {},
