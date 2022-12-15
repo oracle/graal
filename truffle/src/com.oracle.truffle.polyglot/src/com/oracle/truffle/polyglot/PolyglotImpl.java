@@ -528,7 +528,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public String findMimeType(File file) throws IOException {
         Objects.requireNonNull(file);
-        TruffleFile truffleFile = EngineAccessor.LANGUAGE.getTruffleFile(file.toPath().toString(), getDefaultFileSystemContext());
+        TruffleFile truffleFile;
+        try {
+            truffleFile = EngineAccessor.LANGUAGE.getTruffleFile(file.toPath().toString(), getDefaultFileSystemContext());
+        } catch (UnsupportedOperationException | IllegalArgumentException e) {
+            throw new AssertionError("Inconsistent path", e);
+        }
         return truffleFile.detectMimeType();
     }
 
