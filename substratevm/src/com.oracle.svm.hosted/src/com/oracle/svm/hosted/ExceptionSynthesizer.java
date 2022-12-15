@@ -112,14 +112,6 @@ public final class ExceptionSynthesizer {
         return exceptionMethods.get(Key.from(methodDescriptor));
     }
 
-    public static void throwException(GraphBuilderContext b, ResolvedJavaMethod throwExceptionMethod, String message) {
-        assert throwExceptionMethod.isStatic();
-        ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(message), b.getMetaAccess(), b.getGraph());
-        b.handleReplacedInvoke(InvokeKind.Static, throwExceptionMethod, new ValueNode[]{messageNode}, false);
-        /* The invoked method always throws an exception, i.e., never returns. */
-        b.add(new LoweredDeadEndNode());
-    }
-
     /**
      * This method is used to delay errors from image build-time to run-time. It does so by invoking
      * a synthesized method that throws an instance like the one given as throwable in the given
@@ -159,7 +151,9 @@ public final class ExceptionSynthesizer {
         var errorCtor = ReflectionUtil.lookupConstructor(throwableClass, String.class);
         var metaAccess = (UniverseMetaAccess) b.getMetaAccess();
         ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
-        throwException(b, throwingMethod, throwableMessage);
+        ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwableMessage), b.getMetaAccess(), b.getGraph());
+        b.handleReplacedInvoke(InvokeKind.Static, throwingMethod, new ValueNode[]{messageNode}, false);
+        b.add(new LoweredDeadEndNode());
     }
 
     /**

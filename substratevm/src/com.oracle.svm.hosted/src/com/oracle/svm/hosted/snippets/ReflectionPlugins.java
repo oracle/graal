@@ -48,7 +48,11 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -57,6 +61,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInli
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -69,8 +74,10 @@ import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.StackTraceUtils;
+import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
@@ -362,7 +369,7 @@ public final class ReflectionPlugins {
         if (PredefinedClassesSupport.isPredefined(clazz)) {
             return false;
         }
-        return pushConstant(b, targetMethod, () -> clazz.getName(), JavaKind.Object, clazz.getClassLoader(), true) != null;
+        return pushConstant(b, targetMethod, clazz::getName, JavaKind.Object, clazz.getClassLoader(), true) != null;
     }
 
     /**
@@ -442,7 +449,7 @@ public final class ReflectionPlugins {
         }
 
         /* String representation of the parameters for debug printing. */
-        Supplier<String> targetParameters = () -> (receiverValue == null ? "" : receiverValue.toString() + "; ") +
+        Supplier<String> targetParameters = () -> (receiverValue == null ? "" : receiverValue + "; ") +
                         Stream.of(argValues).map(arg -> arg instanceof Object[] ? Arrays.toString((Object[]) arg) : Objects.toString(arg)).collect(Collectors.joining(", "));
 
         Object returnValue;
@@ -597,10 +604,7 @@ public final class ReflectionPlugins {
          * If ReportUnsupportedElementsAtRuntime is set looking up a @Delete-ed element will return
          * a substitution method that has the @Delete annotation.
          */
-        if (annotated != null && annotated.isAnnotationPresent(Delete.class)) {
-            return true;
-        }
-        return false;
+        return annotated != null && annotated.isAnnotationPresent(Delete.class);
     }
 
     private JavaConstant pushConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Supplier<String> targetParameters, JavaKind returnKind, Object returnValue,
@@ -637,9 +641,19 @@ public final class ReflectionPlugins {
 
         String message = originalMessage + ". This exception was synthesized during native image building from a call to " + targetMethod.format("%H.%n(%p)") +
                         " with constant arguments.";
-        ExceptionSynthesizer.throwException(b, b.getMetaAccess().lookupJavaMethod(exceptionMethod), message);
+        throwException(b, b.getMetaAccess().lookupJavaMethod(exceptionMethod), message);
         traceException(b, targetMethod, targetParameters, exceptionClass);
         return true;
+    }
+
+    private static void throwException(GraphBuilderContext b, ResolvedJavaMethod exceptionMethod, String message) {
+        ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(message), b.getMetaAccess(), b.getGraph());
+        assert exceptionMethod.isStatic();
+        StampPair returnStamp = StampFactory.forDeclaredType(b.getGraph().getAssumptions(), exceptionMethod.getSignature().getReturnType(null), false);
+        MethodCallTargetNode callTarget = b.add(new SubstrateMethodCallTargetNode(CallTargetNode.InvokeKind.Static, exceptionMethod, new ValueNode[]{messageNode}, returnStamp, null, null, null));
+        b.add(new InvokeWithExceptionNode(callTarget, null, b.bci()));
+        /* The invoked method always throws an exception, i.e., never returns. */
+        b.add(new LoweredDeadEndNode());
     }
 
     private static void traceConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Supplier<String> targetParameters, Object value) {
