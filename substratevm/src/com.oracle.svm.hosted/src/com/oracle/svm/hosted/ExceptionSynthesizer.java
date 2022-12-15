@@ -112,6 +112,23 @@ public final class ExceptionSynthesizer {
         return exceptionMethods.get(Key.from(methodDescriptor));
     }
 
+    public static void throwException(GraphBuilderContext b, Class<?> exceptionClass, String message) {
+        /* Get the exception throwing method that has a message parameter. */
+        throwException(b, throwExceptionMethod(exceptionClass, String.class), message);
+    }
+
+    public static void throwException(GraphBuilderContext b, Method throwExceptionMethod, String message) {
+        ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(message), b.getMetaAccess(), b.getGraph());
+        ResolvedJavaMethod exceptionMethod = b.getMetaAccess().lookupJavaMethod(throwExceptionMethod);
+        assert exceptionMethod.isStatic();
+
+        StampPair returnStamp = StampFactory.forDeclaredType(b.getGraph().getAssumptions(), exceptionMethod.getSignature().getReturnType(null), false);
+        MethodCallTargetNode callTarget = b.add(new SubstrateMethodCallTargetNode(InvokeKind.Static, exceptionMethod, new ValueNode[]{messageNode}, returnStamp, null, null, null));
+        b.add(new InvokeWithExceptionNode(callTarget, null, b.bci()));
+        /* The invoked method always throws an exception, i.e., never returns. */
+        b.add(new LoweredDeadEndNode());
+    }
+
     /**
      * This method is used to delay errors from image build-time to run-time. It does so by invoking
      * a synthesized method that throws an instance like the one given as throwable in the given
@@ -148,6 +165,13 @@ public final class ExceptionSynthesizer {
      * argument and then throws that instance in the given GraphBuilderContext.
      */
     public static void replaceWithThrowingAtRuntime(GraphBuilderContext b, Class<? extends Throwable> throwableClass, String throwableMessage) {
+        /*
+         * This method is currently not able to replace
+         * ExceptionSynthesizer.throwException(GraphBuilderContext, Method, String) because there
+         * are places where GraphBuilderContext.getMetaAccess() does not contain a
+         * UniverseMetaAccess (e.g. in case of ParsingReason.EarlyClassInitializerAnalysis). If we
+         * can access the ParsingReason in here we will be able to get rid of throwException.
+         */
         var errorCtor = ReflectionUtil.lookupConstructor(throwableClass, String.class);
         var metaAccess = (UniverseMetaAccess) b.getMetaAccess();
         ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);

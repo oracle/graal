@@ -241,7 +241,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                                 LinkAtBuildTimeSupport.singleton().errorMessageFor(method.getDeclaringClass());
                 throw new TypeInstantiationException(message);
             } else {
-                ExceptionSynthesizer.replaceWithThrowingAtRuntime(this, InstantiationError.class, type.toJavaName());
+                ExceptionSynthesizer.throwException(this, InstantiationError.class, type.toJavaName());
             }
         }
 
@@ -342,7 +342,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             if (linkAtBuildTime) {
                 reportUnresolvedElement("type", type.toJavaName());
             } else {
-                ExceptionSynthesizer.replaceWithThrowingAtRuntime(this, NoClassDefFoundError.class, type.toJavaName());
+                ExceptionSynthesizer.throwException(this, NoClassDefFoundError.class, type.toJavaName());
             }
         }
 
@@ -359,7 +359,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 if (linkAtBuildTime) {
                     reportUnresolvedElement("field", field.format("%H.%n"));
                 } else {
-                    ExceptionSynthesizer.replaceWithThrowingAtRuntime(this, NoSuchFieldError.class, field.format("%H.%n"));
+                    ExceptionSynthesizer.throwException(this, NoSuchFieldError.class, field.format("%H.%n"));
                 }
             }
         }
@@ -377,7 +377,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 if (linkAtBuildTime) {
                     reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"));
                 } else {
-                    ExceptionSynthesizer.replaceWithThrowingAtRuntime(this, NoSuchMethodError.class, javaMethod.format("%H.%n(%P)"));
+                    ExceptionSynthesizer.throwException(this, NoSuchMethodError.class, javaMethod.format("%H.%n(%P)"));
                 }
             }
         }
