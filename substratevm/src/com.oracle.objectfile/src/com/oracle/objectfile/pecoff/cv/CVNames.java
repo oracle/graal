@@ -26,22 +26,25 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-public abstract class CVDebugConstants {
+import com.oracle.objectfile.debugentry.FieldEntry;
+import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.debugentry.TypeEntry;
 
-    static final int DEBUG_S_SYMBOLS = 0xf1;
-    static final int DEBUG_S_LINES = 0xf2;
-    static final int DEBUG_S_STRINGTABLE = 0xf3;
-    static final int DEBUG_S_FILECHKSMS = 0xf4;
+final class CVNames {
 
-    /* Subcommands in DEBUG_S_SYMBOLS section. */
-    static final short S_END = 0x0006;
-    static final short S_FRAMEPROC = 0x1012;
-    static final short S_OBJNAME = 0x1101;
-    static final short S_UDT = 0x1108;
-    static final short S_LDATA32 = 0x110c; /* Local static. */
-    static final short S_GDATA32 = 0x110d; /* Global static. */
-    static final short S_GPROC32 = 0x1110; /* Global procedure. */
-    static final short S_REGREL32 = 0x1111;
-    static final short S_COMPILE3 = 0x113c;
-    static final short S_ENVBLOCK = 0x113d;
+    static String typeNameToCodeViewName(String typeName) {
+        return typeName.replace('.', '_').replace("[]", "_array");
+    }
+
+    static String typeNameToCodeViewName(TypeEntry typeEntry) {
+        return typeNameToCodeViewName(typeEntry.getTypeName());
+    }
+
+    static String methodNameToCodeViewName(MethodEntry memberEntry) {
+        return typeNameToCodeViewName(memberEntry.ownerType()) + "::" + memberEntry.methodName();
+    }
+
+    static String fieldNameToCodeViewName(FieldEntry memberEntry) {
+        return typeNameToCodeViewName(memberEntry.ownerType()) + "::" + memberEntry.fieldName();
+    }
 }
