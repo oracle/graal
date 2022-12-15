@@ -548,6 +548,7 @@ local devkits = common_json.devkits;
     ] + vm.check_graalvm_complete_build($.mx_vm_installables, "linux", "aarch64", java_version),
     notify_groups:: ['deploy'],
     timelimit: '1:30:00',
+    capabilities+: ["!xgene3"]
   },
 
   deploy_graalvm_base_darwin_amd64(java_version): vm.check_structure + {
