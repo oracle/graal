@@ -76,7 +76,7 @@ Feel free to try this out on your own applications or by following these instruc
 
     ![](images/debug-6.png)
 
-Watch video [version of the enhanced HotSwap capabilities with Java on Truffle demo](https://www.youtube.com/watch?v=gfuvvV6mplo).
+Watch the video [version of the enhanced HotSwap capabilities with Java on Truffle demo](https://www.youtube.com/watch?v=gfuvvV6mplo).
 
 ### Supported Changes
 
