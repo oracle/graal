@@ -70,7 +70,7 @@ abstract class PolyglotToHostNode extends Node {
     static Node inlineToHost(
                     @RequiredField(bits = 3, value = StateField.class) //
                     @RequiredField(type = Node.class, value = ReferenceField.class) InlineTarget target) {
-        return (Node) PolyglotContextImpl.requireContext().engine.host.inlineToHostTypeNode(target);
+        return EngineAccessor.HOST.inlineToHostNode(target);
     }
 
 }
