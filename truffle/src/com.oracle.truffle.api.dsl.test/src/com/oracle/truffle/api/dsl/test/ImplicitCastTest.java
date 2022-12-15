@@ -43,6 +43,8 @@ package com.oracle.truffle.api.dsl.test;
 import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createArguments;
 import static org.junit.Assert.assertEquals;
 
+import java.lang.reflect.Field;
+
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -69,6 +71,8 @@ import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals1Node
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals2NodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals3NodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.TestImplicitCastWithCacheNodeGen;
+import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.TestUnusedImplicitCast1NodeGen;
+import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.TestUnusedImplicitCast2NodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ThirtyThreeBitsNodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ThirtyTwoBitsNodeGen;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
@@ -742,6 +746,47 @@ public class ImplicitCastTest {
         static long do11(double v) {
             return (long) v;
         }
+    }
+
+    @TypeSystemReference(ImplicitCastOrder.class)
+    public abstract static class TestUnusedImplicitCast1Node extends Node {
+
+        public abstract long execute(long a0, long a1, long a2, long a3, long a4,
+                        long a5, long a6, long a7, long a8, long a9);
+
+        @Specialization
+        protected long doDefault(long a0, long a1, long a2, long a3, long a4,
+                        long a5, long a6, long a7, long a8, long a9) {
+            return a0 + a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + a9;
+        }
+    }
+
+    @TypeSystemReference(ImplicitCastOrder.class)
+    public abstract static class TestUnusedImplicitCast2Node extends Node {
+
+        public abstract long execute(long a0, long a1, long a2, long a3, long a4,
+                        long a5, long a6, long a7, long a8, Object a9);
+
+        @Specialization
+        protected long doDefault(long a0, long a1, long a2, long a3, long a4,
+                        long a5, long a6, long a7, long a8, long a9) {
+            return a0 + a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + a9;
+        }
+    }
+
+    @Test
+    public void testUnusedImplicitCast() {
+        Field[] fields = TestUnusedImplicitCast1NodeGen.class.getDeclaredFields();
+
+        // no fields for unused implicit casts
+        assertEquals(0, fields.length);
+
+        fields = TestUnusedImplicitCast2NodeGen.class.getDeclaredFields();
+
+        // single state field expected. unused states are filtered otherwise
+        // there would be two fields.
+        assertEquals(1, fields.length);
+
     }
 
 }

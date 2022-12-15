@@ -3105,7 +3105,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
                     DSLExpressionResolver weakResolver = resolver.copy(Arrays.asList());
                     weakResolver.addVariable(weakName, weakVariable);
-                    specialization.addParameter(specialization.getParameters().size(), weakParameter);
+                    specialization.addParameter(weakParameter);
 
                     DSLExpression parsedDefaultExpression = parseCachedExpression(weakResolver, cache, parameter.getType(), weakName + ".get()");
                     cache.setDefaultExpression(parsedDefaultExpression);

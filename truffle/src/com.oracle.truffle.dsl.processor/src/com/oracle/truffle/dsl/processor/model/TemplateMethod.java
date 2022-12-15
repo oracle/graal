@@ -73,6 +73,7 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
     private final AnnotationMirror markerAnnotation;
     private Parameter returnType;
     private final List<Parameter> parameters;
+    private final List<Parameter> signatureParmeters;
     private final Map<String, Parameter> parameterCache = new HashMap<>();
 
     public TemplateMethod(String id, int naturalOrder, Template template, MethodSpec specification, ExecutableElement method, AnnotationMirror markerAnnotation, Parameter returnType,
@@ -84,12 +85,17 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         this.markerAnnotation = markerAnnotation;
         this.returnType = returnType;
         this.parameters = new ArrayList<>(parameters);
+        this.signatureParmeters = new ArrayList<>(parameters.size());
         for (Parameter param : parameters) {
             parameterCache.put(param.getLocalName(), param);
+            if (param.getSpecification().isSignature()) {
+                signatureParmeters.add(param);
+            }
         }
         if (returnType != null) {
             parameterCache.put(returnType.getLocalName(), returnType);
         }
+
         this.id = id;
     }
 
@@ -97,9 +103,12 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return findParameter(FRAME_NAME);
     }
 
-    public void addParameter(int index, Parameter p) {
-        this.parameters.add(index, p);
+    public void addParameter(Parameter p) {
+        this.parameters.add(p);
         this.parameterCache.put(p.getLocalName(), p);
+        if (p.getSpecification().isSignature()) {
+            signatureParmeters.add(p);
+        }
     }
 
     public String createReferenceName() {
@@ -162,17 +171,6 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return returnType;
     }
 
-    public void replaceParameter(String localName, Parameter newParameter) {
-        if (returnType.getLocalName().equals(localName)) {
-            returnType = newParameter;
-        } else {
-            Parameter local = findParameter(localName);
-            int index = parameters.indexOf(local);
-            parameters.set(index, newParameter);
-        }
-        parameterCache.put(newParameter.getLocalName(), newParameter);
-    }
-
     public Iterable<Parameter> getDynamicParameters() {
         return new FilteredIterable<>(getParameters(), new Predicate<Parameter>() {
             public boolean evaluate(Parameter value) {
@@ -181,12 +179,8 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         });
     }
 
-    public Iterable<Parameter> getSignatureParameters() {
-        return new FilteredIterable<>(getParameters(), new Predicate<Parameter>() {
-            public boolean evaluate(Parameter value) {
-                return value.getSpecification().isSignature();
-            }
-        });
+    public List<Parameter> getSignatureParameters() {
+        return signatureParmeters;
     }
 
     public List<Parameter> getParameters() {
@@ -194,32 +188,20 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
     }
 
     public Parameter findParameterOrDie(NodeExecutionData execution) {
-        for (Parameter parameter : parameters) {
-            if (parameter.getSpecification().isSignature() && parameter.getSpecification().getExecution() == execution) {
-                return parameter;
-            }
+        Parameter p = findParameter(execution);
+        if (p == null) {
+            throw new AssertionError("Could not find parameter for execution");
         }
-        throw new AssertionError("Could not find parameter for execution");
+        return p;
     }
 
     public Parameter findParameter(NodeExecutionData execution) {
-        for (Parameter parameter : parameters) {
-            if (parameter.getSpecification().isSignature() && parameter.getSpecification().getExecution() == execution) {
+        for (Parameter parameter : signatureParmeters) {
+            if (parameter.getSpecification().getExecution() == execution) {
                 return parameter;
             }
         }
         return null;
-    }
-
-    public List<Parameter> findByExecutionData(NodeExecutionData execution) {
-        List<Parameter> foundParameters = new ArrayList<>();
-        for (Parameter parameter : getParameters()) {
-            ParameterSpec spec = parameter.getSpecification();
-            if (spec != null && spec.getExecution() != null && spec.getExecution().equals(execution) && parameter.getSpecification().isSignature()) {
-                foundParameters.add(parameter);
-            }
-        }
-        return foundParameters;
     }
 
     public Parameter findParameter(String valueName) {

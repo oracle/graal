@@ -328,6 +328,18 @@ public class FlatNodeGenFactory {
 
     }
 
+    private static boolean isImplicitCastUsed(ExecutableTypeData executable, Collection<SpecializationData> usedSpecializations, TypeGuard guard) {
+        int signatureIndex = guard.getSignatureIndex();
+        TypeMirror polymorphicParameter = executable.getSignatureParameters().get(signatureIndex);
+        for (SpecializationData specialization : usedSpecializations) {
+            TypeMirror specializationType = specialization.getSignatureParameters().get(signatureIndex).getType();
+            if (ElementUtils.needsCastTo(polymorphicParameter, specializationType)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     BitStateList computeNodeState() {
         List<State<?>> stateObjects = new ArrayList<>();
         boolean aotStateAdded = false;
@@ -385,7 +397,9 @@ public class FlatNodeGenFactory {
                 }
             }
             for (TypeGuard cast : implicitCasts) {
-                stateObjects.add(new ImplicitCastState(stateNode, cast));
+                if (isImplicitCastUsed(stateNode.getPolymorphicExecutable(), specializations, cast)) {
+                    stateObjects.add(new ImplicitCastState(stateNode, cast));
+                }
             }
         }
 
@@ -7623,7 +7637,9 @@ public class FlatNodeGenFactory {
                 }
             }
             for (ImplicitCastState state : bitSet.getStates().queryStates(ImplicitCastState.class)) {
-                return true;
+                if (isImplicitCastUsed(state.node.getPolymorphicExecutable(), usedSpecializations, state.key)) {
+                    return true;
+                }
             }
             return false;
         }
