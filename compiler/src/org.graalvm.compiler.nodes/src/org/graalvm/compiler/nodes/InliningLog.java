@@ -372,7 +372,8 @@ public class InliningLog {
     /**
      * Recursively copies a call tree and adds it to this call tree.
      *
-     * @param parent the call-tree node which will hold the copy ({@code null} if the copy replaces the root)
+     * @param parent the call-tree node which will hold the copy ({@code null} if the copy replaces
+     *            the root)
      * @param replacementSite the root of the call tree to be copied
      * @param replacements the mapping from original graph nodes to replaced nodes
      * @param mapping the mapping from original call-tree nodes to copies

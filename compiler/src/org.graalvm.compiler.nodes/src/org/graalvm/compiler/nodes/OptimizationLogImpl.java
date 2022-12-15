@@ -749,7 +749,7 @@ public class OptimizationLogImpl implements OptimizationLog {
      * @return inlining subtree as a JSON map
      */
     @SuppressWarnings("unchecked")
-    private EconomicMap<String, Object> callsiteAsJSONMap(InliningLog.Callsite callsite, boolean isInlined, List<String> reason,
+    private static EconomicMap<String, Object> callsiteAsJSONMap(InliningLog.Callsite callsite, boolean isInlined, List<String> reason,
                     Function<ResolvedJavaMethod, String> methodNameFormatter, EconomicMap<InliningLog.Callsite, EconomicMap<String, Object>> replacements) {
         EconomicMap<String, Object> map = EconomicMap.create();
         replacements.put(callsite, map);
@@ -799,7 +799,7 @@ public class OptimizationLogImpl implements OptimizationLog {
      * @param callsite the callsite whose profiling info is returned
      * @return the type profile as a map or {@code null}
      */
-    private EconomicMap<String, Object> receiverTypeProfileAsJSONMap(InliningLog.Callsite callsite, Function<ResolvedJavaMethod, String> methodNameFormatter) {
+    private static EconomicMap<String, Object> receiverTypeProfileAsJSONMap(InliningLog.Callsite callsite, Function<ResolvedJavaMethod, String> methodNameFormatter) {
         if (callsite.getParent() == null || callsite.getParent().getTarget() == null || callsite.getParent().getTarget().getProfilingInfo() == null) {
             return null;
         }
