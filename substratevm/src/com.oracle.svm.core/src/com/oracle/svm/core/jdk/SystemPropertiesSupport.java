@@ -92,7 +92,7 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
 
     @Fold
     public static SystemPropertiesSupport singleton() {
-        return (SystemPropertiesSupport) ImageSingletons.lookup(RuntimeSystemPropertiesSupport.class);
+        return ImageSingletons.lookup(SystemPropertiesSupport.class);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

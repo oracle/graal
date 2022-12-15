@@ -133,6 +133,6 @@ class DarwinSystemPropertiesFeature implements InternalFeature {
     public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.add(RuntimeSystemPropertiesSupport.class, new DarwinSystemPropertiesSupport());
         /* GR-42971 - Remove once SystemPropertiesSupport.class ImageSingletons use is gone. */
-        ImageSingletons.add(SystemPropertiesSupport.class, SystemPropertiesSupport.singleton());
+        ImageSingletons.add(SystemPropertiesSupport.class, (SystemPropertiesSupport) ImageSingletons.lookup(RuntimeSystemPropertiesSupport.class));
     }
 }
