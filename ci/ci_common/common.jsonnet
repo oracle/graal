@@ -120,11 +120,11 @@ local add_jdk_version(name) =
 } + {
   # Aliases to edition specific labsjdks
   labsjdk17::            self["labsjdk-" + repo_config.graalvm_edition + "-17"],
-  labsjdk19::            self["labsjdk-" + repo_config.graalvm_edition + "-19"],
+  labsjdk19::            self["labsjdk-ee-19"],
   labsjdk17Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-17Debug"],
-  labsjdk19Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-19Debug"],
+  labsjdk19Debug::       self["labsjdk-ee-19Debug"],
   labsjdk17LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-17-llvm"],
-  labsjdk19LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-19-llvm"],
+  labsjdk19LLVM::        self["labsjdk-ee-19-llvm"],
 
   # Only CE exists for JDK 20 until JDK 20 GA.
   labsjdk20::            self["labsjdk-ce-20"],
