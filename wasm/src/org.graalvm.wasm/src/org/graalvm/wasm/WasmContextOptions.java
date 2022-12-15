@@ -51,6 +51,8 @@ public class WasmContextOptions {
     @CompilationFinal private boolean keepDataSections;
     @CompilationFinal private boolean multiValue;
     @CompilationFinal private boolean bulkMemoryAndRefTypes;
+
+    @CompilationFinal private boolean memoryOverheadMode;
     private final OptionValues optionValues;
 
     WasmContextOptions(OptionValues optionValues) {
@@ -68,6 +70,7 @@ public class WasmContextOptions {
         this.keepDataSections = readBooleanOption(WasmOptions.KeepDataSections);
         this.multiValue = readBooleanOption(WasmOptions.MultiValue);
         this.bulkMemoryAndRefTypes = readBooleanOption(WasmOptions.BulkMemoryAndRefTypes);
+        this.memoryOverheadMode = readBooleanOption(WasmOptions.MemoryOverheadMode);
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key) {
@@ -94,6 +97,10 @@ public class WasmContextOptions {
         return bulkMemoryAndRefTypes;
     }
 
+    public boolean memoryOverheadMode() {
+        return memoryOverheadMode;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -102,6 +109,7 @@ public class WasmContextOptions {
         hash = 53 * hash + (this.keepDataSections ? 1 : 0);
         hash = 53 * hash + (this.multiValue ? 1 : 0);
         hash = 53 * hash + (this.bulkMemoryAndRefTypes ? 1 : 0);
+        hash = 53 * hash + (this.memoryOverheadMode ? 1 : 0);
         return hash;
     }
 
@@ -130,6 +138,9 @@ public class WasmContextOptions {
             return false;
         }
         if (this.bulkMemoryAndRefTypes != other.bulkMemoryAndRefTypes) {
+            return false;
+        }
+        if (this.memoryOverheadMode != other.memoryOverheadMode) {
             return false;
         }
         return true;
