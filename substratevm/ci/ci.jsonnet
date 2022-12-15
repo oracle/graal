@@ -50,7 +50,6 @@
     },
   }),
 
-  local linux_amd64_jdk11 = common.linux_amd64   + common.labsjdk11,
   local linux_amd64_jdk17 = common.linux_amd64   + common.labsjdk17,
   local linux_amd64_jdk19 = common.linux_amd64   + common.labsjdk19,
   local darwin_jdk17      = common.darwin_amd64  + common.labsjdk17,
@@ -58,7 +57,6 @@
 
   // JDKs
   local jdk_name_to_dict = {
-    "jdk11"+: common.labsjdk11,
     "jdk17"+: common.labsjdk17,
     "jdk19"+: common.labsjdk19,
   },
