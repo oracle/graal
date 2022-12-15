@@ -51,7 +51,7 @@ import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.dsl.Introspection.SpecializationInfo;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.test.ReplacesThreadSafetyTestFactory2.ReplaceAcrossStateBitsetsNodeGen;
+import com.oracle.truffle.api.dsl.test.ReplacesThreadSafetyTestFactory.ReplaceAcrossStateBitsetsNodeGen;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
