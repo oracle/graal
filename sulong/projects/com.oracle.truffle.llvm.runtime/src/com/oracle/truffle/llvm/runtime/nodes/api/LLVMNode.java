@@ -33,6 +33,7 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -284,8 +285,15 @@ public abstract class LLVMNode extends Node {
 
         private final GenerateAOT.Provider delegate;
 
-        public AOTInitHelper(GenerateAOT.Provider delegate) {
-            this.delegate = delegate;
+        public AOTInitHelper(BiConsumer<TruffleLanguage<?>, RootNode> delegate) {
+            this.delegate = new GenerateAOT.Provider() {
+
+                @Override
+                public void prepareForAOT(TruffleLanguage<?> language, RootNode root) {
+                    delegate.accept(language, root);
+                }
+
+            };
         }
 
         @Override
