@@ -523,7 +523,14 @@ public abstract class PlatformThreads {
             return true;
         }
         /* Tell all the threads that the VM is being torn down. */
-        return tearDownPlatformThreads();
+        boolean result = tearDownPlatformThreads();
+
+        // Detach last thread data
+        Thread thread = currentThread.get(CurrentIsolate.getCurrentThread());
+        if (thread != null) {
+            toTarget(thread).threadData.detach();
+        }
+        return result;
     }
 
     @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")

@@ -37,6 +37,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -97,7 +98,10 @@ final class Target_java_util_TimeZone {
                 tzMappingsPtr = pinnedContent.addressOfArrayElement(0);
             }
             CCharPointer tzId = LibCHelper.SVM_FindJavaTZmd(tzMappingsPtr, contentLen);
-            return CTypeConversion.toJavaString(tzId);
+            String result = CTypeConversion.toJavaString(tzId);
+            // SVM_FindJavaTZmd returns a newly allocated string
+            UnmanagedMemory.free(tzId);
+            return result;
         } finally {
             if (pinnedContent != null) {
                 pinnedContent.close();

@@ -153,6 +153,9 @@ public abstract class VMThreads {
      * used for the stack overflow check.
      */
     public static final FastThreadLocalWord<UnsignedWord> StackEnd = FastThreadLocalFactory.createWord("VMThreads.StackEnd");
+    /**
+     * FIXME add explanation and rename?
+     */
     private static final FastThreadLocalBytes<Pointer> StartedByCurrentIsolate = FastThreadLocalFactory.createBytes(() -> 1, "VMThreads.StartedByCurrentIsolate");
 
     private static final int STATE_UNINITIALIZED = 1;
@@ -417,6 +420,7 @@ public abstract class VMThreads {
         }
     }
 
+    // nit clarify this is an external thread
     @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
     private static void detachThreadInSafeContext(IsolateThread thread) {
         PlatformThreads.detachThread(thread);
@@ -448,12 +452,20 @@ public abstract class VMThreads {
         }
     }
 
+    @Uninterruptible(reason = "Only uninterruptible code may be executed after VMThreads#threadExit.")
     public void tearDown() {
         ThreadingSupportImpl.pauseRecurringCallback("Execution of arbitrary code is prohibited during the last teardown steps.");
+
+        IsolateThread curThread = CurrentIsolate.getCurrentThread();
+        VMThreads.threadExit(curThread);
+        /* Only uninterruptible code may be executed from now on. */
+        PlatformThreads.afterThreadExit(curThread);
+
         if (VMOperationControl.useDedicatedVMOperationThread()) {
             VMOperationControl.shutdownAndDetachVMOperationThread();
         }
-        // At this point, it is guaranteed that all other threads were detached.
+
+        /* At this point, it is guaranteed that all other threads were detached. */
         IsolateListenerSupport.singleton().onIsolateTeardown();
         waitUntilLastOsThreadExited();
     }
@@ -622,6 +634,7 @@ public abstract class VMThreads {
         return false;
     }
 
+    // TODO this name is misleading. It is detachAllExternallyStartedIsolateThreads
     private static class DetachAllThreadsExceptCurrentOperation extends JavaVMOperation {
         DetachAllThreadsExceptCurrentOperation() {
             super(VMOperationInfos.get(DetachAllThreadsExceptCurrentOperation.class, "Detach all threads except current", SystemEffect.SAFEPOINT));
