@@ -747,13 +747,12 @@ final class FileSystems {
 
         @Override
         public Path parsePath(URI uri) {
-            if (!hostfs.getScheme().equals(uri.getScheme())) {
+            if (!fileSystemProvider.getScheme().equals(uri.getScheme())) {
                 // Throw a UnsupportedOperationException with a better message than the default
                 // FileSystemProvider.getPath does.
                 throw new UnsupportedOperationException("Unsupported URI scheme " + uri.getScheme());
             }
             try {
-                Objects.requireNonNull(uri);
                 return fileSystemProvider.getPath(uri);
             } catch (FileSystemNotFoundException e) {
                 throw new UnsupportedOperationException(e);
