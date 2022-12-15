@@ -26,8 +26,6 @@ package com.oracle.svm.hosted.meta;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.unimplemented;
-import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DEOPT_TARGET_METHOD;
-import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
@@ -67,6 +65,7 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CompilationInfo;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.vm.ci.meta.Constant;
@@ -84,8 +83,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 
 public final class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvider, JavaMethodContext, OriginalMethodProvider, MultiMethod {
 
-    public static final String METHOD_NAME_COLLISION_SEPARATOR = "*";
-    public static final String MULTI_METHOD_KEY_SEPARATOR = "**";
+    public static final String METHOD_NAME_COLLISION_SEPARATOR = "%";
 
     public final AnalysisMethod wrapped;
 
@@ -138,15 +136,13 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
                     ConstantPool constantPool, ExceptionHandler[] handlers) {
         LocalVariableTable localVariableTable = createLocalVariableTable(universe, wrapped);
 
-        return create0(wrapped, holder, signature, constantPool, handlers, ORIGINAL_METHOD, null, localVariableTable);
+        return create0(wrapped, holder, signature, constantPool, handlers, wrapped.getMultiMethodKey(), null, localVariableTable);
     }
 
     private static HostedMethod create0(AnalysisMethod wrapped, HostedType holder, Signature signature,
                     ConstantPool constantPool, ExceptionHandler[] handlers, MultiMethodKey key, Map<MultiMethodKey, MultiMethod> multiMethodMap, LocalVariableTable localVariableTable) {
-        assert !(multiMethodMap == null && key != ORIGINAL_METHOD);
-
         Function<Integer, Pair<String, String>> nameGenerator = (collisionCount) -> {
-            String name = wrapped.getName();
+            String name = wrapped.wrapped.getName(); // want name w/o any multimethodkey suffix
             if (key != ORIGINAL_METHOD) {
                 name += MULTI_METHOD_KEY_SEPARATOR + key;
             }
@@ -287,12 +283,12 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
 
     @Override
     public boolean isDeoptTarget() {
-        return multiMethodKey == DEOPT_TARGET_METHOD;
+        return MultiMethod.super.isDeoptTarget();
     }
 
     @Override
     public boolean canDeoptimize() {
-        return compilationInfo.canDeoptForTesting() || multiMethodKey == RUNTIME_COMPILED_METHOD;
+        return compilationInfo.canDeoptForTesting() || multiMethodKey == SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
     }
 
     public boolean hasVTableIndex() {
@@ -516,6 +512,13 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
     @Override
     public MultiMethodKey getMultiMethodKey() {
         return multiMethodKey;
+    }
+
+    void setMultiMethodMap(ConcurrentHashMap<MultiMethodKey, MultiMethod> newMultiMethodMap) {
+        VMError.guarantee(multiMethodMap == null, "Resetting already initialized multimap");
+        if (!MULTIMETHOD_MAP_UPDATER.compareAndSet(this, null, newMultiMethodMap)) {
+            throw VMError.shouldNotReachHere("unable to set multimeMethodMap");
+        }
     }
 
     @Override

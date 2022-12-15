@@ -8,9 +8,10 @@ permalink: /reference-manual/native-image/guides/use-native-image-gradle-plugin/
 # Use Gradle to Build a Native Executable from a Java Application
 
 You can use the Gradle plugin for GraalVM Native Image to build a native executable from a Java application in one step, in addition to a runnable JAR. 
-The plugin is provided as part of the [Native Build Tools project](https://graalvm.github.io/native-build-tools/latest/index.html) and uses the [Gradle build tool](https://gradle.org/).
+The plugin is provided as part of the [Native Build Tools project](https://graalvm.github.io/native-build-tools/latest/index.html).
 
-The Gradle plugin for GraalVM Native Image works with the `application` plugin and registers a number of tasks and extensions for you. For more information, see the [plugin documentation](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html).
+The Gradle plugin for GraalVM Native Image works with the `application` plugin and registers a number of tasks and extensions for you. 
+For more information, see the [plugin documentation](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html).
 
 This guide shows you how to use the Native Image Gradle plugin to build a native executable from a Java application, add support for dynamic features, and run JUnit tests.
 
@@ -26,7 +27,7 @@ We recommend that you follow the instructions and create the application step-by
 git clone https://github.com/graalvm/graalvm-demos && cd graalvm-demos/fortune-demo/fortune-gradle
 ```
 
-> You must have [GraalVM installed with Native Image support](../README.md#install-native-image). 
+> Note: To use the Native Build Tools, first install GraalVM. The easiest way to install GraalVM is to use the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader): `bash <(curl -sL https://get.graalvm.org/jdk)`.
 
 ## Prepare a Demo Application
 
@@ -160,7 +161,7 @@ git clone https://github.com/graalvm/graalvm-demos && cd graalvm-demos/fortune-d
 
     Also, remove the dependency on `guava` that will not be used.
 
-    The next steps will be focused what you should do to enable the Native Image Gradle plugin.
+    The next steps demonstrate what you should do to enable the [Native Image Gradle plugin](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html).
 
 7. Register the Native Image Gradle plugin. Add the following to `plugins` section of your project’s _build.gradle_ file:
 
@@ -168,7 +169,7 @@ git clone https://github.com/graalvm/graalvm-demos && cd graalvm-demos/fortune-d
     plugins {
     // ...
 
-    id 'org.graalvm.buildtools.native' version '0.9.12'
+    id 'org.graalvm.buildtools.native' version '0.9.18'
     }
     ```
     The plugin discovers which JAR files it needs to pass to the `native-image` builder and what the executable main class should be. 

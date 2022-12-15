@@ -1957,8 +1957,8 @@ public class SnippetTemplate {
                         MemoryKill replacement = map.getLastLocationAccess(location);
                         if (replacement == null) {
                             assert mayRemoveLocation || LocationIdentity.any().equals(location) ||
-                                            CollectionsUtil.anyMatch(info.privateLocations, Predicate.isEqual(location)) : "Snippet " +
-                                                            info.method.format("%h.%n") + " contains access to the non-private location " +
+                                            CollectionsUtil.anyMatch(info.privateLocations, Predicate.isEqual(location)) : "Snippet " + info.method.format("%h.%n") +
+                                                            " contains access to the non-private location " +
                                                             location + ", but replacee doesn't access this location." + map.getLocations();
                         } else {
                             pos.set(usage, replacement.asNode());

@@ -52,13 +52,13 @@ public class CompilationWatchDogTest extends GraalCompilerTest {
      * compiler stack trace every 1 second after that but consider the compilation stuck after
      * seeing the same stack in 2 consecutive reports.
      *
-     * A compilation is then started with a 4 second injected delay. Asserts that at least 1 long
+     * A compilation is then started with a 6-second injected delay. Asserts that at least 1 long
      * compilation event and 1 stuck compilation event is seen.
      */
     @Test
     public void test() {
         OptionValues options = new OptionValues(getInitialOptions(),
-                        InjectedCompilationDelay, 4,
+                        InjectedCompilationDelay, 6,
                         CompilationWatchDogStartDelay, 1,
                         CompilationWatchDogVMExitDelay, 2);
         test(options, "snippet", 42);
@@ -106,7 +106,7 @@ public class CompilationWatchDogTest extends GraalCompilerTest {
         } finally {
             Assert.assertTrue(!longCompilations.isEmpty());
             Assert.assertTrue(longCompilations.toString(), longCompilations.stream().allMatch(id -> id == compilation));
-            Assert.assertTrue(!stuckCompilations.isEmpty());
+            Assert.assertTrue(longCompilations.toString(), !stuckCompilations.isEmpty());
             Assert.assertTrue(stuckCompilations.toString(), longCompilations.stream().allMatch(id -> id == compilation));
         }
     }

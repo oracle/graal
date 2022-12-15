@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,13 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.asm.amd64;
+package com.oracle.svm.core.graal;
 
-public class AMD64AsmOptions {
-    public static final boolean UseNormalNop = false;
-    public static final boolean UseAddressNop = true;
-    public static final boolean UseIntelNops = true;
-    public static final boolean UseIncDec = true;
-    public static final boolean UseXmmLoadAndClearUpper = true;
-    public static final boolean UseXmmRegToRegMoveAll = true;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
+
+import com.oracle.svm.core.deopt.DeoptimizationCanaryFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+
+/**
+ * The purpose of this feature is to indicate whether JIT compilation is enabled in an image. It is
+ * registered as a dependency of {@code RuntimeCompilationFeature} and so its object will be added
+ * to {@link ImageSingletons} even before {@link Feature#afterRegistration}. Support for JIT
+ * compilation implies that {@linkplain DeoptimizationCanaryFeature deoptimization} is also
+ * supported.
+ *
+ * @see RuntimeCompilation#isEnabled()
+ */
+public final class RuntimeCompilationCanaryFeature implements InternalFeature {
 }

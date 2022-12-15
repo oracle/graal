@@ -196,6 +196,11 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.util"
             ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.meta",
+                ]
+            },
             "javaCompliance": "11+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",

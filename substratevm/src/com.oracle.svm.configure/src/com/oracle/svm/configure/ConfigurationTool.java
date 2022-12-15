@@ -61,7 +61,7 @@ import com.oracle.svm.configure.filters.ConfigurationFilter;
 import com.oracle.svm.configure.filters.FilterConfigurationParser;
 import com.oracle.svm.configure.filters.ModuleFilterTools;
 import com.oracle.svm.configure.filters.HierarchyFilterNode;
-import com.oracle.svm.configure.json.JsonWriter;
+import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.core.configure.ConfigurationFile;

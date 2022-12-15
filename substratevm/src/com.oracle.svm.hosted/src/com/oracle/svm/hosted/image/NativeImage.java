@@ -245,7 +245,7 @@ public abstract class NativeImage extends AbstractImage {
         writer.appendln("#endif");
 
         Path headerFile = writer.writeFile(header.name() + dynamicSuffix);
-        BuildArtifacts.singleton().add(ArtifactType.HEADER, headerFile);
+        BuildArtifacts.singleton().add(ArtifactType.C_HEADER, headerFile);
     }
 
     /**

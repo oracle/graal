@@ -38,7 +38,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.svm.configure.config.ResourceConfiguration;
-import com.oracle.svm.configure.json.JsonWriter;
+import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
 

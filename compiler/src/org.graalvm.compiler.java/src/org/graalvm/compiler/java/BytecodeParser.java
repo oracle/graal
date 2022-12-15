@@ -878,10 +878,6 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         public BytecodeParserError(Throwable cause) {
             super(cause);
         }
-
-        public BytecodeParserError(String msg, Object... args) {
-            super(msg, args);
-        }
     }
 
     protected static class ReturnToCallerData {

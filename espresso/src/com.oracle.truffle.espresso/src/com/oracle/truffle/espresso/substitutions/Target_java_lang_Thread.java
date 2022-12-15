@@ -233,6 +233,18 @@ public final class Target_java_lang_Thread {
         }
     }
 
+    @Substitution
+    public static long getNextThreadIdOffset() {
+        // value should never be used, because we substitute ThreadIdentifiers::next
+        return 0x13371337;
+    }
+
+    @Substitution
+    public static @JavaType(Thread.class) StaticObject currentCarrierThread(@Inject EspressoContext context) {
+        // FIXME: this is wrong for virtual threads
+        return context.getCurrentThread();
+    }
+
     @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static void interrupt0(@JavaType(Object.class) StaticObject self,

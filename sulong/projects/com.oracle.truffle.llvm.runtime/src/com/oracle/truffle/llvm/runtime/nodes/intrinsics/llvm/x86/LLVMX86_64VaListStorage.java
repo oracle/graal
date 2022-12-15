@@ -433,7 +433,7 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
             Arrays.fill(overflowAreaArgOffsets, -1);
 
             int oi = 0;
-            int overflowArea = 0;
+            long overflowArea = 0;
             for (int i = numOfExpArgs; i < realArgs.length; i++) {
                 final Object arg = realArgs[i];
                 final VarArgArea area = getVarArgArea(arg);
@@ -765,7 +765,7 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
 
         final int vaLength = realArguments.length - numberOfExplicitArguments;
         if (vaLength > 0) {
-            int overflowOffset = 0;
+            long overflowOffset = 0;
 
             // TODO (chaeubl): this generates pretty bad machine code as we don't know anything
             // about the arguments
@@ -856,7 +856,7 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
             int fp = X86_64BitVarArgs.GP_LIMIT + calculateUsedFpArea(arguments, numberOfExplicitArguments);
             int initFPOffset = fp;
 
-            int overflowArea = 0;
+            long overflowArea = 0;
             for (int i = numberOfExplicitArguments; i < arguments.length; i++) {
                 final Object arg = arguments[i];
                 final VarArgArea area = getVarArgArea(arg);
@@ -1005,7 +1005,7 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
 
         // TODO: consider removing NativeTypeLibrary
 
-        OverflowArgArea(Object[] args, long[] offsets, int overflowAreaSize) {
+        OverflowArgArea(Object[] args, long[] offsets, long overflowAreaSize) {
             super(args, offsets, overflowAreaSize);
         }
 

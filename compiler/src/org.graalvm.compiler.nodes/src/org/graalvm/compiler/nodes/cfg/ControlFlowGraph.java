@@ -194,26 +194,6 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         localLoopFrequencyData.put(lb, updater.apply(localLoopFrequencyData.get(lb)));
     }
 
-    public String dominatorTreeString() {
-        return dominatorTreeString(getStartBlock());
-    }
-
-    private static String dominatorTreeString(Block b) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(b);
-        sb.append("(");
-        Block firstDominated = b.getFirstDominated();
-        while (firstDominated != null) {
-            if (firstDominated.getDominator().getPostdominator() == firstDominated) {
-                sb.append("!");
-            }
-            sb.append(dominatorTreeString(firstDominated));
-            firstDominated = firstDominated.getDominatedSibling();
-        }
-        sb.append(") ");
-        return sb.toString();
-    }
-
     @SuppressWarnings("unchecked")
     public <V> void visitDominatorTreeDefault(RecursiveVisitor<V> visitor) {
 
@@ -294,15 +274,6 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
 
         private final Block block;
         private final DeferredExit next;
-
-        public Block getBlock() {
-            return block;
-        }
-
-        public DeferredExit getNext() {
-            return next;
-        }
-
     }
 
     public static void addDeferredExit(DeferredExit[] deferredExits, Block b) {

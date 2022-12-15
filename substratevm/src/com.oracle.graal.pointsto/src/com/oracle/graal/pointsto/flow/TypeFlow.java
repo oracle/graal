@@ -54,7 +54,7 @@ public abstract class TypeFlow<T> {
 
     protected final int id;
 
-    protected final T source;
+    protected T source;
     /*
      * The declared type of the node corresponding to this flow. The declared type is inferred from
      * stamps during bytecode parsing, and, when missing, it is approximated by Object.
@@ -125,6 +125,10 @@ public abstract class TypeFlow<T> {
         this.usedAsAParameter = false;
         this.usedAsAReceiver = false;
 
+        validateSource();
+    }
+
+    private void validateSource() {
         assert !(source instanceof Node) : "must not reference Graal node from TypeFlow: " + source;
     }
 
@@ -418,6 +422,10 @@ public abstract class TypeFlow<T> {
         return ConcurrentLightHashSet.removeElement(this, USE_UPDATER, use);
     }
 
+    public void clearUses() {
+        ConcurrentLightHashSet.clear(this, USE_UPDATER);
+    }
+
     public Collection<TypeFlow<?>> getUses() {
         return ConcurrentLightHashSet.getElements(this, USE_UPDATER);
     }
@@ -489,6 +497,10 @@ public abstract class TypeFlow<T> {
         return ConcurrentLightHashSet.removeElement(this, OBSERVERS_UPDATER, observer);
     }
 
+    public void clearObservers() {
+        ConcurrentLightHashSet.clear(this, OBSERVERS_UPDATER);
+    }
+
     public Collection<TypeFlow<?>> getObservers() {
         return ConcurrentLightHashSet.getElements(this, OBSERVERS_UPDATER);
     }
@@ -507,6 +519,10 @@ public abstract class TypeFlow<T> {
         return ConcurrentLightHashSet.removeElement(this, OBSERVEES_UPDATER, observee);
     }
 
+    public void clearObservees() {
+        ConcurrentLightHashSet.clear(this, OBSERVEES_UPDATER);
+    }
+
     // manage inputs
 
     public void addInput(TypeFlow<?> input) {
@@ -519,6 +535,10 @@ public abstract class TypeFlow<T> {
 
     public boolean removeInput(TypeFlow<?> input) {
         return ConcurrentLightHashSet.removeElement(this, INPUTS_UPDATER, input);
+    }
+
+    public void clearInputs() {
+        ConcurrentLightHashSet.clear(this, INPUTS_UPDATER);
     }
 
     public TypeState filter(@SuppressWarnings("unused") PointsToAnalysis bb, TypeState newState) {
@@ -568,7 +588,7 @@ public abstract class TypeFlow<T> {
 
     }
 
-    /** Check if the type state is saturated, i.e., its type count is beoynd the limit. */
+    /** Check if the type state is saturated, i.e., its type count is beyond the limit. */
     boolean checkSaturated(PointsToAnalysis bb, TypeState typeState) {
         if (!bb.analysisPolicy().removeSaturatedTypeFlows()) {
             /* If the type flow saturation optimization is disabled just return false. */
@@ -703,6 +723,12 @@ public abstract class TypeFlow<T> {
          * By default this operation is a NOOP. Subtypes that keep a reference to an observed type
          * flow should override this method and update their internal reference.
          */
+    }
+
+    void updateSource(T newSource) {
+        source = newSource;
+
+        validateSource();
     }
 
     public String formatSource() {

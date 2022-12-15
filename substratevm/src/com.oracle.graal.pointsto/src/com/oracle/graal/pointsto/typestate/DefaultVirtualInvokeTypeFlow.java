@@ -25,20 +25,19 @@
 package com.oracle.graal.pointsto.typestate;
 
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
-import com.oracle.graal.pointsto.flow.MethodTypeFlow;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraphInfo;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
 
 import jdk.vm.ci.code.BytecodePosition;
 
@@ -50,8 +49,8 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
     private TypeState seenReceiverTypes = TypeState.forEmpty();
 
     DefaultVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
     }
 
     @Override
@@ -105,19 +104,27 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
 
             assert !Modifier.isAbstract(method.getModifiers());
 
-            MethodTypeFlow callee = PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
-            MethodFlowsGraph calleeFlows = callee.getOrCreateMethodFlowsGraph(bb, this);
+            var calleeList = bb.getHostVM().getMultiMethodAnalysisPolicy().determineCallees(bb, PointsToAnalysis.assertPointsToAnalysisMethod(method), targetMethod, callerMultiMethodKey,
+                            this);
+            for (PointsToAnalysisMethod callee : calleeList) {
+                if (!callee.isOriginalMethod() && allOriginalCallees) {
+                    allOriginalCallees = false;
+                }
+                MethodFlowsGraphInfo calleeFlows = callee.getTypeFlow().getOrCreateMethodFlowsGraphInfo(bb, this);
+                assert callee.getTypeFlow().getMethod().equals(callee);
 
-            /*
-             * Different receiver type can yield the same target method; although it is correct in a
-             * context insensitive analysis to link the callee only if it was not linked before, in
-             * a context sensitive analysis the callee should be linked for each different context.
-             */
-            if (addCallee(callee.getMethod())) {
-                linkCallee(bb, false, calleeFlows);
+                /*
+                 * Different receiver type can yield the same target method; although it is correct
+                 * in a context insensitive analysis to link the callee only if it was not linked
+                 * before, in a context sensitive analysis the callee should be linked for each
+                 * different context.
+                 */
+                if (addCallee(callee)) {
+                    linkCallee(bb, false, calleeFlows);
+                }
+
+                updateReceiver(bb, calleeFlows, TypeState.forExactType(bb, type, false));
             }
-
-            updateReceiver(bb, calleeFlows, TypeState.forExactType(bb, type, false));
         }
 
         /* Remember the types we have already linked. */
@@ -140,8 +147,8 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
         getReceiver().removeObserver(this);
 
         /* Unlink all callees. */
-        for (AnalysisMethod callee : super.getCallees()) {
-            MethodFlowsGraph calleeFlows = PointsToAnalysis.assertPointsToAnalysisMethod(callee).getTypeFlow().getMethodFlowsGraph();
+        for (AnalysisMethod callee : getAllCallees(false)) {
+            MethodFlowsGraphInfo calleeFlows = PointsToAnalysis.assertPointsToAnalysisMethod(callee).getTypeFlow().getMethodFlowsGraphInfo();
             /* Iterate over the actual parameters in caller context. */
             for (int i = 0; i < actualParameters.length; i++) {
                 /* Get the formal parameter from the callee. */
@@ -158,7 +165,7 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
         }
 
         /* Link the saturated invoke. */
-        AbstractVirtualInvokeTypeFlow contextInsensitiveInvoke = (AbstractVirtualInvokeTypeFlow) targetMethod.initAndGetContextInsensitiveInvoke(bb, source, false);
+        AbstractVirtualInvokeTypeFlow contextInsensitiveInvoke = (AbstractVirtualInvokeTypeFlow) targetMethod.initAndGetContextInsensitiveInvoke(bb, source, false, callerMultiMethodKey);
         contextInsensitiveInvoke.addInvokeLocation(getSource());
 
         /*
@@ -190,24 +197,25 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
     }
 
     @Override
-    public Collection<AnalysisMethod> getCallees() {
+    public Collection<AnalysisMethod> getOriginalCallees() {
         if (isSaturated()) {
-            return targetMethod.getContextInsensitiveVirtualInvoke().getCallees();
+            return targetMethod.getContextInsensitiveVirtualInvoke(callerMultiMethodKey).getOriginalCallees();
         } else {
-            return super.getCallees();
+            return super.getOriginalCallees();
         }
     }
 
     @Override
-    public Collection<MethodFlowsGraph> getCalleesFlows(PointsToAnalysis bb) {
-        // collect the flow graphs, one for each analysis method, since it is context
-        // insensitive
-        Collection<AnalysisMethod> calleesList = getCallees();
-        List<MethodFlowsGraph> methodFlowsGraphs = new ArrayList<>(calleesList.size());
-        for (AnalysisMethod method : calleesList) {
-            methodFlowsGraphs.add(PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow().getMethodFlowsGraph());
+    public Collection<AnalysisMethod> getAllCallees() {
+        if (isSaturated()) {
+            return targetMethod.getContextInsensitiveVirtualInvoke(callerMultiMethodKey).getAllCallees();
+        } else {
+            return super.getAllCallees();
         }
-        return methodFlowsGraphs;
     }
 
+    @Override
+    protected Collection<MethodFlowsGraph> getAllCalleesFlows(PointsToAnalysis bb) {
+        return DefaultInvokeTypeFlowUtil.getAllCalleesFlows(this);
+    }
 }

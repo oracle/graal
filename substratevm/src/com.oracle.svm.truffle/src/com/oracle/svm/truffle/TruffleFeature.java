@@ -133,6 +133,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -361,7 +362,7 @@ public class TruffleFeature implements InternalFeature {
 
         GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getConfigPrototype();
 
-        if (Options.TruffleInlineDuringParsing.getValue()) {
+        if (Options.TruffleInlineDuringParsing.getValue() && !SubstrateOptions.parseOnce()) {
             graphBuilderConfig.getPlugins().appendInlineInvokePlugin(
                             new TruffleParsingInlineInvokePlugin(config.getHostVM(), runtimeCompilationFeature.getHostedProviders().getReplacements(),
                                             graphBuilderConfig.getPlugins().getInvocationPlugins(),
@@ -465,6 +466,8 @@ public class TruffleFeature implements InternalFeature {
 
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
+            assert !SubstrateOptions.parseOnce() : "inlining during parsing is not enabled with parse once";
+
             if (original.hasNeverInlineDirective()) {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             } else if (invocationPlugins.lookupInvocation(original, builder.getOptions()) != null) {

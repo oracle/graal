@@ -28,6 +28,7 @@ package com.oracle.graal.pointsto.api;
 
 import java.lang.reflect.AnnotatedElement;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -45,12 +46,15 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
+import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -213,7 +217,8 @@ public abstract class HostVM {
         return true;
     }
 
-    public InlineBeforeAnalysisPolicy<?> inlineBeforeAnalysisPolicy() {
+    @SuppressWarnings("unused")
+    public InlineBeforeAnalysisPolicy<?> inlineBeforeAnalysisPolicy(MultiMethod.MultiMethodKey multiMethodKey) {
         /* No inlining by the static analysis unless explicitly overwritten by the VM. */
         return InlineBeforeAnalysisPolicy.NO_INLINING;
     }
@@ -244,4 +249,119 @@ public abstract class HostVM {
     }
 
     public abstract Comparator<? super ResolvedJavaType> getTypeComparator();
+
+    /*
+     * Marker objects for {@code parseGraph}.
+     */
+    public static final Object PARSING_UNHANDLED = new Object();
+    public static final Object PARSING_FAILED = new Object();
+
+    /**
+     * Hooks to allow the VM to perform a custom parsing routine for the graph.
+     *
+     * @return {@link #PARSING_UNHANDLED} when no custom parsing was performed,
+     *         {@link #PARSING_FAILED} if a custom parse attempt failed, or a
+     *         {@link StructuredGraph} when a custom parsing routine has been performed.
+     */
+    @SuppressWarnings("unused")
+    public Object parseGraph(BigBang bb, AnalysisMethod method) {
+        return PARSING_UNHANDLED;
+    }
+
+    /**
+     * Determines when the graph is valid and should be processed by the analysis.
+     *
+     * @return Whether this is a valid graph or not.
+     */
+    @SuppressWarnings("unused")
+    public boolean validateGraph(PointsToAnalysis bb, StructuredGraph graph) {
+        return true;
+    }
+
+    /**
+     * @return Whether assumptions are allowed.
+     */
+    @SuppressWarnings("unused")
+    public StructuredGraph.AllowAssumptions allowAssumptions(AnalysisMethod method) {
+        return StructuredGraph.AllowAssumptions.NO;
+    }
+
+    /**
+     * Helpers to determine what analysis actions should be taken for a given Multi-Method version.
+     */
+    public interface MultiMethodAnalysisPolicy {
+
+        /**
+         * Determines what versions of a method are reachable from the call.
+         *
+         * @param implementation The resolved destination. {@link MultiMethod#ORIGINAL_METHOD}.
+         * @param target The original target. This should be a {@link MultiMethod#ORIGINAL_METHOD}.
+         * @param callerMultiMethodKey The context in which the call is being made.
+         * @return Collection of possible targets for a given implementation, target, and caller
+         *         multi-method key. This method is expected to return a consistent value when
+         *         called multiple times with the same parameters; hence, values returned by this
+         *         method are allowed to be cached
+         */
+        <T extends AnalysisMethod> Collection<T> determineCallees(BigBang bb, T implementation, T target, MultiMethod.MultiMethodKey callerMultiMethodKey, InvokeTypeFlow parsingReason);
+
+        /**
+         * Decides whether the caller's flows should be linked to callee's parameters flows.
+         */
+        boolean performParameterLinking(MultiMethod.MultiMethodKey callerMultiMethodKey, MultiMethod.MultiMethodKey calleeMultiMethodKey);
+
+        /**
+         * Decides whether the callee's return flow should be linked to caller's flows.
+         */
+        boolean performReturnLinking(MultiMethod.MultiMethodKey callerMultiMethodKey, MultiMethod.MultiMethodKey calleeMultiMethodKey);
+
+        /**
+         * Decides whether analysis should compute the returned parameter index.
+         */
+        boolean canComputeReturnedParameterIndex(MultiMethod.MultiMethodKey multiMethodKey);
+
+        /**
+         * Decides whether placeholder flows should be inserted for missing object parameter and
+         * return values.
+         */
+        boolean insertPlaceholderParamAndReturnFlows(MultiMethod.MultiMethodKey multiMethodKey);
+    }
+
+    /**
+     * The default policy does not alter the typical analysis behavior.
+     */
+    protected static final MultiMethodAnalysisPolicy DEFAULT_MULTIMETHOD_ANALYSIS_POLICY = new MultiMethodAnalysisPolicy() {
+
+        @Override
+        public <T extends AnalysisMethod> Collection<T> determineCallees(BigBang bb, T implementation, T target, MultiMethod.MultiMethodKey callerMultiMethodKey, InvokeTypeFlow parsingReason) {
+            return List.of(implementation);
+        }
+
+        @Override
+        public boolean performParameterLinking(MultiMethod.MultiMethodKey callerMultiMethodKey, MultiMethod.MultiMethodKey calleeMultiMethodKey) {
+            return true;
+        }
+
+        @Override
+        public boolean performReturnLinking(MultiMethod.MultiMethodKey callerMultiMethodKey, MultiMethod.MultiMethodKey calleeMultiMethodKey) {
+            return true;
+        }
+
+        @Override
+        public boolean canComputeReturnedParameterIndex(MultiMethod.MultiMethodKey multiMethodKey) {
+            return true;
+        }
+
+        @Override
+        public boolean insertPlaceholderParamAndReturnFlows(MultiMethod.MultiMethodKey multiMethodKey) {
+            return false;
+        }
+    };
+
+    public MultiMethodAnalysisPolicy getMultiMethodAnalysisPolicy() {
+        return DEFAULT_MULTIMETHOD_ANALYSIS_POLICY;
+    }
+
+    public boolean ignoreInstanceOfTypeDisallowed() {
+        return false;
+    }
 }

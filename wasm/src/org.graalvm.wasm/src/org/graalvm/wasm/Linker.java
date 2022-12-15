@@ -126,6 +126,7 @@ public class Linker {
                     instance.module().setParsed();
                 }
             }
+            resolutionDag.clear();
             runStartFunctions(instances, failures);
             checkFailures(failures);
         }
@@ -371,6 +372,10 @@ public class Linker {
     void resolveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, int offsetAddress, int offsetGlobalIndex, int byteLength, byte[] data) {
         assertTrue(instance.symbolTable().memoryExists(), String.format("No memory declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
         final Runnable resolveAction = () -> {
+            if (context.getContextOptions().memoryOverheadMode()) {
+                // Do not initialize the data segment when in memory overhead mode.
+                return;
+            }
             WasmMemory memory = instance.memory();
             Assert.assertNotNull(memory, String.format("No memory declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
 
@@ -405,8 +410,14 @@ public class Linker {
         resolutionDag.resolveLater(new DataSym(instance.name(), dataSegmentId), dependencies.toArray(new Sym[0]), resolveAction);
     }
 
-    void resolvePassiveDataSegment(WasmInstance instance, int dataSegmentId, byte[] data) {
-        final Runnable resolveAction = () -> instance.setDataInstance(dataSegmentId, data);
+    void resolvePassiveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, byte[] data) {
+        final Runnable resolveAction = () -> {
+            if (context.getContextOptions().memoryOverheadMode()) {
+                // Do not initialize the data segment when in memory overhead mode.
+                return;
+            }
+            instance.setDataInstance(dataSegmentId, data);
+        };
         final ArrayList<Sym> dependencies = new ArrayList<>();
         if (dataSegmentId > 0) {
             dependencies.add(new DataSym(instance.name(), dataSegmentId - 1));
@@ -487,6 +498,10 @@ public class Linker {
     }
 
     void immediatelyResolveElemSegment(WasmContext context, WasmInstance instance, int tableIndex, int elemSegmentId, int offsetAddress, int offsetGlobalIndex, long[] elements) {
+        if (context.getContextOptions().memoryOverheadMode()) {
+            // Do not initialize the element segment when in memory overhead mode.
+            return;
+        }
         assertTrue(instance.symbolTable().checkTableIndex(tableIndex), String.format("No table declared or imported in the module '%s'", instance.name()), Failure.UNSPECIFIED_MALFORMED);
         final int tableAddress = instance.tableAddress(tableIndex);
         final WasmTable table = context.tables().table(tableAddress);
@@ -555,6 +570,10 @@ public class Linker {
     }
 
     void immediatelyResolvePassiveElementSegment(WasmContext context, WasmInstance instance, int elemSegmentId, long[] elements) {
+        if (context.getContextOptions().memoryOverheadMode()) {
+            // Do not initialize the element segment when in memory overhead mode.
+            return;
+        }
         final Object[] initialValues = new Object[elements.length];
         for (int index = 0; index != elements.length; index++) {
             final long element = elements[index];
@@ -1077,6 +1096,10 @@ public class Linker {
                 toposort(sym, marks, sorted, new ArrayList<>());
             }
             return sorted.toArray(new Resolver[0]);
+        }
+
+        void clear() {
+            resolutions.clear();
         }
     }
 }

@@ -22,38 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configure.json;
+package com.oracle.svm.core.util.json;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
 
-public interface JsonPrinter<T> {
-    void print(T t, JsonWriter writer) throws IOException;
-
-    static <T> void printCollection(JsonWriter writer, Collection<T> collection, Comparator<T> comparator, JsonPrinter<T> elementPrinter) throws IOException {
-        writer.append('[');
-        writer.indent();
-        String prefix = "";
-        Collection<T> ordered = collection;
-        if (comparator != null) {
-            ordered = new ArrayList<>(collection);
-            ((List<T>) ordered).sort(comparator);
-        }
-        for (T t : ordered) {
-            writer.append(prefix);
-            if (collection.size() > 1) {
-                writer.newline();
-            }
-            elementPrinter.print(t, writer);
-            prefix = ", ";
-        }
-        writer.unindent();
-        if (collection.size() > 1) {
-            writer.newline();
-        }
-        writer.append("]");
-    }
+public interface JsonPrintable {
+    void printJson(JsonWriter writer) throws IOException;
 }

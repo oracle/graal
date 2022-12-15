@@ -100,7 +100,6 @@ import org.graalvm.compiler.options.OptionValues;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -406,35 +405,6 @@ public class GraphUtil {
                 cur = stack.pop();
             }
         } while (true);
-    }
-
-    /**
-     * Removes all nodes created after the {@code mark}, assuming no "old" nodes point to "new"
-     * nodes.
-     */
-    public static void removeNewNodes(Graph graph, Graph.Mark mark) {
-        assert checkNoOldToNewEdges(graph, mark);
-        for (Node n : graph.getNewNodes(mark)) {
-            n.markDeleted();
-            for (Node in : n.inputs()) {
-                in.removeUsage(n);
-            }
-        }
-    }
-
-    private static boolean checkNoOldToNewEdges(Graph graph, Graph.Mark mark) {
-        for (Node old : graph.getNodes()) {
-            if (graph.isNew(mark, old)) {
-                break;
-            }
-            for (Node n : old.successors()) {
-                assert !graph.isNew(mark, n) : old + " -> " + n;
-            }
-            for (Node n : old.inputs()) {
-                assert !graph.isNew(mark, n) : old + " -> " + n;
-            }
-        }
-        return true;
     }
 
     public static void removeFixedWithUnusedInputs(FixedWithNextNode fixed) {
@@ -1097,17 +1067,6 @@ public class GraphUtil {
 
     public static SimplifierTool getDefaultSimplifier(CoreProviders providers, boolean canonicalizeReads, Assumptions assumptions, OptionValues options) {
         return new DefaultSimplifierTool(providers, canonicalizeReads, assumptions, options);
-    }
-
-    public static Constant foldIfConstantAndRemove(ValueNode node, ValueNode constant) {
-        assert node.inputs().contains(constant);
-        if (constant.isConstant()) {
-            node.replaceFirstInput(constant, null);
-            Constant result = constant.asConstant();
-            tryKillUnused(constant);
-            return result;
-        }
-        return null;
     }
 
     /**

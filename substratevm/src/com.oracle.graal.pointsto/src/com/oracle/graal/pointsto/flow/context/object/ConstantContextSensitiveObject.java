@@ -79,7 +79,8 @@ public class ConstantContextSensitiveObject extends ContextSensitiveAnalysisObje
         bb.profileConstantObject(type);
     }
 
-    public JavaConstant getConstant() {
+    @Override
+    public JavaConstant asConstant() {
         return constant;
     }
 
@@ -128,7 +129,7 @@ public class ConstantContextSensitiveObject extends ContextSensitiveAnalysisObje
             return false;
         }
 
-        return AnalysisObject.isEmptyObjectArrayConstant(bb, getConstant());
+        return AnalysisObject.isEmptyObjectArrayConstant(bb, asConstant());
     }
 
     @Override

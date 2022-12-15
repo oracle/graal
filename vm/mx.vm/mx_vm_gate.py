@@ -610,8 +610,9 @@ def gate_svm_truffle_tck_python(tasks):
 def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None, shared_lib=False):
     native_image_context, svm = graalvm_svm()
     with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
+        import json
         import mx_compiler
-        build_options = [] + options
+        build_options = ['-H:+GenerateBuildArtifactsFile'] + options
         if shared_lib:
             build_options = build_options + ['--shared']
         build_deps = []
@@ -636,21 +637,18 @@ def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None,
         if additional_deps:
             build_deps = build_deps + additional_deps
         extra_image_args = mx.get_runtime_jvm_args(build_deps, jdk=mx_compiler.jdk, exclude_names=mx_sdk_vm_impl.NativePropertiesBuildTask.implicit_excludes)
-        tests_image = native_image(build_options + extra_image_args)
-        import configparser
-        artifacts = configparser.RawConfigParser(allow_no_value=True)
-        artifacts_file_path = tests_image + '.build_artifacts.txt'
+        native_image(build_options + extra_image_args)
+        artifacts_file_path = join(image_dir, 'build-artifacts.json')
         if not exists(artifacts_file_path):
-            mx.abort('Tests image build artifacts not found.')
-        artifacts.read(artifacts_file_path)
-        if shared_lib:
-            if not any(s == 'SHARED_LIB' for s in artifacts.sections()):
-                mx.abort('Shared lib not found in image build artifacts.')
-            tests_image_path = join(image_dir, str(artifacts.items('SHARED_LIB')[0][0]))
-        else:
-            if not any(s == 'EXECUTABLE' for s in artifacts.sections()):
-                mx.abort('Executable not found in image build artifacts.')
-            tests_image_path = join(image_dir, str(artifacts.items('EXECUTABLE')[0][0]))
+            mx.abort(f'{artifacts_file_path} for tests image not found.')
+        with open(artifacts_file_path) as f:
+            artifacts = json.load(f)
+        kind = 'shared_libraries' if shared_lib else 'executables'
+        if kind not in artifacts:
+            mx.abort(f'{kind} not found in {artifacts_file_path}.')
+        if len(artifacts[kind]) != 1:
+            mx.abort(f"Expected {kind} list with one element, found {len(artifacts[kind])}: {', '.join(artifacts[kind])}.")
+        tests_image_path = join(image_dir, artifacts[kind][0])
         mx.logv(f'Test image path: {tests_image_path}')
         return tests_image_path, unittests_file
 

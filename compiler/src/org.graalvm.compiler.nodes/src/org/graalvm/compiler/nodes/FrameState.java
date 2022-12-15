@@ -50,7 +50,6 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.Position;
-import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
@@ -804,10 +803,6 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         } else {
             return monitorIds.size();
         }
-    }
-
-    public NodeIterable<FrameState> innerFrameStates() {
-        return usages().filter(FrameState.class);
     }
 
     private static String toString(FrameState frameState) {
