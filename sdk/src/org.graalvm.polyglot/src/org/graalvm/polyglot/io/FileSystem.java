@@ -61,10 +61,12 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
+import java.nio.file.spi.FileSystemProvider;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.io.IOAccess.Builder;
 
 /**
@@ -521,5 +523,31 @@ public interface FileSystem {
      */
     static FileSystem newReadOnlyFileSystem(FileSystem fileSystem) {
         return IOHelper.IMPL.newReadOnlyFileSystem(fileSystem);
+    }
+
+    /**
+     * Creates a {@link FileSystem} implementation based on the given Java NIO filesystem. The
+     * returned {@link FileSystem} delegates all operations to {@code fileSystem}'s
+     * {@link FileSystemProvider provider}.
+     *
+     * <p>
+     * The following example shows how to configure {@link Context} so that languages read files
+     * from a prepared zip file.
+     *
+     * <pre>
+     * Path zipFile = Paths.get("filesystem.zip");
+     * try (java.nio.file.FileSystem nioFs = FileSystems.newFileSystem(zipFile)) {
+     *     IOAccess ioAccess = IOAccess.newBuilder().fileSystem(FileSystem.newFileSystem(nioFs)).build();
+     *     try (Context ctx = Context.newBuilder().allowIO(ioAccess).build()) {
+     *         Value result = ctx.eval("js", "load('scripts/app.sh'); execute()");
+     *     }
+     * }
+     * </pre>
+     *
+     * @see IOAccess
+     * @since 23.0
+     */
+    static FileSystem newFileSystem(java.nio.file.FileSystem fileSystem) {
+        return IOHelper.IMPL.newNIOFileSystem(fileSystem);
     }
 }
