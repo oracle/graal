@@ -71,8 +71,7 @@ public abstract class UnaryOpLogicNode extends LogicNode implements LIRLowerable
      * itself or derive any assumptions. This method does not use the input stamp and is considered
      * safe.
      *
-     * It's responsibility of the caller to determine when it's "safe" to "trust" the input stamp
-     * and use {@link #getSucceedingStampForValue(boolean, Stamp)} instead.
+     * It's responsibility of the caller to determine when it's "safe" to "trust" the input stamp.
      */
     public abstract Stamp getSucceedingStampForValue(boolean negated);
 

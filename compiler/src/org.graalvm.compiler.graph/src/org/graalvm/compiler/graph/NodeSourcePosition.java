@@ -276,8 +276,7 @@ public class NodeSourcePosition extends BytecodePosition implements Iterable<Nod
                         caller.getMethod().getName().equals("linkToTargetMethod") ||
                         opcode == Bytecodes.INVOKEDYNAMIC ||
                         caller.getMethod().getDeclaringClass().getName().startsWith("Ljava/lang/invoke/LambdaForm$") ||
-                        current.getMethod().getName().equals("callInlined")
-                        : "expected " + method + " but found " +
+                        current.getMethod().getName().equals("callInlined") : "expected " + method + " but found " +
                                         current.getMethod();
         return true;
     }

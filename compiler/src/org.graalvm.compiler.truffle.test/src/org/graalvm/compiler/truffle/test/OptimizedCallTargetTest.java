@@ -37,7 +37,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.graalvm.compiler.core.common.Fields;
-import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;

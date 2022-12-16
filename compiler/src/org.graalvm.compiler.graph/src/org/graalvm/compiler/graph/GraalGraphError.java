@@ -73,8 +73,7 @@ public class GraalGraphError extends GraalError {
     }
 
     /**
-     * Adds a graph to the context of this {@code GraalGraphError}. The first graph added via this
-     * method will be returned by {@link #graph()}.
+     * Adds a graph to the context of this {@code GraalGraphError}.
      *
      * @param newGraph the graph which is in a incorrect state, if the error was not caused by a
      *            specific node
@@ -90,8 +89,7 @@ public class GraalGraphError extends GraalError {
     }
 
     /**
-     * Adds a node to the context of this {@code GraalGraphError}. The first node added via this
-     * method will be returned by {@link #node()}.
+     * Adds a node to the context of this {@code GraalGraphError}.
      *
      * @param newNode the node which is in a incorrect state, if the verification error was caused
      *            by a node
