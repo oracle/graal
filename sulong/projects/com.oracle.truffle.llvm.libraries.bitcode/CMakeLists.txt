@@ -72,6 +72,7 @@ add_compile_definitions(OS_${MX_OS} ARCH_${MX_ARCH})
 add_library(sulong SHARED)
 
 target_sources(sulong PRIVATE
+  src/abort.c
   src/crt0.c
   src/exit.c
   src/pthreads.c
@@ -87,10 +88,12 @@ if(WIN32)
     target_link_directories(sulong PRIVATE ${GRAALVM_LLVM_LIB_DIR})
     target_link_libraries(sulong graalvm-llvm)
     target_include_directories(sulong PRIVATE ${GRAALVM_PTHREAD_INCLUDE_DIR})
-    target_sources(sulong PRIVATE sulong.def)
+    target_sources(sulong PRIVATE
+      sulong.def
+      src/windows/assert.c
+    )
 else()
     target_sources(sulong PRIVATE
-      src/abort.c
       src/assert.c
       src/builtin.c
       src/clone.c

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,31 +28,20 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdio.h>
-#include <stdint.h>
-#include "exit.h"
+#include <stdlib.h>
+#include <string.h>
+#include "../abort.h"
 
-#if defined(_WIN32)
-#define ABORT_STATUS 0xC0000409
-#else
-#define ABORT_STATUS 134
-#endif
+extern const char *__progname;
 
-void __sulong_print_stacktrace();
-int __sulong_should_print_stacktrace_on_abort();
-
-void __sulong_abort() {
-    if (__sulong_should_print_stacktrace_on_abort()) {
-        fprintf(stderr, "abort()\n\n");
-        __sulong_print_stacktrace();
-    }
-    _EXIT(ABORT_STATUS);
-    for (;;) {
-        _EXIT(ABORT_STATUS);
-    }
-}
-
-#if !defined(_WIN32)
-void abort() {
+void _assert(const char *message, const char *filename, unsigned line) {
+    fprintf(stderr, "%s: %s:%d: Assertion failed.\n", __progname, filename, line);
+    fflush(NULL);
     __sulong_abort();
 }
-#endif
+
+void _wassert(const wchar_t *message, const wchar_t *filename, unsigned line) {
+    fwprintf(stderr, L"%s: %s:%d: Assertion failed.\n", __progname, filename, line);
+    fflush(NULL);
+    __sulong_abort();
+}
