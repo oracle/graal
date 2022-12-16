@@ -66,10 +66,10 @@ public abstract class ExpectStringNode extends Node {
     }
 
     @Specialization(guards = "inputs.isString(input)", limit = "2")
-    static String doBoxedString(Object input,
+    static TruffleString doBoxedString(Object input,
                     @CachedLibrary("input") InteropLibrary inputs) throws UnsupportedTypeException {
         try {
-            return inputs.asString(input);
+            return inputs.asTruffleString(input);
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw UnsupportedTypeException.create(new Object[]{input});
