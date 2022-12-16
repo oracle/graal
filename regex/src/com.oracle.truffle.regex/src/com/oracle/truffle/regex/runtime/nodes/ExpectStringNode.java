@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,38 +48,35 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.TruffleString;
 
 @GenerateUncached
-public abstract class ToCharNode extends Node {
+public abstract class ExpectStringNode extends Node {
 
-    public abstract char execute(Object arg) throws UnsupportedTypeException;
+    public abstract Object execute(Object arg) throws UnsupportedTypeException;
 
     @Specialization
-    static char doByte(byte arg) {
-        return (char) Byte.toUnsignedInt(arg);
+    static String doString(String input) {
+        return input;
     }
 
     @Specialization
-    static char doChar(char arg) {
-        return arg;
+    static TruffleString doTString(TruffleString input) {
+        return input;
     }
 
-    @Specialization(guards = "args.fitsInInt(arg)", limit = "2")
-    static char doLong(Object arg, @CachedLibrary("arg") InteropLibrary args) throws UnsupportedTypeException {
+    @Specialization(guards = "inputs.isString(input)", limit = "2")
+    static String doBoxedString(Object input,
+                    @CachedLibrary("input") InteropLibrary inputs) throws UnsupportedTypeException {
         try {
-            int asInt = args.asInt(arg);
-            if (asInt > Character.MAX_VALUE) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw UnsupportedTypeException.create(new Object[]{arg});
-            }
-            return (char) asInt;
+            return inputs.asString(input);
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw UnsupportedTypeException.create(new Object[]{arg});
+            throw UnsupportedTypeException.create(new Object[]{input});
         }
     }
 
-    public static ToCharNode create() {
-        return ToCharNodeGen.create();
+    public static ExpectStringNode create() {
+        return ExpectStringNodeGen.create();
     }
 }
