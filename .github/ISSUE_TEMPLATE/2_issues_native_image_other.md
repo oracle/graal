@@ -1,6 +1,6 @@
 ---
-name: "\U0001F6A8 Native Image Issue Report"
-about: Create a report for a failure with Native Image. To report a security vulnerability, please see below or the SECURITY.md file at the root of the repository. Do not open a GitHub issue.
+name: "\U0001F6A8 Other Native Image Issues"
+about: File an issue for a problem with Native Image. To report a security vulnerability, please see below or the SECURITY.md file at the root of the repository. Do not open a GitHub issue.
 title: ''
 labels: bug, native-image
 assignees: ''
