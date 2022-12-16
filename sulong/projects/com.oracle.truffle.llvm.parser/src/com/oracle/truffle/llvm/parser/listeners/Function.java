@@ -511,9 +511,9 @@ public final class Function implements ParserListener {
 
         final Type returnType = functionType.getReturnType();
         if (returnType == VoidType.INSTANCE) {
-            emit(VoidInvokeInstruction.fromSymbols(scope, target, args, normalSuccessor, unwindSuccessor, paramAttr, operandBundle));
+            emit(VoidInvokeInstruction.fromSymbols(scope, target, args, normalSuccessor, unwindSuccessor, paramAttr, operandBundle, functionType));
         } else {
-            emit(InvokeInstruction.fromSymbols(scope, returnType, target, args, normalSuccessor, unwindSuccessor, paramAttr, operandBundle));
+            emit(InvokeInstruction.fromSymbols(scope, returnType, target, args, normalSuccessor, unwindSuccessor, paramAttr, operandBundle, functionType));
         }
         operandBundle = null;
         isLastBlockTerminated = true;
@@ -653,9 +653,9 @@ public final class Function implements ParserListener {
         final Type returnType = functionType.getReturnType();
 
         if (returnType == VoidType.INSTANCE) {
-            emit(VoidCallInstruction.fromSymbols(scope, callee, args, paramAttr, operandBundle));
+            emit(VoidCallInstruction.fromSymbols(scope, callee, args, paramAttr, operandBundle, functionType));
         } else {
-            emit(CallInstruction.fromSymbols(scope, returnType, callee, args, paramAttr, operandBundle));
+            emit(CallInstruction.fromSymbols(scope, returnType, callee, args, paramAttr, operandBundle, functionType));
         }
         operandBundle = null;
     }
