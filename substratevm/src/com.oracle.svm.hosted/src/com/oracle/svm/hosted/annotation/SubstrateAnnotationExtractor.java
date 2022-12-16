@@ -32,6 +32,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -149,7 +150,7 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
     @SuppressWarnings("unchecked")
     @Override
     public Class<? extends Annotation>[] getAnnotationTypes(AnnotatedElement element) {
-        return Arrays.stream(getAnnotationData(element, false)).map(AnnotationValue::getType).toArray(Class[]::new);
+        return Arrays.stream(getAnnotationData(element, false)).map(AnnotationValue::getType).filter(t -> t != null).toArray(Class[]::new);
     }
 
     public AnnotationValue[] getDeclaredAnnotationData(AnnotatedElement element) {
@@ -220,15 +221,19 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
                 return NO_ANNOTATIONS;
             }
             ByteBuffer buf = ByteBuffer.wrap(rawAnnotations);
-            List<AnnotationValue> annotations = new ArrayList<>();
-            int numAnnotations = buf.getShort() & 0xFFFF;
-            for (int i = 0; i < numAnnotations; i++) {
-                AnnotationValue annotation = AnnotationValue.extract(buf, getConstantPool(element), getContainer(element), false, false);
-                if (annotation != null) {
-                    annotations.add(annotation);
+            try {
+                List<AnnotationValue> annotations = new ArrayList<>();
+                int numAnnotations = buf.getShort() & 0xFFFF;
+                for (int i = 0; i < numAnnotations; i++) {
+                    AnnotationValue annotation = AnnotationValue.extract(buf, getConstantPool(element), getContainer(element), false, false);
+                    if (annotation != null) {
+                        annotations.add(annotation);
+                    }
                 }
+                return annotations.toArray(NO_ANNOTATIONS);
+            } catch (IllegalArgumentException | BufferUnderflowException ex) {
+                return new AnnotationValue[]{AnnotationValue.forAnnotationFormatException()};
             }
-            return annotations.toArray(NO_ANNOTATIONS);
         });
     }
 
@@ -244,20 +249,24 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
                 return NO_PARAMETER_ANNOTATIONS;
             }
             ByteBuffer buf = ByteBuffer.wrap(rawParameterAnnotations);
-            int numParameters = buf.get() & 0xFF;
-            AnnotationValue[][] parameterAnnotations = new AnnotationValue[numParameters][];
-            for (int i = 0; i < numParameters; i++) {
-                List<AnnotationValue> parameterAnnotationList = new ArrayList<>();
-                int numAnnotations = buf.getShort() & 0xFFFF;
-                for (int j = 0; j < numAnnotations; j++) {
-                    AnnotationValue parameterAnnotation = AnnotationValue.extract(buf, getConstantPool(element), getContainer(element), false, false);
-                    if (parameterAnnotation != null) {
-                        parameterAnnotationList.add(parameterAnnotation);
+            try {
+                int numParameters = buf.get() & 0xFF;
+                AnnotationValue[][] parameterAnnotations = new AnnotationValue[numParameters][];
+                for (int i = 0; i < numParameters; i++) {
+                    List<AnnotationValue> parameterAnnotationList = new ArrayList<>();
+                    int numAnnotations = buf.getShort() & 0xFFFF;
+                    for (int j = 0; j < numAnnotations; j++) {
+                        AnnotationValue parameterAnnotation = AnnotationValue.extract(buf, getConstantPool(element), getContainer(element), false, false);
+                        if (parameterAnnotation != null) {
+                            parameterAnnotationList.add(parameterAnnotation);
+                        }
                     }
+                    parameterAnnotations[i] = parameterAnnotationList.toArray(NO_ANNOTATIONS);
                 }
-                parameterAnnotations[i] = parameterAnnotationList.toArray(NO_ANNOTATIONS);
+                return parameterAnnotations;
+            } catch (IllegalArgumentException | BufferUnderflowException ex) {
+                return new AnnotationValue[][]{new AnnotationValue[]{AnnotationValue.forAnnotationFormatException()}};
             }
-            return parameterAnnotations;
         });
     }
 
@@ -273,12 +282,21 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
                 return NO_TYPE_ANNOTATIONS;
             }
             ByteBuffer buf = ByteBuffer.wrap(rawTypeAnnotations);
-            int annotationCount = buf.getShort() & 0xFFFF;
-            TypeAnnotationValue[] typeAnnotationValues = new TypeAnnotationValue[annotationCount];
-            for (int i = 0; i < annotationCount; i++) {
-                typeAnnotationValues[i] = TypeAnnotationValue.extract(buf, getConstantPool(element), getContainer(element));
+            try {
+                int annotationCount = buf.getShort() & 0xFFFF;
+                TypeAnnotationValue[] typeAnnotationValues = new TypeAnnotationValue[annotationCount];
+                for (int i = 0; i < annotationCount; i++) {
+                    typeAnnotationValues[i] = TypeAnnotationValue.extract(buf, getConstantPool(element), getContainer(element));
+                }
+                return typeAnnotationValues;
+            } catch (IllegalArgumentException | BufferUnderflowException ex) {
+                /*
+                 * The byte[] arrrays in the TypeAnnotationValue are structurally correct, but have
+                 * an illegal first targetInfo byte that will throw an AnnotationFormatException
+                 * during parsing.
+                 */
+                return new TypeAnnotationValue[]{new TypeAnnotationValue(new byte[]{0x77}, new byte[]{0}, AnnotationValue.forAnnotationFormatException())};
             }
-            return typeAnnotationValues;
         });
     }
 
@@ -294,7 +312,11 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
                 return null;
             }
             ByteBuffer buf = ByteBuffer.wrap(rawAnnotationDefault);
-            return AnnotationMemberValue.extract(buf, getConstantPool(method), getContainer(method), false);
+            try {
+                return AnnotationMemberValue.extract(buf, getConstantPool(method), getContainer(method), false);
+            } catch (IllegalArgumentException | BufferUnderflowException ex) {
+                return AnnotationValue.forAnnotationFormatException();
+            }
         });
     }
 
