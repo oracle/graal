@@ -433,6 +433,7 @@ public final class UnimplementedGraalIntrinsics {
 
         if (JAVA_SPEC >= 20) {
             add(toBeInvestigated,
+                            "com/sun/crypto/provider/ChaCha20Cipher.implChaCha20Block([I[B)I",
                             "com/sun/crypto/provider/Poly1305.processMultipleBlocks([BII[J[J)V",
                             "java/lang/Double.isFinite(D)Z",
                             "java/lang/Float.float16ToFloat(S)F",
