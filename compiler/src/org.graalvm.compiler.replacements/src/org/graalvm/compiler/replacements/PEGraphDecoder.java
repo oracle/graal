@@ -1480,6 +1480,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                  * node plugins trigger for them reliably during PE.
                  */
                 node = ((UnsafeAccessNode) node).canonical(canonicalizerTool);
+                replacedNode = node;
             }
 
             if (node instanceof LoadFieldNode) {
