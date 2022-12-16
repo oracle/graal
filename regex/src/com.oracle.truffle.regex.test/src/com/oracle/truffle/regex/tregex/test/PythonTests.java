@@ -51,7 +51,7 @@ public class PythonTests extends RegexTestBase {
 
     @Override
     String getEngineOptions() {
-        return "Flavor=PythonStr,Encoding=UTF-32";
+        return "Flavor=Python,Encoding=UTF-32";
     }
 
     @Override

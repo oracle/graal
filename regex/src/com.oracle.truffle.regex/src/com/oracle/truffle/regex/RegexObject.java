@@ -81,7 +81,7 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
  * compiler. The type differs based on the flavor of regular expressions used:
  * <ul>
  * <li>{@link RegexFlags} if the flavor was {@code ECMAScript}</li>
- * <li>{@link PythonFlags} if the flavor was {@code PythonStr} or {@code PythonBytes}</li>
+ * <li>{@link PythonFlags} if the flavor was {@code Python}</li>
  * <li>{@link RubyFlags} if the flavor was {@code Ruby}</li>
  * </ul>
  * </li>

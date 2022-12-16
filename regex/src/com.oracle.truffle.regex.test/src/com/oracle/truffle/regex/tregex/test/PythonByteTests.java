@@ -46,7 +46,7 @@ public class PythonByteTests extends RegexTestBase {
 
     @Override
     String getEngineOptions() {
-        return "Flavor=PythonBytes";
+        return "Flavor=Python,Encoding=LATIN-1";
     }
 
     @Test

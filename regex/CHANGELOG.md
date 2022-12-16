@@ -5,6 +5,7 @@ This changelog summarizes major changes between TRegex versions relevant to lang
 ## Version 23.0.0
 
 * Updated Unicode data (case-folding, character properties) to version 15 of the Unicode standard.
+* Dropped `Flavor=PythonStr` and `Flavor=PythonBytes` in favor of `Flavor=Python,Encoding=UTF-32` and `Flavor=Python,Encoding=LATIN-1`.
 
 ## Version 22.2.0
 
