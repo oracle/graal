@@ -765,7 +765,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                     @CachedLibrary(limit = "1") LLVMManagedReadLibrary readLib,
                     @CachedLibrary(limit = "1") LLVMManagedWriteLibrary writeLib,
                     @Cached BranchProfile regAreaProfile,
-                    @Cached("createBinaryProfile()") ConditionProfile isNativizedProfile) {
+                    @Cached ConditionProfile isNativizedProfile) {
         int regSaveOffs = 0;
         int regSaveStep = 0;
         boolean lookIntoRegSaveArea = true;

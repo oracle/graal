@@ -587,7 +587,7 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
                     @Cached LLVMPointerOffsetLoadNode load1,
                     @Exclusive @Cached LLVMPointerOffsetStoreNode store1,
                     @Cached LLVMPointerOffsetLoadNode regSaveAreaLoad,
-                    @Cached("createBinaryProfile()") ConditionProfile isNativizedProfile) {
+                    @Cached ConditionProfile isNativizedProfile) {
         int regSaveOffs = 0;
         int regSaveStep = 0;
         int regSaveLimit = 0;
