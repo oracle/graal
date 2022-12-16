@@ -52,8 +52,6 @@ import com.oracle.svm.core.util.VMError;
  * Used to access the pool of {@link SamplerBuffer}s.
  */
 public final class SamplerBuffersAccess {
-    private static final CodeInfoQueryResult CODE_INFO_QUERY_RESULT = new CodeInfoQueryResult();
-
     private SamplerBuffersAccess() {
     }
 
@@ -167,23 +165,22 @@ public final class SamplerBuffersAccess {
         CodePointer ip = WordFactory.pointer(address);
         UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
         if (untetheredInfo.isNull()) {
-            /* Unknown frame. May happen for various reasons. */
+            /* Unknown frame. Must not happen for AOT-compiled code. */
             VMError.shouldNotReachHere("Stack walk must walk only frames of known code.");
         }
 
         Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
         CodeInfo tetheredCodeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
         try {
-            /* Now the value of code info can be passed to interruptible code safely. */
-            visitFrame0(tetheredCodeInfo, ip);
+            visitFrameInterruptibly(tetheredCodeInfo, ip);
         } finally {
             CodeInfoAccess.releaseTether(untetheredInfo, tether);
         }
     }
 
-    @Uninterruptible(reason = "The handle should only be accessed from uninterruptible code to prevent that the GC frees the CodeInfo.", callerMustBe = true)
-    private static void visitFrame0(CodeInfo codeInfo, CodePointer ip) {
-        CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResultUninterruptible(codeInfo, ip, CODE_INFO_QUERY_RESULT);
+    @Uninterruptible(reason = "CodeInfo is tethered, so safepoints are allowed.", calleeMustBe = false)
+    private static void visitFrameInterruptibly(CodeInfo codeInfo, CodePointer ip) {
+        CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, ip);
         VMError.guarantee(queryResult != null);
         FrameInfoQueryResult frameInfoQueryResult = queryResult.getFrameInfo();
         if (frameInfoQueryResult != null) {
