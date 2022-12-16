@@ -5684,7 +5684,7 @@ public class FlatNodeGenFactory {
             if (!frameState.isSpecializationClassInitialized(specialization)) {
 
                 if (frameState.getMode().isFastPath()) {
-                    throw new AssertionError("Must never initilization the specialization cache on the fast-path.");
+                    throw new AssertionError("Must never initialize the specialization cache on the fast-path.");
                 }
 
                 TypeMirror type = createSpecializationClassReferenceType(specialization);
