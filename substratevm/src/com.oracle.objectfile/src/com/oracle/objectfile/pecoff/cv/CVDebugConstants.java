@@ -37,11 +37,22 @@ public abstract class CVDebugConstants {
     static final short S_END = 0x0006;
     static final short S_FRAMEPROC = 0x1012;
     static final short S_OBJNAME = 0x1101;
-    static final short S_UDT = 0x1108;
+    static final short S_BLOCK32 = 0x1103;
+    static final short S_REGISTER = 0x1106; /* Register variable. */
+    static final short S_CONSTANT = 0x1107; /* Constant. */
+    static final short S_UDT = 0x1108; /* User defined type. */
     static final short S_LDATA32 = 0x110c; /* Local static. */
     static final short S_GDATA32 = 0x110d; /* Global static. */
     static final short S_GPROC32 = 0x1110; /* Global procedure. */
     static final short S_REGREL32 = 0x1111;
     static final short S_COMPILE3 = 0x113c;
     static final short S_ENVBLOCK = 0x113d;
+    static final short S_LOCAL = 0x113e;
+    static final short S_DEFRANGE = 0x113f;
+    // static final short S_DEFRANGE_SUBFIELD = 0x1140;
+    static final short S_DEFRANGE_REGISTER = 0x1141;
+    static final short S_DEFRANGE_FRAMEPOINTER_REL = 0x1142;
+    // static final short S_DEFRANGE_SUBFIELD_REGISTER = 0x1143;
+    static final short S_DEFRANGE_FRAMEPOINTER_REL_FULL_SCOPE = 0x1144;
+    static final short S_DEFRANGE_REGISTER_REL = 0x1145;
 }
