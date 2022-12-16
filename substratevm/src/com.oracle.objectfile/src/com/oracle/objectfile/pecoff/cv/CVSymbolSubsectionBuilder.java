@@ -36,7 +36,6 @@ import com.oracle.objectfile.debugentry.TypeEntry;
 import org.graalvm.compiler.debug.GraalError;
 
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
 
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_CL;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_CX;
@@ -83,8 +82,6 @@ final class CVSymbolSubsectionBuilder {
     private static final short[] javaGP32registers = {CV_AMD64_EDX, CV_AMD64_R8D, CV_AMD64_R9D, CV_AMD64_EDI, CV_AMD64_ESI, CV_AMD64_ECX};
     private static final short[] javaGP16registers = {CV_AMD64_DX, CV_AMD64_R8W, CV_AMD64_R9W, CV_AMD64_DI, CV_AMD64_SI, CV_AMD64_CX};
     private static final short[] javaGP8registers = {CV_AMD64_DL, CV_AMD64_R8B, CV_AMD64_R9B, CV_AMD64_DIL, CV_AMD64_SIL, CV_AMD64_CL};
-    // private static final short[] javaFP128registers = {CV_AMD64_XMM0, CV_AMD64_XMM1,
-    // CV_AMD64_XMM2, CV_AMD64_XMM3};
     private static final short[] javaFP64registers = {CV_AMD64_XMM0L, CV_AMD64_XMM1L, CV_AMD64_XMM2L, CV_AMD64_XMM3L};
     private static final short[] javaFP32registers = {CV_AMD64_XMM0_0, CV_AMD64_XMM1_0, CV_AMD64_XMM2_0, CV_AMD64_XMM3_0};
 
@@ -174,14 +171,13 @@ final class CVSymbolSubsectionBuilder {
         /* The name as exposed to the linker. */
         final String externalName = primaryRange.getSymbolName();
 
-        /* S_PROC32 add function definition. */
+        /* add function definition. */
         final int functionTypeIndex = addTypeRecords(compiledEntry);
         final byte funcFlags = 0;
         CVSymbolSubrecord.CVSymbolGProc32Record proc32 = new CVSymbolSubrecord.CVSymbolGProc32Record(cvDebugInfo, externalName, debuggerName, 0, 0, 0, primaryRange.getHi() - primaryRange.getLo(), 0,
                         0, functionTypeIndex, (short) 0, funcFlags);
         addSymbolRecord(proc32);
 
-        /* NB: LLVM uses 0x14000. */
         final int frameFlags = FRAME_ASYNC_EH + FRAME_LOCAL_BP + FRAME_PARAM_BP;
         addSymbolRecord(new CVSymbolSubrecord.CVSymbolFrameProcRecord(cvDebugInfo, compiledEntry.getFrameSize(), frameFlags));
 
@@ -194,18 +190,14 @@ final class CVSymbolSubsectionBuilder {
         addLineNumberRecords(compiledEntry);
     }
 
-
     void addLocals(CompiledMethodEntry primaryEntry) {
         final Range primaryRange = primaryEntry.getPrimary();
         /* The name as exposed to the linker. */
         final String externalName = primaryRange.getSymbolName();
 
         /* Add register parameters - only valid for the first instruction or two. */
-        // addToSymbolSubsection(new CVSymbolSubrecord.CVSymbolBlock32Record(cvDebugInfo,
-        // externalName));
 
         MethodEntry method = primaryRange.getMethodEntry();
-        ArrayList<CVSymbolSubrecord> regRelRecords = new ArrayList<>(method.getParamCount() + 1);
         int gpRegisterIndex = 0;
         int fpRegisterIndex = 0;
 
@@ -219,7 +211,7 @@ final class CVSymbolSubsectionBuilder {
             gpRegisterIndex++;
         }
 
-        /* define function parameters accoording to the calling convention */
+        /* define function parameters (p1, p2...) according to the calling convention */
         for (int i = 0; i < method.getParamCount(); i++) {
             final TypeEntry paramType = method.getParamType(i);
             final int typeIndex = cvDebugInfo.getCVTypeSection().addTypeRecords(paramType).getSequenceNumber();
@@ -229,19 +221,11 @@ final class CVSymbolSubsectionBuilder {
                 if (fpRegisterIndex < javaFP64registers.length) {
                     final short register = typeIndex == T_REAL64 ? javaFP64registers[fpRegisterIndex] : javaFP32registers[fpRegisterIndex];
                     addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, paramName, typeIndex, 1));
-                    // addSymbolRecord(new CVSymbolSubrecord.CVSymbolRegisterRecord(cvDebugInfo,
-                    // paramName, typeIndex, javaFPregisters[fpRegisterIndex]));
                     addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, register, externalName, 0, 8));
-                    // addSymbolRecord(new
-                    // CVSymbolSubrecord.CVSymbolDefRangeFramepointerRel(cvDebugInfo, "main", 8,
-                    // (short) 8, 32));
                     addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRelFullScope(cvDebugInfo, 0));
-                    // regRelRecords.add(new
-                    // CVSymbolSubrecord.CVSymbolRegRel32Record(cvDebugInfo, paramName,
-                    // typeIndex, 0, javaFPregisters[fpRegisterIndex]));
                     fpRegisterIndex++;
                 } else {
-                    /* TODO: stack parameter; keep track of stack offset, etc. */
+                    /* TODO: handle stack parameter; keep track of stack offset, etc. */
                     break;
                 }
             } else if (paramType.isPrimitive()) {
@@ -261,49 +245,27 @@ final class CVSymbolSubsectionBuilder {
                         GraalError.shouldNotReachHere("Unknown primitive (type" + paramType.getTypeName() + ") size:" + paramType.getSize());
                     }
                     addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, paramName, typeIndex, 1));
-                    // addSymbolRecord(new
-                    // CVSymbolSubrecord.CVSymbolRegisterRecord(cvDebugInfo, paramName,
-                    // typeIndex, javaGPregisters[gpRegisterIndex]));
                     addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, register, externalName, 0, 8));
-                    // addSymbolRecord(new
-                    // CVSymbolSubrecord.CVSymbolDefRangeFramepointerRel(cvDebugInfo,
-                    // "main", 8, (short) 8, 32));
                     addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRelFullScope(cvDebugInfo, 8));
-                    // regRelRecords.add(new
-                    // CVSymbolSubrecord.CVSymbolRegRel32Record(cvDebugInfo, paramName,
-                    // typeIndex, 0, javaGPregisters[gpRegisterIndex]));
                     gpRegisterIndex++;
                 } else {
-                    /* TODO: stack parameter; keep track of stack offset, etc. */
+                    /* TODO: handle stack parameter; keep track of stack offset, etc. */
                     break;
                 }
             } else {
                 /* Java object. */
                 if (gpRegisterIndex < javaGP64registers.length) {
-                    // int pointerIndex =
-                    // cvDebugInfo.getCVTypeSection().getIndexForPointer(paramType);
-                    // define as offset from register addSymbolRecord(new
-                    // CVSymbolSubrecord.CVSymbolRegRel32Record(cvDebugInfo, paramName,
-                    // typeIndex, 0, javaGPregisters[gpRegisterIndex]));
                     addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, paramName, typeIndex, 1));
                     addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, javaGP64registers[gpRegisterIndex], externalName, 0, 8));
                     addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRelFullScope(cvDebugInfo, 0));
-                    // regRelRecords.add(new
-                    // CVSymbolSubrecord.CVSymbolRegRel32Record(cvDebugInfo, paramName,
-                    // typeIndex, 0, javaGPregisters[gpRegisterIndex]));
                     gpRegisterIndex++;
                 } else {
-                    // TODO: stack parameter; keep track of stack offset, etc.
+                    /* TODO: handle stack parameter; keep track of stack offset, etc. */
                     break;
                 }
             }
         }
-        for (CVSymbolSubrecord record : regRelRecords) {
-            addSymbolRecord(record);
-        }
         /* TODO: add entries for stack parameters. */
-        // addToSymbolSubsection(new CVSymbolSubrecord.CVSymbolEndRecord(cvDebugInfo));
-
         /* TODO: add local variables, and their types. */
         /* TODO: add block definitions. */
     }

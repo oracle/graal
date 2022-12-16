@@ -377,6 +377,7 @@ abstract class CVSymbolSubrecord {
             }
         }
 
+        @SuppressWarnings("unused")
         void addGap() {
             /* TODO */
             GraalError.shouldNotReachHere("addGap() not implemented");
@@ -384,8 +385,6 @@ abstract class CVSymbolSubrecord {
 
         int computeRange(byte[] buffer, int initialPos) {
             /* Emit CV_LVAR_ADDR_RANGE. */
-            // int pos = cvDebugInfo.getCVSymbolSection().markRelocationSite(buffer, initialPos,
-            // procName, (long) procOffset);
             int pos = cvDebugInfo.getCVSymbolSection().markRelocationSite(buffer, initialPos, procName);
             pos = CVUtil.putShort(range, buffer, pos);
             return pos;
