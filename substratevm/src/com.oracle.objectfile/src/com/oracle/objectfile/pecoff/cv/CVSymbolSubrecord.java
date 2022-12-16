@@ -304,7 +304,7 @@ abstract class CVSymbolSubrecord {
         }
     }
 
-
+    @SuppressWarnings("unused")
     public static class CVSymbolRegisterRecord extends CVSymbolSubrecord {
 
         private final String name;
@@ -379,6 +379,7 @@ abstract class CVSymbolSubrecord {
 
         void addGap() {
             /* TODO */
+            GraalError.shouldNotReachHere("addGap() not implemented");
         }
 
         int computeRange(byte[] buffer, int initialPos) {
@@ -391,7 +392,7 @@ abstract class CVSymbolSubrecord {
         }
 
         int computeGaps(@SuppressWarnings("unused") byte[] buffer, int initialPos) {
-            /* Emit gaps. Not Yet implemented. */
+            /* Emit gaps. Not yet implemented. */
             assert gapCount == 0;
             return initialPos;
         }
@@ -447,6 +448,7 @@ abstract class CVSymbolSubrecord {
         }
     }
 
+    @SuppressWarnings("unused")
     public static class CVSymbolDefRangeRegisterRel extends CVSymbolDefRangeBase {
 
         private final short baseRegister;
@@ -509,6 +511,7 @@ abstract class CVSymbolSubrecord {
         }
     }
 
+    @SuppressWarnings("unused")
     public static class CVSymbolDefRangeFramepointerRel extends CVSymbolDefRangeBase {
 
         private final int fpOffset;
@@ -531,6 +534,7 @@ abstract class CVSymbolSubrecord {
         }
     }
 
+    @SuppressWarnings("unused")
     public static class CVSymbolBlock32Record extends CVSymbolSubrecord {
         // K32 name= parent=0x0 end=0x0 len=0x8 codeoffset=0x0:70
         // reloc addr=0x0008e5 type=11 sym=main IMAGE_REL_AMD64_SECREL(0x0b)
@@ -545,7 +549,7 @@ abstract class CVSymbolSubrecord {
         CVSymbolBlock32Record(CVDebugInfo cvDebugInfo, String procName) {
             super(cvDebugInfo, S_BLOCK32);
             this.procName = procName;
-            /* TODO probably need to implement procOffset here, too. */
+            /* TODO - may need to implement procOffset here. */
         }
 
         @Override
@@ -622,7 +626,7 @@ abstract class CVSymbolSubrecord {
 
     public static final class CVSymbolFrameProcRecord extends CVSymbolSubrecord {
 
-        /* TODO: This may change in the presence of isolates. */
+        /* This may change in the presence of isolates. */
 
         /* Async exception handling (vc++ uses 1, clang uses 0). */
         public static final int FRAME_ASYNC_EH = 1 << 9;

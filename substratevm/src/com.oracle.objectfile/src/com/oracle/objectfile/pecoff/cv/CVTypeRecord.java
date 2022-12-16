@@ -35,13 +35,9 @@ import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.FUNC_IS_CONSTRUCTO
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_ARGLIST;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_ARRAY;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_BCLASS;
-import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_BITFIELD;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_CLASS;
-import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_ENUM;
-import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_ENUMERATE;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_FIELDLIST;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_INDEX;
-import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_INTERFACE;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_MEMBER;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_METHOD;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_METHODLIST;
@@ -55,7 +51,6 @@ import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_POINTER;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_PROCEDURE;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_STMEMBER;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_STRING_ID;
-import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_STRUCTURE;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_UDT_SRC_LINE;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.MPROP_ABSTRACT;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.MPROP_COMPGENX;
@@ -1148,18 +1143,6 @@ abstract class CVTypeRecord {
         }
     }
 
-    @SuppressWarnings("unused")
-    static final class CVStructRecord extends CVClassRecord {
-        CVStructRecord(short count, short attrs, int fieldIndex, int derivedFromIndex, int vshape, long size, String name) {
-            super(LF_STRUCTURE, count, attrs, fieldIndex, derivedFromIndex, vshape, size, name, null);
-        }
-
-        @Override
-        public String toString() {
-            return toString("LF_STRUCT");
-        }
-    }
-
     static final class CVFieldListRecord extends CVTypeRecord {
 
         static final int INITIAL_CAPACITY = 10;
@@ -1216,169 +1199,6 @@ abstract class CVTypeRecord {
         @Override
         public String toString() {
             return String.format("LF_FIELDLIST idx=0x%x count=%d", getSequenceNumber(), members.size());
-        }
-    }
-
-    /*
-     * Unused in Graal - enums are actually implemented as classes, and enumerations are static
-     * instances.
-     */
-    @SuppressWarnings("unused")
-    static final class CVEnumerateRecord extends FieldRecord {
-
-        private final long value;
-
-        CVEnumerateRecord(short attrs, long value, String name) {
-            super(LF_ENUMERATE, attrs, name);
-            this.value = value;
-        }
-
-        @Override
-        public int computeContents(byte[] buffer, int initialPos) {
-            int pos = CVUtil.putShort(type, buffer, initialPos);
-            pos = CVUtil.putShort(attrs, buffer, pos);
-            pos = CVUtil.putLfNumeric(value, buffer, pos);
-            pos = CVUtil.putUTF8StringBytes(name, buffer, pos);
-            return pos;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("LF_ENUMERATE 0x%04x attr=0x%x(%s) val=0x%x %s", type, attrs, attrString(attrs), value, name);
-        }
-
-        @Override
-        public int hashCode() {
-            int h = super.hashCode();
-            h = 31 * h + (int) value;
-            h = 31 * h + name.hashCode();
-            return h;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (!super.equals(obj)) {
-                return false;
-            }
-            CVEnumerateRecord other = (CVEnumerateRecord) obj;
-            return this.value == other.value;
-        }
-    }
-
-    /*
-     * Unused in Graal - enums are actually implemented as classes, and enumerations are static
-     * instances.
-     */
-    @SuppressWarnings("unused")
-    static final class CVEnumRecord extends CVTypeRecord {
-
-        private final String name;
-        private final int attrs;
-        private final int underlyingTypeIndex;
-        private final CVFieldListRecord fieldRecord;
-
-        CVEnumRecord(short attrs, int underlyingTypeIndex, CVFieldListRecord fieldRecord, String name) {
-            super(LF_ENUM);
-            this.attrs = attrs;
-            this.underlyingTypeIndex = underlyingTypeIndex;
-            this.fieldRecord = fieldRecord;
-            this.name = name;
-        }
-
-        @Override
-        protected int computeContents(byte[] buffer, int initialPos) {
-            int pos = CVUtil.putShort((short) attrs, buffer, initialPos);
-            pos = CVUtil.putInt(underlyingTypeIndex, buffer, pos);
-            pos = CVUtil.putInt(fieldRecord.getSequenceNumber(), buffer, pos);
-            pos = CVUtil.putUTF8StringBytes(name, buffer, pos);
-            return pos;
-        }
-
-        @Override
-        public int hashCode() {
-            int hash = type;
-            hash = 31 * hash + name.hashCode();
-            hash = 31 * hash + attrs;
-            hash = 31 * hash + underlyingTypeIndex;
-            hash = 31 * hash + fieldRecord.hashCode();
-            return hash;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (!super.equals(obj)) {
-                return false;
-            }
-            CVEnumRecord other = (CVEnumRecord) obj;
-            return attrs == other.attrs && fieldRecord.equals(other.fieldRecord) && underlyingTypeIndex == other.underlyingTypeIndex && name.equals(other.name);
-        }
-
-        @Override
-        public String toString() {
-            return String.format("LF_ENUM attrs=0x%x(%s) count=%d %s", attrs, propertyString(attrs), fieldRecord.count(), name);
-        }
-    }
-
-    @SuppressWarnings("unused")
-    static final class CVInterfaceRecord extends CVClassRecord {
-        CVInterfaceRecord(short count, short attrs, int fieldIndex, int derivedFromIndex, int vshape, String name) {
-            super(LF_INTERFACE, count, attrs, fieldIndex, derivedFromIndex, vshape, 0, name, null);
-        }
-
-        @Override
-        public String toString() {
-            return toString("LF_INTERFACE");
-        }
-    }
-
-    @SuppressWarnings("unused")
-    static final class CVTypeBitfieldRecord extends CVTypeRecord {
-
-        private final byte length;
-        private final byte position;
-        private final int typeIndex;
-
-        CVTypeBitfieldRecord(int length, int position, int typeIndex) {
-            super(LF_BITFIELD);
-            this.length = (byte) length;
-            this.position = (byte) position;
-            this.typeIndex = typeIndex;
-        }
-
-        @Override
-        public int computeSize(int initialPos) {
-            return initialPos + Integer.BYTES + Byte.BYTES + Byte.BYTES;
-        }
-
-        @Override
-        public int computeContents(byte[] buffer, int initialPos) {
-            int pos = CVUtil.putInt(typeIndex, buffer, initialPos);
-            pos = CVUtil.putByte(length, buffer, pos);
-            pos = CVUtil.putByte(position, buffer, pos);
-            return pos;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("LF_BITFIELD 0x%04x, type=0x%04x len=%d pos=%d", getSequenceNumber(), typeIndex, length, position);
-        }
-
-        @Override
-        public int hashCode() {
-            int h = type;
-            h = 31 * h + position;
-            h = 31 * h + length;
-            h = 31 * h + typeIndex;
-            return h;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (!super.equals(obj)) {
-                return false;
-            }
-            CVTypeBitfieldRecord other = (CVTypeBitfieldRecord) obj;
-            return this.position == other.position && this.length == other.length && this.typeIndex == other.typeIndex;
         }
     }
 

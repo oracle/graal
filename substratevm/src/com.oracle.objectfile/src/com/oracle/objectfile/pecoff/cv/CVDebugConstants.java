@@ -49,10 +49,10 @@ public abstract class CVDebugConstants {
     static final short S_ENVBLOCK = 0x113d;
     static final short S_LOCAL = 0x113e;
     static final short S_DEFRANGE = 0x113f;
-    // static final short S_DEFRANGE_SUBFIELD = 0x1140;
+    static final short S_DEFRANGE_SUBFIELD = 0x1140;
     static final short S_DEFRANGE_REGISTER = 0x1141;
     static final short S_DEFRANGE_FRAMEPOINTER_REL = 0x1142;
-    // static final short S_DEFRANGE_SUBFIELD_REGISTER = 0x1143;
+    static final short S_DEFRANGE_SUBFIELD_REGISTER = 0x1143;
     static final short S_DEFRANGE_FRAMEPOINTER_REL_FULL_SCOPE = 0x1144;
     static final short S_DEFRANGE_REGISTER_REL = 0x1145;
 }
