@@ -87,6 +87,7 @@ public final class MemoryFeedback implements Feedback, Iterable<Memory> {
     public void nextInput(String input) {
         lineAccept.add((m) -> input);
     }
+
     public final class Memory {
 
         public final boolean silent;
