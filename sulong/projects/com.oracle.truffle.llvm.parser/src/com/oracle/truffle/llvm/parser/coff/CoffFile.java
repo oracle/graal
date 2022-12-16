@@ -107,7 +107,7 @@ public final class CoffFile {
             symbols.add(symbol);
 
             // skip the symbol as well as any auxiliary symbols
-            i += 1 + symbol.numberOfAuxSymbols;
+            i += 1 + (symbol.numberOfAuxSymbols > 0 ? symbol.numberOfAuxSymbols : 0);
         }
     }
 
