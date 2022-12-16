@@ -43,6 +43,7 @@ The following language implementations exist already:
 * [PureScript](https://github.com/slamdata/truffled-purescript), a small, strongly-typed programming language.
 * [Reactive Ruby](https://github.com/guidosalva/ReactiveRubyTruffle), TruffleRuby meets Reactive Programming.
 * [shen-truffle](https://github.com/ragnard/shen-truffle), a port of the Shen programming language.
+* [streamblocks-graalvm](https://github.com/streamblocks/streamblocks-graalvm), a [CAL Actor Language](https://en.wikipedia.org/wiki/CAL_Actor_Language) ([Dataflow Programming](https://en.wikipedia.org/wiki/Dataflow_programming)) implementation
 * [TruffleMATE](https://github.com/charig/TruffleMATE), a Smalltalk with a completely reified runtime system.
 * [TrufflePascal](https://github.com/Aspect26/TrufflePascal/), a Pascal interpreter.
 * [ZipPy](https://github.com/securesystemslab/zippy), a Python implementation.
