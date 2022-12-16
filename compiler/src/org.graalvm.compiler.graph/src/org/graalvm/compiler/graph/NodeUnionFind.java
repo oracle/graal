@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,10 +66,6 @@ public class NodeUnionFind extends NodeIdAccessor {
     public Node find(Node a) {
         int id = find(getNodeId(a));
         return graph.getNode(id);
-    }
-
-    public boolean equiv(Node a, Node b) {
-        return find(getNodeId(a)) == find(getNodeId(b));
     }
 
     private void union(int a, int b) {
