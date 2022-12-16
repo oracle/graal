@@ -165,7 +165,7 @@ public class InliningLog {
          */
         private final Callsite originalCallsite;
 
-        private Callsite(Callsite parent, Callsite originalCallsite, Invokable invoke, ResolvedJavaMethod target, int bci, boolean indirect) {
+        Callsite(Callsite parent, Callsite originalCallsite, Invokable invoke, ResolvedJavaMethod target, int bci, boolean indirect) {
             this.parent = parent;
             this.bci = bci;
             this.indirect = indirect;
@@ -283,6 +283,10 @@ public class InliningLog {
          */
         public ResolvedJavaMethod getTarget() {
             return target;
+        }
+
+        public Callsite getOriginalCallsite() {
+            return originalCallsite;
         }
 
         /**
@@ -751,4 +755,11 @@ public class InliningLog {
         return root;
     }
 
+    public void setRootCallsite(Callsite root) {
+        this.root = root;
+    }
+
+    public UnmodifiableEconomicMap<Invokable, InliningLog.Callsite> getLeaves() {
+        return leaves;
+    }
 }

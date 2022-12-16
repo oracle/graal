@@ -28,6 +28,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.function.Function;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableMapCursor;
@@ -164,6 +165,10 @@ public class GraphEncoder {
 
     protected DebugContext debug;
 
+    private final InliningLogCodec inliningLogCodec;
+
+    private final OptimizationLogCodec optimizationLogCodec;
+
     /**
      * Utility method that does everything necessary to encode a single graph.
      */
@@ -192,6 +197,8 @@ public class GraphEncoder {
         objects = FrequencyEncoder.createEqualityEncoder();
         nodeClasses = FrequencyEncoder.createIdentityEncoder();
         writer = UnsafeArrayTypeWriter.create(architecture.supportsUnalignedMemoryAccess());
+        inliningLogCodec = new InliningLogCodec();
+        optimizationLogCodec = new OptimizationLogCodec();
     }
 
     /**
@@ -200,6 +207,8 @@ public class GraphEncoder {
     public void prepare(StructuredGraph graph) {
         addObject(graph.getGuardsStage());
         addObject(graph.getGraphState().getStageFlags());
+        inliningLogCodec.prepare(graph, this::addObject);
+        optimizationLogCodec.prepare(graph, this::addObject);
         for (Node node : graph.getNodes()) {
             NodeClass<? extends Node> nodeClass = node.getNodeClass();
             nodeClasses.addObject(nodeClass);
@@ -337,6 +346,8 @@ public class GraphEncoder {
         for (int i = 0; i < nodeCount; i++) {
             writer.putUV(metadataStart - nodeStartOffsets[i]);
         }
+        writeObjectId(inliningLogCodec.encode(graph, nodeOrder.orderIds::get));
+        writeObjectId(optimizationLogCodec.encode(graph, nodeOrder.orderIds::get));
 
         /* Check that the decoding of the encode graph is the same as the input. */
         assert verifyEncoding(graph, new EncodedGraph(getEncoding(), metadataStart, getObjects(), getNodeClasses(), graph));
@@ -486,7 +497,7 @@ public class GraphEncoder {
     }
 
     /**
-     * Verification code that checks that the decoding of an encode graph is the same as the
+     * Verification code that checks that the decoding of an encoded graph is the same as the
      * original graph.
      */
     @SuppressWarnings("try")
@@ -507,14 +518,13 @@ public class GraphEncoder {
         try {
             GraphComparison.verifyGraphsEqual(originalGraph, decodedGraph);
         } catch (Throwable ex) {
-            originalGraph.getDebug();
             try (DebugContext.Scope scope = debugContext.scope("GraphEncoder")) {
                 debugContext.dump(DebugContext.VERBOSE_LEVEL, originalGraph, "Original Graph");
                 debugContext.dump(DebugContext.VERBOSE_LEVEL, decodedGraph, "Decoded Graph");
             }
             throw ex;
         }
-        return true;
+        return optimizationLogCodec.verify(originalGraph, decodedGraph) && inliningLogCodec.verify(originalGraph, decodedGraph);
     }
 }
 

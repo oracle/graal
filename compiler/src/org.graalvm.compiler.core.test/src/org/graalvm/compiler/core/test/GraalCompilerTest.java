@@ -1216,7 +1216,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             assert options != null;
             Request<CompilationResult> request = new Request<>(graphToCompile, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), getOptimisticOptimizations(),
                             graphToCompile.getProfilingInfo(), createSuites(options), createLIRSuites(options), compilationResult, CompilationResultBuilderFactory.Default, true);
-            try (DebugCloseable l = graphToCompile.getOptimizationLog().listen(new StableMethodNameFormatter(getProviders(), graphToCompile.getDebug()))) {
+            try (DebugCloseable l = graphToCompile.getOptimizationLog().listen()) {
                 return GraalCompiler.compile(request);
             }
         } catch (Throwable e) {
@@ -1459,7 +1459,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         assert javaMethod.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + javaMethod;
         StructuredGraph graph = builder.build();
         DebugContext debug = graph.getDebug();
-        try (DebugContext.Scope ds = debug.scope("Parsing", javaMethod, graph)) {
+        try (DebugContext.Scope ds = debug.scope("Parsing", javaMethod, graph); DebugCloseable l = graph.getOptimizationLog().listen()) {
             graphBuilderSuite.apply(graph, getDefaultHighTierContext());
             Object[] args = getArgumentToBind();
             if (args != null) {

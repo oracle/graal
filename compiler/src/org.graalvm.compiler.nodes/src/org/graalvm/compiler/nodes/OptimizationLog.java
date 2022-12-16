@@ -273,12 +273,21 @@ public interface OptimizationLog extends CompilationListener {
          * Does not set itself as the compilation listener and returns a scope that does nothing,
          * because the optimization log is disabled.
          *
-         * @param methodNameFormatter a function that formats method names (ignored)
          * @return a scope that does nothing
          */
         @Override
-        public DebugCloseable listen(Function<ResolvedJavaMethod, String> methodNameFormatter) {
+        public DebugCloseable listen() {
             return DebugCloseable.VOID_CLOSEABLE;
+        }
+
+        /**
+         * Does not emit the optimization log, because it is disabled.
+         *
+         * @param methodNameFormatter a function that formats method names (ignored)
+         */
+        @Override
+        public void emit(Function<ResolvedJavaMethod, String> methodNameFormatter) {
+
         }
     }
 
@@ -444,11 +453,18 @@ public interface OptimizationLog extends CompilationListener {
     /**
      * Opens a {@link DebugCloseable} and sets itself as the compilation listener, if the
      * optimization log is enabled. When the closable is closed, the compilation listener is reset
-     * to {@code null} and the optimization tree is printed according to the
-     * {@link DebugOptions#OptimizationLog OptimizationLog} option.
+     * to {@code null}.
      *
-     * @param methodNameFormatter a function that formats method names
      * @return a closable in whose lifespan the optimization log is set as the compilation listener
      */
-    DebugCloseable listen(Function<ResolvedJavaMethod, String> methodNameFormatter);
+    DebugCloseable listen();
+
+    /**
+     * Depending on the {@link DebugOptions#OptimizationLog OptimizationLog} option, prints the
+     * optimization log to the standard output, JSON files and/or dumps it. Method names are
+     * formatted using the provided formatter.
+     *
+     * @param methodNameFormatter a function that formats method names
+     */
+    void emit(Function<ResolvedJavaMethod, String> methodNameFormatter);
 }

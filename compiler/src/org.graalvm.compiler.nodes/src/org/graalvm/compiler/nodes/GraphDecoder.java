@@ -127,6 +127,10 @@ public class GraphDecoder {
          */
         public MergeNode loopExplosionHead;
 
+        public final InliningLogCodec.EncodedInliningLog encodedInliningLog;
+
+        public final OptimizationLogCodec.EncodedOptimizationLog encodedOptimizationLog;
+
         @SuppressWarnings("unchecked")
         protected MethodScope(LoopScope callerLoopScope, StructuredGraph graph, EncodedGraph encodedGraph, LoopExplosionKind loopExplosion) {
             this.callerLoopScope = callerLoopScope;
@@ -156,10 +160,15 @@ public class GraphDecoder {
                 } else {
                     orderIdWidth = 4;
                 }
+
+                encodedInliningLog = (InliningLogCodec.EncodedInliningLog) readObject(this);
+                encodedOptimizationLog = (OptimizationLogCodec.EncodedOptimizationLog) readObject(this);
             } else {
                 reader = null;
                 maxFixedNodeOrderId = 0;
                 orderIdWidth = 0;
+                encodedInliningLog = null;
+                encodedOptimizationLog = null;
             }
 
             if (loopExplosion.useExplosion()) {
@@ -497,6 +506,8 @@ public class GraphDecoder {
             MethodScope methodScope = new MethodScope(null, graph, encodedGraph, LoopExplosionKind.NONE);
             LoopScope loopScope = createInitialLoopScope(methodScope, null);
             decode(loopScope);
+            new InliningLogCodec().decode(graph, methodScope.encodedInliningLog, (id) -> loopScope.createdNodes[id]);
+            new OptimizationLogCodec().decode(graph, methodScope.encodedOptimizationLog, (id) -> loopScope.createdNodes[id]);
             cleanupGraph(methodScope);
             assert graph.verify();
 
