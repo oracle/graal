@@ -615,7 +615,6 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
             String name = getRecordComponentName(recordComponent);
             HostedType type = (HostedType) metaAccess.lookupJavaType(getRecordComponentType(recordComponent));
             String signature = getRecordComponentSignature(recordComponent);
-            Method accessor = getRecordComponentAccessor(recordComponent);
 
             /* Fill encoders with the necessary values. */
             encoders.sourceMethodNames.addObject(name);
@@ -624,13 +623,8 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
             /* Register string and class values in annotations */
             AnnotationValue[] annotations = registerAnnotationValues(recordComponent);
             TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(recordComponent);
-            JavaConstant accessorConstant = null;
-            if (accessor != null) {
-                accessorConstant = SubstrateObjectConstant.forObject(accessor);
-                encoders.objectConstants.addObject(accessorConstant);
-            }
 
-            metadata[i] = new RecordComponentMetadata(declaringType, name, type, signature, accessorConstant, annotations, typeAnnotations);
+            metadata[i] = new RecordComponentMetadata(declaringType, name, type, signature, annotations, typeAnnotations);
         }
         return metadata;
     }
@@ -648,7 +642,6 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     private static final Method getRecordComponentName = (JavaVersionUtil.JAVA_SPEC >= 17) ? ReflectionUtil.lookupMethod(recordComponentClass, "getName") : null;
     private static final Method getRecordComponentType = (JavaVersionUtil.JAVA_SPEC >= 17) ? ReflectionUtil.lookupMethod(recordComponentClass, "getType") : null;
     private static final Method getRecordComponentSignature = (JavaVersionUtil.JAVA_SPEC >= 17) ? ReflectionUtil.lookupMethod(recordComponentClass, "getGenericSignature") : null;
-    private static final Method getRecordComponentAccessor = (JavaVersionUtil.JAVA_SPEC >= 17) ? ReflectionUtil.lookupMethod(recordComponentClass, "getAccessor") : null;
 
     private static String getRecordComponentName(Object recordComponent) {
         try {
@@ -669,14 +662,6 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     private static String getRecordComponentSignature(Object recordComponent) {
         try {
             return (String) getRecordComponentSignature.invoke(recordComponent);
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
-    }
-
-    private static Method getRecordComponentAccessor(Object recordComponent) {
-        try {
-            return (Method) getRecordComponentAccessor.invoke(recordComponent);
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw VMError.shouldNotReachHere(e);
         }
@@ -994,7 +979,6 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         encodeName(buf, recordComponent.name);
         encodeType(buf, recordComponent.type);
         encodeName(buf, recordComponent.signature);
-        encodeObject(buf, recordComponent.accessor);
         encodeByteArray(buf, encodeAnnotations(recordComponent.annotations));
         encodeByteArray(buf, encodeTypeAnnotations(recordComponent.typeAnnotations));
     }

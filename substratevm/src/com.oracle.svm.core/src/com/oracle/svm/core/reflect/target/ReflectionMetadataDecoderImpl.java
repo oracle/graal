@@ -34,6 +34,7 @@ import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.function.Function;
 
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -495,7 +496,6 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         String name = decodeName(buf, info);
         Class<?> type = decodeType(buf, info);
         String signature = decodeName(buf, info);
-        Method accessor = (Method) decodeObject(buf, info);
         byte[] annotations = decodeByteArray(buf);
         byte[] typeAnnotations = decodeByteArray(buf);
 
@@ -504,7 +504,11 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         recordComponent.name = name;
         recordComponent.type = type;
         recordComponent.signature = signature;
-        recordComponent.accessor = accessor;
+        try {
+            recordComponent.accessor = declaringClass.getDeclaredMethod(name);
+        } catch (NoSuchMethodException e) {
+            throw VMError.shouldNotReachHere("Record component accessors should have been registered by the analysis.");
+        }
         recordComponent.annotations = annotations;
         recordComponent.typeAnnotations = typeAnnotations;
         return recordComponent;

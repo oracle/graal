@@ -213,15 +213,13 @@ public class ReflectionMetadata {
         final String name;
         final HostedType type;
         final String signature;
-        final JavaConstant accessor;
 
-        RecordComponentMetadata(HostedType declaringType, String name, HostedType type, String signature, JavaConstant accessor, AnnotationValue[] annotations, TypeAnnotationValue[] typeAnnotations) {
+        RecordComponentMetadata(HostedType declaringType, String name, HostedType type, String signature, AnnotationValue[] annotations, TypeAnnotationValue[] typeAnnotations) {
             super(annotations, typeAnnotations);
             this.declaringType = declaringType;
             this.name = name;
             this.type = type;
             this.signature = signature;
-            this.accessor = accessor;
         }
     }
 
