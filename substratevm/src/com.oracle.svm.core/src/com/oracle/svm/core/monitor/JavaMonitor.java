@@ -26,6 +26,10 @@
 
 package com.oracle.svm.core.monitor;
 
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 
@@ -145,10 +149,14 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
     @Override
     protected boolean tryAcquire(long acquires) {
         assert acquires > 0 && acquires == (int) acquires;
-        if (getState() == 0 && compareAndSetState(0, getCurrentThreadIdentity())) {
-            assert acquisitions == 1;
-            acquisitions = (int) acquires;
-            return true;
+        // Do not expect to acquire the lock because this method is typically called after having
+        // already failed to do so, except after conditional waiting.
+        if (probability(NOT_FREQUENT_PROBABILITY, getState() == 0)) {
+            if (probability(FREQUENT_PROBABILITY, compareAndSetState(0, getCurrentThreadIdentity()))) {
+                assert acquisitions == 1;
+                acquisitions = (int) acquires;
+                return true;
+            }
         }
         return false;
     }
