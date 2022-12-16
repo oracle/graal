@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.graalvm.compiler.core.common.Fields;
 import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -67,7 +68,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
     static {
         try {
             nodeRewritingAssumptionField = OptimizedCallTarget.class.getDeclaredField("nodeRewritingAssumption");
-            Util.setAccessible(nodeRewritingAssumptionField, true);
+            Fields.setAccessible(nodeRewritingAssumptionField, true);
         } catch (NoSuchFieldException | SecurityException e) {
             throw new AssertionError(e);
         }
