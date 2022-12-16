@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,13 @@
  */
 package org.graalvm.compiler.lir.alloc.lsra;
 
-import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
-import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
-import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
+import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -44,6 +44,7 @@ import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.Variable;
+
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -946,28 +947,6 @@ public final class Interval {
         return result;
     }
 
-    // checks if opId is covered by any split child
-    boolean splitChildCovers(int opId, LIRInstruction.OperandMode mode) {
-        assert isSplitParent() : "can only be called for split parents";
-        assert opId >= 0 : "invalid opId (method can not be called for spill moves)";
-
-        if (splitChildren.isEmpty()) {
-            // simple case if interval was not split
-            return covers(opId, mode);
-
-        } else {
-            // extended case: check all split children
-            int len = splitChildren.size();
-            for (int i = 0; i < len; i++) {
-                Interval cur = splitChildren.get(i);
-                if (cur.covers(opId, mode)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-    }
-
     private RegisterPriority adaptPriority(RegisterPriority priority) {
         /*
          * In case of re-materialized values we require that use-operands are registers, because we
@@ -1150,36 +1129,6 @@ public final class Interval {
                 assert result.usePosList.usePos(i) >= splitPos;
             }
         }
-        return result;
-    }
-
-    /**
-     * Splits this interval at a specified position and returns the head as a new interval (this
-     * interval is the tail).
-     *
-     * Currently, only the first range can be split, and the new interval must not have split
-     * positions
-     */
-    Interval splitFromStart(int splitPos, LinearScan allocator) {
-        assert isVariable(operand) : "cannot split fixed intervals";
-        assert splitPos > from() && splitPos < to() : "can only split inside interval";
-        assert splitPos > first.from && splitPos <= first.to : "can only split inside first range";
-        assert firstUsage(RegisterPriority.None) > splitPos : "can not split when use positions are present";
-
-        // allocate new interval
-        Interval result = newSplitChild(allocator);
-
-        // the new interval has only one range (checked by assertion above,
-        // so the splitting of the ranges is very simple
-        result.addRange(first.from, splitPos);
-
-        if (splitPos == first.to) {
-            assert !first.next.isEndMarker() : "must not be at end";
-            first = first.next;
-        } else {
-            first.from = splitPos;
-        }
-
         return result;
     }
 

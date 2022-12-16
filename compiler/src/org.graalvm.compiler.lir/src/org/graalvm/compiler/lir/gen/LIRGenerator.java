@@ -568,16 +568,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return stamp.getLIRKind(lirKindTool);
     }
 
-    protected LIRKind getAddressKind(Value base, long displacement, Value index) {
-        if (LIRKind.isValue(base) && (index.equals(Value.ILLEGAL) || LIRKind.isValue(index))) {
-            return LIRKind.value(target().arch.getWordKind());
-        } else if (base.getValueKind() instanceof LIRKind && base.getValueKind(LIRKind.class).isReference(0) && displacement == 0L && index.equals(Value.ILLEGAL)) {
-            return LIRKind.reference(target().arch.getWordKind());
-        } else {
-            return LIRKind.unknownReference(target().arch.getWordKind());
-        }
-    }
-
     @Override
     public AbstractBlockBase<?> getCurrentBlock() {
         return currentBlock;

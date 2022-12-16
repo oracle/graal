@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -205,21 +205,6 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
         data.appendFields(str);
         str.append("]");
         return str.toString();
-    }
-
-    Values getValues(OperandMode mode) {
-        switch (mode) {
-            case USE:
-                return uses;
-            case ALIVE:
-                return alives;
-            case TEMP:
-                return temps;
-            case DEF:
-                return defs;
-            default:
-                throw GraalError.shouldNotReachHere("unknown OperandMode: " + mode);
-        }
     }
 
     final String getOpcode(LIRInstruction obj) {

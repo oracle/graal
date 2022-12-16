@@ -29,7 +29,7 @@ import org.graalvm.compiler.lir.gen.MoveFactory;
 
 public abstract class AllocationPhase extends LIRPhase<AllocationPhase.AllocationContext> {
 
-    public static final class AllocationContext extends GenericContext {
+    public static final class AllocationContext {
         public final MoveFactory spillMoveFactory;
         public final RegisterAllocationConfig registerAllocationConfig;
 
