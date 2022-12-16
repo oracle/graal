@@ -72,7 +72,7 @@ public abstract class InvokeVirtual extends EspressoNode {
     protected abstract Object execute(Object[] args);
 
     @Specialization
-    Object executeWithNullCheck(Object[] args,
+    Object doWithNullCheck(Object[] args,
                     @Cached NullCheck nullCheck,
                     @Cached("create(resolutionSeed)") WithoutNullCheck invokeVirtual) {
         StaticObject receiver = (StaticObject) args[0];
@@ -224,7 +224,7 @@ public abstract class InvokeVirtual extends EspressoNode {
         public abstract Object execute(Method resolutionSeed, Object[] args);
 
         @Specialization
-        Object executeWithNullCheck(Method resolutionSeed, Object[] args,
+        Object doWithNullCheck(Method resolutionSeed, Object[] args,
                         @Cached NullCheck nullCheck,
                         @Cached WithoutNullCheck invokeVirtual) {
             StaticObject receiver = (StaticObject) args[0];

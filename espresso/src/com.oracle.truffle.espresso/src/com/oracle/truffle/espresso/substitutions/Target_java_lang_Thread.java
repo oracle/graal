@@ -191,7 +191,7 @@ public final class Target_java_lang_Thread {
 
         @Specialization
         @JavaType(internalName = "Ljava/lang/Thread$State;")
-        StaticObject execute(@JavaType(Thread.class) StaticObject self,
+        StaticObject doDefault(@JavaType(Thread.class) StaticObject self,
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().sun_misc_VM_toThreadState.getCallTarget())") DirectCallNode toThreadState) {
             return (StaticObject) toThreadState.call(context.getThreadAccess().getState(self));

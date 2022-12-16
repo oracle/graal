@@ -66,7 +66,7 @@ public abstract class BooleanArrayStore extends EspressoNode {
     public abstract void execute(StaticObject receiver, int index, byte value);
 
     @Specialization
-    void executeWithNullCheck(StaticObject array, int index, byte value,
+    void doWithNullCheck(StaticObject array, int index, byte value,
                     @Cached NullCheck nullCheck,
                     @Cached ByteArrayStore.WithoutNullCheck byteArrayStore) {
         byteArrayStore.execute(nullCheck.execute(array), index, value);
