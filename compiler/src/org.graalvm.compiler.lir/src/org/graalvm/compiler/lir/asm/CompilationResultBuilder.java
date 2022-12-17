@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,8 +27,6 @@ package org.graalvm.compiler.lir.asm;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static org.graalvm.compiler.core.common.GraalOptions.IsolatedLoopHeaderAlignment;
-import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
-import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -49,7 +47,6 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.code.CompilationResult.JumpTable;
 import org.graalvm.compiler.code.DataSection.Data;
-import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -82,7 +79,6 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataSectionReference;
-import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.InvokeTarget;
@@ -332,23 +328,6 @@ public class CompilationResultBuilder {
         return lastImplicitExceptionOffset;
     }
 
-    public boolean hasImplicitException(int pcOffset) {
-        List<Infopoint> infopoints = compilationResult.getInfopoints();
-        for (Infopoint infopoint : infopoints) {
-            if (infopoint.pcOffset == pcOffset && infopoint.reason == InfopointReason.IMPLICIT_EXCEPTION) {
-                return true;
-            }
-        }
-        if (pendingImplicitExceptionList != null) {
-            for (PendingImplicitException pendingImplicitException : pendingImplicitExceptionList) {
-                if (pendingImplicitException.codeOffset == pcOffset) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
     /**
      * Helper to mark invalid deoptimization state as needed.
      */
@@ -461,47 +440,6 @@ public class CompilationResultBuilder {
     }
 
     /**
-     * Returns the integer value of any constant that can be represented by a 32-bit integer value,
-     * including long constants that fit into the 32-bit range.
-     */
-    public int asIntConst(Value value) {
-        assert isJavaConstant(value) && asJavaConstant(value).getJavaKind().isNumericInteger();
-        JavaConstant constant = asJavaConstant(value);
-        long c = constant.asLong();
-        if (!NumUtil.isInt(c)) {
-            throw GraalError.shouldNotReachHere();
-        }
-        return (int) c;
-    }
-
-    /**
-     * Returns the float value of any constant that can be represented by a 32-bit float value.
-     */
-    public float asFloatConst(Value value) {
-        assert isJavaConstant(value) && asJavaConstant(value).getJavaKind() == JavaKind.Float;
-        JavaConstant constant = asJavaConstant(value);
-        return constant.asFloat();
-    }
-
-    /**
-     * Returns the long value of any constant that can be represented by a 64-bit long value.
-     */
-    public long asLongConst(Value value) {
-        assert isJavaConstant(value) && asJavaConstant(value).getJavaKind() == JavaKind.Long;
-        JavaConstant constant = asJavaConstant(value);
-        return constant.asLong();
-    }
-
-    /**
-     * Returns the double value of any constant that can be represented by a 64-bit float value.
-     */
-    public double asDoubleConst(Value value) {
-        assert isJavaConstant(value) && asJavaConstant(value).getJavaKind() == JavaKind.Double;
-        JavaConstant constant = asJavaConstant(value);
-        return constant.asDouble();
-    }
-
-    /**
      * Returns the address of a float constant that is embedded as a data reference into the code.
      */
     public AbstractAddress asFloatConstRef(JavaConstant value) {
@@ -531,44 +469,6 @@ public class CompilationResultBuilder {
     public AbstractAddress asLongConstRef(JavaConstant value) {
         assert value.getJavaKind() == JavaKind.Long;
         return recordDataReferenceInCode(value, 8);
-    }
-
-    /**
-     * Returns the address of an object constant that is embedded as a data reference into the code.
-     */
-    public AbstractAddress asObjectConstRef(JavaConstant value) {
-        assert value.getJavaKind() == JavaKind.Object;
-        return recordDataReferenceInCode(value, 8);
-    }
-
-    public AbstractAddress asByteAddr(Value value) {
-        assert value.getPlatformKind().getSizeInBytes() >= JavaKind.Byte.getByteCount();
-        return asAddress(value);
-    }
-
-    public AbstractAddress asShortAddr(Value value) {
-        assert value.getPlatformKind().getSizeInBytes() >= JavaKind.Short.getByteCount();
-        return asAddress(value);
-    }
-
-    public AbstractAddress asIntAddr(Value value) {
-        assert value.getPlatformKind().getSizeInBytes() >= JavaKind.Int.getByteCount();
-        return asAddress(value);
-    }
-
-    public AbstractAddress asLongAddr(Value value) {
-        assert value.getPlatformKind().getSizeInBytes() >= JavaKind.Long.getByteCount();
-        return asAddress(value);
-    }
-
-    public AbstractAddress asFloatAddr(Value value) {
-        assert value.getPlatformKind().getSizeInBytes() >= JavaKind.Float.getByteCount();
-        return asAddress(value);
-    }
-
-    public AbstractAddress asDoubleAddr(Value value) {
-        assert value.getPlatformKind().getSizeInBytes() >= JavaKind.Double.getByteCount();
-        return asAddress(value);
     }
 
     public AbstractAddress asAddress(Value value) {
