@@ -106,9 +106,9 @@ import org.graalvm.word.LocationIdentity;
  * loop as it is loop-invariant.
  *
  * The algorithm is based on a dominator tree traversal of the {@link ControlFlowGraph} where
- * dominated blocks are visited before post dominated blocks. This means if a {@link HIRBlock} starts
- * with a {@link MergeNode} all its predecessor blocks have already been visited. This is important
- * to properly track {@link MemoryKill} nodes.
+ * dominated blocks are visited before post dominated blocks. This means if a {@link HIRBlock}
+ * starts with a {@link MergeNode} all its predecessor blocks have already been visited. This is
+ * important to properly track {@link MemoryKill} nodes.
  *
  * The algorithm uses {@link MemoryKill} and {@link MemoryAccess} to reason about memory effects.
  *

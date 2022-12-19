@@ -60,9 +60,9 @@ import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.word.LocationIdentity;
 
 /**
- * {@link StructuredGraph} based implementation of {@link BasicBlock}. Instances of
- * subclasses of this are allocated by {@link ControlFlowGraph}. Stores accompanying
- * meta-information about this {@link HIRBlock} in context of its {@link ControlFlowGraph}.
+ * {@link StructuredGraph} based implementation of {@link BasicBlock}. Instances of subclasses of
+ * this are allocated by {@link ControlFlowGraph}. Stores accompanying meta-information about this
+ * {@link HIRBlock} in context of its {@link ControlFlowGraph}.
  */
 public abstract class HIRBlock extends BasicBlock<HIRBlock> {
 

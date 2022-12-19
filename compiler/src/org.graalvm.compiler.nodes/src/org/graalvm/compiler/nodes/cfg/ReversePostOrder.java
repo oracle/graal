@@ -65,8 +65,8 @@ public class ReversePostOrder {
 
     /**
      * Compute the reverse post order for the given {@link ControlFlowGraph}. The creation of
-     * {@link HIRBlock} and the assignment of {@link FixedNode} to {@link HIRBlock} is already done by the
-     * {@link ControlFlowGraph}.
+     * {@link HIRBlock} and the assignment of {@link FixedNode} to {@link HIRBlock} is already done
+     * by the {@link ControlFlowGraph}.
      *
      * The algorithm has special handling for {@link LoopBeginNode} and {@link LoopExitNode} nodes
      * to ensure a loop is fully processed before any dominated code is visited.
@@ -92,8 +92,9 @@ public class ReversePostOrder {
             }
 
             /**
-             * A loop is fully processed, i.e., all body {@link HIRBlock} are part of the reverse post
-             * order array, if all loop end blocks and all loop exit predecessor blocks are visited.
+             * A loop is fully processed, i.e., all body {@link HIRBlock} are part of the reverse
+             * post order array, if all loop end blocks and all loop exit predecessor blocks are
+             * visited.
              */
             boolean loopFullyProcessed() {
                 return allEndsVisited() && allLexPredecessorsVisited();

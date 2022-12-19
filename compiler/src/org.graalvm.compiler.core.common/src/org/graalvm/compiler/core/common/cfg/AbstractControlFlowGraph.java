@@ -46,8 +46,8 @@ public interface AbstractControlFlowGraph<T extends BasicBlock<T>> {
      *
      * It is {@linkplain CFGVerifier guaranteed} that the blocks are numbered and ordered according
      * to a reverse post order traversal of the control flow graph. The
-     * {@linkplain BasicBlock#getId() id} of each block in the graph is an index into the
-     * returned array.
+     * {@linkplain BasicBlock#getId() id} of each block in the graph is an index into the returned
+     * array.
      *
      * @see CFGVerifier
      */

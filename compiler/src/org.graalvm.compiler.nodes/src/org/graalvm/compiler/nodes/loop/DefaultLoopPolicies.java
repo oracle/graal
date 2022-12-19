@@ -312,9 +312,9 @@ public class DefaultLoopPolicies implements LoopPolicies {
     }
 
     /**
-     * Compute the sum of the local frequencies ({@link BasicBlock#getRelativeFrequency()})
-     * of the control split nodes. If a control split node is within an inner loop then its
-     * frequency is divided by the local loop frequencies of the inner loops.
+     * Compute the sum of the local frequencies ({@link BasicBlock#getRelativeFrequency()}) of the
+     * control split nodes. If a control split node is within an inner loop then its frequency is
+     * divided by the local loop frequencies of the inner loops.
      *
      * The result should be between 0 and {@code controlSplits.size()} times the local loop
      * frequency.

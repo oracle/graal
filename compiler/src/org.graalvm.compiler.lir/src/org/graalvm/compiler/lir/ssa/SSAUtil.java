@@ -45,9 +45,9 @@ import jdk.vm.ci.meta.Value;
  * There is no explicit <code>PHI</code> {@linkplain LIRInstruction}. Instead, they are implemented
  * as parallel copy that span across a control-flow edge.
  *
- * The variables introduced by <code>PHI</code>s of a specific {@linkplain BasicBlock merge
- * block} are {@linkplain LabelOp#setIncomingValues attached} to the {@linkplain LabelOp} of the
- * block. The outgoing values from the predecessor are {@link JumpOp#getOutgoingValue input} to the
+ * The variables introduced by <code>PHI</code>s of a specific {@linkplain BasicBlock merge block}
+ * are {@linkplain LabelOp#setIncomingValues attached} to the {@linkplain LabelOp} of the block. The
+ * outgoing values from the predecessor are {@link JumpOp#getOutgoingValue input} to the
  * {@linkplain BlockEndOp} of the predecessor. Because there are no critical edges we know that the
  * {@link BlockEndOp} of the predecessor has to be a {@link JumpOp}.
  *

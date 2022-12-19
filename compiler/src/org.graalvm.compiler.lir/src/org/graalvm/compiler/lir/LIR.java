@@ -61,8 +61,8 @@ public final class LIR extends LIRGenerator.VariableProvider {
     private char[] codeEmittingOrder;
 
     /**
-     * Map from {@linkplain BasicBlock block} to {@linkplain LIRInstruction}s. Note that we
-     * are using {@link ArrayList} instead of {@link List} to avoid interface dispatch.
+     * Map from {@linkplain BasicBlock block} to {@linkplain LIRInstruction}s. Note that we are
+     * using {@link ArrayList} instead of {@link List} to avoid interface dispatch.
      */
     private final BlockMap<ArrayList<LIRInstruction>> lirInstructions;
 

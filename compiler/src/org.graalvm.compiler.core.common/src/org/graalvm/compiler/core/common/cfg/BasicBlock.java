@@ -64,13 +64,12 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
     private char dominator = INVALID_BLOCK_ID;
     /**
      * Block id of the first dominated block. A block can dominate more basic blocks: they are
-     * connected sequentially via the {@link BasicBlock#dominatedSibling} index pointer into
-     * the {@link #getBlocks()}array.
+     * connected sequentially via the {@link BasicBlock#dominatedSibling} index pointer into the
+     * {@link #getBlocks()}array.
      */
     private char firstDominated = INVALID_BLOCK_ID;
     /**
-     * The dominated sibling of this block. See {@link BasicBlock#firstDominated} for
-     * details.
+     * The dominated sibling of this block. See {@link BasicBlock#firstDominated} for details.
      */
     private char dominatedSibling = INVALID_BLOCK_ID;
     /**

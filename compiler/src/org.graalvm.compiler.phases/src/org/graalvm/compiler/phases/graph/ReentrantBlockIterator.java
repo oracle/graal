@@ -208,7 +208,8 @@ public final class ReentrantBlockIterator {
         return true;
     }
 
-    private static <StateT> HIRBlock processMultipleSuccessors(BlockIteratorClosure<StateT> closure, Deque<HIRBlock> blockQueue, EconomicMap<FixedNode, StateT> states, StateT state, HIRBlock current) {
+    private static <StateT> HIRBlock processMultipleSuccessors(BlockIteratorClosure<StateT> closure, Deque<HIRBlock> blockQueue, EconomicMap<FixedNode, StateT> states, StateT state,
+                    HIRBlock current) {
         assert current.getSuccessorCount() > 1;
         for (int i = 1; i < current.getSuccessorCount(); i++) {
             HIRBlock successor = current.getSuccessorAt(i);
