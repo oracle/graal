@@ -73,6 +73,8 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.jfr.events.ObjectAllocationInNewTLABEvent;
+import com.oracle.svm.core.jfr.JfrTicks;
 
 /**
  * Bump-pointer allocation from thread-local top and end Pointers. Many of these methods are called
@@ -226,7 +228,7 @@ public final class ThreadLocalAllocation {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
     private static Object slowPathNewInstanceWithoutAllocating(DynamicHub hub) {
         DeoptTester.disableDeoptTesting();
-        long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
+        long startTicks = JfrTicks.elapsedTicks();
         try {
             HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.slowPathNewInstanceWithoutAllocating", DynamicHub.toClass(hub).getName());
             GCImpl.getGCImpl().maybeCollectOnAllocation();
@@ -234,10 +236,10 @@ public final class ThreadLocalAllocation {
             AlignedHeader newTlab = HeapImpl.getChunkProvider().produceAlignedChunk();
             return allocateInstanceInNewTlab(hub, newTlab);
         } finally {
-            com.oracle.svm.core.jfr.events.ObjectAllocationInNewTLABEvent.emit(startTicks,
-                    DynamicHub.toClass(hub),
-                    LayoutEncoding.getPureInstanceSize(hub.getLayoutEncoding()).rawValue(),
-                    HeapParameters.getAlignedHeapChunkSize().rawValue());
+            ObjectAllocationInNewTLABEvent.emit(startTicks,
+                            DynamicHub.toClass(hub),
+                            LayoutEncoding.getPureInstanceSize(hub.getLayoutEncoding()).rawValue(),
+                            HeapParameters.getAlignedHeapChunkSize().rawValue());
             DeoptTester.enableDeoptTesting();
         }
     }
@@ -292,7 +294,7 @@ public final class ThreadLocalAllocation {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
     private static Object slowPathNewArrayLikeObject0(DynamicHub hub, int length, UnsignedWord size, byte[] podReferenceMap) {
         DeoptTester.disableDeoptTesting();
-        long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
+        long startTicks = JfrTicks.elapsedTicks();
         try {
             HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.slowPathNewArrayOrPodWithoutAllocating", DynamicHub.toClass(hub).getName());
             GCImpl.getGCImpl().maybeCollectOnAllocation();
@@ -314,7 +316,7 @@ public final class ThreadLocalAllocation {
             }
             return array;
         } finally {
-            com.oracle.svm.core.jfr.events.ObjectAllocationInNewTLABEvent.emit(startTicks, DynamicHub.toClass(hub),size.rawValue(), UnalignedHeapChunk.getChunkSizeForObject(size).rawValue());
+            ObjectAllocationInNewTLABEvent.emit(startTicks, DynamicHub.toClass(hub), size.rawValue(), UnalignedHeapChunk.getChunkSizeForObject(size).rawValue());
             DeoptTester.enableDeoptTesting();
         }
     }
