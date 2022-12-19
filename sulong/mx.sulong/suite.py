@@ -2021,6 +2021,15 @@ suite = {
           "file:mx.sulong/native-image.properties",
           "file:README.md",
         ],
+      },
+      "license" : "BSD-new",
+    },
+    "SULONG_GRAALVM_LICENSES" : {
+      "fileListPurpose": 'native-image-resources',
+      "native" : True,
+      "platformDependent" : True,
+      "description" : "Sulong license files for the GraalVM",
+      "layout" : {
         "LICENSE_SULONG.txt" : "file:LICENSE",
         "THIRD_PARTY_LICENSE_SULONG.txt" : "file:THIRD_PARTY_LICENSE.txt",
       },
