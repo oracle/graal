@@ -36,6 +36,7 @@ from os.path import join, exists
 from argparse import ArgumentParser, REMAINDER
 
 import mx
+import mx_compiler
 
 if sys.version_info[0] < 3:
     _long = long # pylint: disable=undefined-variable
@@ -71,14 +72,9 @@ def run_netbeans_app(app_name, jdkhome, args=None, dist=None):
     mx.run(launch+args)
 
 def igv(args):
-    """(obsolete) informs about IGV"""
-    mx.warn(
-        """IGV (idealgraphvisualizer) is available from
-    https://www.oracle.com/technetwork/graalvm/downloads/index.html
-Please download the distribution and run
-    bin/idealgraphvisualizer
-from the GraalVM EE installation.
-""")
+    """run the Ideal Graph Visualizer"""
+    dist = 'IDEALGRAPHVISUALIZER-0_31-0A82D7A0D60_DIST'
+    run_netbeans_app('IdealGraphVisualizer', mx_compiler.jdk.home, args=args, dist=dist)
 
 def c1visualizer(args):
     """run the C1 Compiler Visualizer"""
