@@ -220,7 +220,7 @@ public final class JSRegexLexer extends RegexLexer {
         throw syntaxError(JsErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
     }
 
-    private char handleInvalidEscape(char c) {
+    private int handleInvalidEscape(int c) {
         if (flags.isUnicode()) {
             throw syntaxError(JsErrorMessages.INVALID_ESCAPE);
         }
@@ -365,7 +365,7 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected int parseCustomEscapeCharFallback(char c, boolean inCharClass) {
+    protected int parseCustomEscapeCharFallback(int c, boolean inCharClass) {
         if (c == '-') {
             if (!inCharClass) {
                 return handleInvalidEscape(c);

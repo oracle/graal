@@ -502,7 +502,7 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected int parseCustomEscapeCharFallback(char c, boolean inCharClass) {
+    protected int parseCustomEscapeCharFallback(int c, boolean inCharClass) {
         if (c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9') {
             throw syntaxError(PyErrorMessages.badEscape(c));
         }

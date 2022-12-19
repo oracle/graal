@@ -275,7 +275,7 @@ public abstract class RegexLexer {
      * been tried) starting with {@code \}. This method is called after all other means of parsing
      * the escape sequence have been exhausted.
      */
-    protected abstract int parseCustomEscapeCharFallback(char c, boolean inCharClass);
+    protected abstract int parseCustomEscapeCharFallback(int c, boolean inCharClass);
 
     /**
      * Parse group starting with {@code (?}.
@@ -616,10 +616,7 @@ public abstract class RegexLexer {
             case '\\':
                 return parseEscape();
             default:
-                if (encoding != Encodings.UTF_16_RAW && Character.isHighSurrogate(c)) {
-                    return charClass(finishSurrogatePair(c));
-                }
-                return charClass(c);
+                return charClass(toCodePoint(c));
         }
     }
 
@@ -855,10 +852,8 @@ public abstract class RegexLexer {
             assert !atEnd();
             assert !isEscapeCharClass(curChar());
             return parseEscapeChar(consumeChar(), true);
-        } else if (encoding != Encodings.UTF_16_RAW && Character.isHighSurrogate(c)) {
-            return finishSurrogatePair(c);
         } else {
-            return c;
+            return toCodePoint(c);
         }
     }
 
@@ -959,8 +954,15 @@ public abstract class RegexLexer {
                 if (featureEnabledOctalEscapes() && isOctalDigit(c)) {
                     return parseOctal(c - '0');
                 }
-                return parseCustomEscapeCharFallback(c, inCharClass);
+                return parseCustomEscapeCharFallback(toCodePoint(c), inCharClass);
         }
+    }
+
+    private int toCodePoint(char c) {
+        if (encoding != Encodings.UTF_16_RAW && Character.isHighSurrogate(c)) {
+            return finishSurrogatePair(c);
+        }
+        return c;
     }
 
     protected int finishSurrogatePair(char c) {
