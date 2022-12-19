@@ -52,12 +52,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
-import com.oracle.truffle.regex.util.TRegexGuards;
 
 import sun.misc.Unsafe;
 
@@ -65,7 +63,7 @@ import sun.misc.Unsafe;
  * This class wraps {@link TRegexExecutorNode} and specializes on the type of the input strings
  * provided to {@link TRegexExecNode}.
  */
-@ImportStatic({TRegexGuards.class, TruffleString.CodeRange.class})
+@ImportStatic(TruffleString.CodeRange.class)
 public abstract class TRegexExecutorEntryNode extends Node {
 
     private static final sun.misc.Unsafe UNSAFE;
@@ -161,12 +159,6 @@ public abstract class TRegexExecutorEntryNode extends Node {
 
     public abstract Object execute(VirtualFrame frame, Object input, int fromIndex, int index, int maxIndex);
 
-    @Specialization
-    Object doByteArray(VirtualFrame frame, byte[] input, int fromIndex, int index, int maxIndex,
-                    @Cached("createCallTarget(BROKEN, false)") DirectCallNode callNode) {
-        return runExecutor(frame, input, fromIndex, index, maxIndex, callNode, TruffleString.CodeRange.BROKEN, false);
-    }
-
     @Specialization(guards = "isCompactString(input)")
     Object doStringCompact(VirtualFrame frame, String input, int fromIndex, int index, int maxIndex,
                     @Cached("createCallTarget(LATIN_1, false)") DirectCallNode callNode) {
@@ -188,16 +180,6 @@ public abstract class TRegexExecutorEntryNode extends Node {
                     @Cached("createCallTarget(cachedCodeRange, true)") DirectCallNode callNode) {
         materializeNode.execute(input, executor.getEncoding().getTStringEncoding());
         return runExecutor(frame, input, fromIndex, index, maxIndex, callNode, cachedCodeRange, true);
-    }
-
-    @Specialization(guards = "neitherByteArrayNorString(input)")
-    Object doTruffleObject(VirtualFrame frame, Object input, int fromIndex, int index, int maxIndex,
-                    @Cached("createClassProfile()") ValueProfile inputClassProfile,
-                    @Cached("createCallTarget(BROKEN, false)") DirectCallNode callNode) {
-        // conservatively disable compact string optimizations.
-        // TODO: maybe add an interface for TruffleObjects to announce if they are compact / ascii
-        // strings?
-        return runExecutor(frame, inputClassProfile.profile(input), fromIndex, index, maxIndex, callNode, TruffleString.CodeRange.BROKEN, false);
     }
 
     DirectCallNode createCallTarget(TruffleString.CodeRange codeRange, boolean isTString) {

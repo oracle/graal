@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import com.oracle.truffle.regex.tregex.string.Encodings;
 import org.junit.Test;
 
 import com.oracle.truffle.regex.tregex.TRegexOptions;
@@ -49,6 +50,11 @@ public class JsTests extends RegexTestBase {
     @Override
     String getEngineOptions() {
         return "";
+    }
+
+    @Override
+    Encodings.Encoding getTRegexEncoding() {
+        return Encodings.UTF_16_RAW;
     }
 
     @Test

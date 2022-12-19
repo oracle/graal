@@ -48,15 +48,12 @@ public class RubyTests extends RegexTestBase {
 
     @Override
     String getEngineOptions() {
-        return "Flavor=Ruby,Encoding=UTF-16";
+        return "Flavor=Ruby";
     }
 
-    void testUTF8(String pattern, String flags, String input, int fromIndex, boolean isMatch, int... captureGroupBounds) {
-        testBytes(pattern, flags, Encodings.UTF_8, input, fromIndex, isMatch, captureGroupBounds);
-    }
-
-    void testLatin1(String pattern, String flags, String input, int fromIndex, boolean isMatch, int... captureGroupBounds) {
-        testBytes(pattern, flags, Encodings.LATIN_1, input, fromIndex, isMatch, captureGroupBounds);
+    @Override
+    Encodings.Encoding getTRegexEncoding() {
+        return Encodings.UTF_16;
     }
 
     @Test
@@ -221,15 +218,15 @@ public class RubyTests extends RegexTestBase {
         // https://bugs.ruby-lang.org/issues/18009
         for (int i = 0; i < 26; i++) {
             String input = String.valueOf((char) ('a' + i));
-            testUTF8("\\W", "i", input, 0, false);
-            testUTF8("[^\\w]", "i", input, 0, false);
-            testUTF8("[[^\\w]]", "i", input, 0, false);
-            testUTF8("[^[^\\w]]", "i", input, 0, true, 0, 1);
+            test("\\W", "i", Encodings.UTF_8, input, 0, false);
+            test("[^\\w]", "i", Encodings.UTF_8, input, 0, false);
+            test("[[^\\w]]", "i", Encodings.UTF_8, input, 0, false);
+            test("[^[^\\w]]", "i", Encodings.UTF_8, input, 0, true, 0, 1);
         }
 
-        testUTF8("[\\w]", "i", "\u212a", 0, false);
-        testUTF8("[kx]", "i", "\u212a", 0, true, 0, 3);
-        testUTF8("[\\w&&kx]", "i", "\u212a", 0, true, 0, 3);
+        test("[\\w]", "i", Encodings.UTF_8, "\u212a", 0, false);
+        test("[kx]", "i", Encodings.UTF_8, "\u212a", 0, true, 0, 3);
+        test("[\\w&&kx]", "i", Encodings.UTF_8, "\u212a", 0, true, 0, 3);
     }
 
     @Test
@@ -299,7 +296,7 @@ public class RubyTests extends RegexTestBase {
     @Test
     public void caseClosureDoesntEscapeEncodingRange() {
         // This shouldn't throw an AssertionError because of encountering the 'st' ligature.
-        testLatin1("test", "i", "test", 0, true, 0, 4);
+        test("test", "i", Encodings.LATIN_1, "test", 0, true, 0, 4);
     }
 
     @Test
@@ -326,9 +323,9 @@ public class RubyTests extends RegexTestBase {
     public void inverseOfUnicodeCharClassInSmallerEncoding() {
         // check(eval('/\A[[:^alpha:]0]\z/'), %w(0 1 .), "a") from test_posix_bracket in
         // test/mri/tests/ruby/test_regexp.rb
-        testLatin1("\\A[[:^alpha:]0]\\z", "", "0", 0, true, 0, 1);
-        testLatin1("\\A[[:^alpha:]0]\\z", "", "1", 0, true, 0, 1);
-        testLatin1("\\A[[:^alpha:]0]\\z", "", "a", 0, false);
+        test("\\A[[:^alpha:]0]\\z", "", Encodings.LATIN_1, "0", 0, true, 0, 1);
+        test("\\A[[:^alpha:]0]\\z", "", Encodings.LATIN_1, "1", 0, true, 0, 1);
+        test("\\A[[:^alpha:]0]\\z", "", Encodings.LATIN_1, "a", 0, false);
     }
 
     @Test

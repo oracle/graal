@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,19 +41,12 @@
 package com.oracle.truffle.regex.tregex.nodes.input;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.regex.runtime.nodes.ToCharNode;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
@@ -66,11 +59,6 @@ public abstract class InputReadNode extends Node {
     }
 
     public abstract int execute(Object input, int index, Encoding encoding);
-
-    @Specialization
-    static int doBytes(byte[] input, int index, @SuppressWarnings("unused") Encoding encoding) {
-        return Byte.toUnsignedInt(input[index]);
-    }
 
     @Specialization
     static int doString(String input, int index, @SuppressWarnings("unused") Encoding encoding) {
@@ -93,17 +81,6 @@ public abstract class InputReadNode extends Node {
     static int doTStringUTF32(TruffleString input, int index, @SuppressWarnings("unused") Encoding encoding,
                     @Cached TruffleString.CodePointAtIndexNode readRawNode) {
         return readRawNode.execute(input, index, TruffleString.Encoding.UTF_32);
-    }
-
-    @Specialization(guards = "inputs.hasArrayElements(input)", limit = "2")
-    static int doBoxedCharArray(Object input, int index, @SuppressWarnings("unused") Encoding encoding,
-                    @CachedLibrary("input") InteropLibrary inputs,
-                    @Cached ToCharNode toCharNode) {
-        try {
-            return toCharNode.execute(inputs.readArrayElement(input, index));
-        } catch (UnsupportedMessageException | InvalidArrayIndexException | UnsupportedTypeException e) {
-            throw CompilerDirectives.shouldNotReachHere();
-        }
     }
 
     public static int readWithMask(Object input, int indexInput, String mask, int indexMask, Encoding encoding, InputReadNode charAtNode) {
