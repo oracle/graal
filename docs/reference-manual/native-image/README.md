@@ -228,6 +228,9 @@ Below, example commands are listed per operating system:
 # Ring the terminal bell
 native-image -jar App.jar ... ; printf '\a'
 
+# Use libnotify to create a desktop notification
+native-image -jar App.jar ... ; notify-send "GraalVM Native Image build completed with exit code $?"
+
 # Use Zenity to open an info dialog box with text
 native-image -jar App.jar ... ; zenity --info --text="GraalVM Native Image build completed with exit code $?"
 ```

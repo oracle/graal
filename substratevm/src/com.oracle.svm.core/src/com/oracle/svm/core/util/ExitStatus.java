@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.util;
 
+/** Exit status codes to be used at build time (in driver and builder). */
 public enum ExitStatus {
     OK(0),
     BUILDER_ERROR(1),
