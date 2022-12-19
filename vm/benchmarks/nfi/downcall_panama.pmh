@@ -22,7 +22,7 @@
 # questions.
 
 lib = EVAL "nfi"
-    load "nfi-native/libmicrobench.so"
+    with panama load "nfi-native/libmicrobench.so"
 
 fnPtr = READ_MEMBER lib "prim_args_downcall"
 

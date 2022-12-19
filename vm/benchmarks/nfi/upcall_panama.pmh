@@ -22,7 +22,7 @@
 # questions.
 
 lib = EVAL "nfi"
-    load "nfi-native/libmicrobench.so" {
+    with panama load "nfi-native/libmicrobench.so" {
        million_upcalls_prim_args (POINTER):VOID;
     }
 

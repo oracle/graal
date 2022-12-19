@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -56,6 +57,7 @@ import com.oracle.truffle.nfi.backend.spi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayBuilderFactory;
 import java.lang.foreign.Linker;
+import java.lang.foreign.MemorySession;
 import java.lang.foreign.SymbolLookup;
 
 @ExportLibrary(NFIBackendLibrary.class)
@@ -91,8 +93,8 @@ final class PanamaNFIBackend implements NFIBackend {
 
         @TruffleBoundary
         private SymbolLookup doLoad() {
-            // TODO
-            return Linker.nativeLinker().defaultLookup();
+            MemorySession session = MemorySession.openImplicit();
+            return SymbolLookup.libraryLookup(name, session);
         }
 
         @Override
@@ -125,9 +127,8 @@ final class PanamaNFIBackend implements NFIBackend {
     }
 
     @ExportMessage
-    Object getEnvType() {
-        // TODO
-        return null;
+    Object getEnvType(@CachedLibrary("this") InteropLibrary self) {
+        return PanamaNFIContext.get(self).lookupEnvType();
     }
 
     @ExportMessage

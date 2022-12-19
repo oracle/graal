@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.nfi.backend.panama;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
@@ -47,7 +49,7 @@ import com.oracle.truffle.api.nodes.Node;
 class PanamaNFIContext {
 
     final PanamaNFILanguage language;
-    Env env;
+    @CompilationFinal Env env;
 
     PanamaNFIContext(PanamaNFILanguage language, Env env) {
         this.language = language;
@@ -62,6 +64,12 @@ class PanamaNFIContext {
     }
 
     void dispose() {
+    }
+
+    @TruffleBoundary
+    PanamaType lookupEnvType() {
+        // TODO
+        return null;
     }
 
     private static final ContextReference<PanamaNFIContext> REFERENCE = ContextReference.create(PanamaNFILanguage.class);
