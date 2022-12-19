@@ -279,7 +279,7 @@ public final class VMEventListenerImpl implements VMEventListener {
                         if (holdEvents) {
                             heldEvents.add(stream);
                         } else {
-                            debuggerController.fine(() -> "SENDING CLASS PREPARE EVENT FOR KLASS: " + klass.getNameAsString() + " WITH THREAD " + context.getThreadName(prepareThread));
+                            DebuggerController.fine(() -> "SENDING CLASS PREPARE EVENT FOR KLASS: " + klass.getNameAsString() + " WITH THREAD " + context.getThreadName(prepareThread));
                             connection.queuePacket(stream);
                         }
                         return null;
@@ -320,7 +320,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(frame.getClassId());
         stream.writeLong(frame.getMethodId());
         stream.writeLong(frame.getCodeIndex());
-        debuggerController.fine(() -> "Sending breakpoint hit event in thread: " + context.getThreadName(currentThread) + " with suspension policy: " + info.getSuspendPolicy());
+        DebuggerController.fine(() -> "Sending breakpoint hit event in thread: " + context.getThreadName(currentThread) + " with suspension policy: " + info.getSuspendPolicy());
         if (holdEvents) {
             heldEvents.add(stream);
         } else {
@@ -492,7 +492,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         if (info.isPopFrames()) {
             // send reply packet when "step" is completed
             PacketStream reply = new PacketStream().replyPacket().id(info.getRequestId());
-            debuggerController.fine(() -> "Sending pop frames reply packet");
+            DebuggerController.fine(() -> "Sending pop frames reply packet");
             if (holdEvents) {
                 heldEvents.add(reply);
             } else {
@@ -515,7 +515,7 @@ public final class VMEventListenerImpl implements VMEventListener {
             stream.writeLong(currentFrame.getMethodId());
             long codeIndex = info.getStepOutBCI() != -1 ? info.getStepOutBCI() : currentFrame.getCodeIndex();
             stream.writeLong(codeIndex);
-            debuggerController.fine(() -> "Sending step completed event");
+            DebuggerController.fine(() -> "Sending step completed event");
 
             if (holdEvents) {
                 heldEvents.add(stream);
@@ -548,7 +548,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(currentFrame.getMethodId());
         long codeIndex = currentFrame.getCodeIndex();
         stream.writeLong(codeIndex);
-        debuggerController.fine(() -> "Sending monitor contended event");
+        DebuggerController.fine(() -> "Sending monitor contended event");
 
         if (holdEvents) {
             heldEvents.add(stream);
@@ -590,7 +590,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(currentFrame.getMethodId());
         long codeIndex = currentFrame.getCodeIndex();
         stream.writeLong(codeIndex);
-        debuggerController.fine(() -> "Sending monitor contended entered event");
+        DebuggerController.fine(() -> "Sending monitor contended entered event");
 
         if (holdEvents) {
             heldEvents.add(stream);
@@ -634,7 +634,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
         // timeout
         stream.writeLong(timeout);
-        debuggerController.fine(() -> "Sending monitor wait event");
+        DebuggerController.fine(() -> "Sending monitor wait event");
 
         if (holdEvents) {
             heldEvents.add(stream);
@@ -711,7 +711,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
         // timeout
         stream.writeBoolean(timedOut);
-        debuggerController.fine(() -> "Sending monitor wait event");
+        DebuggerController.fine(() -> "Sending monitor wait event");
 
         if (holdEvents) {
             heldEvents.add(stream);
@@ -852,7 +852,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeByte(RequestedJDWPEvents.THREAD_START);
         stream.writeInt(threadStartedRequestId);
         stream.writeLong(ids.getIdAsLong(thread));
-        debuggerController.fine(() -> "sending thread started event for thread: " + context.getThreadName(thread));
+        DebuggerController.fine(() -> "sending thread started event for thread: " + context.getThreadName(thread));
         if (holdEvents) {
             heldEvents.add(stream);
         } else {
@@ -909,26 +909,26 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeByte(RequestedJDWPEvents.VM_DEATH);
         stream.writeInt(0);
         // don't queue this packet, send immediately
-        connection.sendVMDied(stream, debuggerController);
+        connection.sendVMDied(stream);
         return vmDeathSuspendPolicy != SuspendStrategy.NONE;
     }
 
     @Override
     public void addClassUnloadRequestId(int id) {
         // not implemented yet
-        debuggerController.fine(() -> "class unload events not yet implemented!");
+        DebuggerController.fine(() -> "class unload events not yet implemented!");
     }
 
     @Override
     public void addThreadStartedRequestId(int id, byte suspendPolicy) {
-        debuggerController.fine(() -> "Adding thread start listener");
+        DebuggerController.fine(() -> "Adding thread start listener");
         this.threadStartedRequestId = id;
         this.threadStartSuspendPolicy = suspendPolicy;
     }
 
     @Override
     public void addThreadDiedRequestId(int id, byte suspendPolicy) {
-        debuggerController.fine(() -> "Adding thread death listener");
+        DebuggerController.fine(() -> "Adding thread death listener");
         this.threadDeathRequestId = id;
         this.threadDeathSuspendPolicy = suspendPolicy;
     }

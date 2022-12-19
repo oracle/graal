@@ -27,7 +27,6 @@ import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -55,8 +54,6 @@ public final class Ids<T> {
 
     private HashMap<String, Long> innerClassIDMap = new HashMap<>(16);
 
-    private DebuggerController controller;
-
     @SuppressWarnings({"unchecked", "rawtypes"})
     public Ids(T nullObject) {
         this.nullObject = nullObject;
@@ -71,7 +68,7 @@ public final class Ids<T> {
      */
     public long getIdAsLong(T object) {
         if (object == null) {
-            log(() -> "Null object when getting ID");
+            DebuggerController.fine(() -> "Null object when getting ID");
             return 0;
         }
         // lookup in cache
@@ -79,7 +76,7 @@ public final class Ids<T> {
             // really slow lookup path
             if (objects[i].get() == object) {
                 final int index = i;
-                log(() -> "ID cache hit for object: " + object + " with ID: " + index);
+                DebuggerController.fine(() -> "ID cache hit for object: " + object + " with ID: " + index);
                 return i;
             }
         }
@@ -110,7 +107,7 @@ public final class Ids<T> {
             // really slow lookup path
             if (objects[i].get() == object) {
                 final int index = i;
-                log(() -> "ID cache hit for object: " + object + " with ID: " + index);
+                DebuggerController.fine(() -> "ID cache hit for object: " + object + " with ID: " + index);
                 return i;
             }
         }
@@ -125,16 +122,16 @@ public final class Ids<T> {
      */
     public T fromId(int id) {
         if (id == 0) {
-            log(() -> "Null object from ID: " + id);
+            DebuggerController.fine(() -> "Null object from ID: " + id);
             return nullObject;
         }
         WeakReference<T> ref = objects[id];
         T o = ref.get();
         if (o == null) {
-            log(() -> "object with ID: " + id + " was garbage collected");
+            DebuggerController.fine(() -> "object with ID: " + id + " was garbage collected");
             return null;
         } else {
-            log(() -> "returning object: " + o + " for ID: " + id);
+            DebuggerController.fine(() -> "returning object: " + o + " for ID: " + id);
             return o;
         }
     }
@@ -150,7 +147,7 @@ public final class Ids<T> {
         WeakReference<T>[] expandedArray = Arrays.copyOf(objects, objects.length + 1);
         expandedArray[objects.length] = new WeakReference<>(object);
         objects = expandedArray;
-        log(() -> "Generating new ID: " + id + " for object: " + object);
+        DebuggerController.fine(() -> "Generating new ID: " + id + " for object: " + object);
         if (object instanceof KlassRef) {
             KlassRef klass = (KlassRef) object;
             Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(klass.getNameAsString());
@@ -164,7 +161,7 @@ public final class Ids<T> {
     public void replaceObject(T original, T replacement) {
         int id = (int) getIdAsLong(original);
         objects[id] = new WeakReference<>(replacement);
-        log(() -> "Replaced ID: " + id);
+        DebuggerController.fine(() -> "Replaced ID: " + id);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -188,15 +185,5 @@ public final class Ids<T> {
 
     public boolean checkRemoved(long refTypeId) {
         return innerClassIDMap.containsValue(refTypeId);
-    }
-
-    public void injectController(DebuggerController control) {
-        this.controller = control;
-    }
-
-    private void log(Supplier<String> supplier) {
-        if (controller != null) {
-            controller.finest(supplier);
-        }
     }
 }

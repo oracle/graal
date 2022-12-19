@@ -47,7 +47,7 @@ public final class SocketConnection implements Runnable {
         socketOutput = socket.getOutputStream();
     }
 
-    public void close(DebuggerController controller) throws IOException {
+    public void close() throws IOException {
         // send outstanding packets before closing
         while (!queue.isEmpty()) {
             for (PacketStream packetStream : queue) {
@@ -55,7 +55,7 @@ public final class SocketConnection implements Runnable {
                 try {
                     writePacket(shipment);
                 } catch (ConnectionClosedException e) {
-                    controller.finest(() -> "connection was closed when trying to flush queue");
+                    DebuggerController.finest(() -> "connection was closed when trying to flush queue");
                 }
             }
         }
@@ -63,7 +63,7 @@ public final class SocketConnection implements Runnable {
         if (!isOpen.tryAcquire()) {
             return;
         }
-        controller.fine(() -> "closing socket now");
+        DebuggerController.fine(() -> "closing socket now");
         socketOutput.close();
         socketInput.close();
         socket.close();
@@ -222,13 +222,13 @@ public final class SocketConnection implements Runnable {
         }
     }
 
-    public void sendVMDied(PacketStream stream, DebuggerController controller) {
+    public void sendVMDied(PacketStream stream) {
         byte[] shipment = stream.prepareForShipment();
         try {
             writePacket(shipment);
             socketOutput.flush();
         } catch (Exception e) {
-            controller.fine(() -> "sending VM_DEATH packet to client failed");
+            DebuggerController.fine(() -> "sending VM_DEATH packet to client failed");
         }
     }
 }

@@ -83,7 +83,6 @@ public final class ClassRedefinition {
 
     private final EspressoContext context;
     private final Ids<Object> ids;
-    private final DebuggerController controller;
     private final RedefineListener redefineListener;
     private volatile Assumption missingFieldAssumption = Truffle.getRuntime().createAssumption();
     private ArrayList<Field> currentDelegationFields;
@@ -112,11 +111,10 @@ public final class ClassRedefinition {
         INVALID;
     }
 
-    public ClassRedefinition(EspressoContext context, Ids<Object> ids, RedefineListener listener, DebuggerController controller) {
+    public ClassRedefinition(EspressoContext context, Ids<Object> ids, RedefineListener listener) {
         this.context = context;
         this.ids = ids;
         this.redefineListener = listener;
-        this.controller = controller;
     }
 
     public void begin() {
@@ -151,7 +149,7 @@ public final class ClassRedefinition {
     }
 
     public void runPostRedefintionListeners(ObjectKlass[] changedKlasses) {
-        redefineListener.postRedefinition(changedKlasses, controller);
+        redefineListener.postRedefinition(changedKlasses);
     }
 
     public void check() {
@@ -258,11 +256,11 @@ public final class ClassRedefinition {
                 case ADD_METHOD:
                 case REMOVE_METHOD:
                 case SCHEMA_CHANGE:
-                    doRedefineClass(packet, invalidatedClasses, redefinedClasses, controller);
+                    doRedefineClass(packet, invalidatedClasses, redefinedClasses);
                     return 0;
                 case CLASS_HIERARCHY_CHANGED:
                     context.markChangedHierarchy();
-                    doRedefineClass(packet, invalidatedClasses, redefinedClasses, controller);
+                    doRedefineClass(packet, invalidatedClasses, redefinedClasses);
                     return 0;
                 case NEW_CLASS:
                     ClassInfo classInfo = packet.info;
@@ -775,7 +773,7 @@ public final class ClassRedefinition {
         return false;
     }
 
-    private void doRedefineClass(ChangePacket packet, List<ObjectKlass> invalidatedClasses, List<ObjectKlass> redefinedClasses, DebuggerController controller) {
+    private void doRedefineClass(ChangePacket packet, List<ObjectKlass> invalidatedClasses, List<ObjectKlass> redefinedClasses) {
         ObjectKlass oldKlass = packet.info.getKlass();
         if (packet.info.isRenamed()) {
             // renaming a class is done by
@@ -799,7 +797,7 @@ public final class ClassRedefinition {
         }
         oldKlass.redefineClass(packet, invalidatedClasses, ids);
         redefinedClasses.add(oldKlass);
-        if (redefineListener.shouldRerunClassInitializer(oldKlass, packet.detectedChange.clinitChanged(), controller)) {
+        if (redefineListener.shouldRerunClassInitializer(oldKlass, packet.detectedChange.clinitChanged())) {
             context.rerunclinit(oldKlass);
         }
     }
@@ -829,9 +827,5 @@ public final class ClassRedefinition {
 
     public int getNextAvailableFieldSlot() {
         return nextAvailableFieldSlot.getAndDecrement();
-    }
-
-    public DebuggerController getController() {
-        return controller;
     }
 }
