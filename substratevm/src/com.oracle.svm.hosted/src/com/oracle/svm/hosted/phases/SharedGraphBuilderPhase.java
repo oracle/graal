@@ -37,10 +37,12 @@ import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -59,6 +61,7 @@ import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -74,9 +77,11 @@ import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
+import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
@@ -330,8 +335,59 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             if (linkAtBuildTime) {
                 reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"), bme);
             } else {
-                ExceptionSynthesizer.replaceWithThrowingAtRuntime(this, bme);
+                replaceWithThrowingAtRuntime(this, bme);
             }
+        }
+
+        /**
+         * This method is used to delay errors from image build-time to run-time. It does so by
+         * invoking a synthesized method that throws an instance like the one given as throwable in
+         * the given GraphBuilderContext. If the given throwable has a non-null cause, a
+         * cause-instance of the same type with a proper cause-message is created first that is then
+         * passed to the method that creates and throws the outer throwable-instance.
+         */
+        public static <T extends Throwable> void replaceWithThrowingAtRuntime(SharedBytecodeParser b, T throwable) {
+            Throwable cause = throwable.getCause();
+            if (cause != null) {
+                var metaAccess = (UniverseMetaAccess) b.getMetaAccess();
+                /* Invoke method that creates a cause-instance with cause-message */
+                var causeCtor = ReflectionUtil.lookupConstructor(cause.getClass(), String.class);
+                ResolvedJavaMethod causeCtorMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(causeCtor), false);
+                ValueNode causeMessageNode = ConstantNode.forConstant(b.getConstantReflection().forString(cause.getMessage()), metaAccess, b.getGraph());
+                Invoke causeCtorInvoke = b.appendInvoke(InvokeKind.Static, causeCtorMethod, new ValueNode[]{causeMessageNode});
+                /*
+                 * Invoke method that creates and throws throwable-instance with message and cause
+                 */
+                var errorCtor = ReflectionUtil.lookupConstructor(throwable.getClass(), String.class, Throwable.class);
+                ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
+                ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwable.getMessage()), metaAccess, b.getGraph());
+                b.appendInvoke(InvokeKind.Static, throwingMethod, new ValueNode[]{messageNode, causeCtorInvoke.asNode()});
+                b.add(new LoweredDeadEndNode());
+            } else {
+                replaceWithThrowingAtRuntime(b, throwable.getClass(), throwable.getMessage());
+            }
+        }
+
+        /**
+         * This method is used to delay errors from image build-time to run-time. It does so by
+         * invoking a synthesized method that creates an instance of type throwableClass with
+         * throwableMessage as argument and then throws that instance in the given
+         * GraphBuilderContext.
+         */
+        public static void replaceWithThrowingAtRuntime(SharedBytecodeParser b, Class<? extends Throwable> throwableClass, String throwableMessage) {
+            /*
+             * This method is currently not able to replace
+             * ExceptionSynthesizer.throwException(GraphBuilderContext, Method, String) because
+             * there are places where GraphBuilderContext.getMetaAccess() does not contain a
+             * UniverseMetaAccess (e.g. in case of ParsingReason.EarlyClassInitializerAnalysis). If
+             * we can access the ParsingReason in here we will be able to get rid of throwException.
+             */
+            var errorCtor = ReflectionUtil.lookupConstructor(throwableClass, String.class);
+            var metaAccess = (UniverseMetaAccess) b.getMetaAccess();
+            ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
+            ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwableMessage), b.getMetaAccess(), b.getGraph());
+            b.appendInvoke(InvokeKind.Static, throwingMethod, new ValueNode[]{messageNode});
+            b.add(new LoweredDeadEndNode());
         }
 
         private void handleUnresolvedType(JavaType type) {
