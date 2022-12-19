@@ -203,7 +203,10 @@ public class JfrThreadLocal implements ThreadListener {
         }
         return result;
     }
-
+    @Uninterruptible(reason = "Accesses a JFR buffer.", callerMustBe = true)
+    public boolean JfrThreadLocalInitialized() {
+        return threadId.get() > 0;
+    }
     @Uninterruptible(reason = "Accesses a JFR buffer.", callerMustBe = true)
     public static JfrBuffer getJavaBuffer(IsolateThread thread) {
         assert (VMOperation.isInProgressAtSafepoint());
