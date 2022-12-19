@@ -323,6 +323,14 @@ public final class BasicBlockOrderUtils {
             return order.toArray(new AbstractBlockBase<?>[0]);
         }
 
+        public char[] toIdArray() {
+            char[] orderIndices = new char[order.size()];
+            for (int i = 0; i < order.size(); i++) {
+                orderIndices[i] = order.get(i).getId();
+            }
+            return orderIndices;
+        }
+
         public ArrayList<T> getOrder() {
             return order;
         }

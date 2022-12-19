@@ -297,7 +297,7 @@ public class LinearScanAssignLocationsPhase extends LinearScanAllocationPhase {
     private void assignLocations() {
         DebugContext debug = allocator.getDebug();
         try (Indent indent = debug.logAndIndent("assign locations")) {
-            for (char blockId : allocator.sortedBlocks()) {
+            for (int blockId : allocator.sortedBlocks()) {
                 AbstractBlockBase<?> block = allocator.getLIR().getBlockById(blockId);
                 try (Indent indent2 = debug.logAndIndent("assign locations in block B%d", block.getId())) {
                     assignLocations(allocator.getLIR().getLIRforBlock(block));

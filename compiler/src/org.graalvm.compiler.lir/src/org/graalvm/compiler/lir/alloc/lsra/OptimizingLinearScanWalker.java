@@ -76,7 +76,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
     @Override
     void walk() {
         try (DebugContext.Scope s = allocator.getDebug().scope("OptimizingLinearScanWalker")) {
-            for (char blockId : allocator.sortedBlocks()) {
+            for (int blockId : allocator.sortedBlocks()) {
                 AbstractBlockBase<?> block = allocator.getLIR().getBlockById(blockId);
                 optimizeBlock(block);
             }

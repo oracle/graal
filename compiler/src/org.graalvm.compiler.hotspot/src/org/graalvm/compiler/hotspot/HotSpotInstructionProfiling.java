@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.INVALID_BLOCK_ID;
-
 import java.util.ArrayList;
 
 import org.graalvm.compiler.asm.Assembler;
@@ -116,8 +114,8 @@ public class HotSpotInstructionProfiling extends PostAllocationOptimizationPhase
     public static void countInstructions(LIR lir, Assembler<?> asm) {
         InstructionCounterOp lastOp = null;
         InstructionCounter counter = asm.getInstructionCounter();
-        for (char blockId : lir.codeEmittingOrder()) {
-            if (blockId == INVALID_BLOCK_ID) {
+        for (int blockId : lir.codeEmittingOrder()) {
+            if (LIR.isBlockDeleted(blockId)) {
                 continue;
             }
             AbstractBlockBase<?> block = lir.getBlockById(blockId);

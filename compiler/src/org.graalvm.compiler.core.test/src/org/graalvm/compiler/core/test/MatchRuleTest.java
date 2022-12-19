@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.core.test;
 
-import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.INVALID_BLOCK_ID;
-
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
@@ -87,8 +85,8 @@ public abstract class MatchRuleTest extends GraalCompilerTest {
             compile(getResolvedJavaMethod(methodName), null);
         }
         int actualOpNum = 0;
-        for (char blockId : lir.codeEmittingOrder()) {
-            if (blockId == INVALID_BLOCK_ID) {
+        for (int blockId : lir.codeEmittingOrder()) {
+            if (LIR.isBlockDeleted(blockId)) {
                 continue;
             }
             AbstractBlockBase<?> block = lir.getBlockById(blockId);

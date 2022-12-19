@@ -25,7 +25,6 @@
 package org.graalvm.compiler.hotspot.lir;
 
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
-import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.INVALID_BLOCK_ID;
 
 import java.util.ArrayList;
 
@@ -84,8 +83,8 @@ public final class HotSpotZapRegistersPhase extends PostAllocationOptimizationPh
 
     private static void processLIR(DiagnosticLIRGeneratorTool diagnosticLirGenTool, LIR lir, EconomicSet<Register> allocatableRegisters, boolean zapRegisters, boolean zapStack) {
         LIRInsertionBuffer buffer = new LIRInsertionBuffer();
-        for (char blockId : lir.getBlocks()) {
-            if (blockId == INVALID_BLOCK_ID) {
+        for (int blockId : lir.getBlocks()) {
+            if (LIR.isBlockDeleted(blockId)) {
                 continue;
             }
             AbstractBlockBase<?> block = lir.getBlockById(blockId);

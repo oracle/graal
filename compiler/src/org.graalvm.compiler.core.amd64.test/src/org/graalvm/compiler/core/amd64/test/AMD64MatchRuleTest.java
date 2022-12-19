@@ -234,7 +234,7 @@ public class AMD64MatchRuleTest extends MatchRuleTest {
         compile(getResolvedJavaMethod("testAddLoadDifferentBlocksNoMatchSnippet"), null);
         LIR lir = getLIR();
         boolean found = false;
-        for (char blockId : lir.codeEmittingOrder()) {
+        for (int blockId : lir.codeEmittingOrder()) {
             AbstractBlockBase<?> b = lir.getBlockById(blockId);
             for (LIRInstruction ins : lir.getLIRforBlock(b)) {
                 if (ins instanceof AMD64Binary.CommutativeTwoOp && ((AMD64Binary.CommutativeTwoOp) ins).getOpcode().toString().equals("ADD")) {

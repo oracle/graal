@@ -70,11 +70,7 @@ public class DefaultCodeEmissionOrder<T extends AbstractBlockBase<T>> implements
         PriorityQueue<T> worklist = BasicBlockOrderUtils.initializeWorklist(startBlock, visitedBlocks);
         computeCodeEmittingOrder(order, worklist, visitedBlocks, computationTime);
         BasicBlockOrderUtils.checkStartBlock(order, startBlock);
-        char[] orderIndices = new char[order.size()];
-        for (int i = 0; i < order.size(); i++) {
-            orderIndices[i] = order.getOrder().get(i).getId();
-        }
-        return orderIndices;
+        return order.toIdArray();
     }
 
     /**

@@ -91,8 +91,13 @@ public final class LIR extends LIRGenerator.VariableProvider {
         return cfg;
     }
 
-    public AbstractBlockBase<?> getBlockById(char blockId) {
+    public AbstractBlockBase<?> getBlockById(int blockId) {
+        assert blockId <= AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX;
         return cfg.getBlocks()[blockId];
+    }
+
+    public static boolean isBlockDeleted(int blockId) {
+        return AbstractControlFlowGraph.blockIsDeletedOrNew(blockId);
     }
 
     public OptionValues getOptions() {

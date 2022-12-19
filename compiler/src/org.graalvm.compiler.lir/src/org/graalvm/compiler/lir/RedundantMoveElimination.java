@@ -181,7 +181,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
              * Search for relevant locations which can be optimized. These are register or stack
              * slots which occur as destinations of move instructions.
              */
-            for (char blockId : blockIds) {
+            for (int blockId : blockIds) {
                 AbstractBlockBase<?> block = lir.getBlockById(blockId);
                 ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
                 for (LIRInstruction op : instructions) {
@@ -208,7 +208,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
              */
             int numLocations = numRegs + stackIndices.size();
             debug.log("num locations = %d (regs = %d, stack = %d)", numLocations, numRegs, stackIndices.size());
-            for (char blockId : blockIds) {
+            for (int blockId : blockIds) {
                 AbstractBlockBase<?> block = lir.getBlockById(blockId);
                 BlockData data = new BlockData(numLocations);
                 blockData.put(block, data);
@@ -238,7 +238,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
                 do {
                     changed = false;
                     try (Indent indent2 = debug.logAndIndent("new iteration")) {
-                        for (char blockId : blockIds) {
+                        for (int blockId : blockIds) {
                             AbstractBlockBase<?> block = lir.getBlockById(blockId);
                             BlockData data = blockData.get(block);
                             /*
@@ -326,7 +326,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
             DebugContext debug = lir.getDebug();
             try (Indent indent = debug.logAndIndent("eliminate moves")) {
                 char[] blockIds = lir.linearScanOrder();
-                for (char blockId : blockIds) {
+                for (int blockId : blockIds) {
                     AbstractBlockBase<?> block = lir.getBlockById(blockId);
                     try (Indent indent2 = debug.logAndIndent("eliminate moves in block %d", block.getId())) {
                         ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);

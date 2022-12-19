@@ -51,6 +51,7 @@ import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StartNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
@@ -58,6 +59,11 @@ import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.word.LocationIdentity;
 
+/**
+ * {@link StructuredGraph} based implementation of {@link AbstractBlockBase}. Instances of
+ * subclasses of this are allocated by {@link ControlFlowGraph}. Stores accompanying
+ * meta-information about this {@link Block} in context of its {@link ControlFlowGraph}.
+ */
 public abstract class Block extends AbstractBlockBase<Block> {
 
     protected final AbstractBeginNode beginNode;

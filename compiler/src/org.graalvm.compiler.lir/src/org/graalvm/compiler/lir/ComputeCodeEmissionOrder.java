@@ -56,7 +56,7 @@ public final class ComputeCodeEmissionOrder extends PostAllocationOptimizationPh
         char[] layout = context.blockOrder.computeCodeEmittingOrder(lir.getOptions(), ComputationTime.AFTER_CONTROL_FLOW_OPTIMIZATIONS);
         assert LIR.verifyBlocks(lir, layout) : "Block layout is not correct";
         lir.setCodeEmittingOrder(layout);
-        for (char blockId : layout) {
+        for (int blockId : layout) {
             AbstractBlockBase<?> block = lir.getBlockById(blockId);
             if (block.isAligned()) {
                 ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);

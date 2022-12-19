@@ -126,4 +126,11 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
     static <T extends AbstractBlockBase<T>> T commonDominatorTyped(T a, T b) {
         return (T) commonDominator(a, b);
     }
+
+    static boolean blockIsDeletedOrNew(int blockId) {
+        if (blockId == INVALID_BLOCK_ID) {
+            return true;
+        }
+        return false;
+    }
 }

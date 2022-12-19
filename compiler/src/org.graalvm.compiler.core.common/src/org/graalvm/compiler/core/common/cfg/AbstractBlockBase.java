@@ -37,10 +37,9 @@ import org.graalvm.compiler.debug.GraalError;
  * {@code AbstractControlFlowGraph} (typically in a reverse post order fashion). Both the frontend
  * of Graal as well as the backend operate on the same abstract block representation.
  *
- * In reality only one subclass exists that is shared both by the frontend and backend. However, the
- * frontend builds, while scheduling the graph, the final control flow graph used by the backend.
- * Since Graal has a strict dependency separation between frontend and backend this abstract basic
- * block is the coupling API.
+ * The frontend builds, while scheduling the graph, the final control flow graph used by the
+ * backend. Since Graal has a strict dependency separation between frontend and backend this
+ * abstract basic block is the coupling API.
  */
 public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     public static final double[] EMPTY_PROBABILITY_ARRAY = new double[0];
@@ -141,6 +140,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     }
 
     public void setId(char id) {
+        assert id <= AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX;
         this.id = id;
     }
 

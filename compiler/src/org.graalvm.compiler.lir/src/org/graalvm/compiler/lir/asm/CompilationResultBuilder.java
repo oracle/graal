@@ -27,7 +27,6 @@ package org.graalvm.compiler.lir.asm;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static org.graalvm.compiler.core.common.GraalOptions.IsolatedLoopHeaderAlignment;
-import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.INVALID_BLOCK_ID;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -542,16 +541,20 @@ public class CompilationResultBuilder {
         frameContext.enter(this);
         final BasicBlockInfoLogger logger = new BasicBlockInfoLogger();
         AbstractBlockBase<?> previousBlock = null;
-        for (char blockId : lir.codeEmittingOrder()) {
+        for (int blockId : lir.codeEmittingOrder()) {
             AbstractBlockBase<?> b = lir.getBlockById(blockId);
             assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == AbstractControlFlowGraph.INVALID_BLOCK_ID) || lir.codeEmittingOrder()[currentBlockIndex] == blockId;
             if (b != null) {
                 if (b.isAligned() && previousBlock != null) {
-                    AbstractBlockBase<?>[] successorArray = new AbstractBlockBase<?>[previousBlock.getSuccessorCount()];
-                    for (int i = 0; i < successorArray.length; i++) {
-                        successorArray[i] = previousBlock.getSuccessorAt(i);
+                    boolean hasSuccessorB = false;
+                    for (int i = 0; i < previousBlock.getSuccessorCount(); i++) {
+                        AbstractBlockBase<?> succ = previousBlock.getSuccessorAt(i);
+                        if (succ == b) {
+                            hasSuccessorB = true;
+                            break;
+                        }
                     }
-                    if (Arrays.stream(successorArray).noneMatch((x) -> x == b)) {
+                    if (!hasSuccessorB) {
                         ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(b);
                         assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
                         StandardOp.LabelOp label = (StandardOp.LabelOp) instructions.get(0);
@@ -659,19 +662,20 @@ public class CompilationResultBuilder {
         labelBindLirPositions = EconomicMap.create(Equivalence.IDENTITY);
         lirPositions = EconomicMap.create(Equivalence.IDENTITY);
         int instructionPosition = 0;
-        for (char blockId : generatedLIR.getBlocks()) {
+        for (int blockId : generatedLIR.getBlocks()) {
+            if (LIR.isBlockDeleted(blockId)) {
+                continue;
+            }
             AbstractBlockBase<?> block = generatedLIR.getBlockById(blockId);
-            if (block != null) {
-                for (LIRInstruction op : generatedLIR.getLIRforBlock(block)) {
-                    if (op instanceof LabelHoldingOp) {
-                        Label label = ((LabelHoldingOp) op).getLabel();
-                        if (label != null) {
-                            labelBindLirPositions.put(label, instructionPosition);
-                        }
+            for (LIRInstruction op : generatedLIR.getLIRforBlock(block)) {
+                if (op instanceof LabelHoldingOp) {
+                    Label label = ((LabelHoldingOp) op).getLabel();
+                    if (label != null) {
+                        labelBindLirPositions.put(label, instructionPosition);
                     }
-                    lirPositions.put(op, instructionPosition);
-                    instructionPosition++;
                 }
+                lirPositions.put(op, instructionPosition);
+                instructionPosition++;
             }
         }
     }
@@ -708,8 +712,8 @@ public class CompilationResultBuilder {
     }
 
     public final boolean needsClearUpperVectorRegisters() {
-        for (char blockId : lir.getBlocks()) {
-            if (blockId == INVALID_BLOCK_ID) {
+        for (int blockId : lir.getBlocks()) {
+            if (LIR.isBlockDeleted(blockId)) {
                 continue;
             }
             AbstractBlockBase<?> block = lir.getBlockById(blockId);

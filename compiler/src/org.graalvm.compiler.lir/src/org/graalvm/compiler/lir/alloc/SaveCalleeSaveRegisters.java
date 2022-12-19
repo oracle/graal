@@ -57,11 +57,11 @@ public class SaveCalleeSaveRegisters extends PreAllocationOptimizationPhase {
         LIR lir = lirGenRes.getLIR();
         RegisterMap<Variable> savedRegisters = saveAtEntry(lir, context.lirGen, lirGenRes, calleeSaveRegisters, target.arch);
 
-        for (char blockId : lir.getBlocks()) {
-            AbstractBlockBase<?> block = lir.getBlockById(blockId);
-            if (block == null) {
+        for (int blockId : lir.getBlocks()) {
+            if (LIR.isBlockDeleted(blockId)) {
                 continue;
             }
+            AbstractBlockBase<?> block = lir.getBlockById(blockId);
             if (block.getSuccessorCount() == 0) {
                 restoreAtExit(lir, context.lirGen.getSpillMoveFactory(), lirGenRes, savedRegisters, block);
             }

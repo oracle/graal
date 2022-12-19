@@ -73,7 +73,7 @@ public class AllocatorTest extends BackendTest {
         RegisterStats(LIR lir) {
             this.lir = lir;
 
-            for (char blockId : lir.codeEmittingOrder()) {
+            for (int blockId : lir.codeEmittingOrder()) {
                 if (blockId == INVALID_BLOCK_ID) {
                     continue;
                 }

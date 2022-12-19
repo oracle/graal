@@ -139,7 +139,7 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
     }
 
     protected void optimizeEmptyBlocks(MoveResolver moveResolver, BitSet blockCompleted) {
-        for (char blockId : allocator.sortedBlocks()) {
+        for (int blockId : allocator.sortedBlocks()) {
             AbstractBlockBase<?> block = allocator.getLIR().getBlockById(blockId);
 
             // check if block has only one predecessor and only one successor
@@ -179,7 +179,7 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
 
     protected void resolveDataFlow0(MoveResolver moveResolver, BitSet blockCompleted) {
         BitSet alreadyResolved = new BitSet(allocator.blockCount());
-        for (char blockId : allocator.sortedBlocks()) {
+        for (int blockId : allocator.sortedBlocks()) {
             AbstractBlockBase<?> fromBlock = allocator.getLIR().getBlockById(blockId);
             if (!blockCompleted.get(fromBlock.getLinearScanNumber())) {
                 alreadyResolved.clear();

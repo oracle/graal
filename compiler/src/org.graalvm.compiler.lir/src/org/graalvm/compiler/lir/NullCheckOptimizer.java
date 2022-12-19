@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.lir;
 
-import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.INVALID_BLOCK_ID;
-
 import java.util.ArrayList;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
@@ -46,8 +44,8 @@ public final class NullCheckOptimizer extends PostAllocationOptimizationPhase {
     }
 
     private static void foldNullChecks(LIR ir, char[] blockIds, int implicitNullCheckLimit) {
-        for (char blockId : blockIds) {
-            if (blockId == INVALID_BLOCK_ID) {
+        for (int blockId : blockIds) {
+            if (LIR.isBlockDeleted(blockId)) {
                 continue;
             }
             AbstractBlockBase<?> block = ir.getBlockById(blockId);
