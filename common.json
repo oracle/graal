@@ -4,6 +4,7 @@
   "mx_version" : "6.14.9",
 
   "jdks": {
+    "oraclejdk11":        {"name": "jpg-jdk",   "version": "11.0.11", "build_id": "9", "release": true, "platformspecific": true, "extrabundles": ["static-libs"] },
     "oraclejdk17":        {"name": "jpg-jdk",   "version": "17.0.1",  "build_id": "12", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]},
     "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.6+2-jvmci-23.0-b04", "platformspecific": true },
     "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.6+2-jvmci-23.0-b04-debug", "platformspecific": true },
