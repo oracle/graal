@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.lir.constopt;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.ValueProcedure;
 
@@ -35,11 +35,11 @@ import jdk.vm.ci.meta.Value;
  */
 class UseEntry {
 
-    private final AbstractBlockBase<?> block;
+    private final BasicBlock<?> block;
     private final LIRInstruction instruction;
     private final Value value;
 
-    UseEntry(AbstractBlockBase<?> block, LIRInstruction instruction, Value value) {
+    UseEntry(BasicBlock<?> block, LIRInstruction instruction, Value value) {
         this.block = block;
         this.instruction = instruction;
         this.value = value;
@@ -49,7 +49,7 @@ class UseEntry {
         return instruction;
     }
 
-    public AbstractBlockBase<?> getBlock() {
+    public BasicBlock<?> getBlock() {
         return block;
     }
 

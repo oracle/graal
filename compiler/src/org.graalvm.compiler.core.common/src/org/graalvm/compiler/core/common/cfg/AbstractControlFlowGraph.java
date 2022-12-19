@@ -26,7 +26,7 @@ package org.graalvm.compiler.core.common.cfg;
 
 import java.util.Collection;
 
-public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
+public interface AbstractControlFlowGraph<T extends BasicBlock<T>> {
 
     /**
      * Special value used for basic block indices into the {@link #getBlocks()} array. Using this
@@ -46,7 +46,7 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
      *
      * It is {@linkplain CFGVerifier guaranteed} that the blocks are numbered and ordered according
      * to a reverse post order traversal of the control flow graph. The
-     * {@linkplain AbstractBlockBase#getId() id} of each block in the graph is an index into the
+     * {@linkplain BasicBlock#getId() id} of each block in the graph is an index into the
      * returned array.
      *
      * @see CFGVerifier
@@ -60,7 +60,7 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
     /**
      * True if block {@code b} is dominated by block {@code a} or {@code a} is equal to {@code b}.
      */
-    static boolean dominates(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
+    static boolean dominates(BasicBlock<?> a, BasicBlock<?> b) {
         assert a != null;
         assert b != null;
         int domNumberA = a.getDominatorNumber();
@@ -72,7 +72,7 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
      * True if block {@code a} dominates block {@code b} and {@code a} is not identical block to
      * {@code b}.
      */
-    static boolean strictlyDominates(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
+    static boolean strictlyDominates(BasicBlock<?> a, BasicBlock<?> b) {
         return a != b && dominates(a, b);
     }
 
@@ -84,7 +84,7 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
      * @see #getBlocks()
      * @see CFGVerifier
      */
-    static AbstractBlockBase<?> commonDominator(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
+    static BasicBlock<?> commonDominator(BasicBlock<?> a, BasicBlock<?> b) {
         if (a == null) {
             return b;
         } else if (b == null) {
@@ -94,8 +94,8 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
         } else {
             int aDomDepth = a.getDominatorDepth();
             int bDomDepth = b.getDominatorDepth();
-            AbstractBlockBase<?> aTemp;
-            AbstractBlockBase<?> bTemp;
+            BasicBlock<?> aTemp;
+            BasicBlock<?> bTemp;
             if (aDomDepth > bDomDepth) {
                 aTemp = a;
                 bTemp = b;
@@ -107,9 +107,9 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
         }
     }
 
-    static AbstractBlockBase<?> commonDominatorHelper(AbstractBlockBase<?> a, AbstractBlockBase<?> b) {
+    static BasicBlock<?> commonDominatorHelper(BasicBlock<?> a, BasicBlock<?> b) {
         int domNumberA = a.getDominatorNumber();
-        AbstractBlockBase<?> result = b;
+        BasicBlock<?> result = b;
         while (domNumberA < result.getDominatorNumber()) {
             result = result.getDominator();
         }
@@ -120,10 +120,10 @@ public interface AbstractControlFlowGraph<T extends AbstractBlockBase<T>> {
     }
 
     /**
-     * @see AbstractControlFlowGraph#commonDominator(AbstractBlockBase, AbstractBlockBase)
+     * @see AbstractControlFlowGraph#commonDominator(BasicBlock, BasicBlock)
      */
     @SuppressWarnings("unchecked")
-    static <T extends AbstractBlockBase<T>> T commonDominatorTyped(T a, T b) {
+    static <T extends BasicBlock<T>> T commonDominatorTyped(T a, T b) {
         return (T) commonDominator(a, b);
     }
 

@@ -41,7 +41,7 @@ import java.util.BitSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.DebugContext;
@@ -170,10 +170,10 @@ public class LinearScan {
 
     /**
      * Map from an instruction {@linkplain LIRInstruction#id id} to the
-     * {@linkplain AbstractBlockBase block} containing the instruction. Entries should be retrieved
+     * {@linkplain BasicBlock block} containing the instruction. Entries should be retrieved
      * with {@link #blockForId(int)} as the id is not simply an index into this array.
      */
-    private AbstractBlockBase<?>[] opIdToBlockMap;
+    private BasicBlock<?>[] opIdToBlockMap;
 
     /**
      * The {@linkplain #operandNumber(Value) number} of the first variable operand allocated.
@@ -243,13 +243,13 @@ public class LinearScan {
         return debug;
     }
 
-    public int getFirstLirInstructionId(AbstractBlockBase<?> block) {
+    public int getFirstLirInstructionId(BasicBlock<?> block) {
         int result = ir.getLIRforBlock(block).get(0).id();
         assert result >= 0;
         return result;
     }
 
-    public int getLastLirInstructionId(AbstractBlockBase<?> block) {
+    public int getLastLirInstructionId(BasicBlock<?> block) {
         ArrayList<LIRInstruction> instructions = ir.getLIRforBlock(block);
         int result = instructions.get(instructions.size() - 1).id();
         assert result >= 0;
@@ -300,11 +300,11 @@ public class LinearScan {
         return firstVariableNumber - 1;
     }
 
-    public BlockData getBlockData(AbstractBlockBase<?> block) {
+    public BlockData getBlockData(BasicBlock<?> block) {
         return blockData.get(block);
     }
 
-    void initBlockData(AbstractBlockBase<?> block) {
+    void initBlockData(BasicBlock<?> block) {
         blockData.put(block, new BlockData());
     }
 
@@ -407,7 +407,7 @@ public class LinearScan {
         return sortedBlocks.length;
     }
 
-    public AbstractBlockBase<?> blockAt(int index) {
+    public BasicBlock<?> blockAt(int index) {
         return ir.getBlockById(sortedBlocks[index]);
     }
 
@@ -445,10 +445,10 @@ public class LinearScan {
 
     void initOpIdMaps(int numInstructions) {
         opIdToInstructionMap = new LIRInstruction[numInstructions];
-        opIdToBlockMap = new AbstractBlockBase<?>[numInstructions];
+        opIdToBlockMap = new BasicBlock<?>[numInstructions];
     }
 
-    void putOpIdMaps(int index, LIRInstruction op, AbstractBlockBase<?> block) {
+    void putOpIdMaps(int index, LIRInstruction op, BasicBlock<?> block) {
         opIdToInstructionMap[index] = op;
         opIdToBlockMap[index] = block;
     }
@@ -489,7 +489,7 @@ public class LinearScan {
      * @param opId an instruction {@linkplain LIRInstruction#id id}
      * @return the block containing the instruction denoted by {@code opId}
      */
-    public AbstractBlockBase<?> blockForId(int opId) {
+    public BasicBlock<?> blockForId(int opId) {
         assert opIdToBlockMap.length > 0 && opId >= 0 && opId <= maxOpId() + 1 : "opId out of range";
         return opIdToBlockMap[opIdToIndex(opId)];
     }
@@ -796,7 +796,7 @@ public class LinearScan {
 
                 try (Indent indent2 = debug.logAndIndent("Basic Blocks")) {
                     for (int i = 0; i < blockCount(); i++) {
-                        AbstractBlockBase<?> block = blockAt(i);
+                        BasicBlock<?> block = blockAt(i);
                         debug.log("B%d [%d, %d, %s] ", block.getId(), getFirstLirInstructionId(block), getLastLirInstructionId(block), block.getLoop());
                     }
                 }

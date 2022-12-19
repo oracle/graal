@@ -27,7 +27,7 @@ package com.oracle.svm.hosted.phases;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRFrameState;
@@ -81,7 +81,7 @@ class Instance {
             if (LIR.isBlockDeleted(bockId)) {
                 continue;
             }
-            AbstractBlockBase<?> block = ir.getControlFlowGraph().getBlocks()[bockId];
+            BasicBlock<?> block = ir.getControlFlowGraph().getBlocks()[bockId];
             for (LIRInstruction op : ir.getLIRforBlock(block)) {
                 op.forEachState((instruction, state) -> doState(debug, frameMap, instruction, state));
             }

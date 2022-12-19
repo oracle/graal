@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.GraalError;
@@ -60,18 +60,18 @@ import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.word.LocationIdentity;
 
 /**
- * {@link StructuredGraph} based implementation of {@link AbstractBlockBase}. Instances of
+ * {@link StructuredGraph} based implementation of {@link BasicBlock}. Instances of
  * subclasses of this are allocated by {@link ControlFlowGraph}. Stores accompanying
- * meta-information about this {@link Block} in context of its {@link ControlFlowGraph}.
+ * meta-information about this {@link HIRBlock} in context of its {@link ControlFlowGraph}.
  */
-public abstract class Block extends AbstractBlockBase<Block> {
+public abstract class HIRBlock extends BasicBlock<HIRBlock> {
 
     protected final AbstractBeginNode beginNode;
     protected FixedNode endNode;
 
     protected double relativeFrequency = -1D;
     protected ProfileSource frequencySource;
-    protected Loop<Block> loop;
+    protected Loop<HIRBlock> loop;
 
     protected int numBackedges = -1;
 
@@ -79,7 +79,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
     private LocationSet killLocations;
     private LocationSet killLocationsBetweenThisAndDominator;
 
-    Block(AbstractBeginNode node, ControlFlowGraph cfg) {
+    HIRBlock(AbstractBeginNode node, ControlFlowGraph cfg) {
         super(cfg);
         this.beginNode = node;
     }
@@ -93,11 +93,11 @@ public abstract class Block extends AbstractBlockBase<Block> {
     }
 
     @Override
-    public Loop<Block> getLoop() {
+    public Loop<HIRBlock> getLoop() {
         return loop;
     }
 
-    public void setLoop(Loop<Block> loop) {
+    public void setLoop(Loop<HIRBlock> loop) {
         this.loop = loop;
         this.numBackedges = (isLoopHeader() ? loop.numBackedges() : -1);
     }
@@ -128,16 +128,16 @@ public abstract class Block extends AbstractBlockBase<Block> {
         return predecessor != null && predecessor instanceof WithExceptionNode && getBeginNode() == ((WithExceptionNode) predecessor).exceptionEdge();
     }
 
-    public Block getFirstPredecessor() {
+    public HIRBlock getFirstPredecessor() {
         return getPredecessorAt(0);
     }
 
-    public Block getFirstSuccessor() {
+    public HIRBlock getFirstSuccessor() {
         return getSuccessorAt(0);
     }
 
     @Override
-    public Block getPostdominator() {
+    public HIRBlock getPostdominator() {
         return postdominator != INVALID_BLOCK_ID ? getBlocks()[postdominator] : null;
     }
 
@@ -316,7 +316,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
      *
      * Graal {@linkplain IfNode#setTrueSuccessorProbability(BranchProbabilityData) sets the
      * profiles} during parsing and later computes loop frequencies for {@link LoopBeginNode}.
-     * Finally, the frequency for basic {@link Block}s is set during {@link ControlFlowGraph}
+     * Finally, the frequency for basic {@link HIRBlock}s is set during {@link ControlFlowGraph}
      * construction.
      */
     @Override
@@ -338,8 +338,8 @@ public abstract class Block extends AbstractBlockBase<Block> {
     }
 
     @Override
-    public Block getDominator(int distance) {
-        Block result = this;
+    public HIRBlock getDominator(int distance) {
+        HIRBlock result = this;
         for (int i = 0; i < distance; ++i) {
             result = result.getDominator();
         }
@@ -388,13 +388,13 @@ public abstract class Block extends AbstractBlockBase<Block> {
     private LocationSet getKillLocationsBetweenThisAndDominator() {
         if (this.killLocationsBetweenThisAndDominator == null) {
             LocationSet dominatorResult = new LocationSet();
-            Block stopBlock = getDominator();
+            HIRBlock stopBlock = getDominator();
             if (this.isLoopHeader()) {
                 assert stopBlock.getLoopDepth() < this.getLoopDepth();
                 dominatorResult.addAll(((HIRLoop) this.getLoop()).getKillLocations());
             } else {
                 for (int i = 0; i < getPredecessorCount(); i++) {
-                    Block b = getPredecessorAt(i);
+                    HIRBlock b = getPredecessorAt(i);
                     assert !this.isLoopHeader();
                     if (b != stopBlock) {
                         dominatorResult.addAll(b.getKillLocations());
@@ -413,7 +413,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
         return this.killLocationsBetweenThisAndDominator;
     }
 
-    private void calcKillLocationsBetweenThisAndTarget(LocationSet result, Block stopBlock) {
+    private void calcKillLocationsBetweenThisAndTarget(LocationSet result, HIRBlock stopBlock) {
         assert AbstractControlFlowGraph.dominates(stopBlock, this);
         if (stopBlock == this || result.isAny()) {
             // We reached the stop block => nothing to do.
@@ -434,7 +434,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
         }
     }
 
-    protected void setPostDominator(Block postdominator) {
+    protected void setPostDominator(HIRBlock postdominator) {
         if (postdominator != null) {
             this.postdominator = postdominator.getId();
         }
@@ -444,13 +444,13 @@ public abstract class Block extends AbstractBlockBase<Block> {
      * Checks whether {@code this} block is in the same loop or an outer loop of the block given as
      * parameter.
      */
-    public boolean isInSameOrOuterLoopOf(Block block) {
+    public boolean isInSameOrOuterLoopOf(HIRBlock block) {
         if (this.loop == null) {
             // We are in no loop, so this holds true for every other block.
             return true;
         }
 
-        Loop<Block> l = block.loop;
+        Loop<HIRBlock> l = block.loop;
         while (l != null) {
             if (l == this.loop) {
                 return true;
@@ -461,7 +461,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
         return false;
     }
 
-    public static void computeLoopPredecessors(NodeMap<Block> nodeMap, ModifiableBlock block, LoopBeginNode loopBeginNode) {
+    public static void computeLoopPredecessors(NodeMap<HIRBlock> nodeMap, ModifiableBlock block, LoopBeginNode loopBeginNode) {
         int forwardEndCount = loopBeginNode.forwardEndCount();
         LoopEndNode[] loopEnds = loopBeginNode.orderedLoopEnds();
         char firstPredecessor = nodeMap.get(loopBeginNode.forwardEndAt(0)).getId();
@@ -475,13 +475,13 @@ public abstract class Block extends AbstractBlockBase<Block> {
         block.setPredecessors(firstPredecessor, extraPredecessors);
     }
 
-    public static void assignPredecessorsAndSuccessors(Block[] blocks, ControlFlowGraph cfg) {
+    public static void assignPredecessorsAndSuccessors(HIRBlock[] blocks, ControlFlowGraph cfg) {
         for (int bI = 0; bI < blocks.length; bI++) {
             ModifiableBlock b = (ModifiableBlock) blocks[bI];
             FixedNode blockEndNode = b.getEndNode();
             if (blockEndNode instanceof EndNode) {
                 EndNode endNode = (EndNode) blockEndNode;
-                Block suxBlock = cfg.getNodeToBlock().get(endNode.merge());
+                HIRBlock suxBlock = cfg.getNodeToBlock().get(endNode.merge());
                 b.setSuccessor(suxBlock.getId());
             } else if (blockEndNode instanceof ControlSplitNode) {
                 ControlSplitNode split = (ControlSplitNode) blockEndNode;
@@ -525,7 +525,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
                     sux.setPredecessor(b.getId());
                 }
                 assert blockEndNode.successors().count() == 1 : "Node " + blockEndNode;
-                Block sequentialSuc = cfg.getNodeToBlock().get(blockEndNode.successors().first());
+                HIRBlock sequentialSuc = cfg.getNodeToBlock().get(blockEndNode.successors().first());
                 b.setSuccessor(sequentialSuc.getId());
             }
             FixedNode blockBeginNode = b.getBeginNode();
@@ -547,7 +547,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
     /**
      * A basic block that can have its edges edited.
      */
-    static class ModifiableBlock extends Block {
+    static class ModifiableBlock extends HIRBlock {
         /**
          * Determine in the backend if this block should be aligned.
          */
@@ -655,13 +655,13 @@ public abstract class Block extends AbstractBlockBase<Block> {
         }
 
         @Override
-        public Block getPredecessorAt(int predIndex) {
+        public HIRBlock getPredecessorAt(int predIndex) {
             assert predIndex < getPredecessorCount();
             return getBlocks()[getAtIndex(firstPredecessor, extraPredecessors, predIndex)];
         }
 
         @Override
-        public Block getSuccessorAt(int succIndex) {
+        public HIRBlock getSuccessorAt(int succIndex) {
             assert succIndex < getSuccessorCount();
             return getBlocks()[getAtIndex(firstSuccessor, secondSuccessor, extraSuccessors, succIndex)];
         }
@@ -721,7 +721,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
                 char[] newPredSuccs = new char[pred.getSuccessorCount()];
                 double[] newPredSuccP = new double[pred.getSuccessorCount()];
                 for (int j = 0; j < pred.getSuccessorCount(); j++) {
-                    Block predSuccAt = pred.getSuccessorAt(j);
+                    HIRBlock predSuccAt = pred.getSuccessorAt(j);
                     if (predSuccAt == this) {
                         newPredSuccs[j] = next.getId();
                         newPredSuccP[j] = pred.getSuccessorProbabilityAt(0);
@@ -751,9 +751,9 @@ public abstract class Block extends AbstractBlockBase<Block> {
                 next.numBackedges += predecessorCount - 1;
             }
 
-            ArrayList<Block> newPreds = new ArrayList<>();
+            ArrayList<HIRBlock> newPreds = new ArrayList<>();
             for (int i = 0; i < next.getPredecessorCount(); i++) {
-                Block curPred = next.getPredecessorAt(i);
+                HIRBlock curPred = next.getPredecessorAt(i);
                 if (curPred == this) {
                     for (int j = 0; j < getPredecessorCount(); j++) {
                         newPreds.add(getPredecessorAt(j));
@@ -763,7 +763,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
                 }
             }
 
-            Block firstPred = newPreds.get(0);
+            HIRBlock firstPred = newPreds.get(0);
             char[] extraPred1 = null;
             if (newPreds.size() - 1 > 0) {
                 extraPred1 = new char[newPreds.size() - 1];
@@ -776,7 +776,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
             }
 
             // Remove the current block from the blocks of the loops it belongs to
-            for (Loop<Block> currLoop = loop; currLoop != null; currLoop = currLoop.getParent()) {
+            for (Loop<HIRBlock> currLoop = loop; currLoop != null; currLoop = currLoop.getParent()) {
                 GraalError.guarantee(currLoop.getBlocks().contains(this), "block not contained in a loop it is referencing");
                 currLoop.getBlocks().remove(this);
             }
@@ -786,7 +786,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
     /**
      * A basic block that cannot have its edges edited.
      */
-    static class UnmodifiableBlock extends Block {
+    static class UnmodifiableBlock extends HIRBlock {
 
         UnmodifiableBlock(AbstractBeginNode node, ControlFlowGraph cfg) {
             super(node, cfg);
@@ -822,7 +822,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
         }
 
         @Override
-        public Block getPredecessorAt(int predIndex) {
+        public HIRBlock getPredecessorAt(int predIndex) {
             ControlFlowGraph cfg1 = (ControlFlowGraph) this.cfg;
             if (beginNode instanceof AbstractMergeNode) {
                 if (beginNode instanceof LoopBeginNode) {
@@ -834,7 +834,7 @@ public abstract class Block extends AbstractBlockBase<Block> {
         }
 
         @Override
-        public Block getSuccessorAt(int succIndex) {
+        public HIRBlock getSuccessorAt(int succIndex) {
             ControlFlowGraph cfg1 = (ControlFlowGraph) this.cfg;
             if (endNode instanceof EndNode) {
                 return cfg1.blockFor(((EndNode) endNode).merge());

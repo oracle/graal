@@ -27,7 +27,7 @@ package org.graalvm.compiler.lir;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.lir.StandardOp.LoadConstantOp;
 import org.graalvm.compiler.lir.StandardOp.MoveOp;
 import org.graalvm.compiler.lir.StandardOp.ValueMoveOp;
@@ -64,7 +64,7 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
         char[] blockIds = ir.linearScanOrder();
         // ignore the first block in the list (index 0 is not processed)
         for (int blockId = blockIds.length - 1; blockId >= 1; blockId--) {
-            AbstractBlockBase<?> block = ir.getBlockById(blockIds[blockId]);
+            BasicBlock<?> block = ir.getBlockById(blockIds[blockId]);
 
             if (block.getPredecessorCount() > 1) {
                 optimizer.optimizeMovesAtBlockEnd(block);
@@ -118,9 +118,9 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
          * Moves the longest {@linkplain #same common} subsequence at the end all predecessors of
          * {@code block} to the start of {@code block}.
          */
-        private void optimizeMovesAtBlockEnd(AbstractBlockBase<?> block) {
+        private void optimizeMovesAtBlockEnd(BasicBlock<?> block) {
             for (int i = 0; i < block.getPredecessorCount(); i++) {
-                AbstractBlockBase<?> pred = block.getPredecessorAt(i);
+                BasicBlock<?> pred = block.getPredecessorAt(i);
                 if (pred == block) {
                     // currently we can't handle this correctly.
                     return;
@@ -135,7 +135,7 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
 
             // setup a list with the LIR instructions of all predecessors
             for (int i = 0; i < block.getPredecessorCount(); i++) {
-                AbstractBlockBase<?> pred = block.getPredecessorAt(i);
+                BasicBlock<?> pred = block.getPredecessorAt(i);
                 assert pred != null;
                 assert ir.getLIRforBlock(pred) != null;
                 ArrayList<LIRInstruction> predInstructions = ir.getLIRforBlock(pred);
@@ -190,7 +190,7 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
          * {@code block} to the end of {@code block} just prior to the branch instruction ending
          * {@code block}.
          */
-        private void optimizeMovesAtBlockBegin(AbstractBlockBase<?> block) {
+        private void optimizeMovesAtBlockBegin(BasicBlock<?> block) {
 
             edgeInstructionSeqences.clear();
             int numSux = block.getSuccessorCount();
@@ -221,7 +221,7 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
 
             // setup a list with the lir-instructions of all successors
             for (int i = 0; i < block.getSuccessorCount(); i++) {
-                AbstractBlockBase<?> sux = block.getSuccessorAt(i);
+                BasicBlock<?> sux = block.getSuccessorAt(i);
                 ArrayList<LIRInstruction> suxInstructions = ir.getLIRforBlock(sux);
 
                 assert suxInstructions.get(0) instanceof StandardOp.LabelOp : "block must start with label";

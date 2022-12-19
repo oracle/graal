@@ -27,7 +27,7 @@ package org.graalvm.compiler.lir.ssa;
 import java.util.ArrayList;
 
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -45,7 +45,7 @@ import jdk.vm.ci.meta.Value;
  * There is no explicit <code>PHI</code> {@linkplain LIRInstruction}. Instead, they are implemented
  * as parallel copy that span across a control-flow edge.
  *
- * The variables introduced by <code>PHI</code>s of a specific {@linkplain AbstractBlockBase merge
+ * The variables introduced by <code>PHI</code>s of a specific {@linkplain BasicBlock merge
  * block} are {@linkplain LabelOp#setIncomingValues attached} to the {@linkplain LabelOp} of the
  * block. The outgoing values from the predecessor are {@link JumpOp#getOutgoingValue input} to the
  * {@linkplain BlockEndOp} of the predecessor. Because there are no critical edges we know that the
@@ -86,7 +86,7 @@ public final class SSAUtil {
      * Visits each phi value pair of an edge, i.e. the outgoing value from the predecessor and the
      * incoming value to the merge block.
      */
-    public static void forEachPhiValuePair(LIR lir, AbstractBlockBase<?> merge, AbstractBlockBase<?> pred, PhiValueVisitor visitor) {
+    public static void forEachPhiValuePair(LIR lir, BasicBlock<?> merge, BasicBlock<?> pred, PhiValueVisitor visitor) {
         if (merge.getPredecessorCount() < 2) {
             return;
         }
@@ -110,7 +110,7 @@ public final class SSAUtil {
         }
     }
 
-    public static JumpOp phiOut(LIR lir, AbstractBlockBase<?> block) {
+    public static JumpOp phiOut(LIR lir, BasicBlock<?> block) {
         assert block.getSuccessorCount() == 1;
         ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
         int index = instructions.size() - 1;
@@ -118,7 +118,7 @@ public final class SSAUtil {
         return (JumpOp) op;
     }
 
-    public static int phiOutIndex(LIR lir, AbstractBlockBase<?> block) {
+    public static int phiOutIndex(LIR lir, BasicBlock<?> block) {
         assert block.getSuccessorCount() == 1;
         ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
         int index = instructions.size() - 1;
@@ -126,18 +126,18 @@ public final class SSAUtil {
         return index;
     }
 
-    public static LabelOp phiIn(LIR lir, AbstractBlockBase<?> block) {
+    public static LabelOp phiIn(LIR lir, BasicBlock<?> block) {
         assert block.getPredecessorCount() > 1;
         LabelOp label = (LabelOp) lir.getLIRforBlock(block).get(0);
         return label;
     }
 
-    public static void removePhiOut(LIR lir, AbstractBlockBase<?> block) {
+    public static void removePhiOut(LIR lir, BasicBlock<?> block) {
         JumpOp jump = phiOut(lir, block);
         jump.clearOutgoingValues();
     }
 
-    public static void removePhiIn(LIR lir, AbstractBlockBase<?> block) {
+    public static void removePhiIn(LIR lir, BasicBlock<?> block) {
         LabelOp label = phiIn(lir, block);
         label.clearIncomingValues();
     }
@@ -146,10 +146,10 @@ public final class SSAUtil {
         return new SSAVerifier(lir).verify();
     }
 
-    public static void verifyPhi(LIR lir, AbstractBlockBase<?> merge) {
+    public static void verifyPhi(LIR lir, BasicBlock<?> merge) {
         assert merge.getPredecessorCount() > 1;
         for (int i = 0; i < merge.getPredecessorCount(); i++) {
-            AbstractBlockBase<?> pred = merge.getPredecessorAt(i);
+            BasicBlock<?> pred = merge.getPredecessorAt(i);
             forEachPhiValuePair(lir, merge, pred, (phiIn, phiOut) -> {
                 assert phiIn.getValueKind().equals(phiOut.getValueKind()) ||
                                 (phiIn.getPlatformKind().equals(phiOut.getPlatformKind()) && LIRKind.isUnknownReference(phiIn) && LIRKind.isValue(phiOut));

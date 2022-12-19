@@ -28,7 +28,7 @@ import static org.graalvm.compiler.lir.LIR.verifyBlocks;
 
 import java.util.ArrayList;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
@@ -68,7 +68,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
          * @param block the block checked for deletion
          * @return whether the block can be deleted
          */
-        private boolean canDeleteBlock(AbstractBlockBase<?> block) {
+        private boolean canDeleteBlock(BasicBlock<?> block) {
             if (block == null || block.getSuccessorCount() != 1 || block.getPredecessorCount() == 0 || block.getSuccessorAt(0) == block) {
                 return false;
             }
@@ -85,13 +85,13 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
             return instructions.size() == 2 && !instructions.get(instructions.size() - 1).hasState() && !block.isExceptionEntry();
         }
 
-        private StandardOp.LabelOp getLabel(AbstractBlockBase<?> block) {
+        private StandardOp.LabelOp getLabel(BasicBlock<?> block) {
             ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
             assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
             return (StandardOp.LabelOp) instructions.get(0);
         }
 
-        private void copyAlignment(AbstractBlockBase<?> from, AbstractBlockBase<?> block) {
+        private void copyAlignment(BasicBlock<?> from, BasicBlock<?> block) {
             if (from.isAligned() && !block.isAligned()) {
                 block.setAlign(true);
                 getLabel(block).setAlignment(getLabel(from).getAlignment());
@@ -101,12 +101,12 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
         private void deleteEmptyBlocks(char[] blocks) {
             assert verifyBlocks(lir, blocks);
             for (int i = 0; i < blocks.length; i++) {
-                AbstractBlockBase<?> block = lir.getBlockById(blocks[i]);
+                BasicBlock<?> block = lir.getBlockById(blocks[i]);
                 if (canDeleteBlock(block)) {
 
                     block.delete();
                     // adjust successor and predecessor lists
-                    AbstractBlockBase<?> other = block.getSuccessorAt(0);
+                    BasicBlock<?> other = block.getSuccessorAt(0);
                     copyAlignment(block, other);
 
                     BLOCKS_DELETED.increment(lir.getDebug());

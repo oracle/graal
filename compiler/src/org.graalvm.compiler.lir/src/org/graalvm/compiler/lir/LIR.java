@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.DebugContext;
@@ -43,7 +43,7 @@ import org.graalvm.compiler.options.OptionValues;
  * optimization, and finalization.
  *
  * In order to reduce memory usage LIR keeps arrays of block ids instead of direct pointer arrays to
- * {@link AbstractBlockBase} from a {@link AbstractControlFlowGraph} reverse post order list.
+ * {@link BasicBlock} from a {@link AbstractControlFlowGraph} reverse post order list.
  */
 public final class LIR extends LIRGenerator.VariableProvider {
 
@@ -61,7 +61,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
     private char[] codeEmittingOrder;
 
     /**
-     * Map from {@linkplain AbstractBlockBase block} to {@linkplain LIRInstruction}s. Note that we
+     * Map from {@linkplain BasicBlock block} to {@linkplain LIRInstruction}s. Note that we
      * are using {@link ArrayList} instead of {@link List} to avoid interface dispatch.
      */
     private final BlockMap<ArrayList<LIRInstruction>> lirInstructions;
@@ -91,7 +91,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
         return cfg;
     }
 
-    public AbstractBlockBase<?> getBlockById(int blockId) {
+    public BasicBlock<?> getBlockById(int blockId) {
         assert blockId <= AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX;
         return cfg.getBlocks()[blockId];
     }
@@ -113,7 +113,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
      */
     public boolean hasDebugInfo() {
         for (char c : linearScanOrder()) {
-            AbstractBlockBase<?> b = cfg.getBlocks()[c];
+            BasicBlock<?> b = cfg.getBlocks()[c];
             for (LIRInstruction op : getLIRforBlock(b)) {
                 if (op.hasState()) {
                     return true;
@@ -123,11 +123,11 @@ public final class LIR extends LIRGenerator.VariableProvider {
         return false;
     }
 
-    public ArrayList<LIRInstruction> getLIRforBlock(AbstractBlockBase<?> block) {
+    public ArrayList<LIRInstruction> getLIRforBlock(BasicBlock<?> block) {
         return lirInstructions.get(block);
     }
 
-    public void setLIRforBlock(AbstractBlockBase<?> block, ArrayList<LIRInstruction> list) {
+    public void setLIRforBlock(BasicBlock<?> block, ArrayList<LIRInstruction> list) {
         assert getLIRforBlock(block) == null : "lir instruction list should only be initialized once";
         lirInstructions.put(block, list);
     }
@@ -207,7 +207,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
      * @return the next block in the list that is none {@code null} or {@code null} if there is no
      *         such block
      */
-    public static AbstractBlockBase<?> getNextBlock(AbstractControlFlowGraph<?> cfg, char[] blocks, int blockIndex) {
+    public static BasicBlock<?> getNextBlock(AbstractControlFlowGraph<?> cfg, char[] blocks, int blockIndex) {
         for (int nextIndex = blockIndex + 1; nextIndex > 0 && nextIndex < blocks.length; nextIndex++) {
             char nextBlock = blocks[nextIndex];
             if (nextBlock != AbstractControlFlowGraph.INVALID_BLOCK_ID) {
@@ -243,7 +243,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
      */
     public static final int MAX_EXCEPTION_EDGE_OP_DISTANCE_FROM_END = 3;
 
-    public static boolean verifyBlock(LIR lir, AbstractBlockBase<?> block) {
+    public static boolean verifyBlock(LIR lir, BasicBlock<?> block) {
         ArrayList<LIRInstruction> ops = lir.getLIRforBlock(block);
         if (ops.size() == 0) {
             return false;
@@ -274,13 +274,13 @@ public final class LIR extends LIRGenerator.VariableProvider {
             if (blockId == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
                 continue;
             }
-            AbstractBlockBase<?> block = lir.getBlockById(blockId);
+            BasicBlock<?> block = lir.getBlockById(blockId);
             for (int i = 0; i < block.getSuccessorCount(); i++) {
-                AbstractBlockBase<?> sux = block.getSuccessorAt(i);
+                BasicBlock<?> sux = block.getSuccessorAt(i);
                 assert contains(blocks, sux.getId()) : "missing successor from: " + block + "to: " + sux;
             }
             for (int i = 0; i < block.getPredecessorCount(); i++) {
-                AbstractBlockBase<?> pred = block.getPredecessorAt(i);
+                BasicBlock<?> pred = block.getPredecessorAt(i);
                 assert contains(blocks, pred.getId()) : "missing predecessor from: " + block + "to: " + pred;
             }
             if (!verifyBlock(lir, block)) {
@@ -301,7 +301,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
 
     public void resetLabels() {
         for (char b : getBlocks()) {
-            AbstractBlockBase<?> block = cfg.getBlocks()[b];
+            BasicBlock<?> block = cfg.getBlocks()[b];
             if (block == null) {
                 continue;
             }

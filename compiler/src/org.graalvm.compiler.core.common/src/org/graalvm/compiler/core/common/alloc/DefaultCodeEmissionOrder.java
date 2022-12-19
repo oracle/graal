@@ -29,7 +29,7 @@ import java.util.BitSet;
 import java.util.PriorityQueue;
 
 import org.graalvm.compiler.core.common.alloc.BasicBlockOrderUtils.BlockList;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.CodeEmissionOrder;
 import org.graalvm.compiler.core.common.cfg.Loop;
@@ -48,7 +48,7 @@ import org.graalvm.compiler.options.OptionValues;
  * backward jumps are always marked as aligned. Aligning the target of conditional jumps does not
  * bring a measurable benefit and is therefore avoided to keep the code size small.
  */
-public class DefaultCodeEmissionOrder<T extends AbstractBlockBase<T>> implements CodeEmissionOrder<T> {
+public class DefaultCodeEmissionOrder<T extends BasicBlock<T>> implements CodeEmissionOrder<T> {
     protected int originalBlockCount;
     protected T startBlock;
 
@@ -76,7 +76,7 @@ public class DefaultCodeEmissionOrder<T extends AbstractBlockBase<T>> implements
     /**
      * Iteratively adds paths to the code emission block order.
      */
-    private static <T extends AbstractBlockBase<T>> void computeCodeEmittingOrder(BlockList<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks, ComputationTime computationTime) {
+    private static <T extends BasicBlock<T>> void computeCodeEmittingOrder(BlockList<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks, ComputationTime computationTime) {
         while (!worklist.isEmpty()) {
             T nextImportantPath = worklist.poll();
             addPathToCodeEmittingOrder(nextImportantPath, order, worklist, visitedBlocks, computationTime);
@@ -86,7 +86,7 @@ public class DefaultCodeEmissionOrder<T extends AbstractBlockBase<T>> implements
     /**
      * Add a linear path to the code emission order greedily following the most likely successor.
      */
-    private static <T extends AbstractBlockBase<T>> void addPathToCodeEmittingOrder(T initialBlock, BlockList<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks,
+    private static <T extends BasicBlock<T>> void addPathToCodeEmittingOrder(T initialBlock, BlockList<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks,
                     ComputationTime computationTime) {
         T block = initialBlock;
         while (block != null) {
@@ -162,7 +162,7 @@ public class DefaultCodeEmissionOrder<T extends AbstractBlockBase<T>> implements
      * Skip the loop header block if the loop consists of more than one block and it has only a
      * single loop end block in the same loop (not a backedge from a nested loop).
      */
-    protected static <T extends AbstractBlockBase<T>> boolean skipLoopHeader(AbstractBlockBase<T> block) {
+    protected static <T extends BasicBlock<T>> boolean skipLoopHeader(BasicBlock<T> block) {
         if (block.isLoopHeader() && !block.isLoopEnd() && block.numBackedges() == 1) {
             for (int i = 0; i < block.getPredecessorCount(); i++) {
                 T pred = block.getPredecessorAt(i);

@@ -26,7 +26,7 @@ package org.graalvm.compiler.core.amd64.test;
 
 import static org.junit.Assume.assumeTrue;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.test.MatchRuleTest;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -235,7 +235,7 @@ public class AMD64MatchRuleTest extends MatchRuleTest {
         LIR lir = getLIR();
         boolean found = false;
         for (int blockId : lir.codeEmittingOrder()) {
-            AbstractBlockBase<?> b = lir.getBlockById(blockId);
+            BasicBlock<?> b = lir.getBlockById(blockId);
             for (LIRInstruction ins : lir.getLIRforBlock(b)) {
                 if (ins instanceof AMD64Binary.CommutativeTwoOp && ((AMD64Binary.CommutativeTwoOp) ins).getOpcode().toString().equals("ADD")) {
                     assertFalse("CommutativeTwoOp expected only once in first block", found);

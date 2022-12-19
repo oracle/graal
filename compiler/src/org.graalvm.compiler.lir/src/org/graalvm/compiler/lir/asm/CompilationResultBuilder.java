@@ -47,7 +47,7 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.code.CompilationResult.JumpTable;
 import org.graalvm.compiler.code.DataSection.Data;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -487,7 +487,7 @@ public class CompilationResultBuilder {
         assert lir != null;
         char[] order = lir.codeEmittingOrder();
         assert order[currentBlockIndex] == edge.getSourceBlock().getId();
-        AbstractBlockBase<?> nextBlock = LIR.getNextBlock(lir.getControlFlowGraph(), order, currentBlockIndex);
+        BasicBlock<?> nextBlock = LIR.getNextBlock(lir.getControlFlowGraph(), order, currentBlockIndex);
         return nextBlock == edge.getTargetBlock();
     }
 
@@ -500,7 +500,7 @@ public class CompilationResultBuilder {
             this.formatter = this.isEnable ? new Formatter() : null;
         }
 
-        void log(AbstractBlockBase<?> b, int startPC, int endPC) {
+        void log(BasicBlock<?> b, int startPC, int endPC) {
             if (this.isEnable) {
                 // Dump basic block information using the following csv format
                 // BBid, BBStartingPC, BBEndingPC, BBfreq, [(succID, succProbability)*]
@@ -540,15 +540,15 @@ public class CompilationResultBuilder {
         this.lastImplicitExceptionOffset = Integer.MIN_VALUE;
         frameContext.enter(this);
         final BasicBlockInfoLogger logger = new BasicBlockInfoLogger();
-        AbstractBlockBase<?> previousBlock = null;
+        BasicBlock<?> previousBlock = null;
         for (int blockId : lir.codeEmittingOrder()) {
-            AbstractBlockBase<?> b = lir.getBlockById(blockId);
+            BasicBlock<?> b = lir.getBlockById(blockId);
             assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == AbstractControlFlowGraph.INVALID_BLOCK_ID) || lir.codeEmittingOrder()[currentBlockIndex] == blockId;
             if (b != null) {
                 if (b.isAligned() && previousBlock != null) {
                     boolean hasSuccessorB = false;
                     for (int i = 0; i < previousBlock.getSuccessorCount(); i++) {
-                        AbstractBlockBase<?> succ = previousBlock.getSuccessorAt(i);
+                        BasicBlock<?> succ = previousBlock.getSuccessorAt(i);
                         if (succ == b) {
                             hasSuccessorB = true;
                             break;
@@ -580,7 +580,7 @@ public class CompilationResultBuilder {
         return lir;
     }
 
-    private void emitBlock(AbstractBlockBase<?> block) {
+    private void emitBlock(BasicBlock<?> block) {
         if (block == null) {
             return;
         }
@@ -666,7 +666,7 @@ public class CompilationResultBuilder {
             if (LIR.isBlockDeleted(blockId)) {
                 continue;
             }
-            AbstractBlockBase<?> block = generatedLIR.getBlockById(blockId);
+            BasicBlock<?> block = generatedLIR.getBlockById(blockId);
             for (LIRInstruction op : generatedLIR.getLIRforBlock(block)) {
                 if (op instanceof LabelHoldingOp) {
                     Label label = ((LabelHoldingOp) op).getLabel();
@@ -716,7 +716,7 @@ public class CompilationResultBuilder {
             if (LIR.isBlockDeleted(blockId)) {
                 continue;
             }
-            AbstractBlockBase<?> block = lir.getBlockById(blockId);
+            BasicBlock<?> block = lir.getBlockById(blockId);
             for (LIRInstruction op : lir.getLIRforBlock(block)) {
                 if (op.needsClearUpperVectorRegisters()) {
                     return true;

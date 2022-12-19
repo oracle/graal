@@ -52,7 +52,7 @@ import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.FixedBinaryNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.cfg.LocationSet;
@@ -106,7 +106,7 @@ import org.graalvm.word.LocationIdentity;
  * loop as it is loop-invariant.
  *
  * The algorithm is based on a dominator tree traversal of the {@link ControlFlowGraph} where
- * dominated blocks are visited before post dominated blocks. This means if a {@link Block} starts
+ * dominated blocks are visited before post dominated blocks. This means if a {@link HIRBlock} starts
  * with a {@link MergeNode} all its predecessor blocks have already been visited. This is important
  * to properly track {@link MemoryKill} nodes.
  *
@@ -192,11 +192,11 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
          * @formatter:on
          */
         @Override
-        public ValueMap enter(Block b) {
+        public ValueMap enter(HIRBlock b) {
             ValueMap blockMap = blockMaps.get(b);
 
             assert blockMap == null;
-            Block dominator = b.getDominator();
+            HIRBlock dominator = b.getDominator();
             if (dominator == null) {
                 blockMap = new ValueMap();
             } else {
@@ -207,13 +207,13 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
             // preserve for dominated and successors
             blockMaps.put(b, blockMap);
 
-            Loop<Block> hirLoop = b.getLoop();
+            Loop<HIRBlock> hirLoop = b.getLoop();
             LocationSet thisLoopKilledLocations = hirLoop == null ? null : ((HIRLoop) hirLoop).getKillLocations();
 
             if (!b.isLoopHeader()) {
                 // apply kill effects of dominator tree siblings (not the dominator itself)
                 for (int i = 0; i < b.getPredecessorCount(); i++) {
-                    Block predecessor = b.getPredecessorAt(i);
+                    HIRBlock predecessor = b.getPredecessorAt(i);
                     if (b.getDominator() == predecessor) {
                         // dominator already handled when creating the map, don't re-kill
                         // everything already killed there.
@@ -238,13 +238,13 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                      */
                     tryLICM = true;
                     for (LoopExitNode lex : ((LoopBeginNode) hirLoop.getHeader().getBeginNode()).loopExits()) {
-                        Block lexBLock = cfg.blockFor(lex);
+                        HIRBlock lexBLock = cfg.blockFor(lex);
                         tryLICM &= AbstractControlFlowGraph.strictlyDominates(b, lexBLock);
                         if (!tryLICM) {
                             break checkLICM;
                         }
                     }
-                    for (Block loopBlock : hirLoop.getBlocks()) {
+                    for (HIRBlock loopBlock : hirLoop.getBlocks()) {
                         // if(sth) deopt patterns are also exits
                         if (loopBlock.getEndNode() instanceof ControlSinkNode) {
                             tryLICM &= AbstractControlFlowGraph.strictlyDominates(b, loopBlock);
@@ -354,7 +354,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
         }
 
         @Override
-        public void exit(Block b, ValueMap oldMap) {
+        public void exit(HIRBlock b, ValueMap oldMap) {
 
         }
 
@@ -586,7 +586,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                 assert edgeDataEqual instanceof FixedNode : "Only process fixed nodes";
                 StructuredGraph graph = (StructuredGraph) edgeDataEqual.graph();
 
-                Block defBlock = cfg.blockFor(edgeDataEqual);
+                HIRBlock defBlock = cfg.blockFor(edgeDataEqual);
 
                 if (licmNodes.contains(edgeDataEqual)) {
                     /*
@@ -598,7 +598,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                 }
 
                 if (invariantInLoop != null) {
-                    Block loopDefBlock = cfg.blockFor(invariantInLoop.loopBegin()).getLoop().getHeader().getDominator();
+                    HIRBlock loopDefBlock = cfg.blockFor(invariantInLoop.loopBegin()).getLoop().getHeader().getDominator();
                     if (AbstractControlFlowGraph.strictlyDominates(loopDefBlock, defBlock)) {
                         /*
                          * The LICM location strictly dominates the GVN location so it must be the
@@ -613,9 +613,9 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                     }
                 }
 
-                Block useBlock = cfg.blockFor(n);
-                Loop<Block> defLoop = defBlock.getLoop();
-                Loop<Block> useLoop = useBlock.getLoop();
+                HIRBlock useBlock = cfg.blockFor(n);
+                Loop<HIRBlock> defLoop = defBlock.getLoop();
+                Loop<HIRBlock> useLoop = useBlock.getLoop();
 
                 if (defLoop != null) {
                     // the def is inside a loop, either a parent or a disjunct loop

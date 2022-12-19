@@ -28,7 +28,7 @@ import java.util.BitSet;
 import java.util.PriorityQueue;
 
 import org.graalvm.compiler.core.common.alloc.BasicBlockOrderUtils.BlockList;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 
 /**
@@ -54,7 +54,7 @@ public final class LinearScanOrder {
      * @return sorted list of block ids pointing into the reverse post order array of
      *         {@link AbstractControlFlowGraph}
      */
-    public static <T extends AbstractBlockBase<T>> char[] computeLinearScanOrder(int originalBlockCount, T startBlock) {
+    public static <T extends BasicBlock<T>> char[] computeLinearScanOrder(int originalBlockCount, T startBlock) {
         BlockList<T> order = new BlockList<>(originalBlockCount);
         BitSet visitedBlocks = new BitSet(originalBlockCount);
         PriorityQueue<T> worklist = BasicBlockOrderUtils.initializeWorklist(startBlock, visitedBlocks);
@@ -71,7 +71,7 @@ public final class LinearScanOrder {
     /**
      * Iteratively adds paths to the linear scan block order.
      */
-    private static <T extends AbstractBlockBase<T>> void computeLinearScanOrder(BlockList<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
+    private static <T extends BasicBlock<T>> void computeLinearScanOrder(BlockList<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
         while (!worklist.isEmpty()) {
             T nextImportantPath = worklist.poll();
             do {
@@ -83,7 +83,7 @@ public final class LinearScanOrder {
     /**
      * Add a linear path to the linear scan order greedily following the most likely successor.
      */
-    private static <T extends AbstractBlockBase<T>> T addPathToLinearScanOrder(T block, BlockList<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
+    private static <T extends BasicBlock<T>> T addPathToLinearScanOrder(T block, BlockList<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
         block.setLinearScanNumber(order.size());
         order.add(block);
         T mostLikelySuccessor = BasicBlockOrderUtils.findAndMarkMostLikelySuccessor(block, order, visitedBlocks);

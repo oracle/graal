@@ -24,14 +24,14 @@
  */
 package org.graalvm.compiler.lir.gen;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 
 import jdk.vm.ci.meta.Value;
 
 public interface BlockValueMap {
 
-    void accessOperand(Value operand, AbstractBlockBase<?> block);
+    void accessOperand(Value operand, BasicBlock<?> block);
 
-    void defineOperand(Value operand, AbstractBlockBase<?> block);
+    void defineOperand(Value operand, BasicBlock<?> block);
 
 }

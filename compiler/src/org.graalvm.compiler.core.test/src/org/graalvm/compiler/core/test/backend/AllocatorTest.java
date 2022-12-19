@@ -28,7 +28,7 @@ import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.INVA
 
 import java.util.HashSet;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -77,7 +77,7 @@ public class AllocatorTest extends BackendTest {
                 if (blockId == INVALID_BLOCK_ID) {
                     continue;
                 }
-                AbstractBlockBase<?> block = lir.getBlockById(blockId);
+                BasicBlock<?> block = lir.getBlockById(blockId);
                 for (LIRInstruction instr : lir.getLIRforBlock(block)) {
                     collectStats(instr);
                 }

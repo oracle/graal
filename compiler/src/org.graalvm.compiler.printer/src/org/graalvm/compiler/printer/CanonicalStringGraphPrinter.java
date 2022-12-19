@@ -59,7 +59,7 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
@@ -128,7 +128,7 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
             return;
         }
         try {
-            for (Block block : controlFlowGraph.getBlocks()) {
+            for (HIRBlock block : controlFlowGraph.getBlocks()) {
                 writer.print("Block ");
                 writer.print(block);
                 writer.print(" ");
@@ -137,7 +137,7 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
                 }
                 writer.print("-> ");
                 for (int i = 0; i < block.getSuccessorCount(); i++) {
-                    Block successor = block.getSuccessorAt(i);
+                    HIRBlock successor = block.getSuccessorAt(i);
                     writer.print(successor);
                     writer.print(" ");
                 }
@@ -183,7 +183,7 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
                 constantsLines = new ArrayList<>();
             }
 
-            for (Block block : scheduleResult.getCFG().getBlocks()) {
+            for (HIRBlock block : scheduleResult.getCFG().getBlocks()) {
                 writer.print("Block ");
                 writer.print(block);
                 writer.print(" ");
@@ -192,7 +192,7 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
                 }
                 writer.print("-> ");
                 for (int i = 0; i < block.getSuccessorCount(); i++) {
-                    Block successor = block.getSuccessorAt(i);
+                    HIRBlock successor = block.getSuccessorAt(i);
                     writer.print(successor);
                     writer.print(" ");
                 }

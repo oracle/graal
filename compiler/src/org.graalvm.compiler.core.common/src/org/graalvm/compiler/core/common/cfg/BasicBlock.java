@@ -41,7 +41,7 @@ import org.graalvm.compiler.debug.GraalError;
  * backend. Since Graal has a strict dependency separation between frontend and backend this
  * abstract basic block is the coupling API.
  */
-public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
+public abstract class BasicBlock<T extends BasicBlock<T>> {
     public static final double[] EMPTY_PROBABILITY_ARRAY = new double[0];
     public static final double[] SINGLETON_PROBABILITY_ARRAY = new double[]{1.0};
 
@@ -64,12 +64,12 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     private char dominator = INVALID_BLOCK_ID;
     /**
      * Block id of the first dominated block. A block can dominate more basic blocks: they are
-     * connected sequentially via the {@link AbstractBlockBase#dominatedSibling} index pointer into
+     * connected sequentially via the {@link BasicBlock#dominatedSibling} index pointer into
      * the {@link #getBlocks()}array.
      */
     private char firstDominated = INVALID_BLOCK_ID;
     /**
-     * The dominated sibling of this block. See {@link AbstractBlockBase#firstDominated} for
+     * The dominated sibling of this block. See {@link BasicBlock#firstDominated} for
      * details.
      */
     private char dominatedSibling = INVALID_BLOCK_ID;
@@ -101,7 +101,7 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
     private char maxChildDomNumber = INVALID_BLOCK_ID;
     protected final AbstractControlFlowGraph<T> cfg;
 
-    protected AbstractBlockBase(AbstractControlFlowGraph<T> cfg) {
+    protected BasicBlock(AbstractControlFlowGraph<T> cfg) {
         this.cfg = cfg;
     }
 
@@ -306,9 +306,9 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
         return id;
     }
 
-    public static class BlockIdComparator implements Comparator<AbstractBlockBase<?>> {
+    public static class BlockIdComparator implements Comparator<BasicBlock<?>> {
         @Override
-        public int compare(AbstractBlockBase<?> o1, AbstractBlockBase<?> o2) {
+        public int compare(BasicBlock<?> o1, BasicBlock<?> o2) {
             return Integer.compare(o1.getId(), o2.getId());
         }
     }

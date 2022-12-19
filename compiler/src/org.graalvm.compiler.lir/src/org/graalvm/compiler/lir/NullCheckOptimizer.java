@@ -26,7 +26,7 @@ package org.graalvm.compiler.lir;
 
 import java.util.ArrayList;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.lir.StandardOp.ImplicitNullCheck;
 import org.graalvm.compiler.lir.StandardOp.NullCheck;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
@@ -48,7 +48,7 @@ public final class NullCheckOptimizer extends PostAllocationOptimizationPhase {
             if (LIR.isBlockDeleted(blockId)) {
                 continue;
             }
-            AbstractBlockBase<?> block = ir.getBlockById(blockId);
+            BasicBlock<?> block = ir.getBlockById(blockId);
             ArrayList<LIRInstruction> list = ir.getLIRforBlock(block);
             if (!list.isEmpty()) {
                 LIRInstruction lastInstruction = list.get(0);

@@ -50,7 +50,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.NegateNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
@@ -281,7 +281,7 @@ public class CountedLoopInfo {
         if (cfg.getNodeToBlock().isNew(loop.loopBegin())) {
             return null;
         }
-        Block loopBlock = cfg.blockFor(loop.loopBegin());
+        HIRBlock loopBlock = cfg.blockFor(loop.loopBegin());
         for (Node checkUsage : noEntryCheck.usages()) {
             if (checkUsage instanceof IfNode) {
                 IfNode ifCheck = (IfNode) checkUsage;

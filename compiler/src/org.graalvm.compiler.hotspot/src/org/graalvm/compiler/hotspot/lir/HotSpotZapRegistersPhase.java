@@ -30,7 +30,7 @@ import java.util.ArrayList;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.hotspot.HotSpotLIRGenerationResult;
@@ -87,13 +87,13 @@ public final class HotSpotZapRegistersPhase extends PostAllocationOptimizationPh
             if (LIR.isBlockDeleted(blockId)) {
                 continue;
             }
-            AbstractBlockBase<?> block = lir.getBlockById(blockId);
+            BasicBlock<?> block = lir.getBlockById(blockId);
             processBlock(diagnosticLirGenTool, lir, allocatableRegisters, buffer, block, zapRegisters, zapStack);
         }
     }
 
     @SuppressWarnings("try")
-    private static void processBlock(DiagnosticLIRGeneratorTool diagnosticLirGenTool, LIR lir, EconomicSet<Register> allocatableRegisters, LIRInsertionBuffer buffer, AbstractBlockBase<?> block,
+    private static void processBlock(DiagnosticLIRGeneratorTool diagnosticLirGenTool, LIR lir, EconomicSet<Register> allocatableRegisters, LIRInsertionBuffer buffer, BasicBlock<?> block,
                     boolean zapRegisters, boolean zapStack) {
         DebugContext debug = lir.getDebug();
         try (Indent indent = debug.logAndIndent("Process block %s", block)) {

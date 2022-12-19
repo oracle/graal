@@ -55,7 +55,7 @@ import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.OSRLocalNode;
 import org.graalvm.compiler.nodes.extended.OSRLockNode;
 import org.graalvm.compiler.nodes.extended.OSRMonitorEnterNode;
@@ -148,7 +148,7 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
             osr = getEntryMarker(graph);
             LoopsData loops = providers.getLoopsDataProvider().getLoopsData(graph);
             // Find the loop that contains the EntryMarker
-            Loop<Block> l = loops.getCFG().getNodeToBlock().get(osr).getLoop();
+            Loop<HIRBlock> l = loops.getCFG().getNodeToBlock().get(osr).getLoop();
             if (l == null) {
                 break;
             }
@@ -304,7 +304,7 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
     private static LoopBeginNode osrLoop(EntryMarkerNode osr, CoreProviders providers) {
         // Check that there is an OSR loop for the OSR begin
         LoopsData loops = providers.getLoopsDataProvider().getLoopsData(osr.graph());
-        Loop<Block> l = loops.getCFG().getNodeToBlock().get(osr).getLoop();
+        Loop<HIRBlock> l = loops.getCFG().getNodeToBlock().get(osr).getLoop();
         if (l == null) {
             return null;
         }

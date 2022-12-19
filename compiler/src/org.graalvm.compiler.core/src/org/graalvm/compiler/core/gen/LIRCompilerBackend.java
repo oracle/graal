@@ -58,7 +58,7 @@ import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase.PreAllocat
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.code.RegisterConfig;
@@ -137,8 +137,8 @@ public class LIRCompilerBackend {
             assert graph.isAfterStage(StageFlag.VALUE_PROXY_REMOVAL);
 
             ScheduleResult schedule = graph.getLastSchedule();
-            Block[] blocks = schedule.getCFG().getBlocks();
-            Block startBlock = schedule.getCFG().getStartBlock();
+            HIRBlock[] blocks = schedule.getCFG().getBlocks();
+            HIRBlock startBlock = schedule.getCFG().getStartBlock();
             assert startBlock != null;
             assert startBlock.getPredecessorCount() == 0;
 

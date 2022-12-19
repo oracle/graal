@@ -45,7 +45,7 @@ import org.graalvm.compiler.nodes.LoopExitNode;
  *
  * The block order is special in that {@linkplain LoopEndNode blocks} are processed before
  * {@linkplain LoopExitNode blocks}. This has the advantage that for
- * {@linkplain Block#getRelativeFrequency() basic block frequency calculations} nested loops are
+ * {@linkplain HIRBlock#getRelativeFrequency() basic block frequency calculations} nested loops are
  * processed before the outer loop exit blocks allowing a linear computation of loop frequencies.
  *
  * Additionally, loops are guaranteed to be fully included in the RPO before any dominated sibling
@@ -58,20 +58,20 @@ public class ReversePostOrder {
      * Enqueue the block in the reverse post order with the next index and assign the index to the
      * block itself.
      */
-    private static void enqueueBlockInRPO(Block b, Block[] reversePostOrder, char nextIndex) {
+    private static void enqueueBlockInRPO(HIRBlock b, HIRBlock[] reversePostOrder, char nextIndex) {
         reversePostOrder[nextIndex] = b;
         b.setId(nextIndex);
     }
 
     /**
      * Compute the reverse post order for the given {@link ControlFlowGraph}. The creation of
-     * {@link Block} and the assignment of {@link FixedNode} to {@link Block} is already done by the
+     * {@link HIRBlock} and the assignment of {@link FixedNode} to {@link HIRBlock} is already done by the
      * {@link ControlFlowGraph}.
      *
      * The algorithm has special handling for {@link LoopBeginNode} and {@link LoopExitNode} nodes
      * to ensure a loop is fully processed before any dominated code is visited.
      */
-    private static void compute(ControlFlowGraph cfg, FixedNode start, Block[] rpoBlocks, int startIndex) {
+    private static void compute(ControlFlowGraph cfg, FixedNode start, HIRBlock[] rpoBlocks, int startIndex) {
         assert startIndex < rpoBlocks.length;
         LinkedStack<Node> toProcess = new LinkedStack<>();
         toProcess.push(start);
@@ -92,7 +92,7 @@ public class ReversePostOrder {
             }
 
             /**
-             * A loop is fully processed, i.e., all body {@link Block} are part of the reverse post
+             * A loop is fully processed, i.e., all body {@link HIRBlock} are part of the reverse post
              * order array, if all loop end blocks and all loop exit predecessor blocks are visited.
              */
             boolean loopFullyProcessed() {
@@ -208,7 +208,7 @@ public class ReversePostOrder {
                 continue;
             }
 
-            final Block curBlock = cfg.blockFor(cur);
+            final HIRBlock curBlock = cfg.blockFor(cur);
             if (cur == curBlock.getBeginNode()) {
                 // we are at a block start, enqueue the actual block in the RPO
                 enqueueBlockInRPO(curBlock, rpoBlocks, (char) currentIndex++);
@@ -275,11 +275,11 @@ public class ReversePostOrder {
         return true;
     }
 
-    public static Block[] identifyBlocks(ControlFlowGraph cfg, int numBlocks) {
-        Block[] reversePostOrder = new Block[numBlocks];
+    public static HIRBlock[] identifyBlocks(ControlFlowGraph cfg, int numBlocks) {
+        HIRBlock[] reversePostOrder = new HIRBlock[numBlocks];
         compute(cfg, cfg.graph.start(), reversePostOrder, 0);
         if (reversePostOrder[0].isModifiable()) {
-            Block.assignPredecessorsAndSuccessors(reversePostOrder, cfg);
+            HIRBlock.assignPredecessorsAndSuccessors(reversePostOrder, cfg);
         }
         return reversePostOrder;
     }

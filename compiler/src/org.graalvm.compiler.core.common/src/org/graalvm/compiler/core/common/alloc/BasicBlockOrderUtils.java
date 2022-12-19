@@ -29,7 +29,7 @@ import java.util.BitSet;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.CodeEmissionOrder.ComputationTime;
 import org.graalvm.compiler.debug.GraalError;
 
@@ -50,7 +50,7 @@ public final class BasicBlockOrderUtils {
     /**
      * Initializes the priority queue used for the work list of blocks and adds the start block.
      */
-    protected static <T extends AbstractBlockBase<T>> PriorityQueue<T> initializeWorklist(T startBlock, BitSet visitedBlocks) {
+    protected static <T extends BasicBlock<T>> PriorityQueue<T> initializeWorklist(T startBlock, BitSet visitedBlocks) {
         PriorityQueue<T> result = new PriorityQueue<>(INITIAL_WORKLIST_CAPACITY, new BlockOrderComparator<>());
         result.add(startBlock);
         visitedBlocks.set(startBlock.getId());
@@ -60,7 +60,7 @@ public final class BasicBlockOrderUtils {
     /**
      * Checks that the ordering contains the expected number of blocks.
      */
-    protected static boolean checkOrder(BlockList<? extends AbstractBlockBase<?>> order, int expectedBlockCount) {
+    protected static boolean checkOrder(BlockList<? extends BasicBlock<?>> order, int expectedBlockCount) {
         GraalError.guarantee(order.size() == expectedBlockCount, "Number of blocks in ordering (%d) does not match expected block count (%d)", order.size(), expectedBlockCount);
         return true;
     }
@@ -68,7 +68,7 @@ public final class BasicBlockOrderUtils {
     /**
      * Checks that the ordering starts with the expected start block.
      */
-    protected static <T extends AbstractBlockBase<T>> boolean checkStartBlock(BlockList<T> order, T startBlock) {
+    protected static <T extends BasicBlock<T>> boolean checkStartBlock(BlockList<T> order, T startBlock) {
         GraalError.guarantee(order.first() == startBlock, "First block of ordering (%s) does not match expected start block %s", order.first(), startBlock);
         return true;
     }
@@ -76,11 +76,11 @@ public final class BasicBlockOrderUtils {
     /**
      * Find the highest likely unvisited successor block of a given block.
      */
-    protected static <T extends AbstractBlockBase<T>> T findAndMarkMostLikelySuccessor(T block, BlockList<T> order, BitSet visitedBlocks) {
+    protected static <T extends BasicBlock<T>> T findAndMarkMostLikelySuccessor(T block, BlockList<T> order, BitSet visitedBlocks) {
         return findAndMarkMostLikelySuccessor(block, order, visitedBlocks, ComputationTime.BEFORE_CONTROL_FLOW_OPTIMIZATIONS, null);
     }
 
-    protected static <T extends AbstractBlockBase<T>> T findAndMarkMostLikelySuccessor(T block, BlockList<T> order, BitSet visitedBlocks, ComputationTime computationTime,
+    protected static <T extends BasicBlock<T>> T findAndMarkMostLikelySuccessor(T block, BlockList<T> order, BitSet visitedBlocks, ComputationTime computationTime,
                     PriorityQueue<T> worklist) {
         T result = null;
         double maxSuccFrequency = -1.0;
@@ -252,7 +252,7 @@ public final class BasicBlockOrderUtils {
     /**
      * Add successor blocks into the given work list if they are not already marked as visited.
      */
-    protected static <T extends AbstractBlockBase<T>> void enqueueSuccessors(T block, PriorityQueue<T> worklist, BitSet visitedBlocks) {
+    protected static <T extends BasicBlock<T>> void enqueueSuccessors(T block, PriorityQueue<T> worklist, BitSet visitedBlocks) {
         for (int i = 0; i < block.getSuccessorCount(); i++) {
             T successor = block.getSuccessorAt(i);
             if (!visitedBlocks.get(successor.getId())) {
@@ -265,7 +265,7 @@ public final class BasicBlockOrderUtils {
     /**
      * Comparator for sorting blocks based on loop depth and probability.
      */
-    public static class BlockOrderComparator<T extends AbstractBlockBase<T>> implements Comparator<T> {
+    public static class BlockOrderComparator<T extends BasicBlock<T>> implements Comparator<T> {
         private static final double EPSILON = 1E-6;
 
         @Override
@@ -292,7 +292,7 @@ public final class BasicBlockOrderUtils {
      * A data structure combining an append-only list of blocks and a bit set for efficiently
      * checking which blocks have been added.
      */
-    protected static class BlockList<T extends AbstractBlockBase<T>> {
+    protected static class BlockList<T extends BasicBlock<T>> {
         private final ArrayList<T> order;
         private final BitSet scheduledBlocks;
 
@@ -319,8 +319,8 @@ public final class BasicBlockOrderUtils {
             return scheduledBlocks.get(block.getId());
         }
 
-        public AbstractBlockBase<?>[] toArray() {
-            return order.toArray(new AbstractBlockBase<?>[0]);
+        public BasicBlock<?>[] toArray() {
+            return order.toArray(new BasicBlock<?>[0]);
         }
 
         public char[] toIdArray() {

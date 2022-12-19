@@ -29,7 +29,7 @@ import java.util.Deque;
 
 public class CFGVerifier {
 
-    public static <T extends AbstractBlockBase<T>, C extends AbstractControlFlowGraph<T>> boolean verify(C cfg) {
+    public static <T extends BasicBlock<T>, C extends AbstractControlFlowGraph<T>> boolean verify(C cfg) {
         for (T block : cfg.getBlocks()) {
             assert block.getId() <= AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX;
             assert cfg.getBlocks()[block.getId()] == block;
@@ -49,7 +49,7 @@ public class CFGVerifier {
             if (block.getDominator() != null) {
                 assert block.getDominator().getId() < block.getId();
 
-                AbstractBlockBase<?> domChild = block.getDominator().getFirstDominated();
+                BasicBlock<?> domChild = block.getDominator().getFirstDominated();
                 while (domChild != null) {
                     if (domChild == block) {
                         break;

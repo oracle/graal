@@ -25,7 +25,7 @@
 package org.graalvm.compiler.lir.alloc.lsra.ssa;
 
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.lir.alloc.lsra.LinearScan;
 import org.graalvm.compiler.lir.alloc.lsra.LinearScanEliminateSpillMovePhase;
@@ -76,7 +76,7 @@ public final class SSALinearScan extends LinearScan {
          */
         try (DebugContext.Scope s1 = debug.scope("Remove Phi In")) {
             for (int blockId : sortedBlocks()) {
-                AbstractBlockBase<?> toBlock = getLIR().getBlockById(blockId);
+                BasicBlock<?> toBlock = getLIR().getBlockById(blockId);
                 if (toBlock.getPredecessorCount() > 1) {
                     SSAUtil.removePhiIn(getLIR(), toBlock);
                 }

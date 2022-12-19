@@ -36,7 +36,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 
 public class LoopsData {
@@ -73,7 +73,7 @@ public class LoopsData {
         }
         assert checkLoopOrder(cfg.getLoops());
         loops = new ArrayList<>(cfg.getLoops().size());
-        for (Loop<Block> loop : cfg.getLoops()) {
+        for (Loop<HIRBlock> loop : cfg.getLoops()) {
             LoopEx ex = new LoopEx(loop, this);
             loops.add(ex);
             loopBeginToEx.put(ex.loopBegin(), ex);
@@ -83,9 +83,9 @@ public class LoopsData {
     /**
      * Checks that loops are ordered such that outer loops appear first.
      */
-    protected static boolean checkLoopOrder(Iterable<Loop<Block>> loops) {
-        EconomicSet<Loop<Block>> seen = EconomicSet.create(Equivalence.IDENTITY);
-        for (Loop<Block> loop : loops) {
+    protected static boolean checkLoopOrder(Iterable<Loop<HIRBlock>> loops) {
+        EconomicSet<Loop<HIRBlock>> seen = EconomicSet.create(Equivalence.IDENTITY);
+        for (Loop<HIRBlock> loop : loops) {
             if (loop.getParent() != null && !seen.contains(loop.getParent())) {
                 return false;
             }
@@ -97,7 +97,7 @@ public class LoopsData {
     /**
      * Get the {@link LoopEx} corresponding to {@code loop}.
      */
-    public LoopEx loop(Loop<Block> loop) {
+    public LoopEx loop(Loop<HIRBlock> loop) {
         return loopBeginToEx.get((LoopBeginNode) loop.getHeader().getBeginNode());
     }
 

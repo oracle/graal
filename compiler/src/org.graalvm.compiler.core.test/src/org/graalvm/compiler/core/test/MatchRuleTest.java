@@ -26,7 +26,7 @@ package org.graalvm.compiler.core.test;
 
 import java.util.function.Predicate;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
@@ -89,7 +89,7 @@ public abstract class MatchRuleTest extends GraalCompilerTest {
             if (LIR.isBlockDeleted(blockId)) {
                 continue;
             }
-            AbstractBlockBase<?> block = lir.getBlockById(blockId);
+            BasicBlock<?> block = lir.getBlockById(blockId);
             for (LIRInstruction ins : lir.getLIRforBlock(block)) {
                 if (predicate.test(ins)) {
                     actualOpNum++;

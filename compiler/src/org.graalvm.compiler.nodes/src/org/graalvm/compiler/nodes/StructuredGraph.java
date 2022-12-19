@@ -57,7 +57,7 @@ import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
@@ -100,10 +100,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public static class ScheduleResult {
         private final ControlFlowGraph cfg;
-        private final NodeMap<Block> nodeToBlockMap;
+        private final NodeMap<HIRBlock> nodeToBlockMap;
         private final BlockMap<List<Node>> blockToNodesMap;
 
-        public ScheduleResult(ControlFlowGraph cfg, NodeMap<Block> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap) {
+        public ScheduleResult(ControlFlowGraph cfg, NodeMap<HIRBlock> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap) {
             this.cfg = cfg;
             this.nodeToBlockMap = nodeToBlockMap;
             this.blockToNodesMap = blockToNodesMap;
@@ -113,7 +113,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return cfg;
         }
 
-        public NodeMap<Block> getNodeToBlockMap() {
+        public NodeMap<HIRBlock> getNodeToBlockMap() {
             return nodeToBlockMap;
         }
 
@@ -121,7 +121,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return blockToNodesMap;
         }
 
-        public List<Node> nodesFor(Block block) {
+        public List<Node> nodesFor(HIRBlock block) {
             return blockToNodesMap.get(block);
         }
     }

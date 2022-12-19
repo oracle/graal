@@ -62,7 +62,7 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.VirtualState;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
@@ -83,7 +83,7 @@ import jdk.vm.ci.meta.Signature;
 
 public class BinaryGraphPrinter implements
                 GraphStructure<BinaryGraphPrinter.GraphInfo, Node, NodeClass<?>, Edges>,
-                GraphBlocks<BinaryGraphPrinter.GraphInfo, Block, Node>,
+                GraphBlocks<BinaryGraphPrinter.GraphInfo, HIRBlock, Node>,
                 GraphElements<ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition>,
                 GraphLocations<ResolvedJavaMethod, NodeSourcePosition, SourceLanguagePosition>,
                 GraphTypes, GraphPrinter {
@@ -190,7 +190,7 @@ public class BinaryGraphPrinter implements
     }
 
     @Override
-    public List<Node> blockNodes(GraphInfo info, Block block) {
+    public List<Node> blockNodes(GraphInfo info, HIRBlock block) {
         List<Node> nodes = info.blockToNodes.get(block);
         if (nodes == null) {
             return null;
@@ -205,13 +205,13 @@ public class BinaryGraphPrinter implements
     }
 
     @Override
-    public int blockId(Block sux) {
+    public int blockId(HIRBlock sux) {
         return sux.getId();
     }
 
     @Override
-    public List<Block> blockSuccessors(Block block) {
-        ArrayList<Block> succ = new ArrayList<>();
+    public List<HIRBlock> blockSuccessors(HIRBlock block) {
+        ArrayList<HIRBlock> succ = new ArrayList<>();
         for (int i = 0; i < block.getSuccessorCount(); i++) {
             succ.add(block.getSuccessorAt(i));
         }
@@ -244,10 +244,10 @@ public class BinaryGraphPrinter implements
     public void nodeProperties(GraphInfo info, Node node, Map<String, ? super Object> props) {
         node.getDebugProperties((Map) props);
         assert checkNoChars(node, props);
-        NodeMap<Block> nodeToBlocks = info.nodeToBlocks;
+        NodeMap<HIRBlock> nodeToBlocks = info.nodeToBlocks;
 
         if (nodeToBlocks != null) {
-            Block block = getBlockForNode(node, nodeToBlocks);
+            HIRBlock block = getBlockForNode(node, nodeToBlocks);
             if (block != null) {
                 props.put("relativeFrequency", block.getRelativeFrequency());
                 props.put("nodeToBlock", block);
@@ -320,11 +320,11 @@ public class BinaryGraphPrinter implements
         }
     }
 
-    private Block getBlockForNode(Node node, NodeMap<Block> nodeToBlocks) {
+    private HIRBlock getBlockForNode(Node node, NodeMap<HIRBlock> nodeToBlocks) {
         if (nodeToBlocks.isNew(node)) {
             return null;
         } else {
-            Block block = nodeToBlocks.get(node);
+            HIRBlock block = nodeToBlocks.get(node);
             if (block != null) {
                 return block;
             } else if (node instanceof PhiNode) {
@@ -349,7 +349,7 @@ public class BinaryGraphPrinter implements
     }
 
     @Override
-    public List<Block> blocks(GraphInfo graph) {
+    public List<HIRBlock> blocks(GraphInfo graph) {
         return graph.blocks;
     }
 
@@ -631,8 +631,8 @@ public class BinaryGraphPrinter implements
         final Graph graph;
         final ControlFlowGraph cfg;
         final BlockMap<List<Node>> blockToNodes;
-        final NodeMap<Block> nodeToBlocks;
-        final List<Block> blocks;
+        final NodeMap<HIRBlock> nodeToBlocks;
+        final List<HIRBlock> blocks;
 
         private GraphInfo(DebugContext debug, Graph graph) {
             this.debug = debug;

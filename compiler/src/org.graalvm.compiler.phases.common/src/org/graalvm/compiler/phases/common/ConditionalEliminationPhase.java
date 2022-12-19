@@ -84,7 +84,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
@@ -188,7 +188,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
     protected void run(StructuredGraph graph, CoreProviders context) {
         try (DebugContext.Scope s = graph.getDebug().scope("DominatorConditionalElimination")) {
             BlockMap<List<Node>> blockToNodes = null;
-            NodeMap<Block> nodeToBlock = null;
+            NodeMap<HIRBlock> nodeToBlock = null;
             ControlFlowGraph cfg = null;
             if (fullSchedule) {
                 cfg = ControlFlowGraph.compute(graph, true, true, true, true, true, true);
@@ -218,18 +218,18 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
     }
 
     protected ControlFlowGraph.RecursiveVisitor<?> createVisitor(StructuredGraph graph, @SuppressWarnings("unused") ControlFlowGraph cfg, BlockMap<List<Node>> blockToNodes,
-                    NodeMap<Block> nodeToBlock, CoreProviders context) {
+                    NodeMap<HIRBlock> nodeToBlock, CoreProviders context) {
         return new Instance(graph, blockToNodes, nodeToBlock, context);
     }
 
-    public static class MoveGuardsUpwards implements ControlFlowGraph.RecursiveVisitor<Block> {
+    public static class MoveGuardsUpwards implements ControlFlowGraph.RecursiveVisitor<HIRBlock> {
 
-        Block anchorBlock;
+        HIRBlock anchorBlock;
 
         @Override
         @SuppressWarnings("try")
-        public Block enter(Block b) {
-            Block oldAnchorBlock = anchorBlock;
+        public HIRBlock enter(HIRBlock b) {
+            HIRBlock oldAnchorBlock = anchorBlock;
             if (b.getDominator() == null || b.getDominator().getPostdominator() != b) {
                 // New anchor.
                 anchorBlock = b;
@@ -327,7 +327,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
         }
 
         @Override
-        public void exit(Block b, Block value) {
+        public void exit(HIRBlock b, HIRBlock value) {
             anchorBlock = value;
         }
 
@@ -355,7 +355,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
     public static class Instance implements ControlFlowGraph.RecursiveVisitor<Marks> {
         protected final NodeMap<InfoElement> map;
         protected final BlockMap<List<Node>> blockToNodes;
-        protected final NodeMap<Block> nodeToBlock;
+        protected final NodeMap<HIRBlock> nodeToBlock;
         protected final CanonicalizerTool tool;
         protected final NodeStack undoOperations;
         protected final StructuredGraph graph;
@@ -371,7 +371,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
          */
         private Deque<DeoptimizingGuard> pendingTests;
 
-        public Instance(StructuredGraph graph, BlockMap<List<Node>> blockToNodes, NodeMap<Block> nodeToBlock, CoreProviders context) {
+        public Instance(StructuredGraph graph, BlockMap<List<Node>> blockToNodes, NodeMap<HIRBlock> nodeToBlock, CoreProviders context) {
             this.graph = graph;
             this.debug = graph.getDebug();
             this.blockToNodes = blockToNodes;
@@ -569,7 +569,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
         }
 
         @Override
-        public Marks enter(Block block) {
+        public Marks enter(HIRBlock block) {
             int infoElementsMark = undoOperations.size();
             int conditionsMark = conditions.size();
             debug.log("[Pre Processing block %s]", block);
@@ -579,7 +579,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             return new Marks(infoElementsMark, conditionsMark);
         }
 
-        protected void processNodes(Block block) {
+        protected void processNodes(HIRBlock block) {
             if (blockToNodes != null) {
                 for (Node n : blockToNodes.get(block)) {
                     if (n.isAlive()) {
@@ -591,7 +591,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             }
         }
 
-        private void processBlock(Block block) {
+        private void processBlock(HIRBlock block) {
             FixedNode n = block.getBeginNode();
             FixedNode endNode = block.getEndNode();
             debug.log("[Processing block %s]", block);
@@ -909,8 +909,8 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
         }
 
         private boolean canScheduleAbove(Node n, Node target, ValueNode knownToBeAbove) {
-            Block targetBlock = nodeToBlock.get(target);
-            Block testBlock = nodeToBlock.get(n);
+            HIRBlock targetBlock = nodeToBlock.get(target);
+            HIRBlock testBlock = nodeToBlock.get(n);
             if (targetBlock != null && testBlock != null) {
                 if (targetBlock == testBlock) {
                     for (Node fixed : blockToNodes.get(targetBlock)) {
@@ -1092,7 +1092,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
         }
 
         @Override
-        public void exit(Block b, Marks marks) {
+        public void exit(HIRBlock b, Marks marks) {
             int infoElementsMark = marks.infoElementOperations;
             while (undoOperations.size() > infoElementsMark) {
                 Node node = undoOperations.pop();
