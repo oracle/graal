@@ -1053,9 +1053,9 @@ public final class EspressoContext {
         return REFERENCE.get(node);
     }
 
-    public synchronized ClassRedefinition createClassRedefinition(Ids<Object> ids, RedefinitionPluginHandler redefinitionPluginHandler, DebuggerController controller) {
+    public synchronized ClassRedefinition createClassRedefinition(Ids<Object> ids, RedefinitionPluginHandler redefinitionPluginHandler) {
         if (classRedefinition == null) {
-            classRedefinition = new ClassRedefinition(this, ids, redefinitionPluginHandler, controller);
+            classRedefinition = new ClassRedefinition(this, ids, redefinitionPluginHandler);
         }
         return classRedefinition;
     }

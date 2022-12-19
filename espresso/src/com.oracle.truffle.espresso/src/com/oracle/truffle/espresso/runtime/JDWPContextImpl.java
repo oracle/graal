@@ -89,7 +89,6 @@ public final class JDWPContextImpl implements JDWPContext {
     private final InnerClassRedefiner innerClassRedefiner;
     private RedefinitionPluginHandler redefinitionPluginHandler;
     private final ArrayList<ReloadingAction> classInitializerActions = new ArrayList<>(1);
-    private DebuggerController controller;
 
     public JDWPContextImpl(EspressoContext context) {
         this.context = context;
@@ -100,12 +99,11 @@ public final class JDWPContextImpl implements JDWPContext {
 
     public void jdwpInit(TruffleLanguage.Env env, Object mainThread, VMEventListenerImpl vmEventListener) {
         Debugger debugger = env.lookup(env.getInstruments().get("debugger"), Debugger.class);
-        this.controller = env.lookup(env.getInstruments().get(JDWPInstrument.ID), DebuggerController.class);
-        ids.injectController(controller);
+        DebuggerController controller = env.lookup(env.getInstruments().get(JDWPInstrument.ID), DebuggerController.class);
         vmEventListener.activate(mainThread, controller, this);
         setup.setup(debugger, controller, context.getEspressoEnv().JDWPOptions, this, mainThread, vmEventListener);
         redefinitionPluginHandler = RedefinitionPluginHandler.create(context);
-        classRedefinition = context.createClassRedefinition(ids, redefinitionPluginHandler, controller);
+        classRedefinition = context.createClassRedefinition(ids, redefinitionPluginHandler);
     }
 
     public void finalizeContext() {
@@ -614,7 +612,7 @@ public final class JDWPContextImpl implements JDWPContext {
         Object currentThread = asGuestThread(Thread.currentThread());
         KlassRef klass = context.getMeta().java_lang_Object;
         MethodRef method = context.getMeta().java_lang_Object_wait.getMethodVersion();
-        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), method, ids.getIdAsLong(method), 0, null, null, null, null, null, controller);
+        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), method, ids.getIdAsLong(method), 0, null, null, null, null, null);
     }
 
     @Override
@@ -739,7 +737,7 @@ public final class JDWPContextImpl implements JDWPContext {
         // list to collect all changed classes
         List<ObjectKlass> changedKlasses = new ArrayList<>(redefineInfos.size());
         try {
-            controller.fine(() -> "Redefining " + redefineInfos.size() + " classes");
+            DebuggerController.fine(() -> "Redefining " + redefineInfos.size() + " classes");
 
             // begin redefine transaction
             classRedefinition.begin();
@@ -767,14 +765,14 @@ public final class JDWPContextImpl implements JDWPContext {
                 } catch (Throwable t) {
                     // Some anomalies when rerunning class initializers
                     // to be expected. Treat them as non-fatal.
-                    controller.warning(() -> "exception while re-running a class initializer!");
+                    DebuggerController.warning(() -> "exception while re-running a class initializer!");
                 }
             });
             // run post redefinition plugins before ending the redefinition transaction
             try {
                 classRedefinition.runPostRedefintionListeners(changedKlasses.toArray(new ObjectKlass[changedKlasses.size()]));
             } catch (Throwable t) {
-                controller.severe(() -> JDWPContextImpl.class.getName() + ": redefineClasses: " + t.getMessage());
+                DebuggerController.severe(() -> JDWPContextImpl.class.getName() + ": redefineClasses: " + t.getMessage());
             }
         } catch (RedefintionNotSupportedException ex) {
             return ex.getErrorCode();
@@ -804,7 +802,7 @@ public final class JDWPContextImpl implements JDWPContext {
         Collections.sort(changePackets, new HierarchyComparator());
 
         for (ChangePacket packet : changePackets) {
-            controller.fine(() -> "Redefining class " + packet.info.getNewName());
+            DebuggerController.fine(() -> "Redefining class " + packet.info.getNewName());
             int result = classRedefinition.redefineClass(packet, invalidatedClasses, redefinedClasses);
             if (result != 0) {
                 throw new RedefintionNotSupportedException(result);
@@ -815,7 +813,7 @@ public final class JDWPContextImpl implements JDWPContext {
         Collections.sort(invalidatedClasses, new SubClassHierarchyComparator());
         for (ObjectKlass invalidatedClass : invalidatedClasses) {
             if (!redefinedClasses.contains(invalidatedClass)) {
-                controller.fine(() -> "Refreshing invalidated class " + invalidatedClass.getName());
+                DebuggerController.fine(() -> "Refreshing invalidated class " + invalidatedClass.getName());
                 invalidatedClass.swapKlassVersion(ids);
             }
         }

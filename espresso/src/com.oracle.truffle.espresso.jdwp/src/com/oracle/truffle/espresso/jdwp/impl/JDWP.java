@@ -78,7 +78,7 @@ public final class JDWP {
         static class CLASSES_BY_SIGNATURE {
             public static final int ID = 2;
 
-            static CommandResult createReply(Packet packet, DebuggerController controller, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -99,7 +99,7 @@ public final class JDWP {
                         reply.writeInt(klass.getStatus());
                     }
                 } catch (IllegalStateException e) {
-                    controller.warning(() -> "Invalid class name in CLASSES_BY_SIGNATURE: " + signature);
+                    DebuggerController.warning(() -> "Invalid class name in CLASSES_BY_SIGNATURE: " + signature);
                     reply.writeInt(0);
                 }
                 return new CommandResult(reply);
@@ -190,7 +190,7 @@ public final class JDWP {
             public static final int ID = 8;
 
             static CommandResult createReply(Packet packet, DebuggerController controller) {
-                controller.fine(() -> "Suspend all packet");
+                DebuggerController.fine(() -> "Suspend all packet");
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 controller.suspendAll();
@@ -210,7 +210,7 @@ public final class JDWP {
             public static final int ID = 9;
 
             static CommandResult createReply(Packet packet, DebuggerController controller) {
-                controller.fine(() -> "Resume all packet");
+                DebuggerController.fine(() -> "Resume all packet");
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 controller.resumeAll(false);
@@ -387,7 +387,7 @@ public final class JDWP {
                 JDWPContext context = controller.getContext();
                 int classes = input.readInt();
 
-                controller.fine(() -> "Request to redefine %d classes received " + classes);
+                DebuggerController.fine(() -> "Request to redefine %d classes received " + classes);
                 List<RedefineInfo> redefineInfos = new ArrayList<>(classes);
 
                 for (int i = 0; i < classes; i++) {
@@ -423,10 +423,10 @@ public final class JDWP {
                     int errorCode = context.redefineClasses(redefineInfos);
                     if (errorCode != 0) {
                         reply.errorCode(errorCode);
-                        controller.warning(() -> "Redefine failed with error code: " + errorCode);
+                        DebuggerController.warning(() -> "Redefine failed with error code: " + errorCode);
                         return new CommandResult(reply);
                     }
-                    controller.fine(() -> "Redefine successful");
+                    DebuggerController.fine(() -> "Redefine successful");
                 } finally {
                     for (Object guestThread : allGuestThreads) {
                         controller.resume(guestThread, false);
@@ -1151,7 +1151,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                controller.fine(() -> "trying to invoke static method: " + method.getNameAsString());
+                DebuggerController.fine(() -> "trying to invoke static method: " + method.getNameAsString());
 
                 int arguments = input.readInt();
 
@@ -1233,11 +1233,11 @@ public final class JDWP {
 
                 MethodRef method = verifyMethodRef(input.readLong(), reply, context);
                 if (method == null) {
-                    controller.warning(() -> "not a valid method");
+                    DebuggerController.warning(() -> "not a valid method");
                     return new CommandResult(reply);
                 }
 
-                controller.fine(() -> "trying to invoke constructor in klass: " + klass.getNameAsString());
+                DebuggerController.fine(() -> "trying to invoke constructor in klass: " + klass.getNameAsString());
 
                 int arguments = input.readInt();
 
@@ -1343,7 +1343,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                controller.fine(() -> "trying to invoke interface method: " + method.getNameAsString());
+                DebuggerController.fine(() -> "trying to invoke interface method: " + method.getNameAsString());
 
                 int arguments = input.readInt();
 
@@ -1803,7 +1803,7 @@ public final class JDWP {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                controller.fine(() -> "Invoke method through jdwp");
+                DebuggerController.fine(() -> "Invoke method through jdwp");
 
                 JDWPContext context = controller.getContext();
 
@@ -1853,7 +1853,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                controller.fine(() -> "trying to invoke method: " + method.getNameAsString());
+                DebuggerController.fine(() -> "trying to invoke method: " + method.getNameAsString());
 
                 int invocationOptions = input.readInt();
                 byte suspensionStrategy = invocationOptions == 1 ? SuspendStrategy.EVENT_THREAD : SuspendStrategy.ALL;
@@ -2004,7 +2004,7 @@ public final class JDWP {
         static class NAME {
             public static final int ID = 1;
 
-            static CommandResult createReply(Packet packet, DebuggerController controller, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -2012,7 +2012,7 @@ public final class JDWP {
                 Object thread = verifyThread(threadId, reply, context, false);
 
                 if (thread == null) {
-                    controller.fine(() -> "null thread discovered with ID: " + threadId);
+                    DebuggerController.fine(() -> "null thread discovered with ID: " + threadId);
 
                     return new CommandResult(reply);
                 }
@@ -2021,7 +2021,7 @@ public final class JDWP {
 
                 reply.writeString(threadName);
 
-                controller.fine(() -> "thread name: " + threadName);
+                DebuggerController.fine(() -> "thread name: " + threadName);
 
                 return new CommandResult(reply);
             }
@@ -2041,7 +2041,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                controller.fine(() -> "suspend thread packet for thread: " + controller.getContext().getThreadName(thread));
+                DebuggerController.fine(() -> "suspend thread packet for thread: " + controller.getContext().getThreadName(thread));
 
                 controller.suspend(thread);
                 return new CommandResult(reply);
@@ -2062,7 +2062,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                controller.fine(() -> "resume thread packet for thread: " + controller.getContext().getThreadName(thread));
+                DebuggerController.fine(() -> "resume thread packet for thread: " + controller.getContext().getThreadName(thread));
 
                 controller.resume(thread, false);
                 return new CommandResult(reply);
@@ -2106,7 +2106,7 @@ public final class JDWP {
                 int suspended = controller.getThreadSuspension().getSuspensionCount(thread) > 0 ? 1 : 0;
                 reply.writeInt(suspended);
 
-                controller.fine(() -> "status command for thread: " + context.getThreadName(thread) + " with status: " + threadStatus + " suspended: " + suspended);
+                DebuggerController.fine(() -> "status command for thread: " + context.getThreadName(thread) + " with status: " + threadStatus + " suspended: " + suspended);
 
                 return new CommandResult(reply);
             }
@@ -2171,20 +2171,20 @@ public final class JDWP {
                 int length = input.readInt();
                 final int requestedLength = length;
 
-                controller.fine(() -> "requesting frames for thread: " + controller.getContext().getThreadName(thread));
-                controller.fine(() -> "startFrame requested: " + startFrame);
-                controller.fine(() -> "Number of frames requested: " + requestedLength);
+                DebuggerController.fine(() -> "requesting frames for thread: " + controller.getContext().getThreadName(thread));
+                DebuggerController.fine(() -> "startFrame requested: " + startFrame);
+                DebuggerController.fine(() -> "Number of frames requested: " + requestedLength);
 
                 SuspendedInfo suspendedInfo = controller.getSuspendedInfo(thread);
 
                 if (suspendedInfo == null) {
-                    controller.fine(() -> "THREAD_NOT_SUSPENDED: " + controller.getContext().getThreadName(thread));
+                    DebuggerController.fine(() -> "THREAD_NOT_SUSPENDED: " + controller.getContext().getThreadName(thread));
                     reply.errorCode(ErrorCodes.THREAD_NOT_SUSPENDED);
                     return new CommandResult(reply);
                 }
 
                 if (suspendedInfo instanceof UnknownSuspendedInfo) {
-                    controller.fine(() -> "Unknown suspension info for thread: " + controller.getContext().getThreadName(thread));
+                    DebuggerController.fine(() -> "Unknown suspension info for thread: " + controller.getContext().getThreadName(thread));
                     suspendedInfo = awaitSuspendedInfo(controller, thread, suspendedInfo);
                     if (suspendedInfo instanceof UnknownSuspendedInfo) {
                         // we can't return any frames for a not yet suspended thread
@@ -2200,7 +2200,7 @@ public final class JDWP {
                 }
                 reply.writeInt(length);
                 final int finalLength = length;
-                controller.fine(() -> "returning " + finalLength + " frames for thread: " + controller.getContext().getThreadName(thread));
+                DebuggerController.fine(() -> "returning " + finalLength + " frames for thread: " + controller.getContext().getThreadName(thread));
 
                 for (int i = startFrame; i < startFrame + length; i++) {
                     CallFrame frame = frames[i];
@@ -2240,7 +2240,7 @@ public final class JDWP {
                 }
                 int length = suspendedInfo.getStackFrames().length;
                 reply.writeInt(suspendedInfo.getStackFrames().length);
-                controller.fine(() -> "current frame count: " + length + " for thread: " + controller.getContext().getThreadName(thread));
+                DebuggerController.fine(() -> "current frame count: " + length + " for thread: " + controller.getContext().getThreadName(thread));
 
                 return new CommandResult(reply);
             }
@@ -2385,7 +2385,7 @@ public final class JDWP {
                 }
 
                 int suspensionCount = controller.getThreadSuspension().getSuspensionCount(thread);
-                controller.fine(() -> "suspension count: " + suspensionCount + " returned for thread: " + controller.getContext().getThreadName(thread));
+                DebuggerController.fine(() -> "suspension count: " + suspensionCount + " returned for thread: " + controller.getContext().getThreadName(thread));
 
                 reply.writeInt(suspensionCount);
                 return new CommandResult(reply);
@@ -3004,7 +3004,7 @@ public final class JDWP {
         SuspendedInfo result = suspendedInfo;
         Thread hostThread = controller.getContext().asHostThread(thread);
         if (hostThread.getState() == Thread.State.RUNNABLE) {
-            controller.fine(() -> "Awaiting suspended info for thread " + controller.getContext().getThreadName(thread));
+            DebuggerController.fine(() -> "Awaiting suspended info for thread " + controller.getContext().getThreadName(thread));
 
             long timeout = System.currentTimeMillis() + SUSPEND_TIMEOUT;
             while (result instanceof UnknownSuspendedInfo && System.currentTimeMillis() < timeout) {
@@ -3017,7 +3017,7 @@ public final class JDWP {
             }
         }
         if (result instanceof UnknownSuspendedInfo) {
-            controller.fine(() -> "Still no suspended info for thread " + controller.getContext().getThreadName(thread));
+            DebuggerController.fine(() -> "Still no suspended info for thread " + controller.getContext().getThreadName(thread));
         }
         return result;
     }
