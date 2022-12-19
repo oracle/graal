@@ -295,6 +295,7 @@ public final class ThreadLocalAllocation {
     private static Object slowPathNewArrayLikeObject0(DynamicHub hub, int length, UnsignedWord size, byte[] podReferenceMap) {
         DeoptTester.disableDeoptTesting();
         long startTicks = JfrTicks.elapsedTicks();
+        long tlabSize = HeapParameters.getAlignedHeapChunkSize().rawValue();
         try {
             HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.slowPathNewArrayOrPodWithoutAllocating", DynamicHub.toClass(hub).getName());
             GCImpl.getGCImpl().maybeCollectOnAllocation();
@@ -303,6 +304,7 @@ public final class ThreadLocalAllocation {
                 /* Large arrays go into their own unaligned chunk. */
                 boolean needsZeroing = !HeapChunkProvider.areUnalignedChunksZeroed();
                 UnalignedHeapChunk.UnalignedHeader newTlabChunk = HeapImpl.getChunkProvider().produceUnalignedChunk(size);
+                tlabSize = UnalignedHeapChunk.getChunkSizeForObject(size).rawValue();
                 return allocateLargeArrayLikeObjectInNewTlab(hub, length, size, newTlabChunk, needsZeroing, podReferenceMap);
             }
             /* Small arrays go into the regular aligned chunk. */
@@ -316,7 +318,7 @@ public final class ThreadLocalAllocation {
             }
             return array;
         } finally {
-            ObjectAllocationInNewTLABEvent.emit(startTicks, DynamicHub.toClass(hub), size.rawValue(), UnalignedHeapChunk.getChunkSizeForObject(size).rawValue());
+            ObjectAllocationInNewTLABEvent.emit(startTicks, DynamicHub.toClass(hub), size.rawValue(), tlabSize);
             DeoptTester.enableDeoptTesting();
         }
     }
