@@ -994,3 +994,7 @@ When `callgrind` is used in combination with a viewer like
 `kcachegrind` it is possible to identify a great deal of valuable
 information about native image execution aand relate it back to
 specific source code lines.
+
+### Related Documentation
+
+- [Debug Native Executables with GDB](guides/debug-native-executables-with-gdb.md)
