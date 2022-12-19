@@ -66,6 +66,7 @@ import com.oracle.truffle.espresso.impl.RedefineAddedField;
 import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
+import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefineListener;
 import com.oracle.truffle.espresso.runtime.Attribute;
@@ -82,6 +83,7 @@ public final class ClassRedefinition {
 
     private final EspressoContext context;
     private final Ids<Object> ids;
+    private final DebuggerController controller;
     private final RedefineListener redefineListener;
     private volatile Assumption missingFieldAssumption = Truffle.getRuntime().createAssumption();
     private ArrayList<Field> currentDelegationFields;
@@ -110,10 +112,11 @@ public final class ClassRedefinition {
         INVALID;
     }
 
-    public ClassRedefinition(EspressoContext context, Ids<Object> ids, RedefineListener listener) {
+    public ClassRedefinition(EspressoContext context, Ids<Object> ids, RedefineListener listener, DebuggerController controller) {
         this.context = context;
         this.ids = ids;
         this.redefineListener = listener;
+        this.controller = controller;
     }
 
     public void begin() {
@@ -148,7 +151,7 @@ public final class ClassRedefinition {
     }
 
     public void runPostRedefintionListeners(ObjectKlass[] changedKlasses) {
-        redefineListener.postRedefinition(changedKlasses);
+        redefineListener.postRedefinition(changedKlasses, controller);
     }
 
     public void check() {
@@ -255,11 +258,11 @@ public final class ClassRedefinition {
                 case ADD_METHOD:
                 case REMOVE_METHOD:
                 case SCHEMA_CHANGE:
-                    doRedefineClass(packet, invalidatedClasses, redefinedClasses);
+                    doRedefineClass(packet, invalidatedClasses, redefinedClasses, controller);
                     return 0;
                 case CLASS_HIERARCHY_CHANGED:
                     context.markChangedHierarchy();
-                    doRedefineClass(packet, invalidatedClasses, redefinedClasses);
+                    doRedefineClass(packet, invalidatedClasses, redefinedClasses, controller);
                     return 0;
                 case NEW_CLASS:
                     ClassInfo classInfo = packet.info;
@@ -772,7 +775,7 @@ public final class ClassRedefinition {
         return false;
     }
 
-    private void doRedefineClass(ChangePacket packet, List<ObjectKlass> invalidatedClasses, List<ObjectKlass> redefinedClasses) {
+    private void doRedefineClass(ChangePacket packet, List<ObjectKlass> invalidatedClasses, List<ObjectKlass> redefinedClasses, DebuggerController controller) {
         ObjectKlass oldKlass = packet.info.getKlass();
         if (packet.info.isRenamed()) {
             // renaming a class is done by
@@ -796,7 +799,7 @@ public final class ClassRedefinition {
         }
         oldKlass.redefineClass(packet, invalidatedClasses, ids);
         redefinedClasses.add(oldKlass);
-        if (redefineListener.shouldRerunClassInitializer(oldKlass, packet.detectedChange.clinitChanged())) {
+        if (redefineListener.shouldRerunClassInitializer(oldKlass, packet.detectedChange.clinitChanged(), controller)) {
             context.rerunclinit(oldKlass);
         }
     }
@@ -826,5 +829,9 @@ public final class ClassRedefinition {
 
     public int getNextAvailableFieldSlot() {
         return nextAvailableFieldSlot.getAndDecrement();
+    }
+
+    public DebuggerController getController() {
+        return controller;
     }
 }
