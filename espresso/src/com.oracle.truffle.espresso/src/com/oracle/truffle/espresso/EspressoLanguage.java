@@ -28,6 +28,7 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
+import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -476,6 +477,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         this.allocator = new GuestAllocator(this, env.lookup(AllocationReporter.class));
     }
 
+    @SuppressFBWarnings(value = "DC_DOUBLECHECK", //
+                    justification = "non-volatile for performance reasons, javaVersion is initialized very early during context creation with an enum value, only benign races expected.")
     public void tryInitializeJavaVersion(JavaVersion version) {
         JavaVersion ref = this.javaVersion;
         if (ref == null) {
