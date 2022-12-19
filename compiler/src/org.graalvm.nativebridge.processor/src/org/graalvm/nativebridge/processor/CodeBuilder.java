@@ -34,6 +34,7 @@ import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.WildcardType;
 import javax.lang.model.util.Types;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -127,7 +128,21 @@ final class CodeBuilder {
                 for (CharSequence annotation : param.annotations) {
                     write(annotation).space();
                 }
-                write(param.type).space().write(param.name);
+                TypeMirror useType = param.type;
+                if (param.isVarArg) {
+                    if (it.hasNext()) {
+                        throw new AssertionError("VarArg argument must be last one.");
+                    }
+                    if (useType.getKind() != TypeKind.ARRAY) {
+                        throw new AssertionError("VarArg argument must be array.");
+                    }
+                    useType = ((ArrayType) useType).getComponentType();
+                }
+                write(useType);
+                if (param.isVarArg) {
+                    write("...");
+                }
+                space().write(param.name);
                 if (it.hasNext()) {
                     write(", ");
                 }
@@ -493,7 +508,16 @@ final class CodeBuilder {
                 write("void");
                 break;
             case WILDCARD:
+                WildcardType wildcardType = (WildcardType) type;
+                TypeMirror upperBound = wildcardType.getExtendsBound();
+                TypeMirror lowerBound = wildcardType.getSuperBound();
+                assert upperBound == null || lowerBound == null;
                 write("?");
+                if (upperBound != null) {
+                    write(" extends ").write(upperBound);
+                } else if (lowerBound != null) {
+                    write(" super ").write(lowerBound);
+                }
                 break;
         }
         return this;
@@ -526,18 +550,23 @@ final class CodeBuilder {
     }
 
     static Parameter newParameter(TypeMirror type, CharSequence name, CharSequence... annotations) {
-        return new Parameter(type, name, annotations);
+        return newParameter(type, name, false, annotations);
+    }
+
+    static Parameter newParameter(TypeMirror type, CharSequence name, boolean isVarArg, CharSequence... annotations) {
+        return new Parameter(type, name, isVarArg, annotations);
     }
 
     static List<? extends Parameter> newParameters(List<? extends VariableElement> params,
-                    List<? extends TypeMirror> parameterTypes) {
+                    List<? extends TypeMirror> parameterTypes, boolean isVarArg) {
         if (params.size() != parameterTypes.size()) {
             throw new IllegalArgumentException(String.format("params.size(%d) != parameterTypes.size(%d)",
                             params.size(), parameterTypes.size()));
         }
         List<Parameter> result = new ArrayList<>();
-        for (int i = 0; i < params.size(); i++) {
-            result.add(newParameter(parameterTypes.get(i), params.get(i).getSimpleName()));
+        int size = params.size();
+        for (int i = 0; i < size; i++) {
+            result.add(newParameter(parameterTypes.get(i), params.get(i).getSimpleName(), isVarArg && (i + 1 == size)));
         }
         return result;
     }
@@ -546,11 +575,13 @@ final class CodeBuilder {
 
         final TypeMirror type;
         final CharSequence name;
+        final boolean isVarArg;
         final CharSequence[] annotations;
 
-        private Parameter(TypeMirror type, CharSequence name, CharSequence[] annotations) {
+        private Parameter(TypeMirror type, CharSequence name, boolean isVarArg, CharSequence[] annotations) {
             this.type = type;
             this.name = name;
+            this.isVarArg = isVarArg;
             this.annotations = annotations;
         }
     }

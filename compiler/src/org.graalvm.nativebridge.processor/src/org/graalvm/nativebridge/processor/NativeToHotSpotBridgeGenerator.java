@@ -644,12 +644,11 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         List<? extends VariableElement> methodParameters = methodData.element.getParameters();
         List<? extends TypeMirror> methodParameterTypes = methodData.type.getParameterTypes();
         Set<CharSequence> warnings = new TreeSet<>(Comparator.comparing(CharSequence::toString));
+        warnings.add("unused");
         for (int i = 0; i < methodParameters.size(); i++) {
             warnings.addAll(marshallerSnippets(methodData.getParameterMarshaller(i)).getEndPointSuppressedWarnings(builder, methodParameterTypes.get(i)));
         }
-        if (!warnings.isEmpty()) {
-            builder.lineStart().annotation(typeCache.suppressWarnings, warnings.toArray(new CharSequence[0])).lineEnd("");
-        }
+        builder.lineStart().annotation(typeCache.suppressWarnings, warnings.toArray(new CharSequence[0])).lineEnd("");
         List<CodeBuilder.Parameter> params = new ArrayList<>();
         if (!definitionData.hasCustomDispatch()) {
             params.add(CodeBuilder.newParameter(definitionData.serviceType, "receiverObject"));
@@ -678,7 +677,6 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         CharSequence methodName = methodData.element.getSimpleName();
         TypeMirror returnType = marshallerSnippets(methodData.getReturnTypeMarshaller()).getEndPointMethodParameterType(methodData.type.getReturnType());
         boolean voidReturnType = returnType.getKind() == TypeKind.VOID;
-        builder.lineStart().annotation(typeCache.suppressWarnings, "unused").lineEnd("");
         builder.lineStart().annotation(typeCache.jNIEntryPoint, null).lineEnd("");
         builder.methodStart(EnumSet.of(Modifier.STATIC), methodName, returnType, params, Collections.emptyList());
         builder.indent();

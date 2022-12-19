@@ -156,7 +156,7 @@ abstract class AbstractBridgeGenerator {
         newModifiers.remove(Modifier.ABSTRACT);
         builder.methodStart(newModifiers, methodElement.getSimpleName(),
                         methodType.getReturnType(),
-                        CodeBuilder.newParameters(methodElement.getParameters(), methodType.getParameterTypes()),
+                        CodeBuilder.newParameters(methodElement.getParameters(), methodType.getParameterTypes(), methodElement.isVarArgs()),
                         methodType.getThrownTypes());
         return builder;
     }

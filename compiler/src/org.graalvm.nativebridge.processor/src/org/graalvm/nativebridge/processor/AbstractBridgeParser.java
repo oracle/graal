@@ -41,6 +41,7 @@ import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
+import javax.lang.model.type.WildcardType;
 import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
@@ -731,7 +732,18 @@ abstract class AbstractBridgeParser {
                 builder.append("Array");
                 break;
             case WILDCARD:
-                builder.append("Object");
+                WildcardType wildcardType = (WildcardType) type;
+                TypeMirror upperBound = wildcardType.getExtendsBound();
+                TypeMirror lowerBound = wildcardType.getSuperBound();
+                if (upperBound != null) {
+                    builder.append("Extends");
+                    buildMarshallerNameFromType(builder, upperBound);
+                } else if (lowerBound != null) {
+                    builder.append("Super");
+                    buildMarshallerNameFromType(builder, lowerBound);
+                } else {
+                    builder.append("Object");
+                }
                 break;
             case TYPEVAR:
                 buildMarshallerNameFromType(builder, ((TypeVariable) type).getUpperBound());

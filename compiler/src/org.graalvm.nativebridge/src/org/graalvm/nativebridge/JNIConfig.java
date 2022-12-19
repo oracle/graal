@@ -262,6 +262,23 @@ public final class JNIConfig {
             return this;
         }
 
+        /**
+         * Registers a {@link BinaryMarshaller} for the {@code parameterizedType} and
+         * {@code annotationType}.
+         *
+         * @param parameterizedType the type to register {@link BinaryMarshaller} for.
+         * @param annotationType a required annotation to look up the marshaller.
+         * @param marshaller the marshaller to register.
+         *
+         */
+        public <T> Builder registerMarshaller(TypeLiteral<T> parameterizedType, Class<? extends Annotation> annotationType, BinaryMarshaller<T> marshaller) {
+            Objects.requireNonNull(parameterizedType, "ParameterizedType must be non null.");
+            Objects.requireNonNull(annotationType, "AnnotationType must be non null.");
+            Objects.requireNonNull(marshaller, "Marshaller must be non null.");
+            insert(annotationBinaryMarshallers, parameterizedType.getRawType(), annotationType, marshaller);
+            return this;
+        }
+
         private static <T> void insert(Map<Class<? extends Annotation>, List<Pair<Class<?>, T>>> into, Class<?> type, Class<? extends Annotation> annotationType, T marshaller) {
             verifyAnnotation(annotationType);
             List<Pair<Class<?>, T>> types = into.computeIfAbsent(annotationType, (k) -> new LinkedList<>());
