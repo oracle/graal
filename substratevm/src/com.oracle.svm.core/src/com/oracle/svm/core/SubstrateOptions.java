@@ -666,6 +666,9 @@ public class SubstrateOptions {
         }
     }
 
+    @Option(help = "Strip debug info from the binary.")//
+    public static final HostedOptionKey<Boolean> StripDebugInfo = new HostedOptionKey<>(true);
+
     @Option(help = "Omit generation of DebugLineInfo originating from inlined methods") //
     public static final HostedOptionKey<Boolean> OmitInlinedMethodDebugLineInfo = new HostedOptionKey<>(true);
 
