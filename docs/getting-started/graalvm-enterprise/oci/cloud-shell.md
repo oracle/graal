@@ -7,9 +7,9 @@ permalink: /getting-started/oci/cloud-shell/
 
 This guide shows you how to get started with GraalVM Enterprise Edition in Oracle Cloud Infrastructure (OCI) Cloud Shell. 
 
-[OCI Cloud Shell](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/cloudshellintro.htm) is a browser-based terminal accessible from the Oracle Cloud Console. It provides access to a Linux shell with a pre-authenticated OCI command-line interface (CLI), pre-installed developer tools, and comes with 5GB of storage.
+[OCI Cloud Shell](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/cloudshellintro.htm) is a browser-based terminal accessible from the Oracle Cloud Console. It provides access to a Linux shell with a pre-authenticated OCI Command Line Interface (CLI), pre-installed developer tools, and comes with 5GB of storage.
 
-As of version 22.2.0, GraalVM Enterprise JDK 17 and Native Image are pre-installed in Cloud Shell. 
+GraalVM Enterprise JDK 17 and Native Image are pre-installed in Cloud Shell. 
 
 > Note: GraalVM Enterprise is available on Oracle Cloud Infrastructure at no additional cost.
 
@@ -24,50 +24,28 @@ Cloud Shell has several pre-installed JDKs, including GraalVM Enterprise JDK.
     ```shell
     csruntimectl java list
     ```
-    
-    The output is similar to:
-    
-    ```shell
-      graalvmeejdk-17.0.4           /usr/lib64/graalvm/graalvm22-ee-java17
-    * openjdk-11.0.15               /usr/lib/jvm/java-11-openjdk-11.0.15.0.9-2.0.1.el7_9.x86_64
-      openjdk-1.8.0.332             /usr/lib/jvm/java-1.8.0-openjdk-1.8.0.332.b09-1.el7_9.x86_64
-    ```
-    The JDK marked with an asterisk is the current JDK.
+    The output lists the JDKs preinstalled in Cloud Shell - GraalVM JDK for Java 17, Oracle JDK for Java 11, and Oracle JDK for Java 8. The JDK marked with an asterisk is the current JDK.
 
-3. Select GraalVM JDK as the current JDK:
+3. Select GraalVM JDK for Java 17 as the current JDK:
 
     ```shell
-    csruntimectl java set graalvmeejdk-17.0.4
+    csruntimectl java set graalvmeejdk-17
     ```
-    You will see the confirmation message printed:
-    ```shell
-    The current managed java version is set to graalvmeejdk-17.0.4.
-    ```
-4. Now check the version of `java`, the `native-image` generator, as well as the values of the environment variables `PATH` and `JAVA_HOME`:
+    You will see the confirmation message printed `The current managed java version is set to graalvmeejdk-17`.
 
-    ```shell
-    java -version
-
-    java version "17.0.4" 2022-07-19 LTS   
-    Java(TM) SE Runtime Environment GraalVM EE 22.2.0 (build 17.0.4+11-LTS-jvmci-22.2-b05)   
-    Java HotSpot(TM) 64-Bit Server VM GraalVM EE 22.2.0 (build 17.0.4+11-LTS-jvmci-22.2-b05, mixed mode, sharing)
-    ```
-    ```shell
-    native-image --version
-    
-    GraalVM 22.2.0 Java 17 EE (Java Version 17.0.4+11-LTS-jvmci-22.2-b05)
-    ```
+4. Now confirm the values of the environment variables `PATH` and `JAVA_HOME`, and the version of `java`, the `native-image` generator:
 
     ```shell
     echo $JAVA_HOME
-    
-    /usr/lib64/graalvm/graalvm22-ee-java17
     ```
-
     ```shell
     echo $PATH
-    
-    /usr/lib64/graalvm/graalvm22-ee-java17/bin/:/ggs_client/usr/bin:/home/user_xyz/.yarn/bin:/...
+    ```
+    ```shell
+    java -version
+    ```
+    ```shell
+    native-image --version
     ```
 
 You are all set to run Java applications using GraalVM Enterprise JDK in Cloud Shell.
@@ -82,6 +60,8 @@ The [Spring AOT plugin](https://docs.spring.io/spring-native/docs/current/refere
 
     ```shell
     git clone https://github.com/graalvm/graalvm-demos.git
+    ```
+    ```shell
     cd graalvm-demos/spring-native-image
     ```
 2. Build the application with Maven (Apache Maven is also pre-installed in Cloud Shell):
@@ -113,16 +93,14 @@ The [Spring AOT plugin](https://docs.spring.io/spring-native/docs/current/refere
 4. Next build a native executable for this Spring Boot application using the [`native` Maven profile](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html#quickstart).
 
     ```shell
-    export USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM=false
-    
-    mvn package -Dnative
+    mvn -Pnative native:compile
     ```
-    This will generate a native executable for Linux in the _target_ directory, named _jibber_.
+    This will generate a native executable for Linux in the _target_ directory, named _benchmark-jibber_.
 
 5. Run the native executable, using the following command:
 
     ```shell
-    ./target/jibber &
+   ./target/benchmark-jibber &
     ```
     
     Call the endpoint to test:
@@ -130,7 +108,6 @@ The [Spring AOT plugin](https://docs.spring.io/spring-native/docs/current/refere
     ```shell
     curl http://localhost:8080/jibber
     ```
-    
     Again, you should see some nonsense verse printed. 
     
     Bring the application to the foreground:
@@ -138,16 +115,16 @@ The [Spring AOT plugin](https://docs.spring.io/spring-native/docs/current/refere
     ```shell
     fg
     ```
-    
     Terminate the application by pressing Ctrl+C.
 
-Congraulations! You've successfully used GraalVM Enterprise JDK and Native Image to build and test a Spring Boot REST application in Cloud Shell.
+Congratulations! You have successfully used GraalVM Enterprise JDK and Native Image to build and test a Spring Boot REST application in Cloud Shell. 
 
-Thus, you can easily use GraalVM Enterprise in OCI Cloud Shell to build and test simple Java applications with Micronaut, Spring, and other microservices frameworks.
+Thus, you can easily use GraalVM Enterprise in OCI Cloud Shell to build and test simple Java applications with Micronaut, Spring, and other microservice frameworks.
 
 ### Related Documentation
 
-- [Java Hello World with GraalVM Enterprise in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/java-hello-world-maven/README-CS.md)
-- [Micronaut Hello World REST App with GraalVM Enterprise in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/micronaut-hello-rest-maven/README-CS.md)
+- [Java Hello World with GraalVM Enterprise in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/java-hello-world-maven/README-Cloud-Shell.md)
+- [Micronaut Hello World REST App with GraalVM Enterprise in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/micronaut-hello-rest-maven/README-Cloud-Shell.md)
+- [Spring Boot Microservice with GraalVM Enterprise in OCI Cloud Shell](https://github.com/graalvm/graalvm-demos/blob/master/spring-native-image/README-Cloud-Shell.md)
 - [GraalVM Enterprise in OCI Code Editor](code-editor.md)
 

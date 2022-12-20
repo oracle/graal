@@ -37,9 +37,6 @@ import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512DQ;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512F;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512VL;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
-import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseAddressNop;
-import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseIntelNops;
-import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseNormalNop;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADC;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.AND;
@@ -243,7 +240,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         ByteOrLargerAssertion(CPU, CPU, BYTE, WORD, DWORD, QWORD),
         WordOrLargerAssertion(CPU, CPU, WORD, DWORD, QWORD),
         DwordOrLargerAssertion(CPU, CPU, DWORD, QWORD),
-        WordOrDwordAssertion(CPU, CPU, WORD, QWORD),
+        WordOrQwordAssertion(CPU, CPU, WORD, QWORD),
         QwordAssertion(CPU, CPU, QWORD),
         FloatAssertion(XMM, XMM, SS, SD, PS, PD),
         ScalarFloatAssertion(XMM, XMM, SS, SD),
@@ -536,16 +533,20 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      */
     public static final class AMD64MOp extends AMD64Op {
         // @formatter:off
+        public static final AMD64MOp NOTB = new AMD64MOp("NOT",  0xF6, 2, OpAssertion.ByteAssertion);
+        public static final AMD64MOp NEGB = new AMD64MOp("NEG",  0xF6, 3, OpAssertion.ByteAssertion);
         public static final AMD64MOp NOT  = new AMD64MOp("NOT",  0xF7, 2);
         public static final AMD64MOp NEG  = new AMD64MOp("NEG",  0xF7, 3);
         public static final AMD64MOp MUL  = new AMD64MOp("MUL",  0xF7, 4);
         public static final AMD64MOp IMUL = new AMD64MOp("IMUL", 0xF7, 5);
         public static final AMD64MOp DIV  = new AMD64MOp("DIV",  0xF7, 6);
         public static final AMD64MOp IDIV = new AMD64MOp("IDIV", 0xF7, 7);
+        public static final AMD64MOp INCB = new AMD64MOp("INC",  0xFE, 0, OpAssertion.ByteAssertion);
+        public static final AMD64MOp DECB = new AMD64MOp("DEC",  0xFE, 1, OpAssertion.ByteAssertion);
         public static final AMD64MOp INC  = new AMD64MOp("INC",  0xFF, 0);
         public static final AMD64MOp DEC  = new AMD64MOp("DEC",  0xFF, 1);
-        public static final AMD64MOp PUSH = new AMD64MOp("PUSH", 0xFF, 6);
-        public static final AMD64MOp POP  = new AMD64MOp("POP",  0x8F, 0, OpAssertion.WordOrDwordAssertion);
+        public static final AMD64MOp PUSH = new AMD64MOp("PUSH", 0xFF, 6, OpAssertion.WordOrQwordAssertion);
+        public static final AMD64MOp POP  = new AMD64MOp("POP",  0x8F, 0, OpAssertion.WordOrQwordAssertion);
         // @formatter:on
 
         private final int ext;
@@ -3212,217 +3213,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public void nop(int count) {
-        int i = count;
-        if (UseNormalNop) {
-            assert i > 0 : " ";
-            // The fancy nops aren't currently recognized by debuggers making it a
-            // pain to disassemble code while debugging. If assert are on clearly
-            // speed is not an issue so simply use the single byte traditional nop
-            // to do alignment.
-
-            for (; i > 0; i--) {
-                emitByte(0x90);
-            }
-            return;
-        }
-
-        if (UseAddressNop) {
-            if (UseIntelNops) {
-                intelNops(i);
-            } else {
-                amdNops(i);
-            }
-            return;
-        }
-
-        // Using nops with size prefixes "0x66 0x90".
-        // From AMD Optimization Guide:
-        // 1: 0x90
-        // 2: 0x66 0x90
-        // 3: 0x66 0x66 0x90
-        // 4: 0x66 0x66 0x66 0x90
-        // 5: 0x66 0x66 0x90 0x66 0x90
-        // 6: 0x66 0x66 0x90 0x66 0x66 0x90
-        // 7: 0x66 0x66 0x66 0x90 0x66 0x66 0x90
-        // 8: 0x66 0x66 0x66 0x90 0x66 0x66 0x66 0x90
-        // 9: 0x66 0x66 0x90 0x66 0x66 0x90 0x66 0x66 0x90
-        // 10: 0x66 0x66 0x66 0x90 0x66 0x66 0x90 0x66 0x66 0x90
-        //
-        while (i > 12) {
-            i -= 4;
-            emitByte(0x66); // size prefix
-            emitByte(0x66);
-            emitByte(0x66);
-            emitByte(0x90); // nop
-        }
-        // 1 - 12 nops
-        if (i > 8) {
-            if (i > 9) {
-                i -= 1;
-                emitByte(0x66);
-            }
-            i -= 3;
-            emitByte(0x66);
-            emitByte(0x66);
-            emitByte(0x90);
-        }
-        // 1 - 8 nops
-        if (i > 4) {
-            if (i > 6) {
-                i -= 1;
-                emitByte(0x66);
-            }
-            i -= 3;
-            emitByte(0x66);
-            emitByte(0x66);
-            emitByte(0x90);
-        }
-        switch (i) {
-            case 4:
-                emitByte(0x66);
-                emitByte(0x66);
-                emitByte(0x66);
-                emitByte(0x90);
-                break;
-            case 3:
-                emitByte(0x66);
-                emitByte(0x66);
-                emitByte(0x90);
-                break;
-            case 2:
-                emitByte(0x66);
-                emitByte(0x90);
-                break;
-            case 1:
-                emitByte(0x90);
-                break;
-            default:
-                assert i == 0;
-        }
-    }
-
-    private void amdNops(int count) {
-        int i = count;
-        //
-        // Using multi-bytes nops "0x0F 0x1F [Address]" for AMD.
-        // 1: 0x90
-        // 2: 0x66 0x90
-        // 3: 0x66 0x66 0x90 (don't use "0x0F 0x1F 0x00" - need patching safe padding)
-        // 4: 0x0F 0x1F 0x40 0x00
-        // 5: 0x0F 0x1F 0x44 0x00 0x00
-        // 6: 0x66 0x0F 0x1F 0x44 0x00 0x00
-        // 7: 0x0F 0x1F 0x80 0x00 0x00 0x00 0x00
-        // 8: 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
-        // 9: 0x66 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
-        // 10: 0x66 0x66 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
-        // 11: 0x66 0x66 0x66 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
-
-        // The rest coding is AMD specific - use consecutive Address nops
-
-        // 12: 0x66 0x0F 0x1F 0x44 0x00 0x00 0x66 0x0F 0x1F 0x44 0x00 0x00
-        // 13: 0x0F 0x1F 0x80 0x00 0x00 0x00 0x00 0x66 0x0F 0x1F 0x44 0x00 0x00
-        // 14: 0x0F 0x1F 0x80 0x00 0x00 0x00 0x00 0x0F 0x1F 0x80 0x00 0x00 0x00 0x00
-        // 15: 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00 0x0F 0x1F 0x80 0x00 0x00 0x00 0x00
-        // 16: 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
-        // Size prefixes (0x66) are added for larger sizes
-
-        while (i >= 22) {
-            i -= 11;
-            emitByte(0x66); // size prefix
-            emitByte(0x66); // size prefix
-            emitByte(0x66); // size prefix
-            addrNop8();
-        }
-        // Generate first nop for size between 21-12
-        switch (i) {
-            case 21:
-                i -= 11;
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                addrNop8();
-                break;
-            case 20:
-            case 19:
-                i -= 10;
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                addrNop8();
-                break;
-            case 18:
-            case 17:
-                i -= 9;
-                emitByte(0x66); // size prefix
-                addrNop8();
-                break;
-            case 16:
-            case 15:
-                i -= 8;
-                addrNop8();
-                break;
-            case 14:
-            case 13:
-                i -= 7;
-                addrNop7();
-                break;
-            case 12:
-                i -= 6;
-                emitByte(0x66); // size prefix
-                addrNop5();
-                break;
-            default:
-                assert i < 12;
-        }
-
-        // Generate second nop for size between 11-1
-        switch (i) {
-            case 11:
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                addrNop8();
-                break;
-            case 10:
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                addrNop8();
-                break;
-            case 9:
-                emitByte(0x66); // size prefix
-                addrNop8();
-                break;
-            case 8:
-                addrNop8();
-                break;
-            case 7:
-                addrNop7();
-                break;
-            case 6:
-                emitByte(0x66); // size prefix
-                addrNop5();
-                break;
-            case 5:
-                addrNop5();
-                break;
-            case 4:
-                addrNop4();
-                break;
-            case 3:
-                // Don't use "0x0F 0x1F 0x00" - need patching safe padding
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                emitByte(0x90); // nop
-                break;
-            case 2:
-                emitByte(0x66); // size prefix
-                emitByte(0x90); // nop
-                break;
-            case 1:
-                emitByte(0x90); // nop
-                break;
-            default:
-                assert i == 0;
-        }
+        intelNops(count);
     }
 
     @SuppressWarnings("fallthrough")
@@ -5007,22 +4798,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public void clflush(AMD64Address adr) {
-        prefix(adr);
-        // opcode family is 0x0F 0xAE
-        emitByte(0x0f);
-        emitByte(0xae);
-        // extended opcode byte is 7
-        emitOperandHelper(7, adr, 0);
-    }
-
-    public void clflushopt(AMD64Address adr) {
-        assert supportsCPUFeature("FLUSHOPT");
-        // adr should be base reg only with no index or offset
-        assert adr.getIndex().equals(Register.None) : adr;
-        assert adr.getScale().equals(Stride.S1) : adr;
-        assert adr.getDisplacement() == 0 : adr;
-        // instruction prefix is 0x66
-        emitByte(0x66);
         prefix(adr);
         // opcode family is 0x0F 0xAE
         emitByte(0x0f);

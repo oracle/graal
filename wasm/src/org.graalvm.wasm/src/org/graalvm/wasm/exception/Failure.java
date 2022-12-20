@@ -45,12 +45,12 @@ public enum Failure {
     // TODO(mbovel): replace UNSPECIFIED_MALFORMED usages with appropriate errors.
     UNSPECIFIED_MALFORMED(Type.MALFORMED, "unspecified"),
     INTEGER_REPRESENTATION_TOO_LONG(Type.MALFORMED, "integer representation too long"),
-    INTEGER_TOO_LONG(Type.MALFORMED, "integer too large"),
+    INTEGER_TOO_LARGE(Type.MALFORMED, "integer too large"),
     UNEXPECTED_END(Type.MALFORMED, "unexpected end of section or function"),
     MALFORMED_VALUE_TYPE(Type.MALFORMED, "malformed value type"),
     INVALID_MAGIC_NUMBER(Type.MALFORMED, "magic header not detected"),
     INVALID_VERSION_NUMBER(Type.MALFORMED, "unknown binary version"),
-    ZERO_FLAG_EXPECTED(Type.MALFORMED, "zero flag expected"),
+    ZERO_BYTE_EXPECTED(Type.MALFORMED, "zero byte expected"),
     SECTION_SIZE_MISMATCH(Type.MALFORMED, "section size mismatch"),
     TOO_MANY_LOCALS(Type.MALFORMED, "too many locals"),
     FUNCTIONS_CODE_INCONSISTENT_LENGTHS(Type.MALFORMED, "function and code section have inconsistent lengths"),
@@ -58,8 +58,14 @@ public enum Failure {
     MALFORMED_SECTION_ID(Type.MALFORMED, "malformed section id"),
     MALFORMED_MUTABILITY(Type.MALFORMED, "malformed mutability"),
     LENGTH_OUT_OF_BOUNDS(Type.MALFORMED, "length out of bounds"),
+    DATA_COUNT_MISMATCH(Type.MALFORMED, "data count and data section have inconsistent lengths"),
+    DATA_COUNT_SECTION_REQUIRED(Type.MALFORMED, "data count section required"),
+    ILLEGAL_OPCODE(Type.MALFORMED, "illegal opcode"),
+    MALFORMED_REFERENCE_TYPE(Type.MALFORMED, "malformed reference type"),
+    MALFORMED_IMPORT_KIND(Type.MALFORMED, "malformed import kind"),
+    END_OPCODE_EXPECTED(Type.MALFORMED, "END opcode expected"),
+    UNEXPECTED_CONTENT_AFTER_LAST_SECTION(Type.MALFORMED, "unexpected content after last section"),
     // GraalWasm-specific:
-    DUPLICATED_SECTION(Type.MALFORMED, "duplicated section"),
     INVALID_SECTION_ORDER(Type.MALFORMED, "invalid section order"),
     DISABLED_MULTI_VALUE(Type.MALFORMED, "multi-value is not enabled"),
 
@@ -87,11 +93,16 @@ public enum Failure {
     MEMORY_SIZE_LIMIT_EXCEEDED(Type.INVALID, "memory size must be at most 65536 pages (4GiB)"),
     ALIGNMENT_LARGER_THAN_NATURAL(Type.INVALID, "alignment must not be larger than natural"),
     UNEXPECTED_END_OF_BLOCK(Type.INVALID, "cannot exit unspecified block"),
+    UNKNOWN_ELEM_SEGMENT(Type.INVALID, "unknown elem segment"),
+    UNKNOWN_DATA_SEGMENT(Type.INVALID, "unknown data segment"),
+    UNKNOWN_REFERENCE(Type.INVALID, "unknown reference"),
+    UNDECLARED_FUNCTION_REFERENCE(Type.INVALID, "undeclared function reference"),
 
     // GraalWasm-specific:
     MODULE_SIZE_LIMIT_EXCEEDED(Type.INVALID, "module size exceeds limit"),
     TYPE_COUNT_LIMIT_EXCEEDED(Type.INVALID, "type count exceeds limit"),
     FUNCTION_COUNT_LIMIT_EXCEEDED(Type.INVALID, "function count exceeds limit"),
+    TABLE_COUNT_LIMIT_EXCEEDED(Type.INVALID, "table count exceeds limit"),
     IMPORT_COUNT_LIMIT_EXCEEDED(Type.INVALID, "import count exceeds limit"),
     EXPORT_COUNT_LIMIT_EXCEEDED(Type.INVALID, "export count exceeds limit"),
     GLOBAL_COUNT_LIMIT_EXCEEDED(Type.INVALID, "global count exceeds limit"),
@@ -105,8 +116,6 @@ public enum Failure {
     UNSPECIFIED_UNLINKABLE(Type.UNLINKABLE, "unspecified"),
     UNKNOWN_IMPORT(Type.UNLINKABLE, "unknown import"),
     INCOMPATIBLE_IMPORT_TYPE(Type.UNLINKABLE, "incompatible import type"),
-    ELEMENTS_SEGMENT_DOES_NOT_FIT(Type.UNLINKABLE, "elements segment does not fit"),
-    DATA_SEGMENT_DOES_NOT_FIT(Type.UNLINKABLE, "data segment does not fit"),
     // GraalWasm-specific:
     INVALID_WASI_DIRECTORIES_MAPPING(Type.UNLINKABLE, "invalid wasi directories mapping"),
 
@@ -123,10 +132,14 @@ public enum Failure {
     INVALID_MULTI_VALUE_ARITY(Type.TRAP, "provided multi-value size does not match function type"),
     INVALID_TYPE_IN_MULTI_VALUE(Type.TRAP, "type of value in multi-value does not match the function type"),
 
+    NULL_REFERENCE(Type.TRAP, "defined element is ref.null"),
+    OUT_OF_BOUNDS_TABLE_ACCESS(Type.TRAP, "out of bounds table access"),
     // GraalWasm-specific:
     TABLE_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "table instance size exceeds limit"),
     MEMORY_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "memory instance size exceeds limit"),
     UNSUPPORTED_MULTI_VALUE_TYPE(Type.TRAP, "multi-value has to be provided by an array type"),
+
+    MEMORY_OVERHEAD_MODE(Type.TRAP, "functions cannot be executed with memory overhead mode enabled"),
 
     CALL_STACK_EXHAUSTED(Type.EXHAUSTION, "call stack exhausted"),
     MEMORY_ALLOCATION_FAILED(Type.EXHAUSTION, "could not allocate memory"),

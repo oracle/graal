@@ -42,10 +42,9 @@ package com.oracle.truffle.regex.literal;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexExecNode;
 import com.oracle.truffle.regex.RegexLanguage;
@@ -64,9 +63,7 @@ import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-import com.oracle.truffle.regex.util.TRegexGuards;
 
-@ImportStatic(TRegexGuards.class)
 public abstract class LiteralRegexExecNode extends RegexExecNode implements JsonConvertible {
 
     @Child LiteralRegexExecImplNode implNode;
@@ -90,12 +87,7 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
     }
 
     @Override
-    public abstract RegexResult execute(Object input, int fromIndex);
-
-    @Specialization
-    RegexResult doByteArray(byte[] input, int fromIndex) {
-        return implNode.execute(input, fromIndex, getEncoding(), false);
-    }
+    public abstract RegexResult execute(VirtualFrame frame, Object input, int fromIndex);
 
     @Specialization
     RegexResult doString(String input, int fromIndex) {
@@ -107,12 +99,6 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
                     @Cached TruffleString.MaterializeNode materializeNode) {
         materializeNode.execute(input, getEncoding().getTStringEncoding());
         return implNode.execute(input, fromIndex, getEncoding(), true);
-    }
-
-    @Specialization(guards = "neitherByteArrayNorString(input)")
-    RegexResult doTruffleObject(Object input, int fromIndex,
-                    @Cached("createClassProfile()") ValueProfile inputClassProfile) {
-        return implNode.execute(inputClassProfile.profile(input), fromIndex, getEncoding(), false);
     }
 
     public static LiteralRegexExecNode create(RegexLanguage language, RegexAST ast, LiteralRegexExecImplNode implNode) {

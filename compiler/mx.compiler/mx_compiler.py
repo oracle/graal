@@ -123,13 +123,11 @@ def _check_jvmci_version(jdk):
                 fp.write(source_supplier().replace('package org.graalvm.compiler.hotspot;', ''))
             mx.run([jdk.javac, '-d', sdu.directory, unqualified_source_path])
 
-    jvmci_version_file = join(binDir, 'jvmci_version.' + str(os.getpid()))
-    mx.run([jdk.java, '-DJVMCIVersionCheck.jvmci.version.file=' + jvmci_version_file, '-cp', binDir, unqualified_name])
-    if exists(jvmci_version_file):
-        with open(jvmci_version_file) as fp:
-            global _jdk_jvmci_version
-            _jdk_jvmci_version = tuple((int(n) for n in fp.read().split(',')))
-        os.remove(jvmci_version_file)
+    out = mx.OutputCapture()
+    mx.run([jdk.java, '-cp', binDir, unqualified_name], out=out)
+    global _jdk_jvmci_version
+    if out.data:
+        _jdk_jvmci_version = tuple((int(n) for n in out.data.split(',')))
 
 if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
     _check_jvmci_version(jdk)
@@ -581,12 +579,13 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     with Task(prefix + 'DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test, report=True) as t:
         if t: _gate_dacapo('pmd', 1, benchVmArgs + ['-Xbatch'])
 
-    # ensure benchmark counters still work but omit this test on
+    # Ensure benchmark counters still work but omit this test on
     # fastdebug as benchmark counter threads may not produce
-    # output in a timely manner
+    # output in a timely manner. Also omit the test on libgraal
+    # as it does not support TimedDynamicCounters.
     out = mx.OutputCapture()
     mx.run([jdk.java, '-version'], err=subprocess.STDOUT, out=out)
-    if 'fastdebug' not in out.data:
+    if 'fastdebug' not in out.data and '-XX:+UseJVMCINativeLibrary' not in (extraVMarguments or []):
         with Task(prefix + 'DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test, report=True) as t:
             if t:
                 fd, logFile = tempfile.mkstemp()
@@ -626,7 +625,7 @@ _registers = {
 if mx.get_arch() not in _registers:
     mx.warn('No registers for register pressure tests are defined for architecture ' + mx.get_arch())
 
-_defaultFlags = ['-Dgraal.CompilationWatchDogStartDelay=60.0D']
+_defaultFlags = ['-Dgraal.CompilationWatchDogStartDelay=60']
 _assertionFlags = ['-esa', '-Dgraal.DetailedAsserts=true']
 _graalErrorFlags = _compiler_error_options()
 _graalEconomyFlags = ['-Dgraal.CompilerConfiguration=economy']
@@ -1346,7 +1345,6 @@ cmp_ce_components = [
             'compiler:GRAAL_PROCESSOR',
         ],
         jvmci_jars=_jvmci_jars(),
-        graal_compiler='graal',
         stability="supported",
     ),
     mx_sdk_vm.GraalVmComponent(

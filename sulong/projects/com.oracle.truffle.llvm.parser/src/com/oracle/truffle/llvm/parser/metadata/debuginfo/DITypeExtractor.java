@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -379,11 +379,15 @@ final class DITypeExtractor implements MetadataVisitor {
                 break;
             }
 
+            case DW_TAG_ATOMIC_TYPE:
             case DW_TAG_TYPEDEF:
             case DW_TAG_VOLATILE_TYPE:
             case DW_TAG_CONST_TYPE: {
                 final Function<String, String> decorator;
                 switch (mdType.getTag()) {
+                    case DW_TAG_ATOMIC_TYPE:
+                        decorator = s -> String.format("atomic %s", s);
+                        break;
                     case DW_TAG_VOLATILE_TYPE:
                         decorator = s -> String.format("volatile %s", s);
                         break;

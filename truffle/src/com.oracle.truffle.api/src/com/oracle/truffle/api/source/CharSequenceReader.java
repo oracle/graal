@@ -109,7 +109,7 @@ final class CharSequenceReader extends Reader {
             // Bound skip by beginning and end of the source
             long n = Math.min(length - next, ns);
             n = Math.max(-next, n);
-            next += n;
+            next += (int) n;
             return n;
         }
     }

@@ -24,14 +24,9 @@
  */
 package com.oracle.graal.pointsto.infrastructure;
 
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaField;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class AnalysisConstantPool extends WrappedConstantPool {
 
@@ -43,11 +38,6 @@ public class AnalysisConstantPool extends WrappedConstantPool {
     public JavaField lookupField(int cpi, ResolvedJavaMethod method, int opcode) {
         ResolvedJavaMethod substMethod = universe.resolveSubstitution(((WrappedJavaMethod) method).getWrapped());
         JavaField field = wrapped.lookupField(cpi, substMethod, opcode);
-        JavaType declaringClass = field.getDeclaringClass();
-        if (declaringClass instanceof ResolvedJavaType) {
-            AnalysisType fieldDeclaringType = ((AnalysisUniverse) universe).lookup(declaringClass);
-            fieldDeclaringType.registerAsReachable();
-        }
         return universe.lookupAllowUnresolved(field);
     }
 }

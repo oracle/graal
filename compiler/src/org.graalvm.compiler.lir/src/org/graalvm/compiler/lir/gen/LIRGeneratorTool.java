@@ -269,9 +269,91 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         throw GraalError.unimplemented("Array.copy with variable stride substitution is not implemented on this architecture");
     }
 
+    enum CalcStringAttributesEncoding {
+        /**
+         * Calculate the code range of a LATIN-1/ISO-8859-1 string. The result is either CR_7BIT or
+         * CR_8BIT.
+         */
+        LATIN1(Stride.S1),
+        /**
+         * Calculate the code range of a 16-bit (UTF-16 or compacted UTF-32) string that is already
+         * known to be in the BMP code range, so no UTF-16 surrogates are present. The result is
+         * either CR_7BIT, CR_8BIT, or CR_16BIT.
+         */
+        BMP(Stride.S2),
+        /**
+         * Calculate the code range and codepoint length of a UTF-8 string. The result is a long
+         * value, where the upper 32 bit are the calculated codepoint length, and the lower 32 bit
+         * are the code range. The resulting code range is either CR_7BIT, CR_VALID_MULTIBYTE or
+         * CR_BROKEN_MULTIBYTE. If the string is broken (not encoded correctly), the resulting
+         * codepoint length is the number of non-continuation bytes in the string.
+         */
+        UTF_8(Stride.S1),
+        /**
+         * Calculate the code range and codepoint length of a UTF-16 string. The result is a long
+         * value, where the upper 32 bit are the calculated codepoint length, and the lower 32 bit
+         * are the code range. The resulting code range can be any of the following: CR_7BIT,
+         * CR_8BIT, CR_16BIT, CR_VALID_MULTIBYTE, CR_BROKEN_MULTIBYTE. If the string is broken (not
+         * encoded correctly), the resulting codepoint length includes all invalid surrogate
+         * characters.
+         */
+        UTF_16(Stride.S2),
+        /**
+         * Calculate the code range of a UTF-32 string. The result can be any of the following:
+         * CR_7BIT, CR_8BIT, CR_16BIT, CR_VALID_FIXED_WIDTH, CR_BROKEN_FIXED_WIDTH.
+         */
+        UTF_32(Stride.S4);
+
+        /**
+         * Stride to use when reading array elements.
+         */
+        public final Stride stride;
+
+        CalcStringAttributesEncoding(Stride stride) {
+            this.stride = stride;
+        }
+
+        /*
+         * RETURN VALUES
+         */
+
+        // NOTE:
+        // The following fields must be kept in sync with
+        // com.oracle.truffle.api.strings.TSCodeRange,
+        // TStringOpsCalcStringAttributesReturnValuesInSyncTest verifies this.
+        /**
+         * All codepoints are ASCII (0x00 - 0x7f).
+         */
+        public static final int CR_7BIT = 0;
+        /**
+         * All codepoints are LATIN-1 (0x00 - 0xff).
+         */
+        public static final int CR_8BIT = 1;
+        /**
+         * All codepoints are BMP (0x0000 - 0xffff, no UTF-16 surrogates).
+         */
+        public static final int CR_16BIT = 2;
+        /**
+         * The string is encoded correctly in the given fixed-width encoding.
+         */
+        public static final int CR_VALID_FIXED_WIDTH = 3;
+        /**
+         * The string is not encoded correctly in the given fixed-width encoding.
+         */
+        public static final int CR_BROKEN_FIXED_WIDTH = 4;
+        /**
+         * The string is encoded correctly in the given multi-byte/variable-width encoding.
+         */
+        public static final int CR_VALID_MULTIBYTE = 5;
+        /**
+         * The string is not encoded correctly in the given multi-byte/variable-width encoding.
+         */
+        public static final int CR_BROKEN_MULTIBYTE = 6;
+    }
+
     @SuppressWarnings("unused")
-    default Variable emitCalcStringAttributes(Object op, EnumSet<?> runtimeCheckedCPUFeatures,
-                    Value array, Value offset, Value length, boolean isValid) {
+    default Variable emitCalcStringAttributes(CalcStringAttributesEncoding encoding, EnumSet<?> runtimeCheckedCPUFeatures,
+                    Value array, Value offset, Value length, boolean assumeValid) {
         throw GraalError.unimplemented("CalcStringAttributes substitution is not implemented on this architecture");
     }
 
@@ -328,6 +410,16 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     @SuppressWarnings("unused")
     default Variable emitCTRAESCrypt(Value inAddr, Value outAddr, Value kAddr, Value counterAddr, Value len, Value encryptedCounterAddr, Value usedPtr) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitCBCAESEncrypt(Value inAddr, Value outAddr, Value kAddr, Value rAddr, Value len) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitCBCAESDecrypt(Value inAddr, Value outAddr, Value kAddr, Value rAddr, Value len) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 

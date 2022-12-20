@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,6 +28,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdlib.h>
+#include <stdint.h>
 
 #define SHORT_MSB_SET 0x8000;
 #define SHORT_LSB_SET 0x0001;
@@ -53,10 +54,10 @@ int I2 = INT_LSB_SET;
 unsigned int I3 = INT_MSB_SET;
 unsigned int I4 = INT_LSB_SET;
 
-long L1 = LONG_MSB_SET;
-long L2 = LONG_LSB_SET;
-unsigned long L3 = LONG_MSB_SET;
-unsigned long L4 = LONG_LSB_SET;
+int64_t L1 = LONG_MSB_SET;
+int64_t L2 = LONG_LSB_SET;
+uint64_t L3 = LONG_MSB_SET;
+uint64_t L4 = LONG_LSB_SET;
 
 float F1 = 0.0f;
 float F2 = 1.0f;
@@ -86,10 +87,10 @@ __attribute__((constructor)) int start() {
     unsigned int i3 = INT_MSB_SET;
     unsigned int i4 = INT_LSB_SET;
 
-    long int l1 = LONG_MSB_SET;
-    long int l2 = LONG_LSB_SET;
-    long unsigned int l3 = LONG_MSB_SET;
-    long unsigned int l4 = LONG_LSB_SET;
+    int64_t l1 = LONG_MSB_SET;
+    int64_t l2 = LONG_LSB_SET;
+    uint64_t l3 = LONG_MSB_SET;
+    uint64_t l4 = LONG_LSB_SET;
 
     float f1 = 0.0f;
     float f2 = 1.0f;

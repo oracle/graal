@@ -3,6 +3,7 @@ layout: docs
 toc_group: reference-manual
 link_title: GraalVM Updater
 permalink: /reference-manual/graalvm-updater/
+redirect_from: /$version/docs/graalvm-updater/
 ---
 
 # GraalVM Updater

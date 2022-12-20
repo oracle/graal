@@ -33,6 +33,7 @@ import java.io.InputStream;
 import java.lang.module.ModuleReader;
 import java.lang.module.ModuleReference;
 import java.lang.module.ResolvedModule;
+import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
@@ -58,7 +59,6 @@ import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.NativeImageClassLoaderSupport.ClassPathClassLoader;
 
 import jdk.internal.module.Modules;
 
@@ -67,17 +67,20 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     private final NativeImageClassLoaderSupport classLoaderSupport;
 
     private final ClassLoader imageClassLoader;
-    private final ClassPathClassLoader classPathClassLoader;
+    private final URLClassLoader classPathClassLoader;
 
     private final Map<String, Set<Module>> packageToModules;
 
     public ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
-
         imageClassLoader = classLoaderSupport.getClassLoader();
-        ClassLoader parent = imageClassLoader.getParent();
-        classPathClassLoader = parent instanceof ClassPathClassLoader ? (ClassPathClassLoader) parent : null;
-
+        /*
+         * Only if imageClassLoader is not the URLClassLoader we need to also remember its parent as
+         * classPathClassLoader (for use in isNativeImageClassLoaderImpl). Otherwise, there is only
+         * the URLClassLoader (already stored in imageClassLoader, extra classPathClassLoader field
+         * can be set to null).
+         */
+        classPathClassLoader = imageClassLoader instanceof URLClassLoader ? null : (URLClassLoader) imageClassLoader.getParent();
         packageToModules = new HashMap<>();
         buildPackageToModulesMap(classLoaderSupport);
     }

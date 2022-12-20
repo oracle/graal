@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.parser.ast;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
@@ -139,13 +140,15 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
     private static final int CHANGED_FLAGS = AND_FLAGS | OR_FLAGS;
 
     private final RegexAST ast;
+    private final CompilationBuffer compilationBuffer;
 
-    public CalcASTPropsVisitor(RegexAST ast) {
+    public CalcASTPropsVisitor(RegexAST ast, CompilationBuffer compilationBuffer) {
         this.ast = ast;
+        this.compilationBuffer = compilationBuffer;
     }
 
-    public static void run(RegexAST ast) {
-        CalcASTPropsVisitor visitor = new CalcASTPropsVisitor(ast);
+    public static void run(RegexAST ast, CompilationBuffer compilationBuffer) {
+        CalcASTPropsVisitor visitor = new CalcASTPropsVisitor(ast, compilationBuffer);
         visitor.runReverse(ast.getRoot());
         visitor.run(ast.getRoot());
     }
@@ -158,6 +161,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void visit(BackReference backReference) {
+        ast.getProperties().setBackReferences();
         backReference.setHasBackReferences();
         backReference.getParent().setHasBackReferences();
         if (backReference.hasQuantifier()) {
@@ -277,6 +281,50 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
     }
 
     @Override
+    protected void leave(Sequence sequence) {
+        // remove dead negated lookaround expressions. we can't do this directly in their visit
+        // methods, since that would mess up their parent Sequence's iterator state
+        int i = 0;
+        while (i < sequence.size()) {
+            Term term = sequence.get(i);
+            if (term.isLookAroundAssertion()) {
+                LookAroundAssertion lookAround = term.asLookAroundAssertion();
+                if (lookAround.isNegated() && lookAround.isDead()) {
+                    sequence.removeTerm(i, compilationBuffer);
+                    RemoveReachablePositionAssertions.run(ast, lookAround);
+                    continue;
+                }
+            }
+            i++;
+        }
+    }
+
+    private static final class RemoveReachablePositionAssertions extends DepthFirstTraversalRegexASTVisitor {
+
+        private final RegexAST ast;
+
+        private RemoveReachablePositionAssertions(RegexAST ast) {
+            this.ast = ast;
+        }
+
+        private static void run(RegexAST ast, LookAroundAssertion root) {
+            new RemoveReachablePositionAssertions(ast).run(root);
+        }
+
+        @Override
+        protected void visit(PositionAssertion assertion) {
+            switch (assertion.type) {
+                case CARET:
+                    ast.getReachableCarets().remove(assertion);
+                    break;
+                case DOLLAR:
+                    ast.getReachableDollars().remove(assertion);
+                    break;
+            }
+        }
+    }
+
+    @Override
     protected void visit(PositionAssertion assertion) {
         switch (assertion.type) {
             case CARET:
@@ -360,6 +408,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         if (isForward() && !atomicGroup.isDead()) {
             ast.getProperties().setAtomicGroups();
             ast.getSubtrees().add(atomicGroup);
+            atomicGroup.getSubTreeParent().getSubtrees().add(atomicGroup);
         }
         leaveSubtreeRootNode(atomicGroup, CHANGED_FLAGS);
         atomicGroup.getParent().setMinPath(atomicGroup.getMinPath());
@@ -369,11 +418,16 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
     private void leaveLookAroundAssertion(LookAroundAssertion assertion) {
         if (isForward() && !assertion.isDead()) {
             ast.getSubtrees().add(assertion);
+            assertion.getSubTreeParent().getSubtrees().add(assertion);
         }
         if (assertion.hasCaptureGroups()) {
             ast.getProperties().setCaptureGroupsInLookAroundAssertions();
         }
-        leaveSubtreeRootNode(assertion, assertion.isNegated() || assertion.isLookBehindAssertion() ? OR_FLAGS | RegexASTNode.FLAG_DEAD : CHANGED_FLAGS);
+        // flag propagation to parent sequences:
+        // - LookAhead expressions propagate all flags
+        // - LookBehind expressions omit "startsWithCaret" and "endsWithDollar"
+        // - negated lookarounds additionally don't propagate the "dead" flag
+        leaveSubtreeRootNode(assertion, assertion.isNegated() ? OR_FLAGS : assertion.isLookBehindAssertion() ? OR_FLAGS | RegexASTNode.FLAG_DEAD : CHANGED_FLAGS);
     }
 
     private static void leaveSubtreeRootNode(RegexASTSubtreeRootNode subtreeRootNode, int flagMask) {

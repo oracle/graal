@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
@@ -31,12 +32,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
-import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.results.DefaultResultsBuilder;
-import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -46,24 +41,34 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
+import com.oracle.graal.pointsto.results.DefaultResultsBuilder;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
 import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
+import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.config.HybridLayoutSupport;
+import com.oracle.svm.hosted.image.LIRNativeImageCodeCache;
+import com.oracle.svm.hosted.image.NativeImageCodeCache;
+import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
+import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -71,6 +76,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class HostedConfiguration {
 
@@ -148,12 +154,12 @@ public class HostedConfiguration {
         return new CompileQueue(debug, featureHandler, hostedUniverse, runtime, deoptimizeAll, aSnippetReflection, executor);
     }
 
-    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method) {
-        return new SVMMethodTypeFlowBuilder(bb, method);
+    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
+        return new SVMMethodTypeFlowBuilder(bb, method, flowsGraph, graphKind);
     }
 
-    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, StructuredGraph graph) {
-        return new SVMMethodTypeFlowBuilder(bb, graph);
+    public void registerUsedElements(PointsToAnalysis bb, StructuredGraph graph, boolean registerEmbeddedRoots) {
+        SVMMethodTypeFlowBuilder.registerUsedElements(bb, graph, registerEmbeddedRoots);
     }
 
     public MetaAccessExtensionProvider createAnalysisMetaAccessExtensionProvider() {
@@ -236,5 +242,14 @@ public class HostedConfiguration {
     private static void setMonitorField(HostedUniverse hUniverse, AnalysisType type) {
         final HostedInstanceClass hostedInstanceClass = (HostedInstanceClass) hUniverse.lookup(type);
         hostedInstanceClass.setNeedMonitorField();
+    }
+
+    public NativeImageCodeCacheFactory newCodeCacheFactory() {
+        return new NativeImageCodeCacheFactory() {
+            @Override
+            public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform targetPlatform, Path tempDir) {
+                return new LIRNativeImageCodeCache(compileQueue.getCompilationResults(), heap);
+            }
+        };
     }
 }

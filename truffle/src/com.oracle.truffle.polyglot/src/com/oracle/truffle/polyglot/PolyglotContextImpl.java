@@ -112,6 +112,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.polyglot.FileSystems.PreInitializeContextFileSystem;
+import com.oracle.truffle.polyglot.PolyglotContextConfig.FileSystemConfig;
 import com.oracle.truffle.polyglot.PolyglotContextConfig.PreinitConfig;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.StableLocalLocations;
@@ -119,6 +121,7 @@ import com.oracle.truffle.polyglot.PolyglotLanguageContext.ValueMigrationExcepti
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 import com.oracle.truffle.polyglot.PolyglotThreadLocalActions.HandshakeConfig;
 import com.oracle.truffle.polyglot.SystemThread.LanguageSystemThread;
+import org.graalvm.polyglot.io.IOAccess;
 
 final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -453,7 +456,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     @CompilationFinal private volatile FinalIntMap languageIndexMap;
 
     private final List<PolyglotContextImpl> childContexts = new ArrayList<>();
-    boolean inContextPreInitialization; // effectively final
     List<Source> sourcesToInvalidate;  // Non null only during content pre-initialization
 
     final AtomicLong volatileStatementCounter = new AtomicLong();
@@ -673,12 +675,23 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             PolyglotLanguage language = languageIterator.next();
             newContexts[i] = new PolyglotLanguageContext(this, language);
         }
+        maybeInitializeHostLanguage(newContexts);
+        return newContexts;
+    }
+
+    private void maybeInitializeHostLanguage(PolyglotLanguageContext[] contextsArray) {
         PolyglotLanguage hostLanguage = engine.hostLanguage;
         PolyglotLanguageContext hostContext = new PolyglotLanguageContext(this, hostLanguage);
-        newContexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = hostContext;
-        hostContext.ensureCreated(hostLanguage);
-        hostContext.ensureInitialized(null);
-        return newContexts;
+        contextsArray[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = hostContext;
+        if (PreInitContextHostLanguage.isInstance(hostLanguage)) {
+            // The host language in the image execution time may differ from host language in the
+            // image build time. We have to postpone the creation and initialization of the host
+            // language context until the patching.
+            assert engine.inEnginePreInitialization : "PreInitContextHostLanguage can be used only during context pre-initialization";
+        } else {
+            hostContext.ensureCreated(hostLanguage);
+            hostContext.ensureInitialized(null);
+        }
     }
 
     PolyglotLanguageContext getContext(PolyglotLanguage language) {
@@ -2589,7 +2602,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 if (!this.config.logLevels.isEmpty()) {
                     EngineAccessor.LANGUAGE.configureLoggers(this, null, getAllLoggers());
                 }
-                if (this.config.logHandler != null && !PolyglotLoggers.isSameLogSink(this.config.logHandler, engine.logHandler)) {
+                if (this.config.logHandler != null && !PolyglotLoggers.hasSameStream(this.config.logHandler, engine.logHandler)) {
                     this.config.logHandler.close();
                 }
             }
@@ -3171,7 +3184,9 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
     boolean patch(PolyglotContextConfig newConfig) {
         CompilerAsserts.neverPartOfCompilation();
-
+        if (PreInitContextHostLanguage.isInstance(contexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX].language)) {
+            maybeInitializeHostLanguage(contexts);
+        }
         this.config = newConfig;
         threadLocalActions.onContextPatch();
         if (!newConfig.logLevels.isEmpty()) {
@@ -3254,15 +3269,13 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
     static PolyglotContextImpl preinitialize(final PolyglotEngineImpl engine, final PreinitConfig preinitConfig, PolyglotSharingLayer sharableLayer, Set<PolyglotLanguage> languagesToPreinitialize,
                     boolean emitWarning) {
-        final FileSystems.PreInitializeContextFileSystem fs = new FileSystems.PreInitializeContextFileSystem();
-        final FileSystems.PreInitializeContextFileSystem internalFs = new FileSystems.PreInitializeContextFileSystem();
-        final PolyglotContextConfig config = new PolyglotContextConfig(engine, fs, internalFs, preinitConfig);
+        final FileSystemConfig fileSystemConfig = new FileSystemConfig(IOAccess.ALL, new PreInitializeContextFileSystem(), new PreInitializeContextFileSystem());
+        final PolyglotContextConfig config = new PolyglotContextConfig(engine, fileSystemConfig, preinitConfig);
         final PolyglotContextImpl context = new PolyglotContextImpl(engine, config);
         synchronized (engine.lock) {
             engine.addContext(context);
         }
 
-        context.inContextPreInitialization = true;
         context.sourcesToInvalidate = new ArrayList<>();
 
         try {
@@ -3300,7 +3313,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             }
             return context;
         } finally {
-            context.inContextPreInitialization = false;
 
             for (PolyglotLanguage language : engine.languages) {
                 if (language != null) {
@@ -3316,9 +3328,8 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             context.singleThreadValue.reset();
             context.sourcesToInvalidate = null;
             context.threadLocalActions.prepareContextStore();
-            fs.onPreInitializeContextEnd();
-            internalFs.onPreInitializeContextEnd();
-            FileSystems.resetDefaultFileSystemProvider();
+            ((PreInitializeContextFileSystem) fileSystemConfig.fileSystem).onPreInitializeContextEnd();
+            ((PreInitializeContextFileSystem) fileSystemConfig.internalFileSystem).onPreInitializeContextEnd();
             if (!config.logLevels.isEmpty()) {
                 EngineAccessor.LANGUAGE.configureLoggers(context, null, context.getAllLoggers());
             }

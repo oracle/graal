@@ -26,44 +26,15 @@ package org.graalvm.profdiff.parser.experiment;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.Reader;
-import java.util.List;
+import java.util.Optional;
 
+import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
 
 /**
  * Represents a list of files from which an experiment is parsed.
  */
 public interface ExperimentFiles {
-
-    /**
-     * {@link Reader A reader} with a name to facilitate better error messages.
-     */
-    class NamedReader {
-        private final String name;
-
-        private final Reader reader;
-
-        public NamedReader(String name, Reader reader) {
-            this.name = name;
-            this.reader = reader;
-        }
-
-        /**
-         * Gets the name of the reader.
-         */
-        public String getName() {
-            return name;
-        }
-
-        /**
-         * Gets the reader.
-         */
-        public Reader getReader() {
-            return reader;
-        }
-    }
-
     /**
      * Gets the ID of the experiment to which the files belong.
      *
@@ -72,17 +43,23 @@ public interface ExperimentFiles {
     ExperimentId getExperimentId();
 
     /**
-     * Gets the {@link NamedReader} reading the JSON output of proftool (mx profjson).
+     * Gets a file view containing the JSON output of proftool (mx profjson). Returns
+     * {@link Optional#empty()} if the experiment is not associated with a proftool output.
      *
-     * @return the reader with the proftool output
+     * @return the file with the proftool output
      */
-    NamedReader getProftoolOutput() throws FileNotFoundException;
+    Optional<FileView> getProftoolOutput() throws FileNotFoundException;
 
     /**
-     * Gets the list of readers reading an optimization log. Each reader describes one compiled
-     * method.
+     * Gets an iterable of file views representing the optimization log. Each file view may contain
+     * several JSON-encoded compilation units separated by a {@code '\n'}.
      *
-     * @return the list of readers each reading an optimization log
+     * @return an iterable of file views representing an optimization log
      */
-    List<NamedReader> getOptimizationLogs() throws IOException;
+    Iterable<FileView> getOptimizationLogs() throws IOException;
+
+    /**
+     * Gets whether the experiment was compiled just-in-time or ahead-of-time.
+     */
+    Experiment.CompilationKind getCompilationKind();
 }

@@ -57,7 +57,7 @@ import org.graalvm.compiler.phases.tiers.MidTierContext;
 public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return ALWAYS_APPLICABLE;
     }
 

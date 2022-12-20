@@ -25,32 +25,76 @@
 package org.graalvm.profdiff.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
+import org.graalvm.profdiff.core.VerbosityLevel;
+import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.parser.experiment.ExperimentFiles;
 import org.graalvm.profdiff.parser.experiment.ExperimentParser;
-import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
+import org.graalvm.profdiff.parser.experiment.FileView;
+import org.graalvm.profdiff.util.StdoutWriter;
+import org.graalvm.profdiff.util.Writer;
 import org.junit.Test;
 
 public class ExperimentParserTest {
+    /**
+     * Mocks a file view backed by a string instead of a file.
+     *
+     * @param path a symbolic path
+     * @param source the content of the file
+     * @return a file view backed by a string
+     */
+    private static FileView fileViewFromString(String path, String source) {
+        return new FileView() {
+            @Override
+            public String getSymbolicPath() {
+                return path;
+            }
+
+            @Override
+            public void forEachLine(BiConsumer<String, FileView> consumer) {
+                source.lines().forEach(line -> consumer.accept(line, fileViewFromString(path, line)));
+            }
+
+            @Override
+            public String readFully() {
+                return source;
+            }
+        };
+    }
+
     private static class ExperimentResources implements ExperimentFiles {
         private static final String RESOURCE_DIR = "org/graalvm/profdiff/test/resources/";
 
-        private NamedReader getReaderForResource(String name) {
-            InputStream resourceAsStream = getClass().getClassLoader().getResourceAsStream(name);
-            assert resourceAsStream != null;
-            return new NamedReader(name, new InputStreamReader(resourceAsStream));
+        private FileView getFileForResource(String path) {
+            try {
+                try (InputStream resourceAsStream = getClass().getClassLoader().getResourceAsStream(path)) {
+                    assert resourceAsStream != null;
+                    try (InputStreamReader streamReader = new InputStreamReader(resourceAsStream); BufferedReader bufferedReader = new BufferedReader(streamReader)) {
+                        StringBuilder sb = new StringBuilder();
+                        bufferedReader.lines().forEach(line -> sb.append(line).append('\n'));
+                        return fileViewFromString(path, sb.toString());
+                    }
+                }
+            } catch (IOException exception) {
+                throw new RuntimeException(exception.getMessage());
+            }
         }
 
         @Override
@@ -59,32 +103,42 @@ public class ExperimentParserTest {
         }
 
         @Override
-        public NamedReader getProftoolOutput() {
-            return getReaderForResource(RESOURCE_DIR + "profile.json");
+        public Optional<FileView> getProftoolOutput() {
+            return Optional.of(getFileForResource(RESOURCE_DIR + "profile.json"));
         }
 
         @Override
-        public List<NamedReader> getOptimizationLogs() {
-            return List.of(getReaderForResource(RESOURCE_DIR + "optimization-log/compilation-1.json"),
-                            getReaderForResource(RESOURCE_DIR + "optimization-log/compilation-2.json"));
+        public Iterable<FileView> getOptimizationLogs() {
+            return List.of(getFileForResource(RESOURCE_DIR + "optimization-log.txt"));
+        }
+
+        @Override
+        public Experiment.CompilationKind getCompilationKind() {
+            return Experiment.CompilationKind.JIT;
         }
     }
 
     @Test
-    public void testExperimentParser() throws ExperimentParserError, IOException {
+    public void testExperimentParser() throws Exception {
         ExperimentFiles experimentFiles = new ExperimentResources();
-        ExperimentParser experimentParser = new ExperimentParser(experimentFiles);
+        Writer writer = new StdoutWriter(VerbosityLevel.DEFAULT);
+        ExperimentParser experimentParser = new ExperimentParser(experimentFiles, writer);
         Experiment experiment = experimentParser.parse();
         assertEquals("16102", experiment.getExecutionId());
-        assertEquals(2, experiment.getCompilationUnits().size());
+        assertEquals(2, StreamSupport.stream(experiment.getCompilationUnits().spliterator(), false).count());
         assertEquals(263869257616L, experiment.getTotalPeriod());
         assertEquals(264224374L + 158328120602L, experiment.getGraalPeriod());
 
         for (CompilationUnit compilationUnit : experiment.getCompilationUnits()) {
+            CompilationUnit.TreePair trees = compilationUnit.loadTrees();
             switch (compilationUnit.getCompilationId()) {
                 case "1": {
                     assertEquals("foo.bar.Foo$Bar.methodName()",
-                                    compilationUnit.getCompilationMethodName());
+                                    compilationUnit.getMethod().getMethodName());
+
+                    InliningTreeNode inliningTreeRoot = new InliningTreeNode(compilationUnit.getMethod().getMethodName(), -1, true, null);
+                    inliningTreeRoot.addChild(new InliningTreeNode("java.lang.String.equals(Object)", 44, false, List.of("not inlined")));
+                    assertEquals(inliningTreeRoot, trees.getInliningTree().getRoot());
                     OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
                     OptimizationPhase someTier = new OptimizationPhase("SomeTier");
                     rootPhase.addChild(someTier);
@@ -93,12 +147,12 @@ public class ExperimentParserTest {
                                     EconomicMap.of("foo.bar.Foo$Bar.innerMethod()", 30, "foo.bar.Foo$Bar.methodName()", 68),
                                     EconomicMap.of("unrollFactor", 1)));
                     someTier.addChild(new OptimizationPhase("EmptyPhase"));
-                    assertEquals(rootPhase, compilationUnit.getRootPhase());
+                    assertEquals(rootPhase, trees.getOptimizationTree().getRoot());
                     break;
                 }
                 case "2": {
                     assertEquals("org.example.myMethod(org.example.Foo, org.example.Class$Context)",
-                                    compilationUnit.getCompilationMethodName());
+                                    compilationUnit.getMethod().getMethodName());
                     OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
                     rootPhase.addChild(new Optimization(
                                     "LoopTransformation",
@@ -110,7 +164,8 @@ public class ExperimentParserTest {
                                     "PartialUnroll",
                                     null,
                                     EconomicMap.of("unrollFactor", 2)));
-                    assertEquals(rootPhase, compilationUnit.getRootPhase());
+                    assertEquals(rootPhase, trees.getOptimizationTree().getRoot());
+                    assertNull(trees.getInliningTree().getRoot());
                     break;
                 }
                 default:

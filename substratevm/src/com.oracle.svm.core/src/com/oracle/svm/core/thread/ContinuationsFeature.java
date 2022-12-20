@@ -58,7 +58,7 @@ public class ContinuationsFeature implements InternalFeature {
                 RuntimeClassInitialization.initializeAtRunTime("jdk.internal.vm.Continuation");
             }
             // Fail if virtual threads are used and runtime compilation is enabled
-            supportLoom = haveLoom && !DeoptimizationSupport.enabled();
+            supportLoom = haveLoom && !DeoptimizationSupport.enabled() && !SubstrateOptions.useLLVMBackend();
         }
 
         if (supportLoom) {
@@ -66,7 +66,9 @@ public class ContinuationsFeature implements InternalFeature {
             ImageSingletons.add(VirtualThreads.class, vt);
             ImageSingletons.add(LoomVirtualThreads.class, vt); // for simpler check in LoomSupport
         } else if (SubstrateOptions.SupportContinuations.getValue()) {
-            if (JavaVersionUtil.JAVA_SPEC == 17) {
+            if (SubstrateOptions.useLLVMBackend()) {
+                throw UserError.abort("Virtual threads are not supported together with the LLVM backend.");
+            } else if (JavaVersionUtil.JAVA_SPEC == 17) {
                 if (DeoptimizationSupport.enabled()) {
                     throw UserError.abort("Virtual threads are enabled, but are currently not supported together with Truffle JIT compilation.");
                 }

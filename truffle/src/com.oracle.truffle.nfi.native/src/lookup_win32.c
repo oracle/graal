@@ -102,7 +102,7 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext
     }
     (*env)->ReleaseStringUTFChars(env, name, utfName);
 
-    return (jlong) ret;
+    return (jlong) (intptr_t) check_intrinsify(ctx, ret);
 }
 
 #endif

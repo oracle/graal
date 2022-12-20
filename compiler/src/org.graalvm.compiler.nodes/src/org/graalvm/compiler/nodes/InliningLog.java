@@ -82,14 +82,6 @@ public class InliningLog {
             return reason;
         }
 
-        public String getPhase() {
-            return phase;
-        }
-
-        public ResolvedJavaMethod getTarget() {
-            return target;
-        }
-
         @Override
         public String toString() {
             return String.format("<%s> %s: %s, %s", phase, target != null ? target.format("%H.%n(%p)") : "", positive ? "yes" : "no",
@@ -254,8 +246,7 @@ public class InliningLog {
         FixedNode replacementSiteInvoke = replacementSite.invoke != null ? replacementSite.invoke.asFixedNodeOrNull() : null;
         site.invoke = replacementSiteInvoke != null && replacementSiteInvoke.isAlive() ? (Invokable) replacements.get(replacementSiteInvoke) : null;
         for (Callsite replacementChild : replacementSite.children) {
-            Callsite child = new Callsite(site, null);
-            site.children.add(child);
+            Callsite child = site.addChild(null);
             copyTree(child, replacementChild, replacements, mapping);
         }
     }
@@ -479,8 +470,7 @@ public class InliningLog {
     public void trackNewCallsite(Invokable invoke) {
         assert !leaves.containsKey(invoke);
         Callsite currentRoot = findCurrentRoot();
-        Callsite callsite = new Callsite(currentRoot, invoke);
-        currentRoot.children.add(callsite);
+        Callsite callsite = currentRoot.addChild(invoke);
         leaves.put(invoke, callsite);
     }
 
@@ -493,13 +483,6 @@ public class InliningLog {
         Callsite parentCallsite = siblingCallsite.parent;
         Callsite callsite = parentCallsite.addChild(newInvoke);
         leaves.put(newInvoke, callsite);
-    }
-
-    public void updateExistingCallsite(Invokable previousInvoke, Invokable newInvoke) {
-        Callsite callsite = leaves.get(previousInvoke);
-        leaves.removeKey(previousInvoke);
-        leaves.put(newInvoke, callsite);
-        callsite.invoke = newInvoke;
     }
 
     /**
@@ -542,5 +525,12 @@ public class InliningLog {
         for (Callsite child : site.children) {
             formatAsTree(child, indent + "  ", builder);
         }
+    }
+
+    /**
+     * Gets the callsite representing the root method.
+     */
+    public Callsite getRootCallsite() {
+        return root;
     }
 }

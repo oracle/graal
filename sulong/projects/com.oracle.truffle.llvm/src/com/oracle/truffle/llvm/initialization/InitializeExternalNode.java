@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.initialization;
 
-import java.util.ArrayList;
-
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
@@ -41,13 +39,14 @@ import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMScopeChain;
-import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMThreadLocalSymbol;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+
+import java.util.ArrayList;
 
 /**
  *
@@ -77,7 +76,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 public final class InitializeExternalNode extends LLVMNode {
     @CompilationFinal(dimensions = 1) private final LLVMFunction[] functions;
     @CompilationFinal(dimensions = 1) private final LLVMGlobal[] globals;
-    @CompilationFinal(dimensions = 1) private final LLVMSymbol[] threadLocals;
+    @CompilationFinal(dimensions = 1) private final LLVMThreadLocalSymbol[] threadLocals;
     @Child private AllocExternalSymbolNode allocExternalSymbol;
 
     public InitializeExternalNode(LLVMParserResult result) {
@@ -122,14 +121,14 @@ public final class InitializeExternalNode extends LLVMNode {
         NativeContextExtension nativeContextExtension = getNativeContextExtension(context);
 
         for (LLVMGlobal global : globals) {
-            LLVMPointer pointer = allocExternalSymbol.execute(localScope, globalScope, intrinsicProvider, nativeContextExtension, context, rtldFlags, global);
+            LLVMPointer pointer = allocExternalSymbol.execute(localScope, globalScope, nativeContextExtension, context, rtldFlags, global);
             if (pointer != null) {
                 context.initializeSymbol(global, pointer);
             }
         }
 
-        for (LLVMSymbol symbol : threadLocals) {
-            LLVMPointer pointer = allocExternalSymbol.execute(localScope, globalScope, intrinsicProvider, nativeContextExtension, context, rtldFlags, symbol);
+        for (LLVMThreadLocalSymbol symbol : threadLocals) {
+            LLVMPointer pointer = allocExternalSymbol.execute(localScope, globalScope, context, rtldFlags, symbol);
             if (pointer != null) {
                 context.initializeSymbol(symbol, pointer);
             }

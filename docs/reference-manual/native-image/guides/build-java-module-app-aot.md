@@ -12,7 +12,7 @@ GraalVM Native Image supports the [Java Platform Module System](https://www.orac
 The `native-image` tool accepts the module-related arguments like `--module` (`-m`), `--module-path` (`-p`), `--add-opens`, `--add-exports` (same as for the `java` launcher). 
 When such a module-related argument is used, the `native-image` tool itself is used as a module too.
  
-In addition to supporting `--add-reads` and `--add-modules`, all module related options are considered prior to scanning the modulepath. 
+In addition to supporting `--add-reads` and `--add-modules`, all module related options are considered prior to scanning the module path. 
 This helps prevent class loading errors and allow for better module introspection at run time.
 
 The command to build a native executable from a Java module is:
@@ -47,7 +47,7 @@ For the demo, you will use a simple HelloWorld Java module gathered with Maven:
   
     ```bash
     git clone https://github.com/graalvm/graalvm-demos
-    cd native-hello-module
+    cd graalvm-demos/native-hello-module
     ```
 
 2. Compile and package the project with Maven:

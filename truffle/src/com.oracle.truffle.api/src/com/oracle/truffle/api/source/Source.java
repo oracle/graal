@@ -993,8 +993,11 @@ public abstract class Source {
         if (useOrigin instanceof File) {
             final File file = (File) useOrigin;
             assert useFileSystemContext != null : "file system context must be provided by polyglot embedding API";
-            TruffleFile truffleFile = SourceAccessor.getTruffleFile(file.toPath().toString(), useFileSystemContext);
-            useOrigin = truffleFile;
+            try {
+                useOrigin = SourceAccessor.getTruffleFile(file.toPath().toString(), useFileSystemContext);
+            } catch (UnsupportedOperationException | IllegalArgumentException e) {
+                throw new AssertionError("Inconsistent path", e);
+            }
         }
 
         if (useOrigin == CONTENT_UNSET) {
@@ -1037,20 +1040,11 @@ public abstract class Source {
             useUri = useUri == null ? tmpUri : useUri;
             usePath = usePath == null ? useUrl.getPath() : usePath;
             useFileSystemContext = useFileSystemContext == null ? SourceAccessor.ACCESSOR.engineSupport().getCurrentFileSystemContext() : useFileSystemContext;
+            assert useTruffleFile == null;
             try {
                 useTruffleFile = SourceAccessor.getTruffleFile(tmpUri, useFileSystemContext);
-                useTruffleFile = getCanonicalFileIfItExists(useTruffleFile);
-                if (useContent == CONTENT_UNSET) {
-                    if (isCharacterBased(useFileSystemContext, language, useMimeType)) {
-                        String fileMimeType = useMimeType == null ? SourceAccessor.detectMimeType(useTruffleFile, getValidMimeTypes(useFileSystemContext, language)) : useMimeType;
-                        useEncoding = useEncoding == null ? findEncoding(useTruffleFile, fileMimeType) : useEncoding;
-                        useContent = read(useTruffleFile, useEncoding);
-                    } else {
-                        useContent = ByteSequence.create(useTruffleFile.readAllBytes());
-                    }
-                }
-            } catch (UnsupportedOperationException uoe) {
-                if (ALLOW_IO && SourceAccessor.hasAllAccess(useFileSystemContext)) {
+            } catch (IllegalArgumentException | UnsupportedOperationException e) {
+                if (ALLOW_IO && SourceAccessor.isSocketIOAllowed(useFileSystemContext)) {
                     // Not a recognized by FileSystem, fall back to URLConnection only for allowed
                     // IO without a custom FileSystem
                     URLConnection connection = useUrl.openConnection();
@@ -1064,6 +1058,18 @@ public abstract class Source {
                     }
                 } else {
                     throw new SecurityException("Reading of URL " + useUrl + " is not allowed.");
+                }
+            }
+            if (useTruffleFile != null) {
+                useTruffleFile = getCanonicalFileIfItExists(useTruffleFile);
+                if (useContent == CONTENT_UNSET) {
+                    if (isCharacterBased(useFileSystemContext, language, useMimeType)) {
+                        String fileMimeType = useMimeType == null ? SourceAccessor.detectMimeType(useTruffleFile, getValidMimeTypes(useFileSystemContext, language)) : useMimeType;
+                        useEncoding = useEncoding == null ? findEncoding(useTruffleFile, fileMimeType) : useEncoding;
+                        useContent = read(useTruffleFile, useEncoding);
+                    } else {
+                        useContent = ByteSequence.create(useTruffleFile.readAllBytes());
+                    }
                 }
             }
         } else if (useOrigin instanceof Reader) {
@@ -1259,7 +1265,7 @@ public abstract class Source {
             // swallow and go on
         }
 
-        if (!ALLOW_IO || !SourceAccessor.hasAllAccess(fileSystemContext)) {
+        if (!ALLOW_IO || !SourceAccessor.isSocketIOAllowed(fileSystemContext)) {
             throw new SecurityException("Reading of URL " + url + " is not allowed.");
         }
 

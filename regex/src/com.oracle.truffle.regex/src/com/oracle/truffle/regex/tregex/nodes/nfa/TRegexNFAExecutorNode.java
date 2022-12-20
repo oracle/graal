@@ -44,6 +44,7 @@ package com.oracle.truffle.regex.tregex.nodes.nfa;
 import static com.oracle.truffle.api.CompilerDirectives.injectBranchProbability;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
@@ -128,7 +129,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
     }
 
     @Override
-    public Object execute(TRegexExecutorLocals abstractLocals, TruffleString.CodeRange codeRange, boolean tString) {
+    public Object execute(VirtualFrame frame, TRegexExecutorLocals abstractLocals, TruffleString.CodeRange codeRange, boolean tString) {
         TRegexNFAExecutorLocals locals = (TRegexNFAExecutorLocals) abstractLocals;
         CompilerDirectives.ensureVirtualized(locals);
 

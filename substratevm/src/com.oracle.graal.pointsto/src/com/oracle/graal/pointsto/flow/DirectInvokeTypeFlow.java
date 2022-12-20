@@ -26,25 +26,46 @@ package com.oracle.graal.pointsto.flow;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.graal.pointsto.util.LightImmutableCollection;
+import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
 
 import jdk.vm.ci.code.BytecodePosition;
 
 public abstract class DirectInvokeTypeFlow extends InvokeTypeFlow {
 
-    public MethodTypeFlow callee;
+    private volatile Object callees;
+
+    protected static final AtomicReferenceFieldUpdater<DirectInvokeTypeFlow, Object> CALLEES_ACCESSOR = AtomicReferenceFieldUpdater.newUpdater(DirectInvokeTypeFlow.class, Object.class,
+                    "callees");
 
     protected DirectInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
     }
 
     protected DirectInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, DirectInvokeTypeFlow original) {
         super(bb, methodFlows, original);
+    }
+
+    protected final void initializeCallees(PointsToAnalysis bb) {
+        if (callees == null) {
+            var calculatedCallees = bb.getHostVM().getMultiMethodAnalysisPolicy().determineCallees(bb, targetMethod, targetMethod, callerMultiMethodKey, this);
+
+            LightImmutableCollection.initializeNonEmpty(this, CALLEES_ACCESSOR, calculatedCallees);
+            allOriginalCallees = LightImmutableCollection.allMatch(this, CALLEES_ACCESSOR, (PointsToAnalysisMethod callee) -> callee.isOriginalMethod());
+
+            if (originalInvoke != null) {
+                ((DirectInvokeTypeFlow) originalInvoke).callees = callees;
+                originalInvoke.allOriginalCallees = allOriginalCallees;
+            }
+        }
     }
 
     @Override
@@ -53,11 +74,17 @@ public abstract class DirectInvokeTypeFlow extends InvokeTypeFlow {
     }
 
     @Override
-    public Collection<AnalysisMethod> getCallees() {
-        if (callee != null && callee.getMethod().isImplementationInvoked()) {
-            return Collections.singletonList(callee.getMethod());
-        } else {
-            return Collections.emptyList();
+    public final Collection<AnalysisMethod> getAllCallees() {
+        if (targetMethod.isImplementationInvoked()) {
+            /*
+             * When type states are filtered (e.g. due to context sensitivity), it is possible for a
+             * callee to be set, but for it not to be linked.
+             */
+            Collection<AnalysisMethod> result = LightImmutableCollection.toCollection(this, CALLEES_ACCESSOR);
+            assert result.stream().filter(MultiMethod::isOriginalMethod).allMatch(AnalysisMethod::isImplementationInvoked);
+            return result;
         }
+        return Collections.emptyList();
     }
+
 }

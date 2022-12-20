@@ -32,3 +32,24 @@ EXPORTS
   __sulong_eh_canCatch_windows
   __sulong_eh_copy_windows
   __sulong_eh_unwind_windows
+  ; thread_safe_statics.cpp
+  _Init_thread_abort
+  _Init_thread_epoch
+  _Init_thread_footer
+  _Init_thread_header
+  ; export the following _Init_thread functions because they are intrinsified
+  _Init_thread_lock
+  _Init_thread_notify
+  _Init_thread_unlock
+  _Init_thread_wait
+  ; operators
+  ??2@YAPEAX_K@Z                     ; operator new
+  ??2@YAPEAX_KAEBUnothrow_t@std@@@Z  ; operator (std::nothrow) new
+  ??_U@YAPEAX_K@Z                    ; operator new[]
+  ??_U@YAPEAX_KAEBUnothrow_t@std@@@Z ; operator (std::nothrow) new[]
+  ??3@YAXPEAX@Z                      ; operator delete
+  ??3@YAXPEAX_K@Z                    ; operator delete (size)
+  ??3@YAXPEAXAEBUnothrow_t@std@@@Z   ; operator delete (std::nothrow)
+  ??_V@YAXPEAX@Z                     ; operator delete[]
+  ??_V@YAXPEAX_K@Z                   ; operator delete[] (size)
+  ??_V@YAXPEAXAEBUnothrow_t@std@@@Z  ; operator delete[] (std::nothrow)

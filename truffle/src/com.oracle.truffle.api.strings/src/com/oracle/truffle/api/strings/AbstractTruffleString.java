@@ -256,7 +256,6 @@ public abstract class AbstractTruffleString {
 
     final int byteArrayOffset() {
         assert data instanceof byte[] || data instanceof NativePointer || data instanceof LazyLong;
-        assert !(data instanceof NativePointer) || offset() == ((NativePointer) data).offset();
         return data instanceof NativePointer ? 0 : offset();
     }
 
@@ -499,6 +498,16 @@ public abstract class AbstractTruffleString {
     }
 
     /**
+     * Shorthand for calling the uncached version of {@link TruffleString.AsManagedNode}.
+     *
+     * @since 23.0
+     */
+    @TruffleBoundary
+    public final TruffleString asManagedTruffleStringUncached(TruffleString.Encoding expectedEncoding, boolean cacheResult) {
+        return TruffleString.AsManagedNode.getUncached().execute(this, expectedEncoding, cacheResult);
+    }
+
+    /**
      * Shorthand for calling the uncached version of
      * {@link MutableTruffleString.AsMutableTruffleStringNode}.
      *
@@ -557,6 +566,17 @@ public abstract class AbstractTruffleString {
     @TruffleBoundary
     public final boolean isValidUncached(TruffleString.Encoding expectedEncoding) {
         return TruffleString.IsValidNode.getUncached().execute(this, expectedEncoding);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of
+     * {@link TruffleString.GetStringCompactionLevelNode}.
+     *
+     * @since 23.0
+     */
+    @TruffleBoundary
+    public final TruffleString.CompactionLevel getStringCompactionLevelUncached(TruffleString.Encoding expectedEncoding) {
+        return TruffleString.GetStringCompactionLevelNode.getUncached().execute(this, expectedEncoding);
     }
 
     /**
@@ -1307,24 +1327,22 @@ public abstract class AbstractTruffleString {
         private final Object pointerObject;
         final long pointer;
         private byte[] bytes;
-        private final int offset;
         private volatile boolean byteArrayIsValid = false;
 
-        private NativePointer(Object pointerObject, long pointer, int offset) {
+        private NativePointer(Object pointerObject, long pointer) {
             this.pointerObject = pointerObject;
             this.pointer = pointer;
-            this.offset = offset;
         }
 
-        static NativePointer create(Node nodeThis, Object pointerObject, Node interopLibrary, int offset) {
+        static NativePointer create(Node nodeThis, Object pointerObject, Node interopLibrary) {
             if (!TStringAccessor.isNativeAccessAllowed(nodeThis)) {
                 throw InternalErrors.nativeAccessRequired();
             }
-            return new NativePointer(pointerObject, TStringAccessor.INTEROP.unboxPointer(interopLibrary, pointerObject), offset);
+            return new NativePointer(pointerObject, TStringAccessor.INTEROP.unboxPointer(interopLibrary, pointerObject));
         }
 
-        NativePointer copy(int newOffset) {
-            return new NativePointer(pointerObject, pointer, newOffset);
+        NativePointer copy() {
+            return new NativePointer(pointerObject, pointer);
         }
 
         Object getPointerObject() {
@@ -1336,20 +1354,16 @@ public abstract class AbstractTruffleString {
             return bytes;
         }
 
-        int offset() {
-            return offset;
-        }
-
         void materializeByteArray(AbstractTruffleString a, ConditionProfile profile) {
-            materializeByteArray(a.length() << a.stride(), profile);
+            materializeByteArray(a.offset(), a.length() << a.stride(), profile);
         }
 
-        void materializeByteArray(int byteLength, ConditionProfile profile) {
+        void materializeByteArray(int byteOffset, int byteLength, ConditionProfile profile) {
             if (profile.profile(!byteArrayIsValid)) {
                 if (bytes == null) {
                     bytes = new byte[byteLength];
                 }
-                TStringUnsafe.copyFromNative(pointer, offset, bytes, 0, byteLength);
+                TStringUnsafe.copyFromNative(pointer, byteOffset, bytes, 0, byteLength);
                 byteArrayIsValid = true;
             }
         }

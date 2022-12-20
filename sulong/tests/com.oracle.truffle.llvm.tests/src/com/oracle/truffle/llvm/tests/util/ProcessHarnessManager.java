@@ -49,6 +49,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil.ProcessResult;
 
 public class ProcessHarnessManager {
+    List<ProcessHarnessInstance> instances = new ArrayList<>();
     BlockingQueue<Task> tasks = new LinkedBlockingQueue<>();
     ExecutorService executor = Executors.newCachedThreadPool();
 
@@ -91,12 +92,42 @@ public class ProcessHarnessManager {
         }
     }
 
+    public static class TestHarnessError extends Error {
+
+        private static final long serialVersionUID = 1L;
+
+        private String stdout;
+        private String stderr;
+        private int exitcode;
+        private String command;
+
+        private boolean isAlive;
+
+        public TestHarnessError(String command, String stdout, String stderr, boolean isAlive, int exitcode) {
+            this.command = command;
+            this.stdout = stdout;
+            this.stderr = stderr;
+            this.isAlive = isAlive;
+            this.exitcode = exitcode;
+        }
+
+        @Override
+        public String getMessage() {
+            return String.format("The test harness failed fataly. This is likely because the test runner process crashed.\n" +
+                            "Command: %s\nStdout:\n%s\n\nStderr:\n%s\n\nExit code (isAlive %b): %d", this.command, this.stdout, this.stderr,
+                            isAlive, this.exitcode);
+        }
+    }
+
     protected class ProcessHarnessInstance {
         static final String EXIT_CODE = "Exit code: ";
 
         Process process;
+        String currentCommand;
         BufferedReader output;
         BufferedReader error;
+        StringBuilder stdoutBuffer;
+        StringBuilder stderrBuffer;
         Writer writer;
         Thread thread;
 
@@ -107,11 +138,18 @@ public class ProcessHarnessManager {
             this.writer = writer;
         }
 
-        private String readOutputString(BufferedReader reader) throws IOException {
-            StringBuilder buffer = new StringBuilder();
+        private String readOutputString(StringBuilder buffer, BufferedReader reader) throws IOException {
             assertEquals(">>>START_TEST", reader.readLine());
             while (true) {
                 String line = reader.readLine();
+                if (line == null) {
+                    // The process has probably died. Print the output and abort
+                    Error err = new TestHarnessError(currentCommand, stdoutBuffer.toString(), stderrBuffer.toString(), process.isAlive(), process.exitValue());
+                    err.printStackTrace();
+                    shutdownProcess();
+                    shutdown();
+                    System.exit(-1);
+                }
                 if (line.endsWith("<<<STOP_TEST")) {
                     buffer.append(line.substring(0, line.length() - "<<<STOP_TEST".length()));
                     break;
@@ -123,18 +161,20 @@ public class ProcessHarnessManager {
             return buffer.substring(0, buffer.length() - System.lineSeparator().length());
         }
 
-        private ProcessResult processOutput(String command) throws InterruptedException, IOException, ExecutionException {
+        private ProcessResult processOutput() throws InterruptedException, IOException, ExecutionException {
             // Get the stdout and stderr output in parallel, because printing to
             // stderr may be blocking for the client process if the buffer is
             // not cleared.
-            Future<String> stdoutFuture = executor.submit(() -> readOutputString(output));
-            Future<String> stderrFuture = executor.submit(() -> readOutputString(error));
+            stdoutBuffer = new StringBuilder();
+            stderrBuffer = new StringBuilder();
+            Future<String> stdoutFuture = executor.submit(() -> readOutputString(stdoutBuffer, output));
+            Future<String> stderrFuture = executor.submit(() -> readOutputString(stderrBuffer, error));
             String stdout = stdoutFuture.get();
             String stderr = stderrFuture.get();
             String exitCodeLine = output.readLine();
             assert exitCodeLine.startsWith(EXIT_CODE);
             int exitCode = Integer.parseInt(exitCodeLine.substring(EXIT_CODE.length()));
-            return new ProcessResult(command, exitCode, stderr, stdout);
+            return new ProcessResult(currentCommand, exitCode, stderr, stdout);
         }
 
         private void waitReady() throws IOException {
@@ -149,19 +189,22 @@ public class ProcessHarnessManager {
         }
 
         private void runTask(Task task) throws IOException, InterruptedException, ExecutionException {
-            writer.write(String.format("RUN %s%s", task.task, System.lineSeparator()));
+            currentCommand = task.task;
+            writer.write(String.format("RUN %s%n", currentCommand));
             writer.flush();
-            ProcessResult result = processOutput(task.task);
+            ProcessResult result = processOutput();
             task.done(result);
         }
 
         private void shutdownProcess() {
-            try {
-                writer.write("EXIT" + System.lineSeparator());
-                writer.flush();
-                process.wait(1000);
-            } catch (Exception ex) {
-                process.destroyForcibly();
+            if (process.isAlive()) {
+                try {
+                    writer.write("EXIT" + System.lineSeparator());
+                    writer.flush();
+                    process.wait(1000);
+                } catch (Exception ex) {
+                    process.destroyForcibly();
+                }
             }
         }
 
@@ -179,18 +222,16 @@ public class ProcessHarnessManager {
             } catch (ExecutionException ex) {
                 System.err.println("A test process manager failed with a fatal execution exception:");
                 ex.printStackTrace();
-                shutdown();
             } catch (IOException ex) {
                 System.err.println("A test process manager failed with a fatal IO exception:");
                 ex.printStackTrace();
-                shutdown();
             } catch (Exception ex) {
                 System.err.println("An unknown exception occurred:");
                 ex.printStackTrace();
+            } finally {
+                shutdownProcess();
                 shutdown();
             }
-
-            shutdownProcess();
         }
 
     }
@@ -212,7 +253,7 @@ public class ProcessHarnessManager {
         if (debug) {
             commandArgs.add("-agentlib:jdwp=transport=dt_socket,server=y,address=8000,suspend=y");
         }
-        Collections.addAll(commandArgs, "-esa", "-ea", "-Djava.awt.headless=true", "-cp", classpath,
+        Collections.addAll(commandArgs, "-Xss56m", "-Xms4g", "-Xmx4g", "-esa", "-ea", "-Djava.awt.headless=true", "-cp", classpath,
                         copyProperty("polyglot.engine.WarnInterpreterOnly"),
                         copyProperty("truffle.nfi.library"),
                         copyProperty("org.graalvm.language.llvm.home"),
@@ -232,6 +273,7 @@ public class ProcessHarnessManager {
         ProcessHarnessInstance instance = new ProcessHarnessInstance(process, reader, error, writer);
         instance.thread = new Thread(instance::runThread);
         instance.thread.start();
+        instances.add(instance);
         return instance;
     }
 
@@ -246,6 +288,9 @@ public class ProcessHarnessManager {
     }
 
     public void shutdown() {
-        executor.shutdown();
+        executor.shutdownNow();
+        for (ProcessHarnessInstance instance : instances) {
+            instance.shutdownProcess();
+        }
     }
 }

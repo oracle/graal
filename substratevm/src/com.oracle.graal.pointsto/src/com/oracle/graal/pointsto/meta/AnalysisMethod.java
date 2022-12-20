@@ -32,11 +32,17 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
@@ -55,9 +61,11 @@ import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AtomicUtils;
+import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Constant;
@@ -72,24 +80,22 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public abstract class AnalysisMethod extends AnalysisElement implements WrappedJavaMethod, GraphProvider, OriginalMethodProvider {
-    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isVirtualRootMethodUpdater = AtomicIntegerFieldUpdater
-                    .newUpdater(AnalysisMethod.class, "isVirtualRootMethod");
+public abstract class AnalysisMethod extends AnalysisElement implements WrappedJavaMethod, GraphProvider, OriginalMethodProvider, MultiMethod {
+    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isVirtualRootMethodUpdater = AtomicIntegerFieldUpdater.newUpdater(AnalysisMethod.class, "isVirtualRootMethod");
 
-    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isDirectRootMethodUpdater = AtomicIntegerFieldUpdater
-                    .newUpdater(AnalysisMethod.class, "isDirectRootMethod");
+    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isDirectRootMethodUpdater = AtomicIntegerFieldUpdater.newUpdater(AnalysisMethod.class, "isDirectRootMethod");
 
-    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isInvokedUpdater = AtomicIntegerFieldUpdater
-                    .newUpdater(AnalysisMethod.class, "isInvoked");
+    private static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> isInvokedUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisMethod.class, Object.class, "isInvoked");
 
-    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isImplementationInvokedUpdater = AtomicIntegerFieldUpdater
-                    .newUpdater(AnalysisMethod.class, "isImplementationInvoked");
+    private static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> isImplementationInvokedUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisMethod.class, Object.class, "isImplementationInvoked");
 
-    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isIntrinsicMethodUpdater = AtomicIntegerFieldUpdater
-                    .newUpdater(AnalysisMethod.class, "isIntrinsicMethod");
+    private static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> isIntrinsicMethodUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisMethod.class, Object.class, "isIntrinsicMethod");
 
-    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isInlinedUpdater = AtomicIntegerFieldUpdater
-                    .newUpdater(AnalysisMethod.class, "isInlined");
+    private static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> isInlinedUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisMethod.class, Object.class, "isInlined");
 
     public final ResolvedJavaMethod wrapped;
 
@@ -97,19 +103,37 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private final boolean hasNeverInlineDirective;
     private final ExceptionHandler[] exceptionHandlers;
     private final LocalVariableTable localVariableTable;
+    private final String name;
     private final String qualifiedName;
 
-    private final AnalysisType declaringClass;
+    protected final AnalysisType declaringClass;
+    private final int parsingContextMaxDepth;
+
+    private final MultiMethodKey multiMethodKey;
+
+    /**
+     * Map from a key to the corresponding implementation. All multi-method implementations for a
+     * given Java method share the same map. This allows one to easily switch between different
+     * implementations when needed. When {@code multiMethodMap} is null, then
+     * {@link #multiMethodKey} points to {@link #ORIGINAL_METHOD} and no other implementations exist
+     * for the method. This is done to reduce the memory overhead in the common case when only this
+     * one implementation is present.
+     */
+    private volatile Map<MultiMethodKey, MultiMethod> multiMethodMap;
+
+    @SuppressWarnings("rawtypes") //
+    private static final AtomicReferenceFieldUpdater<AnalysisMethod, Map> MULTIMETHOD_MAP_UPDATER = AtomicReferenceFieldUpdater.newUpdater(AnalysisMethod.class, Map.class,
+                    "multiMethodMap");
 
     /** Virtually invoked method registered as root. */
     @SuppressWarnings("unused") private volatile int isVirtualRootMethod;
     /** Direct (special or static) invoked method registered as root. */
     @SuppressWarnings("unused") private volatile int isDirectRootMethod;
     private Object entryPointData;
-    @SuppressWarnings("unused") private volatile int isInvoked;
-    @SuppressWarnings("unused") private volatile int isImplementationInvoked;
-    @SuppressWarnings("unused") private volatile int isIntrinsicMethod;
-    @SuppressWarnings("unused") private volatile int isInlined;
+    @SuppressWarnings("unused") private volatile Object isInvoked;
+    @SuppressWarnings("unused") private volatile Object isImplementationInvoked;
+    @SuppressWarnings("unused") private volatile Object isIntrinsicMethod;
+    @SuppressWarnings("unused") private volatile Object isInlined;
 
     private final AtomicReference<Object> parsedGraphCacheState = new AtomicReference<>(GRAPH_CACHE_UNPARSED);
     private static final Object GRAPH_CACHE_UNPARSED = "unparsed";
@@ -123,47 +147,80 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      */
     protected AnalysisMethod[] implementations;
 
-    public AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
+    protected AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey, Map<MultiMethodKey, MultiMethod> multiMethodMap) {
         this.wrapped = wrapped;
-        this.id = universe.nextMethodId.getAndIncrement();
-        declaringClass = universe.lookup(wrapped.getDeclaringClass());
+        id = universe.nextMethodId.getAndIncrement();
 
+        declaringClass = universe.lookup(wrapped.getDeclaringClass());
         hasNeverInlineDirective = universe.hostVM().hasNeverInlineDirective(wrapped);
 
-        if (PointstoOptions.TrackAccessChain.getValue(universe.hostVM().options())) {
-            startTrackInvocations();
-        }
+        name = createName(wrapped, multiMethodKey);
+        qualifiedName = format("%H.%n(%P)");
 
         ExceptionHandler[] original = wrapped.getExceptionHandlers();
         exceptionHandlers = new ExceptionHandler[original.length];
         for (int i = 0; i < original.length; i++) {
             ExceptionHandler h = original[i];
-            JavaType catchType = getCatchType(universe, h);
+            JavaType catchType = getCatchType(universe, wrapped, h);
             exceptionHandlers[i] = new ExceptionHandler(h.getStartBCI(), h.getEndBCI(), h.getHandlerBCI(), h.catchTypeCPI(), catchType);
         }
 
-        LocalVariableTable newLocalVariableTable = null;
+        LocalVariableTable analysisLocalVariableTable = null;
         if (wrapped.getLocalVariableTable() != null) {
             try {
                 Local[] origLocals = wrapped.getLocalVariableTable().getLocals();
                 Local[] newLocals = new Local[origLocals.length];
-                ResolvedJavaType accessingClass = getDeclaringClass().getWrapped();
+                ResolvedJavaType accessingClass = declaringClass.getWrapped();
                 for (int i = 0; i < newLocals.length; ++i) {
                     Local origLocal = origLocals[i];
                     ResolvedJavaType origLocalType = origLocal.getType() instanceof ResolvedJavaType ? (ResolvedJavaType) origLocal.getType() : origLocal.getType().resolve(accessingClass);
                     AnalysisType type = universe.lookup(origLocalType);
                     newLocals[i] = new Local(origLocal.getName(), type, origLocal.getStartBCI(), origLocal.getEndBCI(), origLocal.getSlot());
                 }
-                newLocalVariableTable = new LocalVariableTable(newLocals);
+                analysisLocalVariableTable = new LocalVariableTable(newLocals);
             } catch (LinkageError | UnsupportedFeatureException | BytecodeParserError e) {
-                newLocalVariableTable = null;
+                // in this case, localVariableTable = null
             }
-
         }
-        localVariableTable = newLocalVariableTable;
-        this.qualifiedName = format("%H.%n(%P)");
+        localVariableTable = analysisLocalVariableTable;
 
+        this.multiMethodKey = multiMethodKey;
+        this.multiMethodMap = multiMethodMap;
+
+        if (PointstoOptions.TrackAccessChain.getValue(declaringClass.universe.hostVM().options())) {
+            startTrackInvocations();
+        }
         registerSignatureTypes();
+        parsingContextMaxDepth = PointstoOptions.ParsingContextMaxDepth.getValue(declaringClass.universe.hostVM.options());
+    }
+
+    protected AnalysisMethod(AnalysisMethod original, MultiMethodKey multiMethodKey) {
+        wrapped = original.wrapped;
+        id = original.id;
+        declaringClass = original.declaringClass;
+        hasNeverInlineDirective = original.hasNeverInlineDirective;
+        exceptionHandlers = original.exceptionHandlers;
+        localVariableTable = original.localVariableTable;
+        parsingContextMaxDepth = original.parsingContextMaxDepth;
+
+        name = createName(wrapped, multiMethodKey);
+        qualifiedName = format("%H.%n(%P)");
+
+        this.multiMethodKey = multiMethodKey;
+        assert original.multiMethodMap != null;
+        multiMethodMap = original.multiMethodMap;
+
+        if (PointstoOptions.TrackAccessChain.getValue(declaringClass.universe.hostVM().options())) {
+            startTrackInvocations();
+        }
+    }
+
+    private static String createName(ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey) {
+        String aName = wrapped.getName();
+        if (multiMethodKey != ORIGINAL_METHOD) {
+            aName += MULTI_METHOD_KEY_SEPARATOR + multiMethodKey;
+        }
+        return aName;
     }
 
     /**
@@ -186,7 +243,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return qualifiedName;
     }
 
-    private JavaType getCatchType(AnalysisUniverse universe, ExceptionHandler handler) {
+    private static JavaType getCatchType(AnalysisUniverse universe, ResolvedJavaMethod wrapped, ExceptionHandler handler) {
         JavaType catchType = handler.getCatchType();
         if (catchType == null) {
             return null;
@@ -225,9 +282,28 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     public abstract Iterable<? extends InvokeInfo> getInvokes();
 
     /**
+     * @return the position of the invocation that triggered parsing for this method, or null
+     */
+    public abstract BytecodePosition getParsingReason();
+
+    /**
      * @return the parsing context in which given method was parsed
      */
-    public abstract StackTraceElement[] getParsingContext();
+    public final StackTraceElement[] getParsingContext() {
+        List<StackTraceElement> trace = new ArrayList<>();
+        BytecodePosition curr = getParsingReason();
+
+        while (curr != null) {
+            if (trace.size() > parsingContextMaxDepth) {
+                trace.add(ReportUtils.truncatedStackTraceSentinel(this));
+                break;
+            }
+            AnalysisMethod caller = (AnalysisMethod) curr.getMethod();
+            trace.add(caller.asStackTraceElement(curr.getBCI()));
+            curr = caller.getParsingReason();
+        }
+        return trace.toArray(new StackTraceElement[0]);
+    }
 
     public int getId() {
         return id;
@@ -238,8 +314,9 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * builder plugin}. Such a method is treated similar to an invoked method. For example, method
      * resolution must be able to find the method (otherwise the intrinsification would not work).
      */
-    public void registerAsIntrinsicMethod() {
-        AtomicUtils.atomicMarkAndRun(this, isIntrinsicMethodUpdater, this::onReachable);
+    public void registerAsIntrinsicMethod(Object reason) {
+        assert isValidReason(reason) : "Registering a method as intrinsic needs to provide a valid reason, found: " + reason;
+        AtomicUtils.atomicSetAndRun(this, reason, isIntrinsicMethodUpdater, this::onReachable);
     }
 
     public void registerAsEntryPoint(Object newEntryPointData) {
@@ -252,11 +329,14 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         startTrackInvocations();
     }
 
-    public boolean registerAsInvoked() {
-        return AtomicUtils.atomicMark(this, isInvokedUpdater);
+    public boolean registerAsInvoked(Object reason) {
+        assert isValidReason(reason) : "Registering a method as invoked needs to provide a valid reason, found: " + reason;
+        return AtomicUtils.atomicSet(this, reason, isInvokedUpdater);
     }
 
-    public boolean registerAsImplementationInvoked() {
+    public boolean registerAsImplementationInvoked(Object reason) {
+        assert isValidReason(reason) : "Registering a method as implementation invoked needs to provide a valid reason, found: " + reason;
+        assert isImplementationInvokable();
         assert !Modifier.isAbstract(getModifiers());
 
         /*
@@ -267,12 +347,13 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
          * the method as invoked, it would have an unwanted side effect, where this method could
          * return before the class gets marked as reachable.
          */
-        getDeclaringClass().registerAsReachable();
-        return AtomicUtils.atomicMarkAndRun(this, isImplementationInvokedUpdater, this::onReachable);
+        getDeclaringClass().registerAsReachable("declared method " + this.format("%H.%n(%p)") + " is registered as implementation invoked");
+        return AtomicUtils.atomicSetAndRun(this, reason, isImplementationInvokedUpdater, this::onReachable);
     }
 
-    public void registerAsInlined() {
-        AtomicUtils.atomicMarkAndRun(this, isInlinedUpdater, this::onReachable);
+    public void registerAsInlined(Object reason) {
+        assert isValidReason(reason) : "Registering a method as inlined needs to provide a valid reason, found: " + reason;
+        AtomicUtils.atomicSetAndRun(this, reason, isInlinedUpdater, this::onReachable);
     }
 
     /** Get the set of all callers for this method, as inferred by the static analysis. */
@@ -302,10 +383,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * as invoked also makes the declaring class reachable.
      *
      * Class is always marked as reachable regardless of the success of the atomic mark, same reason
-     * as in {@link AnalysisMethod#registerAsImplementationInvoked()}.
+     * as in {@link AnalysisMethod#registerAsImplementationInvoked(Object)}.
      */
     public boolean registerAsVirtualRootMethod() {
-        getDeclaringClass().registerAsReachable();
+        getDeclaringClass().registerAsReachable("declared method " + this.format("%H.%n(%p)") + " is registered as virtual root");
         return AtomicUtils.atomicMark(this, isVirtualRootMethodUpdater);
     }
 
@@ -313,7 +394,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * Registers this method as a direct (special or static) root for the analysis.
      */
     public boolean registerAsDirectRootMethod() {
-        getDeclaringClass().registerAsReachable();
+        getDeclaringClass().registerAsReachable("declared method " + this.format("%H.%n(%p)") + " is registered as direct root");
         return AtomicUtils.atomicMark(this, isDirectRootMethodUpdater);
     }
 
@@ -447,7 +528,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public String getName() {
-        return wrapped.getName();
+        return name;
     }
 
     @Override
@@ -652,10 +733,21 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     /**
+     * Forces the graph to be reparsed and the reparsing to be done by this thread.
+     */
+    public AnalysisParsedGraph reparseGraph(BigBang bb) {
+        return ensureGraphParsedHelper(bb, true);
+    }
+
+    /**
      * Ensures that the method has been parsed, i.e., that the {@link StructuredGraph Graal IR} for
      * the method is available.
      */
     public AnalysisParsedGraph ensureGraphParsed(BigBang bb) {
+        return ensureGraphParsedHelper(bb, false);
+    }
+
+    private AnalysisParsedGraph ensureGraphParsedHelper(BigBang bb, boolean forceReparse) {
         while (true) {
             Object curState = parsedGraphCacheState.get();
 
@@ -668,52 +760,15 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
              * 5) parsing error: represented by a Throwable
              */
 
-            if (curState == GRAPH_CACHE_UNPARSED) {
-                ReentrantLock lock = new ReentrantLock();
-                lock.lock();
-                try {
-                    /*
-                     * Atomically try to claim the parsing. Note that the lock must be locked
-                     * already, and remain locked until the parsing is done. Other threads will wait
-                     * on this lock.
-                     */
-                    if (!parsedGraphCacheState.compareAndSet(GRAPH_CACHE_UNPARSED, lock)) {
-                        /* We lost the race, another thread is doing the parsing. */
-                        continue;
-                    }
-
-                    AnalysisParsedGraph graph = AnalysisParsedGraph.parseBytecode(bb, this);
-
-                    /*
-                     * Since we still hold the parsing lock, the transition form "parsing" to
-                     * "parsed" cannot fail.
-                     */
-                    boolean result = parsedGraphCacheState.compareAndSet(lock, graph);
-                    AnalysisError.guarantee(result, "State transition failed");
-
+            if (curState == GRAPH_CACHE_UNPARSED || (forceReparse && curState instanceof AnalysisParsedGraph)) {
+                AnalysisParsedGraph graph = parseGraph(bb, curState);
+                if (graph != null) {
                     return graph;
-
-                } catch (Throwable ex) {
-                    parsedGraphCacheState.set(ex);
-                    throw ex;
-
-                } finally {
-                    lock.unlock();
                 }
-
             } else if (curState instanceof ReentrantLock) {
-                ReentrantLock lock = (ReentrantLock) curState;
-                AnalysisError.guarantee(!lock.isHeldByCurrentThread(), "Recursive parsing request, would lead to endless waiting loop");
+                waitOnLock((ReentrantLock) curState);
 
-                lock.lock();
-                /*
-                 * When we can acquire the lock, parsing has finished. The next loop iteration will
-                 * return the result.
-                 */
-                AnalysisError.guarantee(parsedGraphCacheState.get() != lock, "Parsing must have finished in the thread that installed the lock");
-                lock.unlock();
-
-            } else if (curState instanceof AnalysisParsedGraph) {
+            } else if (!forceReparse && curState instanceof AnalysisParsedGraph) {
                 return (AnalysisParsedGraph) curState;
 
             } else if (curState instanceof Throwable) {
@@ -728,6 +783,54 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         }
     }
 
+    private AnalysisParsedGraph parseGraph(BigBang bb, Object expectedValue) {
+        ReentrantLock lock = new ReentrantLock();
+        lock.lock();
+        try {
+            /*
+             * Atomically try to claim the parsing. Note that the lock must be locked already, and
+             * remain locked until the parsing is done. Other threads will wait on this lock.
+             */
+            if (!parsedGraphCacheState.compareAndSet(expectedValue, lock)) {
+                /* We lost the race, another thread is doing the parsing. */
+                return null;
+            }
+
+            AnalysisParsedGraph graph = AnalysisParsedGraph.parseBytecode(bb, this);
+
+            /*
+             * Since we still hold the parsing lock, the transition form "parsing" to "parsed"
+             * cannot fail.
+             */
+            boolean result = parsedGraphCacheState.compareAndSet(lock, graph);
+            AnalysisError.guarantee(result, "State transition failed");
+
+            return graph;
+
+        } catch (Throwable ex) {
+            parsedGraphCacheState.set(ex);
+            throw ex;
+
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private void waitOnLock(ReentrantLock lock) {
+        AnalysisError.guarantee(!lock.isHeldByCurrentThread(), "Recursive parsing request, would lead to endless waiting loop");
+
+        lock.lock();
+        try {
+            /*
+             * When we can acquire the lock, parsing has finished. The next loop iteration will
+             * return the result.
+             */
+            AnalysisError.guarantee(parsedGraphCacheState.get() != lock, "Parsing must have finished in the thread that installed the lock");
+        } finally {
+            lock.unlock();
+        }
+    }
+
     /**
      * Returns the {@link StructuredGraph Graal IR} for the method that has been processed by the
      * static analysis.
@@ -737,10 +840,8 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             return null;
         }
 
-        StructuredGraph result = new StructuredGraph.Builder(debug.getOptions(), debug)
-                        .method(this)
-                        .recordInlinedMethods(false)
-                        .trackNodeSourcePosition(analyzedGraph.trackNodeSourcePosition()).build();
+        StructuredGraph result = new StructuredGraph.Builder(debug.getOptions(), debug).method(this).recordInlinedMethods(false).trackNodeSourcePosition(
+                        analyzedGraph.trackNodeSourcePosition()).build();
         GraphDecoder decoder = new GraphDecoder(AnalysisParsedGraph.HOST_ARCHITECTURE, result);
         decoder.decode(analyzedGraph, nodeReferences);
         return result;
@@ -749,4 +850,58 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     public void setAnalyzedGraph(EncodedGraph analyzedGraph) {
         this.analyzedGraph = analyzedGraph;
     }
+
+    @Override
+    public MultiMethodKey getMultiMethodKey() {
+        return multiMethodKey;
+    }
+
+    @Override
+    public AnalysisMethod getOrCreateMultiMethod(MultiMethodKey key) {
+        return getOrCreateMultiMethod(key,
+                        (k) -> {
+                        });
+    }
+
+    @Override
+    public AnalysisMethod getMultiMethod(MultiMethodKey key) {
+        if (key == multiMethodKey) {
+            return this;
+        } else if (multiMethodMap == null) {
+            return null;
+        } else {
+            return (AnalysisMethod) multiMethodMap.get(key);
+        }
+    }
+
+    @Override
+    public Collection<MultiMethod> getAllMultiMethods() {
+        if (multiMethodMap == null) {
+            return Collections.singleton(this);
+        } else {
+            return multiMethodMap.values();
+        }
+    }
+
+    public AnalysisMethod getOrCreateMultiMethod(MultiMethodKey key, Consumer<AnalysisMethod> createAction) {
+        if (key == multiMethodKey) {
+            return this;
+        }
+
+        if (multiMethodMap == null) {
+            ConcurrentHashMap<MultiMethodKey, MultiMethod> newMultiMethodMap = new ConcurrentHashMap<>();
+            newMultiMethodMap.put(multiMethodKey, this);
+            MULTIMETHOD_MAP_UPDATER.compareAndSet(this, null, newMultiMethodMap);
+        }
+
+        return (AnalysisMethod) multiMethodMap.computeIfAbsent(key, (k) -> {
+            AnalysisMethod newMethod = createMultiMethod(AnalysisMethod.this, k);
+            createAction.accept(newMethod);
+            return newMethod;
+        });
+    }
+
+    protected abstract AnalysisMethod createMultiMethod(AnalysisMethod analysisMethod, MultiMethodKey newMultiMethodKey);
+
+    public abstract boolean isImplementationInvokable();
 }

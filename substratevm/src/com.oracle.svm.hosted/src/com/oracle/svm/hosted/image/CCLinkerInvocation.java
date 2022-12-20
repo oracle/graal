@@ -46,15 +46,16 @@ import com.oracle.objectfile.macho.MachOSymtab;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.c.libc.BionicLibC;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
+import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 
 public abstract class CCLinkerInvocation implements LinkerInvocation {
 
@@ -256,31 +257,27 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 additionalPreOptions.add("-Wl,--gc-sections");
             }
 
-            /*
-             * On Linux we use --dynamic-list to ensure only our defined entrypoints end up as
-             * global symbols in the dynamic symbol table of the image. However, when compiling a
-             * static image these are not needed, and some linkers interpret them wrong, creating a
-             * corrupt binary.
-             */
-            if (!SubstrateOptions.StaticExecutable.getValue()) {
-                try {
-                    StringBuilder exportedSymbols = new StringBuilder();
-                    exportedSymbols.append("{\n");
-                    for (String symbol : getImageSymbols(true)) {
-                        exportedSymbols.append('\"').append(symbol).append("\";\n");
-                    }
-                    exportedSymbols.append("};");
-                    Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
-                    Files.write(exportedSymbolsPath, Collections.singleton(exportedSymbols.toString()));
-                    additionalPreOptions.add("-Wl,--dynamic-list");
-                    additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
-
-                    // Drop global symbols in linked static libraries: not covered by --dynamic-list
-                    additionalPreOptions.add("-Wl,--exclude-libs,ALL");
-                } catch (IOException e) {
-                    VMError.shouldNotReachHere();
+            /* Use --version-script to control the visibility of image symbols. */
+            try {
+                StringBuilder exportedSymbols = new StringBuilder();
+                exportedSymbols.append("{\n");
+                /* Only exported symbols are global ... */
+                exportedSymbols.append("global:\n");
+                for (String symbol : getImageSymbols(true)) {
+                    exportedSymbols.append('\"').append(symbol).append("\";\n");
                 }
+                /* ... everything else is local. */
+                exportedSymbols.append("local: *;\n");
+                exportedSymbols.append("};");
+
+                Path exportedSymbolsPath = nativeLibs.tempDirectory.resolve("exported_symbols.list");
+                Files.write(exportedSymbolsPath, Collections.singleton(exportedSymbols.toString()));
+                additionalPreOptions.add("-Wl,--version-script," + exportedSymbolsPath.toAbsolutePath());
+            } catch (IOException e) {
+                VMError.shouldNotReachHere();
             }
+
+            additionalPreOptions.addAll(HostedLibCBase.singleton().getAdditionalLinkerOptions(imageKind));
 
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
                 additionalPreOptions.add("-Wl,-x");
@@ -296,6 +293,8 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         protected void setOutputKind(List<String> cmd) {
             switch (imageKind) {
                 case EXECUTABLE:
+                    /* Export global symbols. */
+                    cmd.add("-Wl,--export-dynamic");
                     break;
                 case STATIC_EXECUTABLE:
                     if (!staticExecWithDynamicallyLinkLibC) {
@@ -553,12 +552,12 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             inv.addLibPath(libraryPath);
         }
 
-        for (String rPath : OptionUtils.flatten(",", SubstrateOptions.LinkerRPath.getValue())) {
+        for (String rPath : SubstrateOptions.LinkerRPath.getValue().values()) {
             inv.addRPath(rPath);
         }
 
         Collection<String> libraries = nativeLibs.getLibraries();
-        if (Platform.includedIn(Platform.LINUX.class) && ImageSingletons.lookup(LibCBase.class).getName().equals("bionic")) {
+        if (Platform.includedIn(Platform.LINUX.class) && LibCBase.targetLibCIs(BionicLibC.class)) {
             // on Bionic LibC pthread.h and rt.h are included in standard library and adding them in
             // linker call produces error
             libraries = libraries.stream().filter(library -> !Arrays.asList("pthread", "rt").contains(library)).collect(Collectors.toList());

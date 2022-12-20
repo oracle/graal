@@ -24,13 +24,33 @@
  */
 package com.oracle.graal.pointsto.util;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public class AtomicUtils {
+
+    public static <T, V> boolean atomicSet(T holder, V value, AtomicReferenceFieldUpdater<T, V> updater) {
+        Objects.requireNonNull(value, "The value parameter of AtomicUtils.atomicSet() should not be null.");
+        return updater.compareAndSet(holder, null, value);
+    }
+
+    public static <T, V> boolean atomicSetAndRun(T holder, V value, AtomicReferenceFieldUpdater<T, V> updater, Runnable task) {
+        Objects.requireNonNull(value, "The value parameter of AtomicUtils.atomicSetAndRun() should not be null.");
+        boolean firstAttempt = updater.compareAndSet(holder, null, value);
+        if (firstAttempt) {
+            task.run();
+        }
+        return firstAttempt;
+    }
+
+    public static <T, V> boolean isSet(T holder, AtomicReferenceFieldUpdater<T, V> updater) {
+        return updater.get(holder) != null;
+    }
 
     /**
      * Atomically set the field to 1 if the current value is 0.

@@ -227,7 +227,7 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
                         invokeReturn();
                     }
                 } catch (Throwable t) {
-                    throw wrapHostError(t);
+                    throw PolyglotImpl.hostToGuestException(config.engine, t);
                 }
             }
         }
@@ -250,7 +250,7 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
                         invokeException();
                     }
                 } catch (Throwable t) {
-                    throw wrapHostError(t);
+                    throw PolyglotImpl.hostToGuestException(config.engine, t);
                 }
             }
         }
@@ -331,7 +331,7 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
                 try {
                     invokeReturn();
                 } catch (Throwable t) {
-                    throw wrapHostError(t);
+                    throw PolyglotImpl.hostToGuestException(config.engine, t);
                 }
             }
         }
@@ -342,7 +342,7 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
                 try {
                     invokeException();
                 } catch (Throwable t) {
-                    throw wrapHostError(t);
+                    throw PolyglotImpl.hostToGuestException(config.engine, t);
                 }
             }
         }
@@ -370,7 +370,7 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
             try {
                 return rootNode.getName();
             } catch (Throwable t) {
-                throw wrapHostError(t);
+                throw PolyglotImpl.guestToHostException(config.engine, t);
             }
         }
 
@@ -380,14 +380,9 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
                 try {
                     invokeOnEnter();
                 } catch (Throwable t) {
-                    throw wrapHostError(t);
+                    throw PolyglotImpl.hostToGuestException(config.engine, t);
                 }
             }
-        }
-
-        protected RuntimeException wrapHostError(Throwable t) {
-            assert !config.engine.host.isHostException(t);
-            throw config.engine.host.toHostException(null, t);
         }
 
         @TruffleBoundary(allowInlining = true)

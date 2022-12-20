@@ -24,13 +24,15 @@
  */
 package com.oracle.graal.reachability;
 
+import org.graalvm.compiler.nodes.StructuredGraph;
+
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
+
 import jdk.vm.ci.meta.JavaConstant;
-import org.graalvm.compiler.nodes.StructuredGraph;
 
 /**
  * This handler analyzes methods using method summaries, which are obtained via an instance of
@@ -75,26 +77,26 @@ public class MethodSummaryBasedHandler implements ReachabilityMethodProcessingHa
      */
     private static void processSummary(ReachabilityAnalysisEngine bb, ReachabilityAnalysisMethod method, MethodSummary summary) {
         for (AnalysisMethod invokedMethod : summary.invokedMethods) {
-            bb.markMethodInvoked((ReachabilityAnalysisMethod) invokedMethod);
+            bb.markMethodInvoked((ReachabilityAnalysisMethod) invokedMethod, method);
         }
         for (AnalysisMethod invokedMethod : summary.implementationInvokedMethods) {
-            bb.markMethodImplementationInvoked((ReachabilityAnalysisMethod) invokedMethod);
+            bb.markMethodImplementationInvoked((ReachabilityAnalysisMethod) invokedMethod, method);
         }
         for (AnalysisType type : summary.accessedTypes) {
-            bb.markTypeReachable(type);
+            bb.registerTypeAsReachable(type, method);
         }
         for (AnalysisType type : summary.instantiatedTypes) {
-            bb.markTypeInstantiated(type);
+            bb.registerTypeAsAllocated(type, method);
         }
         for (AnalysisField field : summary.readFields) {
-            bb.markFieldRead(field);
-            bb.markTypeReachable(field.getType());
+            bb.markFieldRead(field, method);
+            bb.registerTypeAsReachable(field.getType(), method);
         }
         for (AnalysisField field : summary.writtenFields) {
-            bb.markFieldWritten(field);
+            bb.markFieldWritten(field, method);
         }
         for (JavaConstant constant : summary.embeddedConstants) {
-            bb.handleEmbeddedConstant(method, constant);
+            bb.handleEmbeddedConstant(method, constant, method);
         }
         for (AnalysisMethod rootMethod : summary.foreignCallTargets) {
             bb.addRootMethod(rootMethod, false);

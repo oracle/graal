@@ -25,11 +25,7 @@
 package org.graalvm.compiler.asm;
 
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.debug.GraalError;
@@ -47,7 +43,6 @@ public abstract class Assembler<T extends Enum<T>> {
     }
 
     private final TargetDescription target;
-    private List<LabelHint> jumpDisplacementHints;
 
     /**
      * Labels with instructions to be patched when it is {@linkplain Label#bind bound}.
@@ -234,35 +229,6 @@ public abstract class Assembler<T extends Enum<T>> {
 
     protected abstract void patchJumpTarget(int branch, int jumpTarget);
 
-    private Map<Label, String> nameMap;
-
-    /**
-     * Creates a name for a label.
-     *
-     * @param l the label for which a name is being created
-     * @param id a label identifier that is unique with the scope of this assembler
-     * @return a label name in the form of "L123"
-     */
-    protected String createLabelName(Label l, int id) {
-        return "L" + id;
-    }
-
-    /**
-     * Gets a name for a label, creating it if it does not yet exist. By default, the returned name
-     * is only unique with the scope of this assembler.
-     */
-    public String nameOf(Label l) {
-        if (nameMap == null) {
-            nameMap = new HashMap<>();
-        }
-        String name = nameMap.get(l);
-        if (name == null) {
-            name = createLabelName(l, nameMap.size());
-            nameMap.put(l, name);
-        }
-        return name;
-    }
-
     /**
      * This is used by the CompilationResultBuilder to convert a {@link StackSlot} to an
      * {@link AbstractAddress}.
@@ -285,60 +251,12 @@ public abstract class Assembler<T extends Enum<T>> {
     public abstract void ensureUniquePC();
 
     public void reset() {
+        labelsWithPatches = null;
         codeBuffer.reset();
-        captureLabelPositions();
-    }
-
-    private void captureLabelPositions() {
-        if (jumpDisplacementHints == null) {
-            return;
-        }
-        for (LabelHint request : this.jumpDisplacementHints) {
-            request.capture();
-        }
-    }
-
-    public LabelHint requestLabelHint(Label label) {
-        if (jumpDisplacementHints == null) {
-            jumpDisplacementHints = new ArrayList<>();
-        }
-        LabelHint hint = new LabelHint(label, position());
-        this.jumpDisplacementHints.add(hint);
-        return hint;
     }
 
     public InstructionCounter getInstructionCounter() {
         throw new UnsupportedOperationException("Instruction counter is not implemented for " + this);
-    }
-
-    public static class LabelHint {
-        private Label label;
-        private int forPosition;
-        private int capturedTarget = -1;
-
-        protected LabelHint(Label label, int lastPosition) {
-            super();
-            this.label = label;
-            this.forPosition = lastPosition;
-        }
-
-        protected void capture() {
-            this.capturedTarget = label.position();
-        }
-
-        public int getTarget() {
-            assert isValid();
-            return capturedTarget;
-        }
-
-        public int getPosition() {
-            assert isValid();
-            return forPosition;
-        }
-
-        public boolean isValid() {
-            return capturedTarget >= 0;
-        }
     }
 
     /**

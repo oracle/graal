@@ -24,12 +24,9 @@
  */
 package org.graalvm.profdiff.core.optimization;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
+import java.util.Arrays;
 import java.util.List;
-import java.util.ListIterator;
-import java.util.Objects;
 
 /**
  * Represents an optimization phase in the optimization tree. Allows the children (either
@@ -40,52 +37,55 @@ import java.util.Objects;
  * the individual loop peelings (each performed at some position). An example of an optimization
  * phase that triggers other (children) phases is the {@code IterativeConditionalEliminationPhase}
  * or phase suites.
+ *
+ * The list of children of this node in the optimization tree is the list of subphases and
+ * optimizations triggered in this phase.
  */
-public class OptimizationPhase implements OptimizationTreeNode {
+public class OptimizationPhase extends OptimizationTreeNode {
     /**
-     * The name of this optimization phase, which corresponds to the name of its class.
+     * Constructs an optimization phase.
+     *
+     * @param name the name of this optimization phase, which corresponds to the name of its class
      */
-    private final String name;
-
-    /**
-     * The list of children of this node in the optimization tree, i.e., the list of subphases and
-     * optimizations triggered in this phase. If there are no children, the field can be
-     * {@code null} to save space.
-     */
-    private List<OptimizationTreeNode> children = null;
-
     public OptimizationPhase(String name) {
-        this.name = name;
-    }
-
-    public void addChild(OptimizationTreeNode optimizationTreeNode) {
-        if (children == null) {
-            children = new ArrayList<>();
-        }
-        children.add(optimizationTreeNode);
+        super(name);
     }
 
     /**
-     * Gets the name of the optimization phase.
-     *
-     * @return the name of the optimization phase
+     * Suffixes of optimization phases names which produce many optimizations with little individual
+     * impact.
      */
-    @Override
-    public String getName() {
-        return name;
+    private static final String[] veryDetailedPhaseSuffixes = {"CanonicalizerPhase", "DeadCodeEliminationPhase", "InliningPhase"};
+
+    /**
+     * Returns whether this optimization phase produces many optimizations with little individual
+     * impact.
+     */
+    public boolean isVeryDetailedCategory() {
+        return Arrays.stream(veryDetailedPhaseSuffixes).anyMatch(suffix -> getName().endsWith(suffix));
     }
 
     /**
-     * Gets the list of optimization phases triggered inside this phase.
-     *
-     * @return the list of phases triggered by this phase
+     * Suffixes of optimizations phase names where the order of optimizations performed and
+     * subphases triggered by them is unimportant.
      */
-    @Override
-    public List<OptimizationTreeNode> getChildren() {
-        if (children == null) {
-            return List.of();
-        }
-        return children;
+    private static final String[] unorderedPhaseSuffixes = {
+                    "CanonicalizerPhase",
+                    "DeadCodeEliminationPhase",
+                    "PartialEscapePhase",
+                    "FloatingReadPhase",
+                    "UseTrappingNullChecksPhase",
+                    "ReassociationPhase",
+                    "ConvertDeoptimizeToGuardPhase",
+                    "ConditionalEliminationPhase",
+    };
+
+    /**
+     * Returns whether the order of optimizations performed and subphases triggered by this phase is
+     * unimportant.
+     */
+    public boolean isUnorderedCategory() {
+        return Arrays.stream(unorderedPhaseSuffixes).anyMatch(suffix -> getName().endsWith(suffix));
     }
 
     /**
@@ -96,21 +96,12 @@ public class OptimizationPhase implements OptimizationTreeNode {
      */
     public List<Optimization> getOptimizationsRecursive() {
         List<Optimization> optimizations = new ArrayList<>();
-        Deque<OptimizationTreeNode> stack = new ArrayDeque<>();
-        stack.add(this);
-        while (!stack.isEmpty()) {
-            OptimizationTreeNode treeNode = stack.pop();
-            if (treeNode instanceof OptimizationPhase) {
-                List<OptimizationTreeNode> treeNodeChildren = treeNode.getChildren();
-                ListIterator<OptimizationTreeNode> iterator = treeNodeChildren.listIterator(treeNodeChildren.size());
-                while (iterator.hasPrevious()) {
-                    stack.push(iterator.previous());
-                }
-            } else {
-                assert treeNode instanceof Optimization;
-                optimizations.add((Optimization) treeNode);
+        forEach(node -> {
+            if (node instanceof Optimization) {
+                Optimization optimization = (Optimization) node;
+                optimizations.add(optimization);
             }
-        }
+        });
         return optimizations;
     }
 
@@ -120,11 +111,11 @@ public class OptimizationPhase implements OptimizationTreeNode {
             return false;
         }
         OptimizationPhase other = (OptimizationPhase) object;
-        return Objects.equals(name, other.name) && Objects.equals(children, other.children);
+        return getName().equals(other.getName()) && getChildren().equals(other.getChildren());
     }
 
     @Override
     public int hashCode() {
-        return name.hashCode() + ((children == null) ? -1 : children.hashCode());
+        return getName().hashCode() + getChildren().hashCode();
     }
 }

@@ -128,6 +128,7 @@ _graal_variants = [
     ('economy-no-tiered-comp', ['-XX:-TieredCompilation'], 0, 'economy'),
     ('g1gc', ['-XX:+UseG1GC'], 12),
     ('no-comp-oops', ['-XX:-UseCompressedOops'], 0),
+    ('no-profile-info', ['-Djvmci.UseProfilingInformation=false'], 0),
     ('no-splitting', ['-Dpolyglot.engine.Splitting=false'], 0),
     ('limit-truffle-inlining', ['-Dpolyglot.engine.InliningRecursionDepth=2'], 0),
     ('no-splitting-limit-truffle-inlining', ['-Dpolyglot.engine.Splitting=false', '-Dpolyglot.engine.InliningRecursionDepth=2'], 0),

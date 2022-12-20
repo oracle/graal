@@ -34,6 +34,7 @@ import org.graalvm.polyglot.io.ByteSequence;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.coff.CoffFile.ImageDataDirectory;
 import com.oracle.truffle.llvm.parser.coff.CoffFile.ImageOptionHeader;
 import com.oracle.truffle.llvm.parser.coff.CoffFile.ImageOptionNT64Header;
@@ -73,7 +74,7 @@ public final class PEFile {
         return coffFile;
     }
 
-    public static PEFile create(ByteSequence bytes) {
+    public static PEFile create(Source source, ByteSequence bytes) {
         ObjectFileReader reader = new ObjectFileReader(bytes, true);
         short machine = reader.getShort();
         if (machine != IMAGE_DOS_SIGNATURE) {
@@ -86,7 +87,7 @@ public final class PEFile {
         if (reSignature != IMAGE_NT_SIGNATURE) {
             throw new LLVMParserException("No PE Signature found in MS DOS Executable!");
         }
-        return new PEFile(CoffFile.create(bytes, reader));
+        return new PEFile(CoffFile.create(source, bytes, reader));
     }
 
     public ImageOptionNT64Header getOptionHeader() {

@@ -42,6 +42,7 @@ package org.graalvm.collections.test;
 
 import org.graalvm.collections.SeqLockPrefixTree;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.function.Consumer;
@@ -122,6 +123,7 @@ public class SeqLockPrefixTreeTest {
         }
     }
 
+    @Ignore("GR-41705")
     @Test
     public void largeMultithreaded() {
         final SeqLockPrefixTree tree = new SeqLockPrefixTree();

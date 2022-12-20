@@ -74,6 +74,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 
+import org.graalvm.home.Version;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -87,6 +88,7 @@ import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -482,8 +484,18 @@ public abstract class TruffleLanguage<C> {
         boolean needsAllEncodings() default false;
 
         /**
-         * A link to a website with more information about the instrument. Will be shown in the help
+         * A link to a website with more information about the language. Will be shown in the help
          * text of GraalVM launchers.
+         * <p>
+         * The link can contain the following substitutions:
+         * <dl>
+         * <dt>{@code ${graalvm-version}}</dt>
+         * <dd>the current GraalVM version. Optionally, a format string can be provided for the
+         * version using {@code ${graalvm-version:format}}. See {@link Version#format}.
+         * <dt>{@code ${graalvm-website-version}}</dt>
+         * <dd>the current GraalVM version in a format suitable for links to the GraalVM reference
+         * manual. The exact format may change without notice.</dd>
+         * </dl>
          *
          * @since 22.1.0
          * @return URL for language website.
@@ -2249,13 +2261,37 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Returns <code>true</code> if access to IO is allowed, else <code>false</code>.
+         * Returns {@code true} if access to files is allowed, else {@code false}.
          *
          * @since 22.3
+         * @deprecated since 23.0; replaced by {@link #isFileIOAllowed()}.
          */
+        @Deprecated(since = "23.0")
         public boolean isIOAllowed() {
+            return isFileIOAllowed();
+        }
+
+        /**
+         * Returns {@code true} if access to files is allowed, else {@code false}.
+         *
+         * @since 23.0
+         */
+        public boolean isFileIOAllowed() {
             try {
                 return LanguageAccessor.engineAccess().isIOAllowed(polyglotLanguageContext, this);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
+        }
+
+        /**
+         * Returns {@code true} if access to network sockets is allowed, else {@code false}.
+         *
+         * @since 23.0
+         */
+        public boolean isSocketIOAllowed() {
+            try {
+                return LanguageAccessor.engineAccess().isSocketIOAllowed(polyglotLanguageContext);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2680,8 +2716,8 @@ public abstract class TruffleLanguage<C> {
         /**
          * Returns a {@link TruffleFile} for given path. The returned {@link TruffleFile} access
          * depends on the file system used by the context and can vary from all access in case of
-         * {@link Builder#allowIO(boolean) allowed IO} to no access in case of denied IO. When IO is
-         * not enabled by the {@code Context} the {@link TruffleFile} operations throw
+         * {@link IOAccess#ALL allowed IO} to no access in case of {@link IOAccess#NONE denied IO}.
+         * When IO is not enabled by the {@code Context} the {@link TruffleFile} operations throw
          * {@link SecurityException}. The {@code getPublicTruffleFile} method should be used to
          * access user files or to implement language IO builtins.
          *
@@ -2689,6 +2725,10 @@ public abstract class TruffleLanguage<C> {
          * @return {@link TruffleFile}
          * @throws UnsupportedOperationException when the {@link FileSystem} supports only
          *             {@link URI}
+         * @throws IllegalArgumentException if the {@code path} string cannot be converted to a
+         *             {@link Path}
+         * @see IOAccess
+         * @see Builder#allowIO(IOAccess)
          * @since 19.3.0
          */
         @TruffleBoundary
@@ -2697,7 +2737,7 @@ public abstract class TruffleLanguage<C> {
             FileSystemContext fs = getPublicFileSystemContext();
             try {
                 return new TruffleFile(fs, fs.fileSystem.parsePath(path));
-            } catch (UnsupportedOperationException e) {
+            } catch (UnsupportedOperationException | IllegalArgumentException e) {
                 throw e;
             } catch (Throwable t) {
                 throw TruffleFile.wrapHostException(t, fs.fileSystem);
@@ -2711,6 +2751,7 @@ public abstract class TruffleLanguage<C> {
          * @param uri the {@link URI} to create {@link TruffleFile} for
          * @return {@link TruffleFile}
          * @throws UnsupportedOperationException when {@link URI} scheme is not supported
+         * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold.
          * @since 19.3.0
          */
         @TruffleBoundary
@@ -2719,7 +2760,7 @@ public abstract class TruffleLanguage<C> {
             FileSystemContext fs = getPublicFileSystemContext();
             try {
                 return new TruffleFile(fs, fs.fileSystem.parsePath(uri));
-            } catch (UnsupportedOperationException e) {
+            } catch (UnsupportedOperationException | IllegalArgumentException e) {
                 throw e;
             } catch (Throwable t) {
                 throw TruffleFile.wrapHostException(t, fs.fileSystem);
@@ -2745,6 +2786,8 @@ public abstract class TruffleLanguage<C> {
          * @since 19.3.0
          * @throws UnsupportedOperationException when the {@link FileSystem} supports only
          *             {@link URI}
+         * @throws IllegalArgumentException if the {@code path} string cannot be converted to a
+         *             {@link Path}
          * @see #getTruffleFileInternal(String, Predicate)
          * @see #getPublicTruffleFile(java.lang.String)
          */
@@ -2754,7 +2797,7 @@ public abstract class TruffleLanguage<C> {
             FileSystemContext fs = getInternalFileSystemContext();
             try {
                 return new TruffleFile(fs, fs.fileSystem.parsePath(path));
-            } catch (UnsupportedOperationException e) {
+            } catch (UnsupportedOperationException | IllegalArgumentException e) {
                 throw e;
             } catch (Throwable t) {
                 throw TruffleFile.wrapHostException(t, fs.fileSystem);
@@ -2769,6 +2812,7 @@ public abstract class TruffleLanguage<C> {
          * @return {@link TruffleFile}
          * @since 19.3.0
          * @throws UnsupportedOperationException when {@link URI} scheme is not supported
+         * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold.
          * @see #getTruffleFileInternal(URI, Predicate)
          * @see #getPublicTruffleFile(java.net.URI)
          */
@@ -2778,7 +2822,7 @@ public abstract class TruffleLanguage<C> {
             FileSystemContext fs = getInternalFileSystemContext();
             try {
                 return new TruffleFile(fs, fs.fileSystem.parsePath(uri));
-            } catch (UnsupportedOperationException e) {
+            } catch (UnsupportedOperationException | IllegalArgumentException e) {
                 throw e;
             } catch (Throwable t) {
                 throw TruffleFile.wrapHostException(t, fs.fileSystem);
@@ -2823,6 +2867,8 @@ public abstract class TruffleLanguage<C> {
          * @return {@link TruffleFile}
          * @throws UnsupportedOperationException when the {@link FileSystem} supports only
          *             {@link URI}
+         * @throws IllegalArgumentException if the {@code path} string cannot be converted to a
+         *             {@link Path}
          * @since 21.1.0
          * @see #getTruffleFileInternal(URI, Predicate)
          * @see #getPublicTruffleFile(String)
@@ -2845,6 +2891,7 @@ public abstract class TruffleLanguage<C> {
          * @return {@link TruffleFile}
          * @throws UnsupportedOperationException when the {@link FileSystem} supports only
          *             {@link URI}
+         * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold.
          * @since 21.1.0
          * @see #getTruffleFileInternal(String, Predicate)
          * @see #getPublicTruffleFile(URI)

@@ -46,7 +46,7 @@ public class DumpHeapOnSignalFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasHeapDumpSupport();
+        return VMInspectionOptions.hasHeapDumpSupport() && SubstrateOptions.EnableSignalAPI.getValue();
     }
 
     @Override
@@ -75,9 +75,10 @@ class DumpHeapReport implements SignalHandler {
     public void handle(Signal arg0) {
         DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'");
         dateFormat.setTimeZone(UTC_TIMEZONE);
-        String heapDumpFileName = "svm-heapdump-" + ProcessProperties.getProcessID() + "-" + dateFormat.format(new Date()) + ".hprof";
+        String defaultHeapDumpFileName = "svm-heapdump-" + ProcessProperties.getProcessID() + "-" + dateFormat.format(new Date()) + ".hprof";
+        String heapDumpPath = SubstrateOptions.getHeapDumpPath(defaultHeapDumpFileName);
         try {
-            VMRuntime.dumpHeap(heapDumpFileName, true);
+            VMRuntime.dumpHeap(heapDumpPath, true);
         } catch (IOException e) {
             Log.log().string("IOException during dumpHeap: ").string(e.getMessage()).newline();
         }

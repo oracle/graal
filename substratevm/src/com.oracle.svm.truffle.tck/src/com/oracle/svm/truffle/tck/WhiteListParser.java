@@ -45,6 +45,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.truffle.tck.PermissionsFeature.AnalysisMethodNode;
 
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -57,7 +58,7 @@ final class WhiteListParser extends ConfigurationParser {
 
     private final ImageClassLoader imageClassLoader;
     private final BigBang bb;
-    private Set<AnalysisMethod> whiteList;
+    private Set<AnalysisMethodNode> whiteList;
 
     WhiteListParser(ImageClassLoader imageClassLoader, BigBang bb) {
         super(true);
@@ -65,7 +66,7 @@ final class WhiteListParser extends ConfigurationParser {
         this.bb = Objects.requireNonNull(bb, "BigBang must be non null");
     }
 
-    Set<AnalysisMethod> getLoadedWhiteList() {
+    Set<AnalysisMethodNode> getLoadedWhiteList() {
         if (whiteList == null) {
             throw new IllegalStateException("Not parsed yet.");
         }
@@ -208,40 +209,34 @@ final class WhiteListParser extends ConfigurationParser {
     private boolean registerMethod(AnalysisType type, String methodName, List<AnalysisType> formalParameters) {
         Predicate<ResolvedJavaMethod> p = (m) -> methodName.equals(m.getName());
         p = p.and(new SignaturePredicate(type, formalParameters, bb));
-        Set<AnalysisMethod> methods = PermissionsFeature.findMethods(bb, type, p);
-        for (AnalysisMethod method : methods) {
-            whiteList.add(method);
-        }
+        Set<AnalysisMethodNode> methods = PermissionsFeature.findMethods(bb, type, p);
+        whiteList.addAll(methods);
         return !methods.isEmpty();
     }
 
     private boolean registerAllMethodsWithName(AnalysisType type, String name) {
-        Set<AnalysisMethod> methods = PermissionsFeature.findMethods(bb, type, (m) -> name.equals(m.getName()));
-        for (AnalysisMethod method : methods) {
-            whiteList.add(method);
-        }
+        Set<AnalysisMethodNode> methods = PermissionsFeature.findMethods(bb, type, (m) -> name.equals(m.getName()));
+        whiteList.addAll(methods);
         return !methods.isEmpty();
     }
 
     private boolean registerConstructor(AnalysisType type, List<AnalysisType> formalParameters) {
         Predicate<ResolvedJavaMethod> p = new SignaturePredicate(type, formalParameters, bb);
-        Set<AnalysisMethod> methods = PermissionsFeature.findConstructors(bb, type, p);
-        for (AnalysisMethod method : methods) {
-            whiteList.add(method);
-        }
+        Set<AnalysisMethodNode> methods = PermissionsFeature.findConstructors(bb, type, p);
+        whiteList.addAll(methods);
         return !methods.isEmpty();
     }
 
     private boolean registerDeclaredConstructors(AnalysisType type) {
         for (AnalysisMethod method : type.getDeclaredConstructors()) {
-            whiteList.add(method);
+            whiteList.add(new AnalysisMethodNode(method));
         }
         return true;
     }
 
     private boolean registerDeclaredMethods(AnalysisType type) {
         for (AnalysisMethod method : type.getDeclaredMethods()) {
-            whiteList.add(method);
+            whiteList.add(new AnalysisMethodNode(method));
         }
         return true;
     }

@@ -33,14 +33,14 @@ import static java.lang.Character.MIN_LOW_SURROGATE;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
+import org.graalvm.compiler.replacements.nodes.CalcStringAttributesNode;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
-public class TStringOpsCalcStringAttributesUTF16Test extends TStringOpsTest<AMD64CalcStringAttributesNode> {
+public class TStringOpsCalcStringAttributesUTF16Test extends TStringOpsTest<CalcStringAttributesNode> {
 
     @Parameters(name = "{index}: args: {1}, {2}")
     public static Iterable<Object[]> data() {
@@ -49,7 +49,8 @@ public class TStringOpsCalcStringAttributesUTF16Test extends TStringOpsTest<AMD6
         int padding = 20;
         int stride = 1;
         int byteOffset = offset << stride;
-        for (int length : new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 31, 32, 33, 47, 48, 49, 63, 64, 65, 127, 128, 129}) {
+        int large = 254 * 16;
+        for (int length : new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 31, 32, 33, 47, 48, 49, 63, 64, 65, 127, 128, 129, large - 1, large, large + 1}) {
             int arrayLength = offset + length + padding;
             byte[] arr = new byte[arrayLength << stride];
             for (int i = 0; i < offset; i++) {
@@ -127,7 +128,52 @@ public class TStringOpsCalcStringAttributesUTF16Test extends TStringOpsTest<AMD6
             writeCodePoint(arr4, offset, MIN_HIGH_SURROGATE, true);
             ret.add(new Object[]{arr4, byteOffset, length});
         }
+        // GR-42967
+        byte[] build = buildString(new int[]{
+                        0x000000, 0x00002f,
+                        0x00003a, 0x00dbfe,
+                        0x10fc00, 0x10fc00,
+                        0x00dc01, 0x07a159,
+        }, new int[]{});
+        ret.add(new Object[]{build, 0, build.length / 2});
         return ret;
+    }
+
+    private static byte[] buildString(int[] ranges, int[] loneCodePoints) {
+        int length = 0;
+        for (int c : loneCodePoints) {
+            length += codePointByteLength(c);
+        }
+        for (int i = 0; i < ranges.length; i += 2) {
+            int lo = ranges[i];
+            int hi = ranges[i + 1];
+            if (hi <= 0xffff) {
+                length += (1 + hi - lo) * 2;
+            } else if (lo <= 0xffff) {
+                length += (1 + 0xffff - lo) * 2;
+                length += (1 + hi - 0x10000) * 4;
+            } else {
+                length += (1 + hi - lo) * 4;
+            }
+        }
+        byte[] array = new byte[length];
+        int j = 0;
+        for (int c : loneCodePoints) {
+            j += writeCodePoint(array, j, c, true);
+        }
+        for (int i = 0; i < ranges.length; i += 2) {
+            int lo = ranges[i];
+            int hi = ranges[i + 1];
+            for (int c = lo; c <= hi; c++) {
+                j += writeCodePoint(array, j, c, true);
+            }
+        }
+        assert j == length / 2;
+        return array;
+    }
+
+    private static int codePointByteLength(int codePoint) {
+        return codePoint > 0xffff ? 4 : 2;
     }
 
     private static int writeCodePoint(byte[] array, int index, int cp, boolean forward) {
@@ -146,7 +192,7 @@ public class TStringOpsCalcStringAttributesUTF16Test extends TStringOpsTest<AMD6
     private final int length;
 
     public TStringOpsCalcStringAttributesUTF16Test(byte[] array, int offset, int length) {
-        super(AMD64CalcStringAttributesNode.class);
+        super(CalcStringAttributesNode.class);
         this.array = array;
         this.offset = offset;
         this.length = length;
@@ -154,12 +200,12 @@ public class TStringOpsCalcStringAttributesUTF16Test extends TStringOpsTest<AMD6
 
     @Test
     public void testValid() {
-        test(getTStringOpsMethod("calcStringAttributesUTF16", Object.class, int.class, int.class, boolean.class), null, DUMMY_LOCATION, array, offset, length, true);
+        testWithNative(getTStringOpsMethod("calcStringAttributesUTF16", Object.class, int.class, int.class, boolean.class), null, DUMMY_LOCATION, array, offset, length, true);
     }
 
     @Test
     public void testUnknown() {
-        test(getTStringOpsMethod("calcStringAttributesUTF16", Object.class, int.class, int.class, boolean.class), null, DUMMY_LOCATION, array, offset, length, false);
+        testWithNative(getTStringOpsMethod("calcStringAttributesUTF16", Object.class, int.class, int.class, boolean.class), null, DUMMY_LOCATION, array, offset, length, false);
     }
 
     @Test

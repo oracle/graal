@@ -45,9 +45,9 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 public final class FileSystemProviderSupport {
 
@@ -379,7 +379,7 @@ class WindowsFileSystemAccessors {
             return;
         }
         that.needsReinitialization = NeedsReinitializationProvider.STATUS_IN_REINITIALIZATION;
-        that.originalConstructor(that.provider, ImageSingletons.lookup(SystemPropertiesSupport.class).userDir());
+        that.originalConstructor(that.provider, SystemPropertiesSupport.singleton().userDir());
         that.needsReinitialization = NeedsReinitializationProvider.STATUS_REINITIALIZED;
     }
 }
@@ -433,7 +433,7 @@ class UserDirAccessors {
          */
         return Platform.includedIn(Platform.WINDOWS.class)
                         ? that.normalize(System.getProperty("user.dir"))
-                        : ImageSingletons.lookup(SystemPropertiesSupport.class).userDir();
+                        : SystemPropertiesSupport.singleton().userDir();
     }
 }
 

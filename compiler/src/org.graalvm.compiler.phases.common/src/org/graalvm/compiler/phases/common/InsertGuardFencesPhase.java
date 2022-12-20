@@ -63,7 +63,7 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 public class InsertGuardFencesPhase extends Phase {
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return ALWAYS_APPLICABLE;
     }
 

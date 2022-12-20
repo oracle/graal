@@ -31,6 +31,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -253,8 +254,7 @@ public class JNIAccessFeature implements Feature {
     private static void registerJavaCallTrampoline(BeforeAnalysisAccessImpl access, CallVariant variant, boolean nonVirtual) {
         MetaAccessProvider originalMetaAccess = access.getMetaAccess().getWrapped();
         ResolvedJavaField field = JNIAccessibleMethod.getCallVariantWrapperField(originalMetaAccess, variant, nonVirtual);
-        access.getUniverse().lookup(field.getDeclaringClass()).registerAsReachable();
-        access.registerAsAccessed(access.getUniverse().lookup(field));
+        access.registerAsAccessed(access.getUniverse().lookup(field), "it is registered for JNI accessed");
         String name = JNIJavaCallTrampolineHolder.getTrampolineName(variant, nonVirtual);
         Method method = ReflectionUtil.lookupMethod(JNIJavaCallTrampolineHolder.class, name);
         access.registerAsRoot(method, true);
@@ -342,9 +342,9 @@ public class JNIAccessFeature implements Feature {
         return JNIReflectionDictionary.singleton().addClassIfAbsent(classObj, c -> {
             AnalysisType analysisClass = access.getMetaAccess().lookupJavaType(classObj);
             if (analysisClass.isInterface() || (analysisClass.isInstanceClass() && analysisClass.isAbstract())) {
-                analysisClass.registerAsReachable();
+                analysisClass.registerAsReachable("is accessed via JNI");
             } else {
-                access.getBigBang().markTypeInstantiated(analysisClass);
+                access.getBigBang().registerTypeAsAllocated(analysisClass, "is accessed via JNI");
             }
             return new JNIAccessibleClass(classObj);
         });
@@ -410,7 +410,6 @@ public class JNIAccessFeature implements Feature {
     }
 
     private static void addField(Field reflField, boolean writable, DuringAnalysisAccessImpl access) {
-        access.getMetaAccess().lookupJavaType(reflField.getDeclaringClass()).registerAsReachable();
         if (SubstitutionReflectivityFilter.shouldExclude(reflField, access.getMetaAccess(), access.getUniverse())) {
             return;
         }
@@ -418,14 +417,14 @@ public class JNIAccessFeature implements Feature {
         AnalysisField field = access.getMetaAccess().lookupJavaField(reflField);
         jniClass.addFieldIfAbsent(field.getName(), name -> new JNIAccessibleField(jniClass, field.getJavaKind(), field.getModifiers()));
         field.registerAsJNIAccessed();
-        field.registerAsRead(null);
+        field.registerAsRead("it is registered for as JNI accessed");
         if (writable) {
-            field.registerAsWritten(null);
+            field.registerAsWritten("it is registered as JNI writable");
             AnalysisType fieldType = field.getType();
             if (fieldType.isArray() && !access.isReachable(fieldType)) {
                 // For convenience, make the array type reachable if its elemental type becomes
                 // such, allowing the array creation via JNI without an explicit reflection config.
-                access.registerReachabilityHandler(a -> access.getBigBang().markTypeInstantiated(fieldType),
+                access.registerReachabilityHandler(a -> access.getBigBang().registerTypeAsAllocated(fieldType, "Is accessed via JNI."),
                                 ((AnalysisType) fieldType.getElementalType()).getJavaClass());
             }
         } else if (field.isStatic() && field.isFinal()) {
@@ -514,7 +513,7 @@ public class JNIAccessFeature implements Feature {
             arrayNonvirtual = new MethodPointer(hUniverse.lookup(aUniverse.lookup(method.nonvirtualVariantWrappers.array)));
             valistNonvirtual = new MethodPointer(hUniverse.lookup(aUniverse.lookup(method.nonvirtualVariantWrappers.valist)));
         }
-        EconomicSet<Class<?>> hidingSubclasses = findHidingSubclasses(hTarget.getDeclaringClass(), sub -> anyMethodMatchesIgnoreReturnType(sub, method.descriptor), null);
+        EconomicSet<Class<?>> hidingSubclasses = findHidingSubclasses(hTarget.getDeclaringClass(), sub -> anyMethodMatchesIgnoreReturnType(sub, method.descriptor));
         method.jniMethod.finishBeforeCompilation(hidingSubclasses, vtableOffset, nonvirtualTarget, newObjectTarget, callWrapper,
                         varargs, array, valist, varargsNonvirtual, arrayNonvirtual, valistNonvirtual);
     }
@@ -544,13 +543,21 @@ public class JNIAccessFeature implements Feature {
      * Determines which subclasses of a member's declaring class contain a declaration that cause
      * this member to be hidden in that subclass and all of its subclasses.
      */
-    private static EconomicSet<Class<?>> findHidingSubclasses(HostedType type, Predicate<ResolvedJavaType> predicate, EconomicSet<Class<?>> existing) {
+    private static EconomicSet<Class<?>> findHidingSubclasses(HostedType type, Predicate<ResolvedJavaType> predicate) {
+        return findHidingSubclasses0(type, predicate, null, Collections.newSetFromMap(new IdentityHashMap<>()));
+    }
+
+    private static EconomicSet<Class<?>> findHidingSubclasses0(HostedType type, Predicate<ResolvedJavaType> predicate, EconomicSet<Class<?>> existing, Set<HostedType> visitedTypes) {
         EconomicSet<Class<?>> map = existing;
         /*
          * HostedType.getSubTypes() only gives us subtypes that are part of our analyzed closed
          * world, but this is fine because JNI lookups can only be done on those.
          */
         for (HostedType subType : type.getSubTypes()) {
+            if (visitedTypes.contains(subType)) {
+                continue;
+            }
+            visitedTypes.add(subType);
             if (subType.isInstantiated() || subType.getWrapped().isReachable()) {
                 /*
                  * We must use the unwrapped type to query its members in the predicate: HostedType
@@ -568,10 +575,10 @@ public class JNIAccessFeature implements Feature {
                     map.add(subType.getJavaClass());
                     // no need to explore further subclasses
                 } else {
-                    map = findHidingSubclasses(subType, predicate, map);
+                    map = findHidingSubclasses0(subType, predicate, map, visitedTypes);
                 }
             } else {
-                assert findHidingSubclasses(subType, predicate, null) == null : "Class hiding a member exists in the image, but its superclass does not";
+                assert findHidingSubclasses0(subType, predicate, null, visitedTypes) == null : "Class hiding a member exists in the image, but its superclass does not";
             }
         }
         return map;
@@ -593,7 +600,7 @@ public class JNIAccessFeature implements Feature {
                 assert hField.hasLocation();
                 offset = hField.getLocation();
             }
-            EconomicSet<Class<?>> hidingSubclasses = findHidingSubclasses(hField.getDeclaringClass(), sub -> anyFieldMatches(sub, name), null);
+            EconomicSet<Class<?>> hidingSubclasses = findHidingSubclasses(hField.getDeclaringClass(), sub -> anyFieldMatches(sub, name));
 
             field.finishBeforeCompilation(offset, hidingSubclasses);
 

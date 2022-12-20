@@ -39,17 +39,15 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.PointsToAnalysis.ConstantObjectsProfiler;
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
@@ -65,8 +63,8 @@ import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.UnsafePartitionKind;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
-import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
@@ -81,8 +79,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private static final AtomicReferenceFieldUpdater<AnalysisType, ConcurrentHashMap> UNSAFE_ACCESS_FIELDS_UPDATER = //
                     AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, ConcurrentHashMap.class, "unsafeAccessedFields");
 
-    private static final AtomicReferenceFieldUpdater<AnalysisType, ConstantContextSensitiveObject> UNIQUE_CONSTANT_UPDATER = //
-                    AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, ConstantContextSensitiveObject.class, "uniqueConstant");
+    private static final AtomicReferenceFieldUpdater<AnalysisType, AnalysisObject> UNIQUE_CONSTANT_UPDATER = //
+                    AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, AnalysisObject.class, "uniqueConstant");
 
     @SuppressWarnings("rawtypes")//
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> INTERCEPTORS_UPDATER = //
@@ -97,14 +95,14 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> instantiatedNotificationsUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "typeInstantiatedNotifications");
 
-    private static final AtomicIntegerFieldUpdater<AnalysisType> isInHeapUpdater = AtomicIntegerFieldUpdater
-                    .newUpdater(AnalysisType.class, "isInHeap");
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isAllocatedUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisType.class, Object.class, "isAllocated");
 
-    private static final AtomicIntegerFieldUpdater<AnalysisType> isAllocatedUpdater = AtomicIntegerFieldUpdater
-                    .newUpdater(AnalysisType.class, "isAllocated");
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isInHeapUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisType.class, Object.class, "isInHeap");
 
-    private static final AtomicIntegerFieldUpdater<AnalysisType> isReachableUpdater = AtomicIntegerFieldUpdater
-                    .newUpdater(AnalysisType.class, "isReachable");
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isReachableUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisType.class, Object.class, "isReachable");
 
     private static final AtomicIntegerFieldUpdater<AnalysisType> isAnySubtypeInstantiatedUpdater = AtomicIntegerFieldUpdater
                     .newUpdater(AnalysisType.class, "isAnySubtypeInstantiated");
@@ -112,9 +110,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     protected final AnalysisUniverse universe;
     private final ResolvedJavaType wrapped;
 
-    @SuppressWarnings("unused") private volatile int isInHeap;
-    @SuppressWarnings("unused") private volatile int isAllocated;
-    @SuppressWarnings("unused") private volatile int isReachable;
+    @SuppressWarnings("unused") private volatile Object isInHeap;
+    @SuppressWarnings("unused") private volatile Object isAllocated;
+    @SuppressWarnings("unused") private volatile Object isReachable;
     @SuppressWarnings("unused") private volatile int isAnySubtypeInstantiated;
     private boolean reachabilityListenerNotified;
     private boolean unsafeFieldsRecomputed;
@@ -140,13 +138,13 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     /** The unique context insensitive analysis object for this type. */
     private AnalysisObject contextInsensitiveAnalysisObject;
     /** Mapping from JavaConstant to the analysis ConstantObject. */
-    private ConcurrentMap<Constant, ConstantContextSensitiveObject> constantObjectsCache;
+    private ConcurrentMap<JavaConstant, AnalysisObject> constantObjectsCache;
     /**
      * A unique ConstantObject per analysis type. When the size of {@link #constantObjectsCache} is
      * above a threshold all the ConstantObject recorded until that moment are merged in the
      * {@link #uniqueConstant}.
      */
-    private volatile ConstantContextSensitiveObject uniqueConstant;
+    private volatile AnalysisObject uniqueConstant;
 
     /**
      * Cache for the resolved methods.
@@ -341,10 +339,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return uniqueConstant;
     }
 
-    public AnalysisObject getCachedConstantObject(PointsToAnalysis bb, JavaConstant constant) {
+    public AnalysisObject getCachedConstantObject(PointsToAnalysis bb, JavaConstant constant, Function<JavaConstant, AnalysisObject> constantTransformer) {
 
         /*
-         * Constant caching is only used we certain analysis policies. Ideally we would store the
+         * Constant caching is only used with certain analysis policies. Ideally we would store the
          * cache in the policy, but it is simpler to store the cache for each type.
          */
         assert bb.analysisPolicy().needsConstantCache() : "The analysis policy doesn't specify the need for a constants cache.";
@@ -356,41 +354,32 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             return uniqueConstant;
         }
 
-        if (constantObjectsCache.size() >= PointstoOptions.MaxConstantObjectsPerType.getValue(bb.getOptions())) {
+        /* If maxConstantObjectsPerType is 0 there is no limit, i.e., we track all constants. */
+        if (bb.maxConstantObjectsPerType() > 0 && constantObjectsCache.size() >= bb.maxConstantObjectsPerType()) {
             // The number of constant objects has increased above the limit,
             // merge the constants in the uniqueConstant and return it
             mergeConstantObjects(bb);
             return uniqueConstant;
         }
 
-        // Get the analysis ConstantObject modeling the JavaConstant
-        AnalysisObject result = constantObjectsCache.get(constant);
-        if (result == null) {
-            // Create a ConstantObject to model each JavaConstant
-            ConstantContextSensitiveObject newValue = new ConstantContextSensitiveObject(bb, this, constant);
-            ConstantContextSensitiveObject oldValue = constantObjectsCache.putIfAbsent(constant, newValue);
-            result = oldValue != null ? oldValue : newValue;
-
-            if (PointstoOptions.ProfileConstantObjects.getValue(bb.getOptions())) {
-                ConstantObjectsProfiler.registerConstant(this);
-                ConstantObjectsProfiler.maybeDumpConstantHistogram();
-            }
-        }
-
-        return result;
+        /* Get the analysis ConstantObject modeling the JavaConstant. */
+        return constantObjectsCache.computeIfAbsent(constant, constantTransformer);
     }
 
     private void mergeConstantObjects(PointsToAnalysis bb) {
-        ConstantContextSensitiveObject uConstant = new ConstantContextSensitiveObject(bb, this, null);
+        ConstantContextSensitiveObject uConstant = new ConstantContextSensitiveObject(bb, this);
         if (UNIQUE_CONSTANT_UPDATER.compareAndSet(this, null, uConstant)) {
-            constantObjectsCache.values().stream().forEach(constantObject -> {
+            constantObjectsCache.values().forEach(constantObject -> {
                 /*
                  * The order of the two lines below matters: setting the merged flag first, before
                  * doing the actual merging, ensures that concurrent updates to the flow are still
                  * merged correctly.
                  */
-                constantObject.setMergedWithUniqueConstantObject();
-                constantObject.mergeInstanceFieldsFlows(bb, uniqueConstant);
+                if (constantObject instanceof ConstantContextSensitiveObject) {
+                    ConstantContextSensitiveObject ct = (ConstantContextSensitiveObject) constantObject;
+                    ct.setMergedWithUniqueConstantObject();
+                    ct.mergeInstanceFieldsFlows(bb, uniqueConstant);
+                }
             });
         }
     }
@@ -466,9 +455,15 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return true;
     }
 
-    public boolean registerAsInHeap() {
-        registerAsReachable();
-        if (AtomicUtils.atomicMark(this, isInHeapUpdater)) {
+    /**
+     * @param reason the {@link BytecodePosition} where this type is marked as in-heap, or a
+     *            {@link com.oracle.graal.pointsto.ObjectScanner.ScanReason}, or a {@link String}
+     *            describing why this type was manually marked as in-heap
+     */
+    public boolean registerAsInHeap(Object reason) {
+        assert isValidReason(reason) : "Registering a type as in-heap needs to provide a valid reason.";
+        registerAsReachable(reason);
+        if (AtomicUtils.atomicSet(this, reason, isInHeapUpdater)) {
             onInstantiated(UsageKind.InHeap);
             return true;
         }
@@ -476,11 +471,14 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     /**
-     * @param node For future use and debugging
+     * @param reason the {@link BytecodePosition} where this type is marked as allocated, or a
+     *            {@link com.oracle.graal.pointsto.ObjectScanner.ScanReason}, or a {@link String}
+     *            describing why this type was manually marked as allocated
      */
-    public boolean registerAsAllocated(Node node) {
-        registerAsReachable();
-        if (AtomicUtils.atomicMark(this, isAllocatedUpdater)) {
+    public boolean registerAsAllocated(Object reason) {
+        assert isValidReason(reason) : "Registering a type as allocated needs to provide a valid reason.";
+        registerAsReachable(reason);
+        if (AtomicUtils.atomicSet(this, reason, isAllocatedUpdater)) {
             onInstantiated(UsageKind.Allocated);
             return true;
         }
@@ -533,10 +531,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public void registerAsAssignable(BigBang bb) {
     }
 
-    public boolean registerAsReachable() {
+    public boolean registerAsReachable(Object reason) {
+        assert isValidReason(reason) : "Registering a type as reachable needs to provide a valid reason.";
         if (!AtomicUtils.isSet(this, isReachableUpdater)) {
             /* Mark this type and all its super types as reachable. */
-            forAllSuperTypes(type -> AtomicUtils.atomicMarkAndRun(type, isReachableUpdater, type::onReachable));
+            forAllSuperTypes(type -> AtomicUtils.atomicSetAndRun(type, reason, isReachableUpdater, type::onReachable));
             return true;
         }
         return false;
@@ -562,7 +561,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
              * types as instantiated too allows more usages of Arrays.newInstance without the need
              * of explicit registration of types for reflection.
              */
-            registerAsAllocated(null);
+            registerAsAllocated("All array types are marked as instantiated eagerly.");
         }
         ensureInitialized();
     }
@@ -1138,7 +1137,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public AnalysisField[] getStaticFields() {
-        registerAsReachable();
         return convertFields(wrapped.getStaticFields(), new ArrayList<>(), false);
     }
 

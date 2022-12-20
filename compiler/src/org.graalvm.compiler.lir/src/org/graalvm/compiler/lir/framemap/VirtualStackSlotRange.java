@@ -48,4 +48,9 @@ public class VirtualStackSlotRange extends VirtualStackSlot {
     public int getAlignmentInBytes() {
         return alignmentInBytes;
     }
+
+    @Override
+    public String toString() {
+        return super.toString() + " size: " + sizeInBytes + " alignment: " + alignmentInBytes;
+    }
 }

@@ -40,21 +40,21 @@ public class SpinLockUtils {
 
     @Uninterruptible(reason = "This method does not do a transition, so the whole critical section must be uninterruptible.", callerMustBe = true)
     public static void lockNoTransition(Object obj, long intFieldOffset) {
-        // Fast-path.
         if (UNSAFE.compareAndSetInt(obj, intFieldOffset, 0, 1)) {
-            return;
+            return; // fast-path
         }
 
-        // Slow-path.
+        int ctr = 0;
         int yields = 0;
         while (true) {
-            while (UNSAFE.getIntVolatile(obj, intFieldOffset) != 0) {
+            while (UNSAFE.getIntOpaque(obj, intFieldOffset) != 0) {
+                ctr++;
                 /*
-                 * It would be better to use a more sophisticated logic that takes the number of CPU
-                 * cores into account. However, this is not easily possible because calling
-                 * Runtime.availableProcessors() can be expensive.
+                 * It would be better to take into account if we are on a single-processor machine
+                 * where spinning is futile. However, determining that is expensive in itself. We do
+                 * use fewer successive spins than the equivalent HotSpot code does (0xFFF).
                  */
-                if (VMThreads.singleton().supportsNativeYieldAndSleep()) {
+                if ((ctr & 0xff) == 0 && VMThreads.singleton().supportsNativeYieldAndSleep()) {
                     if (yields > 5) {
                         VMThreads.singleton().nativeSleep(1);
                     } else {

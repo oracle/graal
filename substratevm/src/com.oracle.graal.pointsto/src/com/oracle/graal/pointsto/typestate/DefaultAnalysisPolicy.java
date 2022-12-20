@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto.typestate;
 
 import java.util.BitSet;
+import java.util.Objects;
 
 import org.graalvm.compiler.options.OptionValues;
 
@@ -35,9 +36,10 @@ import com.oracle.graal.pointsto.flow.AbstractStaticInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.CloneTypeFlow;
-import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
+import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraphInfo;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
@@ -52,6 +54,7 @@ import com.oracle.graal.pointsto.typestore.FieldTypeStore;
 import com.oracle.graal.pointsto.typestore.UnifiedArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.UnifiedFieldTypeStore;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
@@ -114,20 +117,31 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         return type.getContextInsensitiveAnalysisObject();
     }
 
+    /**
+     * In the context-insensitive analysis, although we track constant values using the
+     * {@link ConstantTypeState}, we don't track fields or array elements separately for constant
+     * objects. The field and array flows used for load/store operations of a "constant" are shared
+     * with the context-insensitive object of its declared type. See also {@link ConstantTypeState}.
+     */
     @Override
     public AnalysisObject createConstantObject(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType) {
         return exactType.getContextInsensitiveAnalysisObject();
     }
 
     @Override
+    public ConstantTypeState constantTypeState(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType) {
+        return new ConstantTypeState(bb, 0, exactType, constant);
+    }
+
+    @Override
     public TypeState dynamicNewInstanceState(PointsToAnalysis bb, TypeState currentState, TypeState newState, BytecodePosition allocationSite, AnalysisContext allocationContext) {
         /* Just return the new type state as there is no allocation context. */
-        return newState.forNonNull(bb);
+        return eraseConstant(bb, newState).forNonNull(bb);
     }
 
     @Override
     public TypeState cloneState(PointsToAnalysis bb, TypeState currentState, TypeState inputState, BytecodePosition cloneSite, AnalysisContext allocationContext) {
-        return inputState.forNonNull(bb);
+        return eraseConstant(bb, inputState).forNonNull(bb);
     }
 
     @Override
@@ -139,12 +153,14 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
-    public FieldTypeStore createFieldTypeStore(AnalysisObject object, AnalysisField field, AnalysisUniverse universe) {
-        return new UnifiedFieldTypeStore(field, object, new ContextInsensitiveFieldTypeFlow(field, field.getType(), object));
+    public FieldTypeStore createFieldTypeStore(PointsToAnalysis bb, AnalysisObject object, AnalysisField field, AnalysisUniverse universe) {
+        assert object.isContextInsensitiveObject();
+        return new UnifiedFieldTypeStore(field, object, new FieldTypeFlow(field, field.getType(), object));
     }
 
     @Override
     public ArrayElementsTypeStore createArrayElementsTypeStore(AnalysisObject object, AnalysisUniverse universe) {
+        assert object.isContextInsensitiveObject();
         if (object.type().isArray()) {
             if (aliasArrayTypeFlows) {
                 /* Alias all array type flows using the elements type flow model of Object type. */
@@ -161,25 +177,25 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
     @Override
     public AbstractVirtualInvokeTypeFlow createVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
-        return new DefaultVirtualInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey) {
+        return new DefaultVirtualInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
     }
 
     @Override
     public AbstractSpecialInvokeTypeFlow createSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
-        return new DefaultSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey) {
+        return new DefaultSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
     }
 
     @Override
     public AbstractStaticInvokeTypeFlow createStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
-        return new DefaultStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey) {
+        return new DefaultStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
     }
 
     @Override
-    public MethodFlowsGraph staticRootMethodGraph(PointsToAnalysis bb, PointsToAnalysisMethod pointsToMethod) {
-        return pointsToMethod.getTypeFlow().getOrCreateMethodFlowsGraph(bb, null);
+    public MethodFlowsGraphInfo staticRootMethodGraph(PointsToAnalysis bb, PointsToAnalysisMethod method) {
+        return method.getTypeFlow().getOrCreateMethodFlowsGraphInfo(bb, null);
     }
 
     @Override
@@ -207,23 +223,25 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
     @Override
     public void linkActualReturn(PointsToAnalysis bb, boolean isStatic, InvokeTypeFlow invoke) {
         /* Link the actual return with the formal return of already linked callees. */
-        for (AnalysisMethod callee : invoke.getCallees()) {
-            invoke.linkReturn(bb, isStatic, ((PointsToAnalysisMethod) callee).getTypeFlow().getMethodFlowsGraph());
+        for (AnalysisMethod callee : invoke.getAllCallees()) {
+            invoke.linkReturn(bb, isStatic, ((PointsToAnalysisMethod) callee).getTypeFlow().getMethodFlowsGraphInfo());
         }
         if (invoke.isSaturated()) {
-            InvokeTypeFlow contextInsensitiveInvoke = invoke.getTargetMethod().getContextInsensitiveVirtualInvoke();
+            InvokeTypeFlow contextInsensitiveInvoke = invoke.getTargetMethod().getContextInsensitiveVirtualInvoke(invoke.getCallerMultiMethodKey());
             contextInsensitiveInvoke.getActualReturn().addUse(bb, invoke.getActualReturn());
         }
     }
 
     @Override
-    public void registerAsImplementationInvoked(InvokeTypeFlow invoke, MethodFlowsGraph calleeFlows) {
-        calleeFlows.getMethod().registerAsImplementationInvoked(invoke);
+    public void registerAsImplementationInvoked(InvokeTypeFlow invoke, PointsToAnalysisMethod method) {
+        method.registerAsImplementationInvoked(invoke);
     }
 
     @Override
     public TypeState forContextInsensitiveTypeState(PointsToAnalysis bb, TypeState state) {
-        /* The type state is already context insensitive. */
+        if (state instanceof ConstantTypeState) {
+            return TypeState.forExactType(bb, state.exactType(), state.canBeNull());
+        }
         return state;
     }
 
@@ -237,19 +255,44 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         return new MultiTypeState(bb, canBeNull, properties, typesBitSet);
     }
 
+    /*
+     * When a constant state is an operand of a union, or it is the input for a clone or
+     * dynamic-new-instance, then the constant gets erased.
+     */
+    private static TypeState eraseConstant(PointsToAnalysis bb, TypeState state) {
+        if (state instanceof ConstantTypeState) {
+            /* Return an exact type state that essentially models all objects of the given type. */
+            return TypeState.forExactType(bb, state.exactType(), state.canBeNull());
+        }
+        return state;
+    }
+
     @Override
-    public TypeState doUnion(PointsToAnalysis bb, SingleTypeState s1, SingleTypeState s2) {
+    public TypeState doUnion(PointsToAnalysis bb, SingleTypeState state1, SingleTypeState state2) {
+        if (state1 instanceof ConstantTypeState && state2 instanceof ConstantTypeState) {
+            ConstantTypeState cs1 = (ConstantTypeState) state1;
+            ConstantTypeState cs2 = (ConstantTypeState) state2;
+            /* If the states wrap the same constant return one of them preserving the "null". */
+            if (cs1.equals(cs2)) {
+                return cs1;
+            } else if (Objects.equals(cs1.getConstant(), cs2.getConstant())) {
+                assert cs1.exactType().equals(cs2.exactType());
+                boolean resultCanBeNull = state1.canBeNull() || state2.canBeNull();
+                return cs1.canBeNull() == resultCanBeNull ? cs1 : cs2;
+            }
+        }
+
+        /* Otherwise, when a constant state is an operand of a union the constant is erased. */
+        TypeState s1 = eraseConstant(bb, state1);
+        TypeState s2 = eraseConstant(bb, state2);
+
         boolean resultCanBeNull = s1.canBeNull() || s2.canBeNull();
         if (s1.exactType().equals(s2.exactType())) {
             /*
              * The inputs have the same type, so the result is a SingleTypeState. Check if any of
              * the states has the right null state.
              */
-            if (s1.canBeNull() == resultCanBeNull) {
-                return s1;
-            } else {
-                return s2;
-            }
+            return s1.canBeNull() == resultCanBeNull ? s1 : s2;
         } else {
             /*
              * The inputs have different types, so the result is a MultiTypeState. We know the
@@ -264,7 +307,10 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
-    public TypeState doUnion(PointsToAnalysis bb, MultiTypeState s1, SingleTypeState s2) {
+    public TypeState doUnion(PointsToAnalysis bb, MultiTypeState s1, SingleTypeState state2) {
+        /* If ConstantTypeState is an operand of a union operation the constant is erased. */
+        TypeState s2 = eraseConstant(bb, state2);
+
         boolean resultCanBeNull = s1.canBeNull() || s2.canBeNull();
 
         if (s1.containsType(s2.exactType())) {

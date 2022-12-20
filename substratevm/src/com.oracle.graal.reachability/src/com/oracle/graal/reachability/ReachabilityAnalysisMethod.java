@@ -24,23 +24,26 @@
  */
 package com.oracle.graal.reachability;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.nodes.GraphEncoder;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.StructuredGraph;
+
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.common.meta.MultiMethod;
+
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.nodes.GraphEncoder;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.StructuredGraph;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * Reachability specific extension of AnalysisMethod. Contains mainly information necessary to
@@ -48,7 +51,7 @@ import java.util.List;
  *
  * @see ReachabilityInvokeInfo
  */
-public class ReachabilityAnalysisMethod extends AnalysisMethod {
+public final class ReachabilityAnalysisMethod extends AnalysisMethod {
 
     /**
      * Invokes inside this method.
@@ -66,7 +69,16 @@ public class ReachabilityAnalysisMethod extends AnalysisMethod {
     private BytecodePosition reason;
 
     public ReachabilityAnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
-        super(universe, wrapped);
+        super(universe, wrapped, MultiMethod.ORIGINAL_METHOD, null);
+    }
+
+    private ReachabilityAnalysisMethod(AnalysisMethod original, MultiMethodKey multiMethodKey) {
+        super(original, multiMethodKey);
+    }
+
+    @Override
+    protected AnalysisMethod createMultiMethod(AnalysisMethod analysisMethod, MultiMethodKey newMultiMethodKey) {
+        return new ReachabilityAnalysisMethod(analysisMethod, newMultiMethodKey);
     }
 
     @Override
@@ -83,18 +95,8 @@ public class ReachabilityAnalysisMethod extends AnalysisMethod {
     }
 
     @Override
-    public StackTraceElement[] getParsingContext() {
-        List<StackTraceElement> parsingContext = new ArrayList<>();
-        ReachabilityAnalysisMethod curr = this;
-
-        /* Defend against cycles in the parsing context. GR-35744 should fix this properly. */
-        int maxSize = 100;
-
-        while (curr != null && parsingContext.size() < maxSize) {
-            parsingContext.add(curr.asStackTraceElement(curr.reason.getBCI()));
-            curr = ((ReachabilityAnalysisMethod) curr.reason.getMethod());
-        }
-        return parsingContext.toArray(new StackTraceElement[parsingContext.size()]);
+    public BytecodePosition getParsingReason() {
+        return reason;
     }
 
     public void setReason(BytecodePosition reason) {
@@ -112,8 +114,8 @@ public class ReachabilityAnalysisMethod extends AnalysisMethod {
     }
 
     @Override
-    public boolean registerAsInvoked() {
-        if (super.registerAsInvoked()) {
+    public boolean registerAsInvoked(Object invokeReason) {
+        if (super.registerAsInvoked(invokeReason)) {
             if (!isStatic()) {
                 getDeclaringClass().addInvokedVirtualMethod(this);
             }
@@ -134,7 +136,7 @@ public class ReachabilityAnalysisMethod extends AnalysisMethod {
     public static StructuredGraph getDecodedGraph(ReachabilityAnalysisEngine bb, ReachabilityAnalysisMethod method) {
         AnalysisParsedGraph analysisParsedGraph = method.ensureGraphParsed(bb);
         if (analysisParsedGraph.isIntrinsic()) {
-            method.registerAsIntrinsicMethod();
+            method.registerAsIntrinsicMethod("reachability analysis engine");
         }
         AnalysisError.guarantee(analysisParsedGraph.getEncodedGraph() != null, "Cannot provide  a summary for %s.", method.getQualifiedName());
 
@@ -158,5 +160,10 @@ public class ReachabilityAnalysisMethod extends AnalysisMethod {
             position = new BytecodePosition(null, method, node.bci());
         }
         return position;
+    }
+
+    @Override
+    public boolean isImplementationInvokable() {
+        return true;
     }
 }

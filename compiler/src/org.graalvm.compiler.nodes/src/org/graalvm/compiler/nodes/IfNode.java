@@ -31,14 +31,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.bytecode.BytecodeDisassembler;
-import org.graalvm.compiler.bytecode.Bytecodes;
-import org.graalvm.compiler.bytecode.Bytes;
-import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
@@ -90,7 +85,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.TriState;
 
@@ -203,60 +197,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         assertTrue(trueSuccessor() != null, "missing trueSuccessor");
         assertTrue(falseSuccessor() != null, "missing falseSuccessor");
         return super.verify();
-    }
-
-    private boolean compareCallContext(NodeSourcePosition successorPosition) {
-        NodeSourcePosition position = getNodeSourcePosition();
-        NodeSourcePosition successor = successorPosition;
-        while (position != null) {
-            assertTrue(Objects.equals(position.getMethod(), successor.getMethod()), "method mismatch");
-            position = position.getCaller();
-            successor = successor.getCaller();
-        }
-        assertTrue(successor == null, "successor position has more methods");
-        return true;
-    }
-
-    @Override
-    public boolean verifySourcePosition() {
-        NodeSourcePosition sourcePosition = getNodeSourcePosition();
-        assertTrue(sourcePosition != null, "missing IfNode source position");
-
-        NodeSourcePosition trueSuccessorPosition = trueSuccessor.getNodeSourcePosition();
-        assertTrue(trueSuccessorPosition != null, "missing IfNode true successor source position");
-
-        NodeSourcePosition falseSuccessorPosition = falseSuccessor.getNodeSourcePosition();
-        assertTrue(falseSuccessorPosition != null, "missing IfNode false successor source position");
-
-        int bci = sourcePosition.getBCI();
-        ResolvedJavaMethod method = sourcePosition.getMethod();
-        int bytecode = BytecodeDisassembler.getBytecodeAt(method, bci);
-
-        if (!Bytecodes.isIfBytecode(bytecode)) {
-            return true;
-        }
-
-        byte[] code = (new ResolvedJavaMethodBytecode(method)).getCode();
-        int targetBCI = bci + Bytes.beS2(code, bci + 1);
-        int nextBCI = bci + Bytecodes.lengthOf(bytecode);
-
-        // At least one successor should have the correct BCI to indicate any possible negation that
-        // occurred after bytecode parsing
-        boolean matchingSuccessorFound = false;
-        if (trueSuccessorPosition.getBCI() == nextBCI || trueSuccessorPosition.getBCI() == targetBCI) {
-            assertTrue(compareCallContext(trueSuccessorPosition), "call context different from IfNode in trueSuccessor");
-            matchingSuccessorFound = true;
-        }
-
-        if (falseSuccessorPosition.getBCI() == nextBCI || falseSuccessorPosition.getBCI() == targetBCI) {
-            assertTrue(compareCallContext(falseSuccessorPosition), "call context different from IfNode in falseSuccessor");
-            matchingSuccessorFound = true;
-        }
-
-        assertTrue(matchingSuccessorFound, "no matching successor position found in IfNode");
-        assertTrue(trueSuccessorPosition.getBCI() != falseSuccessorPosition.getBCI(), "successor positions same in IfNode");
-
-        return true;
     }
 
     public void eliminateNegation() {
@@ -2393,5 +2333,22 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     @Override
     public int getSuccessorCount() {
         return 2;
+    }
+
+    /**
+     * Predict if {@code successor} will be eliminated by the next round of
+     * {@linkplain Canonicalizable canonicalization}. A return value {@code false} can indicate that
+     * it is statically impossible to predict if the {@code successor} will be eliminated, i.e., it
+     * is unknown.
+     */
+    public boolean successorWillBeEliminated(AbstractBeginNode successor) {
+        assert successor == trueSuccessor || successor == falseSuccessor;
+        if (condition instanceof LogicConstantNode) {
+            LogicConstantNode c = (LogicConstantNode) condition;
+            boolean trueSuccessorWillBeEliminated = !c.getValue();
+            return trueSuccessorWillBeEliminated ? successor == trueSuccessor : successor == falseSuccessor;
+        }
+        // unknown
+        return false;
     }
 }

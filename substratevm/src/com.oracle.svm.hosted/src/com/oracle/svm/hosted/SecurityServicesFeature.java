@@ -330,11 +330,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         access.ensureInitialized("javax.crypto.SealedObject");
 
         /*
-         * Ensure jdk.internal.access.SharedSecrets.javaIOAccess is initialized before scanning.
-         */
-        access.ensureInitialized("java.io.Console");
-
-        /*
          * Ensure jdk.internal.access.SharedSecrets.javaSecuritySignatureAccess is initialized
          * before scanning.
          */
@@ -976,7 +971,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                     Method method = (Method) trigger;
                     DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
                     AnalysisMethod analysisMethod = access.getMetaAccess().lookupJavaMethod(method);
-                    String msg = String.format("Service factory method %s is reachable.%n", analysisMethod.format("%H.%n(%P)"));
+                    String msg = String.format("Service factory method %s is reachable.%n", analysisMethod.asStackTraceElement(0));
                     msg += String.format("%sAnalysis parsing context: %s", indent, ReportUtils.parsingContext(analysisMethod, indent + "    "));
                     msg += String.format("%sReachability of %s service type API triggers registration of following services:%n", indent, serviceType);
                     return msg;

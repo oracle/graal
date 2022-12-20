@@ -28,7 +28,8 @@ import java.io.PrintWriter;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.c.CHeader;
+import org.graalvm.nativeimage.c.CHeader;
+
 import com.oracle.svm.core.c.function.GraalIsolateHeader;
 
 public class PolyglotIsolateHeader implements CHeader.Header {

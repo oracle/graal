@@ -30,10 +30,21 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.Function;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.JavaMethodContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
@@ -42,15 +53,19 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CompilationInfo;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.vm.ci.meta.Constant;
@@ -66,10 +81,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public final class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvider, JavaMethodContext, OriginalMethodProvider {
+public final class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvider, JavaMethodContext, OriginalMethodProvider, MultiMethod {
 
-    public static final String METHOD_NAME_COLLISION_SUFFIX = "*";
-    public static final String METHOD_NAME_DEOPT_SUFFIX = "**";
+    public static final String METHOD_NAME_COLLISION_SEPARATOR = "%";
 
     public final AnalysisMethod wrapped;
 
@@ -100,19 +114,49 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
     private final String name;
     private final String uniqueShortName;
 
-    public static HostedMethod create(HostedUniverse universe, AnalysisMethod wrapped, HostedType holder, Signature signature,
-                    ConstantPool constantPool, ExceptionHandler[] handlers, HostedMethod deoptOrigin) {
+    private final MultiMethodKey multiMethodKey;
+
+    /**
+     * Map from a key to the corresponding implementation. All multi-method implementations for a
+     * given Java method share the same map. This allows one to easily switch between different
+     * implementations when needed. When {@code multiMethodMap} is null, then
+     * {@link #multiMethodKey} points to {@link #ORIGINAL_METHOD} and no other implementations exist
+     * for the method. This is done to reduce the memory overhead in the common case when only this
+     * one implementation is present.
+     */
+    private volatile Map<MultiMethodKey, MultiMethod> multiMethodMap;
+
+    @SuppressWarnings("rawtypes") //
+    private static final AtomicReferenceFieldUpdater<HostedMethod, Map> MULTIMETHOD_MAP_UPDATER = AtomicReferenceFieldUpdater.newUpdater(HostedMethod.class, Map.class,
+                    "multiMethodMap");
+
+    public static final HostedMethod[] EMPTY_ARRAY = new HostedMethod[0];
+
+    static HostedMethod create(HostedUniverse universe, AnalysisMethod wrapped, HostedType holder, Signature signature,
+                    ConstantPool constantPool, ExceptionHandler[] handlers) {
         LocalVariableTable localVariableTable = createLocalVariableTable(universe, wrapped);
-        String name = deoptOrigin != null ? wrapped.getName() + METHOD_NAME_DEOPT_SUFFIX : wrapped.getName();
-        String uniqueShortName = SubstrateUtil.uniqueShortName(holder.getJavaClass().getClassLoader(), holder, name, signature, wrapped.isConstructor());
-        int collisionCount = universe.uniqueHostedMethodNames.merge(uniqueShortName, 0, (oldValue, value) -> oldValue + 1);
-        if (collisionCount > 0) {
-            name = name + METHOD_NAME_COLLISION_SUFFIX + collisionCount;
-            String fixedUniqueShortName = SubstrateUtil.uniqueShortName(holder.getJavaClass().getClassLoader(), holder, name, signature, wrapped.isConstructor());
-            VMError.guarantee(!fixedUniqueShortName.equals(uniqueShortName), "failed to generate uniqueShortName for HostedMethod created for " + wrapped);
-            uniqueShortName = fixedUniqueShortName;
-        }
-        return new HostedMethod(wrapped, holder, signature, constantPool, handlers, deoptOrigin, name, uniqueShortName, localVariableTable);
+
+        return create0(wrapped, holder, signature, constantPool, handlers, wrapped.getMultiMethodKey(), null, localVariableTable);
+    }
+
+    private static HostedMethod create0(AnalysisMethod wrapped, HostedType holder, Signature signature,
+                    ConstantPool constantPool, ExceptionHandler[] handlers, MultiMethodKey key, Map<MultiMethodKey, MultiMethod> multiMethodMap, LocalVariableTable localVariableTable) {
+        Function<Integer, Pair<String, String>> nameGenerator = (collisionCount) -> {
+            String name = wrapped.wrapped.getName(); // want name w/o any multimethodkey suffix
+            if (key != ORIGINAL_METHOD) {
+                name += MULTI_METHOD_KEY_SEPARATOR + key;
+            }
+            if (collisionCount > 0) {
+                name = name + METHOD_NAME_COLLISION_SEPARATOR + collisionCount;
+            }
+            String uniqueShortName = SubstrateUtil.uniqueShortName(holder.getJavaClass().getClassLoader(), holder, name, signature, wrapped.isConstructor());
+
+            return Pair.create(name, uniqueShortName);
+        };
+
+        Pair<String, String> names = ImageSingletons.lookup(HostedMethodNameFactory.class).createNames(nameGenerator);
+
+        return new HostedMethod(wrapped, holder, signature, constantPool, handlers, names.getLeft(), names.getRight(), localVariableTable, key, multiMethodMap);
     }
 
     private static LocalVariableTable createLocalVariableTable(HostedUniverse universe, AnalysisMethod wrapped) {
@@ -139,16 +183,19 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
     }
 
     private HostedMethod(AnalysisMethod wrapped, HostedType holder, Signature signature, ConstantPool constantPool,
-                    ExceptionHandler[] handlers, HostedMethod deoptOrigin, String name, String uniqueShortName, LocalVariableTable localVariableTable) {
+                    ExceptionHandler[] handlers, String name, String uniqueShortName, LocalVariableTable localVariableTable, MultiMethodKey multiMethodKey,
+                    Map<MultiMethodKey, MultiMethod> multiMethodMap) {
         this.wrapped = wrapped;
         this.holder = holder;
         this.signature = signature;
         this.constantPool = constantPool;
         this.handlers = handlers;
-        this.compilationInfo = new CompilationInfo(this, deoptOrigin);
+        this.compilationInfo = new CompilationInfo(this);
         this.localVariableTable = localVariableTable;
         this.name = name;
         this.uniqueShortName = uniqueShortName;
+        this.multiMethodKey = multiMethodKey;
+        this.multiMethodMap = multiMethodMap;
     }
 
     @Override
@@ -215,13 +262,10 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
 
     @Override
     public int getDeoptOffsetInImage() {
-        HostedMethod deoptTarget = compilationInfo.getDeoptTargetMethod();
         int result = 0;
+        HostedMethod deoptTarget = getMultiMethod(DEOPT_TARGET_METHOD);
         if (deoptTarget != null && deoptTarget.isCodeAddressOffsetValid()) {
             result = deoptTarget.getCodeAddressOffset();
-            assert result != 0;
-        } else if (compilationInfo.isDeoptTarget()) {
-            result = getCodeAddressOffset();
             assert result != 0;
         }
         return result;
@@ -239,12 +283,12 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
 
     @Override
     public boolean isDeoptTarget() {
-        return compilationInfo.isDeoptTarget();
+        return MultiMethod.super.isDeoptTarget();
     }
 
     @Override
     public boolean canDeoptimize() {
-        return compilationInfo.canDeoptForTesting();
+        return compilationInfo.canDeoptForTesting() || multiMethodKey == SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
     }
 
     public boolean hasVTableIndex() {
@@ -463,5 +507,86 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
     @Override
     public Executable getJavaMethod() {
         return OriginalMethodProvider.getJavaMethod(getDeclaringClass().universe.getSnippetReflection(), wrapped);
+    }
+
+    @Override
+    public MultiMethodKey getMultiMethodKey() {
+        return multiMethodKey;
+    }
+
+    void setMultiMethodMap(ConcurrentHashMap<MultiMethodKey, MultiMethod> newMultiMethodMap) {
+        VMError.guarantee(multiMethodMap == null, "Resetting already initialized multimap");
+        if (!MULTIMETHOD_MAP_UPDATER.compareAndSet(this, null, newMultiMethodMap)) {
+            throw VMError.shouldNotReachHere("unable to set multimeMethodMap");
+        }
+    }
+
+    @Override
+    public HostedMethod getOrCreateMultiMethod(MultiMethodKey key) {
+        if (key == multiMethodKey) {
+            return this;
+        }
+
+        if (multiMethodMap == null) {
+            ConcurrentHashMap<MultiMethodKey, MultiMethod> newMultiMethodMap = new ConcurrentHashMap<>();
+            newMultiMethodMap.put(multiMethodKey, this);
+            MULTIMETHOD_MAP_UPDATER.compareAndSet(this, null, newMultiMethodMap);
+        }
+
+        return (HostedMethod) multiMethodMap.computeIfAbsent(key, (k) -> {
+            HostedMethod newMultiMethod = create0(wrapped, holder, signature, constantPool, handlers, k, multiMethodMap, localVariableTable);
+            newMultiMethod.staticAnalysisResults = staticAnalysisResults;
+            newMultiMethod.implementations = implementations;
+            newMultiMethod.vtableIndex = vtableIndex;
+            return newMultiMethod;
+        });
+    }
+
+    @Override
+    public HostedMethod getMultiMethod(MultiMethodKey key) {
+        if (key == multiMethodKey) {
+            return this;
+        } else if (multiMethodMap == null) {
+            return null;
+        } else {
+            return (HostedMethod) multiMethodMap.get(key);
+        }
+    }
+
+    @Override
+    public Collection<MultiMethod> getAllMultiMethods() {
+        if (multiMethodMap == null) {
+            return Collections.singleton(this);
+        } else {
+            return multiMethodMap.values();
+        }
+    }
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+@AutomaticallyRegisteredFeature
+class HostedMethodNameFactory implements InternalFeature {
+    Map<String, Integer> methodNameCount = new ConcurrentHashMap<>();
+    Set<String> uniqueShortNames = ConcurrentHashMap.newKeySet();
+
+    Pair<String, String> createNames(Function<Integer, Pair<String, String>> nameGenerator) {
+        Pair<String, String> result = nameGenerator.apply(0);
+
+        int collisionCount = methodNameCount.merge(result.getRight(), 0, (oldValue, value) -> oldValue + 1);
+
+        if (collisionCount != 0) {
+            result = nameGenerator.apply(collisionCount);
+        }
+
+        boolean added = uniqueShortNames.add(result.getRight());
+        VMError.guarantee(added, "failed to generate uniqueShortName for HostedMethod: " + result.getRight());
+
+        return result;
+    }
+
+    @Override
+    public void afterCompilation(AfterCompilationAccess access) {
+        methodNameCount = null;
+        uniqueShortNames = null;
     }
 }

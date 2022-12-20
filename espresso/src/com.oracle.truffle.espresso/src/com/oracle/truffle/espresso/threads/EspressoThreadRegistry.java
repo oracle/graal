@@ -261,14 +261,18 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
             }
             vm.attachThread(hostThread);
             StaticObject guestThread = meta.java_lang_Thread.allocateInstance(getContext());
+            if (getJavaVersion().java19OrLater()) {
+                StaticObject holder = meta.java_lang_Thread$FieldHolder.allocateInstance(getContext());
+                meta.java_lang_Thread_holder.setObject(guestThread, holder);
+            }
             // Allow guest Thread.currentThread() to work.
-            meta.java_lang_Thread_priority.setInt(guestThread, Thread.NORM_PRIORITY);
+            getThreadAccess().setPriority(guestThread, Thread.NORM_PRIORITY);
             getThreadAccess().initializeHiddenFields(guestThread, hostThread, managedByEspresso);
 
             // register the new guest thread
             registerThread(hostThread, guestThread);
             // Set runnable status before executing guest code.
-            meta.java_lang_Thread_threadStatus.setInt(guestThread, State.RUNNABLE.value);
+            getThreadAccess().setState(guestThread, State.RUNNABLE.value);
 
             if (name == null) {
                 meta.java_lang_Thread_init_ThreadGroup_Runnable.invokeDirect(guestThread, mainThreadGroup, StaticObject.NULL);
@@ -277,7 +281,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
             }
 
             // now add to the main thread group
-            meta.java_lang_ThreadGroup_add.invokeDirect(threadGroup, guestThread);
+            getThreadAccess().setThreadGroup(guestThread, threadGroup);
 
             logger.fine(() -> {
                 String guestName = getThreadAccess().getThreadName(guestThread);
@@ -300,8 +304,12 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
                         .invokeDirect(systemThreadGroup);
         Thread hostThread = Thread.currentThread();
         StaticObject mainThread = meta.java_lang_Thread.allocateInstance(getContext());
+        if (getJavaVersion().java19OrLater()) {
+            StaticObject holder = meta.java_lang_Thread$FieldHolder.allocateInstance(getContext());
+            meta.java_lang_Thread_holder.setObject(mainThread, holder);
+        }
         // Allow guest Thread.currentThread() to work.
-        meta.java_lang_Thread_priority.setInt(mainThread, Thread.NORM_PRIORITY);
+        getThreadAccess().setPriority(mainThread, Thread.NORM_PRIORITY);
         getThreadAccess().initializeHiddenFields(mainThread, hostThread, false);
         mainThreadGroup = meta.java_lang_ThreadGroup.allocateInstance(getContext());
 
@@ -319,7 +327,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
                         .invokeDirect(mainThread,
                                         /* group */ mainThreadGroup,
                                         /* name */ meta.toGuestString("main"));
-        meta.java_lang_Thread_threadStatus.setInt(mainThread, State.RUNNABLE.value);
+        getThreadAccess().setState(mainThread, State.RUNNABLE.value);
 
         // Notify native backend about main thread.
         getNativeAccess().prepareThread();

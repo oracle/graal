@@ -38,6 +38,9 @@ public final class GraalOptions {
     @Option(help = "Use compiler intrinsifications.", type = OptionType.Debug)
     public static final OptionKey<Boolean> Intrinsify = new OptionKey<>(true);
 
+    @Option(help = "Rewrite signed comparisons to unsigned ones if the result is equal.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> PreferUnsignedComparison = new OptionKey<>(true);
+
     @Option(help = "Perform early global value numbering.", type = OptionType.Debug)
     public static final OptionKey<Boolean> EarlyGVN = new OptionKey<>(true);
 

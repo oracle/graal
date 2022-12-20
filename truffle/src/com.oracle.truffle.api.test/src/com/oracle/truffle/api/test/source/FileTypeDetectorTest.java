@@ -52,6 +52,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -145,9 +146,8 @@ public class FileTypeDetectorTest extends AbstractPolyglotTest {
     }
 
     @Test
-    @SuppressWarnings("deprecation")
     public void testFindMimeTypeFullIO() throws IOException {
-        setupEnv(Context.newBuilder().allowIO(true).build());
+        setupEnv(Context.newBuilder().allowIO(IOAccess.ALL).build());
         TruffleFile truffleFile1 = languageEnv.getPublicTruffleFile(testFile1.getAbsolutePath());
         TruffleFile truffleFile2 = languageEnv.getPublicTruffleFile(testFile2.getAbsolutePath());
         TruffleFile truffleFile3 = languageEnv.getPublicTruffleFile(testFile3.getAbsolutePath());
@@ -217,7 +217,7 @@ public class FileTypeDetectorTest extends AbstractPolyglotTest {
 
     @Test
     public void testSourceBulderFullIO() throws IOException {
-        setupEnv(Context.newBuilder().allowIO(true).build());
+        setupEnv(Context.newBuilder().allowIO(IOAccess.ALL).build());
         TruffleFile truffleFile1 = languageEnv.getPublicTruffleFile(testFile1.getAbsolutePath());
         TruffleFile truffleFile3 = languageEnv.getPublicTruffleFile(testFile3.getAbsolutePath());
 
@@ -235,7 +235,7 @@ public class FileTypeDetectorTest extends AbstractPolyglotTest {
 
     @Test
     public void testFileTypeDetectorFiltering() throws IOException {
-        setupEnv(Context.newBuilder().allowIO(true).build());
+        setupEnv(Context.newBuilder().allowIO(IOAccess.ALL).build());
         File firsta = createTmpFile("test", "." + FirstLanguage.EXT_A, "");
         File firstb = createTmpFile("test", "." + FirstLanguage.EXT_B, "");
         File seconda = createTmpFile("test", "." + SecondLanguage.EXT_A, "");

@@ -31,6 +31,8 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readHub;
 import java.io.File;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
@@ -53,18 +55,18 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Containers;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.KeepOriginal;
-import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassValueSupport;
@@ -72,6 +74,10 @@ import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.internal.loader.ClassLoaderValue;
+import jdk.internal.module.ServicesCatalog;
 
 @TargetClass(java.lang.Object.class)
 @SuppressWarnings("static-method")
@@ -218,6 +224,7 @@ final class Target_java_lang_StringUTF16 {
 }
 
 @TargetClass(java.lang.Throwable.class)
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 @SuppressWarnings({"unused"})
 final class Target_java_lang_Throwable {
 
@@ -304,30 +311,30 @@ final class Target_java_lang_System {
 
     @Substitute
     private static Properties getProperties() {
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).getProperties();
+        return SystemPropertiesSupport.singleton().getProperties();
     }
 
     @Substitute
     private static void setProperties(Properties props) {
-        ImageSingletons.lookup(SystemPropertiesSupport.class).setProperties(props);
+        SystemPropertiesSupport.singleton().setProperties(props);
     }
 
     @Substitute
     public static String setProperty(String key, String value) {
         checkKey(key);
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).setProperty(key, value);
+        return SystemPropertiesSupport.singleton().setProperty(key, value);
     }
 
     @Substitute
     private static String getProperty(String key) {
         checkKey(key);
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).getProperty(key);
+        return SystemPropertiesSupport.singleton().getProperty(key);
     }
 
     @Substitute
     public static String clearProperty(String key) {
         checkKey(key);
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).clearProperty(key);
+        return SystemPropertiesSupport.singleton().clearProperty(key);
     }
 
     @Substitute
@@ -423,6 +430,7 @@ final class Target_java_lang_Math {
 }
 
 @TargetClass(java.lang.StrictMath.class)
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 final class Target_java_lang_StrictMath {
 
     @Substitute
@@ -718,14 +726,40 @@ final class Target_jdk_internal_loader_BootLoader {
     }
 
     /**
-     * All ClassLoaderValue are reset at run time for now. See also
-     * {@link Target_java_lang_ClassLoader#classLoaderValueMap} for resetting of individual class
-     * loaders.
+     * Most {@link ClassLoaderValue}s are reset. For the list of preserved transformers see
+     * {@link ClassLoaderValueMapFieldValueTransformer}.
      */
     // Checkstyle: stop
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class)//
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ClassLoaderValueMapFieldValueTransformer.class, isFinal = true)//
     static ConcurrentHashMap<?, ?> CLASS_LOADER_VALUE_MAP;
     // Checkstyle: resume
+}
+
+final class ClassLoaderValueMapFieldValueTransformer implements FieldValueTransformer {
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        if (originalValue == null) {
+            return null;
+        }
+
+        ConcurrentHashMap<?, ?> original = (ConcurrentHashMap<?, ?>) originalValue;
+        List<ClassLoaderValue<?>> clvs = Arrays.asList(
+                        ReflectionUtil.readField(ServicesCatalog.class, "CLV", null),
+                        ReflectionUtil.readField(ModuleLayer.class, "CLV", null));
+
+        var res = new ConcurrentHashMap<>();
+        for (ClassLoaderValue<?> clv : clvs) {
+            if (clv == null) {
+                throw VMError.shouldNotReachHere("Field must not be null. Please check what changed in the JDK.");
+            }
+            var catalog = original.get(clv);
+            if (catalog != null) {
+                res.put(clv, catalog);
+            }
+        }
+
+        return res;
+    }
 }
 
 /** Dummy class to have a class with the file's name. */

@@ -72,6 +72,21 @@ public class TStringAsManagedTest extends TStringTestBase {
     public void testAll() throws Exception {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
             TruffleString b = node.execute(a, encoding);
+            if (a.isImmutable()) {
+                if (a.isManaged()) {
+                    Assert.assertSame(a, b);
+                } else {
+                    Assert.assertNotSame(a, b);
+                    TruffleString cached = node.execute(a, encoding, true);
+                    assertBytesEqual(cached, encoding, array);
+                    TruffleString uncached = node.execute(a, encoding);
+                    assertBytesEqual(uncached, encoding, array);
+                    Assert.assertNotSame(cached, uncached);
+                    Assert.assertNotSame(b, cached);
+                    Assert.assertNotSame(b, uncached);
+                    Assert.assertSame(cached, node.execute(a, encoding, true));
+                }
+            }
             MutableTruffleString bMutable = nodeMutable.execute(a, encoding);
             assertBytesEqual(bMutable, encoding, array);
             if (a instanceof MutableTruffleString) {

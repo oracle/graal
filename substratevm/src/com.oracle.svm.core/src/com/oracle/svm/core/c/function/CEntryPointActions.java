@@ -91,7 +91,7 @@ public final class CEntryPointActions {
      * @param isolate isolate in which a context for the current thread exists.
      * @return 0 on success, otherwise non-zero.
      */
-    public static native int enterIsolate(Isolate isolate);
+    public static native int enterByIsolate(Isolate isolate);
 
     /**
      * May only be used during the prologue of a segfault handler. If the thread is already

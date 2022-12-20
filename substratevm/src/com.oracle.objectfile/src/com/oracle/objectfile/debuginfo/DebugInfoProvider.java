@@ -132,6 +132,14 @@ public interface DebugInfoProvider {
 
         DebugTypeKind typeKind();
 
+        /**
+         * returns the offset in the heap at which the java.lang.Class instance which models this
+         * class is located or -1 if no such instance exists for this class.
+         *
+         * @return the offset of the java.lang.Class instance which models this class or -1.
+         */
+        long classOffset();
+
         int size();
     }
 

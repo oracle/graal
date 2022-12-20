@@ -4,6 +4,9 @@
 ### User-visible changes
 * Interop invokable members of espresso objects can now also be read.
 * Added the `addPath` invokable member to Espresso Bindings if `java.UseBindingsLoader=true`. Allows adding new path to the classloader associated with the bindings.
+* Added option `java.PolyglotTypeConverters` that can be set to declare a type conversion function that maps a host meta qualified name to a type converter class in an embedded Espresso context.
+* Added option`java.PolyglotInterfaceMappings` that can be set to a semicolon-separated list of 1:1 interface type mappings to automatically construct guest proxies for host objects that implement declared interfaces in the list.
+
 ### Internal changes
 ### Noteworthy fixes
 * Fix some conversions at interop boundaries: when an espresso-to-espresso conversion was seen, then an espresso-to-primitive conversion happens. The latter would fail.  

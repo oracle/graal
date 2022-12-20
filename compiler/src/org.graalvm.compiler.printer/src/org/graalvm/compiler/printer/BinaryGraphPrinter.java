@@ -42,7 +42,6 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.CachedGraph;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.InputEdges;
@@ -165,8 +164,6 @@ public class BinaryGraphPrinter implements
     public final GraphInfo graph(GraphInfo currrent, Object obj) {
         if (obj instanceof Graph) {
             return new GraphInfo(currrent.debug, (Graph) obj);
-        } else if (obj instanceof CachedGraph) {
-            return new GraphInfo(currrent.debug, ((CachedGraph<?>) obj).getReadonlyCopy());
         } else {
             return null;
         }

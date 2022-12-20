@@ -44,12 +44,14 @@ package org.graalvm.wasm.parser.validation;
 import static java.lang.Integer.compareUnsigned;
 
 import org.graalvm.wasm.Assert;
+import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.parser.validation.collections.ControlStack;
 import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
 import org.graalvm.wasm.parser.validation.collections.entries.BranchTableEntry;
+import org.graalvm.wasm.util.ExtraDataUtil;
 
 /**
  * Represents the values and stack frames of a Wasm code section during validation. Stores
@@ -57,7 +59,6 @@ import org.graalvm.wasm.parser.validation.collections.entries.BranchTableEntry;
  */
 public class ParserState {
     private static final byte[] EMPTY_ARRAY = new byte[0];
-    private static final byte UNKNOWN = -1;
     private static final byte ANY = 0;
 
     private final ByteArrayList valueStack;
@@ -83,7 +84,7 @@ public class ParserState {
     private byte popInternal(byte expectedValueType) {
         if (availableStackSize() == 0) {
             if (isCurrentStackUnreachable()) {
-                return UNKNOWN;
+                return WasmType.UNKNOWN_TYPE;
             } else {
                 if (expectedValueType == ANY) {
                     throw ValidationErrors.createExpectedAnyOnEmptyStack();
@@ -138,16 +139,19 @@ public class ParserState {
      * @param actualTypes The actual value types.
      * @return True if both are equivalent.
      */
-    private static boolean checkTypes(byte[] expectedTypes, byte[] actualTypes) {
+    private boolean isTypeMismatch(byte[] expectedTypes, byte[] actualTypes) {
         if (expectedTypes.length != actualTypes.length) {
+            return true;
+        }
+        if (isCurrentStackUnreachable()) {
             return false;
         }
         for (int i = 0; i < expectedTypes.length; i++) {
             if (expectedTypes[i] != actualTypes[i]) {
-                return false;
+                return true;
             }
         }
-        return true;
+        return false;
     }
 
     /**
@@ -190,16 +194,28 @@ public class ParserState {
      */
     public byte popChecked(byte expectedValueType) {
         final byte actualValueType = popInternal(expectedValueType);
-        if (actualValueType == UNKNOWN) {
-            return expectedValueType;
-        }
-        if (expectedValueType == UNKNOWN) {
-            return actualValueType;
-        }
-        if (expectedValueType != actualValueType) {
+        if (actualValueType != expectedValueType && actualValueType != WasmType.UNKNOWN_TYPE && expectedValueType != WasmType.UNKNOWN_TYPE) {
             throw ValidationErrors.createTypeMismatch(expectedValueType, actualValueType);
         }
         return actualValueType;
+    }
+
+    /**
+     * Pops the topmost value type from the stack and checks if it is a reference type.
+     *
+     * @throws WasmException If the stack is empty or the value type is not a reference type.
+     */
+    public void popReferenceTypeChecked() {
+        if (availableStackSize() != 0) {
+            final byte value = valueStack.popBack();
+            if (WasmType.isReferenceType(value)) {
+                return;
+            }
+            // Push value back onto the stack and perform a checked pop to get the correct error
+            // message
+            valueStack.push(value);
+        }
+        popChecked(WasmType.FUNCREF_TYPE);
     }
 
     /**
@@ -301,6 +317,21 @@ public class ParserState {
     }
 
     /**
+     * Unwinds the frame up to the given limit. After using this method, the values should be pushed
+     * back onto the stack.
+     * 
+     * @return The value types on the stack.
+     */
+    private byte[] unwindStackToInitialFrameStackSize(int initialFrameStackSize) {
+        final int stackSize = valueStack.size();
+        final byte[] unwindTypes = new byte[stackSize - initialFrameStackSize];
+        for (int i = unwindTypes.length - 1; i >= 0; i--) {
+            unwindTypes[i] = valueStack.popBack();
+        }
+        return unwindTypes;
+    }
+
+    /**
      * Performs the necessary branch checks and adds the conditional branch information in the extra
      * data array.
      *
@@ -312,8 +343,10 @@ public class ParserState {
         ControlFrame frame = getFrame(branchLabel);
         final byte[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
+        final byte[] unwindValueTypes = unwindStackToInitialFrameStackSize(frame.initialStackSize());
+        frame.addBranchTarget(extraData.addConditionalBranch(offset, ExtraDataUtil.extractUnwindType(unwindValueTypes)));
+        pushAll(unwindValueTypes);
         pushAll(labelTypes);
-        frame.addBranchTarget(extraData.addConditionalBranch(offset));
     }
 
     /**
@@ -328,7 +361,9 @@ public class ParserState {
         ControlFrame frame = getFrame(branchLabel);
         final byte[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
-        frame.addBranchTarget(extraData.addUnconditionalBranch(offset));
+        final byte[] unwindValueTypes = unwindStackToInitialFrameStackSize(frame.initialStackSize());
+        frame.addBranchTarget(extraData.addUnconditionalBranch(offset, ExtraDataUtil.extractUnwindType(unwindValueTypes)));
+        pushAll(unwindValueTypes);
     }
 
     /**
@@ -350,8 +385,11 @@ public class ParserState {
             frame = getFrame(otherBranchLabel);
             byte[] otherBranchLabelReturnTypes = frame.labelTypes();
             checkLabelTypes(branchLabelReturnTypes, otherBranchLabelReturnTypes);
-            pushAll(popAll(otherBranchLabelReturnTypes));
-            frame.addBranchTarget(branchTable.item(i));
+            byte[] returnTypes = popAll(otherBranchLabelReturnTypes);
+            byte[] unwindValueTypes = unwindStackToInitialFrameStackSize(frame.initialStackSize());
+            frame.addBranchTarget(branchTable.updateItemUnwindType(i, ExtraDataUtil.extractUnwindType(unwindValueTypes)));
+            pushAll(unwindValueTypes);
+            pushAll(returnTypes);
         }
         popAll(branchLabelReturnTypes);
     }
@@ -421,7 +459,7 @@ public class ParserState {
     void checkStackAfterFrameExit(ControlFrame frame, byte[] resultTypes) {
         if (availableStackSize() > resultTypes.length) {
             byte[] actualTypes = popAvailableUnchecked();
-            if (!checkTypes(resultTypes, actualTypes)) {
+            if (isTypeMismatch(resultTypes, actualTypes)) {
                 throw ValidationErrors.createResultTypesMismatch(resultTypes, actualTypes);
             }
         }
@@ -457,7 +495,7 @@ public class ParserState {
             popAll(resultTypes);
         } else {
             byte[] actualTypes = popAvailableUnchecked(resultTypes);
-            if (!checkTypes(resultTypes, actualTypes)) {
+            if (isTypeMismatch(resultTypes, actualTypes)) {
                 throw ValidationErrors.createResultTypesMismatch(resultTypes, actualTypes);
             }
         }
@@ -475,7 +513,7 @@ public class ParserState {
             popAll(paramTypes);
         } else {
             byte[] actualTypes = popAvailableUnchecked(paramTypes);
-            if (!checkTypes(paramTypes, actualTypes)) {
+            if (isTypeMismatch(paramTypes, actualTypes)) {
                 throw ValidationErrors.createParamTypesMismatch(paramTypes, actualTypes);
             }
         }
@@ -501,7 +539,7 @@ public class ParserState {
      * @throws WasmException If the provided sets of value types do not match.
      */
     public void checkLabelTypes(byte[] expectedTypes, byte[] actualTypes) {
-        if (!checkTypes(expectedTypes, actualTypes)) {
+        if (isTypeMismatch(expectedTypes, actualTypes)) {
             throw ValidationErrors.createLabelTypesMismatch(expectedTypes, actualTypes);
         }
     }

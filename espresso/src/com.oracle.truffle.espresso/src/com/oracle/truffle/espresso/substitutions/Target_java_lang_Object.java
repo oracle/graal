@@ -29,10 +29,15 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodPredicate;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -48,16 +53,28 @@ public final class Target_java_lang_Object {
         return self.getKlass().mirror();
     }
 
+    public static final class InitGuard implements InlinedMethodPredicate {
+        public static final InlinedMethodPredicate INSTANCE = new InitGuard();
+
+        @Override
+        public boolean isValid(EspressoContext context, Method.MethodVersion version, VirtualFrame frame, InlinedMethodNode node) {
+            StaticObject receiver = node.peekReceiver(frame);
+            return !Init.hasFinalizer(receiver, context);
+        }
+    }
+
+    // TODO: Allow inlining this in bytecode (see GR-42697)
+    // @InlineInBytecode(guard = InitGuard.class)
     @Substitution(hasReceiver = true, methodName = "<init>", isTrivial = true)
     abstract static class Init extends SubstitutionNode {
 
         abstract void execute(@JavaType(Object.class) StaticObject self);
 
-        static boolean hasFinalizer(StaticObject self) {
-            return ((ObjectKlass) self.getKlass()).hasFinalizer();
+        static boolean hasFinalizer(StaticObject self, EspressoContext context) {
+            return ((ObjectKlass) self.getKlass()).hasFinalizer(context);
         }
 
-        @Specialization(guards = "!hasFinalizer(self)")
+        @Specialization(guards = "!hasFinalizer(self, getContext())")
         void noFinalizer(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject self) {
             // nop
         }

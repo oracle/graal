@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinTask;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -62,6 +63,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.StaticFieldsSupport;
@@ -147,7 +149,26 @@ public class UniverseBuilder {
                 makeField(aField);
             }
             for (AnalysisMethod aMethod : aUniverse.getMethods()) {
-                makeMethod(aMethod);
+                assert aMethod.isOriginalMethod();
+                Collection<MultiMethod> allMethods = aMethod.getAllMultiMethods();
+                HostedMethod origHMethod = null;
+                if (allMethods.size() == 1) {
+                    origHMethod = makeMethod(aMethod);
+                } else {
+                    ConcurrentHashMap<MultiMethod.MultiMethodKey, MultiMethod> multiMethodMap = new ConcurrentHashMap<>();
+                    for (MultiMethod method : aMethod.getAllMultiMethods()) {
+                        HostedMethod hMethod = makeMethod((AnalysisMethod) method);
+                        hMethod.setMultiMethodMap(multiMethodMap);
+                        MultiMethod previous = multiMethodMap.put(hMethod.getMultiMethodKey(), hMethod);
+                        assert previous == null : "Overwriting multimethod key";
+                        if (method.equals(aMethod)) {
+                            origHMethod = hMethod;
+                        }
+                    }
+                }
+                assert origHMethod != null;
+                HostedMethod previous = hUniverse.methods.put(aMethod, origHMethod);
+                assert previous == null : "Overwriting analysis key";
             }
 
             Collection<HostedType> allTypes = hUniverse.types.values();
@@ -172,7 +193,6 @@ public class UniverseBuilder {
 
             processFieldLocations();
 
-            hUniverse.uniqueHostedMethodNames.clear();
             hUniverse.orderedMethods = new ArrayList<>(hUniverse.methods.values());
             Collections.sort(hUniverse.orderedMethods, HostedUniverse.METHOD_COMPARATOR);
             hUniverse.orderedFields = new ArrayList<>(hUniverse.fields.values());
@@ -268,7 +288,7 @@ public class UniverseBuilder {
         return x == y;
     }
 
-    private void makeMethod(AnalysisMethod aMethod) {
+    private HostedMethod makeMethod(AnalysisMethod aMethod) {
         HostedType holder;
         holder = lookupType(aMethod.getDeclaringClass());
         Signature signature = makeSignature(aMethod.getSignature(), holder);
@@ -287,9 +307,7 @@ public class UniverseBuilder {
             sHandlers[i] = new ExceptionHandler(h.getStartBCI(), h.getEndBCI(), h.getHandlerBCI(), h.catchTypeCPI(), catchType);
         }
 
-        HostedMethod sMethod = HostedMethod.create(hUniverse, aMethod, holder, signature, constantPool, sHandlers, null);
-        assert !hUniverse.methods.containsKey(aMethod);
-        hUniverse.methods.put(aMethod, sMethod);
+        HostedMethod hMethod = HostedMethod.create(hUniverse, aMethod, holder, signature, constantPool, sHandlers);
 
         boolean isCFunction = aMethod.getAnnotation(CFunction.class) != null;
         boolean hasCFunctionOptions = aMethod.getAnnotation(CFunctionOptions.class) != null;
@@ -307,6 +325,8 @@ public class UniverseBuilder {
                         aMethod.isImplementationInvoked() && !NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
             unsupportedFeatures.addMessage(aMethod.format("%H.%n(%p)"), aMethod, AnnotationSubstitutionProcessor.deleteErrorMessage(aMethod, DeletedMethod.NATIVE_MESSAGE, true));
         }
+
+        return hMethod;
     }
 
     private Signature makeSignature(Signature aSignature, WrappedJavaType defaultAccessingClass) {
@@ -347,8 +367,14 @@ public class UniverseBuilder {
 
     private void buildProfilingInformation() {
         /* Convert profiling information after all types and methods have been created. */
-        hUniverse.methods.entrySet().parallelStream()
-                        .forEach(entry -> entry.getValue().staticAnalysisResults = staticAnalysisResultsBuilder.makeOrApplyResults(entry.getKey()));
+        hUniverse.methods.values().parallelStream()
+                        .forEach(method -> {
+                            assert method.isOriginalMethod();
+                            for (MultiMethod multiMethod : method.getAllMultiMethods()) {
+                                HostedMethod hMethod = (HostedMethod) multiMethod;
+                                hMethod.staticAnalysisResults = staticAnalysisResultsBuilder.makeOrApplyResults(hMethod.getWrapped());
+                            }
+                        });
 
         staticAnalysisResultsBuilder = null;
     }
@@ -626,14 +652,13 @@ public class UniverseBuilder {
             list.add(method);
         }
 
-        HostedMethod[] noMethods = new HostedMethod[0];
         for (HostedType type : hUniverse.getTypes()) {
             List<HostedMethod> list = methodsOfType[type.getTypeID()];
             if (list != null) {
                 Collections.sort(list, HostedUniverse.METHOD_COMPARATOR);
-                type.allDeclaredMethods = list.toArray(new HostedMethod[list.size()]);
+                type.allDeclaredMethods = list.toArray(HostedMethod.EMPTY_ARRAY);
             } else {
-                type.allDeclaredMethods = noMethods;
+                type.allDeclaredMethods = HostedMethod.EMPTY_ARRAY;
             }
         }
     }
@@ -737,7 +762,7 @@ public class UniverseBuilder {
             }
             if (type.vtable == null) {
                 assert type.isInterface() || type.isPrimitive();
-                type.vtable = new HostedMethod[0];
+                type.vtable = HostedMethod.EMPTY_ARRAY;
             }
 
             HostedMethod[] vtableArray = type.vtable;

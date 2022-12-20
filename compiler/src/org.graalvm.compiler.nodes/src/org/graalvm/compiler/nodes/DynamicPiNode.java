@@ -69,10 +69,6 @@ public final class DynamicPiNode extends PiNode {
         return create(assumptions, constantReflection, object, guard, typeMirror, true, false);
     }
 
-    public boolean isExact() {
-        return exact;
-    }
-
     private static ValueNode findSynonym(Assumptions assumptions, ConstantReflectionProvider constantReflection, ValueNode object, GuardingNode guard, ValueNode typeMirror, boolean allowsNull,
                     boolean exact) {
         if (typeMirror.isConstant()) {

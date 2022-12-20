@@ -494,31 +494,6 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
         }
     }
 
-    public static ConstantNode forFloatingKind(JavaKind kind, double value) {
-        switch (kind) {
-            case Float:
-                return ConstantNode.forFloat((float) value);
-            case Double:
-                return ConstantNode.forDouble(value);
-            default:
-                throw GraalError.shouldNotReachHere("unknown kind " + kind);
-        }
-    }
-
-    /**
-     * Returns a node for a constant double that's compatible to a given stamp.
-     */
-    public static ConstantNode forFloatingStamp(Stamp stamp, double value, StructuredGraph graph) {
-        return forFloatingKind(stamp.getStackKind(), value, graph);
-    }
-
-    /**
-     * Returns a node for a constant double that's compatible to a given stamp.
-     */
-    public static ConstantNode forFloatingStamp(Stamp stamp, double value) {
-        return forFloatingKind(stamp.getStackKind(), value);
-    }
-
     public static ConstantNode defaultForKind(JavaKind kind, StructuredGraph graph) {
         return unique(graph, defaultForKind(kind));
     }
@@ -572,7 +547,4 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
         }
         return ConstantNode.forInt(length);
     }
-
-    @NodeIntrinsic
-    public static native Class<?> forClass(@ConstantNodeParameter ResolvedJavaType type);
 }

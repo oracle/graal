@@ -40,6 +40,7 @@ import java.util.function.Supplier;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -77,6 +78,7 @@ import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.OptionalInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
@@ -84,13 +86,16 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.ResolvedJavaSymbol;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
+import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
+import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
@@ -102,8 +107,8 @@ import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.ForceMaterializeNode;
-import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameAccessFlags;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.NewFrameNode;
+import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameAccessFlags;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameAccessType;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameClearNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameCopyNode;
@@ -125,10 +130,12 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 
 /**
- * Provides {@link InvocationPlugin}s for Truffle classes.
+ * Provides {@link InvocationPlugin}s for Truffle classes. These plugins are used only during
+ * partial evaluation.
  */
 public class TruffleGraphBuilderPlugins {
 
@@ -151,6 +158,7 @@ public class TruffleGraphBuilderPlugins {
         registerNodePlugins(plugins, metaAccess, canDelayIntrinsification, providers.getConstantReflection(), types);
         registerDynamicObjectPlugins(plugins, metaAccess, canDelayIntrinsification);
         registerBufferPlugins(plugins, metaAccess, canDelayIntrinsification);
+        registerMemorySegmentPlugins(plugins, metaAccess, canDelayIntrinsification, types);
     }
 
     private static void registerTruffleSafepointPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {
@@ -943,6 +951,60 @@ public class TruffleGraphBuilderPlugins {
 
         r.register(new CreateExceptionPlugin("createLimitException", Receiver.class, int.class));
         r.register(new CreateExceptionPlugin("createPositionException", Receiver.class, int.class));
+    }
+
+    private static final SpeculationReasonGroup BUFFER_SEGMENT_NULL_SPECULATION = new SpeculationReasonGroup("BufferSegmentNull");
+
+    private static void registerMemorySegmentPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification, KnownTruffleTypes types) {
+        ResolvedJavaType memorySegmentImplType = getRuntime().resolveType(metaAccess, "jdk.internal.foreign.AbstractMemorySegmentImpl", false);
+        if (memorySegmentImplType != null) {
+            Registration r = new Registration(plugins, new ResolvedJavaSymbol(memorySegmentImplType));
+            r.register(new OptionalInvocationPlugin("sessionImpl", Receiver.class) {
+                private final SpeculationLog.SpeculationReason bufferSegmentNullSpeculationReason = BUFFER_SEGMENT_NULL_SPECULATION.createSpeculationReason();
+
+                /**
+                 * ByteBuffer methods and VarHandles use the following code pattern to get any
+                 * memory session that needs to be checked:
+                 *
+                 * <pre>
+                 * {@code
+                 * MemorySessionImpl session() {
+                 *     if (segment != null) {
+                 *         return ((AbstractMemorySegmentImpl) segment).sessionImpl();
+                 *     } else {
+                 *         return null;
+                 *     }
+                 * }
+                 * }
+                 * </pre>
+                 *
+                 * In order to optimize for the case where the ByteBuffer was not obtained from a
+                 * memory segment and we can skip the memory session check, we insert a
+                 * deoptimization in {@code sessionImpl()}, speculating that the {@code segment}
+                 * field will always be null so that we will never reach the branch checking the
+                 * memory session. Note that {@code sessionImpl()} is also used by memory segment
+                 * views, so we need to make sure the segment was actually loaded from a Buffer.
+                 */
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    SpeculationLog speculationLog = b.getGraph().getSpeculationLog();
+                    if (!canDelayIntrinsification && speculationLog != null) {
+                        ValueNode segment = receiver.get(false);
+                        Stamp stamp = segment.stamp(NodeView.DEFAULT);
+                        if (stamp instanceof ObjectStamp && !((ObjectStamp) stamp).nonNull() && !((ObjectStamp) stamp).alwaysNull()) {
+                            ValueNode load = GraphUtil.unproxify(segment);
+                            if (load instanceof LoadFieldNode && types.fieldBufferSegment.equals(((LoadFieldNode) load).field()) &&
+                                            speculationLog.maySpeculate(bufferSegmentNullSpeculationReason)) {
+                                Speculation speculation = speculationLog.speculate(bufferSegmentNullSpeculationReason);
+                                b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.UnreachedCode, speculation));
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                }
+            });
+        }
     }
 
     private static void registerDynamicObjectPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {

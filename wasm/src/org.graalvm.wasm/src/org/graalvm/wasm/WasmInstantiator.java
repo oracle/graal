@@ -41,20 +41,22 @@
 
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.nodes.Node;
+import java.util.List;
+
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.nodes.WasmFunctionNode;
 import org.graalvm.wasm.nodes.WasmCallStubNode;
+import org.graalvm.wasm.nodes.WasmFunctionNode;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
+import org.graalvm.wasm.nodes.WasmMemoryOverheadModeRootNode;
 import org.graalvm.wasm.nodes.WasmRootNode;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 
-import java.util.List;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Creates wasm instances by converting parser nodes into Truffle nodes.
@@ -91,12 +93,7 @@ public class WasmInstantiator {
         if (binarySize < asyncParsingBinarySize) {
             instantiateCodeEntries(context, instance);
         } else {
-            final Runnable parsing = new Runnable() {
-                @Override
-                public void run() {
-                    instantiateCodeEntries(context, instance);
-                }
-            };
+            final Runnable parsing = () -> instantiateCodeEntries(context, instance);
             final String name = "wasm-parsing-thread(" + instance.name() + ")";
             final int requestedSize = WasmOptions.AsyncParsingStackSize.getValue(context.environment().getOptions()) * 1000;
             final int defaultSize = Math.max(MIN_DEFAULT_STACK_SIZE, Math.min(2 * binarySize, MAX_DEFAULT_ASYNC_STACK_SIZE));
@@ -124,7 +121,7 @@ public class WasmInstantiator {
         }
         for (int entry = 0; entry != codeEntries.length; ++entry) {
             CodeEntry codeEntry = codeEntries[entry];
-            instantiateCodeEntry(instance, codeEntry);
+            instantiateCodeEntry(context, instance, codeEntry);
             context.linker().resolveCodeEntry(instance.module(), entry);
         }
     }
@@ -135,12 +132,19 @@ public class WasmInstantiator {
         return builder.build();
     }
 
-    private void instantiateCodeEntry(WasmInstance instance, CodeEntry codeEntry) {
+    private void instantiateCodeEntry(WasmContext context, WasmInstance instance, CodeEntry codeEntry) {
         final int functionIndex = codeEntry.getFunctionIndex();
         final WasmFunction function = instance.module().symbolTable().function(functionIndex);
         WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, instance.module().data(), codeEntry.getLocalTypes(), codeEntry.getResultTypes(), codeEntry.getMaxStackSize(),
                         codeEntry.getExtraData());
-        WasmRootNode rootNode = new WasmRootNode(language, createFrameDescriptor(codeEntry.getLocalTypes(), codeEntry.getMaxStackSize()), instantiateFunctionNode(instance, wasmCodeEntry, codeEntry));
+        final FrameDescriptor frameDescriptor = createFrameDescriptor(codeEntry.getLocalTypes(), codeEntry.getMaxStackSize());
+        final WasmFunctionNode functionNode = instantiateFunctionNode(instance, wasmCodeEntry, codeEntry);
+        final WasmRootNode rootNode;
+        if (context.getContextOptions().memoryOverheadMode()) {
+            rootNode = new WasmMemoryOverheadModeRootNode(language, frameDescriptor, functionNode);
+        } else {
+            rootNode = new WasmRootNode(language, frameDescriptor, functionNode);
+        }
         instance.setTarget(codeEntry.getFunctionIndex(), rootNode.getCallTarget());
     }
 
@@ -164,7 +168,7 @@ public class WasmInstantiator {
                 final WasmFunction function = instance.module().function(callNode.getFunctionIndex());
                 child = new WasmCallStubNode(function);
                 final int stubIndex = childIndex;
-                instance.module().addLinkAction((context, inst) -> context.linker().resolveCallsite(inst, currentBlock, stubIndex, function));
+                instance.module().addLinkAction((ctx, inst) -> ctx.linker().resolveCallsite(inst, currentBlock, stubIndex, function));
             }
             callNodes[childIndex++] = child;
         }

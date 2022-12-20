@@ -2,6 +2,13 @@
 
 This changelog summarizes major changes between TRegex versions relevant to language implementors integrating TRegex into their language. This document will focus on API changes relevant to integrators of TRegex.
 
+## Version 23.0.0
+
+* Updated Unicode data (case-folding, character properties) to version 15 of the Unicode standard.
+* Dropped `Flavor=PythonStr` and `Flavor=PythonBytes` in favor of `Flavor=Python,Encoding=UTF-32` and `Flavor=Python,Encoding=LATIN-1`.
+* Dropped support for the `execBytes(byte[] input, int fromIndex)` entrypoint.
+* Dropped support for `TruffleObject`s with characters/code points as array elements.
+
 ## Version 22.2.0
 
 * Added support for atomic groups and possessive quantifiers in Ruby regular expressions by using the backtracking.

@@ -29,8 +29,6 @@ import static org.graalvm.compiler.core.common.calc.Condition.EQ;
 import static org.graalvm.compiler.core.common.calc.Condition.NE;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_DECODE_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.CIPHER_BLOCK_CHAINING_DECRYPT_AESCRYPT;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.CIPHER_BLOCK_CHAINING_ENCRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.CRC_TABLE_LOCATION;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT;
@@ -136,13 +134,14 @@ import org.graalvm.compiler.replacements.SnippetSubstitutionInvocationPlugin;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AESCryptDelegatePlugin;
-import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AESCryptPlugin;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.CounterModeCryptPlugin;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.ReachabilityFencePlugin;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyCallNode;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopySnippets;
 import org.graalvm.compiler.replacements.nodes.AESNode.CryptMode;
+import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
+import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
 import org.graalvm.compiler.serviceprovider.GraalServices;
@@ -230,7 +229,7 @@ public class HotSpotGraphBuilderPlugins {
                 StandardGraphBuilderPlugins.registerInvocationPlugins(snippetReflection, invocationPlugins, replacements, true, false, true, graalRuntime.getHostProviders().getLowerer());
                 registerArrayPlugins(invocationPlugins, replacements, config);
                 registerStringPlugins(invocationPlugins, replacements, wordTypes, foreignCalls, config);
-                registerArraysSupportPlugins(invocationPlugins, config, replacements);
+                registerArraysSupportPlugins(invocationPlugins, replacements);
                 registerReferencePlugins(invocationPlugins, replacements);
                 registerTrufflePlugins(invocationPlugins, wordTypes, config);
                 registerInstrumentationImplPlugins(invocationPlugins, config, replacements);
@@ -623,30 +622,15 @@ public class HotSpotGraphBuilderPlugins {
         return UnresolvedJavaType.create("Lcom/sun/crypto/provider/AESCrypt;").resolve(context);
     }
 
-    public static class CipherBlockChainingCryptPlugin extends AESCryptDelegatePlugin {
+    public static class HotSpotCipherBlockChainingCryptPlugin extends StandardGraphBuilderPlugins.CipherBlockChainingCryptPlugin {
 
-        CipherBlockChainingCryptPlugin(CryptMode mode) {
-            super(mode, mode.isEncrypt() ? "implEncrypt" : "implDecrypt",
-                            Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
+        HotSpotCipherBlockChainingCryptPlugin(CryptMode mode) {
+            super(mode);
         }
 
         @Override
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode in, ValueNode inOffset, ValueNode inLength, ValueNode out, ValueNode outOffset) {
-            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                ResolvedJavaType receiverType = targetMethod.getDeclaringClass();
-                ResolvedJavaType typeAESCrypt = getTypeAESCrypt(b.getMetaAccess(), receiverType);
-
-                ValueNode nonNullReceiver = receiver.get();
-                ValueNode inAddr = helper.arrayElementPointer(in, JavaKind.Byte, inOffset);
-                ValueNode outAddr = helper.arrayElementPointer(out, JavaKind.Byte, outOffset);
-                ValueNode kAddr = readEmbeddedAESCryptKArrayStart(b, helper, receiverType, typeAESCrypt, nonNullReceiver);
-                // Read CipherBlockChaining.r
-                ValueNode rAddr = readFieldArrayStart(b, helper, receiverType, "r", nonNullReceiver, JavaKind.Byte);
-                ForeignCallNode call = b.add(new ForeignCallNode(mode.isEncrypt() ? CIPHER_BLOCK_CHAINING_ENCRYPT_AESCRYPT : CIPHER_BLOCK_CHAINING_DECRYPT_AESCRYPT,
-                                inAddr, outAddr, kAddr, rAddr, inLength));
-                helper.emitFinalReturn(JavaKind.Int, call);
-                return true;
-            }
+        protected boolean canApply(GraphBuilderContext b) {
+            return b instanceof BytecodeParser || b instanceof IntrinsicGraphBuilder;
         }
 
         @Override
@@ -687,15 +671,15 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerAESPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements, Architecture arch) {
         Registration r = new Registration(plugins, "com.sun.crypto.provider.CipherBlockChaining", replacements);
-        r.registerConditional(config.useAESIntrinsics && config.cipherBlockChainingEncryptAESCryptStub != 0L, new CipherBlockChainingCryptPlugin(CryptMode.ENCRYPT));
-        r.registerConditional(config.useAESIntrinsics && config.cipherBlockChainingDecryptAESCryptStub != 0L, new CipherBlockChainingCryptPlugin(CryptMode.DECRYPT));
+        r.registerConditional(CipherBlockChainingAESNode.isSupported(arch), new HotSpotCipherBlockChainingCryptPlugin(CryptMode.ENCRYPT));
+        r.registerConditional(CipherBlockChainingAESNode.isSupported(arch), new HotSpotCipherBlockChainingCryptPlugin(CryptMode.DECRYPT));
 
         r = new Registration(plugins, "com.sun.crypto.provider.ElectronicCodeBook", replacements);
         r.registerConditional(config.electronicCodeBookEncrypt != 0L, new ElectronicCodeBookCryptPlugin(CryptMode.ENCRYPT));
         r.registerConditional(config.electronicCodeBookDecrypt != 0L, new ElectronicCodeBookCryptPlugin(CryptMode.DECRYPT));
 
         r = new Registration(plugins, "com.sun.crypto.provider.CounterMode", replacements);
-        r.registerConditional(AESCryptPlugin.isSupported(arch), new CounterModeCryptPlugin() {
+        r.registerConditional(CounterModeAESNode.isSupported(arch), new CounterModeCryptPlugin() {
             @Override
             protected boolean canApply(GraphBuilderContext b) {
                 return b instanceof BytecodeParser || b instanceof IntrinsicGraphBuilder;
@@ -999,9 +983,9 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
-    private static void registerArraysSupportPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+    private static void registerArraysSupportPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, "jdk.internal.util.ArraysSupport", replacements);
-        r.registerConditional(config.useVectorizedMismatchIntrinsic(), new InvocationPlugin("vectorizedMismatch", Object.class, long.class, Object.class, long.class, int.class, int.class) {
+        r.register(new InvocationPlugin("vectorizedMismatch", Object.class, long.class, Object.class, long.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode aObject, ValueNode aOffset, ValueNode bObject, ValueNode bOffset, ValueNode length, ValueNode log2ArrayIndexScale) {

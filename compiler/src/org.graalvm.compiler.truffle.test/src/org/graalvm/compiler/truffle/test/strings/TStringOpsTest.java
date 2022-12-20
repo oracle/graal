@@ -24,22 +24,55 @@
  */
 package org.graalvm.compiler.truffle.test.strings;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
+import org.graalvm.compiler.replacements.nodes.CalcStringAttributesNode;
 import org.junit.Assert;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import sun.misc.Unsafe;
 
 public abstract class TStringOpsTest<T extends Node> extends TStringTest {
 
     protected static final com.oracle.truffle.api.nodes.Node DUMMY_LOCATION = new com.oracle.truffle.api.nodes.Node() {
     };
 
-    public static final String T_STRING_OPS_CLASS_NAME = "com.oracle.truffle.api.strings.TStringOps";
+    private static final Class<?> T_STRING_OPS_CLASS;
+    private static final Constructor<?> T_STRING_NATIVE_POINTER_CONSTRUCTOR;
+    private static final long byteBufferAddressOffset;
+
+    static {
+        Field addressField;
+        try {
+            addressField = Buffer.class.getDeclaredField("address");
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException("exception while trying to get Buffer.address via reflection:", e);
+        }
+        byteBufferAddressOffset = getObjectFieldOffset(addressField);
+        try {
+            T_STRING_OPS_CLASS = Class.forName("com.oracle.truffle.api.strings.TStringOps");
+            T_STRING_NATIVE_POINTER_CONSTRUCTOR = Class.forName("com.oracle.truffle.api.strings.AbstractTruffleString$NativePointer").getDeclaredConstructor(Object.class, long.class);
+            T_STRING_NATIVE_POINTER_CONSTRUCTOR.setAccessible(true);
+        } catch (ClassNotFoundException | NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static long getBufferAddress(ByteBuffer buffer) {
+        return UNSAFE.getLong(buffer, byteBufferAddressOffset);
+    }
+
     private final Class<T> nodeClass;
 
     protected TStringOpsTest(Class<T> nodeClass) {
@@ -47,13 +80,34 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
     }
 
     protected ResolvedJavaMethod getTStringOpsMethod(String methodName, Class<?>... argTypes) {
+        Class<?>[] argTypesWithNode = new Class<?>[argTypes.length + 1];
+        argTypesWithNode[0] = com.oracle.truffle.api.nodes.Node.class;
+        System.arraycopy(argTypes, 0, argTypesWithNode, 1, argTypes.length);
+        return getResolvedJavaMethod(T_STRING_OPS_CLASS, methodName, argTypesWithNode);
+    }
+
+    protected void testWithNative(ResolvedJavaMethod method, Object receiver, Object... args) {
+        testWithNativeExcept(method, receiver, 0, args);
+    }
+
+    protected void testWithNativeExcept(ResolvedJavaMethod method, Object receiver, long ignore, Object... args) {
+        test(method, receiver, args);
         try {
-            Class<?> javaClass = Class.forName(T_STRING_OPS_CLASS_NAME);
-            Class<?>[] argTypesWithNode = new Class<?>[argTypes.length + 1];
-            argTypesWithNode[0] = com.oracle.truffle.api.nodes.Node.class;
-            System.arraycopy(argTypes, 0, argTypesWithNode, 1, argTypes.length);
-            return getResolvedJavaMethod(javaClass, methodName, argTypesWithNode);
-        } catch (ClassNotFoundException e) {
+            Object[] argsWithNative = Arrays.copyOf(args, args.length);
+            ResolvedJavaMethod.Parameter[] parameters = method.getParameters();
+            Assert.assertTrue(parameters.length <= 64);
+            for (int i = 0; i < parameters.length; i++) {
+                if (parameters[i].getType().getName().equals("Ljava/lang/Object;") && (ignore & (1L << i)) == 0) {
+                    Assert.assertTrue(argsWithNative[i] instanceof byte[]);
+                    byte[] array = (byte[]) argsWithNative[i];
+                    ByteBuffer buffer = ByteBuffer.allocateDirect(array.length);
+                    long bufferAddress = getBufferAddress(buffer);
+                    UNSAFE.copyMemory(array, Unsafe.ARRAY_BYTE_BASE_OFFSET, null, bufferAddress, array.length);
+                    argsWithNative[i] = T_STRING_NATIVE_POINTER_CONSTRUCTOR.newInstance(null, bufferAddress);
+                }
+            }
+            test(method, receiver, argsWithNative);
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
     }
@@ -128,7 +182,7 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
     @SuppressWarnings("unchecked")
     @Override
     protected void checkLowTierGraph(StructuredGraph graph) {
-        if (getTarget().arch instanceof AMD64 && hasRequiredFeatures(((AMD64) getTarget().arch))) {
+        if (isSupportedArchitecture() && hasRequiredFeatures(getTarget().arch)) {
             for (Node node : graph.getNodes()) {
                 if (nodeClass.isInstance(node)) {
                     checkIntrinsicNode((T) node);
@@ -142,9 +196,9 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
     protected void checkIntrinsicNode(@SuppressWarnings("unused") T node) {
     }
 
-    private boolean hasRequiredFeatures(AMD64 arch) {
-        if (nodeClass.equals(AMD64CalcStringAttributesNode.class)) {
-            return arch.getFeatures().contains(AMD64.CPUFeature.SSE4_1);
+    private boolean hasRequiredFeatures(Architecture arch) {
+        if (nodeClass.equals(CalcStringAttributesNode.class) && arch instanceof AMD64) {
+            return ((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.SSE4_1);
         }
         return true;
     }

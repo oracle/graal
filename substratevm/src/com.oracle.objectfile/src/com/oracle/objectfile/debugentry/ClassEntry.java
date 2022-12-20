@@ -28,13 +28,12 @@ package com.oracle.objectfile.debugentry;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Stream;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
@@ -74,7 +73,7 @@ public class ClassEntry extends StructureTypeEntry {
      * An index of all currently known methods keyed by the unique, associated, identifying
      * ResolvedJavaMethod.
      */
-    private Map<ResolvedJavaMethod, MethodEntry> methodsIndex;
+    private EconomicMap<ResolvedJavaMethod, MethodEntry> methodsIndex;
     /**
      * A list recording details of all normal compiled methods included in this class sorted by
      * ascending address range. Note that the associated address ranges are disjoint and contiguous.
@@ -90,11 +89,11 @@ public class ClassEntry extends StructureTypeEntry {
      * An index identifying ranges for compiled method which have already been encountered, whether
      * normal or deopt fallback methods.
      */
-    private Map<Range, CompiledMethodEntry> compiledMethodIndex;
+    private EconomicMap<Range, CompiledMethodEntry> compiledMethodIndex;
     /**
      * An index of all primary and secondary files referenced from this class's compilation unit.
      */
-    private Map<FileEntry, Integer> localFilesIndex;
+    private EconomicMap<FileEntry, Integer> localFilesIndex;
     /**
      * A list of the same files.
      */
@@ -102,7 +101,7 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * An index of all primary and secondary dirs referenced from this class's compilation unit.
      */
-    private HashMap<DirEntry, Integer> localDirsIndex;
+    private EconomicMap<DirEntry, Integer> localDirsIndex;
     /**
      * A list of the same dirs.
      */
@@ -114,15 +113,15 @@ public class ClassEntry extends StructureTypeEntry {
         this.fileEntry = fileEntry;
         this.loader = null;
         this.methods = new ArrayList<>();
-        this.methodsIndex = new HashMap<>();
+        this.methodsIndex = EconomicMap.create();
         this.normalCompiledEntries = new ArrayList<>();
         // deopt methods list is created on demand
         this.deoptCompiledEntries = null;
-        this.compiledMethodIndex = new HashMap<>();
+        this.compiledMethodIndex = EconomicMap.create();
         this.localFiles = new ArrayList<>();
-        this.localFilesIndex = new HashMap<>();
+        this.localFilesIndex = EconomicMap.create();
         this.localDirs = new ArrayList<>();
-        this.localDirsIndex = new HashMap<>();
+        this.localDirsIndex = EconomicMap.create();
         if (fileEntry != null) {
             localFiles.add(fileEntry);
             localFilesIndex.put(fileEntry, localFiles.size());
@@ -141,6 +140,7 @@ public class ClassEntry extends StructureTypeEntry {
 
     @Override
     public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
+        super.addDebugInfo(debugInfoBase, debugTypeInfo, debugContext);
         assert debugTypeInfo.typeName().equals(typeName);
         DebugInstanceTypeInfo debugInstanceTypeInfo = (DebugInstanceTypeInfo) debugTypeInfo;
         /* Add details of super and interface classes */
@@ -244,7 +244,7 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     @SuppressWarnings("unused")
-    String getFullFileName() {
+    public String getFullFileName() {
         if (fileEntry != null) {
             return fileEntry.getFullName();
         } else {

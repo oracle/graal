@@ -25,9 +25,12 @@
 package com.oracle.svm.hosted.code;
 
 import java.lang.reflect.Modifier;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Set;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.graph.Node;
@@ -36,8 +39,11 @@ import org.graalvm.compiler.lir.alloc.RegisterAllocationPhase;
 import org.graalvm.compiler.lir.phases.LIRPhase;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
@@ -63,6 +69,7 @@ import com.oracle.svm.core.deopt.DeoptTest;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.graal.nodes.DeoptTestNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -74,8 +81,9 @@ import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-class DeoptimizationUtils {
+public class DeoptimizationUtils {
 
     /**
      * Inserts a call to {@link DeoptTester#deoptTest} right after FixedWithNextNode StateSplits.
@@ -246,11 +254,7 @@ class DeoptimizationUtils {
 
                 boolean isDeoptEntry = method.compilationInfo.isDeoptEntry(rootFrame.getBCI(), rootFrame.duringCall, rootFrame.rethrowException);
                 if (infopoint instanceof DeoptEntryInfopoint) {
-                    if (!isDeoptEntry) {
-                        System.out.println("curious");
-                    }
-                    // Temp removed
-                    // assert isDeoptEntry;
+                    assert isDeoptEntry;
                 } else if (rootFrame.duringCall && isDeoptEntry) {
                     assert infopoint instanceof Call || isSingleSteppingInfopoint(infopoint);
                 } else {
@@ -324,5 +328,83 @@ class DeoptimizationUtils {
         return infopoint.reason == InfopointReason.METHOD_START ||
                         infopoint.reason == InfopointReason.METHOD_END ||
                         infopoint.reason == InfopointReason.BYTECODE_POSITION;
+    }
+
+    public interface DeoptTargetRetriever {
+        ResolvedJavaMethod getDeoptTarget(ResolvedJavaMethod method);
+    }
+
+    /**
+     * @return the DeoptTarget methods which had new frame registered.
+     */
+    public static Collection<ResolvedJavaMethod> registerDeoptEntries(StructuredGraph graph, boolean isRoot, DeoptTargetRetriever deoptRetriever) {
+
+        Set<ResolvedJavaMethod> changedMethods = new HashSet<>();
+        for (FrameState frameState : graph.getNodes(FrameState.TYPE)) {
+            if (frameState.hasExactlyOneUsage()) {
+                Node usage = frameState.usages().first();
+                if (!isRoot && usage == graph.start()) {
+                    /*
+                     * During method inlining, the FrameState associated with the StartNode
+                     * disappears. Therefore, this frame state cannot be a deoptimization target.
+                     */
+                    continue;
+                } else if (usage instanceof Invoke && ((Invoke) usage).stateAfter() == frameState) {
+                    /*
+                     * If the FrameState is followed immediately by a dead end, then this state can
+                     * never be reached and does not need to be registered.
+                     */
+                    FixedNode next = ((Invoke) usage).next();
+                    while (next instanceof AbstractBeginNode) {
+                        next = ((AbstractBeginNode) next).next();
+                    }
+                    if (next instanceof LoweredDeadEndNode) {
+                        continue;
+                    }
+                }
+            }
+
+            /*
+             * We need to make sure that all inlined caller frames are available for deoptimization
+             * too.
+             */
+            for (FrameState inlineState = frameState; inlineState != null; inlineState = inlineState.outerFrameState()) {
+                if (inlineState.bci >= 0) {
+                    ResolvedJavaMethod method = deoptRetriever.getDeoptTarget(inlineState.getMethod());
+                    if (SubstrateCompilationDirectives.singleton().registerDeoptEntry(inlineState, method)) {
+                        changedMethods.add(method);
+                    }
+                }
+            }
+        }
+
+        for (Node n : graph.getNodes()) {
+            /*
+             * graph.getInvokes() only iterates invokes that have a MethodCallTarget, so by using it
+             * we would miss invocations that are already intrinsified to an indirect call.
+             */
+            if (n instanceof Invoke) {
+                Invoke invoke = (Invoke) n;
+
+                /*
+                 * The FrameState for the invoke (which is visited by the above loop) is the state
+                 * after the call (where deoptimization that happens after the call has returned
+                 * will continue execution). We also need to register the state during the call
+                 * (where deoptimization while the call is on the stack will continue execution).
+                 *
+                 * Note that the bci of the Invoke and the bci of the FrameState of the Invoke are
+                 * different: the Invoke has the bci of the invocation bytecode, the FrameState has
+                 * the bci of the next bytecode after the invoke.
+                 */
+                FrameState stateDuring = invoke.stateAfter().duplicateModifiedDuringCall(invoke.bci(), invoke.asNode().getStackKind());
+                assert stateDuring.duringCall() && !stateDuring.rethrowException();
+                ResolvedJavaMethod method = deoptRetriever.getDeoptTarget(stateDuring.getMethod());
+                if (SubstrateCompilationDirectives.singleton().registerDeoptEntry(stateDuring, method)) {
+                    changedMethods.add(method);
+                }
+            }
+        }
+
+        return changedMethods;
     }
 }

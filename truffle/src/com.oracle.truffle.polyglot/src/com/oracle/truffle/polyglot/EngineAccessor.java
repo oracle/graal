@@ -71,7 +71,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
@@ -87,7 +86,9 @@ import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.CallTarget;
@@ -122,6 +123,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.polyglot.FileSystems.PreInitializeContextFileSystem;
+import com.oracle.truffle.polyglot.PolyglotContextConfig.FileSystemConfig;
 import com.oracle.truffle.polyglot.PolyglotImpl.EmbedderFileSystemContext;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextLocal;
@@ -229,7 +232,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object getLanguageView(LanguageInfo viewLanguage, Object value) {
             PolyglotContextImpl context = PolyglotContextImpl.requireContext();
-            PolyglotLanguage language = context.engine.idToLanguage.get(viewLanguage.getId());
+            PolyglotLanguage language = context.engine.findLanguage(viewLanguage);
             PolyglotLanguageContext languageContext = context.getContextInitialized(language, null);
             return languageContext.getLanguageView(value);
         }
@@ -265,15 +268,23 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public TruffleFile getTruffleFile(String path) {
-            PolyglotContextImpl context = PolyglotContextImpl.requireContext();
+        public TruffleFile getTruffleFile(TruffleContext truffleContext, String path) {
+            PolyglotContextImpl context = getPolyglotContext(truffleContext);
             return EngineAccessor.LANGUAGE.getTruffleFile(context.getHostContext().getPublicFileSystemContext(), path);
         }
 
         @Override
-        public TruffleFile getTruffleFile(URI uri) {
-            PolyglotContextImpl context = PolyglotContextImpl.requireContext();
+        public TruffleFile getTruffleFile(TruffleContext truffleContext, URI uri) {
+            PolyglotContextImpl context = getPolyglotContext(truffleContext);
             return EngineAccessor.LANGUAGE.getTruffleFile(context.getHostContext().getPublicFileSystemContext(), uri);
+        }
+
+        private static PolyglotContextImpl getPolyglotContext(TruffleContext truffleContext) {
+            if (truffleContext == null) {
+                return PolyglotContextImpl.requireContext();
+            } else {
+                return (PolyglotContextImpl) LANGUAGE.getPolyglotContext(truffleContext);
+            }
         }
 
         @Override
@@ -318,7 +329,7 @@ final class EngineAccessor extends Accessor {
                 return null;
             }
             PolyglotContextImpl context = PolyglotContextImpl.requireContext();
-            PolyglotLanguage language = context.engine.idToLanguage.get(info.getId());
+            PolyglotLanguage language = context.engine.findLanguage(info);
             PolyglotLanguageContext languageContext = context.getContext(language);
             languageContext.ensureCreated(language);
             return languageContext.lookupService(serviceClass);
@@ -415,7 +426,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public TruffleLanguage.Env getEnvForInstrument(LanguageInfo info) {
             PolyglotContextImpl context = PolyglotContextImpl.requireContext();
-            PolyglotLanguage language = context.engine.idToLanguage.get(info.getId());
+            PolyglotLanguage language = context.engine.findLanguage(info);
             return context.getContextInitialized(language, null).env;
         }
 
@@ -669,7 +680,7 @@ final class EngineAccessor extends Accessor {
             } else {
                 throw shouldNotReachHere();
             }
-            return polyglotContext.inContextPreInitialization;
+            return polyglotContext.engine.inEnginePreInitialization && polyglotContext.parent == null;
         }
 
         @Override
@@ -947,14 +958,13 @@ final class EngineAccessor extends Accessor {
             boolean useAllowCreateThread = inheritAccess(inheritAccess, allowCreateThreads, creatorConfig.createThreadAllowed);
             boolean useAllowNativeAccess = inheritAccess(inheritAccess, allowNativeAccess, creatorConfig.nativeAccessAllowed);
 
-            FileSystem useFileSystem;
-            FileSystem useInternalFileSystem;
+            FileSystemConfig fileSystemConfig;
             if (inheritAccess(inheritAccess, allowIO, true)) {
-                useFileSystem = creatorConfig.fileSystem;
-                useInternalFileSystem = creatorConfig.internalFileSystem;
+                fileSystemConfig = creatorConfig.fileSystemConfig;
             } else {
-                useFileSystem = FileSystems.newNoIOFileSystem();
-                useInternalFileSystem = PolyglotEngineImpl.ALLOW_IO ? FileSystems.newLanguageHomeFileSystem() : useFileSystem;
+                FileSystem publicFileSystem = FileSystems.newNoIOFileSystem();
+                FileSystem internalFileSystem = PolyglotEngineImpl.ALLOW_IO ? FileSystems.newLanguageHomeFileSystem() : publicFileSystem;
+                fileSystemConfig = new FileSystemConfig(IOAccess.NONE, publicFileSystem, internalFileSystem);
             }
 
             /*
@@ -1020,7 +1030,7 @@ final class EngineAccessor extends Accessor {
             PolyglotContextConfig innerConfig = new PolyglotContextConfig(engine, sharingEnabled, useOut, useErr, useIn,
                             useAllowHostLookup, usePolyglotAccess, useAllowNativeAccess, useAllowCreateThread, useAllowHostClassLoading,
                             useAllowInnerContextOptions, creatorConfig.allowExperimentalOptions,
-                            useClassFilter, useArguments, allowedLanguages, useOptions, useFileSystem, useInternalFileSystem, creatorConfig.logHandler,
+                            useClassFilter, useArguments, allowedLanguages, useOptions, fileSystemConfig, creatorConfig.logHandler,
                             useAllowCreateProcess, useProcessHandler, useEnvironmentAccess, useCustomEnvironment,
                             useTimeZone, creatorConfig.limits, creatorConfig.hostClassLoader, useAllowHostAccess,
                             creatorConfig.allowValueSharing, false,
@@ -1086,7 +1096,11 @@ final class EngineAccessor extends Accessor {
         @Override
         public boolean isHostException(Object languageContext, Throwable exception) {
             PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            return context.engine.host.isHostException(exception);
+            PolyglotEngineImpl engine = context.engine;
+            // During context pre-initialization, engine.host is null, languages are not allowed to
+            // use host interop. But the call to isHostException is supported and returns false
+            // because languages cannot create a HostObject.
+            return !engine.inEnginePreInitialization && engine.host.isHostException(exception);
         }
 
         @Override
@@ -1207,6 +1221,18 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public boolean isSocketIOAllowed(Object engineFileSystemContext) {
+            if (engineFileSystemContext instanceof PolyglotLanguageContext) {
+                PolyglotLanguageContext languageContext = (PolyglotLanguageContext) engineFileSystemContext;
+                return languageContext.getImpl().getIO().hasHostSocketAccess(languageContext.context.config.fileSystemConfig.ioAccess);
+            } else if (engineFileSystemContext instanceof EmbedderFileSystemContext) {
+                return true;
+            } else {
+                throw new AssertionError();
+            }
+        }
+
+        @Override
         public boolean hasNoAccess(FileSystem fs) {
             return FileSystems.hasNoAccess(fs);
         }
@@ -1269,8 +1295,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Handler getLogHandler(Object loggerCache) {
-            return ((PolyglotLoggers.LoggerCache) loggerCache).getLogHandler();
+        public void publish(Object loggerCache, LogRecord logRecord) {
+            ((PolyglotLoggers.LoggerCache) loggerCache).getLogHandler().publish(logRecord);
         }
 
         @Override
@@ -1332,29 +1358,41 @@ final class EngineAccessor extends Accessor {
         @Override
         public boolean isHostFunction(Object languageContext, Object obj) {
             PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            return context.engine.host.isHostFunction(obj);
+            PolyglotEngineImpl engine = context.engine;
+            // During context pre-initialization, engine.host is null, languages are not allowed to
+            // use host interop. But the call to isHostFunction is supported and returns false
+            // because languages cannot create a HostObject.
+            return !engine.inEnginePreInitialization && engine.host.isHostFunction(obj);
         }
 
         @Override
         public boolean isHostObject(Object languageContext, Object obj) {
             PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            return context.engine.host.isHostObject(obj);
+            PolyglotEngineImpl engine = context.engine;
+            // During context pre-initialization, engine.host is null, languages are not allowed to
+            // use host interop. But the call to isHostObject is supported and returns false because
+            // languages cannot create a HostObject.
+            return !engine.inEnginePreInitialization && engine.host.isHostObject(obj);
         }
 
         @Override
         public boolean isHostSymbol(Object languageContext, Object obj) {
             PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            return context.engine.host.isHostSymbol(obj);
+            PolyglotEngineImpl engine = context.engine;
+            // During context pre-initialization, engine.host is null, languages are not allowed to
+            // use host interop. But the call to isHostSymbol is supported and returns false because
+            // languages cannot create a HostObject.
+            return !engine.inEnginePreInitialization && engine.host.isHostSymbol(obj);
         }
 
         @Override
         public <S> S lookupService(Object polyglotLanguageContext, LanguageInfo language, LanguageInfo accessingLanguage, Class<S> type) {
-            PolyglotLanguage lang = ((PolyglotLanguageContext) polyglotLanguageContext).context.engine.idToLanguage.get(language.getId());
+            PolyglotLanguage lang = ((PolyglotLanguageContext) polyglotLanguageContext).context.engine.findLanguage(language);
             if (!lang.cache.supportsService(type)) {
                 return null;
             }
             PolyglotLanguageContext context = ((PolyglotLanguageContext) polyglotLanguageContext).context.getContext(lang);
-            PolyglotLanguage accessingLang = ((PolyglotLanguageContext) polyglotLanguageContext).context.engine.idToLanguage.get(accessingLanguage.getId());
+            PolyglotLanguage accessingLang = ((PolyglotLanguageContext) polyglotLanguageContext).context.engine.findLanguage(accessingLanguage);
             context.ensureCreated(accessingLang);
             return context.lookupService(type);
         }
@@ -1381,7 +1419,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public FileSystem getFileSystem(Object polyglotContext) {
-            return ((PolyglotContextImpl) polyglotContext).config.fileSystem;
+            return ((PolyglotContextImpl) polyglotContext).config.fileSystemConfig.fileSystem;
         }
 
         @Override
@@ -1477,19 +1515,19 @@ final class EngineAccessor extends Accessor {
         public String getReinitializedPath(TruffleFile truffleFile) {
             FileSystem fs = EngineAccessor.LANGUAGE.getFileSystem(truffleFile);
             Path path = EngineAccessor.LANGUAGE.getPath(truffleFile);
-            return ((FileSystems.PreInitializeContextFileSystem) fs).pathToString(path);
+            return ((PreInitializeContextFileSystem) fs).pathToString(path);
         }
 
         @Override
         public URI getReinitializedURI(TruffleFile truffleFile) {
             FileSystem fs = EngineAccessor.LANGUAGE.getFileSystem(truffleFile);
             Path path = EngineAccessor.LANGUAGE.getPath(truffleFile);
-            return ((FileSystems.PreInitializeContextFileSystem) fs).absolutePathtoURI(path);
+            return ((PreInitializeContextFileSystem) fs).absolutePathtoURI(path);
         }
 
         @Override
         public boolean initializeLanguage(Object polyglotLanguageContext, LanguageInfo targetLanguage) {
-            PolyglotLanguage targetPolyglotLanguage = ((PolyglotLanguageContext) polyglotLanguageContext).context.engine.idToLanguage.get(targetLanguage.getId());
+            PolyglotLanguage targetPolyglotLanguage = ((PolyglotLanguageContext) polyglotLanguageContext).context.engine.findLanguage(targetLanguage);
             PolyglotLanguageContext targetLanguageContext = ((PolyglotLanguageContext) polyglotLanguageContext).context.getContext(targetPolyglotLanguage);
             PolyglotLanguage accessingPolyglotLanguage = ((PolyglotLanguageContext) polyglotLanguageContext).language;
             try {
@@ -1835,12 +1873,12 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Handler getEngineLogHandler(Object polyglotEngineImpl) {
+        public LogHandler getEngineLogHandler(Object polyglotEngineImpl) {
             return ((PolyglotEngineImpl) polyglotEngineImpl).logHandler;
         }
 
         @Override
-        public Handler getContextLogHandler(Object polyglotContextImpl) {
+        public LogHandler getContextLogHandler(Object polyglotContextImpl) {
             return ((PolyglotContextImpl) polyglotContextImpl).config.logHandler;
         }
 

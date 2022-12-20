@@ -27,13 +27,11 @@ package com.oracle.svm.core.graal.snippets;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
@@ -53,9 +51,7 @@ import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
-import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
@@ -64,21 +60,18 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
-import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -123,8 +116,11 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
          * Get the real physical end of the stack. Everything past this point is memory-protected.
          */
         OSSupport osSupport = ImageSingletons.lookup(StackOverflowCheck.OSSupport.class);
-        UnsignedWord stackBase = osSupport.lookupStackBase();
-        UnsignedWord stackEnd = osSupport.lookupStackEnd();
+        WordPointer stackBasePtr = StackValue.get(WordPointer.class);
+        WordPointer stackEndPtr = StackValue.get(WordPointer.class);
+        osSupport.lookupStack(stackBasePtr, stackEndPtr, WordFactory.zero());
+        UnsignedWord stackBase = stackBasePtr.read();
+        UnsignedWord stackEnd = stackEndPtr.read();
 
         /* Initialize the stack base and the stack end thread locals. */
         VMThreads.StackBase.set(thread, stackBase);
@@ -490,45 +486,5 @@ final class StackOverflowCheckSnippets extends SubstrateTemplates implements Sni
             args.add("deoptFrameSize", deoptFrameSize);
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
-    }
-}
-
-@AutomaticallyRegisteredFeature
-final class StackOverflowCheckFeature implements InternalFeature {
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(StackOverflowCheck.class, new StackOverflowCheckImpl());
-    }
-
-    @Override
-    public void registerGraalPhases(Providers providers, SnippetReflectionProvider snippetReflection, Suites suites, boolean hosted) {
-        /*
-         * There is no need to have the stack overflow check in the graph throughout most of the
-         * compilation pipeline. Inserting it before the mid-tier lowering is done for pragmatic
-         * reasons: the foreign call to the slow path needs a frame state, and that is handled
-         * automatically when the stack overflow check is inserted and lowered before the
-         * FrameStateAssignmentPhase runs.
-         */
-        ListIterator<BasePhase<? super MidTierContext>> position = suites.getMidTier().findPhase(LoweringPhase.class);
-        position.previous();
-        position.add(new InsertStackOverflowCheckPhase());
-    }
-
-    @Override
-    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
-        foreignCalls.register(StackOverflowCheckImpl.FOREIGN_CALLS);
-    }
-
-    @Override
-    @SuppressWarnings("unused")
-    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-        Predicate<ResolvedJavaMethod> mustNotAllocatePredicate = null;
-        if (hosted) {
-            mustNotAllocatePredicate = method -> ImageSingletons.lookup(RestrictHeapAccessCallees.class).mustNotAllocate(method);
-        }
-
-        new StackOverflowCheckSnippets(options, providers, lowerings, mustNotAllocatePredicate);
     }
 }

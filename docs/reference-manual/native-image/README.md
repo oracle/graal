@@ -176,12 +176,6 @@ native-image [options] -jar jarfile [imagename]
         }
         ```
         This is a small Java application that reverses a String using recursion.
-    - Then create a text file in the root directory named `META-INF/MANIFEST.MF` which contains the following:
-
-        ```
-        Manifest-Version: 1.0
-        Main-Class: com.example.App
-        ```
 
 2. Compile the application:
 
@@ -190,15 +184,15 @@ native-image [options] -jar jarfile [imagename]
     ```
     This produces the file _App.class_ in the _build/com/example_ directory.
 
-3. Create a runnable JAR file by including the manifest file:
+3. Create a runnable JAR file:
 
     ```shell
-    jar cfvm App.jar META-INF/MANIFEST.MF -C build . 
+    jar --create --file App.jar --main-class com.example.App -C build .
     ```
     It will generate a runnable JAR file, named `App.jar`, in the root directory: 
     To view its contents, type `jar tf App.jar`.
 
-4. Create a native executable from that JAR file:
+4. Create a native executable:
 
     ```
     native-image -jar App.jar
@@ -223,12 +217,48 @@ native-image [options] --module <module>[/<mainclass>] [options]
 
 For more information about how to produce a native executable from a modular Java application, see [Building a HelloWorld Java Module into a Native Executable](guides/build-java-module-app-aot.md).
 
+### Getting Notified When the Build Process Is Done
+
+Depending on the size of your application and the available resources of your build machine, it can take a few minutes to AOT-compile your Java application to a native executable.
+If you are building your project in the background, consider using a command that notifies you when the build process is completed.
+Below, example commands are listed per operating system:
+
+#### Linux
+```bash
+# Ring the terminal bell
+native-image -jar App.jar ... ; printf '\a'
+
+# Use libnotify to create a desktop notification
+native-image -jar App.jar ... ; notify-send "GraalVM Native Image build completed with exit code $?"
+
+# Use Zenity to open an info dialog box with text
+native-image -jar App.jar ... ; zenity --info --text="GraalVM Native Image build completed with exit code $?"
+```
+
+#### macOS
+```bash
+# Ring the terminal bell
+native-image -jar App.jar ... ; printf '\a'
+
+# Use Speech Synthesis
+native-image -jar App.jar ... ; say "GraalVM Native Image build completed"
+```
+
+#### Windows
+```bat
+REM Ring the terminal bell (press Ctrl+G to enter ^G)
+native-image.exe -jar App.jar & echo ^G
+
+REM Open an info dialog box with text
+native-image.exe -jar App.jar & msg "%username%" GraalVM Native Image build completed
+```
+
 ## Build Overview
 
-There many options you can pass to the `native-image` builder to configure the image build process. Run `native-image --help` to see the full list.
+There many options you can pass to the `native-image` builder to configure the build process. Run `native-image --help` to see the full list.
 The options passed to `native-image` are evaluated left-to-right.
 
-For different image build tweaks and to learn more about build time configuration, see [Native Image Build Configuration](BuildConfiguration.md).
+For different build tweaks and to learn more about build time configuration, see [Native Image Build Configuration](BuildConfiguration.md).
 
 Native Image will output the progress and various statistics during the build. To learn more about the output and the different build phases, see [Build Output](BuildOutput.md).
 
@@ -277,4 +307,4 @@ Consider running interactive workshops to get some practical experience: go to [
 
 If you have stumbled across a potential bug, please [submit an issue in GitHub](https://github.com/oracle/graal/issues/new/choose).
 
-If you would like to contribute to Native Image, follow our standard [contributing workflow](Contributing.md).
+If you would like to contribute to Native Image, follow our standard [contributing workflow](contribute/Contributing.md).

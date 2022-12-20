@@ -110,7 +110,7 @@ public final class JNIInvocationInterface {
             @Uninterruptible(reason = "prologue")
             static int enter(JNIJavaVMPointer vmBuf, JNIEnvironmentPointer penv, JNIJavaVMInitArgs vmArgs) {
                 if (!SubstrateOptions.SpawnIsolates.getValue()) {
-                    int error = CEntryPointActions.enterIsolate((Isolate) CEntryPointSetup.SINGLE_ISOLATE_SENTINEL);
+                    int error = CEntryPointActions.enterByIsolate((Isolate) CEntryPointSetup.SINGLE_ISOLATE_SENTINEL);
                     if (error == CEntryPointErrors.NO_ERROR) {
                         CEntryPointActions.leave();
                         return JNIErrors.JNI_EEXIST();
@@ -320,7 +320,7 @@ public final class JNIInvocationInterface {
                     env.write(WordFactory.nullPointer());
                     return JNIErrors.JNI_EDETACHED();
                 }
-                if (CEntryPointActions.enterIsolate(vm.getFunctions().getIsolate()) != 0) {
+                if (CEntryPointActions.enterByIsolate(vm.getFunctions().getIsolate()) != 0) {
                     return JNIErrors.JNI_ERR();
                 }
                 return JNIErrors.JNI_OK();

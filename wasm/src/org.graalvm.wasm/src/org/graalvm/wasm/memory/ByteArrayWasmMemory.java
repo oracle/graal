@@ -46,6 +46,7 @@ import static java.lang.StrictMath.multiplyExact;
 import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import com.oracle.truffle.api.Assumption;
 import org.graalvm.wasm.exception.Failure;
@@ -100,6 +101,7 @@ public final class ByteArrayWasmMemory extends WasmMemory {
             // ensure computation of targetByteSize does not overflow.
             final int targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
             byteArrayBuffer.grow(targetByteSize);
+            currentMinSize = size() + extraPageSize;
             invokeGrowCallback();
             return true;
         } else {
@@ -110,6 +112,7 @@ public final class ByteArrayWasmMemory extends WasmMemory {
     @Override
     public void reset() {
         byteArrayBuffer.reset(declaredMinSize * MEMORY_PAGE_SIZE);
+        currentMinSize = declaredMinSize;
     }
 
     @Override
@@ -318,6 +321,27 @@ public final class ByteArrayWasmMemory extends WasmMemory {
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
         }
+    }
+
+    @Override
+    public void initialize(byte[] dataInstance, int sourceOffset, int destinationOffset, int length) {
+        assert destinationOffset + length <= byteSize();
+        System.arraycopy(dataInstance, sourceOffset, byteArrayBuffer.buffer(), destinationOffset, length);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void fill(int offset, int length, byte value) {
+        assert offset + length <= byteSize();
+        Arrays.fill(byteArrayBuffer.buffer(), offset, offset + length, value);
+    }
+
+    @Override
+    public void copyFrom(WasmMemory source, int sourceOffset, int destinationOffset, int length) {
+        assert source instanceof ByteArrayWasmMemory;
+        assert destinationOffset < byteSize();
+        ByteArrayWasmMemory s = (ByteArrayWasmMemory) source;
+        System.arraycopy(s.byteArrayBuffer.buffer(), sourceOffset, byteArrayBuffer.buffer(), destinationOffset, length);
     }
 
     @Override

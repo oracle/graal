@@ -421,6 +421,9 @@ public class TStringTestBase {
                         MutableTruffleString.fromNativePointerUncached(PointerObject.create(arrayPadded), 1, array.length, encoding, true),
         }) {
             test.run(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
+            if ((encoding == UTF_16 || encoding == UTF_32) && string.isImmutable() && string.isManaged()) {
+                test.run(((TruffleString) string).asNativeUncached(PointerObject::create, encoding, true, false), array, codeRange, isValid, encoding, codepoints, byteIndices);
+            }
         }
         if (codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(encoding)) {
             byte[] bytesUTF16 = new byte[(codepoints.length + 1) * 2];
@@ -432,7 +435,6 @@ public class TStringTestBase {
                             true).switchEncodingUncached(encoding);
             test.run(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
         }
-
         if (codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(encoding) || codeRange == TruffleString.CodeRange.LATIN_1 && isUTF16(encoding)) {
             byte[] bytesUTF32 = new byte[(codepoints.length + 1) * 4];
             for (int i = 0; i < codepoints.length; i++) {
@@ -682,7 +684,7 @@ public class TStringTestBase {
         return i;
     }
 
-    static int getStride(TruffleString.Encoding encoding) {
+    public static int getNaturalStride(TruffleString.Encoding encoding) {
         if (isUTF32(encoding)) {
             return 2;
         }
@@ -690,6 +692,21 @@ public class TStringTestBase {
             return 1;
         }
         return 0;
+    }
+
+    public static int getCompactStride(TruffleString.CodeRange codeRange, TruffleString.Encoding encoding) {
+        switch (codeRange) {
+            case ASCII:
+            case LATIN_1:
+                return 0;
+            case BMP:
+                return 1;
+            case VALID:
+            case BROKEN:
+                return getNaturalStride(encoding);
+            default:
+                throw new RuntimeException("should not reach here");
+        }
     }
 
     protected static ArrayList<Object[]> crossProductErrorHandling(Iterable<Node> nodes) {

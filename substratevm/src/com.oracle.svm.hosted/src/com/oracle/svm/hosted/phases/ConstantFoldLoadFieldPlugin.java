@@ -30,10 +30,23 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.util.ConstantFoldUtil;
 
+import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
+
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public final class ConstantFoldLoadFieldPlugin implements NodePlugin {
+    private final ParsingReason reason;
+
+    public ConstantFoldLoadFieldPlugin(ParsingReason reason) {
+        this.reason = reason;
+    }
 
     @Override
     public boolean handleLoadField(GraphBuilderContext b, ValueNode receiver, ResolvedJavaField field) {
@@ -49,8 +62,22 @@ public final class ConstantFoldLoadFieldPlugin implements NodePlugin {
         return tryConstantFold(b, staticField, null);
     }
 
-    private static boolean tryConstantFold(GraphBuilderContext b, ResolvedJavaField field, JavaConstant receiver) {
-        ConstantNode result = ConstantFoldUtil.tryConstantFold(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(), field, receiver, b.getOptions());
+    private boolean tryConstantFold(GraphBuilderContext b, ResolvedJavaField field, JavaConstant receiver) {
+        ConstantNode result;
+        try {
+            result = ConstantFoldUtil.tryConstantFold(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(), field, receiver, b.getOptions(),
+                            b.getGraph().currentNodeSourcePosition());
+        } catch (UnsupportedFeatureException e) {
+            if (reason == ParsingReason.PointsToAnalysis) {
+                AnalysisMetaAccess metaAccess = (AnalysisMetaAccess) b.getMetaAccess();
+                ObjectScanner.unsupportedFeatureDuringFieldFolding(metaAccess.getUniverse().getBigbang(), (AnalysisField) field, receiver, e, (AnalysisMethod) b.getMethod(), b.bci());
+                // kill control flow, the image build fails anyway
+                b.add(new LoweredDeadEndNode());
+                return true;
+            } else {
+                throw e;
+            }
+        }
 
         if (result != null) {
             assert result.asJavaConstant() != null;

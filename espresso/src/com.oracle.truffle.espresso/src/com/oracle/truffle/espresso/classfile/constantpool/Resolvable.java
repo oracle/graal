@@ -40,5 +40,9 @@ public interface Resolvable extends PoolConstant {
             throw EspressoError.shouldNotReachHere();
         }
 
+        default boolean isSuccess() {
+            return true;
+        }
+
     }
 }

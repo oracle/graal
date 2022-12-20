@@ -119,6 +119,10 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     }
 
     public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
+        return compute(graph, connectBlocks, true, computeLoops, computeDominators, computePostdominators);
+    }
+
+    public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeFrequency, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
         ControlFlowGraph cfg = new ControlFlowGraph(graph);
 
         cfg.identifyBlocks();
@@ -131,7 +135,9 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             loopInfoComputed = true;
         }
 
-        cfg.computeFrequencies();
+        if (computeFrequency) {
+            cfg.computeFrequencies();
+        }
 
         if (computeLoops && !loopInfoComputed) {
             cfg.computeLoopInformation();
@@ -186,26 +192,6 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
      */
     public void updateCachedLocalLoopFrequency(LoopBeginNode lb, Function<LoopFrequencyData, LoopFrequencyData> updater) {
         localLoopFrequencyData.put(lb, updater.apply(localLoopFrequencyData.get(lb)));
-    }
-
-    public String dominatorTreeString() {
-        return dominatorTreeString(getStartBlock());
-    }
-
-    private static String dominatorTreeString(Block b) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(b);
-        sb.append("(");
-        Block firstDominated = b.getFirstDominated();
-        while (firstDominated != null) {
-            if (firstDominated.getDominator().getPostdominator() == firstDominated) {
-                sb.append("!");
-            }
-            sb.append(dominatorTreeString(firstDominated));
-            firstDominated = firstDominated.getDominatedSibling();
-        }
-        sb.append(") ");
-        return sb.toString();
     }
 
     @SuppressWarnings("unchecked")
@@ -288,15 +274,6 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
 
         private final Block block;
         private final DeferredExit next;
-
-        public Block getBlock() {
-            return block;
-        }
-
-        public DeferredExit getNext() {
-            return next;
-        }
-
     }
 
     public static void addDeferredExit(DeferredExit[] deferredExits, Block b) {

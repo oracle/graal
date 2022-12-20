@@ -24,8 +24,7 @@
  */
 package org.graalvm.profdiff.core;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
  * Marks the longest executing Graal compilation units as hot.
@@ -59,8 +58,8 @@ public class HotCompilationUnitPolicy {
      */
     public void markHotCompilationUnits(Experiment experiment) {
         double periodLimit = experiment.getGraalPeriod() * hotPercentile;
-        List<CompilationUnit> compilationUnits = experiment.getCompilationUnits().stream().sorted((CompilationUnit a, CompilationUnit b) -> Long.compare(b.getPeriod(), a.getPeriod())).collect(
-                        Collectors.toList());
+        Iterable<CompilationUnit> compilationUnits = () -> StreamSupport.stream(experiment.getCompilationUnits().spliterator(), false).sorted(
+                        (CompilationUnit a, CompilationUnit b) -> Long.compare(b.getPeriod(), a.getPeriod())).iterator();
         int index = 0;
         for (CompilationUnit compilationUnit : compilationUnits) {
             periodLimit -= compilationUnit.getPeriod();

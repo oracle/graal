@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import static org.graalvm.compiler.hotspot.HotSpotGraalCompiler.fmt;
-
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
@@ -77,7 +75,7 @@ class CompilationCounters {
         val = val != null ? val + 1 : 1;
         counters.put(key, val);
         if (val > Options.CompilationCountLimit.getValue(options)) {
-            TTY.printf("Error. Method %s was compiled too many times. Number of compilations: %d\n", fmt(method),
+            TTY.printf("Error. Method %s was compiled too many times. Number of compilations: %d\n", method.format("%H.%n(%p)"),
                             CompilationCounters.Options.CompilationCountLimit.getValue(options));
             TTY.println("==================================== High compilation counters ====================================");
             SortedSet<Map.Entry<MethodKey, Integer>> sortedCounters = new TreeSet<>(new CounterComparator());
@@ -86,7 +84,7 @@ class CompilationCounters {
             }
             for (Map.Entry<MethodKey, Integer> entry : sortedCounters) {
                 if (entry.getValue() >= Options.CompilationCountLimit.getValue(options) / 2) {
-                    TTY.out.printf("%d\t%s%n", entry.getValue(), String.valueOf(entry.getKey()));
+                    TTY.out.printf("%d\t%s%n", entry.getValue(), entry.getKey());
                 }
             }
             TTY.flush();

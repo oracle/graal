@@ -37,10 +37,8 @@ import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.UninitializedStaticFieldValueReader;
-import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
@@ -305,19 +303,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
-        DynamicHub dynamicHub = getHostVM().dynamicHub(type);
-        registerAsReachable(getHostVM(), dynamicHub);
-        return SubstrateObjectConstant.forObject(dynamicHub);
-    }
-
-    protected static void registerAsReachable(SVMHost hostVM, DynamicHub dynamicHub) {
-        assert dynamicHub != null;
-        /* Make sure that the DynamicHub of this type ends up in the native image. */
-        AnalysisType valueType = hostVM.lookupType(dynamicHub);
-        if (!valueType.isReachable() && BuildPhaseProvider.isAnalysisFinished()) {
-            throw VMError.shouldNotReachHere("Registering type as reachable after analysis: " + valueType);
-        }
-        valueType.registerAsReachable();
+        return SubstrateObjectConstant.forObject(getHostVM().dynamicHub(type));
     }
 
     private SVMHost getHostVM() {

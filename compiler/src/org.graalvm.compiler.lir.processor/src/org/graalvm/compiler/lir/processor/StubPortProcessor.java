@@ -139,6 +139,7 @@ public class StubPortProcessor extends AbstractProcessor {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static String digest(Proxy proxy, MessageDigest md, String url, int lineStart, int lineEnd) throws IOException {
         URLConnection connection = new URL(url).openConnection(proxy);
         try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
@@ -149,6 +150,7 @@ public class StubPortProcessor extends AbstractProcessor {
         return String.format("%040x", new BigInteger(1, md.digest()));
     }
 
+    @SuppressWarnings("deprecation")
     private static int find(Proxy proxy, String oldUrl, String newUrl, int lineStart, int lineEnd) throws IOException {
         URLConnection oldUrlConnection = new URL(oldUrl).openConnection(proxy);
         URLConnection newUrlConnection = new URL(newUrl).openConnection(proxy);
@@ -167,6 +169,7 @@ public class StubPortProcessor extends AbstractProcessor {
         return -1;
     }
 
+    @SuppressWarnings("deprecation")
     private static String fetchLatestCommit(Proxy proxy) throws IOException {
         URLConnection connection = new URL(JDK_LATEST_INFO).openConnection(proxy);
 
@@ -182,7 +185,7 @@ public class StubPortProcessor extends AbstractProcessor {
 
     @Override
     protected boolean doProcess(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        if (Boolean.valueOf(System.getenv(SYNC_CHECK_ENV_VAR))) {
+        if (Boolean.parseBoolean(System.getenv(SYNC_CHECK_ENV_VAR))) {
             if (!roundEnv.processingOver()) {
                 try {
                     // Set https.protocols explicitly to avoid handshake failure

@@ -38,8 +38,8 @@ import com.oracle.svm.core.VM;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.libc.LibCBase;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
@@ -103,8 +103,10 @@ public class VMFeature implements InternalFeature {
             });
         }
 
-        CGlobalData<PointerBase> isStaticBinaryMarker = CGlobalDataFactory.createWord(WordFactory.unsigned(SubstrateOptions.StaticExecutable.getValue() ? 1 : 0), STATIC_BINARY_MARKER_SYMBOL_NAME);
-        CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(isStaticBinaryMarker);
+        if (!Platform.includedIn(Platform.WINDOWS.class)) {
+            CGlobalData<PointerBase> isStaticBinaryMarker = CGlobalDataFactory.createWord(WordFactory.unsigned(SubstrateOptions.StaticExecutable.getValue() ? 1 : 0), STATIC_BINARY_MARKER_SYMBOL_NAME);
+            CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(isStaticBinaryMarker);
+        }
     }
 
     private static void addCGlobalDataString(String infoType, String content) {

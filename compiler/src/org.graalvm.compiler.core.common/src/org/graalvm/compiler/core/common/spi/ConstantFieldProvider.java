@@ -42,6 +42,13 @@ public interface ConstantFieldProvider {
 
         JavaConstant getReceiver();
 
+        /**
+         * The reason why this constant folding was attempted. Ideally this is a
+         * {@link jdk.vm.ci.code.BytecodePosition}, where available, or a {@link String}
+         * description, however it can be {@code null}.
+         */
+        Object getReason();
+
         T foldConstant(JavaConstant ret);
 
         T foldStableArray(JavaConstant ret, int stableDimensions, boolean isDefaultStable);

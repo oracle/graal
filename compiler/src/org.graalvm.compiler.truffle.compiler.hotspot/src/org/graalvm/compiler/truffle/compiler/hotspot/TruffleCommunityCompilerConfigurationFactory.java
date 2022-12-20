@@ -35,10 +35,12 @@ import org.graalvm.compiler.serviceprovider.ServiceProvider;
 @ServiceProvider(CompilerConfigurationFactory.class)
 public class TruffleCommunityCompilerConfigurationFactory extends CommunityCompilerConfigurationFactory {
 
-    public static final int AUTO_SELECTION_PRIORITY = 4;
+    private static final int AUTO_SELECTION_PRIORITY = 4;
+
+    private static final String INFO = "Graal Community compiler with Truffle extensions";
 
     public TruffleCommunityCompilerConfigurationFactory() {
-        super(AUTO_SELECTION_PRIORITY);
+        super(AUTO_SELECTION_PRIORITY, INFO);
         assert AUTO_SELECTION_PRIORITY > CommunityCompilerConfigurationFactory.AUTO_SELECTION_PRIORITY;
     }
 

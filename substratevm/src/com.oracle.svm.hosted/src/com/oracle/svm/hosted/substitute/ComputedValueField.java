@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.substitute;
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.AtomicFieldUpdaterOffset;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FieldOffset;
+import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.StaticFieldBase;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.TranslateFieldOffset;
 import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
@@ -48,6 +49,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
@@ -133,11 +135,11 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
                 constantValue = JavaConstant.defaultForKind(getJavaKind());
                 break;
             case FieldOffset:
-                try {
-                    f = targetClass.getDeclaredField(targetName);
-                } catch (NoSuchFieldException e) {
-                    throw shouldNotReachHere("could not find target field " + targetClass.getName() + "." + targetName + " for alias " + annotated.format("%H.%n"));
-                }
+                f = getField(annotated, targetClass, targetName);
+                break;
+            case StaticFieldBase:
+                f = getField(annotated, targetClass, targetName);
+                UserError.guarantee(Modifier.isStatic(f.getModifiers()), "Target field must be static for %s computation of %s", StaticFieldBase, fieldFormat());
                 break;
             case Custom:
                 if (initialTransformer != null) {
@@ -154,13 +156,22 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
                 }
         }
         boolean isOffsetField = isOffsetRecomputation(kind);
+        boolean isStaticFieldBase = kind == StaticFieldBase;
         guarantee(!isFinal || !isOffsetField);
-        this.isValueAvailableBeforeAnalysis = customValueAvailableBeforeAnalysis && !isOffsetField;
-        this.isValueAvailableOnlyAfterAnalysis = customValueAvailableOnlyAfterAnalysis || isOffsetField;
+        this.isValueAvailableBeforeAnalysis = customValueAvailableBeforeAnalysis && !isOffsetField && !isStaticFieldBase;
+        this.isValueAvailableOnlyAfterAnalysis = customValueAvailableOnlyAfterAnalysis || isOffsetField || isStaticFieldBase;
         this.isValueAvailableOnlyAfterCompilation = customValueAvailableOnlyAfterCompilation;
         this.targetField = f;
         this.fieldValueTransformer = transformer;
         this.valueCache = EconomicMap.create();
+    }
+
+    private static Field getField(ResolvedJavaField annotated, Class<?> targetClass, String targetName) {
+        try {
+            return targetClass.getDeclaredField(targetName);
+        } catch (NoSuchFieldException e) {
+            throw UserError.abort("Could not find target field %s.%s for alias %s.", targetClass.getName(), targetName, annotated.format("%H.%n"));
+        }
     }
 
     public static boolean isOffsetRecomputation(RecomputeFieldValue.Kind kind) {
@@ -233,7 +244,7 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
         switch (kind) {
             case FieldOffset:
                 AnalysisField target = aMetaAccess.lookupJavaField(targetField);
-                target.registerAsAccessed();
+                target.registerAsAccessed(this);
                 break;
         }
     }
@@ -281,6 +292,10 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
                 return constantValue;
             case ArrayIndexShift:
                 constantValue = asConstant(ConfigurationValues.getObjectLayout().getArrayIndexShift(JavaKind.fromJavaClass(targetClass.getComponentType())));
+                return constantValue;
+            case StaticFieldBase:
+                Object staticFieldsArray = targetField.getType().isPrimitive() ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields();
+                constantValue = GraalAccess.getOriginalSnippetReflection().forObject(staticFieldsArray);
                 return constantValue;
         }
 
@@ -342,9 +357,9 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
                 originalValue = fetchOriginalValue(metaAccess, receiver, originalSnippetReflection);
                 Object newValue = fieldValueTransformer.transform(receiverValue, originalValue);
                 checkValue(newValue);
-                result = originalSnippetReflection.forBoxed(annotated.getJavaKind(), newValue);
+                result = originalSnippetReflection.forBoxed(original.getJavaKind(), newValue);
 
-                assert result.getJavaKind() == annotated.getJavaKind();
+                assert result.getJavaKind() == original.getJavaKind();
                 break;
             default:
                 throw shouldNotReachHere("Field recomputation of kind " + kind + " for " + fieldFormat() + " not yet supported");

@@ -74,6 +74,8 @@ public class DeoptimizationSupport {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static CFunctionPointer getDeoptStubPointer() {
-        return get().deoptStubPointer;
+        CFunctionPointer ptr = get().deoptStubPointer;
+        assert ptr.rawValue() != 0;
+        return ptr;
     }
 }

@@ -45,4 +45,12 @@ public abstract class AMD64LIRInstruction extends LIRInstruction {
     }
 
     public abstract void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm);
+
+    protected int preferredLoopAlignment(CompilationResultBuilder crb) {
+        return crb.target.wordSize * 2;
+    }
+
+    protected int preferredBranchTargetAlignment(CompilationResultBuilder crb) {
+        return crb.target.wordSize * 2;
+    }
 }

@@ -50,7 +50,6 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.Position;
-import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
@@ -678,6 +677,17 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                     }
                 }
                 result.add(pushedEscapeObjectState);
+
+                /*
+                 * The virtual object may be mapped to another virtual object. If this is the case,
+                 * we must ensure that that one is mapped too.
+                 */
+                MaterializedObjectState materializedObjectState = (MaterializedObjectState) pushedEscapeObjectState;
+                if (materializedObjectState.materializedValue() instanceof VirtualObjectNode) {
+                    VirtualObjectNode virtualMaterializedValue = (VirtualObjectNode) materializedObjectState.materializedValue();
+                    result = ensureHasVirtualObjectMapping(virtualMaterializedValue, pushedVirtualObjectMappings, result);
+                }
+
                 return result;
             }
         }
@@ -804,10 +814,6 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         } else {
             return monitorIds.size();
         }
-    }
-
-    public NodeIterable<FrameState> innerFrameStates() {
-        return usages().filter(FrameState.class);
     }
 
     private static String toString(FrameState frameState) {

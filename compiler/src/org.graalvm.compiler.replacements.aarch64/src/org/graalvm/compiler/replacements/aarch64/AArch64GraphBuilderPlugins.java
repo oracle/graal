@@ -79,6 +79,7 @@ import org.graalvm.compiler.replacements.nodes.CountLeadingZerosNode;
 import org.graalvm.compiler.replacements.nodes.CountTrailingZerosNode;
 import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
 import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
+import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -524,6 +525,27 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             @Override
             public boolean isOptional() {
                 return JavaVersionUtil.JAVA_SPEC < 18;
+            }
+        });
+        r.register(new InvocationPlugin("hasNegatives", byte[].class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode ba, ValueNode off, ValueNode len) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    MetaAccessProvider metaAccess = b.getMetaAccess();
+                    int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
+                    helper.intrinsicRangeCheck(off, Condition.LT, ConstantNode.forInt(0));
+                    helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
+
+                    ValueNode arrayLength = b.add(new ArrayLengthNode(ba));
+                    ValueNode limit = b.add(AddNode.create(off, len, NodeView.DEFAULT));
+                    helper.intrinsicRangeCheck(arrayLength, Condition.LT, limit);
+
+                    ValueNode arrayOffset = AddNode.create(ConstantNode.forInt(byteArrayBaseOffset), off, NodeView.DEFAULT);
+                    ComputeObjectAddressNode array = b.add(new ComputeObjectAddressNode(ba, arrayOffset));
+
+                    b.addPush(JavaKind.Boolean, new HasNegativesNode(array, len));
+                    return true;
+                }
             }
         });
 

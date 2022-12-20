@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
+import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC;
+
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Formatter;
@@ -33,9 +35,10 @@ import java.util.TreeSet;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AESCryptPlugin;
-import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.GHASHPlugin;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.compiler.replacements.nodes.AESNode;
+import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
+import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
+import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
@@ -73,11 +76,11 @@ public final class UnimplementedGraalIntrinsics {
      */
     public final Set<String> toBeInvestigated = new TreeSet<>();
 
-    private static Collection<String> add(Collection<String> c, String... elements) {
+    private static void add(Collection<String> c, String... elements) {
         String[] sorted = elements.clone();
         Arrays.sort(sorted);
         if (!Arrays.equals(elements, sorted)) {
-            int width = 2 + Arrays.asList(elements).stream().map(String::length).reduce(0, Integer::max);
+            int width = 2 + Arrays.stream(elements).map(String::length).reduce(0, Integer::max);
             Formatter fmt = new Formatter();
             fmt.format("%-" + width + "s | sorted%n", "original");
             fmt.format("%s%n", new String(new char[width * 2 + 2]).replace('\0', '='));
@@ -87,7 +90,6 @@ public final class UnimplementedGraalIntrinsics {
             throw GraalError.shouldNotReachHere(String.format("Elements not sorted alphabetically:%n%s", fmt));
         }
         c.addAll(Arrays.asList(elements));
-        return c;
     }
 
     public UnimplementedGraalIntrinsics(GraalHotSpotVMConfig config, Architecture arch) {
@@ -211,7 +213,7 @@ public final class UnimplementedGraalIntrinsics {
                             "java/util/Base64$Decoder.decodeBlock([BII[BIZZ)I");
         }
 
-        if (!GHASHPlugin.isSupported(arch)) {
+        if (!GHASHProcessBlocksNode.isSupported(arch)) {
             add(ignore,
                             "com/sun/crypto/provider/GHASH.processBlocks([BII[J[J)V");
         }
@@ -237,14 +239,18 @@ public final class UnimplementedGraalIntrinsics {
         }
 
         // AES intrinsics
-        if (!AESCryptPlugin.isSupported(arch)) {
+        if (!AESNode.isSupported(arch)) {
             add(ignore,
                             "com/sun/crypto/provider/AESCrypt.implDecryptBlock([BI[BI)V",
-                            "com/sun/crypto/provider/AESCrypt.implEncryptBlock([BI[BI)V",
+                            "com/sun/crypto/provider/AESCrypt.implEncryptBlock([BI[BI)V");
+        }
+
+        if (!CounterModeAESNode.isSupported(arch)) {
+            add(ignore,
                             "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I");
         }
 
-        if (!config.useAESIntrinsics) {
+        if (!CipherBlockChainingAESNode.isSupported(arch)) {
             add(ignore,
                             "com/sun/crypto/provider/CipherBlockChaining.implDecrypt([BII[BI)I",
                             "com/sun/crypto/provider/CipherBlockChaining.implEncrypt([BII[BI)I");
@@ -309,12 +315,12 @@ public final class UnimplementedGraalIntrinsics {
             add(ignore, "jdk/internal/vm/Continuation.doYield()I");
         }
 
-        if (isJDK16OrHigher()) {
+        if (JAVA_SPEC >= 16) {
             // JDK-8258558
             add(ignore, "java/lang/Object.<blackhole>*");
         }
 
-        if (isJDK16OrHigher()) {
+        if (JAVA_SPEC >= 16) {
             add(toBeInvestigated,
                             // JDK-8254231: Implementation of Foreign Linker API (Incubator)
                             "java/lang/invoke/MethodHandle.linkToNative*",
@@ -345,7 +351,7 @@ public final class UnimplementedGraalIntrinsics {
             );
         }
 
-        if (isJDK18OrHigher()) {
+        if (JAVA_SPEC >= 18) {
             add(toBeInvestigated,
                             "com/sun/crypto/provider/GaloisCounterMode.implGCMCrypt0([BII[BI[BILcom/sun/crypto/provider/GCTR;Lcom/sun/crypto/provider/GHASH;)I",
                             "java/lang/StrictMath.max(DD)D",
@@ -389,7 +395,7 @@ public final class UnimplementedGraalIntrinsics {
                                             "Ljdk/internal/vm/vector/VectorSupport$UnaryOperation;)Ljdk/internal/vm/vector/VectorSupport$Vector;");
         }
 
-        if (isJDK19OrHigher()) {
+        if (JAVA_SPEC >= 19) {
             add(toBeInvestigated,
                             "java/lang/Double.isInfinite(D)Z",
                             "java/lang/Float.isInfinite(F)Z",
@@ -425,11 +431,26 @@ public final class UnimplementedGraalIntrinsics {
             }
         }
 
+        if (JAVA_SPEC >= 20) {
+            add(toBeInvestigated,
+                            "com/sun/crypto/provider/Poly1305.processMultipleBlocks([BII[J[J)V",
+                            "java/lang/Double.isFinite(D)Z",
+                            "java/lang/Float.float16ToFloat(S)F",
+                            "java/lang/Float.floatToFloat16(F)S",
+                            "java/lang/Float.isFinite(F)Z",
+                            "java/lang/Integer.compareUnsigned(II)I",
+                            "java/lang/Integer.reverse(I)I",
+                            "java/lang/Long.compareUnsigned(JJ)I",
+                            "java/lang/Long.reverse(J)J",
+                            // @formatter:off
+                            "jdk/internal/vm/vector/VectorSupport.indexVector(Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;ILjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$IndexOperation;)Ljdk/internal/vm/vector/VectorSupport$Vector;");
+                            // @formatter:on
+
+        }
+
         if (arch instanceof AArch64) {
             add(toBeInvestigated,
-                            "java/lang/StringCoding.hasNegatives([BII)Z",
-                            "java/lang/Thread.onSpinWait()V",
-                            "jdk/internal/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I");
+                            "java/lang/Thread.onSpinWait()V");
         }
 
         // These are known to be implemented down stream
@@ -453,18 +474,6 @@ public final class UnimplementedGraalIntrinsics {
                         "java/util/Arrays.copyOf([Ljava/lang/Object;ILjava/lang/Class;)[Ljava/lang/Object;",
                         "java/util/Arrays.copyOfRange([Ljava/lang/Object;IILjava/lang/Class;)[Ljava/lang/Object;");
 
-    }
-
-    private static boolean isJDK16OrHigher() {
-        return JavaVersionUtil.JAVA_SPEC >= 16;
-    }
-
-    private static boolean isJDK18OrHigher() {
-        return JavaVersionUtil.JAVA_SPEC >= 18;
-    }
-
-    private static boolean isJDK19OrHigher() {
-        return JavaVersionUtil.JAVA_SPEC >= 19;
     }
 
     /**

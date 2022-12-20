@@ -108,7 +108,7 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
         """Run the 'cmd' command in the 'bin' directory."""
         args = self.post_process_launcher_command_line_args(args)
         self.extract_vm_info(args)
-        mx.log("Running '{}' on '{}' with args: '{}'".format(cmd, self.name(), " ".join(args)))
+        mx.log(f"Running '{cmd}' on '{self.name()}' with args: '{' '.join(args)}'")
         out = mx.TeeOutputCapture(mx.OutputCapture())
         command = [os.path.join(self.home(), 'bin', cmd)] + args
         command = mx.apply_command_mapper_hooks(command, self.command_mapper_hooks)
@@ -130,7 +130,7 @@ class NativeImageVM(GraalVm):
     class BenchmarkConfig:
         def __init__(self, vm, bm_suite, args):
             self.bmSuite = bm_suite
-            self.benchmark_suite_name = bm_suite.benchSuiteName(args) if len(inspect.getargspec(bm_suite.benchSuiteName).args) > 1 else bm_suite.benchSuiteName() # pylint: disable=deprecated-method
+            self.benchmark_suite_name = bm_suite.benchSuiteName(args) if len(inspect.getfullargspec(bm_suite.benchSuiteName).args) > 1 else bm_suite.benchSuiteName()
             self.benchmark_name = bm_suite.benchmarkName()
             self.executable, self.classpath_arguments, self.system_properties, self.image_vm_args, image_run_args = NativeImageVM.extract_benchmark_arguments(args)
             self.extra_image_build_arguments = bm_suite.extra_image_build_argument(self.benchmark_name, args)
@@ -147,6 +147,7 @@ class NativeImageVM(GraalVm):
             self.pgo_iteration_num = bm_suite.pgo_iteration_num(self.benchmark_name, args)
             self.params = ['extra-image-build-argument', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
                            'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions']
+
             self.profile_file_extension = '.iprof'
             self.stages = bm_suite.stages(args)
             if vm.jdk_profiles_collect:  # forbid image build/run in the profile collection execution mode
@@ -156,7 +157,7 @@ class NativeImageVM(GraalVm):
             self.last_stage = self.stages[-1]
             self.skip_agent_assertions = bm_suite.skip_agent_assertions(self.benchmark_name, args)
             self.root_dir = self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False, jdkDependent=False)
-            unique_suite_name = '{}-{}'.format(self.bmSuite.benchSuiteName(), self.bmSuite.version().replace('.', '-')) if self.bmSuite.version() != 'unknown' else self.bmSuite.benchSuiteName()
+            unique_suite_name = f"{self.bmSuite.benchSuiteName()}-{self.bmSuite.version().replace('.', '-')}" if self.bmSuite.version() != 'unknown' else self.bmSuite.benchSuiteName()
             self.executable_name = (unique_suite_name + '-' + self.benchmark_name).lower() if self.benchmark_name else unique_suite_name.lower()
             self.final_image_name = self.executable_name + '-' + vm.config_name()
             self.output_dir = mx.join(os.path.abspath(self.root_dir), 'native-image-benchmarks', self.executable_name + '-' + vm.config_name())
@@ -201,7 +202,7 @@ class NativeImageVM(GraalVm):
         super(NativeImageVM, self).__init__(name, config_name, extra_java_args, extra_launcher_args)
         if len(kwargs) > 0:
             mx.log_deprecation("Ignoring NativeImageVM custom configuration! Use named configuration instead.")
-            mx.warn("Ignoring: {}".format(kwargs))
+            mx.warn(f"Ignoring: {kwargs}")
 
         self.vm_args = None
         self.pgo_aot_inline = False
@@ -226,7 +227,7 @@ class NativeImageVM(GraalVm):
 
     def _configure_from_name(self, config_name):
         if not config_name:
-            mx.abort("config_name must be set. Use 'default' for the default {} configuration.".format(self.__class__.__name__))
+            mx.abort(f"config_name must be set. Use 'default' for the default {self.__class__.__name__} configuration.")
 
         # special case for the 'default' configuration, other configurations are handled by the regex to ensure consistent ordering
         if config_name == "default":
@@ -242,71 +243,71 @@ class NativeImageVM(GraalVm):
         rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-)?(?P<inliner>aot-inline-|iterative-|inline-explored-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<ml>ml-profile-inference-)?(?P<jdk_profiles>jdk-profiles-collect-|cached-jdk-pgo-)?(?P<edition>ce-|ee-)?$'
 
-        mx.logv("== Registering configuration: {}".format(config_name))
-        match_name = "{}-".format(config_name)  # adding trailing dash to simplify the regex
+        mx.logv(f"== Registering configuration: {config_name}")
+        match_name = f"{config_name}-"  # adding trailing dash to simplify the regex
         matching = re.match(rule, match_name)
         if not matching:
-            mx.abort("{} configuration is invalid: {}".format(self.__class__.__name__, config_name))
+            mx.abort(f"{self.__class__.__name__} configuration is invalid: {config_name}")
 
         if matching.group("native_architecture") is not None:
-            mx.logv("'native-architecture' is enabled for {}".format(config_name))
+            mx.logv(f"'native-architecture' is enabled for {config_name}")
             self.native_architecture = True
 
         if matching.group("string_inlining") is not None:
-            mx.logv("'string-inlining' is enabled for {}".format(config_name))
+            mx.logv(f"'string-inlining' is enabled for {config_name}")
             self.use_string_inlining = True
 
         if matching.group("gate") is not None:
-            mx.logv("'gate' mode is enabled for {}".format(config_name))
+            mx.logv(f"'gate' mode is enabled for {config_name}")
             self.is_gate = True
 
         if matching.group("upx") is not None:
-            mx.logv("'upx' is enabled for {}".format(config_name))
+            mx.logv(f"'upx' is enabled for {config_name}")
             self.use_upx = True
 
         if matching.group("quickbuild") is not None:
-            mx.logv("'quickbuild' is enabled for {}".format(config_name))
+            mx.logv(f"'quickbuild' is enabled for {config_name}")
             self.is_quickbuild = True
 
         if matching.group("gc") is not None:
             gc = matching.group("gc")[:-1]
             if gc == "g1gc":
-                mx.logv("'g1gc' is enabled for {}".format(config_name))
+                mx.logv(f"'g1gc' is enabled for {config_name}")
                 self.gc = "G1"
             else:
-                mx.abort("Unknown GC: {}".format(gc))
+                mx.abort(f"Unknown GC: {gc}")
 
         if matching.group("llvm") is not None:
-            mx.logv("'llvm' mode is enabled for {}".format(config_name))
+            mx.logv(f"'llvm' mode is enabled for {config_name}")
             self.is_llvm = True
 
         if matching.group("pgo") is not None:
             pgo_mode = matching.group("pgo")[:-1]
             if pgo_mode == "pgo":
-                mx.logv("'pgo' is enabled for {}".format(config_name))
+                mx.logv(f"'pgo' is enabled for {config_name}")
                 self.pgo_instrumented_iterations = 1
             elif pgo_mode == "pgo-ctx-insens":
-                mx.logv("'pgo-ctx-insens' is enabled for {}".format(config_name))
+                mx.logv(f"'pgo-ctx-insens' is enabled for {config_name}")
                 self.pgo_instrumented_iterations = 1
                 self.pgo_context_sensitive = False
             else:
-                mx.abort("Unknown pgo mode: {}".format(pgo_mode))
+                mx.abort(f"Unknown pgo mode: {pgo_mode}")
 
         if matching.group("inliner") is not None:
             inliner = matching.group("inliner")[:-1]
             if self.pgo_instrumented_iterations < 1:
-                mx.abort("The selected inliner require PGO! Invalid configuration: {}".format(config_name))
+                mx.abort(f"The selected inliner require PGO! Invalid configuration: {config_name}")
             if inliner == "aot-inline":
-                mx.logv("'aot-inline' is enabled for {}".format(config_name))
+                mx.logv(f"'aot-inline' is enabled for {config_name}")
                 self.pgo_aot_inline = True
             elif inliner == "iterative":
-                mx.logv("'iterative' inliner is enabled for {}".format(config_name))
+                mx.logv(f"'iterative' inliner is enabled for {config_name}")
                 self.pgo_instrumented_iterations = 3
             elif inliner == "inline-explored":
-                mx.logv("'inline-explored' is enabled for {}".format(config_name))
+                mx.logv(f"'inline-explored' is enabled for {config_name}")
                 self.pgo_instrumented_iterations = 3
             else:
-                mx.abort("Unknown inliner configuration: {}".format(inliner))
+                mx.abort(f"Unknown inliner configuration: {inliner}")
 
         if matching.group("ml") is not None:
             self.ml = matching.group("ml")[:-1]
@@ -319,14 +320,15 @@ class NativeImageVM(GraalVm):
 
                 def generate_profiling_package_prefixes():
                     # run the native-image-configure tool to gather the jdk package prefixes
-                    native_image_configure_command = mx.cmd_suffix(join(mx_sdk_vm.graalvm_home(), 'bin', 'native-image-configure'))
+                    graalvm_home_bin = os.path.join(mx_sdk_vm.graalvm_home(), 'bin')
+                    native_image_configure_command = mx.cmd_suffix(join(graalvm_home_bin, 'native-image-configure'))
                     if not exists(native_image_configure_command):
-                        mx.abort('Failed to find the native-image-configure command at {}.'.format(native_image_configure_command))
+                        mx.abort('Failed to find the native-image-configure command at {}. \nContent {}: \n\t{}'.format(native_image_configure_command, graalvm_home_bin, '\n\t'.join(os.listdir(graalvm_home_bin))))
                     tmp = tempfile.NamedTemporaryFile()
                     ret = mx.run([native_image_configure_command, 'generate-filters',
                                   '--include-packages-from-modules=java.base',
                                   '--exclude-classes=org.graalvm.**', '--exclude-classes=com.oracle.**',  # remove internal packages
-                                  '--output-file={}'.format(tmp.name)], nonZeroIsFatal=True)
+                                  f'--output-file={tmp.name}'], nonZeroIsFatal=True)
                     if ret != 0:
                         mx.abort('Native image configure command failed.')
 
@@ -342,34 +344,31 @@ class NativeImageVM(GraalVm):
             elif config == 'cached-jdk-pgo':
                 self.cached_jdk_pgo = True
             else:
-                mx.abort('Unknown jdk profiles configuration: {}'.format(config))
-            # choose appropriate profiles
-            jdk_profiles = 'JDK{}_PROFILES'.format(str(mx.get_jdk().version).split('.')[0])
-            self.cached_profiles_base_dir = mx.library(jdk_profiles).get_path(True)
+                mx.abort(f'Unknown jdk profiles configuration: {config}')
 
         if matching.group("edition") is not None:
             edition = matching.group("edition")[:-1]
-            mx.logv("GraalVM edition is set to: {}".format(edition))
+            mx.logv(f"GraalVM edition is set to: {edition}")
             self.graalvm_edition = edition
 
         if matching.group("no_inlining_before_analysis") is not None:
             option = matching.group("no_inlining_before_analysis")[:-1]
             if option == "no-inline":
-                mx.logv("not doing inlining before analysis for {}".format(config_name))
+                mx.logv(f"not doing inlining before analysis for {config_name}")
                 self.no_inlining_before_analysis = True
             else:
-                mx.abort("Unknown configuration for no inlining before analysis: {}".format(option))
+                mx.abort(f"Unknown configuration for no inlining before analysis: {option}")
 
         if matching.group("analysis_context_sensitivity") is not None:
             context_sensitivity = matching.group("analysis_context_sensitivity")[:-1]
             if context_sensitivity in ["insens", "allocsens"]:
-                mx.logv("analysis context sensitivity {} is enabled for {}".format(context_sensitivity, config_name))
+                mx.logv(f"analysis context sensitivity {context_sensitivity} is enabled for {config_name}")
                 self.analysis_context_sensitivity = context_sensitivity
             elif context_sensitivity in ["1obj", "2obj1h", "3obj2h", "4obj3h"]:
-                mx.logv("analysis context sensitivity {} is enabled for {}".format(context_sensitivity, config_name))
-                self.analysis_context_sensitivity = "_{}".format(context_sensitivity)
+                mx.logv(f"analysis context sensitivity {context_sensitivity} is enabled for {config_name}")
+                self.analysis_context_sensitivity = f"_{context_sensitivity}"
             else:
-                mx.abort("Unknown analysis context sensitivity: {}".format(context_sensitivity))
+                mx.abort(f"Unknown analysis context sensitivity: {context_sensitivity}")
 
 
     @staticmethod
@@ -751,8 +750,8 @@ class NativeImageVM(GraalVm):
             def __call__(self, *args, **kwargs):
                 return int(float(args[0].replace(',', '')))
 
-        measured_phases = ['total', 'setup', 'classlist', 'analysis', 'universe', 'compile', 'dbginfo', 'image',
-                           'write']
+        measured_phases = ['total', 'setup', 'classlist', 'analysis', 'universe', 'compile', 'layout', 'dbginfo',
+                           'image', 'write']
         rules = []
         for i in range(0, len(measured_phases)):
             phase = measured_phases[i]
@@ -817,9 +816,13 @@ class NativeImageVM(GraalVm):
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
-        instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
+        # GR-40154/GR-42738 --pgo-sampling does not work with G1/LLVM
+        if self.gc == 'G1' or self.is_llvm:
+            instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
+        else:
+            instrument_args = ['--pgo-instrument', '--pgo-sampling'] + ([] if i == 0 else pgo_args)
         if self.jdk_profiles_collect:
-            instrument_args += ['-H:+ProfilingEnabled', '-H:+AOTPriorityInline', '-H:ProfilingPackagePrefixes={}'.format(self.generate_profiling_package_prefixes())]
+            instrument_args += ['-H:+ProfilingEnabled', '-H:+AOTPriorityInline', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}']
 
         with stages.set_command(config.base_image_build_args + executable_name_args + instrument_args) as s:
             s.execute_command()
@@ -829,6 +832,18 @@ class NativeImageVM(GraalVm):
                 image_size = os.stat(image_path).st_size
                 out('Instrumented image size: ' + str(image_size) + ' B')
 
+    def _ensureSamplesAreInProfile(self, profile_path):
+        # GR-40154/GR-42738 --pgo-sampling does not work with G1/LLVM
+        if self.pgo_aot_inline and self.gc != 'G1' and not self.is_llvm:
+            with open(profile_path) as profile_file:
+                parsed = json.load(profile_file)
+                samples = parsed["samplingProfiles"]
+                assert len(samples) != 0, "No sampling profiles in iprof file " + profile_path
+                for sample in samples:
+                    assert ":" in sample["ctx"], "Sampling profiles seem malformed in file " + profile_path
+                    assert len(sample["records"]) == 1, "Sampling profiles seem to be missing records in file " + profile_path
+                    assert sample["records"][0] > 0, "Sampling profiles seem to have a 0 in records in file " + profile_path
+
     def run_stage_instrument_run(self, config, stages, image_path, profile_path):
         image_run_cmd = [image_path, '-XX:ProfilesDumpFile=' + profile_path]
         image_run_cmd += config.extra_profile_run_args
@@ -836,6 +851,7 @@ class NativeImageVM(GraalVm):
             s.execute_command()
             if s.exit_code == 0:
                 mx.copyfile(profile_path, config.latest_profile_path)
+            self._ensureSamplesAreInProfile(profile_path)
 
     def run_stage_image(self, config, stages):
         executable_name_args = ['-H:Name=' + config.final_image_name]
@@ -845,8 +861,11 @@ class NativeImageVM(GraalVm):
         instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
         ml_args = ['-H:+ProfileInference'] if self.ml == 'ml-profile-inference' else []
         if self.cached_jdk_pgo:
-            cached_profiles = ','.join(list(map(lambda f: os.path.join(self.cached_profiles_base_dir, f), os.listdir(self.cached_profiles_base_dir))))
-            jdk_profiles_args = ['-H:CachedPGOEnabled={}'.format(cached_profiles)]
+            # choose appropriate profiles
+            jdk_profiles = f"JDK{mx.get_jdk().javaCompliance}_PROFILES"
+            cached_profiles_base_dir = mx.library(jdk_profiles).get_path(True)
+            cached_profiles = ','.join(list(map(lambda f: os.path.join(cached_profiles_base_dir, f), os.listdir(cached_profiles_base_dir))))
+            jdk_profiles_args = [f'-H:CachedPGOEnabled={cached_profiles}']
         else:
             jdk_profiles_args = []
         final_image_command = config.base_image_build_args + executable_name_args + (pgo_args if instrumented_iterations > 0 else []) + ml_args + jdk_profiles_args
@@ -857,7 +876,7 @@ class NativeImageVM(GraalVm):
                 upx_directory = mx.library("UPX", True).get_path(True)
                 upx_path = os.path.join(upx_directory, mx.exe_suffix("upx"))
                 upx_cmd = [upx_path, image_path]
-                mx.log("Compressing image: {0}".format(' '.join(upx_cmd)))
+                mx.log(f"Compressing image: {' '.join(upx_cmd)}")
                 mx.run(upx_cmd, s.stdout(True), s.stderr(True))
 
     def run_stage_run(self, config, stages, out):
@@ -1002,9 +1021,9 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite, mx_benchmark.Av
 
     def createVmCommandLineArgs(self, benchmarks, runArgs):
         if not benchmarks:
-            raise mx.abort("Benchmark suite '{}' cannot run multiple benchmarks in the same VM process".format(self.name()))
+            raise mx.abort(f"Benchmark suite '{self.name()}' cannot run multiple benchmarks in the same VM process")
         if len(benchmarks) != 1:
-            raise mx.abort("Benchmark suite '{}' can run only one benchmark at a time".format(self.name()))
+            raise mx.abort(f"Benchmark suite '{self.name()}' can run only one benchmark at a time")
         return self._benchmarks[benchmarks[0]] + ['-e', 'count=50'] + runArgs + ['sieve.js']
 
     def get_vm_registry(self):
@@ -1042,8 +1061,8 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             distribution = mx.distribution(dist_name)
             _root = distribution.get_output()
             if not os.path.exists(_root):
-                msg = "The distribution {} does not exist: {}{}".format(dist_name, _root, os.linesep)
-                msg += "This might be solved by running: mx build --dependencies={}".format(dist_name)
+                msg = f"The distribution {dist_name} does not exist: {_root}{os.linesep}"
+                msg += f"This might be solved by running: mx build --dependencies={dist_name}"
                 mx.abort(msg)
             self._benchmark_root = _root
         return self._benchmark_root
@@ -1287,7 +1306,7 @@ class PolyBenchVm(GraalVm):
         if self.debug_args:
             # The `arg[1:]` is to strip the first '-' from the args since it's
             # re-added by the subsequent processing of `--vm`
-            self.debug_args = ['--vm.{}'.format(arg[1:]) for arg in self.debug_args]
+            self.debug_args = [f'--vm.{arg[1:]}' for arg in self.debug_args]
 
     def run(self, cwd, args):
         return self.run_launcher('polybench', args, cwd)
@@ -1396,14 +1415,14 @@ def register_graalvm_vms():
 
     # Inlining before analysis is done by default
     analysis_context_sensitivity = ['insens', 'allocsens', '1obj', '2obj1h', '3obj2h', '4obj3h']
-    analysis_context_sensitivity_no_inline = ['{}-{}'.format(analysis_component, 'no-inline') for analysis_component in analysis_context_sensitivity]
-    pgo_aot_inline_context_sensitivity = ['{}-{}'.format('pgo-aot-inline', analysis_component) for analysis_component in analysis_context_sensitivity]
-    pgo_aot_inline_context_sensitivity += ['{}-{}'.format('pgo-aot-inline', analysis_component) for analysis_component in analysis_context_sensitivity_no_inline]
+    analysis_context_sensitivity_no_inline = [f"{analysis_component}-no-inline" for analysis_component in analysis_context_sensitivity]
+    pgo_aot_inline_context_sensitivity = [f"pgo-aot-inline-{analysis_component}" for analysis_component in analysis_context_sensitivity]
+    pgo_aot_inline_context_sensitivity += [f"pgo-aot-inline-{analysis_component}" for analysis_component in analysis_context_sensitivity_no_inline]
 
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
             for main_config in ['default', 'gate', 'llvm', 'native-architecture'] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline + pgo_aot_inline_context_sensitivity:
-                final_config_name = '{}-{}'.format(main_config, config_suffix)
+                final_config_name = f'{main_config}-{config_suffix}'
                 mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name), _suite, 10)
             break
 

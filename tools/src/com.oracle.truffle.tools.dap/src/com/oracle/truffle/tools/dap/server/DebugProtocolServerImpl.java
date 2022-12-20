@@ -303,7 +303,11 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
 
     @Override
     public CompletableFuture<SetBreakpointsResponse.ResponseBody> setBreakpoints(SetBreakpointsArguments args) {
-        return CompletableFuture.completedFuture(SetBreakpointsResponse.ResponseBody.create(context.getBreakpointsHandler().setBreakpoints(args)));
+        try {
+            return CompletableFuture.completedFuture(SetBreakpointsResponse.ResponseBody.create(context.getBreakpointsHandler().setBreakpoints(args)));
+        } catch (ExceptionWithMessage ex) {
+            return CompletableFuture.failedFuture(ex);
+        }
     }
 
     @Override
@@ -703,9 +707,12 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
 
         @Override
         public void outputText(String text) {
-            OutputEvent.EventBody event = OutputEvent.EventBody.create(text);
-            event.setCategory(category);
-            context.getClient().output(event);
+            DebugProtocolClient debugClient = context.getClient();
+            if (client != null) {
+                OutputEvent.EventBody event = OutputEvent.EventBody.create(text);
+                event.setCategory(category);
+                debugClient.output(event);
+            }
         }
     }
 

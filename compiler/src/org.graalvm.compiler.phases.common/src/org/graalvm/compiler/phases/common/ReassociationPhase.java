@@ -64,8 +64,8 @@ public class ReassociationPhase extends BasePhase<CoreProviders> {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return canonicalizer.canApply(graphState);
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return canonicalizer.notApplicableTo(graphState);
     }
 
     @Override

@@ -1,8 +1,8 @@
 local vm = import '../ci_includes/vm.jsonnet';
-local common = import '../../../common.jsonnet';
+local common = import '../../../ci/ci_common/common.jsonnet';
 local vm_common = import '../ci_common/common.jsonnet';
 
-local repo_config = import '../../../repo-configuration.libsonnet';
+local repo_config = import '../../../ci/repo-configuration.libsonnet';
 
 {
   vm_bench_common: {
@@ -70,7 +70,7 @@ local repo_config = import '../../../repo-configuration.libsonnet';
     warmup_bench_cmd:: self.bench_cmd + ['--fork-count-file', 'ci/ci_common/benchmark-forks.json',  'polybench:r[warmup/.*]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
 
     downloads+: {
-      WABT_DIR: {name: 'wabt', version: '1.0.12', platformspecific: true},
+      WABT_DIR: {name: 'wabt', version: '1.0.23', platformspecific: true},
     },
     setup+: [
       self.base_cmd + ['build'],
@@ -234,27 +234,24 @@ local repo_config = import '../../../repo-configuration.libsonnet';
     vm_common.bench_ondemand_vm_linux_amd64 + self.vm_bench_js_linux_amd64('misc')       + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-misc-linux-amd64'},
     vm_common.bench_ondemand_vm_linux_amd64 + self.vm_bench_js_linux_amd64('npm-regex')  + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-npm-regex-linux-amd64'},
 
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_interpreter     + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-linux-amd64'},
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_compiler        + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-compiler-linux-amd64'},
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_context_init    + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-context-init-linux-amd64'},
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_warmup          + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-warmup-linux-amd64'},
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_memory          + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-memory-linux-amd64'},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_interpreter     + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-linux-amd64', notify_groups:: ['polybench']},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_compiler        + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-compiler-linux-amd64', notify_groups:: ['polybench']},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_context_init    + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-context-init-linux-amd64', notify_groups:: ['polybench']},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_warmup          + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-warmup-linux-amd64', notify_groups:: ['polybench']},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_memory          + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-memory-linux-amd64', notify_groups:: ['polybench'] },
 
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='native')                        + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-default-native-linux-amd64'},
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm')                           + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-default-jvm-linux-amd64'},
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='native', suite='awfy:r[.*py]')  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-py-native-linux-amd64'},
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm',    suite='awfy:r[.*py]')  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-py-jvm-linux-amd64'},
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='native', suite='awfy:r[.*rb]')  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-rb-native-linux-amd64'},
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm',    suite='awfy:r[.*rb]')  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-rb-jvm-linux-amd64'},
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='native', suite='awfy:r[.*jar]') + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-jar-native-linux-amd64'},
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm',    suite='awfy:r[.*jar]') + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-jar-jvm-linux-amd64'},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='native')                        + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-default-native-linux-amd64', notify_groups:: ['polybench']},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm')                           + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-default-jvm-linux-amd64', notify_groups:: ['polybench']},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='native', suite='awfy:r[.*py]')  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-py-native-linux-amd64', notify_groups:: ['polybench']},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm',    suite='awfy:r[.*py]')  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-py-jvm-linux-amd64', notify_groups:: ['polybench']},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='native', suite='awfy:r[.*rb]')  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-rb-native-linux-amd64', notify_groups:: ['polybench']},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm',    suite='awfy:r[.*rb]')  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-rb-jvm-linux-amd64', notify_groups:: ['polybench']},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='native', suite='awfy:r[.*jar]') + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-jar-native-linux-amd64', notify_groups:: ['polybench']},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm',    suite='awfy:r[.*jar]') + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-jar-jvm-linux-amd64', notify_groups:: ['polybench']},
 
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_11 + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-java11-linux-amd64'},
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_17 + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-java17-linux-amd64'},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_17 + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-java17-linux-amd64', notify_groups:: ['polybench']},
 
-    vm_common.bench_daily_vm_linux_amd64 + self.x52_js_bench_compilation_throughput(true) + vm.vm_java_11 + { name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-libgraal-pgo-throughput-js-typescript-java11-linux-amd64' },
     vm_common.bench_daily_vm_linux_amd64 + self.x52_js_bench_compilation_throughput(true) + vm.vm_java_17 + { name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-libgraal-pgo-throughput-js-typescript-java17-linux-amd64' },
-    vm_common.bench_daily_vm_linux_amd64 + self.x52_js_bench_compilation_throughput(false) + vm.vm_java_11 + { name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-libgraal-no-pgo-throughput-js-typescript-java11-linux-amd64' },
     vm_common.bench_daily_vm_linux_amd64 + self.x52_js_bench_compilation_throughput(false) + vm.vm_java_17 + { name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-libgraal-no-pgo-throughput-js-typescript-java17-linux-amd64' },
 
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_js_linux_amd64() + {
@@ -267,6 +264,7 @@ local repo_config = import '../../../repo-configuration.libsonnet';
       ],
       timelimit: '45:00',
       name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-agentscript-js-java17-linux-amd64',
+      notify_groups:: ['javascript'],
     },
 
     vm_common.gate_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(is_gate=true)    + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybenchmarks-linux-amd64'},

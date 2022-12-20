@@ -70,16 +70,16 @@ public final class WasmContext {
     public WasmContext(Env env, WasmLanguage language) {
         this.env = env;
         this.language = language;
+        this.contextOptions = WasmContextOptions.fromOptionValues(env.getOptions());
         this.equivalenceClasses = new HashMap<>();
         this.nextEquivalenceClass = SymbolTable.FIRST_EQUIVALENCE_CLASS;
-        this.globals = new GlobalRegistry();
+        this.globals = new GlobalRegistry(contextOptions.supportBulkMemoryAndRefTypes());
         this.tableRegistry = new TableRegistry();
         this.memoryRegistry = new MemoryRegistry();
         this.moduleInstances = new LinkedHashMap<>();
         this.linker = new Linker();
         this.moduleNameCount = 0;
         this.filesManager = new FdManager(env);
-        this.contextOptions = WasmContextOptions.fromOptionValues(env.getOptions());
         instantiateBuiltinInstances();
     }
 
@@ -178,7 +178,7 @@ public final class WasmContext {
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, null, "Module " + module.name() + " is already instantiated in this context.");
         }
         // Reread code sections if module is instantiated multiple times
-        if (!module.hasCodeEntries()) {
+        if (module.hasCodeSection() && !module.hasCodeEntries()) {
             final BinaryParser reader = new BinaryParser(module, this);
             reader.readCodeEntries();
         }
@@ -217,10 +217,17 @@ public final class WasmContext {
     }
 
     /**
-     * @return The current multi-value stack or null if it has never been resized.
+     * @return The current primitive multi-value stack or null if it has never been resized.
      */
-    public long[] multiValueStack() {
-        return language.multiValueStack().stack();
+    public long[] primitiveMultiValueStack() {
+        return language.multiValueStack().primitiveStack();
+    }
+
+    /**
+     * @return the current reference multi-value stack or null if it has never been resized.
+     */
+    public Object[] referenceMultiValueStack() {
+        return language.multiValueStack().referenceStack();
     }
 
     /**

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.graal.hotspot.libgraal;
 
+import static com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints.RuntimeStubInfo.Util.newCodeInfo;
+import static com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints.RuntimeStubInfo.Util.newRuntimeStubInfo;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 import java.io.BufferedReader;
@@ -53,12 +55,17 @@ import java.util.stream.Collectors;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.code.DisassemblerProvider;
 import org.graalvm.compiler.core.GraalServiceThread;
+import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
+import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.hotspot.EncodedSnippets;
 import org.graalvm.compiler.hotspot.HotSpotCodeCacheListener;
+import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkageImpl;
+import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkageImpl.CodeInfo;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
@@ -120,6 +127,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
@@ -134,6 +143,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hosted.RuntimeCompilationFeature;
+import com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints.RuntimeStubInfo;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -445,7 +455,7 @@ public class LibGraalFeature implements InternalFeature {
         GraalServices.load(HotSpotInvocationPluginProvider.class);
 
         try (DebugContext.Scope scope = debug.scope("SnippetSupportEncode")) {
-            // Instantiate the truffle compiler ensure the backends it uses are initialized.
+            // Instantiate the truffle compiler to ensure the backends it uses are initialized.
             GraalTruffleRuntime.getRuntime().newTruffleCompiler();
         } catch (Throwable t) {
             throw debug.handle(t);
@@ -474,11 +484,21 @@ public class LibGraalFeature implements InternalFeature {
             throw VMError.shouldNotReachHere(ex);
         }
 
-        // Force construction of all stubs so the types are known.
-        HotSpotHostForeignCallsProvider foreignCalls = getReplacements().getProviders().getForeignCalls();
-        for (Stub stub : foreignCalls.getStubs()) {
-            foreignCalls.lookupForeignCall(stub.getLinkage().getDescriptor());
-        }
+        // Force construction of all stubs so their types are known.
+        HotSpotProviders providers = getReplacements().getProviders();
+        HotSpotHostForeignCallsProvider foreignCalls = providers.getForeignCalls();
+        foreignCalls.forEachForeignCall((sig, linkage) -> {
+            if (linkage == null || linkage.isCompiledStub()) {
+                boolean nonConstant = true;
+                String symbol = null;
+                CGlobalData<Pointer> data = CGlobalDataFactory.createWord((Pointer) WordFactory.zero(), symbol, nonConstant);
+                LibGraalEntryPoints.STUBS.put(sig, data);
+                if (linkage != null) {
+                    // Force stub construction
+                    foreignCalls.lookupForeignCall(sig);
+                }
+            }
+        });
 
         hotSpotSubstrateReplacements.encode(bb.getOptions());
         if (!RuntimeAssertionsSupport.singleton().desiredAssertionStatus(SnippetParameterInfo.class)) {
@@ -488,7 +508,7 @@ public class LibGraalFeature implements InternalFeature {
         // Mark all the Node classes as allocated so they are available during graph decoding.
         EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets();
         for (NodeClass<?> nodeClass : encodedSnippets.getSnippetNodeClasses()) {
-            bb.markTypeInHeap(impl.getMetaAccess().lookupJavaType(nodeClass.getClazz()));
+            bb.registerTypeAsInHeap(impl.getMetaAccess().lookupJavaType(nodeClass.getClazz()), "All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
         }
     }
 
@@ -556,7 +576,7 @@ public class LibGraalFeature implements InternalFeature {
                 disallowedTypes.add(msg.toString());
             }
             for (InvokeInfo invoke : m.getInvokes()) {
-                for (AnalysisMethod callee : invoke.getCallees()) {
+                for (AnalysisMethod callee : invoke.getOriginalCallees()) {
                     if (seen.putIfAbsent(callee, m) == null) {
                         todo.add(callee);
                     }
@@ -858,5 +878,28 @@ final class Target_org_graalvm_compiler_truffle_compiler_hotspot_libgraal_Truffl
     @Substitute
     private static void doReferenceHandling() {
         Heap.getHeap().doReferenceHandling();
+    }
+}
+
+@TargetClass(value = HotSpotForeignCallLinkageImpl.class, onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_org_graalvm_compiler_hotspot_HotSpotForeignCallLinkageImpl {
+    /**
+     * Gets the code info for a runtime stub, consulting and updating
+     * {@link LibGraalEntryPoints#STUBS} in the process to share runtime stub code info between
+     * libgraal isolates.
+     */
+    @SuppressWarnings("unused")
+    @Substitute
+    private static CodeInfo getCodeInfo(Stub stub, Backend backend) {
+        ForeignCallSignature sig = stub.getLinkage().getDescriptor().getSignature();
+        CGlobalData<Pointer> data = LibGraalEntryPoints.STUBS.get(sig);
+        GraalError.guarantee(data != null, "missing global data for %s", sig);
+        Pointer rsiPointer = data.get();
+        RuntimeStubInfo rsi = rsiPointer.readWord(0);
+        if (rsi.isNull()) {
+            rsi = newRuntimeStubInfo(stub, backend);
+            rsiPointer.writeWord(0, rsi);
+        }
+        return newCodeInfo(rsi, backend);
     }
 }

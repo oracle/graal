@@ -40,11 +40,12 @@ public class MethodFlowsGraphClone extends MethodFlowsGraph {
 
     private final AnalysisContext context;
     private final MethodFlowsGraph originalFlowsGraph;
+    protected boolean sealed;
 
-    public MethodFlowsGraphClone(PointsToAnalysisMethod method, AnalysisContext context) {
-        super(method);
+    public MethodFlowsGraphClone(PointsToAnalysisMethod method, MethodFlowsGraph originalFlowsGraph, AnalysisContext context) {
+        super(method, originalFlowsGraph.getGraphKind());
         this.context = context;
-        this.originalFlowsGraph = method.getTypeFlow().getMethodFlowsGraph();
+        this.originalFlowsGraph = originalFlowsGraph;
         assert this.originalFlowsGraph.isLinearized();
     }
 
@@ -52,7 +53,20 @@ public class MethodFlowsGraphClone extends MethodFlowsGraph {
         return context;
     }
 
-    public void cloneOriginalFlows(PointsToAnalysis bb) {
+    void cloneOriginalFlows(PointsToAnalysis bb) {
+        cloneOriginalFlowsHelper(bb, false);
+    }
+
+    void recloneOriginalFlows(PointsToAnalysis bb) {
+        cloneOriginalFlowsHelper(bb, true);
+    }
+
+    private void cloneOriginalFlowsHelper(PointsToAnalysis bb, boolean isReclone) {
+        if (isReclone) {
+            /* Temporarily unseal since the flow is being recreated. */
+            sealed = false;
+        }
+
         assert context != null;
 
         /*
@@ -62,17 +76,19 @@ public class MethodFlowsGraphClone extends MethodFlowsGraph {
 
         linearizedGraph = new TypeFlow<?>[originalFlowsGraph.linearizedGraph.length];
 
-        // parameters
-        parameters = new FormalParamTypeFlow[originalFlowsGraph.parameters.length];
-        for (int i = 0; i < originalFlowsGraph.parameters.length; i++) {
-            // copy the flow
-            if (originalFlowsGraph.getParameter(i) != null) {
-                parameters[i] = lookupCloneOf(bb, originalFlowsGraph.getParameter(i));
+        if (!isReclone) {
+            // during a reclone the original parameters and returnflow are retained
+            parameters = new FormalParamTypeFlow[originalFlowsGraph.parameters.length];
+            for (int i = 0; i < originalFlowsGraph.parameters.length; i++) {
+                // copy the flow
+                if (originalFlowsGraph.getParameter(i) != null) {
+                    parameters[i] = lookupCloneOf(bb, originalFlowsGraph.getParameter(i));
+                }
             }
+            returnFlow = originalFlowsGraph.getReturnFlow() != null ? lookupCloneOf(bb, originalFlowsGraph.getReturnFlow()) : null;
         }
 
         nodeFlows = lookupClonesOf(bb, originalFlowsGraph.nodeFlows);
-        returnFlow = originalFlowsGraph.getReturnFlow() != null ? lookupCloneOf(bb, originalFlowsGraph.getReturnFlow()) : null;
         instanceOfFlows = lookupClonesOf(bb, originalFlowsGraph.instanceOfFlows);
         miscEntryFlows = lookupClonesOf(bb, originalFlowsGraph.miscEntryFlows);
         invokeFlows = lookupClonesOf(bb, originalFlowsGraph.invokeFlows);
@@ -150,7 +166,7 @@ public class MethodFlowsGraphClone extends MethodFlowsGraph {
         return (T) clone;
     }
 
-    public void linkClones(final PointsToAnalysis bb) {
+    void linkCloneFlows(final PointsToAnalysis bb) {
 
         for (TypeFlow<?> original : originalFlowsGraph.linearizedGraph) {
             TypeFlow<?> clone = lookupCloneOf(bb, original);
@@ -167,9 +183,9 @@ public class MethodFlowsGraphClone extends MethodFlowsGraph {
                 assert !(originalObserver instanceof AllInstantiatedTypeFlow);
                 assert !(originalObserver.isClone());
 
-                if (nonCloneableFlow(originalObserver)) {
+                if (MethodFlowsGraph.nonCloneableFlow(originalObserver)) {
                     clone.addObserver(bb, originalObserver);
-                } else if (crossMethodUse(original, originalObserver)) {
+                } else if (MethodFlowsGraph.crossMethodUse(original, originalObserver)) {
                     // cross method uses (parameters, return and unwind) are linked by
                     // InvokeTypeFlow.linkCallee
                 } else {
@@ -184,9 +200,9 @@ public class MethodFlowsGraphClone extends MethodFlowsGraph {
                 assert !(originalUse instanceof AllInstantiatedTypeFlow);
                 assert !(originalUse.isClone()) : "Original use " + originalUse + " should not be a clone. Reached from: " + original;
 
-                if (nonCloneableFlow(originalUse)) {
+                if (MethodFlowsGraph.nonCloneableFlow(originalUse)) {
                     clone.addUse(bb, originalUse);
-                } else if (crossMethodUse(original, originalUse)) {
+                } else if (MethodFlowsGraph.crossMethodUse(original, originalUse)) {
                     // cross method uses (parameters, return and unwind) are linked by
                     // InvokeTypeFlow.linkCallee
                 } else {
@@ -203,21 +219,9 @@ public class MethodFlowsGraphClone extends MethodFlowsGraph {
         }
     }
 
-    public static boolean nonCloneableFlow(TypeFlow<?> flow) {
-        /*
-         * References to field flows and to array elements flows are not part of the method itself;
-         * field and indexed load and store flows will instead be cloned, and used to access the
-         * field flow.
-         */
-        return flow instanceof FieldTypeFlow || flow instanceof ArrayElementsTypeFlow;
-    }
-
-    public static boolean crossMethodUse(TypeFlow<?> flow, TypeFlow<?> use) {
-        /*
-         * Formal returns and unwinds are method exit points. Formal parameters are entry points
-         * into callees.
-         */
-        return flow instanceof FormalReturnTypeFlow || use instanceof FormalParamTypeFlow;
+    @Override
+    void updateInternalState(GraphKind newGraphKind) {
+        throw AnalysisError.shouldNotReachHere("Cannot be updated, should use recloneOriginalFlows");
     }
 
     @Override

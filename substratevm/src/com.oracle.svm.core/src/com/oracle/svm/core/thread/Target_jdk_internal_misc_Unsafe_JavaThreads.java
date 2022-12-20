@@ -24,14 +24,18 @@
  */
 package com.oracle.svm.core.thread;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.util.TimeUtils;
-import com.oracle.svm.core.jfr.events.ThreadParkEvent;
-import com.oracle.svm.core.jfr.JfrTicks;
 import java.util.concurrent.locks.LockSupport;
 
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
+
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jfr.JfrTicks;
+import com.oracle.svm.core.jfr.events.ThreadParkEvent;
+
 @TargetClass(className = "jdk.internal.misc.Unsafe")
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 @SuppressWarnings({"static-method"})
 final class Target_jdk_internal_misc_Unsafe_JavaThreads {
 
@@ -56,8 +60,7 @@ final class Target_jdk_internal_misc_Unsafe_JavaThreads {
             ThreadParkEvent.emit(startTicks, parkBlocker, Long.MIN_VALUE, Long.MIN_VALUE);
         } else {
             /* Park with deadline. */
-            final long delayNanos = TimeUtils.delayNanos(isAbsolute, time);
-            PlatformThreads.parkCurrentPlatformOrCarrierThread(delayNanos);
+            PlatformThreads.parkCurrentPlatformOrCarrierThread(isAbsolute, time);
             if (isAbsolute) {
                 ThreadParkEvent.emit(startTicks, parkBlocker, Long.MIN_VALUE, time);
             } else {

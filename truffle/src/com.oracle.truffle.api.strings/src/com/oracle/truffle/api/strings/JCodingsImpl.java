@@ -213,12 +213,13 @@ final class JCodingsImpl implements JCodings {
     }
 
     @Override
-    public long calcStringAttributes(Node location, Object array, int offset, int length, TruffleString.Encoding encoding, ConditionProfile validCharacterProfile, ConditionProfile fixedWidthProfile) {
-        if (TStringGuards.is7BitCompatible(encoding) && TStringOps.calcStringAttributesLatin1(location, array, offset, length) == TSCodeRange.get7Bit()) {
+    public long calcStringAttributes(Node location, Object array, int offset, int length, TruffleString.Encoding encoding, int fromIndex, ConditionProfile validCharacterProfile,
+                    ConditionProfile fixedWidthProfile) {
+        if (TStringGuards.is7BitCompatible(encoding) && TStringOps.calcStringAttributesLatin1(location, array, offset + fromIndex, length) == TSCodeRange.get7Bit()) {
             return StringAttributes.create(length, TSCodeRange.get7Bit());
         }
         byte[] bytes = JCodings.asByteArray(array);
-        int offsetBytes = array instanceof AbstractTruffleString.NativePointer ? offset - ((AbstractTruffleString.NativePointer) array).offset() : offset;
+        int offsetBytes = array instanceof AbstractTruffleString.NativePointer ? fromIndex : offset + fromIndex;
         Encoding enc = get(encoding);
         int codeRange = isSingleByte(enc) ? TSCodeRange.getValidFixedWidth() : TSCodeRange.getValidMultiByte();
         int characters = 0;

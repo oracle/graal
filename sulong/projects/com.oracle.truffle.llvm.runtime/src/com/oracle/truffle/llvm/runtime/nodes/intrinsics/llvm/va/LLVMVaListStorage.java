@@ -271,7 +271,8 @@ public class LLVMVaListStorage implements TruffleObject {
 
     // Interop library implementation
 
-    private static final String GET_MEMBER = "get";
+    public static final String GET_MEMBER = "get";
+    public static final String NEXT_MEMBER = "next";
 
     public Object[] realArguments;
     protected int numberOfExplicitArguments;
@@ -318,20 +319,22 @@ public class LLVMVaListStorage implements TruffleObject {
         @ExportMessage
         @SuppressWarnings("static-method")
         long getArraySize() {
-            return 1;
+            return 2;
         }
 
         @ExportMessage
         @SuppressWarnings("static-method")
         boolean isArrayElementReadable(long index) {
-            return index == 0;
+            return index == 0 || index == 1;
         }
 
         @ExportMessage
         @SuppressWarnings("static-method")
         Object readArrayElement(long index) throws InvalidArrayIndexException {
             if (index == 0) {
-                return "get";
+                return GET_MEMBER;
+            } else if (index == 1) {
+                return NEXT_MEMBER;
             } else {
                 throw InvalidArrayIndexException.create(index);
             }
@@ -344,48 +347,130 @@ public class LLVMVaListStorage implements TruffleObject {
         return new VAListMembers();
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
-    public boolean isMemberInvocable(String member) {
-        return GET_MEMBER.equals(member);
+    public static class IsMemberInvocable {
+
+        @Specialization(guards = "GET_MEMBER.equals(member)")
+        public static boolean get(@SuppressWarnings("unused") LLVMVaListStorage receiver, @SuppressWarnings("unused") String member) {
+            return true;
+        }
+
+        @Specialization(guards = "NEXT_MEMBER.equals(member)")
+        public static boolean next(@SuppressWarnings("unused") LLVMVaListStorage receiver, @SuppressWarnings("unused") String member) {
+            return true;
+        }
+
+        @Fallback
+        public static boolean other(@SuppressWarnings("unused") LLVMVaListStorage receiver, @SuppressWarnings("unused") String member) {
+            return false;
+        }
     }
 
     @ExportMessage
-    public Object invokeMember(String member, Object[] arguments,
-                    @Cached.Shared("escapeNode") @Cached LLVMPointerDataEscapeNode pointerEscapeNode) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-        if (GET_MEMBER.equals(member)) {
-            if (arguments.length == 2) {
-                if (!(arguments[0] instanceof Integer)) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw UnsupportedTypeException.create(new Object[]{arguments[0]}, "Index argument must be an integer");
-                }
-                int i = (Integer) arguments[0];
-                if (i >= realArguments.length - numberOfExplicitArguments) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw new ArrayIndexOutOfBoundsException(i);
-                }
+    public static class InvokeMember {
 
-                Object arg = realArguments[numberOfExplicitArguments + i];
-
-                if (!(arguments[1] instanceof LLVMInteropType.Structured)) {
-                    return arg;
-                }
-                LLVMInteropType.Structured type = (LLVMInteropType.Structured) arguments[1];
-
-                if (!LLVMPointer.isInstance(arg)) {
-                    // TODO: Do some conversion if the type in the 2nd argument does not match the
-                    // arg's types
-                    return arg;
-                }
-                LLVMPointer ptrArg = LLVMPointer.cast(arg);
-
-                return pointerEscapeNode.executeWithType(ptrArg, type);
-
-            } else {
+        @Specialization(guards = "GET_MEMBER.equals(member)")
+        public static Object get(LLVMVaListStorage receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @Cached.Shared("escapeNode") @Cached LLVMPointerDataEscapeNode pointerEscapeNode) throws ArityException, UnsupportedTypeException {
+            if (arguments.length != 2) {
                 throw ArityException.create(2, 2, arguments.length);
             }
+            if (!(arguments[0] instanceof Integer)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw UnsupportedTypeException.create(new Object[]{arguments[0]}, "Index argument must be an integer");
+            }
+            int i = (Integer) arguments[0];
+            if (i >= receiver.realArguments.length - receiver.numberOfExplicitArguments) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new ArrayIndexOutOfBoundsException(i);
+            }
+
+            Object arg = receiver.realArguments[receiver.numberOfExplicitArguments + i];
+
+            if (!(arguments[1] instanceof LLVMInteropType.Structured)) {
+                return arg;
+            }
+            LLVMInteropType.Structured type = (LLVMInteropType.Structured) arguments[1];
+
+            if (!LLVMPointer.isInstance(arg)) {
+                // TODO: Do some conversion if the type in the 2nd argument does not match the
+                // arg's types
+                return arg;
+            }
+            LLVMPointer ptrArg = LLVMPointer.cast(arg);
+
+            return pointerEscapeNode.executeWithType(ptrArg, type);
         }
-        throw UnknownIdentifierException.create(member);
+
+        @Specialization(guards = "NEXT_MEMBER.equals(member)")
+        public static Object next(LLVMVaListStorage receiver, @SuppressWarnings("unused") String member, Object[] arguments,
+                        @CachedLibrary("receiver") LLVMVaListLibrary vaListLib,
+                        @Cached.Shared("escapeNode") @Cached LLVMPointerDataEscapeNode pointerEscapeNode) throws ArityException, UnsupportedTypeException {
+            if (arguments.length != 1) {
+                throw ArityException.create(1, 1, arguments.length);
+            }
+            if (!(arguments[0] instanceof LLVMInteropType)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw UnsupportedTypeException.create(arguments, "LLVMInteropType");
+            }
+            LLVMInteropType type = (LLVMInteropType) arguments[0];
+            Type internalType;
+            if (type instanceof LLVMInteropType.Value) {
+                switch (((LLVMInteropType.Value) type).kind) {
+                    case DOUBLE:
+                        internalType = PrimitiveType.DOUBLE;
+                        break;
+                    case FLOAT:
+                        internalType = PrimitiveType.FLOAT;
+                        break;
+                    case I1:
+                        internalType = PrimitiveType.I1;
+                        break;
+                    case I16:
+                        internalType = PrimitiveType.I16;
+                        break;
+                    case I32:
+                        internalType = PrimitiveType.I32;
+                        break;
+                    case I64:
+                        internalType = PrimitiveType.I64;
+                        break;
+                    case I8:
+                        internalType = PrimitiveType.I8;
+                        break;
+                    case POINTER:
+                        // don't care about the pointee type
+                        internalType = new PointerType(PrimitiveType.I64);
+                        break;
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere("not implemented");
+                }
+            } else if (type instanceof LLVMInteropType.Structured) {
+                // don't care about the pointee type
+                internalType = new PointerType(PrimitiveType.I64);
+            } else {
+                throw CompilerDirectives.shouldNotReachHere("not implemented");
+            }
+            // only pointers?
+            Object result = vaListLib.shift(receiver, internalType, null);
+
+            if (!(type instanceof LLVMInteropType.Structured)) {
+                return result;
+            }
+            if (!LLVMPointer.isInstance(result)) {
+                // TODO: Do some conversion if the type in the 2nd argument does not match the
+                // arg's types
+                return result;
+            }
+            LLVMPointer ptrArg = LLVMPointer.cast(result);
+
+            return pointerEscapeNode.executeWithType(ptrArg, (LLVMInteropType.Structured) type);
+        }
+
+        @Fallback
+        public static Object other(@SuppressWarnings("unused") LLVMVaListStorage receiver, String member, @SuppressWarnings("unused") Object[] arguments) throws UnknownIdentifierException {
+            throw UnknownIdentifierException.create(member);
+        }
     }
 
     @SuppressWarnings("static-method")
@@ -621,12 +706,12 @@ public class LLVMVaListStorage implements TruffleObject {
      */
     public abstract static class AbstractOverflowArgArea extends ArgsArea implements Cloneable {
         protected final long[] offsets;
-        public final int overflowAreaSize;
+        public final long overflowAreaSize;
 
         protected long previousOffset = -1;
         protected long currentOffset;
 
-        protected AbstractOverflowArgArea(Object[] args, long[] offsets, int overflowAreaSize) {
+        protected AbstractOverflowArgArea(Object[] args, long[] offsets, long overflowAreaSize) {
             super(args);
             this.overflowAreaSize = overflowAreaSize;
             this.offsets = offsets;

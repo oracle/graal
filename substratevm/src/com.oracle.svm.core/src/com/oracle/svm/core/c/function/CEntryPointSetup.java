@@ -64,13 +64,13 @@ public class CEntryPointSetup {
         }
     }
 
-    public static final class EnterIsolatePrologue implements CEntryPointOptions.Prologue {
+    public static final class EnterByIsolatePrologue implements CEntryPointOptions.Prologue {
         private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString(
                         "Failed to enter the provided Isolate in the current thread. The thread might not have been attached to the Isolate first.");
 
         @Uninterruptible(reason = "prologue")
         static void enter(Isolate isolate) {
-            int code = CEntryPointActions.enterIsolate(isolate);
+            int code = CEntryPointActions.enterByIsolate(isolate);
             if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }

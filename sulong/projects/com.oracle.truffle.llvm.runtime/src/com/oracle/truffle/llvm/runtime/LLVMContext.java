@@ -49,6 +49,7 @@ import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.LLVMThreadLocalValue;
+import com.oracle.truffle.llvm.runtime.PlatformCapability.OS;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
@@ -155,14 +156,11 @@ public final class LLVMContext {
     // Assumptions that get invalidated whenever an entry in the above array changes:
     @CompilationFinal(dimensions = 2) private Assumption[][] symbolAssumptions;
 
+    // Calltarget Cache for SOName.
+    private final EconomicMap<String, CallTarget> loadedLibrariesBySOName = EconomicMap.create();
+
     private boolean[] libraryLoaded;
     private RootCallTarget[] destructorFunctions;
-
-    // Source cache (for reusing bitcode IDs).
-    protected final EconomicMap<BitcodeID, Source> sourceCache = EconomicMap.create();
-
-    // Calltarget Cache for SOName.
-    protected final EconomicMap<String, CallTarget> calltargetCache = EconomicMap.create();
 
     // signals
     private final LLVMNativePointer sigDfl;
@@ -177,6 +175,8 @@ public final class LLVMContext {
 
     // pThread state
     private final LLVMPThreadContext pThreadContext;
+
+    private final LLVMContextWindows windowsContext;
 
     // globals block function
     @CompilationFinal Object freeGlobalsBlockFunction;
@@ -212,7 +212,6 @@ public final class LLVMContext {
         this.initialized = false;
         this.cleanupNecessary = false;
         this.finalized = false;
-        // this.destructorFunctions = new ArrayList<>();
         this.nativeCallStatistics = logNativeCallStatsEnabled() ? new ConcurrentHashMap<>() : null;
         this.sigDfl = LLVMNativePointer.create(0);
         this.sigIgn = LLVMNativePointer.create(1);
@@ -229,11 +228,12 @@ public final class LLVMContext {
 
         this.headGlobalScopeChain = new LLVMScopeChain();
         this.tailGlobalScopeChain = headGlobalScopeChain;
-        // this.localScopes = new ArrayList<>();
         this.dynamicLinkChain = new DynamicLinkChain();
         this.dynamicLinkChainForScopes = new DynamicLinkChain();
 
         this.mainArguments = getMainArguments(env);
+
+        this.windowsContext = language.getCapability(PlatformCapability.class).getOS().equals(OS.Windows) ? new LLVMContextWindows() : null;
 
         addLibraryPaths(SulongEngineOption.getPolyglotOptionSearchPaths(env));
 
@@ -314,11 +314,14 @@ public final class LLVMContext {
              * libraries.
              */
             String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
-            for (int i = sulongLibraryNames.length - 1; i >= 0; i--) {
-                TruffleFile file = InternalLibraryLocator.INSTANCE.locateLibrary(this, sulongLibraryNames[i], "<default bitcode library>");
-                Source librarySource = Source.newBuilder("llvm", file).internal(isInternalLibraryFile(file)).build();
-                sourceCache.put(IDGenerater.INVALID_ID, librarySource);
-                env.parseInternal(librarySource);
+            if (language.isDefaultInternalLibraryCacheEmpty()) {
+                for (int i = sulongLibraryNames.length - 1; i >= 0; i--) {
+                    TruffleFile file = InternalLibraryLocator.INSTANCE.locateLibrary(this, sulongLibraryNames[i], "<default bitcode library>");
+                    Source librarySource = Source.newBuilder("llvm", file).internal(isInternalLibraryFile(file)).build();
+                    // use the source cache in the language.
+                    env.parseInternal(librarySource);
+                    language.setDefaultInternalLibraryCache(librarySource);
+                }
             }
             setLibsulongAuxFunction(SULONG_INIT_CONTEXT);
             setLibsulongAuxFunction(SULONG_DISPOSE_CONTEXT);
@@ -329,6 +332,11 @@ public final class LLVMContext {
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    public LLVMContextWindows getWindowsContext() {
+        assert windowsContext != null;
+        return windowsContext;
     }
 
     public boolean isAOTCacheStore() {
@@ -748,22 +756,15 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public void addSourceForCache(BitcodeID bitcodeID, Source source) {
-        if (!sourceCache.containsKey(bitcodeID)) {
-            sourceCache.put(bitcodeID, source);
-        }
-    }
-
-    @TruffleBoundary
-    public void addCalltargetForCache(String soName, CallTarget callTarget) {
-        if (!calltargetCache.containsKey(soName)) {
-            calltargetCache.put(soName, callTarget);
+    public void addCalltargetForLoadedLibrary(String soName, CallTarget callTarget) {
+        if (!loadedLibrariesBySOName.containsKey(soName)) {
+            loadedLibrariesBySOName.put(soName, callTarget);
         }
     }
 
     @TruffleBoundary
     public CallTarget getCalltargetFromCache(String soName) {
-        return calltargetCache.get(soName);
+        return loadedLibrariesBySOName.get(soName);
     }
 
     public LLVMLanguage getLanguage() {

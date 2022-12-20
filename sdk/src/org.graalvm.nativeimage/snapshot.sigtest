@@ -11,8 +11,10 @@ meth public abstract int compareTo({java.lang.Comparable%0})
 
 CLSS public abstract java.lang.Enum<%0 extends java.lang.Enum<{java.lang.Enum%0}>>
 cons protected init(java.lang.String,int)
+innr public final static EnumDesc
 intf java.io.Serializable
 intf java.lang.Comparable<{java.lang.Enum%0}>
+intf java.lang.constant.Constable
 meth protected final java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth protected final void finalize()
 meth public final boolean equals(java.lang.Object)
@@ -21,6 +23,7 @@ meth public final int hashCode()
 meth public final int ordinal()
 meth public final java.lang.Class<{java.lang.Enum%0}> getDeclaringClass()
 meth public final java.lang.String name()
+meth public final java.util.Optional<java.lang.Enum$EnumDesc<{java.lang.Enum%0}>> describeConstable()
 meth public java.lang.String toString()
 meth public static <%0 extends java.lang.Enum<{%%0}>> {%%0} valueOf(java.lang.Class<{%%0}>,java.lang.String)
 supr java.lang.Object
@@ -114,6 +117,9 @@ CLSS public abstract interface !annotation java.lang.annotation.Target
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
 intf java.lang.annotation.Annotation
 meth public abstract java.lang.annotation.ElementType[] value()
+
+CLSS public abstract interface java.lang.constant.Constable
+meth public abstract java.util.Optional<? extends java.lang.constant.ConstantDesc> describeConstable()
 
 CLSS public abstract interface java.util.function.BooleanSupplier
  anno 0 java.lang.FunctionalInterface()
@@ -479,6 +485,19 @@ meth public java.util.List<java.lang.String> getLibraryPaths()
 meth public java.util.List<java.lang.String> getMacroDefinitions()
 meth public java.util.List<java.lang.String> getOptions()
 
+CLSS public abstract interface !annotation org.graalvm.nativeimage.c.CHeader
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD, TYPE])
+innr public abstract interface static Header
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.Class<? extends org.graalvm.nativeimage.c.CHeader$Header> value()
+
+CLSS public abstract interface static org.graalvm.nativeimage.c.CHeader$Header
+ outer org.graalvm.nativeimage.c.CHeader
+meth public abstract java.lang.String name()
+meth public java.util.List<java.lang.Class<? extends org.graalvm.nativeimage.c.CHeader$Header>> dependsOn()
+meth public void writePreamble(java.io.PrintWriter)
+
 CLSS public abstract interface !annotation org.graalvm.nativeimage.c.constant.CConstant
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
@@ -754,6 +773,11 @@ meth public abstract void write(int,org.graalvm.nativeimage.c.type.CCharPointer)
 meth public abstract void write(org.graalvm.nativeimage.c.type.CCharPointer)
 meth public abstract void write(org.graalvm.word.SignedWord,org.graalvm.nativeimage.c.type.CCharPointer)
 
+CLSS public abstract interface !annotation org.graalvm.nativeimage.c.type.CConst
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE_USE])
+intf java.lang.annotation.Annotation
+
 CLSS public abstract interface org.graalvm.nativeimage.c.type.CDoublePointer
 intf org.graalvm.word.PointerBase
 meth public abstract double read()
@@ -851,6 +875,17 @@ meth public org.graalvm.nativeimage.c.type.CCharPointerPointer get()
 meth public void close()
 supr java.lang.Object
 hfds ccpHolderArray,pinnedCCPArray
+
+CLSS public abstract interface !annotation org.graalvm.nativeimage.c.type.CTypedef
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE_USE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.String name()
+
+CLSS public abstract interface !annotation org.graalvm.nativeimage.c.type.CUnsigned
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE_USE])
+intf java.lang.annotation.Annotation
 
 CLSS public abstract interface org.graalvm.nativeimage.c.type.VoidPointer
 intf org.graalvm.word.PointerBase
@@ -1034,6 +1069,10 @@ meth public !varargs static void registerProxyClass(java.lang.Class<?>[])
 meth public static void registerIncludingAssociatedClasses(java.lang.Class<?>)
 meth public static void registerLambdaCapturingClass(java.lang.Class<?>)
 meth public static void registerWithTargetConstructorClass(java.lang.Class<?>,java.lang.Class<?>)
+supr java.lang.Object
+
+CLSS public final org.graalvm.nativeimage.hosted.RuntimeSystemProperties
+meth public static void register(java.lang.String,java.lang.String)
 supr java.lang.Object
 
 CLSS public abstract interface org.graalvm.nativeimage.impl.InternalPlatform

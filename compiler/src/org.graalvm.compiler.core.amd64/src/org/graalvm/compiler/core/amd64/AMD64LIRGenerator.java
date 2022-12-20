@@ -85,6 +85,8 @@ import org.graalvm.compiler.lir.amd64.AMD64CacheWritebackOp;
 import org.graalvm.compiler.lir.amd64.AMD64CacheWritebackPostSyncOp;
 import org.graalvm.compiler.lir.amd64.AMD64CalcStringAttributesOp;
 import org.graalvm.compiler.lir.amd64.AMD64Call;
+import org.graalvm.compiler.lir.amd64.AMD64CipherBlockChainingAESDecryptOp;
+import org.graalvm.compiler.lir.amd64.AMD64CipherBlockChainingAESEncryptOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.BranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.CmpBranchOp;
@@ -732,11 +734,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @SuppressWarnings("unchecked")
     @Override
-    public Variable emitCalcStringAttributes(Object opObj, EnumSet<?> runtimeCheckedCPUFeatures,
-                    Value array, Value offset, Value length, boolean isValid) {
-        AMD64CalcStringAttributesOp.Op op = (AMD64CalcStringAttributesOp.Op) opObj;
-        Variable result = newVariable(LIRKind.value(op == AMD64CalcStringAttributesOp.Op.UTF_8 || op == AMD64CalcStringAttributesOp.Op.UTF_16 ? AMD64Kind.QWORD : AMD64Kind.DWORD));
-        append(AMD64CalcStringAttributesOp.movParamsAndCreate(this, op, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, array, offset, length, result, isValid));
+    public Variable emitCalcStringAttributes(CalcStringAttributesEncoding encoding, EnumSet<?> runtimeCheckedCPUFeatures,
+                    Value array, Value offset, Value length, boolean assumeValid) {
+        Variable result = newVariable(LIRKind.value(encoding == CalcStringAttributesEncoding.UTF_8 || encoding == CalcStringAttributesEncoding.UTF_16 ? AMD64Kind.QWORD : AMD64Kind.DWORD));
+        append(AMD64CalcStringAttributesOp.movParamsAndCreate(this, encoding, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, array, offset, length, result, assumeValid));
         return result;
     }
 
@@ -776,6 +777,32 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                         asAllocatable(len),
                         asAllocatable(encryptedCounterAddr),
                         asAllocatable(usedPtr),
+                        result,
+                        getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+        return result;
+    }
+
+    @Override
+    public Variable emitCBCAESEncrypt(Value inAddr, Value outAddr, Value kAddr, Value rAddr, Value len) {
+        Variable result = newVariable(len.getValueKind());
+        append(new AMD64CipherBlockChainingAESEncryptOp(asAllocatable(inAddr),
+                        asAllocatable(outAddr),
+                        asAllocatable(kAddr),
+                        asAllocatable(rAddr),
+                        asAllocatable(len),
+                        result,
+                        getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
+        return result;
+    }
+
+    @Override
+    public Variable emitCBCAESDecrypt(Value inAddr, Value outAddr, Value kAddr, Value rAddr, Value len) {
+        Variable result = newVariable(len.getValueKind());
+        append(new AMD64CipherBlockChainingAESDecryptOp(asAllocatable(inAddr),
+                        asAllocatable(outAddr),
+                        asAllocatable(kAddr),
+                        asAllocatable(rAddr),
+                        asAllocatable(len),
                         result,
                         getArrayLengthOffset() - getArrayBaseOffset(JavaKind.Int)));
         return result;

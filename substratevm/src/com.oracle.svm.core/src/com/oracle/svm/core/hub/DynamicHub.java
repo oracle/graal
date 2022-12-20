@@ -62,6 +62,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateUtil;
@@ -1103,27 +1104,47 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private native Constructor<?> getEnclosingConstructor();
 
     @Substitute
-    public static Class<?> forName(String className) throws Throwable {
-        Class<?> caller = Reflection.getCallerClass();
-        return forName(className, true, caller.getClassLoader());
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
+    private static Class<?> forName(String className) throws Throwable {
+        return forName(className, Reflection.getCallerClass());
     }
 
-    @Substitute //
-    public static Class<?> forName(@SuppressWarnings("unused") Module module, String className) throws Throwable {
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
+    private static Class<?> forName(String className, Class<?> caller) throws Throwable {
+        return forName(className, true, caller.getClassLoader(), caller);
+    }
+
+    @Substitute
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
+    private static Class<?> forName(Module module, String className) throws Throwable {
+        return forName(module, className, Reflection.getCallerClass());
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
+    private static Class<?> forName(@SuppressWarnings("unused") Module module, String className, Class<?> caller) throws Throwable {
         /*
          * The module system is not supported for now, therefore the module parameter is ignored and
          * we use the class loader of the caller class instead of the module's loader.
          */
-        Class<?> caller = Reflection.getCallerClass();
         try {
-            return forName(className, false, caller.getClassLoader());
+            return forName(className, false, caller.getClassLoader(), caller);
         } catch (ClassNotFoundException e) {
             return null;
         }
     }
 
     @Substitute
-    public static Class<?> forName(String name, boolean initialize, ClassLoader loader) throws Throwable {
+    private static Class<?> forName(String name, boolean initialize, ClassLoader loader) throws Throwable {
+        return forName(name, initialize, loader, Reflection.getCallerClass());
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    private static Class<?> forName(String name, boolean initialize, ClassLoader loader, @SuppressWarnings("unused") Class<?> caller) throws Throwable {
         if (name == null) {
             throw new NullPointerException();
         }

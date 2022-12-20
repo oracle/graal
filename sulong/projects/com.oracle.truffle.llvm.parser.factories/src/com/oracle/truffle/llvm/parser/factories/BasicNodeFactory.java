@@ -79,6 +79,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMBrUnconditionalNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMCatchReturnNode;
+import com.oracle.truffle.llvm.runtime.nodes.control.LLVMCleanupReturnNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMConditionalBranchNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMDispatchBasicBlockNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMDispatchBasicBlockNodeGen;
@@ -1200,6 +1201,11 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMControlFlowNode createCatchReturn(int unconditionalIndex, LLVMExpressionNode getStack, LLVMStatementNode phiWrites) {
         return LLVMCatchReturnNode.create(unconditionalIndex, getStack, phiWrites);
+    }
+
+    @Override
+    public LLVMControlFlowNode createCleanupReturn(int unconditionalIndex, LLVMExpressionNode getStack, LLVMStatementNode phiWrites) {
+        return LLVMCleanupReturnNode.create(unconditionalIndex, getStack, phiWrites);
     }
 
     private static LLVMLandingpadNode.LandingpadEntryNode getLandingpadCatchEntry(LLVMExpressionNode exp) {

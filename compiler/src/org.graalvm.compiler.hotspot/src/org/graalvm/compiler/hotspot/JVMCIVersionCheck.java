@@ -24,10 +24,6 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Formatter;
 import java.util.HashMap;
 import java.util.Map;
@@ -54,21 +50,13 @@ public final class JVMCIVersionCheck {
         private final int minor;
         private final int build;
 
-        static Version parse(String vmVersion, Map<String, String> props) {
+        static Version parse(String vmVersion) {
             Matcher m = Pattern.compile(".*-jvmci-(\\d+)\\.(\\d+)-b(\\d+).*").matcher(vmVersion);
             if (m.matches()) {
                 try {
                     int major = Integer.parseInt(m.group(1));
                     int minor = Integer.parseInt(m.group(2));
                     int build = Integer.parseInt(m.group(3));
-                    String jvmciVersionFile = props.get("JVMCIVersionCheck.jvmci.version.file");
-                    if (jvmciVersionFile != null) {
-                        try {
-                            Files.write(Paths.get(jvmciVersionFile), String.format("%d,%d,%d", major, minor, build).getBytes());
-                        } catch (IOException e) {
-                            throw new UncheckedIOException(e);
-                        }
-                    }
                     return new Version(major, minor, build);
                 } catch (NumberFormatException e) {
                     // ignore
@@ -163,9 +151,9 @@ public final class JVMCIVersionCheck {
         this.vmVersion = vmVersion;
     }
 
-    static void check(Map<String, String> props, boolean exitOnFailure) {
+    static void check(Map<String, String> props, boolean exitOnFailure, boolean quiet) {
         JVMCIVersionCheck checker = new JVMCIVersionCheck(props, props.get("java.specification.version"), props.get("java.vm.version"));
-        checker.run(exitOnFailure, JVMCI_MIN_VERSION);
+        checker.run(exitOnFailure, JVMCI_MIN_VERSION, quiet);
     }
 
     /**
@@ -176,10 +164,10 @@ public final class JVMCIVersionCheck {
                     String javaSpecVersion,
                     String javaVmVersion, boolean exitOnFailure) {
         JVMCIVersionCheck checker = new JVMCIVersionCheck(props, javaSpecVersion, javaVmVersion);
-        checker.run(exitOnFailure, minVersion);
+        checker.run(exitOnFailure, minVersion, true);
     }
 
-    private void run(boolean exitOnFailure, Version minVersion) {
+    private void run(boolean exitOnFailure, Version minVersion, boolean quiet) {
         if (javaSpecVersion.compareTo("11") < 0) {
             failVersionCheck(exitOnFailure, "Graal requires JDK 11 or later.%n");
         } else {
@@ -192,8 +180,11 @@ public final class JVMCIVersionCheck {
             }
             if (vmVersion.contains("-jvmci-")) {
                 // A "labsjdk"
-                Version v = Version.parse(vmVersion, props);
+                Version v = Version.parse(vmVersion);
                 if (v != null) {
+                    if (!quiet) {
+                        System.out.println(String.format("%d,%d,%d", v.major, v.minor, v.build));
+                    }
                     if (v.isLessThan(minVersion)) {
                         failVersionCheck(exitOnFailure, "The VM does not support the minimum JVMCI API version required by Graal: %s < %s.%n", v, minVersion);
                     }
@@ -216,6 +207,6 @@ public final class JVMCIVersionCheck {
         for (String name : sprops.stringPropertyNames()) {
             props.put(name, sprops.getProperty(name));
         }
-        check(props, true);
+        check(props, true, false);
     }
 }

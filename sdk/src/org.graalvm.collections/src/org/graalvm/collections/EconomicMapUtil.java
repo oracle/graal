@@ -40,6 +40,7 @@
  */
 package org.graalvm.collections;
 
+import java.util.Comparator;
 import java.util.Objects;
 
 /**
@@ -118,5 +119,49 @@ public final class EconomicMapUtil {
             set.add(key);
         }
         return set;
+    }
+
+    /**
+     * Creates a lexicographical map comparator using the provided key and value comparators. The
+     * maps are treated as if they were lists with the structure {@code {key1, value1, key2, value2,
+     * ...}}. The comparison starts by comparing their {@code key1} and if they are equal, it goes
+     * on to compare {@code value1}, then {@code key2}, {@code value2} and so on. If one of the maps
+     * is shorter, the comparators are called with {@code null} values in place of the missing
+     * keys/values.
+     *
+     * @param keyComparator a comparator to compare keys
+     * @param valueComparator a comparator to compare values
+     * @return a lexicographical map comparator
+     * @since 23.0
+     */
+    public static <K, V> Comparator<UnmodifiableEconomicMap<K, V>> lexicographicalComparator(Comparator<K> keyComparator, Comparator<V> valueComparator) {
+        return new Comparator<>() {
+            @Override
+            public int compare(UnmodifiableEconomicMap<K, V> map1, UnmodifiableEconomicMap<K, V> map2) {
+                if (map2.size() > map1.size()) {
+                    return -compare(map2, map1);
+                }
+                assert map1.size() >= map2.size();
+                UnmodifiableMapCursor<K, V> cursor1 = map1.getEntries();
+                UnmodifiableMapCursor<K, V> cursor2 = map2.getEntries();
+                while (cursor1.advance()) {
+                    K key2 = null;
+                    V value2 = null;
+                    if (cursor2.advance()) {
+                        key2 = cursor2.getKey();
+                        value2 = cursor2.getValue();
+                    }
+                    int order = keyComparator.compare(cursor1.getKey(), key2);
+                    if (order != 0) {
+                        return order;
+                    }
+                    order = valueComparator.compare(cursor1.getValue(), value2);
+                    if (order != 0) {
+                        return order;
+                    }
+                }
+                return 0;
+            }
+        };
     }
 }

@@ -305,10 +305,14 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Explicitly pick a first tier inlining policy by name (None, TrivialOnly). If empty (default) the lowest priority policy (TrivialOnly) is chosen.", usageSyntax = "<policy>", category = OptionCategory.INTERNAL) //
     public static final OptionKey<String> FirstTierInliningPolicy = new OptionKey<>("");
 
-    @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in first tier under normal compilation load (default: 400).", usageSyntax = "[1, inf)", category = OptionCategory.EXPERT) //
+    @Option(help = "Number of invocations or loop iterations needed to compile a guest language root in first tier under normal compilation load." + //
+                    "Might be reduced/increased when compilation load is low/high if DynamicCompilationThresholds is enabled. (default: 400).", //
+                    usageSyntax = "[1, inf)", category = OptionCategory.EXPERT) //
     public static final OptionKey<Integer> FirstTierCompilationThreshold = new OptionKey<>(400);
 
-    @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in last tier under normal compilation load (default: 10000).", usageSyntax = "[1, inf)", category = OptionCategory.EXPERT) //
+    @Option(help = "Number of invocations or loop iterations needed to compile a guest language root in first tier under normal compilation load." + //
+                    "Might be reduced/increased when compilation load is low/high if DynamicCompilationThresholds is enabled. (default: 10000).", //
+                    usageSyntax = "[1, inf)", category = OptionCategory.EXPERT) //
     public static final OptionKey<Integer> LastTierCompilationThreshold = new OptionKey<>(10000);
 
     @Option(help = "Minimum number of calls before a call target is compiled in the first tier (default: 1)", usageSyntax = "[1, inf)", category = OptionCategory.EXPERT) //

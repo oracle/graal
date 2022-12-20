@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,8 @@
  */
 
 #include <stdlib.h>
+#include "exit.h"
 
 void __sulong_dispose_context() {
-    exit(0);
+    __sulong_exit(0);
 }

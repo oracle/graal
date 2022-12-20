@@ -46,29 +46,41 @@ import org.graalvm.wasm.util.ExtraDataUtil;
 
 /**
  * Represents a br entry in the extra data list.
- * 
+ * <p>
  * Compact format:
- * 
- * <code>
- *     | compactFormatIndicator (1-bit) | extraDataDisplacement (signed 15-bit) | byteCodeDisplacement (signed 16-bit) | resultCount (unsigned 8-bit) | stackSize (unsigned 8-bit) | unused (16-bit) |
- * </code>
- * 
+ * <p>
+ * <ul>
+ * <li>compactFormatIndicator (1-bit)
+ * <li>extraDataDisplacement (signed 15-bit)
+ * <li>byteCodeDisplacement (signed 16-bit)
+ * <li>unwindType_1 (1-bit)
+ * <li>resultCount (unsigned 7-bit)
+ * <li>unwindType_2 (1-bit)
+ * <li>stackSize (unsigned 7-bit)
+ * <li>unused (16-bit)
+ * </ul>
+ * <p>
  * Extended format:
- * 
- * <code>
- *     | extendedFormatIndicator (1-bit) | extraDataDisplacement (signed 31-bit) | byteCodeDisplacement (signed 32-bit) | resultCount (signed 32-bit) | stackSize (signed 32-bit) |
- * </code>
+ * <p>
+ * <ul>
+ * <li>extendedFormatIndicator (1-bit)
+ * <li>extraDataDisplacement (signed 31-bit)
+ * <li>byteCodeDisplacement (signed 32-bit)
+ * <li>unwindType (signed 32-bit)
+ * <li>resultCount (signed 32-bit)
+ * <li>stackSize (signed 32-bit)
+ * </ul>
  */
 public class UnconditionalBranchEntry extends BranchTargetWithStackChange {
-    public UnconditionalBranchEntry(ExtraDataFormatHelper formatHelper, int byteCodeOffset, int extraDataOffset, int extraDataIndex) {
-        super(formatHelper, byteCodeOffset, extraDataOffset, extraDataIndex);
+    public UnconditionalBranchEntry(ExtraDataFormatHelper formatHelper, int byteCodeOffset, int extraDataOffset, int extraDataIndex, int unwindType) {
+        super(formatHelper, byteCodeOffset, extraDataOffset, extraDataIndex, unwindType);
     }
 
     @Override
     protected int generateCompactData(int[] extraData, int entryOffset) {
         int offset = entryOffset;
         offset += ExtraDataUtil.addCompactBranchTarget(extraData, offset, compactByteCodeDisplacement(), compactExtraDataDisplacement());
-        offset += ExtraDataUtil.addCompactStackChange(extraData, offset, resultCount(), stackSize());
+        offset += ExtraDataUtil.addCompactStackChange(extraData, offset, unwindType(), resultCount(), stackSize());
         return offset;
     }
 
@@ -76,7 +88,7 @@ public class UnconditionalBranchEntry extends BranchTargetWithStackChange {
     protected int generateExtendedData(int[] extraData, int entryOffset) {
         int offset = entryOffset;
         offset += ExtraDataUtil.addExtendedBranchTarget(extraData, offset, extendedByteCodeDisplacement(), extendedExtraDataDisplacement());
-        offset += ExtraDataUtil.addExtendedStackChange(extraData, offset, resultCount(), stackSize());
+        offset += ExtraDataUtil.addExtendedStackChange(extraData, offset, unwindType(), resultCount(), stackSize());
         return offset;
     }
 

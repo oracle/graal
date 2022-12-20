@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,12 +31,16 @@
 #include <stdint.h>
 #include "exit.h"
 
+#if defined(_WIN32)
+#define ABORT_STATUS 0xC0000409
+#else
 #define ABORT_STATUS 134
+#endif
 
 void __sulong_print_stacktrace();
 int __sulong_should_print_stacktrace_on_abort();
 
-void abort() {
+void __sulong_abort() {
     if (__sulong_should_print_stacktrace_on_abort()) {
         fprintf(stderr, "abort()\n\n");
         __sulong_print_stacktrace();
@@ -46,3 +50,9 @@ void abort() {
         _EXIT(ABORT_STATUS);
     }
 }
+
+#if !defined(_WIN32)
+void abort() {
+    __sulong_abort();
+}
+#endif

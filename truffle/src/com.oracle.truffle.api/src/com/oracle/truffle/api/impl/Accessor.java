@@ -66,7 +66,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
@@ -81,6 +80,7 @@ import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
@@ -478,6 +478,8 @@ public abstract class Accessor {
 
         public abstract boolean hasNoAccess(FileSystem fs);
 
+        public abstract boolean isSocketIOAllowed(Object engineFileSystemContext);
+
         public abstract boolean isInternal(TruffleFile file);
 
         public abstract String getLanguageHome(LanguageInfo languageInfo);
@@ -492,7 +494,7 @@ public abstract class Accessor {
 
         public abstract Object getContextLoggerCache(Object polyglotLanguageContext);
 
-        public abstract Handler getLogHandler(Object loggerCache);
+        public abstract void publish(Object loggerCache, LogRecord logRecord);
 
         public abstract Map<String, Level> getLogLevels(Object loggerCache);
 
@@ -528,9 +530,9 @@ public abstract class Accessor {
 
         public abstract boolean isPolyglotBindingsAccessAllowed(Object polyglotLanguageContext);
 
-        public abstract TruffleFile getTruffleFile(String path);
+        public abstract TruffleFile getTruffleFile(TruffleContext truffleContext, String path);
 
-        public abstract TruffleFile getTruffleFile(URI uri);
+        public abstract TruffleFile getTruffleFile(TruffleContext truffleContext, URI uri);
 
         public abstract int getAsynchronousStackDepth(Object polylgotLanguageInstance);
 
@@ -703,9 +705,9 @@ public abstract class Accessor {
 
         public abstract AbstractHostLanguageService getHostService(Object polyglotEngineImpl);
 
-        public abstract Handler getEngineLogHandler(Object polyglotEngineImpl);
+        public abstract LogHandler getEngineLogHandler(Object polyglotEngineImpl);
 
-        public abstract Handler getContextLogHandler(Object polyglotContextImpl);
+        public abstract LogHandler getContextLogHandler(Object polyglotContextImpl);
 
         public abstract LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown, String formatKind);
 
@@ -836,7 +838,7 @@ public abstract class Accessor {
 
         public abstract TruffleFile getTruffleFile(String path, Object fileSystemContext);
 
-        public abstract boolean hasAllAccess(Object fileSystemContext);
+        public abstract boolean isSocketIOAllowed(Object fileSystemContext);
 
         public abstract TruffleFile getTruffleFile(Object context, String path);
 

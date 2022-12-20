@@ -136,6 +136,7 @@ final class PolyglotSharingLayer {
         assert Thread.holdsLock(engine.lock);
         assert !isClaimed() : "already claimed";
         assert sharableLayer == null || (sharableLayer.isClaimed() && sharableLayer.getContextPolicy() != ContextPolicy.EXCLUSIVE);
+        assert hostLanguage != null || engine.inEnginePreInitialization;
 
         Shared s = sharableLayer != null ? sharableLayer.shared : null;
 
@@ -332,6 +333,14 @@ final class PolyglotSharingLayer {
         assert !isClaimed();
         assert hostLanguage == null : "host language allocated twice";
         this.hostLanguage = language.createInstance(this);
+        return hostLanguage;
+    }
+
+    PolyglotLanguageInstance patchHostLanguage(PolyglotLanguage language) {
+        this.hostLanguage = language.createInstance(this);
+        if (this.shared != null) {
+            this.shared.instances[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = this.hostLanguage;
+        }
         return hostLanguage;
     }
 

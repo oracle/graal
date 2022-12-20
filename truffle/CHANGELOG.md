@@ -2,6 +2,21 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 23.0.0
+
+* GR-38526 Added `TruffleLanguage.Env#isSocketIOAllowed()`. The method returns true if access to network sockets is allowed.
+* GR-41634 Added `TruffleLanguage.Env#isFileIOAllowed()`. The method returns true if access to files is allowed.
+* Deprecated `TruffleLanguage.Env#isIOAllowed()`. To migrate, use `TruffleLanguage.Env#isFileIOAllowed()`.
+* GR-41408 Added `Version.format(String)`, to support formatting the version using a custom format string, e.g. for use in URLs.
+* GR-41408 Added `${graalvm-version}` and `${graalvm-website-version}` substitutions for the `website` property of language and instrument registrations.
+* GR-41034 Added `TruffleInstrument.Env.getTruffleFile(TruffleContext, ...)` methods to allow reading a truffle file from a specific context without being entered. Deprecated `TruffleInstrument.Env.getTruffleFile(...)` methods that do not take the `TruffleContext`.
+* GR-42271 Native image build verifies that the context pre-initialization does not introduce absolute TruffleFiles into the image heap. The check can be disabled using the `-H:-TruffleCheckPreinitializedFiles` native image option.
+* GR-41369 The icu4j language initializes charsets while building the native image. Languages depending on the icu4j language can no longer use `--initialize-at-run-time=com.ibm.icu`.
+* GR-40274 TruffleStrings: added AsNativeNode and GetStringCompactionLevelNode.
+* GR-39189 Added attach methods on the `Instrumenter` class, that take `NearestSectionFilter` as a parameter. The new `NearestSectionFilter` class can be used to instrument or detect nearest locations to a given source line and column. For example, this can be used to implement breakpoints, where the exact line or column is not always precise and the location needs to be updated when new code is loaded.
+* GR-39189 Added `InstrumentableNode.findNearestNodeAt(int line, int column, ...)` to find the nearest node to the given source line and column. This is an alternative to the existing method that takes character offset.
+* GR-42674 It has been documented that methods `TruffleLanguage.Env#getPublicTruffleFile`, `TruffleLanguage.Env#getInternalTruffleFile`, `TruffleLanguage.Env#getTruffleFileInternal` and `TruffleInstrument.Env#getPublicTruffleFile` can throw `IllegalArgumentException` when the path string cannot be converted to a `Path` or uri preconditions required by the `FileSystem` do not hold.
+
 ## Version 22.3.0
 
 * GR-40069 Added additional methods to the static frame API.

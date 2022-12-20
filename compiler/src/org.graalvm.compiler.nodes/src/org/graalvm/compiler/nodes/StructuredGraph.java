@@ -131,7 +131,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     public static class Builder {
         private String name;
         private final Assumptions assumptions;
-        private GraphState graphState;
         private SpeculationLog speculationLog;
         private ResolvedJavaMethod rootMethod;
         private CompilationIdentifier compilationId = CompilationIdentifier.INVALID_COMPILATION_ID;
@@ -165,10 +164,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             this.trackNodeSourcePosition = Graph.trackNodeSourcePositionDefault(options, debug);
         }
 
-        public String getName() {
-            return name;
-        }
-
         public Builder name(String s) {
             this.name = s;
             return this;
@@ -194,23 +189,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return this;
         }
 
-        public DebugContext getDebug() {
-            return debug;
-        }
-
-        public GraphState getGraphState() {
-            return graphState;
-        }
-
-        public Builder graphState(GraphState state) {
-            this.graphState = state;
-            return this;
-        }
-
-        public SpeculationLog getSpeculationLog() {
-            return speculationLog;
-        }
-
         public Builder speculationLog(SpeculationLog log) {
             this.speculationLog = log;
             return this;
@@ -234,10 +212,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return this;
         }
 
-        public int getEntryBCI() {
-            return entryBCI;
-        }
-
         public Builder entryBCI(int bci) {
             this.entryBCI = bci;
             return this;
@@ -246,10 +220,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         public Builder profileProvider(ProfileProvider provider) {
             this.profileProvider = provider;
             return this;
-        }
-
-        public boolean getRecordInlinedMethods() {
-            return recordInlinedMethods;
         }
 
         public Builder recordInlinedMethods(boolean flag) {
@@ -270,7 +240,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
 
         public StructuredGraph build() {
-            GraphState newGraphState = graphState == null ? GraphState.defaultGraphState() : graphState;
+            GraphState newGraphState = GraphState.defaultGraphState();
             List<ResolvedJavaMethod> inlinedMethods = recordInlinedMethods ? new ArrayList<>() : null;
             // @formatter:off
             return new StructuredGraph(name,
@@ -367,7 +337,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.isSubstitution = isSubstitution;
         assert checkIsSubstitutionInvariants(method, isSubstitution);
         this.cancellable = cancellable;
-        this.inliningLog = GraalOptions.TraceInlining.getValue(options) ? new InliningLog(rootMethod) : null;
+        this.inliningLog = GraalOptions.TraceInlining.getValue(options) || OptimizationLog.isOptimizationLogEnabled(options) ? new InliningLog(rootMethod) : null;
         this.callerContext = context;
         this.optimizationLog = OptimizationLog.getInstance(this);
     }
@@ -588,7 +558,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     public void logInliningTree() {
-        if (inliningLog != null) {
+        if (GraalOptions.TraceInlining.getValue(getOptions())) {
             String formattedTree = inliningLog.formatAsTree(true);
             if (formattedTree != null) {
                 TTY.println(formattedTree);

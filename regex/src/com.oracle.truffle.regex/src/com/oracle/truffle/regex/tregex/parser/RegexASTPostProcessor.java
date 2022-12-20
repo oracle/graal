@@ -89,7 +89,7 @@ public class RegexASTPostProcessor {
         if (properties.hasQuantifiers()) {
             UnrollQuantifiersVisitor.unrollQuantifiers(ast, compilationBuffer);
         }
-        CalcASTPropsVisitor.run(ast);
+        CalcASTPropsVisitor.run(ast, compilationBuffer);
         ast.createPrefix();
         InitIDVisitor.init(ast);
         if (ast.canTransformToDFA()) {
@@ -343,22 +343,6 @@ public class RegexASTPostProcessor {
             new OptimizeLookAroundsVisitor(ast, compilationBuffer).run(ast.getRoot());
         }
 
-        private void removeTerm(Sequence sequence, int i) {
-            ObjectArrayBuffer<Term> buf = compilationBuffer.getObjectBuffer1();
-            // stash successors of term to buffer
-            int size = sequence.size();
-            for (int j = i + 1; j < size; j++) {
-                buf.add(sequence.getLastTerm());
-                sequence.removeLastTerm();
-            }
-            // drop term
-            sequence.removeLastTerm();
-            // restore the stashed successors
-            for (int j = buf.length() - 1; j >= 0; j--) {
-                sequence.add(buf.get(j));
-            }
-        }
-
         @Override
         protected void leave(Sequence sequence) {
             int i = 0;
@@ -370,7 +354,7 @@ public class RegexASTPostProcessor {
                         case NONE:
                             break;
                         case NO_OP:
-                            removeTerm(sequence, i);
+                            sequence.removeTerm(i, compilationBuffer);
                             i--;
                             break;
                         case REPLACE:
@@ -472,7 +456,10 @@ public class RegexASTPostProcessor {
                 // surrogates
                 CharacterClass cc = group.getFirstAlternative().getFirstTerm().asCharacterClass();
                 assert !ast.getFlags().isUnicode() || !ast.getOptions().isUTF16ExplodeAstralSymbols() || cc.getCharSet().matchesNothing() || cc.getCharSet().getMax() <= 0xffff;
-                assert !group.hasEnclosedCaptureGroups();
+                if (cc.getCharSet().isEmpty()) {
+                    // negative lookaround on a character class that can never match -> no-op
+                    return LookAroundOptimization.NO_OP;
+                }
                 Group wrapGroup = ast.createGroup();
                 Sequence positionAssertionSeq = wrapGroup.addSequence(ast);
                 positionAssertionSeq.add(ast.createPositionAssertion(lookaround.isLookAheadAssertion() ? PositionAssertion.Type.DOLLAR : PositionAssertion.Type.CARET));

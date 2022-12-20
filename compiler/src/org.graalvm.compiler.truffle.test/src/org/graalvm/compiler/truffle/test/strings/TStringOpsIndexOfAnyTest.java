@@ -117,7 +117,7 @@ public class TStringOpsIndexOfAnyTest extends TStringOpsTest<ArrayIndexOfNode> {
             for (int i = 0; i < values.length; i++) {
                 valuesB[i] = (byte) values[i];
             }
-            test(getIndexOfAnyByteIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, fromIndexA, valuesB);
+            testWithNative(getIndexOfAnyByteIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, fromIndexA, valuesB);
         }
         if (strideA < 2) {
             char[] valuesC = new char[values.length];

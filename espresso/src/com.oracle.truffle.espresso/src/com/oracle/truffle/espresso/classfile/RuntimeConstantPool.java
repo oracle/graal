@@ -168,6 +168,11 @@ public final class RuntimeConstantPool extends ConstantPool {
         }
     }
 
+    public boolean isResolutionSuccessAt(int index) {
+        Resolvable.ResolvedConstant constant = constants[index];
+        return constant != null && constant.isSuccess();
+    }
+
     public Method resolvedMethodAt(Klass accessingKlass, int index) {
         Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "method");
         return (Method) resolved.value();

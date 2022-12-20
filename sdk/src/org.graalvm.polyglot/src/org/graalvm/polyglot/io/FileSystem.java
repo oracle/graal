@@ -61,10 +61,13 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
+import java.nio.file.spi.FileSystemProvider;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.io.IOAccess.Builder;
 
 /**
  * Service-provider for {@code Truffle} files.
@@ -79,6 +82,8 @@ public interface FileSystem {
      * @param uri the {@link URI} to be converted to {@link Path}
      * @return the {@link Path} representing given {@link URI}
      * @throws UnsupportedOperationException when {@link URI} scheme is not supported
+     * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold. The format
+     *             of the URI is {@link FileSystem} specific.
      * @since 19.0
      */
     Path parsePath(URI uri);
@@ -90,6 +95,8 @@ public interface FileSystem {
      * @param path the string path to be converted to {@link Path}
      * @return the {@link Path}
      * @throws UnsupportedOperationException when the {@link FileSystem} supports only {@link URI}
+     * @throws IllegalArgumentException if the {@code path} string cannot be converted to a
+     *             {@link Path}
      * @since 19.0
      */
     Path parsePath(String path);
@@ -478,7 +485,8 @@ public interface FileSystem {
      * }
      * </pre>
      *
-     * @see org.graalvm.polyglot.Context.Builder#fileSystem(org.graalvm.polyglot.io.FileSystem)
+     * @see Builder#fileSystem(FileSystem)
+     * @see org.graalvm.polyglot.Context.Builder#allowIO(IOAccess)
      *
      * @since 20.2.0
      */
@@ -515,5 +523,31 @@ public interface FileSystem {
      */
     static FileSystem newReadOnlyFileSystem(FileSystem fileSystem) {
         return IOHelper.IMPL.newReadOnlyFileSystem(fileSystem);
+    }
+
+    /**
+     * Creates a {@link FileSystem} implementation based on the given Java NIO filesystem. The
+     * returned {@link FileSystem} delegates all operations to {@code fileSystem}'s
+     * {@link FileSystemProvider provider}.
+     *
+     * <p>
+     * The following example shows how to configure {@link Context} so that languages read files
+     * from a prepared zip file.
+     *
+     * <pre>
+     * Path zipFile = Paths.get("filesystem.zip");
+     * try (java.nio.file.FileSystem nioFs = FileSystems.newFileSystem(zipFile)) {
+     *     IOAccess ioAccess = IOAccess.newBuilder().fileSystem(FileSystem.newFileSystem(nioFs)).build();
+     *     try (Context ctx = Context.newBuilder().allowIO(ioAccess).build()) {
+     *         Value result = ctx.eval("js", "load('scripts/app.sh'); execute()");
+     *     }
+     * }
+     * </pre>
+     *
+     * @see IOAccess
+     * @since 23.0
+     */
+    static FileSystem newFileSystem(java.nio.file.FileSystem fileSystem) {
+        return IOHelper.IMPL.newNIOFileSystem(fileSystem);
     }
 }

@@ -1368,11 +1368,22 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                             } else {
                                 virtualObjectIds[i] = virtualObjs[i].getObjectId();
                             }
+                            /*
+                             * In a complex phi structure with multiple self-references, the phi
+                             * itself may already be materialized along some of the backedges. In
+                             * that case we can't merge virtual states after all.
+                             */
+                            if (!states[i].getObjectState(virtualObjectIds[i]).isVirtual()) {
+                                compatible = false;
+                                break;
+                            }
                         }
-                        boolean materialized = mergeObjectStates(virtual.getObjectId(), virtualObjectIds, states);
-                        addVirtualAlias(virtual, virtual);
-                        addVirtualAlias(virtual, phi);
-                        return materialized;
+                        if (compatible) {
+                            boolean materialized = mergeObjectStates(virtual.getObjectId(), virtualObjectIds, states);
+                            addVirtualAlias(virtual, virtual);
+                            addVirtualAlias(virtual, phi);
+                            return materialized;
+                        }
                     }
                 }
             }

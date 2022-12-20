@@ -27,7 +27,7 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 project(com.oracle.truffle.llvm.libraries.graalvm.llvm.libs LANGUAGES C)
 
 set(GRAALVM_LLVM_INCLUDE_DIR)
@@ -59,9 +59,12 @@ add_library(graalvm-llvm SHARED
 )
 
 if(WIN32)
-  target_sources(graalvm-llvm PRIVATE graalvm-llvm.def)
+  target_sources(graalvm-llvm PRIVATE
+    src/threads.c
+    graalvm-llvm.def)
 endif()
 
 target_include_directories(graalvm-llvm PRIVATE ${GRAALVM_LLVM_INCLUDE_DIR})
+target_include_directories(graalvm-llvm PRIVATE include)
 set_target_properties(graalvm-llvm PROPERTIES VERSION 1)
 install(TARGETS graalvm-llvm DESTINATION bin)

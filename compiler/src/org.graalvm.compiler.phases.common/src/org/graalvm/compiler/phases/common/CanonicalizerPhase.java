@@ -56,8 +56,8 @@ import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.GraphState;
-import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
+import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
@@ -210,8 +210,8 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.mustRunBefore(this, StageFlag.FINAL_CANONICALIZATION, graphState);
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.unlessRunBefore(this, StageFlag.FINAL_CANONICALIZATION, graphState);
     }
 
     @Override
@@ -606,8 +606,8 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             }
             if (node instanceof FloatingNode) {
                 assert canonical == null || !(canonical instanceof FixedNode) ||
-                                (canonical.predecessor() != null || canonical instanceof StartNode || canonical instanceof AbstractMergeNode) : node +
-                                                " -> " + canonical + " : replacement should be floating or fixed and connected";
+                                (canonical.predecessor() != null || canonical instanceof StartNode || canonical instanceof AbstractMergeNode) : node + " -> " + canonical +
+                                                " : replacement should be floating or fixed and connected";
                 node.replaceAtUsages(canonical);
                 GraphUtil.killWithUnusedFloatingInputs(node, true);
             } else {

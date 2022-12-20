@@ -107,13 +107,18 @@ public class TStringConstructorTests extends TStringTestBase {
 
     @Test
     public void testFromByteArray() throws Exception {
+        byte[] empty = {};
         forAllEncodings((TruffleString.Encoding encoding) -> {
-            if (isAsciiCompatible(encoding)) {
-                byte[] ascii = new byte[128 << getStride(encoding)];
-                for (int i = 0; i < 128; i++) {
-                    TStringTestUtil.writeValue(ascii, getStride(encoding), i, i);
-                }
-                for (boolean copy : new boolean[]{true, false}) {
+            for (boolean copy : new boolean[]{true, false}) {
+                TruffleString emptyString = TruffleString.fromByteArrayUncached(empty, encoding, copy);
+                Assert.assertEquals(0, emptyString.byteLength(encoding));
+                Assert.assertEquals(0, emptyString.codePointLengthUncached(encoding));
+                if (isAsciiCompatible(encoding)) {
+                    Assert.assertEquals(TruffleString.CodeRange.ASCII, emptyString.getCodeRangeUncached(encoding));
+                    byte[] ascii = new byte[128 << getNaturalStride(encoding)];
+                    for (int i = 0; i < 128; i++) {
+                        TStringTestUtil.writeValue(ascii, getNaturalStride(encoding), i, i);
+                    }
                     TruffleString s = fromByteArrayUncached(ascii, 0, ascii.length, encoding, copy);
                     int readByteOffset = 0;
                     if (isUTF32(encoding) && ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
@@ -133,6 +138,7 @@ public class TStringConstructorTests extends TStringTestBase {
                         Assert.assertEquals(i, s.indexOfStringUncached(fromCodePointUncached(i, encoding), 0, 128, encoding));
                     }
                 }
+
             }
         });
         forAllEncodingsAndCodePointLists((TruffleString.Encoding encoding, int[] codepointArray) -> {

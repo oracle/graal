@@ -26,9 +26,10 @@ The following options are supported across both GraalVM Community and Enterprise
 * `--enable-all-security-services`: add all security service classes to a native executable
 * `--enable-http`: enable HTTP support in a native executable
 * `--enable-https`: enable HTTPS support in a native executable
+* `--enable-monitoring`: enable monitoring features that allow the VM to be inspected at run time. Comma-separated list can contain `heapdump`, `jfr`, `jvmstat`, or `all` (defaults to `all` if no argument is provided). For example: `--enable-monitoring=heapdump,jvmstat`.
+* `--enable-sbom`:  embed a Software Bill of Materials (SBOM) in the executable or shared library for passive inspection. Comma-separated list can contain `cyclonedx` or `strict` (defaults to `cyclonedx` if no argument is provided).  The optional `strict` flag aborts the build if any class cannot be matched to a library in the SBOM. For example: `--enable-sbom=cyclonedx,strict`. **GraalVM Enterprise only**
 * `--enable-preview`: allow classes to depend on preview features of this release
 * `--enable-url-protocols`: list comma-separated URL protocols to enable
-* `--enable-monitoring`: enable monitoring features that allow the VM to be inspected at run time. Comma-separated list can contain 'heapdump', 'jfr', 'jvmstat', or 'all' (defaults to 'all' if no argument is provided). For example: `--enable-monitoring=heapdump,jvmstat`.
 * `--features`: a comma-separated list of fully qualified [Feature implementation classes](https://www.graalvm.org/sdk/javadoc/index.html?org/graalvm/nativeimage/hosted/Feature.html)
 * `--force-fallback`: force building of a fallback native executable
 * `--gc=<value>`: select Native Image garbage collector implementation. Allowed options for `<value>` are: `G1` for G1 garbage collector (**GraalVM Enterprise only**); `epsilon` for Epsilon garbage collector; `serial` for Serial garbage collector (default).

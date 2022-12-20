@@ -326,6 +326,23 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     }
 
     /**
+     * Partial evaluation (of ByteBuffer code) only works with currently supported JDK versions.
+     */
+    protected static boolean isByteBufferPartialEvaluationSupported() {
+        if (Runtime.version().feature() == 20) {
+            try {
+                Class.forName("jdk.internal.foreign.Scoped");
+                // Unsupported early access version.
+                return false;
+            } catch (ClassNotFoundException e) {
+                return true;
+            }
+        } else {
+            return Runtime.version().feature() == 17 || Runtime.version().feature() >= 21;
+        }
+    }
+
+    /**
      * Error ignored when running before partially evaluating a root node.
      */
     @SuppressWarnings("serial")

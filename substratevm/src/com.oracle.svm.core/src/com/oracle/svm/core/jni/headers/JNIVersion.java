@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jni.headers;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 
@@ -33,8 +34,14 @@ import com.oracle.svm.core.Uninterruptible;
 public final class JNIVersion {
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public static boolean isSupported(int version) {
-        return version == JNI_VERSION_10() || version == JNI_VERSION_9() || version == JNI_VERSION_1_8() || version == JNI_VERSION_1_6() ||
-                        version == JNI_VERSION_1_4() || version == JNI_VERSION_1_2() || version == JNI_VERSION_1_1();
+        return (JavaVersionUtil.JAVA_SPEC > 17 && version == JNIVersionJDK19OrLater.JNI_VERSION_19()) ||
+                        version == JNI_VERSION_10() ||
+                        version == JNI_VERSION_9() ||
+                        version == JNI_VERSION_1_8() ||
+                        version == JNI_VERSION_1_6() ||
+                        version == JNI_VERSION_1_4() ||
+                        version == JNI_VERSION_1_2() ||
+                        version == JNI_VERSION_1_1();
     }
 
     // Checkstyle: stop

@@ -33,6 +33,7 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER_IN_C
 import org.graalvm.compiler.core.aarch64.AArch64NodeLIRBuilder;
 import org.graalvm.compiler.core.aarch64.AArch64NodeMatchRules;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.gen.DebugInfoBuilder;
 import org.graalvm.compiler.hotspot.HotSpotDebugInfoBuilder;
@@ -172,5 +173,14 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
 
         Value[] parameters = visitInvokeArguments(gen.getRegisterConfig().getCallingConvention(HotSpotCallingConventionType.JavaCall, null, sig, gen), node.arguments());
         append(new AArch64BreakpointOp(parameters));
+    }
+
+    @Override
+    public ForeignCallLinkage lookupGraalStub(ValueNode valueNode, ForeignCallDescriptor foreignCallDescriptor) {
+        if (getGen().getResult().getStub() != null) {
+            // Emit assembly for snippet stubs
+            return null;
+        }
+        return getGen().getForeignCalls().lookupForeignCall(foreignCallDescriptor);
     }
 }

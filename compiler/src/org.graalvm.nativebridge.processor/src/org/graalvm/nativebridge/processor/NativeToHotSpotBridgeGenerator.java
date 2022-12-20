@@ -188,14 +188,12 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         for (MethodData methodData : definitionData.toGenerate) {
             CharSequence fieldName = jMethodIdField(methodData);
             List<? extends TypeMirror> parameterTypes = methodData.type.getParameterTypes();
-            List<CharSequence> signature = new ArrayList<>(1 + parameterTypes.size());
-            TypeMirror endPointParameterType = marshallerSnippets(methodData.getReturnTypeMarshaller()).getEndPointMethodParameterType(methodData.type.getReturnType());
-            signature.add(new CodeBuilder(builder).classLiteral(endPointParameterType).build());
+            List<TypeMirror> signature = new ArrayList<>(1 + parameterTypes.size());
             if (!definitionData.hasCustomDispatch()) {
-                signature.add(new CodeBuilder(builder).classLiteral(definitionData.serviceType).build());
+                signature.add(definitionData.serviceType);
             }
             if (needsExplicitIsolateParameter(methodData)) {
-                signature.add(new CodeBuilder(builder).classLiteral(types.getPrimitiveType(TypeKind.LONG)).build());
+                signature.add(types.getPrimitiveType(TypeKind.LONG));
             }
             int marshalledParametersCount = 0;
             for (int i = 0; i < parameterTypes.size(); i++) {
@@ -204,17 +202,16 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
                     marshalledParametersCount++;
                 } else {
                     TypeMirror parameterType = parameterTypes.get(i);
-                    endPointParameterType = marshallerSnippets(marshallerData).getEndPointMethodParameterType(parameterType);
-                    signature.add(new CodeBuilder(builder).classLiteral(endPointParameterType).build());
+                    signature.add(marshallerSnippets(marshallerData).getEndPointMethodParameterType(parameterType));
                 }
             }
             if (marshalledParametersCount > 0) {
-                signature.add(new CodeBuilder(builder).classLiteral(types.getArrayType(types.getPrimitiveType(TypeKind.BYTE))).build());
+                signature.add(types.getArrayType(types.getPrimitiveType(TypeKind.BYTE)));
             }
-            builder.lineStart("this." + fieldName).write(" = ").invokeStatic(typeCache.jNIMethod, "findMethod",
-                            jniEnv.name, END_POINT_CLASS_FIELD, "true",
-                            '"' + methodData.element.getSimpleName().toString() + '"',
-                            new CodeBuilder(builder).invokeStatic(typeCache.jniUtil, " encodeMethodSignature", signature.toArray(new CharSequence[0])).build()).lineEnd(";");
+            TypeMirror returnType = marshallerSnippets(methodData.getReturnTypeMarshaller()).getEndPointMethodParameterType(methodData.type.getReturnType());
+            builder.lineStart("this." + fieldName).write(" = ").invokeStatic(typeCache.jNIMethod, "findMethod", jniEnv.name, END_POINT_CLASS_FIELD, "true",
+                            "\"" + methodData.element.getSimpleName() + "\"",
+                            "\"" + Utilities.encodeMethodSignature(parser.elements, types, returnType, signature.toArray(new TypeMirror[0])) + "\"").lineEnd(";");
         }
     }
 

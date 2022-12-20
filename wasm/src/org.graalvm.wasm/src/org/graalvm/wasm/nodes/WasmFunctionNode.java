@@ -48,7 +48,10 @@ import static org.graalvm.wasm.constants.Instructions.BR_IF;
 import static org.graalvm.wasm.constants.Instructions.BR_TABLE;
 import static org.graalvm.wasm.constants.Instructions.CALL;
 import static org.graalvm.wasm.constants.Instructions.CALL_INDIRECT;
+import static org.graalvm.wasm.constants.Instructions.DATA_DROP;
 import static org.graalvm.wasm.constants.Instructions.DROP;
+import static org.graalvm.wasm.constants.Instructions.DROP_REF;
+import static org.graalvm.wasm.constants.Instructions.ELEM_DROP;
 import static org.graalvm.wasm.constants.Instructions.ELSE;
 import static org.graalvm.wasm.constants.Instructions.END;
 import static org.graalvm.wasm.constants.Instructions.F32_ABS;
@@ -218,26 +221,47 @@ import static org.graalvm.wasm.constants.Instructions.I64_TRUNC_SAT_F64_U;
 import static org.graalvm.wasm.constants.Instructions.I64_XOR;
 import static org.graalvm.wasm.constants.Instructions.IF;
 import static org.graalvm.wasm.constants.Instructions.LOCAL_GET;
+import static org.graalvm.wasm.constants.Instructions.LOCAL_GET_REF;
 import static org.graalvm.wasm.constants.Instructions.LOCAL_SET;
+import static org.graalvm.wasm.constants.Instructions.LOCAL_SET_REF;
 import static org.graalvm.wasm.constants.Instructions.LOCAL_TEE;
+import static org.graalvm.wasm.constants.Instructions.LOCAL_TEE_REF;
 import static org.graalvm.wasm.constants.Instructions.LOOP;
+import static org.graalvm.wasm.constants.Instructions.MEMORY_COPY;
+import static org.graalvm.wasm.constants.Instructions.MEMORY_FILL;
 import static org.graalvm.wasm.constants.Instructions.MEMORY_GROW;
+import static org.graalvm.wasm.constants.Instructions.MEMORY_INIT;
 import static org.graalvm.wasm.constants.Instructions.MEMORY_SIZE;
 import static org.graalvm.wasm.constants.Instructions.MISC;
 import static org.graalvm.wasm.constants.Instructions.NOP;
+import static org.graalvm.wasm.constants.Instructions.REF_FUNC;
+import static org.graalvm.wasm.constants.Instructions.REF_IS_NULL;
+import static org.graalvm.wasm.constants.Instructions.REF_NULL;
 import static org.graalvm.wasm.constants.Instructions.RETURN;
 import static org.graalvm.wasm.constants.Instructions.SELECT;
+import static org.graalvm.wasm.constants.Instructions.SELECT_T;
+import static org.graalvm.wasm.constants.Instructions.TABLE_COPY;
+import static org.graalvm.wasm.constants.Instructions.TABLE_FILL;
+import static org.graalvm.wasm.constants.Instructions.TABLE_GET;
+import static org.graalvm.wasm.constants.Instructions.TABLE_GROW;
+import static org.graalvm.wasm.constants.Instructions.TABLE_INIT;
+import static org.graalvm.wasm.constants.Instructions.TABLE_SET;
+import static org.graalvm.wasm.constants.Instructions.TABLE_SIZE;
 import static org.graalvm.wasm.constants.Instructions.UNREACHABLE;
 import static org.graalvm.wasm.nodes.WasmFrame.drop;
+import static org.graalvm.wasm.nodes.WasmFrame.dropPrimitive;
+import static org.graalvm.wasm.nodes.WasmFrame.dropReference;
 import static org.graalvm.wasm.nodes.WasmFrame.popBoolean;
 import static org.graalvm.wasm.nodes.WasmFrame.popDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.popFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.popInt;
 import static org.graalvm.wasm.nodes.WasmFrame.popLong;
+import static org.graalvm.wasm.nodes.WasmFrame.popReference;
 import static org.graalvm.wasm.nodes.WasmFrame.pushDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.pushFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.pushInt;
 import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
+import static org.graalvm.wasm.nodes.WasmFrame.pushReference;
 import static org.graalvm.wasm.util.ExtraDataAccessor.CALL_LENGTH;
 import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_BR_IF_LENGTH;
 import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_BR_IF_PROFILE_OFFSET;
@@ -247,6 +271,7 @@ import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_CALL_INDIRECT_LENG
 import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_CALL_INDIRECT_PROFILE_OFFSET;
 import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_IF_LENGTH;
 import static org.graalvm.wasm.util.ExtraDataAccessor.COMPACT_IF_PROFILE_OFFSET;
+import static org.graalvm.wasm.util.ExtraDataAccessor.UNKNOWN_UNWIND;
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_BR_IF_LENGTH;
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_BR_IF_PROFILE_OFFSET;
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_BR_TABLE_HEADER_LENGTH;
@@ -255,18 +280,19 @@ import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_CALL_INDIRECT_LEN
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_CALL_INDIRECT_PROFILE_OFFSET;
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_IF_LENGTH;
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_IF_PROFILE_OFFSET;
+import static org.graalvm.wasm.util.ExtraDataAccessor.PRIMITIVE_UNWIND;
+import static org.graalvm.wasm.util.ExtraDataAccessor.REFERENCE_UNWIND;
 import static org.graalvm.wasm.util.ExtraDataAccessor.firstValueSigned;
 import static org.graalvm.wasm.util.ExtraDataAccessor.firstValueUnsigned;
-import static org.graalvm.wasm.util.ExtraDataAccessor.fourthValueUnsigned;
+import static org.graalvm.wasm.util.ExtraDataAccessor.fifthValueUnsigned;
 import static org.graalvm.wasm.util.ExtraDataAccessor.secondValueSigned;
+import static org.graalvm.wasm.util.ExtraDataAccessor.fourthValueUnsigned;
 import static org.graalvm.wasm.util.ExtraDataAccessor.thirdValueUnsigned;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmCodeEntry;
+import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmFunctionInstance;
@@ -287,12 +313,14 @@ import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.WasmMultiValueResult;
 
 public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private static final float MIN_FLOAT_TRUNCATABLE_TO_INT = Integer.MIN_VALUE;
@@ -300,7 +328,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private static final float MIN_FLOAT_TRUNCATABLE_TO_U_INT = -0.99999994f;
     private static final float MAX_FLOAT_TRUNCATABLE_TO_U_INT = 4294967040f;
 
-    private static final double MIN_DOUBLE_TRUNCATABLE_TO_INT = Integer.MIN_VALUE;
+    private static final double MIN_DOUBLE_TRUNCATABLE_TO_INT = -2147483648.9999997;
     private static final double MAX_DOUBLE_TRUNCATABLE_TO_INT = 2147483647.9999998;
     private static final double MIN_DOUBLE_TRUNCATABLE_TO_U_INT = -0.9999999999999999;
     private static final double MAX_DOUBLE_TRUNCATABLE_TO_U_INT = 4294967295.9999995;
@@ -327,6 +355,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private final WasmCodeEntry codeEntry;
     private final int functionStartOffset;
     private final int functionEndOffset;
+
     @Children private Node[] callNodes;
 
     @CompilationFinal private Object osrMetadata;
@@ -508,7 +537,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final boolean compact = extraData[extraOffset] >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
                     offset += secondValueSigned(extraData, extraOffset, compact);
-                    extraOffset += firstValueUnsigned(extraData, extraOffset, compact);
+                    extraOffset += firstValueSigned(extraData, extraOffset, compact);
                     break;
                 }
                 case END:
@@ -516,15 +545,23 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case BR: {
                     final boolean compact = extraData[extraOffset] >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
-                    final int targetStackPointer = numLocals + fourthValueUnsigned(extraData, extraOffset, compact);
-                    final int targetReturnLength = thirdValueUnsigned(extraData, extraOffset, compact);
+                    final int targetUnwindType = thirdValueUnsigned(extraData, extraOffset, compact);
+                    final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, extraOffset, compact);
+                    final int targetResultCount = fourthValueUnsigned(extraData, extraOffset, compact);
 
-                    unwindStack(frame, stackPointer, targetStackPointer, targetReturnLength);
+                    CompilerAsserts.partialEvaluationConstant(targetUnwindType);
+                    if (targetUnwindType == PRIMITIVE_UNWIND) {
+                        unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                    } else if (targetUnwindType == REFERENCE_UNWIND) {
+                        unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                    } else if (targetUnwindType == UNKNOWN_UNWIND) {
+                        unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                    }
 
                     // Jump to the target block.
                     offset += secondValueSigned(extraData, extraOffset, compact);
                     extraOffset += firstValueSigned(extraData, extraOffset, compact);
-                    stackPointer = targetStackPointer + targetReturnLength;
+                    stackPointer = targetStackPointer + targetResultCount;
                     break;
                 }
                 case BR_IF: {
@@ -533,10 +570,18 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     CompilerAsserts.partialEvaluationConstant(compact);
                     final int profileOffset = extraOffset + (compact ? COMPACT_BR_IF_PROFILE_OFFSET : EXTENDED_BR_IF_PROFILE_OFFSET);
                     if (profileCondition(extraData, profileOffset, popBoolean(frame, stackPointer))) {
-                        final int targetStackPointer = numLocals + fourthValueUnsigned(extraData, extraOffset, compact);
-                        final int targetResultCount = thirdValueUnsigned(extraData, extraOffset, compact);
+                        final int targetUnwindType = thirdValueUnsigned(extraData, extraOffset, compact);
+                        final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, extraOffset, compact);
+                        final int targetResultCount = fourthValueUnsigned(extraData, extraOffset, compact);
 
-                        unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        CompilerAsserts.partialEvaluationConstant(targetUnwindType);
+                        if (targetUnwindType == PRIMITIVE_UNWIND) {
+                            unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        } else if (targetUnwindType == REFERENCE_UNWIND) {
+                            unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        } else if (targetUnwindType == UNKNOWN_UNWIND) {
+                            unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        }
 
                         // Jump to the target block.
                         offset += secondValueSigned(extraData, extraOffset, compact);
@@ -544,7 +589,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         stackPointer = targetStackPointer + targetResultCount;
                     } else {
                         // Skip label index.
-                        offset += offsetDelta(data, offset);
+                        offset += intOffsetDelta(data, offset);
                         // Jump to next extra data entry after the branch.
                         extraOffset += compact ? COMPACT_BR_IF_LENGTH : EXTENDED_BR_IF_LENGTH;
                     }
@@ -570,10 +615,17 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
                         updateBranchTableProfile(extraData, profileOffset, indexProfileOffset);
 
-                        final int targetStackPointer = numLocals + fourthValueUnsigned(extraData, indexOffset, compact);
-                        final int targetResultCount = thirdValueUnsigned(extraData, indexOffset, compact);
+                        final int targetUnwindType = thirdValueUnsigned(extraData, indexOffset, compact);
+                        final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, indexOffset, compact);
+                        final int targetResultCount = fourthValueUnsigned(extraData, indexOffset, compact);
 
-                        unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        if (targetUnwindType == PRIMITIVE_UNWIND) {
+                            unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        } else if (targetUnwindType == REFERENCE_UNWIND) {
+                            unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        } else if (targetUnwindType == UNKNOWN_UNWIND) {
+                            unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                        }
 
                         // Jump to the branch target.
                         offset += secondValueSigned(extraData, indexOffset, compact);
@@ -589,10 +641,17 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                                             (compact ? COMPACT_BR_TABLE_HEADER_LENGTH + i * COMPACT_BR_IF_LENGTH : EXTENDED_BR_TABLE_HEADER_LENGTH + i * EXTENDED_BR_IF_LENGTH);
                             final int indexProfileOffset = indexOffset + (compact ? COMPACT_BR_IF_PROFILE_OFFSET : EXTENDED_BR_IF_PROFILE_OFFSET);
                             if (profileBranchTable(extraData, profileOffset, indexProfileOffset, i == index)) {
-                                final int targetStackPointer = numLocals + fourthValueUnsigned(extraData, indexOffset, compact);
-                                final int targetResultCount = thirdValueUnsigned(extraData, indexOffset, compact);
+                                final int targetUnwindType = thirdValueUnsigned(extraData, indexOffset, compact);
+                                final int targetStackPointer = numLocals + fifthValueUnsigned(extraData, indexOffset, compact);
+                                final int targetResultCount = fourthValueUnsigned(extraData, indexOffset, compact);
 
-                                unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                                if (targetUnwindType == PRIMITIVE_UNWIND) {
+                                    unwindPrimitiveStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                                } else if (targetUnwindType == REFERENCE_UNWIND) {
+                                    unwindReferenceStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                                } else if (targetUnwindType == UNKNOWN_UNWIND) {
+                                    unwindStack(frame, stackPointer, targetStackPointer, targetResultCount);
+                                }
 
                                 // Jump to the branch target.
                                 offset += secondValueSigned(extraData, indexOffset, compact);
@@ -663,6 +722,12 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                                 stackPointer++;
                                 break;
                             }
+                            case WasmType.FUNCREF_TYPE:
+                            case WasmType.EXTERNREF_TYPE: {
+                                pushReference(frame, stackPointer, result);
+                                stackPointer++;
+                                break;
+                            }
                             default: {
                                 throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
                             }
@@ -678,7 +743,26 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     // Extract the function object.
                     stackPointer--;
                     final SymbolTable symtab = instance.symbolTable();
-                    final WasmTable table = instance.table();
+
+                    // Extract the function type index.
+                    // region Load LEB128 Unsigned32 -> expectedFunctionTypeIndex
+                    long valueLength = unsignedIntConstantAndLength(data, offset);
+                    int expectedFunctionTypeIndex = value(valueLength);
+                    int offsetDelta = length(valueLength);
+                    offset += offsetDelta;
+                    // endregion
+
+                    // Extract the table index.
+                    // region Load LEB128 Unsigned32 -> tableIndex
+                    valueLength = unsignedIntConstantAndLength(data, offset);
+                    int tableIndex = value(valueLength);
+                    offsetDelta = length(valueLength);
+                    offset += offsetDelta;
+                    // endRegion
+
+                    int expectedTypeEquivalenceClass = symtab.equivalenceClass(expectedFunctionTypeIndex);
+
+                    final WasmTable table = context.tables().table(instance.tableAddress(tableIndex));
                     final Object[] elements = table.elements();
                     final int elementIndex = popInt(frame, stackPointer);
                     if (elementIndex < 0 || elementIndex >= elements.length) {
@@ -688,7 +772,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     // Currently, table elements may only be functions.
                     // We can add a check here when this changes in the future.
                     final Object element = elements[elementIndex];
-                    if (element == null) {
+                    if (element == WasmConstant.NULL) {
                         enterErrorBranch();
                         throw WasmException.format(Failure.UNINITIALIZED_ELEMENT, this, "Table element at index %d is uninitialized.", elementIndex);
                     }
@@ -705,20 +789,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         enterErrorBranch();
                         throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown table element type: %s", element);
                     }
-
-                    // Extract the function type index.
-                    // region Load LEB128 Unsigned32 -> expectedFunctionTypeIndex
-                    long valueLength = unsignedIntConstantAndLength(data, offset);
-                    int expectedFunctionTypeIndex = value(valueLength);
-                    int offsetDelta = length(valueLength);
-                    offset += offsetDelta;
-                    // endregion
-
-                    int expectedTypeEquivalenceClass = symtab.equivalenceClass(expectedFunctionTypeIndex);
-
-                    // Consume the ZERO_TABLE constant at the end of the CALL_INDIRECT
-                    // instruction.
-                    offset += 1;
 
                     // Validate that the function type matches the expected type.
                     final boolean functionFromCurrentContext = functionInstanceContext == context;
@@ -799,6 +869,12 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                                 stackPointer++;
                                 break;
                             }
+                            case WasmType.FUNCREF_TYPE:
+                            case WasmType.EXTERNREF_TYPE: {
+                                pushReference(frame, stackPointer, result);
+                                stackPointer++;
+                                break;
+                            }
                             default: {
                                 throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
                             }
@@ -810,12 +886,28 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         break;
                     }
                 }
+                case DROP_REF:
+                    stackPointer--;
+                    dropReference(frame, stackPointer);
+                    break;
                 case DROP: {
                     stackPointer--;
-                    drop(frame, stackPointer);
+                    dropPrimitive(frame, stackPointer);
                     break;
                 }
                 case SELECT: {
+                    if (popBoolean(frame, stackPointer - 1)) {
+                        dropPrimitive(frame, stackPointer - 2);
+                    } else {
+                        WasmFrame.copyPrimitive(frame, stackPointer - 2, stackPointer - 3);
+                        dropPrimitive(frame, stackPointer - 2);
+                    }
+                    stackPointer -= 2;
+                    break;
+                }
+                case SELECT_T: {
+                    // Skip constant vector length and value
+                    offset += 2;
                     if (popBoolean(frame, stackPointer - 1)) {
                         drop(frame, stackPointer - 2);
                     } else {
@@ -823,6 +915,38 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         drop(frame, stackPointer - 2);
                     }
                     stackPointer -= 2;
+                    break;
+                }
+                case LOCAL_GET_REF: {
+                    // region Load LEB128 Unsigned32 -> index
+                    long valueLength = unsignedIntConstantAndLength(data, offset);
+                    int index = value(valueLength);
+                    int offsetDelta = length(valueLength);
+                    offset += offsetDelta;
+                    // endregion
+                    local_get_ref(frame, stackPointer, index);
+                    stackPointer++;
+                    break;
+                }
+                case LOCAL_SET_REF: {
+                    // region Load LEB128 Unsigned32 -> index
+                    long valueLength = unsignedIntConstantAndLength(data, offset);
+                    int index = value(valueLength);
+                    int offsetDelta = length(valueLength);
+                    offset += offsetDelta;
+                    // endregion
+                    stackPointer--;
+                    local_set_ref(frame, stackPointer, index);
+                    break;
+                }
+                case LOCAL_TEE_REF: {
+                    // region Load LEB128 Unsigned32 -> index
+                    long valueLength = unsignedIntConstantAndLength(data, offset);
+                    int index = value(valueLength);
+                    int offsetDelta = length(valueLength);
+                    offset += offsetDelta;
+                    // endregion
+                    local_tee_ref(frame, stackPointer - 1, index);
                     break;
                 }
                 case LOCAL_GET: {
@@ -879,9 +1003,30 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     global_set(context, frame, stackPointer, index);
                     break;
                 }
+                case TABLE_GET: {
+                    // region Load LEB128 Unsigned32 -> index
+                    long valueLength = unsignedIntConstantAndLength(data, offset);
+                    int index = value(valueLength);
+                    int offsetDelta = length(valueLength);
+                    offset += offsetDelta;
+                    // endregion
+                    table_get(context, frame, stackPointer, index);
+                    break;
+                }
+                case TABLE_SET: {
+                    // region Load LEB128 Unsigned32 -> index
+                    long valueLength = unsignedIntConstantAndLength(data, offset);
+                    int index = value(valueLength);
+                    int offsetDelta = length(valueLength);
+                    offset += offsetDelta;
+                    // endregion
+                    table_set(context, frame, stackPointer, index);
+                    stackPointer -= 2;
+                    break;
+                }
                 case I32_LOAD: {
                     /* The memAlign hint is not currently used or taken into account. */
-                    int memAlignOffsetDelta = offsetDelta(data, offset);
+                    int memAlignOffsetDelta = intOffsetDelta(data, offset);
                     offset += memAlignOffsetDelta;
 
                     // region Load LEB128 Unsigned32 -> memOffset
@@ -912,7 +1057,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case I64_LOAD32_S:
                 case I64_LOAD32_U: {
                     /* The memAlign hint is not currently used or taken into account. */
-                    int memAlignOffsetDelta = offsetDelta(data, offset);
+                    int memAlignOffsetDelta = intOffsetDelta(data, offset);
                     offset += memAlignOffsetDelta;
 
                     // region Load LEB128 Unsigned32 -> memOffset
@@ -935,7 +1080,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case I64_STORE_16:
                 case I64_STORE_32: {
                     /* The memAlign hint is not currently used or taken into account. */
-                    int memAlignOffsetDelta = offsetDelta(data, offset);
+                    int memAlignOffsetDelta = intOffsetDelta(data, offset);
                     offset += memAlignOffsetDelta;
 
                     // region Load LEB128 Unsigned32 -> memOffset
@@ -966,11 +1111,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     int pageSize = memory.size();
                     if (memory.grow(extraSize)) {
                         pushInt(frame, stackPointer, pageSize);
-                        stackPointer++;
                     } else {
                         pushInt(frame, stackPointer, -1);
-                        stackPointer++;
                     }
+                    stackPointer++;
                     break;
                 }
                 case I32_CONST: {
@@ -1127,15 +1271,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     f64_ge(frame, stackPointer);
                     stackPointer--;
                     break;
-                case I32_CLZ:
-                    i32_clz(frame, stackPointer);
-                    break;
-                case I32_CTZ:
-                    i32_ctz(frame, stackPointer);
-                    break;
-                case I32_POPCNT:
-                    i32_popcnt(frame, stackPointer);
-                    break;
                 case I32_ADD:
                     i32_add(frame, stackPointer);
                     stackPointer--;
@@ -1195,15 +1330,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case I32_ROTR:
                     i32_rotr(frame, stackPointer);
                     stackPointer--;
-                    break;
-                case I64_CLZ:
-                    i64_clz(frame, stackPointer);
-                    break;
-                case I64_CTZ:
-                    i64_ctz(frame, stackPointer);
-                    break;
-                case I64_POPCNT:
-                    i64_popcnt(frame, stackPointer);
                     break;
                 case I64_ADD:
                     i64_add(frame, stackPointer);
@@ -1380,126 +1506,236 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case I32_WRAP_I64:
                     i32_wrap_i64(frame, stackPointer);
                     break;
-                case I32_TRUNC_F32_S:
-                    i32_trunc_f32_s(frame, stackPointer);
-                    break;
-                case I32_TRUNC_F32_U:
-                    i32_trunc_f32_u(frame, stackPointer);
-                    break;
-                case I32_TRUNC_F64_S:
-                    i32_trunc_f64_s(frame, stackPointer);
-                    break;
-                case I32_TRUNC_F64_U:
-                    i32_trunc_f64_u(frame, stackPointer);
-                    break;
                 case I64_EXTEND_I32_S:
                     i64_extend_i32_s(frame, stackPointer);
                     break;
                 case I64_EXTEND_I32_U:
                     i64_extend_i32_u(frame, stackPointer);
                     break;
+                case I32_CLZ:
+                case I32_CTZ:
+                case I32_POPCNT:
+                case I64_CLZ:
+                case I64_CTZ:
+                case I64_POPCNT:
+                case I32_TRUNC_F32_S:
+                case I32_TRUNC_F32_U:
+                case I32_TRUNC_F64_S:
+                case I32_TRUNC_F64_U:
                 case I64_TRUNC_F32_S:
-                    i64_trunc_f32_s(frame, stackPointer);
-                    break;
                 case I64_TRUNC_F32_U:
-                    i64_trunc_f32_u(frame, stackPointer);
-                    break;
                 case I64_TRUNC_F64_S:
-                    i64_trunc_f64_s(frame, stackPointer);
-                    break;
                 case I64_TRUNC_F64_U:
-                    i64_trunc_f64_u(frame, stackPointer);
-                    break;
                 case F32_CONVERT_I32_S:
-                    f32_convert_i32_s(frame, stackPointer);
-                    break;
                 case F32_CONVERT_I32_U:
-                    f32_convert_i32_u(frame, stackPointer);
-                    break;
                 case F32_CONVERT_I64_S:
-                    f32_convert_i64_s(frame, stackPointer);
-                    break;
                 case F32_CONVERT_I64_U:
-                    f32_convert_i64_u(frame, stackPointer);
-                    break;
                 case F32_DEMOTE_F64:
-                    f32_demote_f64(frame, stackPointer);
-                    break;
                 case F64_CONVERT_I32_S:
-                    f64_convert_i32_s(frame, stackPointer);
-                    break;
                 case F64_CONVERT_I32_U:
-                    f64_convert_i32_u(frame, stackPointer);
-                    break;
                 case F64_CONVERT_I64_S:
-                    f64_convert_i64_s(frame, stackPointer);
-                    break;
                 case F64_CONVERT_I64_U:
-                    f64_convert_i64_u(frame, stackPointer);
-                    break;
                 case F64_PROMOTE_F32:
-                    f64_promote_f32(frame, stackPointer);
-                    break;
                 case I32_REINTERPRET_F32:
-                    i32_reinterpret_f32(frame, stackPointer);
-                    break;
                 case I64_REINTERPRET_F64:
-                    i64_reinterpret_f64(frame, stackPointer);
-                    break;
                 case F32_REINTERPRET_I32:
-                    f32_reinterpret_i32(frame, stackPointer);
-                    break;
                 case F64_REINTERPRET_I64:
-                    f64_reinterpret_i64(frame, stackPointer);
+                case I32_EXTEND8_S:
+                case I32_EXTEND16_S:
+                case I64_EXTEND8_S:
+                case I64_EXTEND16_S:
+                case I64_EXTEND32_S:
+                case REF_IS_NULL:
+                    executeMiscUnaryOp(frame, stackPointer, opcode);
                     break;
+                case REF_NULL:
+                    // Consume reference type
+                    offset += 1;
+                    pushReference(frame, stackPointer, WasmConstant.NULL);
+                    stackPointer++;
+                    break;
+                case REF_FUNC: {
+                    // region Load LEB128 Unsigned32 -> functionIndex
+                    long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                    int offsetDelta = length(valueAndLength);
+                    offset += offsetDelta;
+                    final int functionIndex = value(valueAndLength);
+                    // endregion
+
+                    final WasmFunction function = instance.module().function(functionIndex);
+                    final WasmFunctionInstance functionInstance = instance.functionInstance(function);
+                    pushReference(frame, stackPointer, functionInstance);
+                    stackPointer++;
+                    break;
+                }
                 case MISC:
-                    byte miscByteOpcode = BinaryStreamParser.rawPeek1(data, offset);
-                    int miscOpcode = miscByteOpcode & 0xFF;
+                    final byte miscByte = BinaryStreamParser.rawPeek1(data, offset);
+                    int miscOpcode = miscByte & 0xFF;
                     offset++;
                     CompilerAsserts.partialEvaluationConstant(offset);
                     switch (miscOpcode) {
                         case I32_TRUNC_SAT_F32_S:
-                            i32_trunc_sat_f32_s(frame, stackPointer);
-                            break;
                         case I32_TRUNC_SAT_F32_U:
-                            i32_trunc_sat_f32_u(frame, stackPointer);
-                            break;
                         case I32_TRUNC_SAT_F64_S:
-                            i32_trunc_sat_f64_s(frame, stackPointer);
-                            break;
                         case I32_TRUNC_SAT_F64_U:
-                            i32_trunc_sat_f64_u(frame, stackPointer);
-                            break;
                         case I64_TRUNC_SAT_F32_S:
-                            i64_trunc_sat_f32_s(frame, stackPointer);
-                            break;
                         case I64_TRUNC_SAT_F32_U:
-                            i64_trunc_sat_f32_u(frame, stackPointer);
-                            break;
                         case I64_TRUNC_SAT_F64_S:
-                            i64_trunc_sat_f64_s(frame, stackPointer);
-                            break;
                         case I64_TRUNC_SAT_F64_U:
-                            i64_trunc_sat_f64_u(frame, stackPointer);
+                            executeTruncSatOp(frame, stackPointer, miscOpcode);
                             break;
+                        case MEMORY_INIT: {
+                            // region Load LEB128 Unsigned32 -> value
+                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                            int offsetDelta = length(valueAndLength);
+                            offset += offsetDelta;
+                            final int dataIndex = value(valueAndLength);
+                            // endregion
+
+                            // Consume the ZERO_MEMORY constant.
+                            offset += 1;
+
+                            final int n = popInt(frame, stackPointer - 1);
+                            final int src = popInt(frame, stackPointer - 2);
+                            final int dst = popInt(frame, stackPointer - 3);
+                            memory_init(n, src, dst, dataIndex);
+                            stackPointer -= 3;
+                            break;
+                        }
+                        case DATA_DROP: {
+                            // region Load LEB128 Unsigned32 -> value
+                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                            int offsetDelta = length(valueAndLength);
+                            offset += offsetDelta;
+                            final int dataIndex = value(valueAndLength);
+                            // endregion
+
+                            instance.dropDataInstance(dataIndex);
+                            break;
+                        }
+                        case MEMORY_COPY: {
+                            // Consume the two ZERO_MEMORY constants.
+                            offset += 2;
+                            final int n = popInt(frame, stackPointer - 1);
+                            final int src = popInt(frame, stackPointer - 2);
+                            final int dst = popInt(frame, stackPointer - 3);
+                            memory_copy(n, src, dst);
+                            stackPointer -= 3;
+                            break;
+                        }
+                        case MEMORY_FILL: {
+                            // Consume the ZERO_MEMORY constant.
+                            offset += 1;
+
+                            final int n = popInt(frame, stackPointer - 1);
+                            final int val = popInt(frame, stackPointer - 2);
+                            final int dst = popInt(frame, stackPointer - 3);
+                            memory_fill(n, val, dst);
+                            stackPointer -= 3;
+                            break;
+                        }
+                        case TABLE_INIT: {
+                            // region Load LEB128 Unsigned32 -> value
+                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                            int offsetDelta = length(valueAndLength);
+                            offset += offsetDelta;
+                            final int elementIndex = value(valueAndLength);
+                            // endregion
+
+                            // region Load LEB128 Unsigned32 -> tableIndex
+                            valueAndLength = unsignedIntConstantAndLength(data, offset);
+                            offsetDelta = length(valueAndLength);
+                            offset += offsetDelta;
+                            final int tableIndex = value(valueAndLength);
+                            // endregion
+
+                            final int n = popInt(frame, stackPointer - 1);
+                            final int src = popInt(frame, stackPointer - 2);
+                            final int dst = popInt(frame, stackPointer - 3);
+
+                            table_init(context, n, src, dst, tableIndex, elementIndex);
+                            stackPointer -= 3;
+                            break;
+                        }
+                        case ELEM_DROP: {
+                            // region Load LEB128 Unsigned32 -> value
+                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                            int offsetDelta = length(valueAndLength);
+                            offset += offsetDelta;
+                            final int elementIndex = value(valueAndLength);
+                            // endregion
+
+                            instance.dropElemInstance(elementIndex);
+                            break;
+                        }
+                        case TABLE_COPY: {
+                            // region Load LEB128 Unsigned32 -> value
+                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                            int offsetDelta = length(valueAndLength);
+                            offset += offsetDelta;
+                            final int destinationTableIndex = value(valueAndLength);
+                            // endregion
+
+                            // region Load LEB128 Unsigned32 -> tableIndex
+                            valueAndLength = unsignedIntConstantAndLength(data, offset);
+                            offsetDelta = length(valueAndLength);
+                            offset += offsetDelta;
+                            final int sourceTableIndex = value(valueAndLength);
+                            // endregion
+
+                            final int n = popInt(frame, stackPointer - 1);
+                            final int src = popInt(frame, stackPointer - 2);
+                            final int dst = popInt(frame, stackPointer - 3);
+
+                            table_copy(context, n, src, dst, sourceTableIndex, destinationTableIndex);
+                            stackPointer -= 3;
+                            break;
+                        }
+                        case TABLE_GROW: {
+                            // region Load LEB128 Unsigned32 -> tableIndex
+                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                            int offsetDelta = length(valueAndLength);
+                            offset += offsetDelta;
+                            final int tableIndex = value(valueAndLength);
+                            // endregion
+
+                            final int n = popInt(frame, stackPointer - 1);
+                            final Object val = popReference(frame, stackPointer - 2);
+
+                            final int res = table_grow(context, n, val, tableIndex);
+                            pushInt(frame, stackPointer - 2, res);
+                            stackPointer--;
+                            break;
+                        }
+                        case TABLE_SIZE: {
+                            // region Load LEB128 Unsigned32 -> tableIndex
+                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                            int offsetDelta = length(valueAndLength);
+                            offset += offsetDelta;
+                            final int tableIndex = value(valueAndLength);
+                            // endregion
+                            table_size(context, frame, stackPointer, tableIndex);
+                            stackPointer++;
+                            break;
+                        }
+                        case TABLE_FILL: {
+                            // region Load LEB128 Unsigned32 -> tableIndex
+                            long valueAndLength = unsignedIntConstantAndLength(data, offset);
+                            int offsetDelta = length(valueAndLength);
+                            offset += offsetDelta;
+                            final int tableIndex = value(valueAndLength);
+                            // endregion
+
+                            final int n = popInt(frame, stackPointer - 1);
+                            final Object val = popReference(frame, stackPointer - 2);
+                            final int i = popInt(frame, stackPointer - 3);
+                            table_fill(context, n, val, i, tableIndex);
+                            stackPointer -= 3;
+                            break;
+                        }
                         default:
                             throw CompilerDirectives.shouldNotReachHere();
                     }
-                    break;
-                case I32_EXTEND8_S:
-                    i32_extend8_s(frame, stackPointer);
-                    break;
-                case I32_EXTEND16_S:
-                    i32_extend16_s(frame, stackPointer);
-                    break;
-                case I64_EXTEND8_S:
-                    i64_extend8_s(frame, stackPointer);
-                    break;
-                case I64_EXTEND16_S:
-                    i64_extend16_s(frame, stackPointer);
-                    break;
-                case I64_EXTEND32_S:
-                    i64_extend32_s(frame, stackPointer);
                     break;
                 default:
                     throw CompilerDirectives.shouldNotReachHere();
@@ -1565,6 +1801,147 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
      */
     private static long effectiveMemoryAddress(int staticAddressOffset, int dynamicAddress) {
         return Integer.toUnsignedLong(dynamicAddress) + Integer.toUnsignedLong(staticAddressOffset);
+    }
+
+    private void executeMiscUnaryOp(VirtualFrame frame, int stackPointer, int opcode) {
+        switch (opcode) {
+            case I32_CLZ:
+                i32_clz(frame, stackPointer);
+                break;
+            case I32_CTZ:
+                i32_ctz(frame, stackPointer);
+                break;
+            case I32_POPCNT:
+                i32_popcnt(frame, stackPointer);
+                break;
+            case I64_CLZ:
+                i64_clz(frame, stackPointer);
+                break;
+            case I64_CTZ:
+                i64_ctz(frame, stackPointer);
+                break;
+            case I64_POPCNT:
+                i64_popcnt(frame, stackPointer);
+                break;
+            case I32_TRUNC_F32_S:
+                i32_trunc_f32_s(frame, stackPointer);
+                break;
+            case I32_TRUNC_F32_U:
+                i32_trunc_f32_u(frame, stackPointer);
+                break;
+            case I32_TRUNC_F64_S:
+                i32_trunc_f64_s(frame, stackPointer);
+                break;
+            case I32_TRUNC_F64_U:
+                i32_trunc_f64_u(frame, stackPointer);
+                break;
+            case I64_TRUNC_F32_S:
+                i64_trunc_f32_s(frame, stackPointer);
+                break;
+            case I64_TRUNC_F32_U:
+                i64_trunc_f32_u(frame, stackPointer);
+                break;
+            case I64_TRUNC_F64_S:
+                i64_trunc_f64_s(frame, stackPointer);
+                break;
+            case I64_TRUNC_F64_U:
+                i64_trunc_f64_u(frame, stackPointer);
+                break;
+            case F32_CONVERT_I32_S:
+                f32_convert_i32_s(frame, stackPointer);
+                break;
+            case F32_CONVERT_I32_U:
+                f32_convert_i32_u(frame, stackPointer);
+                break;
+            case F32_CONVERT_I64_S:
+                f32_convert_i64_s(frame, stackPointer);
+                break;
+            case F32_CONVERT_I64_U:
+                f32_convert_i64_u(frame, stackPointer);
+                break;
+            case F32_DEMOTE_F64:
+                f32_demote_f64(frame, stackPointer);
+                break;
+            case F64_CONVERT_I32_S:
+                f64_convert_i32_s(frame, stackPointer);
+                break;
+            case F64_CONVERT_I32_U:
+                f64_convert_i32_u(frame, stackPointer);
+                break;
+            case F64_CONVERT_I64_S:
+                f64_convert_i64_s(frame, stackPointer);
+                break;
+            case F64_CONVERT_I64_U:
+                f64_convert_i64_u(frame, stackPointer);
+                break;
+            case F64_PROMOTE_F32:
+                f64_promote_f32(frame, stackPointer);
+                break;
+            case I32_REINTERPRET_F32:
+                i32_reinterpret_f32(frame, stackPointer);
+                break;
+            case I64_REINTERPRET_F64:
+                i64_reinterpret_f64(frame, stackPointer);
+                break;
+            case F32_REINTERPRET_I32:
+                f32_reinterpret_i32(frame, stackPointer);
+                break;
+            case F64_REINTERPRET_I64:
+                f64_reinterpret_i64(frame, stackPointer);
+                break;
+            case I32_EXTEND8_S:
+                i32_extend8_s(frame, stackPointer);
+                break;
+            case I32_EXTEND16_S:
+                i32_extend16_s(frame, stackPointer);
+                break;
+            case I64_EXTEND8_S:
+                i64_extend8_s(frame, stackPointer);
+                break;
+            case I64_EXTEND16_S:
+                i64_extend16_s(frame, stackPointer);
+                break;
+            case I64_EXTEND32_S:
+                i64_extend32_s(frame, stackPointer);
+                break;
+            case REF_IS_NULL:
+                final Object refType = popReference(frame, stackPointer - 1);
+                pushInt(frame, stackPointer - 1, refType == WasmConstant.NULL ? 1 : 0);
+                break;
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
+    private static void executeTruncSatOp(VirtualFrame frame, int stackPointer, int opcode) {
+        switch (opcode) {
+            case I32_TRUNC_SAT_F32_S:
+                i32_trunc_sat_f32_s(frame, stackPointer);
+                break;
+            case I32_TRUNC_SAT_F32_U:
+                i32_trunc_sat_f32_u(frame, stackPointer);
+                break;
+            case I32_TRUNC_SAT_F64_S:
+                i32_trunc_sat_f64_s(frame, stackPointer);
+                break;
+            case I32_TRUNC_SAT_F64_U:
+                i32_trunc_sat_f64_u(frame, stackPointer);
+                break;
+            case I64_TRUNC_SAT_F32_S:
+                i64_trunc_sat_f32_s(frame, stackPointer);
+                break;
+            case I64_TRUNC_SAT_F32_U:
+                i64_trunc_sat_f32_u(frame, stackPointer);
+                break;
+            case I64_TRUNC_SAT_F64_S:
+                i64_trunc_sat_f64_s(frame, stackPointer);
+                break;
+            case I64_TRUNC_SAT_F64_U:
+                i64_trunc_sat_f64_u(frame, stackPointer);
+                break;
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
     }
 
     private void load(WasmMemory memory, VirtualFrame frame, int stackPointer, int opcode, int memOffset) {
@@ -1723,6 +2100,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             case WasmType.F64_TYPE:
                 context.globals().storeLong(instance.globalAddress(index), Double.doubleToRawLongBits(popDouble(frame, stackPointer)));
                 break;
+            case WasmType.FUNCREF_TYPE:
+            case WasmType.EXTERNREF_TYPE:
+                context.globals().storeReference(instance.globalAddress(index), popReference(frame, stackPointer));
+                break;
             default:
                 throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Local variable cannot have the void type.");
         }
@@ -1744,24 +2125,43 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             case WasmType.F64_TYPE:
                 pushDouble(frame, stackPointer, Double.longBitsToDouble(context.globals().loadAsLong(instance.globalAddress(index))));
                 break;
+            case WasmType.FUNCREF_TYPE:
+            case WasmType.EXTERNREF_TYPE:
+                pushReference(frame, stackPointer, context.globals().loadAsReference(instance.globalAddress(index)));
+                break;
             default:
                 throw WasmException.create(Failure.UNSPECIFIED_TRAP, this, "Local variable cannot have the void type.");
         }
     }
 
     private static void local_tee(VirtualFrame frame, int stackPointer, int index) {
-        WasmFrame.copy(frame, stackPointer, index);
+        WasmFrame.copyPrimitive(frame, stackPointer, index);
+    }
+
+    private static void local_tee_ref(VirtualFrame frame, int stackPointer, int index) {
+        WasmFrame.copyReference(frame, stackPointer, index);
     }
 
     private static void local_set(VirtualFrame frame, int stackPointer, int index) {
-        WasmFrame.copy(frame, stackPointer, index);
+        WasmFrame.copyPrimitive(frame, stackPointer, index);
         if (CompilerDirectives.inCompiledCode()) {
-            drop(frame, stackPointer);
+            WasmFrame.dropPrimitive(frame, stackPointer);
+        }
+    }
+
+    private static void local_set_ref(VirtualFrame frame, int stackPointer, int index) {
+        WasmFrame.copyReference(frame, stackPointer, index);
+        if (CompilerDirectives.inCompiledCode()) {
+            WasmFrame.dropReference(frame, stackPointer);
         }
     }
 
     private static void local_get(VirtualFrame frame, int stackPointer, int index) {
-        WasmFrame.copy(frame, index, stackPointer);
+        WasmFrame.copyPrimitive(frame, index, stackPointer);
+    }
+
+    private static void local_get_ref(VirtualFrame frame, int stackPointer, int index) {
+        WasmFrame.copyReference(frame, index, stackPointer);
     }
 
     private static void i32_eqz(VirtualFrame frame, int stackPointer) {
@@ -2747,7 +3147,141 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         pushLong(frame, stackPointer - 1, result);
     }
 
+    @TruffleBoundary
+    private void table_init(WasmContext context, int length, int source, int destination, int tableIndex, int elementIndex) {
+        final WasmTable table = context.tables().table(instance.tableAddress(tableIndex));
+        final Object[] elementInstance = instance.elemInstance(elementIndex);
+        final int elementInstanceLength;
+        if (elementInstance == null) {
+            elementInstanceLength = 0;
+        } else {
+            elementInstanceLength = elementInstance.length;
+        }
+        if (checkOutOfBounds(source, length, elementInstanceLength) || checkOutOfBounds(destination, length, table.size())) {
+            enterErrorBranch();
+            throw WasmException.create(Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
+        }
+        if (length == 0) {
+            return;
+        }
+        table.initialize(elementInstance, source, destination, length);
+    }
+
+    private void table_get(WasmContext context, VirtualFrame frame, int stackPointer, int index) {
+        final WasmTable table = context.tables().table(instance.tableAddress(index));
+        final int i = popInt(frame, stackPointer - 1);
+        if (i < 0 || i >= table.size()) {
+            enterErrorBranch();
+            throw WasmException.create(Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
+        }
+        final Object value = table.get(i);
+        pushReference(frame, stackPointer - 1, value);
+    }
+
+    private void table_set(WasmContext context, VirtualFrame frame, int stackPointer, int index) {
+        final WasmTable table = context.tables().table(instance.tableAddress(index));
+        final Object value = popReference(frame, stackPointer - 1);
+        final int i = popInt(frame, stackPointer - 2);
+        if (i < 0 || i >= table.size()) {
+            enterErrorBranch();
+            throw WasmException.create(Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
+        }
+        table.set(i, value);
+    }
+
+    private void table_size(WasmContext context, VirtualFrame frame, int stackPointer, int index) {
+        final WasmTable table = context.tables().table(instance.tableAddress(index));
+        pushInt(frame, stackPointer, table.size());
+    }
+
+    @TruffleBoundary
+    private int table_grow(WasmContext context, int length, Object value, int index) {
+        final WasmTable table = context.tables().table(instance.tableAddress(index));
+        return table.grow(length, value);
+    }
+
+    @TruffleBoundary
+    private void table_copy(WasmContext context, int length, int source, int destination, int sourceTableIndex, int destinationTableIndex) {
+        final WasmTable sourceTable = context.tables().table(instance.tableAddress(sourceTableIndex));
+        final WasmTable destinationTable = context.tables().table(instance.tableAddress(destinationTableIndex));
+        if (checkOutOfBounds(source, length, sourceTable.size()) || checkOutOfBounds(destination, length, destinationTable.size())) {
+            enterErrorBranch();
+            throw WasmException.create(Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
+        }
+        if (length == 0) {
+            return;
+        }
+        destinationTable.copyFrom(sourceTable, source, destination, length);
+    }
+
+    @TruffleBoundary
+    private void table_fill(WasmContext context, int length, Object value, int offset, int index) {
+        final WasmTable table = context.tables().table(instance.tableAddress(index));
+        if (checkOutOfBounds(offset, length, table.size())) {
+            enterErrorBranch();
+            throw WasmException.create(Failure.OUT_OF_BOUNDS_TABLE_ACCESS);
+        }
+        if (length == 0) {
+            return;
+        }
+        table.fill(offset, length, value);
+    }
+
+    @TruffleBoundary
+    private void memory_init(int length, int source, int destination, int dataIndex) {
+        final WasmMemory memory = instance.memory();
+        final byte[] dataInstance = instance.dataInstance(dataIndex);
+        final int dataLength;
+        if (dataInstance == null) {
+            dataLength = 0;
+        } else {
+            dataLength = dataInstance.length;
+        }
+        if (checkOutOfBounds(source, length, dataLength) || checkOutOfBounds(destination, length, memory.byteSize())) {
+            enterErrorBranch();
+            throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+        }
+        if (length == 0) {
+            return;
+        }
+        memory.initialize(dataInstance, source, destination, length);
+    }
+
+    @TruffleBoundary
+    private void memory_fill(int length, int value, int offset) {
+        final WasmMemory memory = instance.memory();
+        if (checkOutOfBounds(offset, length, memory.byteSize())) {
+            enterErrorBranch();
+            throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+        }
+        if (length == 0) {
+            return;
+        }
+        memory.fill(offset, length, (byte) value);
+    }
+
+    @TruffleBoundary
+    private void memory_copy(int length, int source, int destination) {
+        final WasmMemory memory = instance.memory();
+        if (checkOutOfBounds(source, length, memory.byteSize()) || checkOutOfBounds(destination, length, memory.byteSize())) {
+            enterErrorBranch();
+            throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+        }
+        if (length == 0) {
+            return;
+        }
+        memory.copyFrom(memory, source, destination, length);
+    }
+
     // Checkstyle: resume method name check
+
+    private static boolean checkOutOfBounds(int offset, int length, long size) {
+        return offset < 0 || length < 0 || offset + length < 0 || offset + length > size;
+    }
+
+    private static boolean checkOutOfBounds(int offset, int length, int size) {
+        return offset < 0 || length < 0 || offset + length < 0 || offset + length > size;
+    }
 
     @TruffleBoundary
     public void resolveCallNode(int callNodeIndex) {
@@ -2778,6 +3312,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case WasmType.F64_TYPE:
                     args[i] = popDouble(frame, stackPointer);
                     break;
+                case WasmType.FUNCREF_TYPE:
+                case WasmType.EXTERNREF_TYPE:
+                    args[i] = popReference(frame, stackPointer);
+                    break;
                 default: {
                     throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown type: %d", type);
                 }
@@ -2795,6 +3333,30 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
      * @param targetStackPointer The stack pointer of the target block.
      * @param targetResultCount The result value count of the target block.
      */
+    @ExplodeLoop
+    private static void unwindPrimitiveStack(VirtualFrame frame, int stackPointer, int targetStackPointer, int targetResultCount) {
+        CompilerAsserts.partialEvaluationConstant(stackPointer);
+        CompilerAsserts.partialEvaluationConstant(targetResultCount);
+        for (int i = 0; i < targetResultCount; ++i) {
+            WasmFrame.copyPrimitive(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
+        }
+        for (int i = targetStackPointer + targetResultCount; i < stackPointer; ++i) {
+            dropPrimitive(frame, i);
+        }
+    }
+
+    @ExplodeLoop
+    private static void unwindReferenceStack(VirtualFrame frame, int stackPointer, int targetStackPointer, int targetResultCount) {
+        CompilerAsserts.partialEvaluationConstant(stackPointer);
+        CompilerAsserts.partialEvaluationConstant(targetResultCount);
+        for (int i = 0; i < targetResultCount; ++i) {
+            WasmFrame.copyReference(frame, stackPointer + i - targetResultCount, targetStackPointer + i);
+        }
+        for (int i = targetStackPointer + targetResultCount; i < stackPointer; ++i) {
+            dropReference(frame, i);
+        }
+    }
+
     @ExplodeLoop
     private static void unwindStack(VirtualFrame frame, int stackPointer, int targetStackPointer, int targetResultCount) {
         CompilerAsserts.partialEvaluationConstant(stackPointer);
@@ -2821,6 +3383,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     private static long signedLongConstant(byte[] data, int offset) {
         return BinaryStreamParser.peekSignedInt64(data, offset, false);
+    }
+
+    private static int intOffsetDelta(byte[] data, int offset) {
+        return BinaryStreamParser.rawPeekLeb128IntLength(data, offset);
     }
 
     private static int offsetDelta(byte[] data, int offset) {
@@ -2907,7 +3473,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     /**
      * Extracts the multi value from the multi-value stack of the context or an external source. The
      * result values are put onto the value stack.
-     * 
+     *
      * @param frame The current frame.
      * @param stackPointer The current stack pointer.
      * @param result The result of the function call.
@@ -2917,8 +3483,9 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     @ExplodeLoop
     private void extractMultiValueResult(VirtualFrame frame, int stackPointer, Object result, int resultCount, int functionTypeIndex) {
         CompilerAsserts.partialEvaluationConstant(resultCount);
-        if (result == WasmMultiValueResult.INSTANCE) {
-            final long[] multiValueStack = instance.context().multiValueStack();
+        if (result == WasmConstant.MULTI_VALUE) {
+            final long[] multiValueStack = instance.context().primitiveMultiValueStack();
+            final Object[] referenceMultiValueStack = instance.context().referenceMultiValueStack();
             for (int i = 0; i < resultCount; i++) {
                 final byte resultType = instance.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
                 CompilerAsserts.partialEvaluationConstant(resultType);
@@ -2934,6 +3501,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         break;
                     case WasmType.F64_TYPE:
                         pushDouble(frame, stackPointer + i, Double.longBitsToDouble(multiValueStack[i]));
+                        break;
+                    case WasmType.FUNCREF_TYPE:
+                    case WasmType.EXTERNREF_TYPE:
+                        pushReference(frame, stackPointer + i, referenceMultiValueStack[i]);
                         break;
                     default:
                         enterErrorBranch();
@@ -2968,6 +3539,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             break;
                         case WasmType.F64_TYPE:
                             pushDouble(frame, stackPointer + i, lib.asDouble(value));
+                            break;
+                        case WasmType.FUNCREF_TYPE:
+                        case WasmType.EXTERNREF_TYPE:
+                            pushReference(frame, stackPointer + i, value);
                             break;
                         default:
                             enterErrorBranch();

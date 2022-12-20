@@ -1,5 +1,5 @@
 {
-  local common = import '../../common.jsonnet',
+  local common = import '../../ci/ci_common/common.jsonnet',
 
   local regex_common = {
     setup+: [
@@ -38,7 +38,6 @@
       common.linux_amd64  + jdk + regex_downstream_js,
       common.darwin_amd64 + jdk + regex_gate_lite,
     ] for jdk in [
-      common.oraclejdk11,
       common.oraclejdk17,
     ]
   ]),

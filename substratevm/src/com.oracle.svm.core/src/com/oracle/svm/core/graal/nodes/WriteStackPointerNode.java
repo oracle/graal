@@ -50,6 +50,10 @@ public class WriteStackPointerNode extends FixedWithNextNode implements LIRLower
         this.value = value;
     }
 
+    public ValueNode getValue() {
+        return value;
+    }
+
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         LIRGeneratorTool tool = gen.getLIRGeneratorTool();

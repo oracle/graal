@@ -104,10 +104,12 @@ int strcmp(const char *s1, const char *s2) {
     }
 }
 
+#if !defined(_WIN32)
 char *strdup(const char *s) {
     int length = strlen(s);
     return strcpy((char *) malloc(length + 1), s);
 }
+#endif
 
 char *strndup(const char *s, size_t size) {
     int length = strnlen(s, size);

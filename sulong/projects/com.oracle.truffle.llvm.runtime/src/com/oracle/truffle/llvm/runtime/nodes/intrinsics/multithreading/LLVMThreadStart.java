@@ -60,6 +60,7 @@ public final class LLVMThreadStart {
         }
 
         @Override
+        @SuppressWarnings("deprecation") // GR-41711: we still need Thread.getId() for JDK17 support
         public void run() {
             final LLVMPThreadContext pThreadContext = context.getpThreadContext();
 

@@ -73,10 +73,6 @@ public final class StubForeignCallNode extends FixedWithNextNode implements LIRL
         this.descriptor = descriptor;
     }
 
-    public ForeignCallDescriptor getDescriptor() {
-        return descriptor;
-    }
-
     @Override
     public LocationIdentity[] getKilledLocationIdentities() {
         LocationIdentity[] killedLocations = descriptor.getKilledLocations();

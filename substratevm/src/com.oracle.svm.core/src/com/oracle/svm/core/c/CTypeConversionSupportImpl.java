@@ -40,8 +40,8 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
 
 @AutomaticallyRegisteredImageSingleton(CTypeConversionSupport.class)
 class CTypeConversionSupportImpl implements CTypeConversionSupport {
@@ -118,23 +118,31 @@ class CTypeConversionSupportImpl implements CTypeConversionSupport {
 
     @Override
     public UnsignedWord toCString(CharSequence javaString, Charset charset, CCharPointer buffer, UnsignedWord bufferSize) {
-        if (javaString == null || bufferSize.equal(0)) {
-            return WordFactory.zero();
+        if (javaString == null) {
+            throw new IllegalArgumentException("Provided Java string is null");
         }
 
         byte[] baseString = javaString.toString().getBytes(charset);
+        long capacity = bufferSize.rawValue();
 
-        /*
-         * The array length is always an int, so the truncation of the buffer size to int can never
-         * overflow.
-         */
-        int len = (int) Math.min(baseString.length, bufferSize.rawValue());
+        if (buffer.isNull()) {
+            if (capacity != 0) {
+                throw new IllegalArgumentException("Non zero buffer size passed along with nullptr");
+            }
+            return WordFactory.unsigned(baseString.length);
 
-        for (int i = 0; i < len; i++) {
+        } else if (capacity < baseString.length + 1) {
+            throw new IllegalArgumentException("Provided buffer is too small to hold 0 terminated java string.");
+        }
+
+        for (int i = 0; i < baseString.length; i++) {
             buffer.write(i, baseString[i]);
         }
 
-        return WordFactory.unsigned(len);
+        // write null terminator at end
+        buffer.write(baseString.length, (byte) 0);
+
+        return WordFactory.unsigned(baseString.length);
     }
 
     @Override

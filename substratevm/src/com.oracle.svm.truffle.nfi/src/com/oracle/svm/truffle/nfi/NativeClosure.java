@@ -229,7 +229,7 @@ final class NativeClosure {
             NativeTruffleEnv env = envArgPtr.read();
             CEntryPointActions.enter(env.isolateThread());
         } else {
-            CEntryPointActions.enterIsolate(user.isolate());
+            CEntryPointActions.enterByIsolate(user.isolate());
         }
 
         ErrnoMirror.errnoMirror.getAddress().write(errno);
@@ -281,7 +281,7 @@ final class NativeClosure {
             NativeTruffleEnv env = envArgPtr.read();
             CEntryPointActions.enter(env.isolateThread());
         } else {
-            CEntryPointActions.enterIsolate(user.isolate());
+            CEntryPointActions.enterByIsolate(user.isolate());
         }
 
         ErrnoMirror.errnoMirror.getAddress().write(errno);
@@ -314,7 +314,7 @@ final class NativeClosure {
             NativeTruffleEnv env = envArgPtr.read();
             CEntryPointActions.enter(env.isolateThread());
         } else {
-            CEntryPointActions.enterIsolate(user.isolate());
+            CEntryPointActions.enterByIsolate(user.isolate());
         }
 
         ErrnoMirror.errnoMirror.getAddress().write(errno);
@@ -348,7 +348,7 @@ final class NativeClosure {
             NativeTruffleEnv env = envArgPtr.read();
             CEntryPointActions.enter(env.isolateThread());
         } else {
-            CEntryPointActions.enterIsolate(user.isolate());
+            CEntryPointActions.enterByIsolate(user.isolate());
         }
 
         ErrnoMirror.errnoMirror.getAddress().write(errno);

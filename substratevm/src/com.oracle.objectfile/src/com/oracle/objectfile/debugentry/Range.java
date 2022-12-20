@@ -67,10 +67,10 @@ import java.util.List;
  * represented by the parent call range at level N.
  */
 public class Range {
+    private static final DebugLocalInfo[] EMPTY_LOCAL_INFOS = new DebugLocalInfo[0];
     private static final String CLASS_DELIMITER = ".";
     private final MethodEntry methodEntry;
     private final String fullMethodName;
-    private final String fullMethodNameWithParams;
     private final int lo;
     private int hi;
     private final int line;
@@ -153,7 +153,6 @@ public class Range {
         }
         this.methodEntry = methodEntry;
         this.fullMethodName = isTopLevel ? stringTable.uniqueDebugString(constructClassAndMethodName()) : stringTable.uniqueString(constructClassAndMethodName());
-        this.fullMethodNameWithParams = constructClassAndMethodNameWithParams();
         this.lo = lo;
         this.hi = hi;
         this.line = line;
@@ -227,7 +226,7 @@ public class Range {
     }
 
     public String getFullMethodNameWithParams() {
-        return fullMethodNameWithParams;
+        return constructClassAndMethodNameWithParams();
     }
 
     public boolean isDeoptTarget() {
@@ -332,7 +331,7 @@ public class Range {
     public void setLocalValueInfo(DebugLocalValueInfo[] localValueInfos) {
         int len = localValueInfos.length;
         this.localValueInfos = localValueInfos;
-        this.localInfos = new DebugLocalInfo[len];
+        this.localInfos = (len > 0 ? new DebugLocalInfo[len] : EMPTY_LOCAL_INFOS);
         // set up mapping from local values to local variables
         for (int i = 0; i < len; i++) {
             localInfos[i] = methodEntry.recordLocal(localValueInfos[i]);

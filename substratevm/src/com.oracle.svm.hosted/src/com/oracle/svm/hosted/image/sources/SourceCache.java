@@ -40,9 +40,8 @@ import java.util.HashMap;
 import java.util.List;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -549,7 +548,7 @@ class SourceCacheFeature implements InternalFeature {
         }
         // also add any necessary source path entries
         if (SubstrateOptions.DebugInfoSourceSearchPath.getValue() != null) {
-            for (String searchPathEntry : OptionUtils.flatten(",", SubstrateOptions.DebugInfoSourceSearchPath.getValue())) {
+            for (String searchPathEntry : SubstrateOptions.DebugInfoSourceSearchPath.getValue().values()) {
                 SourceCache.addSourcePathEntry(searchPathEntry);
             }
         }
