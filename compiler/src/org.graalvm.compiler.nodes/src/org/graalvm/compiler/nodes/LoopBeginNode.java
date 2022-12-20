@@ -134,6 +134,8 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
 
     @OptionalInput(InputType.Guard) GuardingNode overflowGuard;
 
+    @OptionalInput(InputType.Guard) GuardingNode interIterationAliasingGuard;
+
     public static final CounterKey overflowSpeculationTaken = DebugContext.counter("CountedLoops_OverflowSpeculation_Taken");
     public static final CounterKey overflowSpeculationNotTaken = DebugContext.counter("CountedLoops_OverflowSpeculation_NotTaken");
 
@@ -464,6 +466,15 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     public void setOverflowGuard(GuardingNode overflowGuard) {
         updateUsagesInterface(this.overflowGuard, overflowGuard);
         this.overflowGuard = overflowGuard;
+    }
+
+    public GuardingNode getInterIterationAliasingGuard() {
+        return interIterationAliasingGuard;
+    }
+
+    public void setInterIterationAliasingGuard(GuardingNode guard) {
+        updateUsagesInterface(this.interIterationAliasingGuard, guard);
+        this.interIterationAliasingGuard = guard;
     }
 
     private static final int NO_INCREMENT = Integer.MIN_VALUE;
