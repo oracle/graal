@@ -326,6 +326,10 @@ public final class PythonRegexLexer extends RegexLexer {
         }
     }
 
+    private RegexSyntaxException handleBadCharacterInGroupName(ParseGroupNameResult result) {
+        return syntaxErrorAtRel(PyErrorMessages.badCharacterInGroupName(result.groupName), result.groupName.length() + 1);
+    }
+
     @Override
     protected RegexSyntaxException handleBoundedQuantifierOutOfOrder() {
         return syntaxErrorAtAbs(PyErrorMessages.MIN_REPEAT_GREATER_THAN_MAX_REPEAT, getLastTokenPosition() + 1);
@@ -371,16 +375,6 @@ public final class PythonRegexLexer extends RegexLexer {
     @Override
     protected RegexSyntaxException handleInvalidGroupBeginQ() {
         return syntaxError(PyErrorMessages.unknownExtensionQ(curChar()));
-    }
-
-    @Override
-    protected void handleInvalidGroupNamePart(String groupName) {
-        throw syntaxErrorAtRel(PyErrorMessages.badCharacterInGroupName(groupName), groupName.length() + 1);
-    }
-
-    @Override
-    protected void handleInvalidGroupNameStart(String groupName) {
-        throw syntaxErrorAtRel(PyErrorMessages.badCharacterInGroupName(groupName), groupName.length() + 1);
     }
 
     @Override
@@ -519,9 +513,21 @@ public final class PythonRegexLexer extends RegexLexer {
                 switch (ch2) {
                     case '<': {
                         int pos = position;
-                        registerNamedCaptureGroup(parseGroupName('>', () -> {
-                            throw syntaxErrorAtAbs(PyErrorMessages.UNTERMINATED_NAME_ANGLE_BRACKET, pos);
-                        }));
+                        ParseGroupNameResult result = parseGroupName('>');
+                        switch (result.state) {
+                            case empty:
+                                throw syntaxErrorHere(PyErrorMessages.MISSING_GROUP_NAME);
+                            case unterminated:
+                                throw syntaxErrorAtAbs(PyErrorMessages.UNTERMINATED_NAME_ANGLE_BRACKET, pos);
+                            case invalidStart:
+                            case invalidRest:
+                                throw handleBadCharacterInGroupName(result);
+                            case valid:
+                                registerNamedCaptureGroup(result.groupName);
+                                break;
+                            default:
+                                throw CompilerDirectives.shouldNotReachHere();
+                        }
                         return Token.createCaptureGroupBegin();
                     }
                     case '=': {
@@ -560,15 +566,34 @@ public final class PythonRegexLexer extends RegexLexer {
      * Parses a conditional backreference, assuming that the prefix '(?(' was already parsed.
      */
     private Token parseConditionalBackreference() {
-        String groupId = parseGroupName(')', () -> {
-            throw syntaxErrorHere(PyErrorMessages.UNTERMINATED_NAME);
-        });
         final int groupNumber;
-        // group referenced by name
-        if (namedCaptureGroups != null && namedCaptureGroups.containsKey(groupId)) {
-            groupNumber = namedCaptureGroups.get(groupId);
-        } else {
-            throw syntaxError(PyErrorMessages.unknownGroupName(groupId));
+        ParseGroupNameResult result = parseGroupName(')');
+        switch (result.state) {
+            case empty:
+                throw syntaxErrorHere(PyErrorMessages.MISSING_GROUP_NAME);
+            case unterminated:
+                throw syntaxErrorHere(PyErrorMessages.UNTERMINATED_NAME);
+            case invalidStart:
+            case invalidRest:
+                if (isDecimalDigit(result.groupName.charAt(0))) {
+                    try {
+                        groupNumber = Integer.parseInt(result.groupName);
+                        break;
+                    } catch (NumberFormatException e) {
+                        // fallthrough
+                    }
+                }
+                throw handleBadCharacterInGroupName(result);
+            case valid:
+                // group referenced by name
+                if (namedCaptureGroups != null && namedCaptureGroups.containsKey(result.groupName)) {
+                    groupNumber = namedCaptureGroups.get(result.groupName);
+                } else {
+                    throw syntaxError(PyErrorMessages.unknownGroupName(result.groupName));
+                }
+                break;
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
         }
         return Token.createConditionalBackReference(groupNumber);
     }
@@ -689,13 +714,23 @@ public final class PythonRegexLexer extends RegexLexer {
      * Parses a named backreference, assuming that the prefix '(?P=' was already parsed.
      */
     private Token parseNamedBackReference() {
-        String groupName = parseGroupName(')', () -> {
-            throw syntaxError(PyErrorMessages.UNTERMINATED_NAME);
-        });
-        if (namedCaptureGroups != null && namedCaptureGroups.containsKey(groupName)) {
-            return Token.createBackReference(namedCaptureGroups.get(groupName));
-        } else {
-            throw syntaxErrorAtRel(PyErrorMessages.unknownGroupName(groupName), groupName.length() + 1);
+        ParseGroupNameResult result = parseGroupName(')');
+        switch (result.state) {
+            case empty:
+                throw syntaxErrorHere(PyErrorMessages.MISSING_GROUP_NAME);
+            case unterminated:
+                throw syntaxError(PyErrorMessages.UNTERMINATED_NAME);
+            case invalidStart:
+            case invalidRest:
+                throw handleBadCharacterInGroupName(result);
+            case valid:
+                if (namedCaptureGroups != null && namedCaptureGroups.containsKey(result.groupName)) {
+                    return Token.createBackReference(namedCaptureGroups.get(result.groupName));
+                } else {
+                    throw syntaxErrorAtRel(PyErrorMessages.unknownGroupName(result.groupName), result.groupName.length() + 1);
+                }
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
         }
     }
 

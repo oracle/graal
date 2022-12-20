@@ -233,16 +233,6 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected void handleInvalidGroupNamePart(String groupName) {
-        throw syntaxError(JsErrorMessages.INVALID_GROUP_NAME_PART);
-    }
-
-    @Override
-    protected void handleInvalidGroupNameStart(String groupName) {
-        throw syntaxError(JsErrorMessages.INVALID_GROUP_NAME_START);
-    }
-
-    @Override
     protected void handleOctalOutOfRange() {
     }
 
@@ -283,10 +273,6 @@ public final class JSRegexLexer extends RegexLexer {
         }
     }
 
-    private void handleUnterminatedGroupName() {
-        throw syntaxError(JsErrorMessages.UNTERMINATED_GROUP_NAME);
-    }
-
     @Override
     protected int parseCodePointInGroupName() throws RegexSyntaxException {
         if (consumingLookahead("\\u")) {
@@ -301,6 +287,24 @@ public final class JSRegexLexer extends RegexLexer {
         return Character.isHighSurrogate(c) ? finishSurrogatePair(c) : c;
     }
 
+    private String jsParseGroupName() {
+        ParseGroupNameResult result = parseGroupName('>');
+        switch (result.state) {
+            case empty:
+                throw handleEmptyGroupName();
+            case unterminated:
+                throw syntaxError(JsErrorMessages.UNTERMINATED_GROUP_NAME);
+            case invalidStart:
+                throw syntaxError(JsErrorMessages.INVALID_GROUP_NAME_START);
+            case invalidRest:
+                throw syntaxError(JsErrorMessages.INVALID_GROUP_NAME_PART);
+            case valid:
+                return result.groupName;
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
     @Override
     protected Token parseCustomEscape(char c) {
         if (c == 'k') {
@@ -311,7 +315,7 @@ public final class JSRegexLexer extends RegexLexer {
                 if (consumeChar() != '<') {
                     throw syntaxError(JsErrorMessages.MISSING_GROUP_NAME);
                 }
-                String groupName = parseGroupName('>', this::handleUnterminatedGroupName);
+                String groupName = jsParseGroupName();
                 // backward reference
                 if (namedCaptureGroups != null && namedCaptureGroups.containsKey(groupName)) {
                     return Token.createBackReference(namedCaptureGroups.get(groupName));
@@ -392,7 +396,7 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected Token parseGroupLt() {
-        registerNamedCaptureGroup(parseGroupName('>', this::handleUnterminatedGroupName));
+        registerNamedCaptureGroup(jsParseGroupName());
         return Token.createCaptureGroupBegin();
     }
 

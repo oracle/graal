@@ -210,16 +210,6 @@ public abstract class RegexLexer {
     protected abstract RegexSyntaxException handleInvalidGroupBeginQ();
 
     /**
-     * Handle group name starting with invalid character.
-     */
-    protected abstract void handleInvalidGroupNameStart(String groupName);
-
-    /**
-     * Handle group name continuing with invalid character.
-     */
-    protected abstract void handleInvalidGroupNamePart(String groupName);
-
-    /**
      * Handle octal values larger than 255.
      */
     protected abstract void handleOctalOutOfRange();
@@ -701,16 +691,34 @@ public abstract class RegexLexer {
         }
     }
 
+    protected enum ParseGroupNameResultState {
+        empty,
+        unterminated,
+        invalidStart,
+        invalidRest,
+        valid;
+    }
+
+    public static final class ParseGroupNameResult {
+        public final ParseGroupNameResultState state;
+        public final String groupName;
+
+        ParseGroupNameResult(ParseGroupNameResultState state, String groupName) {
+            this.state = state;
+            this.groupName = groupName;
+        }
+    }
+
     /**
      * Parse a {@code GroupName}, i.e. {@code <RegExpIdentifierName>}, assuming that the opening
      * {@code <} bracket was already read.
      *
      * @return the StringValue of the {@code RegExpIdentifierName}
      */
-    protected String parseGroupName(char terminator, ErrorHandler unterminatedGroupNameHandler) throws RegexSyntaxException {
+    protected ParseGroupNameResult parseGroupName(char terminator) throws RegexSyntaxException {
         StringBuilder sb = new StringBuilder();
         if (atEnd() || curChar() == terminator) {
-            throw handleEmptyGroupName();
+            return new ParseGroupNameResult(ParseGroupNameResultState.empty, "");
         }
         int codePoint = parseCodePointInGroupName();
         boolean validFirstChar = getIdStart().contains(codePoint);
@@ -721,17 +729,17 @@ public abstract class RegexLexer {
             validRest &= getIdContinue().contains(codePoint);
             sb.appendCodePoint(codePoint);
         }
-        if (!consumingLookahead(terminator)) {
-            unterminatedGroupNameHandler.run();
-        }
         String groupName = sb.toString();
+        if (!consumingLookahead(terminator)) {
+            return new ParseGroupNameResult(ParseGroupNameResultState.unterminated, groupName);
+        }
         if (!validFirstChar) {
-            handleInvalidGroupNameStart(groupName);
+            return new ParseGroupNameResult(ParseGroupNameResultState.invalidStart, groupName);
         }
         if (!validRest) {
-            handleInvalidGroupNamePart(groupName);
+            return new ParseGroupNameResult(ParseGroupNameResultState.invalidRest, groupName);
         }
-        return groupName;
+        return new ParseGroupNameResult(ParseGroupNameResultState.valid, groupName);
     }
 
     private Token parseQuantifier(char c) throws RegexSyntaxException {
