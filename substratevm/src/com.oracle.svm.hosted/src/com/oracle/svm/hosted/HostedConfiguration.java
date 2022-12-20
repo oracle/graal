@@ -172,8 +172,7 @@ public class HostedConfiguration {
 
     public void findAllFieldsForLayout(HostedUniverse universe, @SuppressWarnings("unused") HostedMetaAccess metaAccess,
                     @SuppressWarnings("unused") Map<AnalysisField, HostedField> universeFields,
-                    ArrayList<HostedField> rawFields,
-                    ArrayList<HostedField> orderedFields, HostedInstanceClass clazz) {
+                    ArrayList<HostedField> rawFields, ArrayList<HostedField> allFields, HostedInstanceClass clazz) {
         for (AnalysisField aField : clazz.getWrapped().getInstanceFields(false)) {
             HostedField hField = universe.lookup(aField);
 
@@ -184,9 +183,10 @@ public class HostedConfiguration {
                      * The array or bitset field of a hybrid is not materialized, so it needs no
                      * field offset.
                      */
-                    orderedFields.add(hField);
+                    allFields.add(hField);
                 } else if (hField.isAccessed()) {
                     rawFields.add(hField);
+                    allFields.add(hField);
                 }
             }
         }
