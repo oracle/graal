@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package com.oracle.graal.pointsto.util;
 
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -73,61 +72,10 @@ public class AtomicUtils {
     }
 
     /**
-     * Atomically set the field to 1 if the current value is 0. If successful, execute the task.
-     *
-     * Performing a read before the compare and set is more cache friendly.
-     *
-     * @return {@code true} if successful.
-     */
-    public static <T> boolean atomicMarkAndRun(T holder, AtomicIntegerFieldUpdater<T> updater, Runnable task) {
-        if (updater.get(holder) == 0) {
-            boolean firstAttempt = updater.compareAndSet(holder, 0, 1);
-            if (firstAttempt) {
-                task.run();
-            }
-            return firstAttempt;
-        }
-        return false;
-    }
-
-    /**
      * Return true if the field is set to 1, false otherwise.
      */
     public static <T> boolean isSet(T holder, AtomicIntegerFieldUpdater<T> updater) {
         return updater.get(holder) == 1;
-    }
-
-    /**
-     * Atomically sets the value to {@code true} if the current value {@code == false}.
-     *
-     * Performing a read before the compare and set is more cache friendly.
-     *
-     * @return {@code true} if successful.
-     */
-    public static boolean atomicMark(AtomicBoolean flag) {
-        if (!flag.get()) {
-            return flag.compareAndSet(false, true);
-        }
-        return false;
-    }
-
-    /**
-     * Atomically sets the value to {@code true} if the current value {@code == false}. If
-     * successful, execute the task.
-     *
-     * Performing a read before the compare and set is more cache friendly.
-     *
-     * @return {@code true} if successful.
-     */
-    public static boolean atomicMarkAndRun(AtomicBoolean flag, Runnable task) {
-        if (!flag.get()) {
-            boolean firstAttempt = flag.compareAndSet(false, true);
-            if (firstAttempt) {
-                task.run();
-            }
-            return firstAttempt;
-        }
-        return false;
     }
 
     /**
