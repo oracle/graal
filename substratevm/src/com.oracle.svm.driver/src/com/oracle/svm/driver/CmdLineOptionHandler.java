@@ -151,9 +151,8 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
         }
 
-        if (headArg.startsWith(ReplaySupport.REPLAY_OPTION)) {
-            String replayArg = args.poll();
-            nativeImage.replaySupport = ReplaySupport.create(nativeImage, replayArg, args);
+        if (headArg.startsWith(BundleSupport.BUNDLE_OPTION)) {
+            nativeImage.bundleSupport = BundleSupport.create(nativeImage, args.poll(), args);
             return true;
         }
 

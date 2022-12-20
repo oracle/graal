@@ -267,11 +267,11 @@ public class NativeImage {
 
     private long imageBuilderPid = -1;
 
-    ReplaySupport replaySupport;
+    BundleSupport bundleSupport;
 
     void replaySupportShutdown() {
-        if (replaySupport != null) {
-            replaySupport.shutdown();
+        if (bundleSupport != null) {
+            bundleSupport.shutdown();
         }
     }
 
@@ -752,7 +752,7 @@ public class NativeImage {
 
     void addMacroOptionRoot(Path configDir) {
         Path origRootDir = canonicalize(configDir);
-        Path rootDir = replaySupport != null ? replaySupport.substituteClassPath(origRootDir) : origRootDir;
+        Path rootDir = bundleSupport != null ? bundleSupport.substituteClassPath(origRootDir) : origRootDir;
         optionRegistry.addMacroOptionRoot(rootDir);
     }
 
@@ -1332,7 +1332,7 @@ public class NativeImage {
             arguments.addAll(Arrays.asList(SubstrateOptions.WATCHPID_PREFIX, "" + ProcessProperties.getProcessID()));
         }
 
-        boolean useReplay = replaySupport != null;
+        boolean useReplay = bundleSupport != null;
         if (useReplay) {
             Path imageNamePath = Path.of(imageName);
             if (imageNamePath.getParent() != null) {
@@ -1345,12 +1345,12 @@ public class NativeImage {
                 throw NativeImage.showError("Replay-bundle support can only be used with default image output directory. Ensure '" + oHPath + "<value>' is not explicitly set.");
             }
         }
-        Function<Path, Path> substituteAuxiliaryPath = useReplay ? replaySupport::substituteAuxiliaryPath : Function.identity();
+        Function<Path, Path> substituteAuxiliaryPath = useReplay ? bundleSupport::substituteAuxiliaryPath : Function.identity();
         Function<String, String> imageArgsTransformer = rawArg -> apiOptionHandler.transformBuilderArgument(rawArg, substituteAuxiliaryPath);
         List<String> finalImageArgs = imageArgs.stream().map(imageArgsTransformer).collect(Collectors.toList());
-        Function<Path, Path> substituteClassPath = useReplay ? replaySupport::substituteClassPath : Function.identity();
+        Function<Path, Path> substituteClassPath = useReplay ? bundleSupport::substituteClassPath : Function.identity();
         List<Path> finalImageClassPath = imagecp.stream().map(substituteClassPath).collect(Collectors.toList());
-        Function<Path, Path> substituteModulePath = useReplay ? replaySupport::substituteModulePath : Function.identity();
+        Function<Path, Path> substituteModulePath = useReplay ? bundleSupport::substituteModulePath : Function.identity();
         List<Path> finalImageModulePath = imagemp.stream().map(substituteModulePath).collect(Collectors.toList());
         List<String> finalImageBuilderArgs = createImageBuilderArgs(finalImageArgs, finalImageClassPath, finalImageModulePath);
 
@@ -1372,7 +1372,7 @@ public class NativeImage {
             showVerboseMessage(isVerbose() || dryRun, "]");
         }
 
-        if (dryRun || useReplay && replaySupport.status == ReplaySupport.ReplayStatus.prepare) {
+        if (dryRun || useReplay && bundleSupport.status == BundleSupport.BundleStatus.prepare) {
             return ExitStatus.OK.getValue();
         }
 
@@ -1494,15 +1494,15 @@ public class NativeImage {
     }
 
     Path canonicalize(Path path, boolean strict) {
-        if (replaySupport != null) {
-            Path prev = replaySupport.restoreCanonicalization(path);
+        if (bundleSupport != null) {
+            Path prev = bundleSupport.restoreCanonicalization(path);
             if (prev != null) {
                 return prev;
             }
         }
         Path absolutePath = path.isAbsolute() ? path : config.getWorkingDirectory().resolve(path);
         if (!strict) {
-            return replaySupport != null ? replaySupport.recordCanonicalization(path, absolutePath) : absolutePath;
+            return bundleSupport != null ? bundleSupport.recordCanonicalization(path, absolutePath) : absolutePath;
         }
         boolean hasWildcard = absolutePath.endsWith(ClasspathUtils.cpWildcardSubstitute);
         if (hasWildcard) {
@@ -1519,7 +1519,7 @@ public class NativeImage {
                 }
                 realPath = realPath.resolve(ClasspathUtils.cpWildcardSubstitute);
             }
-            return replaySupport != null ? replaySupport.recordCanonicalization(path, realPath) : realPath;
+            return bundleSupport != null ? bundleSupport.recordCanonicalization(path, realPath) : realPath;
         } catch (IOException e) {
             throw showError("Invalid Path entry " + ClasspathUtils.classpathToString(path), e);
         }
@@ -1635,7 +1635,7 @@ public class NativeImage {
             return;
         }
 
-        Path mpEntryFinal = replaySupport != null ? replaySupport.substituteModulePath(mpEntry) : mpEntry;
+        Path mpEntryFinal = bundleSupport != null ? bundleSupport.substituteModulePath(mpEntry) : mpEntry;
         imageModulePath.add(mpEntryFinal);
         processClasspathNativeImageMetaInf(mpEntryFinal);
     }
@@ -1674,7 +1674,7 @@ public class NativeImage {
             return;
         }
 
-        Path classpathEntryFinal = replaySupport != null ? replaySupport.substituteModulePath(classpathEntry) : classpathEntry;
+        Path classpathEntryFinal = bundleSupport != null ? bundleSupport.substituteModulePath(classpathEntry) : classpathEntry;
         if (!imageClasspath.contains(classpathEntryFinal) && !customImageClasspath.contains(classpathEntryFinal)) {
             destination.add(classpathEntryFinal);
             processManifestMainAttributes(classpathEntryFinal, (jarFilePath, attributes) -> handleClassPathAttribute(destination, jarFilePath, attributes));

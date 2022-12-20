@@ -376,7 +376,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         return null;
     }
 
-    String transformBuilderArgument(String builderArgument, Function<Path, Path> replayFunction) {
+    String transformBuilderArgument(String builderArgument, Function<Path, Path> transformFunction) {
         String[] nameAndValue = StringUtil.split(builderArgument, "=", 2);
         if (nameAndValue.length != 2) {
             return builderArgument;
@@ -400,12 +400,12 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             String transformedOptionValue = rawEntries.stream()
                             .filter(s -> !s.isEmpty())
                             .map(this::tryCanonicalize)
-                            .map(replayFunction)
+                            .map(transformFunction)
                             .map(Path::toString)
                             .collect(Collectors.joining(pathOptionSeparator));
             return optionName + "=" + transformedOptionValue;
-        } catch (ReplaySupport.ReplayPathSubstitutionError error) {
-            throw NativeImage.showError("Failed to prepare path entry '" + error.origPath + "' of option " + optionName + " from " + optionOrigin + " for replay bundle inclusion.", error);
+        } catch (BundleSupport.BundlePathSubstitutionError error) {
+            throw NativeImage.showError("Failed to prepare path entry '" + error.origPath + "' of option " + optionName + " from " + optionOrigin + " for bundle inclusion.", error);
         }
     }
 

@@ -189,7 +189,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             args.poll();
             headArg = headArg.substring(1);
             Path origArgFile = Paths.get(headArg);
-            Path argFile = nativeImage.replaySupport != null ? nativeImage.replaySupport.substituteAuxiliaryPath(origArgFile) : origArgFile;
+            Path argFile = nativeImage.bundleSupport != null ? nativeImage.bundleSupport.substituteAuxiliaryPath(origArgFile) : origArgFile;
             NativeImage.NativeImageArgsProcessor processor = nativeImage.new NativeImageArgsProcessor(OptionOrigin.argFilePrefix + argFile);
             readArgFile(argFile).forEach(processor::accept);
             List<String> leftoverArgs = processor.apply(false);
@@ -430,7 +430,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             String origin = "manifest from " + jarFilePath.toUri();
             nativeImage.addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(nativeImage.oHName + jarFileNameBase, origin));
         }
-        Path finalFilePath = nativeImage.replaySupport != null ? nativeImage.replaySupport.substituteClassPath(jarFilePath) : jarFilePath;
+        Path finalFilePath = nativeImage.bundleSupport != null ? nativeImage.bundleSupport.substituteClassPath(jarFilePath) : jarFilePath;
         if (!NativeImage.processJarManifestMainAttributes(finalFilePath, nativeImage::handleMainClassAttribute)) {
             NativeImage.showError("No manifest in " + finalFilePath);
         }
