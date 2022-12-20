@@ -346,6 +346,11 @@ public class PythonTests extends RegexTestBase {
     }
 
     @Test
+    public void testInlineGlobalFlags() {
+        test("(?i)b", "", "B", 0, true, 0, 1, -1);
+    }
+
+    @Test
     public void testSyntaxErrors() {
         expectSyntaxError("()\\2", "", "invalid group reference 2", 3);
         expectSyntaxError("()\\378", "", "invalid group reference 37", 3);

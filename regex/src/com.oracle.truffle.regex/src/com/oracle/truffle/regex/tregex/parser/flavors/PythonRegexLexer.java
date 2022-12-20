@@ -196,7 +196,8 @@ public final class PythonRegexLexer extends RegexLexer {
                     advance();
                 }
             } else {
-                if (consumingLookahead("(?")) {
+                assert lookbehind('(');
+                if (consumingLookahead("?")) {
                     int length = count(PythonFlags::isValidFlagChar);
                     if (position + length < pattern.length() && pattern.charAt(position + length) == ')') {
                         for (int i = 0; i < length; i++) {
