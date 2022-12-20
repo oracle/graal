@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -137,16 +136,7 @@ public final class VMErrorReporter {
         }
         pw.println();
         try (DetailsPrinter p = new DetailsPrinter(pw, "Features enabled")) {
-            featureHandler.forEachFeature(featureInstance -> {
-                pw.print(featureInstance.getClass().getTypeName());
-                if (!featureInstance.getRequiredFeatures().isEmpty()) {
-                    pw.print(", ");
-                    pw.print(featureInstance.getRequiredFeatures().stream()
-                                    .map(Class::getTypeName)
-                                    .collect(Collectors.joining(" ", "[", "]")));
-                }
-                pw.println();
-            });
+            featureHandler.dumpAllFeatures(pw);
         }
     }
 
