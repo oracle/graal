@@ -66,7 +66,6 @@ import com.oracle.truffle.espresso.impl.RedefineAddedField;
 import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
-import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefineListener;
 import com.oracle.truffle.espresso.runtime.Attribute;
