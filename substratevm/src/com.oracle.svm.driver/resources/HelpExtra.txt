@@ -16,5 +16,16 @@ Non-standard options help:
     --diagnostics-mode    Enables logging of image-build information to a diagnostics folder.
     --dry-run             output the command line that would be used for building
 
+    --bundle-prepare      create a bundle file (*.nib file) that allows building an image at a
+                          later point from the bundle file alone.
+    --bundle-create       in addition to building a native image a bundle file gets created that
+                          allows rebuilding the image again at a later point from the bundle.
+    --bundle bundle-file
+    or
+    --bundle-apply bundle-file
+                          an image will be built from the given bundle with the exact same
+                          arguments and files that have been passed to native-image originally to
+                          create the bundle.
+
     -V<key>=<value>       provide values for placeholders in native-image.properties files
 
