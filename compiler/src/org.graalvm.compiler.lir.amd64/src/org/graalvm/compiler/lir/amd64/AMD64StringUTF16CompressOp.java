@@ -78,6 +78,8 @@ public final class AMD64StringUTF16CompressOp extends AMD64ComplexVectorOp {
     @Temp({REG}) private Value vtmp4;
     @Temp({REG}) private Value rtmp5;
 
+    @Temp({REG}) private Value[] maskRegisters;
+
     public AMD64StringUTF16CompressOp(LIRGeneratorTool tool, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, int useAVX3Threshold, Value res, Value src, Value dst, Value len) {
         super(TYPE, tool, runtimeCheckedCPUFeatures,
                         supportsAVX512VLBW(tool.target(), runtimeCheckedCPUFeatures) && supports(tool.target(), runtimeCheckedCPUFeatures, CPUFeature.BMI2) ? AVXSize.ZMM : AVXSize.XMM);
@@ -102,6 +104,15 @@ public final class AMD64StringUTF16CompressOp extends AMD64ComplexVectorOp {
         vtmp4 = tool.newVariable(vkind);
 
         rtmp5 = tool.newVariable(LIRKind.value(AMD64Kind.DWORD));
+
+        if (canUseAVX512Variant()) {
+            maskRegisters = new Value[]{
+                            k2.asValue(),
+                            k3.asValue(),
+            };
+        } else {
+            maskRegisters = new Value[0];
+        }
     }
 
     @Override
@@ -118,6 +129,10 @@ public final class AMD64StringUTF16CompressOp extends AMD64ComplexVectorOp {
         Register tmp5 = asRegister(rtmp5);
 
         charArrayCompress(masm, src, dst, len, tmp1, tmp2, tmp3, tmp4, tmp5, res);
+    }
+
+    private boolean canUseAVX512Variant() {
+        return useAVX3Threshold == 0 && supportsAVX512VLBWAndZMM() && supportsBMI2();
     }
 
     /**
@@ -152,7 +167,7 @@ public final class AMD64StringUTF16CompressOp extends AMD64ComplexVectorOp {
         // Save length for return.
         masm.push(len);
 
-        if (useAVX3Threshold == 0 && supportsAVX512VLBWAndZMM() && supportsBMI2()) {
+        if (canUseAVX512Variant()) {
             Label labelCopy32Loop = new Label();
             Label labelCopyLoopTail = new Label();
             Label labelBelowThreshold = new Label();
