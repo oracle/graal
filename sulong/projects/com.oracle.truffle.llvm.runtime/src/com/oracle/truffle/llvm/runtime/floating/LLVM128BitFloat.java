@@ -134,7 +134,7 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
     }
 
     private long getUnbiasedExponent() {
-        return ((expSignFraction & EXPONENT_MASK) >>> EXPONENT_POSITION) - EXPONENT_BIAS;
+        return ((expSignFraction & EXPONENT_MASK) >>> EXPONENT_POSITION) - (EXPONENT_BIAS + 1);
     }
 
     private long getFractionAsLong() {
