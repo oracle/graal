@@ -55,9 +55,9 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
     public static final String AT_BCI = " at bci ";
 
     /**
-     * The prefix of an abstract method.
+     * The prefix of an indirect call.
      */
-    public static final String ABSTRACT_PREFIX = "(abstract) ";
+    public static final String INDIRECT_PREFIX = "(indirect) ";
 
     /**
      * A phrase introducing the reasons for an inlining decision.
@@ -89,9 +89,9 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
     private final List<String> reason;
 
     /**
-     * {@code true} iff the node corresponds to an abstract method.
+     * {@code true} iff the call is indirect.
      */
-    private final boolean isAbstract;
+    private final boolean indirect;
 
     /**
      * A receiver-type profile for the callsite which corresponds to this node.
@@ -105,15 +105,15 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
      * @param bci the bci of the parent method's callsite of this inlinee
      * @param positive {@code true} if the target method was inlined
      * @param reason the reasoning for this inlining decision
-     * @param isAbstract {@code true} if the target method is abstract
+     * @param indirect {@code true} if the call is indirect
      * @param receiverTypeProfile the receiver-type profile of the callsite
      */
-    public InliningTreeNode(String targetMethodName, int bci, boolean positive, List<String> reason, boolean isAbstract, ReceiverTypeProfile receiverTypeProfile) {
+    public InliningTreeNode(String targetMethodName, int bci, boolean positive, List<String> reason, boolean indirect, ReceiverTypeProfile receiverTypeProfile) {
         super(targetMethodName);
         this.bci = bci;
         this.positive = positive;
         this.reason = reason == null ? List.of() : reason;
-        this.isAbstract = isAbstract;
+        this.indirect = indirect;
         this.receiverTypeProfile = receiverTypeProfile;
     }
 
@@ -132,10 +132,10 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
     }
 
     /**
-     * Returns {@code true} if the target method is abstract.
+     * Returns {@code true} if the call is indirect.
      */
-    public boolean isAbstract() {
-        return isAbstract;
+    public boolean isIndirect() {
+        return indirect;
     }
 
     /**
@@ -147,8 +147,8 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
 
     @Override
     public void writeHead(Writer writer) {
-        if (isAbstract) {
-            writer.write(ABSTRACT_PREFIX);
+        if (indirect) {
+            writer.write(INDIRECT_PREFIX);
         } else if (!positive) {
             writer.write(NOT_INLINED_PREFIX);
         }
@@ -169,7 +169,7 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
             return false;
         }
         InliningTreeNode other = (InliningTreeNode) object;
-        return bci == other.bci && isAbstract == other.isAbstract && positive == other.positive &&
+        return bci == other.bci && indirect == other.indirect && positive == other.positive &&
                         Objects.equals(getName(), other.getName()) &&
                         Objects.equals(reason, other.reason) &&
                         Objects.equals(receiverTypeProfile, other.receiverTypeProfile) &&
@@ -178,14 +178,7 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
 
     @Override
     public int hashCode() {
-        int result = bci;
-        result = 31 * result + (getName() == null ? 0 : getName().hashCode());
-        result = 31 * result + getChildren().hashCode();
-        result = 31 * result + (positive ? 1 : 0);
-        result = 31 * result + (reason != null ? reason.hashCode() : 0);
-        result = 31 * result + (isAbstract ? 1 : 0);
-        result = 31 * result + (receiverTypeProfile != null ? receiverTypeProfile.hashCode() : 0);
-        return result;
+        return Objects.hash(bci, getName(), getChildren(), positive, reason, indirect, receiverTypeProfile);
     }
 
     /**

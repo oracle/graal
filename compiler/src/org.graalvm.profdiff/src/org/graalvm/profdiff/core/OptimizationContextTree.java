@@ -112,8 +112,8 @@ public final class OptimizationContextTree {
     /**
      * Recursively finds an inlining node whose path from root matches the longest prefix of the
      * given {@code path}. The length of the longest matching prefix is returned. Inlining tree
-     * nodes corresponding to abstract methods ({@link InliningTreeNode#isAbstract()}) are skipped
-     * as if they were removed from the tree and their children reattached to the closest ancestor.
+     * nodes corresponding to indirect calls ({@link InliningTreeNode#isIndirect()}) are skipped as
+     * if they were removed from the tree and their children reattached to the closest ancestor.
      *
      * @param currentRoot the current root node to search from (initially the root of tree)
      * @param path the path from root
@@ -131,7 +131,7 @@ public final class OptimizationContextTree {
                 continue;
             }
             InliningTreeNode inliningTreeNode = child.getOriginalInliningTreeNode();
-            if (inliningTreeNode.isAbstract()) {
+            if (inliningTreeNode.isIndirect()) {
                 result = Math.max(result, longestPrefix(child, path, pathIndex));
             } else if (path.get(pathIndex).matches(inliningTreeNode.pathElement())) {
                 result = Math.max(result, longestPrefix(child, path, pathIndex + 1) + 1);

@@ -211,11 +211,12 @@ public final class InliningPath {
      */
     public static InliningPath fromRootToNode(InliningTreeNode node) {
         List<PathElement> path = new ArrayList<>();
-        while (node != null) {
-            if (!node.isAbstract()) {
-                path.add(new PathElement(node.getName(), node.getBCI()));
+        InliningTreeNode iter = node;
+        while (iter != null) {
+            if (!iter.isIndirect()) {
+                path.add(new PathElement(iter.getName(), iter.getBCI()));
             }
-            node = node.getParent();
+            iter = iter.getParent();
         }
         Collections.reverse(path);
         return new InliningPath(path);

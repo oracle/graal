@@ -128,6 +128,18 @@ public class ExplanationWriter {
         writer.decreaseIndent();
     }
 
+    private void explainIndirectCalls() {
+        writer.writeln("indirect calls are prefixed with `" + InliningTreeNode.INDIRECT_PREFIX + "`");
+        writer.increaseIndent();
+        writer.writeln("initially-indirect calls may be devirtualized and have inlinees of their own");
+        writer.writeln("indirect calls include a receiver-type profile if it is available");
+        writer.writeln("each line in the profile is in the format `probability% typeName -> concreteMethodName`");
+        writer.writeln("`typeName` is the exact type of the receiver");
+        writer.writeln("`concreteMethodName` is the concrete method called for the given receiver type");
+        writer.writeln("`probability` is the fraction of calls having this exact receiver type");
+        writer.decreaseIndent();
+    }
+
     private void explainInliningTree() {
         writer.writeln("the inlining tree is a tree of methods that were inlined or considered for inlining in a compilation unit");
         writer.increaseIndent();
@@ -139,15 +151,7 @@ public class ExplanationWriter {
         } else {
             writer.writeln("the children of a node are in the order they appeared in the log");
         }
-        writer.writeln("calls to abstract methods are prefixed with `" + InliningTreeNode.ABSTRACT_PREFIX + "`");
-        writer.increaseIndent();
-        writer.writeln("indirect calls may get devirtualized and have inlinees of their own");
-        writer.writeln("abstract calls show a receiver-type profile if it is available");
-        writer.writeln("each line in the profile is in the format `probability% typeName -> concreteMethodName`");
-        writer.writeln("`typeName` is the exact type of the receiver");
-        writer.writeln("`concreteMethodName` is the concrete method called for the given receiver type");
-        writer.writeln("`probability` is the fraction of calls having this exact receiver type");
-        writer.decreaseIndent();
+        explainIndirectCalls();
         if (!singleExperiment && writer.getOptionValues().shouldDiffCompilations()) {
             writer.writeln("the inlining trees of two paired compilations are diffed");
             writer.increaseIndent();
@@ -188,6 +192,7 @@ public class ExplanationWriter {
         writer.writeln("the optimizations performed in the inlined method");
         writer.decreaseIndent();
         writer.writeln("an optimization is a always a leaf node in the tree");
+        explainIndirectCalls();
         if (!singleExperiment && writer.getOptionValues().shouldDiffCompilations()) {
             writer.writeln("the optimization-context trees of two paired compilations are diffed");
             writer.increaseIndent();

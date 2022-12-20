@@ -163,7 +163,7 @@ compilation unit, after formatting, is the following:
     "callsiteBci": -1,
     "inlined": true,
     "reason": null,
-    "abstract": false,
+    "indirect": false,
     "invokes": [
       {
         "methodName": "java.lang.String.isLatin1()",
@@ -173,7 +173,7 @@ compilation unit, after formatting, is the following:
           "bytecode parser did not replace invoke",
           "trivial (relevance=1.000000, probability=0.618846, bonus=1.000000, nodes=9)"
         ],
-        "abstract": false,
+        "indirect": false,
         "invokes": null
       },
       {
@@ -184,7 +184,7 @@ compilation unit, after formatting, is the following:
           "bytecode parser did not replace invoke",
           "relevance-based (relevance=1.000000, probability=0.618846, bonus=1.000000, nodes=27 <= 300.000000)"
         ],
-        "abstract": false,
+        "indirect": false,
         "invokes": null
       }
     ]
@@ -207,10 +207,10 @@ reflected by the `inlined` property. Its value equals `true` if the method was i
 reasons for the decisions, in their original order, are listed in the `reason` property. Finally, `callsiteBci` is the
 byte code index of the invoke node in the callsite.
 
-The `abstract` property is `true` iff the target method is known to be abstract, i.e., it is an invoke through an
-interface or a virtual method call. Abstract calls contain
+The `indirect` property is `true` iff the call is known to be indirect, i.e., it is an invoke through an
+interface or a virtual method call. Indirect calls contain
 a [receiver-type profile](https://wiki.openjdk.org/display/HotSpot/TypeProfile) if it is available. Consider the
-abstract call to `Iterator.next()` below.
+indirect call to `Iterator.next()` below.
 
 ```json
 {
@@ -221,7 +221,7 @@ abstract call to `Iterator.next()` below.
     "bytecode parser did not replace invoke",
     "call is indirect."
   ],
-  "abstract": true,
+  "indirect": true,
   "receiverTypeProfile": {
     "mature": true,
     "profiledTypes": [

@@ -35,7 +35,7 @@ import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 public class InliningTreeEditPolicy extends TreeEditPolicy<InliningTreeNode> {
     /**
      * Tests two inlining tree nodes for equality by comparing the {@link InliningTreeNode#getBCI()
-     * bci of their callsites}, positivity of the inlining decision, abstractness, and
+     * bci of their callsites}, positivity of the inlining decision, indirectness, and
      * {@link InliningTreeNode#getName() method names}.
      *
      * @param node1 the first inlining-tree node
@@ -44,7 +44,7 @@ public class InliningTreeEditPolicy extends TreeEditPolicy<InliningTreeNode> {
      */
     @Override
     public boolean nodesEqual(InliningTreeNode node1, InliningTreeNode node2) {
-        return node1.getBCI() == node2.getBCI() && node1.isPositive() == node2.isPositive() && node1.isAbstract() == node2.isAbstract() && Objects.equals(node1.getName(), node2.getName());
+        return node1.getBCI() == node2.getBCI() && node1.isPositive() == node2.isPositive() && node1.isIndirect() == node2.isIndirect() && Objects.equals(node1.getName(), node2.getName());
     }
 
     /**
@@ -60,7 +60,7 @@ public class InliningTreeEditPolicy extends TreeEditPolicy<InliningTreeNode> {
     @Override
     public long relabelCost(InliningTreeNode node1, InliningTreeNode node2) {
         assert node1 != node2;
-        if (node1.getBCI() == node2.getBCI() && node1.isAbstract() == node2.isAbstract() && Objects.equals(node1.getName(), node2.getName())) {
+        if (node1.getBCI() == node2.getBCI() && node1.isIndirect() == node2.isIndirect() && Objects.equals(node1.getName(), node2.getName())) {
             return UNIT_COST;
         }
         return INFINITE_COST;

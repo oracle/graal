@@ -119,10 +119,9 @@ public class OptimizationLogImpl implements OptimizationLog {
     public static final String INLINED_PROPERTY = "inlined";
 
     /**
-     * The key of the property which is {@code true} iff the callsite targets a method known to be
-     * abstract.
+     * The key of the property which is {@code true} iff the call is known to be indirect.
      */
-    public static final String ABSTRACT_PROPERTY = "abstract";
+    public static final String INDIRECT_PROPERTY = "indirect";
 
     /**
      * The key of the reason property. The property holds a list of reasons for inlining decisions
@@ -757,9 +756,8 @@ public class OptimizationLogImpl implements OptimizationLog {
         map.put(CALLSITE_BCI_PROPERTY, callsite.getBci());
         map.put(INLINED_PROPERTY, isInlined);
         map.put(REASON_PROPERTY, reason);
-        boolean isAbstract = callsite.getTarget() != null && callsite.getTarget().isAbstract();
-        map.put(ABSTRACT_PROPERTY, isAbstract);
-        if (isAbstract) {
+        map.put(INDIRECT_PROPERTY, callsite.isIndirect());
+        if (callsite.isIndirect()) {
             EconomicMap<String, Object> receiverTypeProfile = receiverTypeProfileAsJSONMap(callsite, methodNameFormatter);
             if (receiverTypeProfile != null) {
                 map.put(RECEIVER_TYPE_PROFILE_PROPERTY, receiverTypeProfile);

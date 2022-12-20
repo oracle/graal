@@ -156,7 +156,7 @@ public class InliningTree {
      * There are two nodes matching the path {@code a() at bci -1, b() at bci 1, d() at bci 3}.
      * There is only one node matching the path {@code a() at bci -1, c() at bci 2}.
      *
-     * Tree nodes corresponding to abstract methods ({@link InliningTreeNode#isAbstract()}) are
+     * Tree nodes corresponding to indirect calls ({@link InliningTreeNode#isIndirect()}) are
      * skipped as if they were removed from the tree and their children reattached to the closest
      * ancestor.
      *
@@ -190,7 +190,7 @@ public class InliningTree {
         InliningPath.PathElement element = path.get(pathIndex);
         List<InliningTreeNode> children = node == null ? List.of(root) : node.getChildren();
         for (InliningTreeNode child : children) {
-            if (child.isAbstract()) {
+            if (child.isIndirect()) {
                 findNodesAt(child, path, pathIndex, found);
             } else if (element.matches(child.pathElement())) {
                 findNodesAt(child, path, pathIndex + 1, found);
@@ -213,7 +213,7 @@ public class InliningTree {
             throw new IllegalArgumentException("The given inlining path should correspond to exactly one node.");
         }
         InliningTreeNode rootNode = rootNodes.get(0);
-        InliningTreeNode clonedNode = new InliningTreeNode(rootNode.getName(), Optimization.UNKNOWN_BCI, rootNode.isPositive(), null, rootNode.isAbstract(), rootNode.getReceiverTypeProfile());
+        InliningTreeNode clonedNode = new InliningTreeNode(rootNode.getName(), Optimization.UNKNOWN_BCI, rootNode.isPositive(), null, rootNode.isIndirect(), rootNode.getReceiverTypeProfile());
         cloneSubtreeInto(rootNode, clonedNode);
         return new InliningTree(clonedNode);
     }
@@ -227,7 +227,7 @@ public class InliningTree {
     private static void cloneSubtreeInto(InliningTreeNode originalNode, InliningTreeNode clonedNode) {
         for (InliningTreeNode originalChild : originalNode.getChildren()) {
             InliningTreeNode clonedChild = new InliningTreeNode(originalChild.getName(), originalChild.getBCI(), originalChild.isPositive(), originalChild.getReason(),
-                            originalChild.isAbstract(), originalChild.getReceiverTypeProfile());
+                            originalChild.isIndirect(), originalChild.getReceiverTypeProfile());
             cloneSubtreeInto(originalChild, clonedChild);
             clonedNode.addChild(clonedChild);
         }

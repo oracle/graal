@@ -214,16 +214,15 @@ Canonicalizer UnusedNodeRemoval at bci {java.lang.StringLatin1.equals(byte[], by
 Perhaps a better way to visualize the position of an optimization is to enable the optimization-context tree. Read the
 section about the optimization-context tree to learn more.
 
-## Abstract methods
+## Indirect calls
 
-Indirect calls, e.g. virtual method calls or a calls through an interface, appear in the log as calls to abstract
-methods. An indirect call cannot be directly inlined. Therefore, profdiff marks calls known to be indirect
-as `(abstract)`.
+Indirect calls, e.g. virtual method calls or a calls through an interface, cannot be directly inlined. Therefore,
+profdiff marks these calls as `(indirect)`.
 
-Consider a call to the abstract method `java.util.Iterator.next()`.
+Consider a call to the interface method `java.util.Iterator.next()`.
 
 ```
-(abstract) java.util.Iterator.next() at bci 19
+(indirect) java.util.Iterator.next() at bci 19
     |_ receiver-type profile
             90.13% java.util.HashMap$KeyIterator -> java.util.HashMap$KeyIterator.next()
              9.51% java.util.Arrays$ArrayItr -> java.util.Arrays$ArrayItr.next()
@@ -239,16 +238,9 @@ type of the receiver (a type implementing `java.util.Iterator` in the example). 
 method called for the given receiver type (an implementation of `java.util.Iterator.next()` in our case). `probability`
 is the fraction of calls having this exact receiver type.
 
-The compiler may devirtualize and inline the call if the there is only one receiver. As an example, the receiver of the
-call to `java.lang.CharSequence.length()` was always a `String`. Thus, the compiler could inline it
-as `java.lang.String.length()` and also inline the call to `java.lang.String.coder()` inside the method.
-
-```
-(abstract) java.lang.CharSequence.length() at bci 10
-    |_ receiver-type profile
-            100.00% java.lang.String -> java.lang.String.length()
-    java.lang.String.coder() at bci 6
-```
+The compiler may devirtualize an indirect call. The log always shows the last known state. For example, if there is an
+indirect call with just one possible receiver, the compiler can reroute the call to the concrete receiver and the call
+appears in the log as a direct call.
 
 ## Optimization-context tree
 
@@ -319,16 +311,16 @@ A compilation unit of the method a() with duplication
         a()
             OptimizationA at bci 3
             b() at bci 1
-                Warning
+                Warning: Optimizations cannot be unambiguously attributed (duplicate path)
                 OptimizationB at bci 4
                 d() at bci 3
-                    Warning
+                    Warning: Optimizations cannot be unambiguously attributed (duplicate path)
                     OptimizationD at bci 6
             b() at bci 1
-                Warning
+                Warning: Optimizations cannot be unambiguously attributed (duplicate path)
                 OptimizationB at bci 4
                 d() at bci 3
-                    Warning
+                    Warning: Optimizations cannot be unambiguously attributed (duplicate path)
                     OptimizationD at bci 6
             c() at bci 2
               OptimizationC at bci 5
@@ -423,7 +415,7 @@ edit operation is indicated by the prefix of the node.
 - prefix `.` = this inlining tree node is present and unchanged in both compilations (identity)
 - prefix `-` = this inlining tree node is present in the 1st compilation but absent in the 2nd compilation (deletion)
 - prefix `+` = this inlining tree node is absent in the 1st compilation but present in the 2nd compilation (insertion)
-- prefix `*` = this inlining tree node is present int both compilations but the inlining decisions are different
+- prefix `*` = this inlining tree node is present in both compilations but the inlining decisions are different
   (relabelling)
 
 Provided that there 2 kinds of inlining tree nodes with respect to the inlining decision (inlined and not inlined),
@@ -549,9 +541,12 @@ fraction of a compilation fragment is inherited from its parent compilation unit
 It is possible create a fragment rooted in any inlining-tree node. However, it is not desirable to create too many
 fragments. Therefore, we have created a heuristic identifying fragments which might be useful.
 
-Definition: An *inlining path* is a list of pairs `m1 at -1, m2 at b2, ..., mn at bn`, where `mi` is a method name
+Definition: An *inlining path* is a list of pairs `m1 at b1, m2 at b2, ..., mn at bn`, where `mi` is a method name
 and `bi` is the bci of the `mi`'s callsite for `i` in `1, 2, ..., n`. If `n > 1`, we say that the path is *from `m1`
 to `mn`*.
+
+We will consider only paths from the root method. The root method does not have a callsite, and therefore it does not
+have a bci. For that reason, we use -1 as the value of `b1`.
 
 As an example, consider the following inlining tree:
 

@@ -144,6 +144,13 @@ public class InliningLog {
         private final int bci;
 
         /**
+         * {@code true} if the call was known to be indirect at the time of the last inlining
+         * decision (or at the time the call-tree node was created if there was no inlining
+         * decision).
+         */
+        private boolean indirect;
+
+        /**
          * The original callsite holding the invoke from which this invoke was originally duplicated
          * or {@code null}.
          *
@@ -158,9 +165,10 @@ public class InliningLog {
          */
         private final Callsite originalCallsite;
 
-        private Callsite(Callsite parent, Callsite originalCallsite, Invokable invoke, ResolvedJavaMethod target, int bci) {
+        private Callsite(Callsite parent, Callsite originalCallsite, Invokable invoke, ResolvedJavaMethod target, int bci, boolean indirect) {
             this.parent = parent;
             this.bci = bci;
+            this.indirect = indirect;
             this.decisions = new ArrayList<>();
             this.children = new ArrayList<>();
             this.invoke = invoke;
@@ -172,15 +180,27 @@ public class InliningLog {
         }
 
         /**
+         * Adds an inlining decision, updates the target method and the indirect field.
+         *
+         * @param decision the decision to be added
+         */
+        private void addDecision(Decision decision) {
+            decisions.add(decision);
+            target = invoke.getTargetMethod();
+            indirect = invoke instanceof Invoke && ((Invoke) invoke).callTarget().invokeKind.isIndirect();
+        }
+
+        /**
          * Creates and adds a child call-tree node (callsite) to this node.
          *
          * @param childInvoke the invoke which represents the child callsite to be added
-         * @param abstractCallsite the original callsite from which the child invoke was duplicated
-         *            (if any)
+         * @param childOriginalCallsite the original callsite from which the child invoke was
+         *            duplicated (if any)
          * @return the created callsite for the child
          */
-        private Callsite addChild(Invokable childInvoke, Callsite abstractCallsite) {
-            return new Callsite(this, abstractCallsite, childInvoke, childInvoke.getTargetMethod(), childInvoke.bci());
+        private Callsite addChild(Invokable childInvoke, Callsite childOriginalCallsite) {
+            boolean childIndirect = childInvoke instanceof Invoke && ((Invoke) childInvoke).callTarget().invokeKind.isIndirect();
+            return new Callsite(this, childOriginalCallsite, childInvoke, childInvoke.getTargetMethod(), childInvoke.bci(), childIndirect);
         }
 
         public String positionString() {
@@ -265,6 +285,17 @@ public class InliningLog {
         public int getBci() {
             return bci;
         }
+
+        /**
+         * Returns {@code true} if the call was known to be indirect at the time of the last
+         * inlining decision (or at the time the call-tree node was created if there was no inlining
+         * decision).
+         *
+         * @return {@code true} if the call was known to be indirect
+         */
+        public boolean isIndirect() {
+            return indirect;
+        }
     }
 
     private Callsite root;
@@ -272,7 +303,7 @@ public class InliningLog {
     private final EconomicMap<Invokable, Callsite> leaves;
 
     public InliningLog(ResolvedJavaMethod rootMethod) {
-        this.root = new Callsite(null, null, null, rootMethod, Callsite.ROOT_CALLSITE_BCI);
+        this.root = new Callsite(null, null, null, rootMethod, Callsite.ROOT_CALLSITE_BCI, false);
         this.leaves = EconomicMap.create();
     }
 
@@ -287,9 +318,7 @@ public class InliningLog {
         assert leaves.containsKey(invoke) : invoke;
         assert !positive || Objects.isNull(replacements) == Objects.isNull(calleeLog);
         Callsite callsite = leaves.get(invoke);
-        callsite.target = callsite.invoke.getTargetMethod();
-        Decision decision = new Decision(positive, String.format(reason, args), phase, invoke.getTargetMethod());
-        callsite.decisions.add(decision);
+        callsite.addDecision(new Decision(positive, String.format(reason, args), phase, invoke.getTargetMethod()));
         if (positive) {
             leaves.removeKey(invoke);
             if (calleeLog == null) {
@@ -388,7 +417,7 @@ public class InliningLog {
             }
         }
         Callsite originalCallsite = replacementSite.originalCallsite == null ? null : mapping.get(replacementSite.originalCallsite);
-        Callsite site = new Callsite(parent, originalCallsite, invoke, replacementSite.target, replacementSite.bci);
+        Callsite site = new Callsite(parent, originalCallsite, invoke, replacementSite.target, replacementSite.bci, replacementSite.indirect);
         site.decisions.addAll(replacementSite.decisions);
         mapping.put(replacementSite, site);
         for (Callsite replacementChild : replacementSite.children) {
