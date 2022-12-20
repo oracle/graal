@@ -44,16 +44,18 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
-import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.dsl.GeneratedBy;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.UnsafeFrameAccess;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
+import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class ManualBytecodeNode extends BaseBytecodeNode {
@@ -430,6 +432,146 @@ class ManualBytecodeNodeNBE extends BaseBytecodeNode {
                     frame.copy(localBc[bci + 1], sp);
                     sp += 1;
                     bci += 2;
+                    continue loop;
+                }
+                default:
+                    CompilerDirectives.shouldNotReachHere();
+            }
+        }
+    }
+}
+
+@GeneratedBy(ManualUnsafeBytecodeNode.class) // needed for UFA
+class ManualBytecodeNodedNode extends BaseBytecodeNode {
+
+    private final Object[] objs;
+
+    protected ManualBytecodeNodedNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc, Object[] objs) {
+        super(language, frameDescriptor, bc);
+        this.objs = objs;
+    }
+
+    private static final UnsafeFrameAccess UFA = UnsafeFrameAccess.lookup();
+
+    public abstract static class AddNode extends Node {
+        public abstract int execute(int lhs, int rhs);
+
+        @Specialization
+        public static int doInt(int lhs, int rhs) {
+            return lhs + rhs;
+        }
+
+        public static AddNode create() {
+            return ManualBytecodeNodedNodeFactory.AddNodeGen.create();
+        }
+    }
+
+    public abstract static class ModNode extends Node {
+        public abstract int execute(int lhs, int rhs);
+
+        @Specialization
+        public static int doInt(int lhs, int rhs) {
+            return lhs % rhs;
+        }
+
+        public static ModNode create() {
+            return ManualBytecodeNodedNodeFactory.ModNodeGen.create();
+        }
+    }
+
+    @Override
+    @BytecodeInterpreterSwitch
+    @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+    protected Object executeAt(VirtualFrame frame, int startBci, int startSp) {
+        short[] localBc = bc;
+        Object[] localObjs = objs;
+        int bci = startBci;
+        int sp = startSp;
+
+        Counter loopCounter = new Counter();
+
+        frame.getArguments();
+
+        loop: while (true) {
+            short opcode = UFA.unsafeShortArrayRead(localBc, bci);
+            Object obj = UFA.unsafeObjectArrayRead(localObjs, bci);
+            CompilerAsserts.partialEvaluationConstant(opcode);
+            switch (opcode) {
+                // ( -- )
+                case OP_JUMP: {
+                    int nextBci = UFA.unsafeCast(obj, Integer.class);
+                    CompilerAsserts.partialEvaluationConstant(nextBci);
+                    if (nextBci <= bci) {
+                        Object result = backwardsJumpCheck(frame, sp, loopCounter, nextBci);
+                        if (result != null) {
+                            return result;
+                        }
+                    }
+                    bci = nextBci;
+                    continue loop;
+                }
+                // (i1 i2 -- i3)
+                case OP_ADD: {
+                    int lhs = UFA.unsafeGetInt(frame, sp - 2);
+                    int rhs = UFA.unsafeGetInt(frame, sp - 1);
+                    UFA.unsafeSetInt(frame, sp - 2, UFA.unsafeCast(obj, AddNode.class).execute(lhs, rhs));
+                    sp -= 1;
+                    bci += 1;
+                    continue loop;
+                }
+                // (i1 i2 -- i3)
+                case OP_MOD: {
+                    int lhs = UFA.unsafeGetInt(frame, sp - 2);
+                    int rhs = UFA.unsafeGetInt(frame, sp - 1);
+                    UFA.unsafeSetInt(frame, sp - 2, UFA.unsafeCast(obj, ModNode.class).execute(lhs, rhs));
+                    sp -= 1;
+                    bci += 1;
+                    continue loop;
+                }
+                // ( -- i)
+                case OP_CONST: {
+                    UFA.unsafeSetInt(frame, sp, UFA.unsafeCast(obj, Integer.class));
+                    sp += 1;
+                    bci += 1;
+                    continue loop;
+                }
+                // (b -- )
+                case OP_JUMP_FALSE: {
+                    boolean cond = UFA.unsafeGetBoolean(frame, sp - 1);
+                    sp -= 1;
+                    if (!cond) {
+                        bci = UFA.unsafeCast(obj, Integer.class);
+                        continue loop;
+                    } else {
+                        bci += 1;
+                        continue loop;
+                    }
+                }
+                // (i1 i2 -- b)
+                case OP_LESS: {
+                    int lhs = UFA.unsafeGetInt(frame, sp - 2);
+                    int rhs = UFA.unsafeGetInt(frame, sp - 1);
+                    UFA.unsafeSetBoolean(frame, sp - 2, lhs < rhs);
+                    sp -= 1;
+                    bci += 1;
+                    continue loop;
+                }
+                // (i -- )
+                case OP_RETURN: {
+                    return UFA.unsafeGetInt(frame, sp - 1);
+                }
+                // (i -- )
+                case OP_ST_LOC: {
+                    UFA.unsafeCopyPrimitive(frame, sp - 1, UFA.unsafeCast(obj, Integer.class));
+                    sp -= 1;
+                    bci += 1;
+                    continue loop;
+                }
+                // ( -- i)
+                case OP_LD_LOC: {
+                    UFA.unsafeCopyPrimitive(frame, UFA.unsafeCast(obj, Integer.class), sp);
+                    sp += 1;
+                    bci += 1;
                     continue loop;
                 }
                 default:

@@ -60,4 +60,6 @@ public class OperationGeneratorFlags {
     public static final int BOXING_ELIM_BITS = 3;
 
     public static final boolean CREATE_COMMON_EXECUTE = false;
+
+    public static final boolean USE_SIMPLE_BYTECODE = true;
 }

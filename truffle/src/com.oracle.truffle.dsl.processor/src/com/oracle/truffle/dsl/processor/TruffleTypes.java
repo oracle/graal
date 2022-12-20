@@ -247,6 +247,7 @@ public class TruffleTypes {
     public static final String Operation_Name = "com.oracle.truffle.api.operation.Operation";
     public static final String OperationBytecodeNode_Name = "com.oracle.truffle.api.operation.OperationBuilder.BytecodeNode";
     public static final String OperationConfig_Name = "com.oracle.truffle.api.operation.OperationConfig";
+    public static final String OperationParser_Name = "com.oracle.truffle.api.operation.OperationParser";
     public static final String OperationIntrospection_Name = "com.oracle.truffle.api.operation.introspection.OperationIntrospection";
     public static final String OperationIntrospection_Provider_Name = "com.oracle.truffle.api.operation.introspection.OperationIntrospection.Provider";
     public static final String OperationLabel_Name = "com.oracle.truffle.api.operation.OperationLabel";
@@ -273,6 +274,7 @@ public class TruffleTypes {
     public final DeclaredType Operation = c.getDeclaredTypeOptional(Operation_Name);
     public final DeclaredType OperationBytecodeNode = c.getDeclaredTypeOptional(OperationBytecodeNode_Name);
     public final DeclaredType OperationConfig = c.getDeclaredTypeOptional(OperationConfig_Name);
+    public final DeclaredType OperationParser = c.getDeclaredTypeOptional(OperationParser_Name);
     public final DeclaredType OperationIntrospection = c.getDeclaredTypeOptional(OperationIntrospection_Name);
     public final DeclaredType OperationIntrospection_Provider = c.getDeclaredTypeOptional(OperationIntrospection_Provider_Name);
     public final DeclaredType OperationLabel = c.getDeclaredTypeOptional(OperationLabel_Name);

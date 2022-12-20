@@ -173,6 +173,11 @@ public class BranchInstruction extends Instruction {
     }
 
     @Override
+    protected CodeTree createObjectInitializer(BuilderVariables vars, EmitArguments args) {
+        return CodeTreeBuilder.createBuilder().startAssign("objs[bci]").tree(args.branchTargets[0]).end().build();
+    }
+
+    @Override
     public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
         return null;
     }

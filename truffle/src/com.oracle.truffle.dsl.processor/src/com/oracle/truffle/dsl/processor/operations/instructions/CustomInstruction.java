@@ -42,20 +42,17 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
+import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
+import com.oracle.truffle.dsl.processor.generator.NodeGeneratorPlugs;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
-import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
-import com.oracle.truffle.dsl.processor.operations.OperationsBytecodeNodeGeneratorPlugs;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
@@ -63,9 +60,8 @@ import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodPro
 public class CustomInstruction extends Instruction {
 
     private final SingleOperationData data;
-    protected ExecutableElement[] executeMethods;
-    protected ExecutableElement uncachedExecuteMethod;
-    private OperationsBytecodeNodeGeneratorPlugs plugs;
+    private TypeMirror nodeType;
+    private NodeGeneratorPlugs plugs;
     private CodeExecutableElement prepareAOTMethod;
     private CodeExecutableElement getSpecializationBits;
     private final List<QuickenedInstruction> quickenedVariants = new ArrayList<>();
@@ -86,8 +82,8 @@ public class CustomInstruction extends Instruction {
         return result;
     }
 
-    public void setExecuteMethod(ExecutableElement[] executeMethods) {
-        this.executeMethods = executeMethods;
+    public void setNodeType(TypeMirror nodeType) {
+        this.nodeType = nodeType;
     }
 
     public CustomInstruction(OperationsContext ctx, String name, int id, SingleOperationData data) {
@@ -180,156 +176,7 @@ public class CustomInstruction extends Instruction {
     }
 
     private CodeTree createExecuteImpl(ExecutionVariables vars, boolean uncached) {
-
-        String exName = getUniqueName() + "_entryPoint_" + (uncached ? "uncached" : (!alwaysBoxed() && ctx.hasBoxingElimination() ? vars.specializedKind : ""));
-        OperationGeneratorUtils.createHelperMethod(ctx.outerType, exName, () -> {
-            CodeExecutableElement el = new CodeExecutableElement(Set.of(Modifier.STATIC, Modifier.PRIVATE), context.getType(void.class), exName);
-            el.getParameters().addAll(executeMethods[0].getParameters());
-
-            CodeTreeBuilder b = el.createBuilder();
-
-            if (numPushedValues > 0) {
-
-                if (isVariadic()) {
-                    b.declaration("int", "destSlot", "$sp - " + (data.getMainProperties().numStackValues - 1) + " - $numVariadics");
-                } else {
-                    b.declaration("int", "destSlot", "$sp - " + data.getMainProperties().numStackValues);
-                }
-
-                if (!uncached && ctx.hasBoxingElimination() && !alwaysBoxed()) {
-                    int i = ctx.getBoxingKinds().indexOf(vars.specializedKind);
-
-                    if (i == -1) {
-                        throw new AssertionError("kind=" + vars.specializedKind + " name=" + name + "bk=" + ctx.getBoxingKinds());
-                    }
-
-                    boolean needsUnexpectedResult = executeMethods[i] != null && executeMethods[i].getThrownTypes().size() > 0;
-
-                    if (needsUnexpectedResult) {
-                        b.startTryBlock();
-                    }
-
-                    if (executeMethods[i] != null) {
-                        b.startStatement().startCall("UFA", "unsafeSet" + vars.specializedKind.getFrameName());
-
-                        b.variable(vars.stackFrame);
-                        b.string("destSlot");
-
-                        b.startStaticCall(executeMethods[i]);
-                        b.variables(executeMethods[i].getParameters());
-                        b.end();
-
-                        b.end(2);
-
-                        b.returnStatement();
-                    } else {
-                        b.tree(GeneratorUtils.createShouldNotReachHere());
-                    }
-
-                    b.end();
-
-                    if (needsUnexpectedResult) {
-                        b.end().startCatchBlock(types.UnexpectedResultException, "ex");
-
-                        b.startStatement().startCall("UFA", "unsafeSetObject");
-                        b.variable(vars.stackFrame);
-                        b.string("destSlot");
-                        b.string("ex.getResult()");
-
-                        b.end(2);
-
-                        b.end();
-                    }
-
-                } else {
-                    ExecutableElement target = uncached ? uncachedExecuteMethod : executeMethods[0];
-
-                    b.startStatement().startCall("UFA", "unsafeSetObject");
-
-                    b.variable(vars.stackFrame);
-                    b.string("destSlot");
-
-                    b.startStaticCall(target);
-                    b.variables(el.getParameters());
-
-                    if (uncached) {
-                        for (int i = 0; i < numPopStatic(); i++) {
-                            int offset = numPopStatic() - i;
-                            b.startCall("UFA", "unsafeUncheckedGetObject");
-                            b.variable(vars.stackFrame);
-                            if (isVariadic()) {
-                                b.string("$sp - " + offset + " - $numVariadics");
-                            } else {
-                                b.string("$sp - " + offset);
-                            }
-                            b.end();
-                        }
-
-                        if (isVariadic()) {
-                            b.startCall("do_loadVariadicArguments");
-                            b.variable(vars.stackFrame);
-                            b.variable(vars.sp);
-                            b.string("$numVariadics");
-                            b.end();
-                        }
-
-                        addLocalRefs(b, vars);
-                    }
-
-                    b.end();
-
-                    b.end(2);
-                }
-            } else {
-
-                b.startStatement().startStaticCall(executeMethods[0]);
-                b.variables(executeMethods[0].getParameters());
-                b.end(2);
-            }
-
-            return el;
-        });
-
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-
-        createTracerCode(vars, b);
-
-        if (isVariadic()) {
-            b.startAssign("int numVariadics").tree(createVariadicIndex(vars, false)).end();
-        }
-
-        b.startStatement();
-        b.startCall(exName);
-        b.variable(vars.stackFrame);
-        if (ctx.getData().enableYield) {
-            b.variable(vars.localFrame);
-        }
-        b.string("$this");
-        b.variable(vars.bc);
-        b.variable(vars.bci);
-        b.variable(vars.sp);
-        b.variable(vars.consts);
-        b.variable(vars.children);
-
-        if (isVariadic()) {
-            b.string("numVariadics");
-        }
-        b.end(2);
-
-        int stackDelta = numPushedValues - data.getMainProperties().numStackValues + (isVariadic() ? 1 : 0);
-
-        if (isVariadic() || stackDelta != 0) {
-            b.startStatement().variable(vars.sp).string(" += ");
-            if (stackDelta != 0) {
-                b.string("" + stackDelta);
-            }
-            if (isVariadic()) {
-                b.string(" - numVariadics");
-            }
-            b.end();
-        }
-
-        return b.build();
+        return null;
     }
 
     @Override
@@ -368,11 +215,11 @@ public class CustomInstruction extends Instruction {
         this.getSpecializationBits = getSpecializationBits;
     }
 
-    public OperationsBytecodeNodeGeneratorPlugs getPlugs() {
+    public NodeGeneratorPlugs getPlugs() {
         return plugs;
     }
 
-    public void setPlugs(OperationsBytecodeNodeGeneratorPlugs plugs) {
+    public void setPlugs(NodeGeneratorPlugs plugs) {
         this.plugs = plugs;
     }
 

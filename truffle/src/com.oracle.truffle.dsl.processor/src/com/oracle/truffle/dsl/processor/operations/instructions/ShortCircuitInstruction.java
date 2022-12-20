@@ -41,7 +41,6 @@
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
-import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData;
 
@@ -59,52 +58,7 @@ public class ShortCircuitInstruction extends CustomInstruction {
     }
 
     public CodeTree createExecuteCode(ExecutionVariables vars, boolean uncached) {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-
-        createTracerCode(vars, b);
-
-        b.startIf();
-        if (!getData().getShortCircuitContinueWhen()) {
-            b.string("!");
-        }
-
-        if (uncached) {
-            b.startStaticCall(uncachedExecuteMethod);
-        } else {
-            b.startStaticCall(executeMethods[0]);
-        }
-        b.variable(vars.stackFrame);
-        if (ctx.getData().enableYield) {
-            b.variable(vars.localFrame);
-        }
-        b.string("$this");
-        b.variable(vars.bc);
-        b.variable(vars.bci);
-        b.variable(vars.sp);
-        b.variable(vars.consts);
-        b.variable(vars.children);
-        if (uncached) {
-            b.startCall("UFA", "unsafeUncheckedGetObject");
-            b.variable(vars.stackFrame);
-            b.string("$sp - 1");
-            b.end();
-        }
-        b.end(2).startBlock();
-        // {
-        b.startAssign(vars.sp).variable(vars.sp).string(" - 1").end();
-        b.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(createLength()).end();
-
-        b.statement("continue loop");
-        // }
-        b.end().startElseBlock();
-        // {
-        b.startAssign(vars.bci).tree(createBranchTargetIndex(vars, 0, false)).end();
-
-        b.statement("continue loop");
-        // }
-        b.end();
-
-        return b.build();
+        return null;
     }
 
     @Override

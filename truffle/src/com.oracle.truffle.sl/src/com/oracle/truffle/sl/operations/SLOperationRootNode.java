@@ -89,8 +89,7 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 @GenerateOperations(//
                 languageClass = SLLanguage.class, //
-                decisionsFile = "decisions.json", //
-                boxingEliminationTypes = {long.class, boolean.class})
+                decisionsFile = "decisions.json", boxingEliminationTypes = {long.class, boolean.class})
 @GenerateUncached
 @TypeSystemReference(SLTypes.class)
 @OperationProxy(SLAddNode.class)

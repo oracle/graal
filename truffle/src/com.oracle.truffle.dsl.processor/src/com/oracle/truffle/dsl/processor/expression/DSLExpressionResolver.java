@@ -235,7 +235,7 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
         final String name = variable.getName();
 
         if (parseMode == ParseMode.OPERATION && "this".equals(name)) {
-            return new CodeVariableElement(thisType, "$this");
+            return new CodeVariableElement(thisType, "this");
         }
 
         switch (name) {

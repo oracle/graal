@@ -41,6 +41,7 @@
 package com.oracle.truffle.dsl.processor.operations;
 
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.isAssignable;
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorFlags.USE_SIMPLE_BYTECODE;
 import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.combineBoxingBits;
 import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createReadOpcode;
 import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.createWriteOpcode;
@@ -168,6 +169,9 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public String transformNodeMethodName(String name) {
+        if (USE_SIMPLE_BYTECODE) {
+            return name;
+        }
         String result = cinstr.getUniqueName() + "_" + name + "_";
         methodNames.add(result);
         return result;
@@ -175,6 +179,9 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public String transformNodeInnerTypeName(String name) {
+        if (USE_SIMPLE_BYTECODE) {
+            return name;
+        }
         if (cinstr instanceof QuickenedInstruction) {
             return ((QuickenedInstruction) cinstr).getOrig().getUniqueName() + "_" + name;
         }
@@ -243,6 +250,9 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     private static final String CONST_OFFSET_NAME = "constArrayOffset_";
 
     private CodeTree createArrayReference(FrameState frame, Object refObject, boolean doCast, TypeMirror castTarget, boolean isChild, boolean write) {
+        if (USE_SIMPLE_BYTECODE) {
+            throw new AssertionError();
+        }
         if (refObject == null) {
             throw new IllegalArgumentException("refObject is null");
         }
@@ -319,8 +329,11 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         return new ReportPolymorphismAction(false, false);
     }
 
-    @Override
+    // @Override
     public CodeTree createSpecializationFieldReference(FrameState frame, SpecializationData s, String fieldName, TypeMirror fieldType, boolean write) {
+        if (USE_SIMPLE_BYTECODE) {
+            return CodeTreeBuilder.singleString("this." + fieldName);
+        }
         boolean specClass = useSpecializationClass.test(s);
         Object refObject = specClass ? s : fieldName;
         boolean isChild = specClass ? specializationClassIsNode(s) : ElementUtils.isAssignable(fieldType, types.Node);
@@ -352,11 +365,17 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         if (nodeFieldName.startsWith("$child")) {
             return CodeTreeBuilder.singleString("__INVALID__");
         }
+        if (USE_SIMPLE_BYTECODE) {
+            return CodeTreeBuilder.singleString("this." + nodeFieldName);
+        }
         return createArrayReference(frame, execution, forRead, execution.getNodeType(), true, !forRead);
     }
 
     @Override
     public CodeTree createCacheReference(FrameState frame, SpecializationData specialization, CacheExpression cache, String sharedName, boolean forRead) {
+        if (USE_SIMPLE_BYTECODE) {
+            return CodeTreeBuilder.singleString("this." + sharedName);
+        }
         Object refObject = null;
         TypeMirror mir = null;
         String fieldName = null;

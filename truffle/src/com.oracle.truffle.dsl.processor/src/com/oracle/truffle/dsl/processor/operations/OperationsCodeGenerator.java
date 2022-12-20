@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.dsl.processor.operations;
 
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorFlags.USE_SIMPLE_BYTECODE;
+
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOError;
@@ -385,13 +387,17 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, typOperationNodes, "nodes")));
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(short[].class), "_bc")));
-        typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(Object[].class), "_consts")));
-        typOperationNodeImpl.add(children(new CodeVariableElement(MOD_PRIVATE, arrayOf(types.Node), "_children")));
+        if (USE_SIMPLE_BYTECODE) {
+            typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(Object[].class), "_objs")));
+        } else {
+            typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(Object[].class), "_consts")));
+            typOperationNodeImpl.add(children(new CodeVariableElement(MOD_PRIVATE, arrayOf(types.Node), "_children")));
+            typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(int[].class), "_conditionProfiles")));
+        }
         if (m.getOperationsContext().hasBoxingElimination()) {
             typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(byte[].class), "_localTags")));
         }
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, arrayOf(typExceptionHandler.asType()), "_handlers")));
-        typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(int[].class), "_conditionProfiles")));
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "_maxLocals")));
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(int.class), "_maxStack")));
         typOperationNodeImpl.add(compFinal(new CodeVariableElement(MOD_PRIVATE, context.getType(int[].class), "sourceInfo")));
@@ -887,13 +893,19 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         b.string("_bc");
         b.string("result & 0xffff");
         b.string("(result >> 16) & 0xffff");
-        b.string("_consts");
-        b.string("_children");
+        if (USE_SIMPLE_BYTECODE) {
+            b.string("_objs");
+        } else {
+            b.string("_consts");
+            b.string("_children");
+        }
         if (m.getOperationsContext().hasBoxingElimination()) {
             b.string("_localTags");
         }
         b.string("_handlers");
-        b.string("_conditionProfiles");
+        if (!USE_SIMPLE_BYTECODE) {
+            b.string("_conditionProfiles");
+        }
         b.string("_maxLocals");
         b.end(2);
 
@@ -1902,13 +1914,19 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         loopMethod.addParameter(new CodeVariableElement(context.getType(short[].class), "$bc"));
         loopMethod.addParameter(new CodeVariableElement(context.getType(int.class), "$startBci"));
         loopMethod.addParameter(new CodeVariableElement(context.getType(int.class), "$startSp"));
-        loopMethod.addParameter(new CodeVariableElement(context.getType(Object[].class), "$consts"));
-        loopMethod.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(types.Node), "$children"));
+        if (USE_SIMPLE_BYTECODE) {
+            loopMethod.addParameter(new CodeVariableElement(context.getType(Object[].class), "$objs"));
+        } else {
+            loopMethod.addParameter(new CodeVariableElement(context.getType(Object[].class), "$consts"));
+            loopMethod.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(types.Node), "$children"));
+        }
         if (m.getOperationsContext().hasBoxingElimination()) {
             loopMethod.addParameter(new CodeVariableElement(context.getType(byte[].class), "$localTags"));
         }
         loopMethod.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(typExceptionHandler.asType()), "$handlers"));
-        loopMethod.addParameter(new CodeVariableElement(context.getType(int[].class), "$conditionProfiles"));
+        if (!USE_SIMPLE_BYTECODE) {
+            loopMethod.addParameter(new CodeVariableElement(context.getType(int[].class), "$conditionProfiles"));
+        }
         loopMethod.addParameter(new CodeVariableElement(context.getType(int.class), "maxLocals"));
         baseClass.add(loopMethod);
 

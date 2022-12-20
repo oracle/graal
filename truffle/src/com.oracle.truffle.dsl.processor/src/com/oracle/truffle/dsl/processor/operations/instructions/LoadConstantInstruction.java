@@ -43,6 +43,7 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.operations.OperationGeneratorFlags;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class LoadConstantInstruction extends Instruction {
@@ -75,10 +76,14 @@ public class LoadConstantInstruction extends Instruction {
         if (kind != FrameKind.OBJECT) {
             b.string("(", kind.getTypeName(), ") ");
         }
-        b.startCall("UFA", "unsafeObjectArrayRead");
-        b.variable(vars.consts);
-        b.tree(createConstantIndex(vars, 0));
-        b.end();
+        if (OperationGeneratorFlags.USE_SIMPLE_BYTECODE) {
+            b.string("$obj");
+        } else {
+            b.startCall("UFA", "unsafeObjectArrayRead");
+            b.variable(vars.consts);
+            b.tree(createConstantIndex(vars, 0));
+            b.end();
+        }
 
         return b.build();
     }

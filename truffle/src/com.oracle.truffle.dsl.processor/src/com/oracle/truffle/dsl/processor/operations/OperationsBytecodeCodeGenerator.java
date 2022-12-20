@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.operations;
 
+import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorFlags.USE_SIMPLE_BYTECODE;
 import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils.combineBoxingBits;
 
 import java.util.ArrayList;
@@ -47,10 +48,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -128,9 +131,10 @@ public class OperationsBytecodeCodeGenerator {
         String namePrefix = withInstrumentation ? "Instrumentable" : isUncached ? "Uncached" : isCommonOnly ? "Common" : "";
 
         CodeTypeElement builderBytecodeNodeType = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, namePrefix + "BytecodeNode", baseClass.asType());
+        builderBytecodeNodeType.setEnclosingElement(typEnclosingElement);
 
         builderBytecodeNodeType.setHighPriority(true);
-        initializeInstructions(builderBytecodeNodeType);
+        initializeInstructionSimple(builderBytecodeNodeType);
 
         builderBytecodeNodeType.add(createBytecodeLoop(builderBytecodeNodeType, baseClass));
 
@@ -329,6 +333,10 @@ public class OperationsBytecodeCodeGenerator {
 
         b.declaration("int", varCurOpcode.getName(), CodeTreeBuilder.createBuilder().tree(OperationGeneratorUtils.createReadOpcode(vars.bc, vars.bci)).string(" & 0xffff").build());
 
+        if (USE_SIMPLE_BYTECODE) {
+            b.declaration("Object", "$obj", "$objs[$bci]");
+        }
+
         b.tree(GeneratorUtils.createPartialEvaluationConstant(varCurOpcode));
 
         if (varTracer != null) {
@@ -411,13 +419,22 @@ public class OperationsBytecodeCodeGenerator {
                     met.addParameter(vars.bc);
                     met.addParameter(new CodeVariableElement(context.getType(int.class), "$startBci"));
                     met.addParameter(new CodeVariableElement(context.getType(int.class), "$startSp"));
-                    met.addParameter(vars.consts);
-                    met.addParameter(vars.children);
+                    if (USE_SIMPLE_BYTECODE) {
+                        met.addParameter(new CodeVariableElement(context.getType(Object[].class), "$objs"));
+                    } else {
+                        met.addParameter(vars.consts);
+                        met.addParameter(vars.children);
+                    }
                     if (ctx.hasBoxingElimination()) {
                         met.addParameter(new CodeVariableElement(context.getType(byte[].class), "$localTags"));
                     }
-                    met.addParameter(new CodeVariableElement(context.getType(int[].class), "$conditionProfiles"));
+                    if (!USE_SIMPLE_BYTECODE) {
+                        met.addParameter(new CodeVariableElement(context.getType(int[].class), "$conditionProfiles"));
+                    }
                     met.addParameter(new CodeVariableElement(context.getType(int.class), "curOpcode"));
+                    if (USE_SIMPLE_BYTECODE) {
+                        met.addParameter(new CodeVariableElement(context.getType(Object.class), "$obj"));
+                    }
                     if (ctx.getData().isTracing()) {
                         met.addParameter(new CodeVariableElement(types.ExecutionTracer, "tracer"));
                     }
@@ -452,13 +469,22 @@ public class OperationsBytecodeCodeGenerator {
                 b.variable(vars.bc);
                 b.variable(vars.bci);
                 b.variable(vars.sp);
-                b.variable(vars.consts);
-                b.variable(vars.children);
+                if (USE_SIMPLE_BYTECODE) {
+                    b.string("$objs");
+                } else {
+                    b.variable(vars.consts);
+                    b.variable(vars.children);
+                }
                 if (ctx.hasBoxingElimination()) {
                     b.string("$localTags");
                 }
-                b.string("$conditionProfiles");
+                if (!USE_SIMPLE_BYTECODE) {
+                    b.string("$conditionProfiles");
+                }
                 b.string("curOpcode");
+                if (USE_SIMPLE_BYTECODE) {
+                    b.string("$obj");
+                }
                 if (ctx.getData().isTracing()) {
                     b.string("tracer");
                 }
@@ -635,7 +661,7 @@ public class OperationsBytecodeCodeGenerator {
                         context.getDeclaredType("com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind"), "MERGE_EXPLODE")));
     }
 
-    private void initializeInstructions(CodeTypeElement builderBytecodeNodeType) throws AssertionError {
+    private void initializeInstructionSimple(CodeTypeElement builderBytecodeNodeType) {
         StaticConstants staticConstants = new StaticConstants(true);
         for (Instruction instr : m.getInstructions()) {
             if (!(instr instanceof CustomInstruction)) {
@@ -644,12 +670,9 @@ public class OperationsBytecodeCodeGenerator {
 
             CustomInstruction cinstr = (CustomInstruction) instr;
 
-            final Set<String> methodNames = new HashSet<>();
-            final Set<String> innerTypeNames = new HashSet<>();
-
             final SingleOperationData soData = cinstr.getData();
 
-            OperationsBytecodeNodeGeneratorPlugs plugs = new OperationsBytecodeNodeGeneratorPlugs(m, innerTypeNames, methodNames, cinstr, staticConstants, isUncached);
+            SimpleBytecodeNodeGeneratorPlugs plugs = new SimpleBytecodeNodeGeneratorPlugs(m, cinstr, staticConstants);
             cinstr.setPlugs(plugs);
 
             NodeCodeGenerator generator = new NodeCodeGenerator();
@@ -660,148 +683,88 @@ public class OperationsBytecodeCodeGenerator {
             if (resultList.size() != 1) {
                 throw new AssertionError("Node generator did not return exactly one class");
             }
-            plugs.finishUp();
+
+            // TODO: don't generate if not needed
+
             CodeTypeElement result = resultList.get(0);
+            result.setEnclosingElement(builderBytecodeNodeType);
+            result.setSuperClass(types.Node);
 
-            List<String> executeNames = m.getOperationsContext().getBoxingKinds().stream().map(
-                            x -> plugs.transformNodeMethodName(x == FrameKind.OBJECT ? "execute" : "execute" + x.getFrameName())).collect(Collectors.toList());
-            CodeExecutableElement[] executeMethods = new CodeExecutableElement[isUncached ? 1 : executeNames.size()];
-            List<CodeExecutableElement> execs = new ArrayList<>();
+            Object sn = result.getSimpleName();
 
-            TypeElement target = result;
-
-            if (isUncached) {
-                target = (TypeElement) result.getEnclosedElements().stream().filter(x -> x.getSimpleName().toString().equals("Uncached")).findFirst().get();
-            }
-
-            Set<String> copiedMethod = new HashSet<>();
-
-            for (ExecutableElement ex : ElementFilter.methodsIn(target.getEnclosedElements())) {
-                if (!methodNames.contains(ex.getSimpleName().toString())) {
-                    continue;
-                }
-
-                if (copiedMethod.contains(ex.getSimpleName().toString())) {
-                    continue;
-                }
-
-                String simpleName = ex.getSimpleName().toString();
-
-                if (isUncached) {
-                    if (simpleName.equals(plugs.transformNodeMethodName("executeUncached"))) {
-                        executeMethods[0] = (CodeExecutableElement) ex;
-                    } else if (executeNames.contains(simpleName)) {
-                        continue;
-                    }
-                } else {
-                    if (simpleName.equals(plugs.transformNodeMethodName("executeUncached"))) {
-                        continue;
-                    } else if (executeNames.contains(simpleName)) {
-                        executeMethods[executeNames.indexOf(simpleName)] = (CodeExecutableElement) ex;
-                    }
-                }
-
-                execs.add((CodeExecutableElement) ex);
-                copiedMethod.add(ex.getSimpleName().toString());
-            }
-
-            for (CodeExecutableElement el : executeMethods) {
-                if (el != null) {
-                    el.getAnnotationMirrors().removeIf(x -> ElementUtils.typeEquals(x.getAnnotationType(), types.CompilerDirectives_TruffleBoundary));
-                }
-            }
-
-            for (TypeElement te : ElementFilter.typesIn(result.getEnclosedElements())) {
-                if (!innerTypeNames.contains(te.getSimpleName().toString())) {
-                    continue;
-                }
-
-                builderBytecodeNodeType.add(te);
-            }
-
-            CodeExecutableElement metPrepareForAOT = null;
-
-            for (CodeExecutableElement exToCopy : execs) {
-                boolean isBoundary = exToCopy.getAnnotationMirrors().stream().anyMatch(x -> x.getAnnotationType().equals(types.CompilerDirectives_TruffleBoundary));
-
-                String exName = exToCopy.getSimpleName().toString();
-                boolean isExecute = executeNames.contains(exName) || exName.contains("_executeUncached_");
-                boolean isExecuteAndSpecialize = exName.endsWith("_executeAndSpecialize_");
-                boolean isFallbackGuard = exName.endsWith("_fallbackGuard__");
-
-                if (instr instanceof QuickenedInstruction) {
-                    if (isExecuteAndSpecialize) {
-                        continue;
-                    }
-                }
-
-                if (isExecute || isExecuteAndSpecialize || isFallbackGuard) {
-                    List<VariableElement> params = exToCopy.getParameters();
-
-                    int i = 0;
-                    for (; i < params.size(); i++) {
-                        TypeMirror paramType = params.get(i).asType();
-                        if (ElementUtils.typeEquals(paramType, types.Frame) || ElementUtils.typeEquals(paramType, types.VirtualFrame)) {
-                            params.remove(i);
-                            i--;
-                        }
-                    }
-                }
-
-                if (cinstr.isVariadic()) {
-                    exToCopy.getParameters().add(0, new CodeVariableElement(context.getType(int.class), "$numVariadics"));
-                }
-                exToCopy.getParameters().add(0, new CodeVariableElement(arrayOf(types.Node), "$children"));
-                exToCopy.getParameters().add(0, new CodeVariableElement(context.getType(Object[].class), "$consts"));
-                exToCopy.getParameters().add(0, new CodeVariableElement(context.getType(int.class), "$sp"));
-                exToCopy.getParameters().add(0, new CodeVariableElement(context.getType(int.class), "$bci"));
-                exToCopy.getParameters().add(0, new CodeVariableElement(context.getType(short[].class), "$bc"));
-                exToCopy.getParameters().add(0, new CodeVariableElement(opNodeImpl.asType(), "$this"));
-                if (!isBoundary) {
-                    if (m.enableYield) {
-                        exToCopy.getParameters().add(0, new CodeVariableElement(types.VirtualFrame, "$localFrame"));
-                        exToCopy.getParameters().add(0, new CodeVariableElement(types.VirtualFrame, "$stackFrame"));
-                    } else {
-                        exToCopy.getParameters().add(0, new CodeVariableElement(types.VirtualFrame, "$frame"));
-                    }
-                }
-                exToCopy.getModifiers().remove(Modifier.PUBLIC);
-                exToCopy.getModifiers().add(Modifier.PRIVATE);
-                exToCopy.getModifiers().add(Modifier.STATIC);
-                exToCopy.getAnnotationMirrors().removeIf(x -> x.getAnnotationType().equals(context.getType(Override.class)));
-                builderBytecodeNodeType.add(exToCopy);
-
-                if (exName.equals(plugs.transformNodeMethodName("prepareForAOT"))) {
-                    metPrepareForAOT = exToCopy;
-                }
-            }
-
-            if (isUncached) {
-                cinstr.setUncachedExecuteMethod(executeMethods[0]);
+            Optional<Element> el = builderBytecodeNodeType.getEnclosedElements().stream().filter(x -> x.getSimpleName().equals(sn)).findAny();
+            if (el.isPresent()) {
+                result = (CodeTypeElement) el.get();
             } else {
-                cinstr.setExecuteMethod(executeMethods);
+                processNodeType(soData, result);
+
+                for (TypeElement te : ElementFilter.typesIn(result.getEnclosedElements())) {
+                    CodeTypeElement cte = (CodeTypeElement) te;
+                    String simpleName = cte.getSimpleName().toString();
+
+                    if (simpleName.endsWith("Data")) {
+                        continue;
+                    }
+
+                    switch (simpleName) {
+                        case "Uncached":
+                            processNodeType(soData, cte);
+                            break;
+                        default:
+                            throw new AssertionError("unknown nested type: " + simpleName);
+                    }
+                }
+
+                builderBytecodeNodeType.add(result);
             }
-            cinstr.setPrepareAOTMethod(metPrepareForAOT);
 
-            if (m.isTracing()) {
-                OperationGeneratorUtils.createHelperMethod(typEnclosingElement, "doGetStateBits_" + cinstr.getUniqueName() + "_", () -> {
-                    CodeExecutableElement metGetSpecBits = new CodeExecutableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC), arrayOf(context.getType(boolean.class)),
-                                    "doGetStateBits_" + cinstr.getUniqueName() + "_");
-
-                    metGetSpecBits.addParameter(new CodeVariableElement(arrayOf(context.getType(short.class)), "$bc"));
-                    metGetSpecBits.addParameter(new CodeVariableElement(context.getType(int.class), "$bci"));
-                    CodeTreeBuilder b = metGetSpecBits.createBuilder();
-                    b.tree(plugs.createGetSpecializationBits());
-
-                    cinstr.setGetSpecializationBits(metGetSpecBits);
-
-                    return metGetSpecBits;
-                });
-            }
+            result.getModifiers().add(Modifier.STATIC);
         }
 
         for (CodeVariableElement element : staticConstants.elements()) {
             builderBytecodeNodeType.add(element);
+        }
+    }
+
+    private void processNodeType(SingleOperationData soData, CodeTypeElement result) {
+        result.setSuperClass(types.Node);
+
+        for (ExecutableElement ctor : ElementFilter.constructorsIn(result.getEnclosedElements())) {
+            result.remove(ctor);
+        }
+
+        for (VariableElement var : ElementFilter.fieldsIn(result.getEnclosedElements())) {
+            String simpleName = var.getSimpleName().toString();
+            if (simpleName.startsWith("$child") || simpleName.equals("$variadicChild_")) {
+                result.remove(var);
+            }
+        }
+
+        for (ExecutableElement ex : ElementFilter.methodsIn(result.getEnclosedElements())) {
+            String simpleName = ex.getSimpleName().toString();
+
+            if (simpleName.equals("create") || simpleName.equals("getUncached")) {
+                result.remove(ex);
+                continue;
+            }
+
+            CodeExecutableElement cex = (CodeExecutableElement) ex;
+
+            if (!simpleName.equals("getCost")) {
+                if (soData.getMainProperties().isVariadic) {
+                    cex.getParameters().add(0, new CodeVariableElement(context.getType(int.class), "$numVariadics"));
+                }
+                cex.getParameters().add(0, new CodeVariableElement(context.getType(int.class), "$sp"));
+                cex.getParameters().add(0, new CodeVariableElement(context.getType(int.class), "$bci"));
+                if (ElementUtils.findAnnotationMirror(cex, types.CompilerDirectives_TruffleBoundary) == null) {
+                    if (m.enableYield) {
+                        cex.getParameters().add(0, new CodeVariableElement(types.VirtualFrame, "$localsFrame"));
+                        cex.getParameters().add(0, new CodeVariableElement(types.VirtualFrame, "$stackFrame"));
+                    } else {
+                        cex.getParameters().add(0, new CodeVariableElement(types.VirtualFrame, "$frame"));
+                    }
+                }
+            }
         }
     }
 

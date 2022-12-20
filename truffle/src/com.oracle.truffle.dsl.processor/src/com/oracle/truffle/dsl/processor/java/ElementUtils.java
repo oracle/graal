@@ -148,6 +148,10 @@ public class ElementUtils {
         return ProcessorContext.getInstance().getTypeElement(typeName);
     }
 
+    public static TypeElement getTypeElement(DeclaredType type) {
+        return (TypeElement) type.asElement();
+    }
+
     public static ExecutableElement findExecutableElement(DeclaredType type, String name) {
         return findExecutableElement(type.asElement(), name);
     }

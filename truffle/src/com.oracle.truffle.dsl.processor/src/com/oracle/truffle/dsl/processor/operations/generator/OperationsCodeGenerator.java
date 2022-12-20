@@ -38,52 +38,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.operation.introspection;
+package com.oracle.truffle.dsl.processor.operations.generator;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
-public final class OperationIntrospection {
+import com.oracle.truffle.dsl.processor.AnnotationProcessor;
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.operations.model.OperationsModel;
 
-    public interface Provider {
-        default OperationIntrospection getIntrospectionData() {
-            throw new UnsupportedOperationException();
-        }
+public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsModel> {
 
-        static OperationIntrospection create(Object... data) {
-            return new OperationIntrospection(data);
-        }
+    @Override
+    public List<CodeTypeElement> create(ProcessorContext context, AnnotationProcessor<?> processor, OperationsModel m) {
+        return List.of(new OperationsNodeFactory(context, m).create());
     }
 
-    private final Object[] data;
-
-    // format: [int 0, Object[] instructions, Object[] exHandlers, Object[] sourceInfo or null]
-    // instruction: [int index, String name, short[] bytes, Object[] argumentValues]
-    // argumentValue: [ArgumentKind kind, Object value]
-    // exHandler: [int startIndex, int endIndex, int handlerIndex]
-    // sourceInfo: [int startIndex, int endIndex, SourceSection ss]
-
-    private OperationIntrospection(Object[] data) {
-        if (data.length == 0 || (int) data[0] != 0) {
-            throw new UnsupportedOperationException("Illegal operation introspection version");
-        }
-
-        this.data = data;
-    }
-
-    public List<Instruction> getInstructions() {
-        return Arrays.stream((Object[]) data[1]).map(x -> new Instruction((Object[]) x)).collect(Collectors.toUnmodifiableList());
-    }
-
-    public List<ExceptionHandler> getExceptionHandlers() {
-        return Arrays.stream((Object[]) data[2]).map(x -> new ExceptionHandler((Object[]) x)).collect(Collectors.toUnmodifiableList());
-    }
-
-    public List<SourceInformation> getSourceInformation() {
-        if (data[3] == null) {
-            return null;
-        }
-        return Arrays.stream((Object[]) data[3]).map(x -> new SourceInformation((Object[]) x)).collect(Collectors.toUnmodifiableList());
-    }
 }

@@ -292,10 +292,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return null;
         }
 
-        if (mode == ParseMode.DEFAULT && ElementUtils.findAnnotationMirror(templateType.getAnnotationMirrors(), types.Operation) != null) {
-            return null;
-        }
-
         List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<TypeElement>(), templateType);
 
         NodeData node = parseNodeData(templateType, lookupTypes);

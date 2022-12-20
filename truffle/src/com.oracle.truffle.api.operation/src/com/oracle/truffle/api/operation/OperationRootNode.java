@@ -83,7 +83,9 @@ public interface OperationRootNode extends NodeInterface, OperationIntrospection
 
     Object execute(VirtualFrame frame);
 
-    SourceSection getSourceSectionAtBci(int bci);
+    default SourceSection getSourceSectionAtBci(int bci) {
+        return null;
+    }
 
     @SuppressWarnings("unused")
     default void executeProlog(VirtualFrame frame) {
@@ -93,5 +95,7 @@ public interface OperationRootNode extends NodeInterface, OperationIntrospection
     default void executeEpilog(VirtualFrame frame, Object returnValue, Throwable throwable) {
     }
 
-    InstrumentableNode materializeInstrumentTree(Set<Class<? extends Tag>> materializedTags);
+    default InstrumentableNode materializeInstrumentTree(Set<Class<? extends Tag>> materializedTags) {
+        throw new UnsupportedOperationException();
+    }
 }

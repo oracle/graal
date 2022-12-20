@@ -38,52 +38,56 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.operation.introspection;
+package com.oracle.truffle.dsl.processor.operations.model;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.model.NodeData;
+import com.oracle.truffle.dsl.processor.operations.model.OperationModel.CustomSignature;
 
-public final class OperationIntrospection {
+public class InstructionModel implements InfoDumpable {
+    public enum InstructionKind {
+        BRANCH,
+        BRANCH_FALSE,
+        POP,
+        INSTRUMENTATION_ENTER,
+        INSTRUMENTATION_EXIT,
+        INSTRUMENTATION_LEAVE,
+        LOAD_ARGUMENT,
+        LOAD_CONSTANT,
+        LOAD_LOCAL,
+        LOAD_LOCAL_MATERIALIZED,
+        STORE_LOCAL,
+        STORE_LOCAL_MATERIALIZED,
 
-    public interface Provider {
-        default OperationIntrospection getIntrospectionData() {
-            throw new UnsupportedOperationException();
-        }
+        RETURN,
+        YIELD,
+        THROW,
 
-        static OperationIntrospection create(Object... data) {
-            return new OperationIntrospection(data);
-        }
+        CUSTOM,
+        CUSTOM_QUICKENED,
+        CUSTOM_SHORT_CIRCUIT,
+        SUPERINSTRUCTION,
     }
 
-    private final Object[] data;
+    public final int id;
+    public final InstructionKind kind;
+    public final String name;
+    public CodeTypeElement nodeType;
+    public CustomSignature signature;
+    public NodeData nodeData;
 
-    // format: [int 0, Object[] instructions, Object[] exHandlers, Object[] sourceInfo or null]
-    // instruction: [int index, String name, short[] bytes, Object[] argumentValues]
-    // argumentValue: [ArgumentKind kind, Object value]
-    // exHandler: [int startIndex, int endIndex, int handlerIndex]
-    // sourceInfo: [int startIndex, int endIndex, SourceSection ss]
+    public InstructionModel(int id, InstructionKind kind, String name) {
+        this.id = id;
+        this.kind = kind;
+        this.name = name;
+    }
 
-    private OperationIntrospection(Object[] data) {
-        if (data.length == 0 || (int) data[0] != 0) {
-            throw new UnsupportedOperationException("Illegal operation introspection version");
+    public void dump(Dumper dumper) {
+        dumper.print("Instruction %s", name);
+        dumper.field("kind", kind);
+        if (nodeType != null) {
+            dumper.field("nodeType", nodeType.getSimpleName());
         }
-
-        this.data = data;
-    }
-
-    public List<Instruction> getInstructions() {
-        return Arrays.stream((Object[]) data[1]).map(x -> new Instruction((Object[]) x)).collect(Collectors.toUnmodifiableList());
-    }
-
-    public List<ExceptionHandler> getExceptionHandlers() {
-        return Arrays.stream((Object[]) data[2]).map(x -> new ExceptionHandler((Object[]) x)).collect(Collectors.toUnmodifiableList());
-    }
-
-    public List<SourceInformation> getSourceInformation() {
-        if (data[3] == null) {
-            return null;
-        }
-        return Arrays.stream((Object[]) data[3]).map(x -> new SourceInformation((Object[]) x)).collect(Collectors.toUnmodifiableList());
+        dumper.field("signature", signature);
     }
 }

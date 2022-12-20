@@ -44,13 +44,10 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.createReference
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
-import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
@@ -61,7 +58,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.parser.SpecializationGroup.TypeGuard;
 
-public class BitSet {
+class BitSet {
 
     private static final Object[] EMPTY_OBJECTS = new Object[0];
 
@@ -71,28 +68,18 @@ public class BitSet {
     private final Object[] objects;
     private final long allMask;
     private final TypeMirror type;
-    private NodeGeneratorPlugs plugs;
 
-    BitSet(String name, Object[] objects, NodeGeneratorPlugs plugs) {
+    BitSet(String name, Object[] objects) {
         this.name = name;
         this.objects = objects;
         this.capacity = intializeCapacity();
-        TypeMirror typeTmp;
         if (capacity <= 32) {
-            typeTmp = ProcessorContext.getInstance().getType(int.class);
+            type = ProcessorContext.getInstance().getType(int.class);
         } else if (capacity <= 64) {
-            typeTmp = ProcessorContext.getInstance().getType(long.class);
+            type = ProcessorContext.getInstance().getType(long.class);
         } else {
             throw new UnsupportedOperationException("State space too big " + capacity + ". Only <= 64 supported.");
         }
-
-        if (plugs != null) {
-            type = plugs.getBitSetType(typeTmp);
-        } else {
-            type = typeTmp;
-        }
-
-        this.plugs = plugs;
         this.allMask = createMask(objects);
     }
 
@@ -138,14 +125,10 @@ public class BitSet {
         }
     }
 
-    public CodeTree createReference(FrameState frameState, boolean write) {
+    public CodeTree createReference(FrameState frameState) {
         CodeTree ref = createLocalReference(frameState);
         if (ref == null) {
-            if (plugs != null) {
-                ref = plugs.createBitSetReference(this, write);
-            } else {
-                ref = CodeTreeBuilder.createBuilder().string("this.", getName(), "_").build();
-            }
+            ref = CodeTreeBuilder.createBuilder().string("this.", getName(), "_").build();
         }
         return ref;
     }
@@ -184,11 +167,7 @@ public class BitSet {
         String fieldName = name + "_";
         LocalVariable var = new LocalVariable(type, name, null);
         CodeTreeBuilder init = builder.create();
-        if (plugs != null) {
-            init.tree(plugs.createBitSetReference(this, false));
-        } else {
-            init.string("this.").tree(CodeTreeBuilder.singleString(fieldName));
-        }
+        init.string("this.").tree(CodeTreeBuilder.singleString(fieldName));
         builder.tree(var.createDeclaration(init.build()));
         frameState.set(name, var);
         return builder.build();
@@ -222,24 +201,17 @@ public class BitSet {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.tree(createMaskedReference(frameState, maskedElements));
         builder.string(" == ").string(formatMask(createMask(selectedElements)));
-        builder.string("/* ", label("is-exact"), toString(selectedElements, "&&"), " */");
-        return builder.build();
-    }
-
-    public CodeTree createIsEmpty(FrameState frameState) {
-        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-        builder.tree(createReference(frameState, false)).string(" == 0");
         return builder.build();
     }
 
     private CodeTree createMaskedReference(FrameState frameState, long maskedElements) {
         if (maskedElements == this.allMask) {
             // no masking needed
-            return createReference(frameState, false);
+            return createReference(frameState);
         } else {
             CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
             // masking needed we use the state bitset for guards as well
-            builder.string("(").tree(createReference(frameState, false)).string(" & ").string(formatMask(maskedElements)).string(")");
+            builder.string("(").tree(createReference(frameState)).string(" & ").string(formatMask(maskedElements)).string(")");
             return builder.build();
         }
     }
@@ -358,7 +330,7 @@ public class BitSet {
         if (!hasLocal && elements.length == 0) {
             return valueBuilder.build();
         }
-        valueBuilder.tree(createReference(frameState, true));
+        valueBuilder.tree(createReference(frameState));
         if (elements.length > 0) {
             if (value) {
                 valueBuilder.string(" | ");
@@ -377,11 +349,7 @@ public class BitSet {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.startStatement();
         if (persist) {
-            if (plugs != null) {
-                builder.tree(plugs.createBitSetReference(this, true)).string(" = ");
-            } else {
-                builder.string("this.", name, "_ = ");
-            }
+            builder.string("this.", name, "_ = ");
 
             // if there is a local variable we need to update it as well
             CodeTree localReference = createLocalReference(frameState);
@@ -389,15 +357,9 @@ public class BitSet {
                 builder.tree(localReference).string(" = ");
             }
         } else {
-            builder.tree(createReference(frameState, true)).string(" = ");
+            builder.tree(createReference(frameState)).string(" = ");
         }
-
-        CodeTree value = valueTree;
-        if (plugs != null) {
-            value = plugs.transformValueBeforePersist(value);
-        }
-
-        builder.tree(value);
+        builder.tree(valueTree);
         builder.end(); // statement
         return builder.build();
     }
@@ -406,12 +368,9 @@ public class BitSet {
         int offset = getStateOffset(element);
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.startStatement();
-        builder.tree(createReference(frameState, true)).string(" = ");
-        if (type.getKind() != TypeKind.INT) {
-            builder.cast(type);
-        }
+        builder.tree(createReference(frameState)).string(" = ");
         builder.startParantheses();
-        builder.tree(createReference(frameState, false));
+        builder.tree(createReference(frameState));
         builder.string(" | (");
         if (capacity > 32) {
             builder.string("(long) ");
@@ -453,32 +412,6 @@ public class BitSet {
             return 0;
         }
         return value;
-    }
-
-    @Override
-    public String toString() {
-        return String.format("%s %s %s", getClass().getSimpleName(), getName(), Arrays.toString(getObjects()));
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(getClass(), getName());
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == null) {
-            return false;
-        }
-
-        // names and types must be the same
-        if (obj.getClass() != getClass()) {
-            return false;
-        }
-
-        BitSet bs = (BitSet) obj;
-
-        return bs.getName().equals(getName());
     }
 
 }

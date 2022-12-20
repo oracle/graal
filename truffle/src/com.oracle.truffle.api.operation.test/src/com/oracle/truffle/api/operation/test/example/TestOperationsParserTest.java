@@ -70,7 +70,9 @@ public class TestOperationsParserTest {
 
     private static OperationRootNode parseNode(OperationParser<TestOperationsGen.Builder> builder) {
         OperationNodes<TestOperations> nodes = TestOperationsGen.create(OperationConfig.DEFAULT, builder);
-        return nodes.getNodes().get(nodes.getNodes().size() - 1);
+        TestOperations op = nodes.getNodes().get(nodes.getNodes().size() - 1);
+        System.out.println(op.dump());
+        return op;
     }
 
     @Test
@@ -877,7 +879,7 @@ public class TestOperationsParserTest {
         OperationRootNode node = parseNode(b -> {
             b.beginRoot(LANGUAGE);
 
-            b.setTestData(value);
+//            b.setTestData(value);
 
             b.endRoot();
         });
@@ -893,8 +895,8 @@ public class TestOperationsParserTest {
         OperationRootNode node = parseNode(b -> {
             b.beginRoot(LANGUAGE);
 
-            b.setTestData("some old value");
-            b.setTestData(value);
+//            b.setTestData("some old value");
+//            b.setTestData(value);
 
             b.endRoot();
         });

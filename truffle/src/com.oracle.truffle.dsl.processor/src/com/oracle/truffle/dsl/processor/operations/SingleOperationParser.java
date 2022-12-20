@@ -148,6 +148,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             }
 
             data = new SingleOperationData(context, null, proxyMirror, parentData, name, isShortCircuit);
+            data.setSupertype(proxyType);
 
         } else {
             if (proxyMirror != null) {
@@ -167,6 +168,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             }
 
             data = new SingleOperationData(context, te, null, parentData, name, false);
+            data.setSupertype(types.Node);
         }
 
         List<ExecutableElement> operationFunctions = new ArrayList<>();
@@ -505,7 +507,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
     private CodeTypeElement createRegularNodeChild() {
 
-        CodeTypeElement result = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, new GeneratedPackageElement("p"), "C");
+        CodeTypeElement result = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, new GeneratedPackageElement(""), "C");
         result.setSuperClass(types.Node);
 
         result.add(createChildExecuteMethod(GENERIC_EXECUTE_NAME, context.getType(Object.class)));
@@ -519,7 +521,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
     private CodeTypeElement createVariadicNodeChild() {
 
-        CodeTypeElement result = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, new GeneratedPackageElement("p"), "C");
+        CodeTypeElement result = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, new GeneratedPackageElement(""), "C");
         result.setSuperClass(types.Node);
 
         result.add(createChildExecuteMethod(GENERIC_EXECUTE_NAME, context.getType(Object[].class)));
@@ -528,7 +530,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
     }
 
     private CodeTypeElement createConstantNodeChild(TypeMirror returnType) {
-        CodeTypeElement result = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, new GeneratedPackageElement("p"), "C");
+        CodeTypeElement result = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, new GeneratedPackageElement(""), "C");
         result.setSuperClass(types.Node);
 
         result.add(createChildExecuteMethod(GENERIC_EXECUTE_NAME, returnType));

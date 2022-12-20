@@ -54,19 +54,18 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Level;
-import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
-import org.openjdk.jmh.annotations.Warmup;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.operation.OperationLocal;
 import com.oracle.truffle.api.operation.test.bml.BMOperationRootNodeGen.Builder;
+import com.oracle.truffle.api.operation.test.bml.ManualBytecodeNodedNode.AddNode;
+import com.oracle.truffle.api.operation.test.bml.ManualBytecodeNodedNode.ModNode;
 
 @State(Scope.Benchmark)
 public class BenmarkSimple extends BaseBenchmark {
@@ -79,6 +78,7 @@ public class BenmarkSimple extends BaseBenchmark {
     private static final String NAME_MANUAL = "simple:manual";
     private static final String NAME_MANUAL_NO_BE = "simple:manual-no-be";
     private static final String NAME_MANUAL_UNSAFE = "simple:manual-unsafe";
+    private static final String NAME_MANUAL_NODED = "simple:manual-noded";
     private static final String NAME_AST = "simple:ast";
 
     private static final Source SOURCE_TEST_LOOP = Source.create("bm", NAME_TEST_LOOP);
@@ -87,6 +87,7 @@ public class BenmarkSimple extends BaseBenchmark {
     private static final Source SOURCE_MANUAL = Source.create("bm", NAME_MANUAL);
     private static final Source SOURCE_MANUAL_NO_BE = Source.create("bm", NAME_MANUAL_NO_BE);
     private static final Source SOURCE_MANUAL_UNSAFE = Source.create("bm", NAME_MANUAL_UNSAFE);
+    private static final Source SOURCE_MANUAL_NODED = Source.create("bm", NAME_MANUAL_NODED);
     private static final Source SOURCE_AST = Source.create("bm", NAME_AST);
 
     private static final int LOC_I = 4;
@@ -178,6 +179,171 @@ public class BenmarkSimple extends BaseBenchmark {
 
     };
 
+    private static final short[] BC_SHORT = {
+                    // i = 0
+                    /* 00 */ OP_CONST,
+                    /* 01 */ OP_ST_LOC,
+
+                    // sum = 0
+                    /* 02 */ OP_CONST,
+                    /* 03 */ OP_ST_LOC,
+
+                    // while (i < 5000) {
+                    /* while_0_start: */
+                    /* 04 */ OP_LD_LOC,
+                    /* 05 */ OP_CONST,
+                    /* 06 */ OP_LESS,
+                    /* 07 */ OP_JUMP_FALSE, // while_0_end
+
+                    // j = 0
+                    /* 08 */ OP_CONST,
+                    /* 09 */ OP_ST_LOC,
+
+                    // while (j < i) {
+                    /* while_1_start: */
+                    /* 10 */ OP_LD_LOC,  // j
+                    /* 11 */ OP_LD_LOC, // i
+                    /* 12 */ OP_LESS,
+                    /* 13 */ OP_JUMP_FALSE, // while_1_end
+
+                    // if (i % 3 < 1) {
+                    /* 14 */ OP_LD_LOC, // i
+                    /* 15 */ OP_CONST,
+                    /* 16 */ OP_MOD,
+                    /* 17 */ OP_CONST,
+                    /* 18 */ OP_LESS,
+                    /* 19 */ OP_JUMP_FALSE, // if_else
+
+                    // temp = 0
+                    /* 20 */ OP_CONST,
+                    /* 21 */ OP_ST_LOC, // temp
+
+                    // } else {
+                    /* 22 */ OP_JUMP, // if_end
+                    /* if_else: */
+
+                    // temp = i % 3
+                    /* 23 */ OP_LD_LOC, // i
+                    /* 24 */ OP_CONST,
+                    /* 25 */ OP_MOD,
+                    /* 26 */ OP_ST_LOC, // temp
+
+                    // } // if end
+                    /* if_end: */
+
+                    // j = j + temp
+                    /* 27 */ OP_LD_LOC, // j
+                    /* 28 */ OP_LD_LOC, // temp
+                    /* 29 */ OP_ADD,
+                    /* 30 */ OP_ST_LOC, // j
+
+                    // } // while end
+                    /* 31 */ OP_JUMP, // while_1_start
+                    /* while_1_end: */
+
+                    // sum = sum + j
+                    /* 32 */ OP_LD_LOC, // sum
+                    /* 33 */ OP_LD_LOC, // j
+                    /* 34 */ OP_ADD,
+                    /* 35 */ OP_ST_LOC, // sum
+
+                    // i = i + 1
+                    /* 36 */ OP_LD_LOC, // i
+                    /* 37 */ OP_CONST,
+                    /* 38 */ OP_ADD,
+                    /* 39 */ OP_ST_LOC, // i
+
+                    // } // while end
+                    /* 40 */ OP_JUMP, // while_0_start
+                    /* while_0_end: */
+
+                    // return sum
+                    /* 41 */ OP_LD_LOC, // sum
+                    /* 42 */ OP_RETURN,
+    };
+
+    private static final Object[] OBJ_SHORT = {// i = 0
+                    /* 00 */ 0,
+                    /* 03 */ LOC_I,
+
+                    // sum = 0
+                    /* 05 */ 0,
+                    /* 08 */ LOC_SUM,
+
+                    // while (i < 5000) {
+                    /* while_0_start: */
+                    /* 10 */ LOC_I,
+                    /* 12 */ TOTAL_ITERATIONS,
+                    /* 15 */ null,
+                    /* 16 */ 41, // while_0_end
+
+                    // j = 0
+                    /* 18 */ 0,
+                    /* 21 */ LOC_J,
+
+                    // while (j < i) {
+                    /* while_1_start: */
+                    /* 23 */ LOC_J, // j
+                    /* 25 */ LOC_I, // i
+                    /* 27 */ null,
+                    /* 28 */ 32, // while_1_end
+
+                    // if (i % 3 < 1) {
+                    /* 30 */ LOC_I, // i
+                    /* 32 */ 3,
+                    /* 35 */ ModNode.create(),
+                    /* 36 */ 1,
+                    /* 39 */ null,
+                    /* 40 */ 23, // if_else
+
+                    // temp = 0
+                    /* 42 */ 1,
+                    /* 45 */ LOC_TEMP, // temp
+
+                    // } else {
+                    /* 47 */ 27, // if_end
+                    /* if_else: */
+
+                    // temp = i % 3
+                    /* 49 */ LOC_I, // i
+                    /* 51 */ 3,
+                    /* 54 */ ModNode.create(),
+                    /* 55 */ LOC_TEMP, // temp
+
+                    // } // if end
+                    /* if_end: */
+
+                    // j = j + temp
+                    /* 57 */ LOC_J, // j
+                    /* 59 */ LOC_TEMP, // temp
+                    /* 61 */ AddNode.create(),
+                    /* 62 */ LOC_J, // j
+
+                    // } // while end
+                    /* 64 */ 10, // while_1_start
+                    /* while_1_end: */
+
+                    // sum = sum + j
+                    /* 66 */ LOC_SUM, // sum
+                    /* 68 */ LOC_J, // j
+                    /* 70 */ AddNode.create(),
+                    /* 71 */ LOC_SUM, // sum
+
+                    // i = i + 1
+                    /* 73 */ LOC_I, // i
+                    /* 75 */ 1,
+                    /* 78 */ AddNode.create(),
+                    /* 79 */ LOC_I, // i
+
+                    // } // while end
+                    /* 81 */ 40, // while_0_start
+                    /* while_0_end: */
+
+                    // return sum
+                    /* 83 */ LOC_SUM, // sum
+                    /* 85 */ null
+    };
+
     private Context context;
 
     private static final int MODE_NORMAL = 0;
@@ -241,8 +407,17 @@ public class BenmarkSimple extends BaseBenchmark {
             ManualUnsafeBytecodeNode node = new ManualUnsafeBytecodeNode(lang, b.build(), BYTECODE);
             return node.getCallTarget();
         });
+        BenchmarkLanguage.registerName2(NAME_MANUAL_NODED, lang -> {
+            FrameDescriptor.Builder b = FrameDescriptor.newBuilder(3);
+            b.addSlots(8, FrameSlotKind.Illegal);
+            ManualBytecodeNodedNode node = new ManualBytecodeNodedNode(lang, b.build(), BC_SHORT, OBJ_SHORT);
+            return node.getCallTarget();
+        });
         BenchmarkLanguage.registerName2(NAME_AST, lang -> {
-            int iLoc = 0, sumLoc = 1, jLoc = 2, tempLoc = 3;
+            int iLoc = 0;
+            int sumLoc = 1;
+            int jLoc = 2;
+            int tempLoc = 3;
             return new BMLRootNode(lang, 4, BlockNode.create(
                             // i = 0
                             StoreLocalNodeGen.create(iLoc, ConstNodeGen.create(0)),
@@ -501,17 +676,12 @@ public class BenmarkSimple extends BaseBenchmark {
     }
 
     @Benchmark
+    public void manualNoded() {
+        doEval(SOURCE_MANUAL_NODED);
+    }
+
+    @Benchmark
     public void ast() {
         doEval(SOURCE_AST);
     }
-}
-
-@Warmup(iterations = BaseBenchmark.WARMUP_ITERATIONS, time = BaseBenchmark.ITERATION_TIME)
-@Measurement(iterations = BaseBenchmark.MEASUREMENT_ITERATIONS, time = BaseBenchmark.ITERATION_TIME)
-@Fork(BaseBenchmark.FORKS)
-class BaseBenchmark {
-    public static final int MEASUREMENT_ITERATIONS = 10;
-    public static final int WARMUP_ITERATIONS = 10;
-    public static final int ITERATION_TIME = 1;
-    public static final int FORKS = 1;
 }

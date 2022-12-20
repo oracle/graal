@@ -66,6 +66,7 @@ public class SingleOperationData extends Template {
     private final Set<TypeMirror> throwDeclarations = new HashSet<>();
     private final boolean isShortCircuit;
     private boolean shortCircuitContinueWhen;
+    private TypeMirror supertype;
 
     private List<FrameKind> possiblePrimitiveTypes;
     private boolean isAlwaysBoxed;
@@ -249,6 +250,14 @@ public class SingleOperationData extends Template {
 
     public void setAlwaysBoxed(boolean isAlwaysBoxed) {
         this.isAlwaysBoxed = isAlwaysBoxed;
+    }
+
+    public TypeMirror getSupertype() {
+        return supertype;
+    }
+
+    public void setSupertype(TypeMirror supertype) {
+        this.supertype = supertype;
     }
 
 }

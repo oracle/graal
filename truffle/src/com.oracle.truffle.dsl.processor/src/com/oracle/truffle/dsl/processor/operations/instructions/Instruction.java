@@ -58,6 +58,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
+import com.oracle.truffle.dsl.processor.operations.OperationGeneratorFlags;
 import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
@@ -257,6 +258,9 @@ public abstract class Instruction {
 
     public int length() {
         frozen = true;
+        if (OperationGeneratorFlags.USE_SIMPLE_BYTECODE) {
+            return 1;
+        }
         return getInstrumentsOffset() + instruments.size();
     }
 
@@ -357,6 +361,9 @@ public abstract class Instruction {
     }
 
     public CodeTree createLength() {
+        if (OperationGeneratorFlags.USE_SIMPLE_BYTECODE) {
+            return CodeTreeBuilder.singleString("1");
+        }
         return CodeTreeBuilder.singleString(internalName + LENGTH_SUFFIX);
     }
 
@@ -468,139 +475,144 @@ public abstract class Instruction {
         // emit opcode
         b.tree(createWriteOpcode(vars.bc, vars.bci, combineBoxingBits(ctx, this, 0)));
 
-        if (!constants.isEmpty()) {
-            b.startAssign("int constantsStart");
-            b.startCall(vars.consts, "size").end();
-            b.end();
-
-            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getConstantsOffset() + "] = (short) constantsStart").end();
-
-            for (int i = 0; i < constants.size(); i++) {
-                CodeTree initCode = null;
-                if (constants.get(i) != null) {
-                    initCode = createConstantInitCode(vars, args, constants.get(i), i);
-                }
-
-                if (initCode == null && args.constants != null) {
-                    initCode = args.constants[i];
-                }
-
-                if (initCode == null) {
-                    initCode = CodeTreeBuilder.singleString("null");
-                }
-
-                b.startStatement().startCall(vars.consts, "add");
-                b.tree(initCode);
-                b.end(2);
-            }
-        }
-
-        if (!children.isEmpty()) {
-            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getChildrenOffset() + "] = (short) ");
-            b.string("numChildNodes");
-            b.end();
-
-            b.statement("numChildNodes += " + children.size());
-        }
-
-        for (int i = 0; i < locals.size(); i++) {
-            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getLocalsOffset() + " + " + i + "] = (short) ");
-            b.startCall("getLocalIndex").tree(args.locals[i]).end();
-            b.end();
-        }
-
-        for (int i = 0; i < localRuns.size(); i++) {
-            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getLocalRunsOffset() + " + " + (i * 2) + "] = (short) ");
-            b.startCall("getLocalRunStart").tree(args.localRuns[i]).end();
-            b.end();
-
-            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getLocalRunsOffset() + " + " + (i * 2 + 1) + "] = (short) ");
-            b.startCall("getLocalRunLength").tree(args.localRuns[i]).end();
-            b.end();
-        }
-
-        if (isVariadic) {
-            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getVariadicOffset() + "] = (short) ");
-            b.startParantheses().tree(args.variadicCount).end();
-            b.end();
+        if (OperationGeneratorFlags.USE_SIMPLE_BYTECODE) {
+            b.tree(createObjectInitializer(vars, args));
         } else {
-            for (int i = 0; i < popIndexed.size(); i++) {
-                b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getPopIndexedOffset() + " + " + (i / 2) + "] ");
-                if (i % 2 == 1) {
-                    b.string("|");
-                }
-                b.string("= (short) ((").variable(vars.bci).string(" - predecessorBcis[" + i + "] < 256 ? ").variable(vars.bci).string(" - predecessorBcis[" + i + "] : 0)");
-                if (i % 2 == 1) {
-                    b.string(" << 8");
-                }
-                b.string(")").end();
-            }
-        }
+            if (!constants.isEmpty()) {
+                b.startAssign("int constantsStart");
+                b.startCall(vars.consts, "size").end();
+                b.end();
 
-        for (int i = 0; i < branchTargets.size(); i++) {
-            b.startStatement().startCall("labelFills", "add").startNew("LabelFill");
-            b.startGroup().variable(vars.bci).string(" + " + getBranchTargetsOffset() + " + " + i).end();
-            b.tree(args.branchTargets[i]);
-            b.end(3);
-        }
+                b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getConstantsOffset() + "] = (short) constantsStart").end();
 
-        if (!branchProfiles.isEmpty()) {
-            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getBranchProfileOffset() + "] = (short) ");
-            b.string("numConditionProfiles");
-            b.end();
-
-            b.statement("numConditionProfiles += " + branchProfiles.size() * 2);
-        }
-
-        for (int i = 0; i < stateBits.size(); i++) {
-            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getStateBitsOffset() + " + " + i + "] = 0").end();
-        }
-
-        for (int i = 0; i < arguments.size(); i++) {
-            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getArgumentsOffset() + " + " + i + "] = (short) (int) ");
-            b.tree(args.arguments[i]);
-            b.end();
-        }
-
-        if (!instruments.isEmpty()) {
-            b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getChildrenOffset() + "] = (short) ");
-            b.string("numInstrumentNodes");
-            b.end();
-
-            b.statement("numInstrumentNodes += " + instruments.size());
-        }
-
-        // superinstructions
-
-        final int maxHistory = 8;
-
-        b.startAssign("instructionHistory[++instructionHistoryIndex % " + maxHistory + "]").variable(opcodeIdField).end();
-
-        boolean elseIf = false;
-        for (SuperInstruction si : ctx.getSuperInstructions()) {
-            Instruction[] instrs = si.getInstructions();
-
-            if (instrs[instrs.length - 1].id == id) {
-                elseIf = b.startIf(elseIf);
-                for (int i = 1; i < instrs.length; i++) {
-                    if (i != 1) {
-                        b.string(" && ");
+                for (int i = 0; i < constants.size(); i++) {
+                    CodeTree initCode = null;
+                    if (constants.get(i) != null) {
+                        initCode = createConstantInitCode(vars, args, constants.get(i), i);
                     }
-                    b.string("instructionHistory[(instructionHistoryIndex - " + i + " + " + maxHistory + ") % 8] == ");
-                    b.variable(instrs[instrs.length - 1 - i].opcodeIdField);
-                }
-                b.end().startBlock();
 
-                b.startStatement().variable(vars.bc).string("[");
-                b.variable(vars.bci);
-                // skips the last since BCI is still not incremented for current instruction
-                for (int i = 0; i < instrs.length - 1; i++) {
-                    b.string(" - ").tree(instrs[i].createLength());
-                }
-                b.string("] = ").tree(OperationGeneratorUtils.combineBoxingBits(ctx, si, 0)).end();
+                    if (initCode == null && args.constants != null) {
+                        initCode = args.constants[i];
+                    }
 
+                    if (initCode == null) {
+                        initCode = CodeTreeBuilder.singleString("null");
+                    }
+
+                    b.startStatement().startCall(vars.consts, "add");
+                    b.tree(initCode);
+                    b.end(2);
+                }
+            }
+
+            if (!children.isEmpty()) {
+                b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getChildrenOffset() + "] = (short) ");
+                b.string("numChildNodes");
+                b.end();
+
+                b.statement("numChildNodes += " + children.size());
+            }
+
+            for (int i = 0; i < locals.size(); i++) {
+                b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getLocalsOffset() + " + " + i + "] = (short) ");
+                b.startCall("getLocalIndex").tree(args.locals[i]).end();
                 b.end();
             }
+
+            for (int i = 0; i < localRuns.size(); i++) {
+                b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getLocalRunsOffset() + " + " + (i * 2) + "] = (short) ");
+                b.startCall("getLocalRunStart").tree(args.localRuns[i]).end();
+                b.end();
+
+                b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getLocalRunsOffset() + " + " + (i * 2 + 1) + "] = (short) ");
+                b.startCall("getLocalRunLength").tree(args.localRuns[i]).end();
+                b.end();
+            }
+
+            if (isVariadic) {
+                b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getVariadicOffset() + "] = (short) ");
+                b.startParantheses().tree(args.variadicCount).end();
+                b.end();
+            } else {
+                for (int i = 0; i < popIndexed.size(); i++) {
+                    b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getPopIndexedOffset() + " + " + (i / 2) + "] ");
+                    if (i % 2 == 1) {
+                        b.string("|");
+                    }
+                    b.string("= (short) ((").variable(vars.bci).string(" - predecessorBcis[" + i + "] < 256 ? ").variable(vars.bci).string(" - predecessorBcis[" + i + "] : 0)");
+                    if (i % 2 == 1) {
+                        b.string(" << 8");
+                    }
+                    b.string(")").end();
+                }
+            }
+
+            for (int i = 0; i < branchTargets.size(); i++) {
+                b.startStatement().startCall("labelFills", "add").startNew("LabelFill");
+                b.startGroup().variable(vars.bci).string(" + " + getBranchTargetsOffset() + " + " + i).end();
+                b.tree(args.branchTargets[i]);
+                b.end(3);
+            }
+
+            if (!branchProfiles.isEmpty()) {
+                b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getBranchProfileOffset() + "] = (short) ");
+                b.string("numConditionProfiles");
+                b.end();
+
+                b.statement("numConditionProfiles += " + branchProfiles.size() * 2);
+            }
+
+            for (int i = 0; i < stateBits.size(); i++) {
+                b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getStateBitsOffset() + " + " + i + "] = 0").end();
+            }
+
+            for (int i = 0; i < arguments.size(); i++) {
+                b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getArgumentsOffset() + " + " + i + "] = (short) (int) ");
+                b.tree(args.arguments[i]);
+                b.end();
+            }
+
+            if (!instruments.isEmpty()) {
+                b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string(" + " + getChildrenOffset() + "] = (short) ");
+                b.string("numInstrumentNodes");
+                b.end();
+
+                b.statement("numInstrumentNodes += " + instruments.size());
+            }
+
+            // superinstructions
+
+            final int maxHistory = 8;
+
+            b.startAssign("instructionHistory[++instructionHistoryIndex % " + maxHistory + "]").variable(opcodeIdField).end();
+
+            boolean elseIf = false;
+            for (SuperInstruction si : ctx.getSuperInstructions()) {
+                Instruction[] instrs = si.getInstructions();
+
+                if (instrs[instrs.length - 1].id == id) {
+                    elseIf = b.startIf(elseIf);
+                    for (int i = 1; i < instrs.length; i++) {
+                        if (i != 1) {
+                            b.string(" && ");
+                        }
+                        b.string("instructionHistory[(instructionHistoryIndex - " + i + " + " + maxHistory + ") % 8] == ");
+                        b.variable(instrs[instrs.length - 1 - i].opcodeIdField);
+                    }
+                    b.end().startBlock();
+
+                    b.startStatement().variable(vars.bc).string("[");
+                    b.variable(vars.bci);
+                    // skips the last since BCI is still not incremented for current instruction
+                    for (int i = 0; i < instrs.length - 1; i++) {
+                        b.string(" - ").tree(instrs[i].createLength());
+                    }
+                    b.string("] = ").tree(OperationGeneratorUtils.combineBoxingBits(ctx, si, 0)).end();
+
+                    b.end();
+                }
+            }
+
         }
 
         b.startAssign(vars.bci).variable(vars.bci).string(" + ").tree(createLength()).end();
@@ -608,6 +620,10 @@ public abstract class Instruction {
         b.tree(createCustomEmitCodeAfter(vars, args));
 
         return b.build();
+    }
+
+    protected CodeTree createObjectInitializer(BuilderVariables vars, EmitArguments args) {
+        return null;
     }
 
     public abstract CodeTree createExecuteCode(ExecutionVariables vars);

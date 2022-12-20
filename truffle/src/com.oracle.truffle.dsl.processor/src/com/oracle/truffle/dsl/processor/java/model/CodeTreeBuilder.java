@@ -665,6 +665,10 @@ public class CodeTreeBuilder {
         return declaration(type, name, singleString(init));
     }
 
+    public CodeTreeBuilder declaration(TypeMirror type, String name) {
+        return declaration(type, name, (CodeTree) null);
+    }
+
     public CodeTreeBuilder declarationDefault(TypeMirror type, String name) {
         return declaration(type, name, createBuilder().defaultValue(type).build());
     }
@@ -1044,6 +1048,13 @@ public class CodeTreeBuilder {
             return string("(byte) ", String.valueOf(index));
         }
         return null;
+    }
+
+    public CodeTreeBuilder lines(List<String> lines) {
+        for (String line : lines) {
+            string(line).newLine();
+        }
+        return this;
     }
 
 }

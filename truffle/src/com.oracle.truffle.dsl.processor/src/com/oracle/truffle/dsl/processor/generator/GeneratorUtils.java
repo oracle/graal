@@ -62,6 +62,7 @@ import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
@@ -76,6 +77,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeNames;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
 import com.oracle.truffle.dsl.processor.model.Template;
@@ -331,7 +333,10 @@ public class GeneratorUtils {
 
     public static CodeTypeElement createClass(Template sourceModel, TemplateMethod sourceMethod, Set<Modifier> modifiers, String simpleName, TypeMirror superType) {
         TypeElement templateType = sourceModel.getTemplateType();
+        return createClass(templateType, sourceMethod, modifiers, simpleName, superType);
+    }
 
+    public static CodeTypeElement createClass(TypeElement templateType, TemplateMethod sourceMethod, Set<Modifier> modifiers, String simpleName, TypeMirror superType) {
         ProcessorContext context = ProcessorContext.getInstance();
 
         PackageElement pack = ElementUtils.findPackageElement(templateType);
@@ -371,12 +376,8 @@ public class GeneratorUtils {
         CodeAnnotationMirror annSuppressWarnings = new CodeAnnotationMirror(context.getDeclaredType(SuppressWarnings.class));
         element.addAnnotationMirror(annSuppressWarnings);
 
-        if (value.length == 1) {
-            annSuppressWarnings.setElementValue("value", new CodeAnnotationValue(value[0]));
-        } else {
-            annSuppressWarnings.setElementValue("value", new CodeAnnotationValue(
-                            Arrays.stream(value).map(CodeAnnotationValue::new).collect(Collectors.toList())));
-        }
+        annSuppressWarnings.setElementValue("value", new CodeAnnotationValue(
+                        Arrays.stream(value).map(CodeAnnotationValue::new).collect(Collectors.toList())));
     }
 
     static List<ExecutableElement> findUserConstructors(TypeMirror nodeType) {
@@ -431,6 +432,17 @@ public class GeneratorUtils {
 
     public static CodeExecutableElement overrideImplement(DeclaredType type, String methodName) {
         return overrideImplement((TypeElement) type.asElement(), methodName);
+    }
+
+    public static CodeExecutableElement createSetter(Set<Modifier> modifiers, VariableElement field) {
+        CodeExecutableElement setter = new CodeExecutableElement(modifiers, new CodeTypeMirror(TypeKind.VOID), "set" + ElementUtils.firstLetterUpperCase(field.getSimpleName().toString()));
+        setter.addParameter(new CodeVariableElement(field.asType(), field.getSimpleName().toString()));
+
+        CodeTreeBuilder b = setter.createBuilder();
+
+        b.startAssign("this", field).string(field.getSimpleName().toString()).end();
+
+        return setter;
     }
 
     public static CodeExecutableElement overrideImplement(TypeElement typeElement, String methodName) {

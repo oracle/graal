@@ -66,6 +66,8 @@ public abstract class UnsafeFrameAccess {
 
     public abstract <T> T unsafeObjectArrayRead(T[] arr, int index);
 
+    public abstract <T> T unsafeCast(Object arr, Class<T> clazz);
+
     public abstract byte unsafeGetTag(Frame frame, int slot);
 
     public abstract Object unsafeGetObject(Frame frame, int slot);
@@ -155,6 +157,13 @@ public abstract class UnsafeFrameAccess {
         @SuppressWarnings("unchecked")
         public <T> T unsafeObjectArrayRead(T[] arr, int index) {
             return (T) FrameWithoutBoxing.UNSAFE.getObject(arr, Unsafe.ARRAY_OBJECT_BASE_OFFSET + index * Unsafe.ARRAY_OBJECT_INDEX_SCALE);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> T unsafeCast(Object obj, Class<T> clazz) {
+            // TODO: make this unsafer
+            return (T) obj;
         }
 
         @Override
@@ -318,6 +327,12 @@ public abstract class UnsafeFrameAccess {
         @Override
         public <T> T unsafeObjectArrayRead(T[] arr, int index) {
             return arr[index];
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> T unsafeCast(Object obj, Class<T> clazz) {
+            return (T) obj;
         }
 
         @Override

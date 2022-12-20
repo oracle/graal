@@ -75,12 +75,9 @@ import com.oracle.truffle.dsl.processor.model.NodeData;
 
 public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
 
-    private NodeGeneratorPlugs plugs;
-    private GeneratorMode generatorMode = GeneratorMode.DEFAULT;
-
     @Override
     public List<CodeTypeElement> create(ProcessorContext context, AnnotationProcessor<?> processor, NodeData node) {
-        StaticConstants constants = plugs != null ? plugs.createConstants() : new StaticConstants();
+        StaticConstants constants = new StaticConstants();
         List<CodeTypeElement> rootTypes = createImpl(context, node, constants);
         if (rootTypes != null) {
             if (rootTypes.size() != 1) {
@@ -93,7 +90,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
         return rootTypes;
     }
 
-    private List<CodeTypeElement> createImpl(ProcessorContext context, NodeData node, StaticConstants constants) {
+    private static List<CodeTypeElement> createImpl(ProcessorContext context, NodeData node, StaticConstants constants) {
         List<CodeTypeElement> enclosedTypes = new ArrayList<>();
         for (NodeData childNode : node.getEnclosingNodes()) {
             List<CodeTypeElement> type = createImpl(context, childNode, constants);
@@ -125,14 +122,6 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
         } else {
             return null;
         }
-    }
-
-    public void setPlugs(NodeGeneratorPlugs plugs) {
-        this.plugs = plugs;
-    }
-
-    public void setGeneratorMode(GeneratorMode generatorMode) {
-        this.generatorMode = generatorMode;
     }
 
     private static CodeTypeElement makeInnerClass(CodeTypeElement type) {
@@ -277,7 +266,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
         return resolveNodeId(nodeType) + NODE_SUFFIX;
     }
 
-    private List<CodeTypeElement> generateNodes(ProcessorContext context, NodeData node, StaticConstants constants) {
+    private static List<CodeTypeElement> generateNodes(ProcessorContext context, NodeData node, StaticConstants constants) {
         if (!node.needsFactory()) {
             return Collections.emptyList();
         }
@@ -289,7 +278,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
             return Arrays.asList(type);
         }
 
-        type = new FlatNodeGenFactory(context, generatorMode, node, constants, plugs).create(type);
+        type = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, node, constants).create(type);
 
         return Arrays.asList(type);
     }
