@@ -35,7 +35,6 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.util.BitArrayUtils;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -43,6 +42,9 @@ public abstract class TypeState {
 
     /** TypeState id is only be used for statistics. */
     private int id = -1;
+
+    /** An empty bit array, i.e., not bits set. */
+    public static final int EMPTY_BIT_ARRAY = 0;
 
     /** A bit array of properties for this type state. */
     protected final int properties;
@@ -313,7 +315,7 @@ final class EmptyTypeState extends TypeState {
     static final TypeState SINGLETON = new EmptyTypeState();
 
     private EmptyTypeState() {
-        super(BitArrayUtils.EMPTY_BIT_ARRAY);
+        super(EMPTY_BIT_ARRAY);
     }
 
     @Override
@@ -382,7 +384,7 @@ final class NullTypeState extends TypeState {
     static final TypeState SINGLETON = new NullTypeState();
 
     private NullTypeState() {
-        super(BitArrayUtils.EMPTY_BIT_ARRAY);
+        super(EMPTY_BIT_ARRAY);
     }
 
     @Override
