@@ -1053,6 +1053,7 @@ suite = {
         "GRAAL_PROCESSOR",
       ],
       "workingSets" : "Graal,Replacements",
+      "jacoco" : "exclude",
     },
 
     "org.graalvm.compiler.replacements.aarch64" : {

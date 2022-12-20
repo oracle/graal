@@ -1740,8 +1740,12 @@ def native_image_on_jvm(args, **kwargs):
         for key, value in javaProperties.items():
             args.append("-D" + key + "=" + value)
 
-    mx.run([executable] + args, **kwargs)
-
+    arg = [executable]
+    jacoco_args = mx_gate.get_jacoco_agent_args(agent_option_prefix='-J')
+    if jacoco_args is not None:
+        arg += jacoco_args
+    arg += args
+    mx.run(arg, **kwargs)
 
 @mx.command(suite.name, 'native-image-configure')
 def native_image_configure_on_jvm(args, **kwargs):
