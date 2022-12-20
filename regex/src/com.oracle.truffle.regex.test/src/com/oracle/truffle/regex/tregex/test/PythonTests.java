@@ -305,4 +305,12 @@ public class PythonTests extends RegexTestBase {
         // the group boundaries have to be checked when pruning.
         test("(?:|())(?:|())(?:|())(?:|())(?:|())(?:|())(?:|())(?:|())\\3\\5\\7", "", "", 0, true, 0, 0, -1, -1, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1, 7);
     }
+
+    @Test
+    public void gr41215() {
+        test("(?<= )b|ab", "", "PythonMethod=match", " b", 1, true, 1, 2);
+        test("(?<= )b|abc", "", "PythonMethod=match", " b", 1, true, 1, 2);
+        test("(?<!\\.)b|ab", "", "PythonMethod=match", " b", 1, true, 1, 2);
+        test("(?=a)|(?<=a)|:", "", "PythonMethod=match", "a:", 1, true, 1, 1);
+    }
 }
