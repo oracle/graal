@@ -58,7 +58,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.operation.GenerateOperations;
-import com.oracle.truffle.api.operation.MetadataKey;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.OperationRootNode;
@@ -84,12 +83,12 @@ import com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode;
 import com.oracle.truffle.sl.nodes.util.SLToBooleanNode;
 import com.oracle.truffle.sl.nodes.util.SLUnboxNode;
 import com.oracle.truffle.sl.runtime.SLFunction;
-import com.oracle.truffle.sl.runtime.SLStrings;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 @GenerateOperations(//
                 languageClass = SLLanguage.class, //
-                decisionsFile = "decisions.json", boxingEliminationTypes = {long.class, boolean.class})
+                decisionsFile = "decisions.json", //
+                boxingEliminationTypes = {long.class, boolean.class})
 @GenerateUncached
 @TypeSystemReference(SLTypes.class)
 @OperationProxy(SLAddNode.class)
@@ -125,11 +124,18 @@ public abstract class SLOperationRootNode extends SLRootNode implements Operatio
 
     @Override
     public TruffleString getTSName() {
-        return getMetadata(MethodName);
+        return tsName;
     }
 
-    @GenerateOperations.Metadata //
-    public static final MetadataKey<TruffleString> MethodName = new MetadataKey<>(SLStrings.EMPTY_STRING);
+    public void setTSName(TruffleString tsName) {
+        this.tsName = tsName;
+    }
+
+// @GenerateOperations.Metadata //
+// public static final MetadataKey<TruffleString> MethodName = new
+// MetadataKey<>(SLStrings.EMPTY_STRING);
+
+    private TruffleString tsName;
 
     @Operation
     @TypeSystemReference(SLTypes.class)

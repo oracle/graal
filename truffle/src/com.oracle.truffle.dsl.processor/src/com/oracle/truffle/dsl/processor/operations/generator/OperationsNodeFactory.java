@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.operations.generator;
 
+import static javax.lang.model.element.Modifier.ABSTRACT;
 import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.PUBLIC;
@@ -47,6 +48,7 @@ import static javax.lang.model.element.Modifier.STATIC;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -80,7 +82,10 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTy
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel;
+import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionField;
+import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel;
+import com.oracle.truffle.dsl.processor.operations.model.OperationModel.CustomSignature;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationsModel;
 
@@ -97,6 +102,11 @@ public class OperationsNodeFactory {
     private CodeTypeElement operationLocalImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "OperationLocalImpl");
     private CodeTypeElement operationLabelImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "OperationLabelImpl");
 
+    private CodeTypeElement baseInterpreter = new CodeTypeElement(Set.of(PRIVATE, STATIC, ABSTRACT), ElementKind.CLASS, null, "BaseInterpreter");
+    private CodeTypeElement uncachedInterpreter;
+    private CodeTypeElement cachedInterpreter = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "CachedInterpreter");
+    private CodeTypeElement instrumentableInterpreter = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "InstrumentableInterpreter");
+
     private static final Name Uncached_Name = CodeNames.of("Uncached");
 
     public OperationsNodeFactory(ProcessorContext context, OperationsModel model) {
@@ -107,12 +117,28 @@ public class OperationsNodeFactory {
 
     public CodeTypeElement create() {
         operationNodeGen = GeneratorUtils.createClass(model.templateType, null, Set.of(PUBLIC, FINAL), model.templateType.getSimpleName() + "Gen", model.templateType.asType());
-        GeneratorUtils.addSuppressWarnings(context, operationNodeGen, "unused");
+        GeneratorUtils.addSuppressWarnings(context, operationNodeGen, "all");
 
-        // CodeTreeBuilder b = operationsNodeGen.createDocBuilder();
-        // b.startDoc();
-        // b.lines(model.infodump());
-        // b.end();
+        if (model.generateUncached) {
+            uncachedInterpreter = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "UncachedInterpreter");
+        }
+
+        CodeTreeBuilder b = operationNodeGen.createDocBuilder();
+        b.startDoc();
+        b.lines(model.infodump());
+        b.end();
+
+        operationNodeGen.add(new BaseInterpreterFactory().create());
+
+        if (model.generateUncached) {
+            operationNodeGen.add(new InterpreterFactory(uncachedInterpreter, true, false).create());
+            operationNodeGen.add(createInterpreterSwitch(uncachedInterpreter, "UNCACHED"));
+        }
+
+        operationNodeGen.add(new InterpreterFactory(cachedInterpreter, false, false).create());
+        operationNodeGen.add(new InterpreterFactory(instrumentableInterpreter, false, true).create());
+        operationNodeGen.add(createInterpreterSwitch(cachedInterpreter, "CACHED"));
+        operationNodeGen.add(createInterpreterSwitch(instrumentableInterpreter, "INSTRUMENTABLE"));
 
         operationNodeGen.add(new BuilderFactory().create());
         operationNodeGen.add(new OperationNodesImplFactory().create());
@@ -133,8 +159,11 @@ public class OperationsNodeFactory {
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(Object[].class), "objs")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLocals")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "buildIndex")));
+        operationNodeGen.add(createInterpreterField());
 
         operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(Object.class), "EPSILON = new Object()"));
+
+        operationNodeGen.add(createReadVariadic());
 
         StaticConstants consts = new StaticConstants();
         for (InstructionModel instr : model.getInstructions()) {
@@ -142,12 +171,12 @@ public class OperationsNodeFactory {
                 continue;
             }
 
-            FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, instr.nodeData, consts);
+            FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, instr.nodeData, consts, new OperationNodeGeneratorPlugs(context, instr));
 
-            CodeTypeElement el = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, instr.nodeType.getSimpleName() + "Gen");
+            CodeTypeElement el = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, instr.getInternalName() + "Gen");
             el.setSuperClass(types.Node);
             factory.create(el);
-            processNodeType(el);
+            processNodeType(el, instr);
             operationNodeGen.add(el);
         }
 
@@ -156,8 +185,27 @@ public class OperationsNodeFactory {
         return operationNodeGen;
     }
 
+    private CodeVariableElement createInterpreterField() {
+        CodeVariableElement fld = new CodeVariableElement(Set.of(PRIVATE), baseInterpreter.asType(), "interpreter");
+        fld = compFinal(fld);
+
+        if (model.generateUncached) {
+            fld.createInitBuilder().string("UNCACHED_INTERPRETER");
+        } else {
+            fld.createInitBuilder().string("CACHED_INTERPRETER");
+        }
+
+        return fld;
+    }
+
+    private CodeVariableElement createInterpreterSwitch(CodeTypeElement interpreterType, String name) {
+        CodeVariableElement fld = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), interpreterType.asType(), name + "_INTERPRETER");
+        fld.createInitBuilder().startNew(interpreterType.asType()).end();
+        return fld;
+    }
+
     @SuppressWarnings("unchecked")
-    private void processNodeType(CodeTypeElement el) {
+    private void processNodeType(CodeTypeElement el, InstructionModel instr) {
         for (VariableElement fld : ElementFilter.fieldsIn(el.getEnclosedElements())) {
             if (ElementUtils.getQualifiedName(fld.asType()).equals("C")) {
                 el.remove(fld);
@@ -172,6 +220,24 @@ public class OperationsNodeFactory {
             if (type.getSimpleName() == Uncached_Name) {
                 type.setSuperClass(types.Node);
             }
+        }
+
+        if (instr.needsUncachedData()) {
+            CodeTypeElement uncachedType = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, el.getSimpleName() + "_UncachedData");
+            uncachedType.setSuperClass(types.Node);
+            uncachedType.setEnclosingElement(operationNodeGen);
+            operationNodeGen.add(uncachedType);
+
+            el.setSuperClass(uncachedType.asType());
+
+            for (InstructionField field : instr.getUncachedFields()) {
+                uncachedType.add(new CodeVariableElement(field.type, field.name));
+            }
+        }
+
+        int index = 0;
+        for (InstructionField field : instr.getCachedFields()) {
+            el.getEnclosedElements().add(index++, new CodeVariableElement(field.type, field.name));
         }
     }
 
@@ -202,7 +268,18 @@ public class OperationsNodeFactory {
         CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "execute");
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.returnNull();
+        b.statement("int state = numLocals << 16");
+
+        b.startWhile().string("true").end().startBlock();
+        b.statement("state = interpreter.continueAt(frame, bc, objs, state)");
+        b.startIf().string("(state & 0xffff) == 0xffff").end().startBlock();
+        b.statement("break");
+        b.end().startElseBlock();
+        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+        b.end();
+        b.end();
+
+        b.startReturn().string("frame.getObject((state >> 16) & 0xffff)").end();
 
         return ex;
     }
@@ -261,6 +338,28 @@ public class OperationsNodeFactory {
         b.startReturn().startStaticCall(types.OperationIntrospection_Provider, "create");
         b.string("new Object[]{0, instructions, new Object[0], null}");
         b.end(2);
+
+        return ex;
+    }
+
+    private CodeExecutableElement createReadVariadic() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), context.getType(Object[].class), "readVariadic");
+
+        ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+        ex.addParameter(new CodeVariableElement(context.getType(int.class), "sp"));
+        ex.addParameter(new CodeVariableElement(context.getType(int.class), "variadicCount"));
+
+        ex.addAnnotationMirror(new CodeAnnotationMirror(types.ExplodeLoop));
+
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.statement("Object[] result = new Object[variadicCount]");
+
+        b.startFor().string("int i = 0; i < variadicCount; i++").end().startBlock();
+        b.statement("result[i] = frame.getObject(sp - variadicCount + i)");
+        b.end();
+
+        b.statement("return result");
 
         return ex;
     }
@@ -451,7 +550,7 @@ public class OperationsNodeFactory {
                 b.statement("operationSp = 0");
                 b.statement("numLocals = 0");
                 b.statement("curStack = 0");
-                b.statement("maxStack = 0");
+                b.statement("maxStack = 10");
             } else {
                 b.startStatement().startCall("beforeChild").end(2);
             }
@@ -470,6 +569,9 @@ public class OperationsNodeFactory {
                     b.string("new Object[]{false, arg0}");
                     break;
                 case BLOCK:
+                case INSTRUMENT_TAG:
+                case SOURCE:
+                case SOURCE_SECTION:
                     b.string("new Object[]{false}");
                     break;
                 case IF_THEN:
@@ -582,25 +684,8 @@ public class OperationsNodeFactory {
                 return ex;
             }
 
-            if (operation.instruction != null) {
-                buildEmitInstruction(b, operation.instruction, () -> {
-                    switch (operation.kind) {
-                        case STORE_LOCAL:
-                        case STORE_LOCAL_MATERIALIZED:
-                        case LOAD_LOCAL_MATERIALIZED:
-                            b.string("((OperationLocalImpl) operationData[operationSp]).index");
-                            break;
-                        case CUSTOM_SIMPLE:
-                        case CUSTOM_SHORT_CIRCUIT:
-                        case RETURN:
-                        case YIELD:
-                            b.string("EPSILON");
-                            break;
-                        default:
-                            b.string("/* TODO: NOT IMPLEMENTED */");
-                            break;
-                    }
-                });
+            if (operation.instruction != null && operation.kind != OperationKind.CUSTOM_SHORT_CIRCUIT) {
+                buildEmitOperationInstruction(b, operation);
             }
 
             b.startStatement().startCall("afterChild");
@@ -612,6 +697,41 @@ public class OperationsNodeFactory {
             b.end(2);
 
             return ex;
+        }
+
+        private void buildEmitOperationInstruction(CodeTreeBuilder b, OperationModel operation) {
+            b.startBlock();
+            switch (operation.kind) {
+                case STORE_LOCAL:
+                case STORE_LOCAL_MATERIALIZED:
+                case LOAD_LOCAL_MATERIALIZED:
+                    b.statement("Object argument = ((OperationLocalImpl) operationData[operationSp]).index");
+                    break;
+                case RETURN:
+                case YIELD:
+                    b.statement("Object argument = EPSILON");
+                    break;
+                case LOAD_ARGUMENT:
+                case LOAD_CONSTANT:
+                    b.statement("Object argument = arg0");
+                    break;
+                case LOAD_LOCAL:
+                    b.statement("Object argument = ((OperationLocalImpl) arg0).index");
+                    break;
+                case BRANCH:
+                    b.statement("Object argument = ((OperationLabelImpl) arg0).index");
+                    break;
+                case CUSTOM_SIMPLE:
+                case CUSTOM_SHORT_CIRCUIT:
+                    buildCustomInitializer(b, operation, operation.instruction);
+                    break;
+                default:
+                    b.statement("/* TODO: NOT IMPLEMENTED */");
+                    break;
+            }
+
+            buildEmitInstruction(b, operation.instruction, "argument");
+            b.end();
         }
 
         private CodeExecutableElement createEmitHelperBegin() {
@@ -654,27 +774,7 @@ public class OperationsNodeFactory {
             }
 
             if (operation.instruction != null) {
-                buildEmitInstruction(b, operation.instruction, () -> {
-                    switch (operation.kind) {
-                        case LOAD_ARGUMENT:
-                        case LOAD_CONSTANT:
-                            b.string("arg0");
-                            break;
-                        case LOAD_LOCAL:
-                            b.string("((OperationLocalImpl) arg0).index");
-                            break;
-                        case BRANCH:
-                            b.string("((OperationLabelImpl) arg0).index");
-                            break;
-                        case CUSTOM_SIMPLE:
-                        case CUSTOM_SHORT_CIRCUIT:
-                            b.string("EPSILON");
-                            break;
-                        default:
-                            b.string("/* TODO: NOT IMPLEMENTED */");
-                            break;
-                    }
-                });
+                buildEmitOperationInstruction(b, operation);
             }
 
             b.startStatement().startCall("afterChild");
@@ -682,6 +782,24 @@ public class OperationsNodeFactory {
             b.end(2);
 
             return ex;
+        }
+
+        private void buildCustomInitializer(CodeTreeBuilder b, OperationModel operation, InstructionModel instruction) {
+            if (model.generateUncached) {
+                if (!instruction.needsUncachedData()) {
+                    b.statement("Object argument = EPSILON");
+                    return;
+                }
+
+                b.statement(instruction.getInternalName() + "Gen_UncachedData argument = new " + instruction.getInternalName() + "Gen_UncachedData()");
+
+            } else {
+                b.statement(instruction.getInternalName() + "Gen argument = new " + instruction.getInternalName() + "Gen()");
+            }
+
+            if (instruction.signature.isVariadic) {
+                b.statement("argument.op_variadicCount_ = operationChildCount[operationSp] - " + instruction.signature.valueCount);
+            }
         }
 
         private CodeExecutableElement createBeforeChild() {
@@ -759,7 +877,7 @@ public class OperationsNodeFactory {
                 switch (op.kind) {
                     case IF_THEN:
                         b.startIf().string("childIndex == 0").end().startBlock();
-                        buildEmitInstruction(b, model.branchFalseInstruction, () -> b.string("data"));
+                        buildEmitInstruction(b, model.branchFalseInstruction, "data");
                         b.end().startElseBlock();
                         b.statement("((IntRef) data).value = bci");
                         b.end();
@@ -767,9 +885,9 @@ public class OperationsNodeFactory {
                     case CONDITIONAL:
                     case IF_THEN_ELSE:
                         b.startIf().string("childIndex == 0").end().startBlock();
-                        buildEmitInstruction(b, model.branchFalseInstruction, () -> b.string("((IntRef[]) data)[0]"));
+                        buildEmitInstruction(b, model.branchFalseInstruction, "((IntRef[]) data)[0]");
                         b.end().startElseIf().string("childIndex == 1").end().startBlock();
-                        buildEmitInstruction(b, model.branchInstruction, () -> b.string("((IntRef[]) data)[1]"));
+                        buildEmitInstruction(b, model.branchInstruction, "((IntRef[]) data)[1]");
                         b.statement("((IntRef[]) data)[0].value = bci");
                         b.end().startElseBlock();
                         b.statement("((IntRef[]) data)[1].value = bci");
@@ -777,9 +895,9 @@ public class OperationsNodeFactory {
                         break;
                     case WHILE:
                         b.startIf().string("childIndex == 0").end().startBlock();
-                        buildEmitInstruction(b, model.branchFalseInstruction, () -> b.string("((IntRef[]) data)[1]"));
+                        buildEmitInstruction(b, model.branchFalseInstruction, "((IntRef[]) data)[1]");
                         b.end().startElseBlock();
-                        buildEmitInstruction(b, model.branchInstruction, () -> b.string("((IntRef[]) data)[0]"));
+                        buildEmitInstruction(b, model.branchInstruction, "((IntRef[]) data)[0]");
                         b.statement("((IntRef[]) data)[1].value = bci");
                         b.end();
                         break;
@@ -828,12 +946,12 @@ public class OperationsNodeFactory {
             return ex;
         }
 
-        private void buildEmitInstruction(CodeTreeBuilder b, InstructionModel instr, Runnable argumentBuilder) {
+        private void buildEmitInstruction(CodeTreeBuilder b, InstructionModel instr, String argument) {
             b.startStatement().startCall("doEmitInstruction");
             b.string(instr.id + " /* " + instr.name + " */");
             b.startGroup();
-            if (argumentBuilder != null) {
-                argumentBuilder.run();
+            if (argument != null) {
+                b.string(argument);
             } else {
                 b.string("EPSILON");
             }
@@ -897,6 +1015,217 @@ public class OperationsNodeFactory {
 
         private CodeExecutableElement createSetNodes() {
             return GeneratorUtils.createSetter(Set.of(), new CodeVariableElement(arrayOf(operationNodeGen.asType()), "nodes"));
+        }
+    }
+
+    class BaseInterpreterFactory {
+        private CodeTypeElement create() {
+            baseInterpreter.add(createContinueAt());
+
+            return baseInterpreter;
+        }
+
+        private CodeExecutableElement createContinueAt() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(ABSTRACT), context.getType(int.class), "continueAt");
+
+            ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+            ex.addParameter(new CodeVariableElement(context.getType(short[].class), "bc"));
+            ex.addParameter(new CodeVariableElement(context.getType(Object[].class), "objs"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "startState"));
+
+            return ex;
+        }
+    }
+
+    class InterpreterFactory {
+
+        private CodeTypeElement interpreterType;
+        private boolean isUncached;
+        private boolean isInstrumented;
+
+        InterpreterFactory(CodeTypeElement type, boolean isUncached, boolean isInstrumented) {
+            this.interpreterType = type;
+            this.isUncached = isUncached;
+            this.isInstrumented = isInstrumented;
+        }
+
+        private CodeTypeElement create() {
+            interpreterType.setSuperClass(baseInterpreter.asType());
+
+            interpreterType.add(createContinueAt());
+
+            return interpreterType;
+        }
+
+        private CodeExecutableElement createContinueAt() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement((DeclaredType) baseInterpreter.asType(), "continueAt");
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.statement("int bci = startState & 0xffff");
+            b.statement("int sp = (startState >> 16) & 0xffff");
+
+            b.string("loop: ").startWhile().string("true").end().startBlock();
+
+            b.statement("int curOpcode = bc[bci]");
+            b.statement("Object curObj = objs[bci]");
+
+            b.startSwitch().string("curOpcode").end().startBlock();
+
+            for (InstructionModel instr : model.getInstructions()) {
+
+                b.startCase().string(instr.id + " /* " + instr.name + " */").end().startBlock();
+
+                switch (instr.kind) {
+                    case BRANCH:
+                        b.statement("bci = ((IntRef) curObj).value");
+                        b.statement("continue loop");
+                        break;
+                    case BRANCH_FALSE:
+                        b.startIf().string("frame.getObject(sp - 1) == Boolean.TRUE").end().startBlock();
+                        b.statement("bci += 1");
+                        b.statement("continue loop");
+                        b.end().startElseBlock();
+                        b.statement("bci = ((IntRef) curObj).value");
+                        b.statement("continue loop");
+                        b.end();
+                        break;
+                    case CUSTOM: {
+                        buildCustomInstructionExecute(b, instr);
+
+                        int stackOffset = -instr.signature.valueCount + (instr.signature.isVoid ? 0 : 1);
+                        b.statement("sp += " + stackOffset + (instr.signature.isVariadic ? " - variadicCount" : ""));
+                        if (!instr.signature.isVoid) {
+                            b.statement("frame.setObject(sp - 1, result)");
+                        }
+                        break;
+                    }
+                    case CUSTOM_SHORT_CIRCUIT:
+                        buildCustomInstructionExecute(b, instr);
+
+                        b.startIf().string("result", instr.continueWhen ? "!=" : "==", "Boolean.TRUE").end().startBlock();
+                        b.startAssign("bci");
+                        b.string("(");
+                        if (model.generateUncached) {
+                            b.string("(" + instr.getInternalName() + "Gen_UncachedData)");
+                        } else {
+                            b.string("(" + instr.getInternalName() + "Gen)");
+                        }
+                        b.string(" curObj).op_branchTarget_.value");
+                        b.end();
+                        b.statement("continue loop");
+                        b.end().startElseBlock();
+                        b.statement("sp -= 1");
+                        b.statement("bci += 1");
+                        b.statement("continue loop");
+                        b.end();
+                        break;
+                    case INSTRUMENTATION_ENTER:
+                        break;
+                    case INSTRUMENTATION_EXIT:
+                        break;
+                    case INSTRUMENTATION_LEAVE:
+                        break;
+                    case LOAD_ARGUMENT:
+                        b.statement("frame.setObject(sp, frame.getArguments()[(int) curObj])");
+                        b.statement("sp += 1");
+                        break;
+                    case LOAD_CONSTANT:
+                        b.statement("frame.setObject(sp, curObj)");
+                        b.statement("sp += 1");
+                        break;
+                    case LOAD_LOCAL:
+                        b.statement("frame.setObject(sp, frame.getObject(((IntRef) curObj).value))");
+                        b.statement("sp += 1");
+                        break;
+                    case LOAD_LOCAL_MATERIALIZED:
+                        b.statement("VirtualFrame matFrame = (VirtualFrame) frame.getObject(sp - 1)");
+                        b.statement("frame.setObject(sp - 1, matFrame.getObject(((IntRef) curObj).value))");
+                        break;
+                    case POP:
+                        b.statement("frame.clear(sp - 1)");
+                        b.statement("sp -= 1");
+                        break;
+                    case RETURN:
+                        b.statement("return ((sp - 1) << 16) | 0xffff");
+                        break;
+                    case STORE_LOCAL:
+                        b.statement("frame.setObject(((IntRef) curObj).value, frame.getObject(sp - 1))");
+                        b.statement("sp -= 1");
+                        break;
+                    case STORE_LOCAL_MATERIALIZED:
+                        b.statement("VirtualFrame matFrame = (VirtualFrame) frame.getObject(sp - 2)");
+                        b.statement("matFrame.setObject(((IntRef) curObj).value, frame.getObject(sp - 1))");
+                        break;
+                    case THROW:
+                        break;
+                    case YIELD:
+                        break;
+                    default:
+                        throw new UnsupportedOperationException("not implemented");
+                }
+
+                if (!instr.isControlFlow()) {
+                    b.statement("bci += 1");
+                    b.statement("continue loop");
+                }
+
+                b.end();
+
+            }
+
+            b.end();
+
+            b.end();
+
+            return ex;
+        }
+
+        private void buildCustomInstructionExecute(CodeTreeBuilder b, InstructionModel instr) {
+            TypeMirror genType = new GeneratedTypeMirror("", instr.getInternalName() + "Gen");
+            TypeMirror uncachedType = new GeneratedTypeMirror("", instr.getInternalName() + "Gen_UncachedData");
+            CustomSignature signature = instr.signature;
+
+            if (signature.isVariadic) {
+                b.startAssign("int variadicCount");
+                b.startParantheses().cast(uncachedType).string("curObj").end().string(".op_variadicCount_");
+                b.end();
+            }
+
+            String executeName;
+            if (signature.isVoid) {
+                b.startStatement();
+                executeName = "executeVoid";
+            } else {
+                b.startAssign("Object result");
+                executeName = "executeObject";
+            }
+
+            if (isUncached) {
+                b.staticReference(genType, "UNCACHED").startCall(".executeUncached");
+                b.string("frame");
+
+                for (int i = 0; i < instr.signature.valueCount; i++) {
+                    b.startCall("frame.getObject").startGroup();
+                    b.string("sp");
+                    if (signature.isVariadic) {
+                        b.string(" - variadicCount");
+                    }
+                    b.string(" - " + (instr.signature.valueCount - i));
+                    b.end(2);
+                }
+
+                if (instr.signature.isVariadic) {
+                    b.string("readVariadic(frame, sp, variadicCount)");
+                }
+
+            } else {
+                b.startParantheses().cast(genType).string("curObj").end().startCall("." + executeName);
+                b.string("frame");
+            }
+
+            b.string("sp");
+
+            b.end(2);
         }
     }
 

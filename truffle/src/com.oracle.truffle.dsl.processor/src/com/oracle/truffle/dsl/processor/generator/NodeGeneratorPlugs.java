@@ -40,7 +40,34 @@
  */
 package com.oracle.truffle.dsl.processor.generator;
 
+import java.util.List;
+
+import javax.lang.model.element.VariableElement;
+
+import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.ChildExecutionResult;
+import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
+import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
+import com.oracle.truffle.dsl.processor.java.model.CodeTree;
+import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.model.NodeChildData;
+import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
+
 public interface NodeGeneratorPlugs {
     NodeGeneratorPlugs DEFAULT = new NodeGeneratorPlugs() {
     };
+
+    default List<? extends VariableElement> additionalArguments() {
+        return List.of();
+    }
+
+    default ChildExecutionResult createExecuteChild(FlatNodeGenFactory factory, CodeTreeBuilder builder, FrameState originalFrameState, FrameState frameState, NodeExecutionData execution,
+                    LocalVariable targetValue) {
+        return factory.createExecuteChild(builder, originalFrameState, frameState, execution, targetValue);
+    }
+
+    default void createNodeChildReferenceForException(FlatNodeGenFactory flatNodeGenFactory, FrameState frameState, CodeTreeBuilder builder, List<CodeTree> values, NodeExecutionData execution,
+                    NodeChildData child, LocalVariable var) {
+        flatNodeGenFactory.createNodeChildReferenceForException(frameState, builder, values, execution, child, var);
+    }
+
 }

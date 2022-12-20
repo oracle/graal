@@ -58,7 +58,6 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationLocal;
-import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
@@ -95,7 +94,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
  */
 public final class SLOperationsVisitor extends SLBaseVisitor {
 
-    private static final boolean DO_LOG_NODE_CREATION = false;
+    private static final boolean DO_LOG_NODE_CREATION = true;
     private static final boolean FORCE_SERIALIZE = false;
 
     public static void parseSL(SLLanguage language, Source source, Map<TruffleString, RootCallTarget> functions) {
@@ -114,7 +113,7 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
         }
 
         for (SLOperationRootNode node : nodes.getNodes()) {
-            TruffleString name = node.getMetadata(SLOperationRootNode.MethodName);
+            TruffleString name = node.getTSName();
             RootCallTarget callTarget = node.getCallTarget();
             functions.put(name, callTarget);
 
@@ -178,10 +177,11 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
         TruffleString name = asTruffleString(ctx.IDENTIFIER(0).getSymbol(), false);
         b.beginRoot(language);
 
-        b.setMethodName(name);
+// b.setMethodName(name);
 
         b.beginSource(source);
         b.beginTag(StandardTags.RootTag.class);
+        b.beginBlock();
 
         int numArguments = enterFunction(ctx).size();
 
@@ -195,22 +195,26 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
         }
 
         b.beginTag(StandardTags.RootBodyTag.class);
+        b.beginBlock();
 
         visit(ctx.body);
 
         exitFunction();
         locals.clear();
 
+        b.endBlock();
         b.endTag();
 
         b.beginReturn();
         b.emitLoadConstant(SLNull.SINGLETON);
         b.endReturn();
 
+        b.endBlock();
         b.endTag();
         b.endSource();
 
-        OperationRootNode node = b.endRoot();
+        SLOperationRootNode node = b.endRoot();
+        node.setTSName(name);
 
         return null;
     }
@@ -274,6 +278,7 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
         OperationLabel oldContinue = continueLabel;
 
         b.beginTag(StandardTags.StatementTag.class);
+        b.beginBlock();
 
         breakLabel = b.createLabel();
         continueLabel = b.createLabel();
@@ -289,6 +294,7 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
         b.endWhile();
         b.emitLabel(breakLabel);
 
+        b.endBlock();
         b.endTag();
 
         breakLabel = oldBreak;

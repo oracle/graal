@@ -40,6 +40,12 @@
  */
 package com.oracle.truffle.dsl.processor.operations.model;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import javax.lang.model.type.TypeMirror;
+
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel.CustomSignature;
@@ -69,12 +75,27 @@ public class InstructionModel implements InfoDumpable {
         SUPERINSTRUCTION,
     }
 
+    public static class InstructionField {
+        public final TypeMirror type;
+        public final String name;
+        public final boolean needInUncached;
+
+        public InstructionField(TypeMirror type, String name, boolean needInUncached) {
+            this.type = type;
+            this.name = name;
+            this.needInUncached = needInUncached;
+        }
+    }
+
     public final int id;
     public final InstructionKind kind;
     public final String name;
     public CodeTypeElement nodeType;
     public CustomSignature signature;
     public NodeData nodeData;
+
+    public final List<InstructionField> fields = new ArrayList<>();
+    public boolean continueWhen;
 
     public InstructionModel(int id, InstructionKind kind, String name) {
         this.id = id;
@@ -89,5 +110,56 @@ public class InstructionModel implements InfoDumpable {
             dumper.field("nodeType", nodeType.getSimpleName());
         }
         dumper.field("signature", signature);
+    }
+
+    public boolean isInstrumentationOnly() {
+        switch (kind) {
+            case INSTRUMENTATION_ENTER:
+            case INSTRUMENTATION_EXIT:
+            case INSTRUMENTATION_LEAVE:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public boolean isControlFlow() {
+        switch (kind) {
+            case BRANCH:
+            case BRANCH_FALSE:
+            case RETURN:
+            case YIELD:
+            case THROW:
+            case CUSTOM_SHORT_CIRCUIT:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public boolean needsUncachedData() {
+        for (InstructionField field : fields) {
+            if (field.needInUncached) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public void addField(TypeMirror type, String fieldName, boolean needInUncached) {
+        fields.add(new InstructionField(type, fieldName, needInUncached));
+    }
+
+    public List<InstructionField> getUncachedFields() {
+        return fields.stream().filter(x -> x.needInUncached).collect(Collectors.toList());
+    }
+
+    public List<InstructionField> getCachedFields() {
+        return fields.stream().filter(x -> !x.needInUncached).collect(Collectors.toList());
+    }
+
+    public String getInternalName() {
+        return name.replace('.', '_');
     }
 }

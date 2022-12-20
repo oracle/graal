@@ -56,6 +56,7 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.Template;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
@@ -184,13 +185,16 @@ public class OperationsModel extends Template implements InfoDumpable {
         }
         operation(OperationKind.SOURCE, "Source") //
                         .setNumChildren(1) //
-                        .setTransparent(true);
+                        .setTransparent(true) //
+                        .setOperationArguments(types.Source);
         operation(OperationKind.SOURCE_SECTION, "SourceSection") //
                         .setNumChildren(1) //
-                        .setTransparent(true);
+                        .setTransparent(true) //
+                        .setOperationArguments(context.getType(int.class), context.getType(int.class));
         operation(OperationKind.INSTRUMENT_TAG, "Tag") //
                         .setNumChildren(1) //
-                        .setTransparent(true);
+                        .setTransparent(true) //
+                        .setOperationArguments(new GeneratedTypeMirror("java.lang", "Class<? extends com.oracle.truffle.api.instrumentation.Tag>"));
 
     }
 

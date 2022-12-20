@@ -80,6 +80,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedPackageElement;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel;
@@ -310,7 +311,9 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
             boxingEliminatedTypes.sort((o1, o2) -> getQualifiedName(o1).compareTo(getQualifiedName(o2)));
 
             for (TypeMirror ty : boxingEliminatedTypes) {
-                result.add(createExecuteMethod(signature, "execute" + firstLetterUpperCase(getSimpleName(ty)), ty, true, false));
+                if (!ElementUtils.isObject(ty)) {
+                    result.add(createExecuteMethod(signature, "execute" + firstLetterUpperCase(getSimpleName(ty)), ty, true, false));
+                }
             }
         }
 
@@ -379,6 +382,27 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
 
         instr.nodeData.redirectMessages(parent);
         instr.nodeData.redirectMessagesOnGeneratedElements(parent);
+
+        if (signature.resultBoxingElimination) {
+            instr.addField(context.getType(int.class), "op_resultType_", false);
+        }
+
+        if (signature.isVariadic) {
+            instr.addField(context.getType(int.class), "op_variadicCount_", true);
+        }
+
+        for (int i = 0; i < signature.localSetterCount; i++) {
+            instr.addField(types.LocalSetter, "op_localSetter" + i + "_", true);
+        }
+
+        for (int i = 0; i < signature.localSetterRangeCount; i++) {
+            instr.addField(types.LocalSetterRange, "op_localSetterRange" + i + "_", true);
+        }
+
+        if (isShortCircuit) {
+            instr.continueWhen = (boolean) ElementUtils.getAnnotationValue(mirror, "continueWhen").getValue();
+            instr.addField(new GeneratedTypeMirror("", "IntRef"), "op_branchTarget_", true);
+        }
 
         return instr;
     }

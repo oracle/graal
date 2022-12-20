@@ -157,16 +157,19 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
 
         // find and bind boxing elimination types
         Set<TypeMirror> beTypes = new HashSet<>();
-        List<AnnotationValue> boxingEliminatedTypes = (List<AnnotationValue>) ElementUtils.getAnnotationValue(generateOperationsMirror, "boxingEliminationTypes").getValue();
-        for (AnnotationValue value : boxingEliminatedTypes) {
 
-            TypeMirror mir = getTypeMirror(value);
+        if (false) {
+            List<AnnotationValue> boxingEliminatedTypes = (List<AnnotationValue>) ElementUtils.getAnnotationValue(generateOperationsMirror, "boxingEliminationTypes").getValue();
+            for (AnnotationValue value : boxingEliminatedTypes) {
 
-            if (BOXABLE_TYPE_KINDS.contains(mir.getKind())) {
-                beTypes.add(mir);
-            } else {
-                model.addError("Cannot perform boxing elimination on %s. Remove this type from the boxing eliminated types list. Only primitive types boolean, byte, int, float, long, and double are supported.",
-                                mir);
+                TypeMirror mir = getTypeMirror(value);
+
+                if (BOXABLE_TYPE_KINDS.contains(mir.getKind())) {
+                    beTypes.add(mir);
+                } else {
+                    model.addError("Cannot perform boxing elimination on %s. Remove this type from the boxing eliminated types list. Only primitive types boolean, byte, int, float, long, and double are supported.",
+                                    mir);
+                }
             }
         }
 
@@ -192,6 +195,19 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
             TypeElement te = (TypeElement) ((DeclaredType) proxiedType).asElement();
 
             new CustomOperationParser(model, mir).parse(te);
+        }
+
+        for (AnnotationMirror mir : ElementUtils.getRepeatedAnnotation(typeElement.getAnnotationMirrors(), types.ShortCircuitOperation)) {
+            TypeMirror proxiedType = getTypeMirror(ElementUtils.getAnnotationValue(mir, "booleanConverter"));
+
+            if (proxiedType.getKind() != TypeKind.DECLARED) {
+                model.addError("Could not proxy operation: the proxied type must be a class, not %s", proxiedType);
+                continue;
+            }
+
+            TypeElement te = (TypeElement) ((DeclaredType) proxiedType).asElement();
+
+            new CustomOperationParser(model, mir, true).parse(te);
         }
 
         return model;
