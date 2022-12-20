@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,19 +69,6 @@ public abstract class CustomSubstitutionType<F extends CustomSubstitutionField, 
     /** Get the substitution for a method on the original type. */
     public M getSubstitutionMethod(ResolvedJavaMethod method) {
         return methods.get(method);
-    }
-
-    /** Get the substitution for a field on the original type. */
-    public F getSubstitutionField(ResolvedJavaField field) {
-        assert fields.size() > 0;
-
-        for (F f : fields) {
-            if (f.getName().equals(field.getName())) {
-                return f;
-            }
-        }
-
-        throw new IllegalArgumentException("No matching field foundf or " + field);
     }
 
     public void addSubstitutionMethod(ResolvedJavaMethod originalMethod, M substitution) {

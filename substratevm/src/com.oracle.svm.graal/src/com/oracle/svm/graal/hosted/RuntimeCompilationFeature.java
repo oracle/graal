@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -101,7 +101,6 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
-import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
@@ -522,15 +521,6 @@ class RuntimeStrengthenStampsPhase extends StrengthenStampsPhase {
         }
         assert type instanceof AnalysisType;
         return hUniverse.lookup(type);
-    }
-
-    @Override
-    protected HostedMethod toHosted(ResolvedJavaMethod method) {
-        if (method == null) {
-            return null;
-        }
-        assert method instanceof AnalysisMethod;
-        return hUniverse.lookup(method);
     }
 
     @Override

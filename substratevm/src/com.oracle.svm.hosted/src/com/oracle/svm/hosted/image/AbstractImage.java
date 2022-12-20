@@ -64,11 +64,6 @@ public abstract class AbstractImage {
                         throw new AssertionError("unreachable");
                 }
             }
-
-            @Override
-            public String getFilenamePrefix() {
-                return ObjectFile.getNativeFormat() == ObjectFile.Format.PECOFF ? "" : "lib";
-            }
         },
         EXECUTABLE(true),
         STATIC_EXECUTABLE(true);
@@ -83,14 +78,6 @@ public abstract class AbstractImage {
 
         public String getFilenameSuffix() {
             return ObjectFile.getNativeFormat() == ObjectFile.Format.PECOFF ? ".exe" : "";
-        }
-
-        public String getFilenamePrefix() {
-            return "";
-        }
-
-        public String getFilename(String basename) {
-            return getFilenamePrefix() + basename + getFilenameSuffix();
         }
     }
 
@@ -137,12 +124,6 @@ public abstract class AbstractImage {
      */
     public abstract LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config);
 
-    /**
-     * Returns the ObjectFile.Section within the image, if any, whose vaddr defines the image's base
-     * vaddr.
-     */
-    public abstract ObjectFile.Section getTextSection();
-
     // factory method
     public static AbstractImage create(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap,
                     NativeImageCodeCache codeCache, List<HostedMethod> entryPoints, ClassLoader classLoader) {
@@ -167,8 +148,4 @@ public abstract class AbstractImage {
     public abstract long getImageHeapSize();
 
     public abstract ObjectFile getObjectFile();
-
-    public boolean requiresCustomDebugRelocation() {
-        return false;
-    }
 }

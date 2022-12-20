@@ -1134,14 +1134,6 @@ public class ProgressReporter {
             }, 0, 1, TimeUnit.SECONDS);
         }
 
-        final void skipped(BuildStage stage) {
-            assert activeBuildStage == null;
-            activeBuildStage = stage;
-            appendStageStart();
-            a(progressBarStartPadding()).dim().a("(skipped)").reset().flushln();
-            activeBuildStage = null;
-        }
-
         private void appendStageStart() {
             a(outputPrefix).blue().a(String.format("[%s/%s] ", 1 + activeBuildStage.ordinal(), BuildStage.NUM_STAGES)).reset()
                             .blueBold().doclink(activeBuildStage.message, "#stage-" + activeBuildStage.name().toLowerCase()).a("...").reset();
