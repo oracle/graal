@@ -103,7 +103,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.dsl.processor.parser.NodeParser;
-import com.oracle.truffle.dsl.processor.parser.NodeParser.ParseMode;
 
 public class ExportsParser extends AbstractParser<ExportsData> {
 
@@ -697,7 +696,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             String transitionLimit = ElementUtils.getAnnotationValue(String.class, annotationMirror, "transitionLimit", false);
             if (transitionLimit != null) {
                 DSLExpressionResolver resolver = new DSLExpressionResolver(context, model.getTemplateType(),
-                                NodeParser.importVisibleStaticMembers(model.getTemplateType(), model.getTemplateType(), false), ParseMode.EXPORTED_MESSAGE, types.Node);
+                                NodeParser.importVisibleStaticMembers(model.getTemplateType(), model.getTemplateType(), false));
                 try {
                     DSLExpression expression = DSLExpression.parse(transitionLimit);
                     expression.accept(resolver);

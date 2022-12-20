@@ -45,7 +45,6 @@ import java.util.List;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
@@ -120,14 +119,14 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
         }
     }
 
-    @Operation
-    @GenerateAOT
-    static final class ThrowOperation {
-        @Specialization
-        public static Object perform(@Bind("$bci") int bci, @Bind("this") Node node) {
-            throw new TestException("fail", node, bci);
-        }
-    }
+// @Operation
+// @GenerateAOT
+// static final class ThrowOperation {
+// @Specialization
+// public static Object perform(@Bind("$bci") int bci, @Bind("this") Node node) {
+// throw new TestException("fail", node, bci);
+// }
+// }
 
     @Operation
     static final class AlwaysBoxOperation {

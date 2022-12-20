@@ -41,7 +41,9 @@
 package com.oracle.truffle.dsl.processor.operations.model;
 
 import java.util.Arrays;
+import java.util.Set;
 
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
@@ -85,6 +87,7 @@ public class OperationModel extends MessageContainer implements InfoDumpable {
 
         public boolean[] valueBoxingElimination;
         public boolean resultBoxingElimination;
+        public Set<TypeMirror> possibleBoxingResults;
         public boolean isVoid;
 
         public int localSetterCount;
@@ -97,7 +100,11 @@ public class OperationModel extends MessageContainer implements InfoDumpable {
             if (isVoid) {
                 sb.append("void ");
             } else if (resultBoxingElimination) {
-                sb.append("box ");
+                if (possibleBoxingResults != null) {
+                    sb.append(possibleBoxingResults).append(" ");
+                } else {
+                    sb.append("box ");
+                }
             } else {
                 sb.append("obj ");
             }
@@ -135,7 +142,9 @@ public class OperationModel extends MessageContainer implements InfoDumpable {
     public final int id;
     public final OperationKind kind;
     public final String name;
+
     public final TypeElement templateType;
+    public AnnotationMirror proxyMirror;
 
     public boolean isTransparent;
     public boolean isVoid;
@@ -207,6 +216,11 @@ public class OperationModel extends MessageContainer implements InfoDumpable {
     @Override
     public Element getMessageElement() {
         return templateType;
+    }
+
+    @Override
+    public AnnotationMirror getMessageAnnotation() {
+        return proxyMirror;
     }
 
     @Override

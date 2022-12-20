@@ -52,10 +52,14 @@ import java.util.Set;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
@@ -63,9 +67,11 @@ import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.GeneratorMode;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.generator.StaticConstants;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeNames;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
@@ -90,6 +96,8 @@ public class OperationsNodeFactory {
     private CodeTypeElement intRef = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "IntRef");
     private CodeTypeElement operationLocalImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "OperationLocalImpl");
     private CodeTypeElement operationLabelImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "OperationLabelImpl");
+
+    private static final Name Uncached_Name = CodeNames.of("Uncached");
 
     public OperationsNodeFactory(ProcessorContext context, OperationsModel model) {
         this.context = context;
@@ -136,13 +144,35 @@ public class OperationsNodeFactory {
 
             FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, instr.nodeData, consts);
 
-            CodeTypeElement el = new CodeTypeElement(Set.of(), ElementKind.CLASS, null, instr.nodeType.getSimpleName() + "Gen");
+            CodeTypeElement el = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, instr.nodeType.getSimpleName() + "Gen");
             el.setSuperClass(types.Node);
-
-            operationNodeGen.add(factory.create(el));
+            factory.create(el);
+            processNodeType(el);
+            operationNodeGen.add(el);
         }
 
+        operationNodeGen.addAll(consts.elements());
+
         return operationNodeGen;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void processNodeType(CodeTypeElement el) {
+        for (VariableElement fld : ElementFilter.fieldsIn(el.getEnclosedElements())) {
+            if (ElementUtils.getQualifiedName(fld.asType()).equals("C")) {
+                el.remove(fld);
+            }
+        }
+
+        for (ExecutableElement ctor : ElementFilter.constructorsIn(el.getEnclosedElements())) {
+            el.remove(ctor);
+        }
+
+        for (CodeTypeElement type : (List<CodeTypeElement>) (List<?>) ElementFilter.typesIn(el.getEnclosedElements())) {
+            if (type.getSimpleName() == Uncached_Name) {
+                type.setSuperClass(types.Node);
+            }
+        }
     }
 
     private CodeExecutableElement createFrameDescriptorConstructor() {

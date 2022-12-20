@@ -41,16 +41,19 @@
 package com.oracle.truffle.dsl.processor.operations.parser;
 
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterUpperCase;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.getQualifiedName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getTypeElement;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.isAssignable;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.typeEquals;
 import static javax.lang.model.element.Modifier.ABSTRACT;
+import static javax.lang.model.element.Modifier.PUBLIC;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -124,6 +127,10 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
 
         OperationModel data = parent.operation(te, kind, name);
 
+        if (mirror != null) {
+            data.proxyMirror = mirror;
+        }
+
         boolean isNode = isAssignable(te.asType(), types.NodeInterface);
 
         if (!isNode) {
@@ -187,6 +194,8 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
             nodeType = CodeTypeElement.cloneShallow(te);
             nodeType.setSuperClass(types.Node);
         }
+
+        nodeType.setEnclosingElement(null);
 
         CustomSignature signature = determineSignature(data, nodeType);
         if (data.hasErrors()) {
@@ -259,16 +268,26 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
     }
 
     private CodeTypeElement createNodeChildType(TypeMirror regularReturn, TypeMirror... unexpectedReturns) {
-        CodeTypeElement c = new CodeTypeElement(Set.of(), ElementKind.CLASS, new GeneratedPackageElement(""), "C");
+        CodeTypeElement c = new CodeTypeElement(Set.of(PUBLIC, ABSTRACT), ElementKind.CLASS, new GeneratedPackageElement(""), "C");
         c.setSuperClass(types.Node);
 
-        c.add(new CodeExecutableElement(regularReturn, "execute"));
-
+        c.add(createNodeChildExecute("execute", regularReturn, false));
         for (TypeMirror ty : unexpectedReturns) {
-            c.add(new CodeExecutableElement(ty, "execute" + firstLetterUpperCase(getSimpleName(ty)))).addThrownType(types.UnexpectedResultException);
+            c.add(createNodeChildExecute("execute" + firstLetterUpperCase(getSimpleName(ty)), ty, true));
         }
 
         return c;
+    }
+
+    private CodeExecutableElement createNodeChildExecute(String name, TypeMirror returnType, boolean withUnexpected) {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, ABSTRACT), returnType, name);
+        ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+
+        if (withUnexpected) {
+            ex.addThrownType(types.UnexpectedResultException);
+        }
+
+        return ex;
     }
 
     private List<CodeExecutableElement> createExecuteMethods(CustomSignature signature) {
@@ -277,9 +296,20 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         if (signature.isVoid) {
             result.add(createExecuteMethod(signature, "executeVoid", context.getType(void.class), false, false));
         } else {
-            result.add(createExecuteMethod(signature, "execute", context.getType(Object.class), false, false));
+            result.add(createExecuteMethod(signature, "executeObject", context.getType(Object.class), false, false));
 
-            for (TypeMirror ty : parent.boxingEliminatedTypes) {
+            List<TypeMirror> boxingEliminatedTypes;
+            if (parent.boxingEliminatedTypes.isEmpty() || !signature.resultBoxingElimination) {
+                boxingEliminatedTypes = new ArrayList<>();
+            } else if (signature.possibleBoxingResults == null) {
+                boxingEliminatedTypes = new ArrayList<>(parent.boxingEliminatedTypes);
+            } else {
+                boxingEliminatedTypes = new ArrayList<>(signature.possibleBoxingResults);
+            }
+
+            boxingEliminatedTypes.sort((o1, o2) -> getQualifiedName(o1).compareTo(getQualifiedName(o2)));
+
+            for (TypeMirror ty : boxingEliminatedTypes) {
                 result.add(createExecuteMethod(signature, "execute" + firstLetterUpperCase(getSimpleName(ty)), ty, true, false));
             }
         }
@@ -296,7 +326,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
     }
 
     private CodeExecutableElement createExecuteMethod(CustomSignature signature, String name, TypeMirror type, boolean withUnexpected, boolean uncached) {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(ABSTRACT), type, name);
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, ABSTRACT), type, name);
         if (withUnexpected) {
             ex.addThrownType(types.UnexpectedResultException);
         }
@@ -330,7 +360,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         instr.signature = signature;
 
         try {
-            NodeParser parser = NodeParser.createDefaultParser();
+            NodeParser parser = NodeParser.createOperationParser();
             instr.nodeData = parser.parse(nodeType);
         } catch (Throwable ex) {
             StringWriter wr = new StringWriter();
@@ -342,12 +372,13 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
             data.addError("Error generating node: invalid node definition.");
             return instr;
         }
-//
-// if (instr.nodeData.getTypeSystem().isDefault()) {
-// instr.nodeData.setTypeSystem(parent.typeSystem);
-// }
 
-        instr.nodeData.redirectMessages(data);
+        if (instr.nodeData.getTypeSystem().isDefault()) {
+            instr.nodeData.setTypeSystem(parent.typeSystem);
+        }
+
+        instr.nodeData.redirectMessages(parent);
+        instr.nodeData.redirectMessagesOnGeneratedElements(parent);
 
         return instr;
     }
@@ -420,6 +451,13 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         }
 
         a.resultBoxingElimination = a.resultBoxingElimination || b.resultBoxingElimination;
+
+        if (a.possibleBoxingResults == null || b.possibleBoxingResults == null) {
+            a.possibleBoxingResults = null;
+        } else {
+            a.possibleBoxingResults.addAll(b.possibleBoxingResults);
+        }
+
         for (int i = 0; i < a.valueBoxingElimination.length; i++) {
             a.valueBoxingElimination[i] = a.valueBoxingElimination[i] || b.valueBoxingElimination[i];
         }
@@ -506,14 +544,27 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         CustomSignature signature = new CustomSignature();
         signature.valueCount = numValues;
         signature.isVariadic = hasVariadic;
-        signature.resultBoxingElimination = parent.isBoxingEliminated(spec.getReturnType());
         signature.localSetterCount = numLocalSetters;
         signature.localSetterRangeCount = numLocalSetterRanges;
         signature.valueBoxingElimination = new boolean[numValues];
         for (int i = 0; i < numValues; i++) {
             signature.valueBoxingElimination[i] = canBeBoxingEliminated.get(i);
         }
-        signature.isVoid = ElementUtils.isVoid(spec.getReturnType());
+
+        TypeMirror returnType = spec.getReturnType();
+        if (ElementUtils.isVoid(spec.getReturnType())) {
+            signature.isVoid = true;
+            signature.resultBoxingElimination = false;
+        } else if (parent.isBoxingEliminated(returnType)) {
+            signature.resultBoxingElimination = true;
+            signature.possibleBoxingResults = new HashSet<>(Set.of(returnType));
+        } else if (ElementUtils.isObject(returnType)) {
+            signature.resultBoxingElimination = false;
+            signature.possibleBoxingResults = null;
+        } else {
+            signature.resultBoxingElimination = false;
+            signature.possibleBoxingResults = new HashSet<>(Set.of(context.getType(Object.class)));
+        }
 
         return signature;
     }

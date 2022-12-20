@@ -159,7 +159,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     public enum ParseMode {
         DEFAULT,
         EXPORTED_MESSAGE,
-        OPERATION
+        OPERATION,
     }
 
     private boolean nodeOnly;
@@ -169,7 +169,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
     private final boolean substituteThisToParent;
 
     private final List<TypeMirror> cachedAnnotations;
-    private TypeElement operationType;
 
     private NodeParser(ParseMode mode, TypeMirror exportLibraryType, TypeElement exportDeclarationType, boolean substituteThisToParent) {
         this.mode = mode;
@@ -195,10 +194,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return new NodeParser(ParseMode.DEFAULT, null, null, false);
     }
 
-    public static NodeParser createOperationParser(TypeElement operationType) {
-        NodeParser nodeParser = new NodeParser(ParseMode.OPERATION, null, null, true);
-        nodeParser.operationType = operationType;
-        return nodeParser;
+    public static NodeParser createOperationParser() {
+        return new NodeParser(ParseMode.OPERATION, null, null, false);
     }
 
     @Override
@@ -254,7 +251,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         } catch (CompileErrorException e) {
             throw e;
         } catch (Throwable e) {
-            RuntimeException e2 = new RuntimeException(String.format("Parsing of Node %s failed", getQualifiedName(rootType)));
+            RuntimeException e2 = new RuntimeException(String.format("Parsing of Node %s failed.", getQualifiedName(rootType)));
             e.addSuppressed(e2);
             throw e;
         }
@@ -289,6 +286,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
 
         if (mode == ParseMode.DEFAULT && !getRepeatedAnnotation(templateType.getAnnotationMirrors(), types.ExportMessage).isEmpty()) {
+            return null;
+        }
+
+        if (mode == ParseMode.DEFAULT && findAnnotationMirror(templateType.getAnnotationMirrors(), types.Operation) != null) {
             return null;
         }
 
@@ -1630,6 +1631,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
         namesUnique(typeData);
 
+        if (typeData.isEmpty()) {
+            throw new AssertionError("" + node + " " + elements);
+        }
+
         return typeData;
     }
 
@@ -1716,7 +1721,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                             "The following execute methods do not provide all evaluated values for the expected signature size %s: %s.", executions.size(), requireNodeChildDeclarations);
         }
 
-        if (mode == ParseMode.DEFAULT && nodeChildDeclarations > 0 && executions.size() == node.getMinimalEvaluatedParameters()) {
+        if (nodeChildDeclarations > 0 && executions.size() == node.getMinimalEvaluatedParameters()) {
             for (NodeChildData child : node.getChildren()) {
                 child.addError("Unnecessary @NodeChild declaration. All evaluated child values are provided as parameters in execute methods.");
             }
@@ -1806,8 +1811,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 child.addError("Node type '%s' is invalid or not a subclass of Node.", getQualifiedName(nodeType));
             } else {
                 if (child.isImplicit() || child.isAllowUncached()) {
-                    DSLExpressionResolver resolver = new DSLExpressionResolver(context, node.getTemplateType(), Collections.emptyList(), mode,
-                                    operationType == null ? types.Node : operationType.asType());
+                    DSLExpressionResolver resolver = new DSLExpressionResolver(context, node.getTemplateType(), Collections.emptyList());
                     resolver = importStatics(resolver, node.getNodeType());
                     if (NodeCodeGenerator.isSpecializedNode(nodeType)) {
                         List<CodeExecutableElement> executables = parseNodeFactoryMethods(nodeType);
@@ -1829,8 +1833,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 List<ExecutableTypeData> foundTypes = child.findGenericExecutableTypes();
                 if (foundTypes.isEmpty()) {
                     AnnotationValue executeWithValue = child.getExecuteWithValue();
-                    child.addError(executeWithValue, "No generic execute method found with %s evaluated arguments for node type %s and frame types %s.", child.getExecuteWith().size(),
-                                    getSimpleName(nodeType), getUniqueIdentifiers(createAllowedChildFrameTypes(node)));
+                    child.addError(executeWithValue, "No generic execute method found with %s evaluated arguments for node type %s and frame types %s. Found: %s", child.getExecuteWith().size(),
+                                    getSimpleName(nodeType), getUniqueIdentifiers(createAllowedChildFrameTypes(node)), child.getNodeData().getExecutableTypes(-1));
                 }
             }
         }
@@ -1853,7 +1857,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         // Declaration order is not required for child nodes.
         List<? extends Element> members;
         if (templateType instanceof CodeTypeElement) {
-            members = ((CodeTypeElement) templateType).getEnclosedElements();
+            members = templateType.getEnclosedElements();
         } else {
             members = processingEnv.getElementUtils().getAllMembers(templateType);
         }
@@ -2185,11 +2189,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         List<Element> globalMembers = new ArrayList<>(members.size() + fields.size());
         globalMembers.addAll(fields);
         globalMembers.addAll(members);
-        globalMembers.add(new CodeVariableElement(types.Node, "this"));
-        if (mode == ParseMode.OPERATION) {
-            globalMembers.add(new CodeVariableElement(context.getType(int.class), "$bci"));
-        }
-        DSLExpressionResolver originalResolver = new DSLExpressionResolver(context, node.getTemplateType(), globalMembers, mode, operationType == null ? types.Node : operationType.asType());
+        DSLExpressionResolver originalResolver = new DSLExpressionResolver(context, node.getTemplateType(), globalMembers);
 
         // the number of specializations might grow while expressions are initialized.
         List<SpecializationData> specializations = node.getSpecializations();
@@ -2326,12 +2326,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
             if (cache.isCached()) {
                 boolean weakReference = getAnnotationValue(Boolean.class, foundCached, "weak");
-                if (mode == ParseMode.OPERATION) {
-                    specialization.setHasCachedExpression(true);
-                    if (ElementUtils.isPrimitive(cache.getParameter().getType())) {
-                        cache.addError("Cahced parameters with primitive types not allowed in Operation DSL.");
-                    }
-                }
                 if (weakReference) {
                     if (ElementUtils.isPrimitive(cache.getParameter().getType())) {
                         cache.addError("Cached parameters with primitive types cannot be weak. Set weak to false to resolve this.");

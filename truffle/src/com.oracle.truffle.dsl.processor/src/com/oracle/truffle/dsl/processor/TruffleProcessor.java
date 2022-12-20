@@ -189,7 +189,6 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
     @Override
     public Set<String> getSupportedAnnotationTypes() {
         Set<String> annotations = new HashSet<>();
-        annotations.add(TruffleTypes.GenerateOperations_Name);
         annotations.add(TruffleTypes.Specialization_Name);
         annotations.add(TruffleTypes.Fallback_Name);
         annotations.add(TruffleTypes.TypeSystemReference_Name);
@@ -201,16 +200,17 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
         annotations.add(TruffleTypes.ExportLibrary_Name);
         annotations.add(TruffleTypes.ExportMessage_Name);
         annotations.add(TruffleTypes.ExportLibrary_Repeat_Name);
+        annotations.add(TruffleTypes.GenerateOperations_Name);
         return annotations;
     }
 
     private static List<AnnotationProcessor<?>> createGenerators() {
         List<AnnotationProcessor<?>> generators = new ArrayList<>();
-        generators.add(new AnnotationProcessor<>(new OperationsParser(), new OperationsCodeGenerator()));
         generators.add(new AnnotationProcessor<>(new TypeSystemParser(), new TypeSystemCodeGenerator()));
         generators.add(new AnnotationProcessor<>(NodeParser.createDefaultParser(), new NodeCodeGenerator()));
         generators.add(new AnnotationProcessor<>(new LibraryParser(), new LibraryGenerator()));
         generators.add(new AnnotationProcessor<>(new ExportsParser(), new ExportsGenerator(new StaticConstants())));
+        generators.add(new AnnotationProcessor<>(new OperationsParser(), new OperationsCodeGenerator()));
         return generators;
     }
 
