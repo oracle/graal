@@ -56,6 +56,7 @@ import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -161,35 +162,67 @@ public final class ModuleLayerFeature implements InternalFeature {
         FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
         AnalysisUniverse universe = accessImpl.getUniverse();
 
-        Stream<Module> analysisReachableModules = universe.getTypes()
-                        .stream()
-                        .filter(t -> t.isReachable() && !t.isArray())
-                        .map(t -> t.getJavaClass().getModule())
-                        .distinct();
-
-        Set<Module> analysisReachableNamedModules = analysisReachableModules
-                        .filter(Module::isNamed)
-                        .collect(Collectors.toSet());
-
+        /*
+         * Parse explicitly added modules via --add-modules. This is done early as this information
+         * is required when filtering the analysis reachable module set.
+         */
         Set<String> extraModules = new HashSet<>();
-
-        extraModules.addAll(ImageSingletons.lookup(ResourcesFeature.class).includedResourcesModules);
-
+        List<String> nonExplicit = List.of("ALL-DEFAULT", "ALL-SYSTEM", "ALL-MODULE-PATH");
         String explicitlyAddedModules = System.getProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES, "");
         if (!explicitlyAddedModules.isEmpty()) {
             extraModules.addAll(Arrays.asList(SubstrateUtil.split(explicitlyAddedModules, ",")));
         }
 
-        List<String> nonExplicit = List.of("ALL-DEFAULT", "ALL-SYSTEM", "ALL-MODULE-PATH");
+        /**
+         * If we are running on module path and if user did not explicitly add special --add-module
+         * args as defined in the nonExplicit list, then the root modules only include reachable
+         * modules. Otherwise, we calculate root modules based on reachable modules and include
+         * modules as specified in the https://openjdk.org/jeps/261. See
+         * {@link ModuleLayerFeature.typeIsModuleRootOrReachable(AnalysisType)} for more details.
+         */
+        Stream<AnalysisType> rootModuleTypes;
+        if (accessImpl.getApplicationClassPath().isEmpty() && nonExplicit.stream().noneMatch(extraModules::contains)) {
+            rootModuleTypes = universe.getTypes()
+                            .stream()
+                            .filter(ModuleLayerFeature::typeIsReachable);
+        } else {
+            rootModuleTypes = universe.getTypes()
+                            .stream()
+                            .filter(ModuleLayerFeature::typeIsModuleRootOrReachable);
+
+            /*
+             * Also make sure to include modules not seen by the analysis.
+             */
+            Set<String> extraUndiscoveredModules = ModuleLayer.boot().modules()
+                            .stream()
+                            .filter(ModuleLayerFeature::isModuleRoot)
+                            .map(Module::getName)
+                            .collect(Collectors.toSet());
+            extraModules.addAll(extraUndiscoveredModules);
+        }
+
+        Stream<Module> runtimeImageModules = rootModuleTypes
+                        .map(t -> t.getJavaClass().getModule())
+                        .distinct();
+
+        Set<Module> runtimeImageNamedModules = runtimeImageModules
+                        .filter(Module::isNamed)
+                        .collect(Collectors.toSet());
+
+        /*
+         * Include the rest of the extra modules that might not have been included by the above
+         * process.
+         */
+        extraModules.addAll(ImageSingletons.lookup(ResourcesFeature.class).includedResourcesModules);
         extraModules.stream().filter(Predicate.not(nonExplicit::contains)).forEach(moduleName -> {
             Optional<?> module = accessImpl.imageClassLoader.findModule(moduleName);
             if (module.isEmpty()) {
                 VMError.shouldNotReachHere("Explicitly required module " + moduleName + " is not available");
             }
-            analysisReachableNamedModules.add((Module) module.get());
+            runtimeImageNamedModules.add((Module) module.get());
         });
 
-        Set<Module> analysisReachableSyntheticModules = analysisReachableNamedModules
+        Set<Module> analysisReachableSyntheticModules = runtimeImageNamedModules
                         .stream()
                         .filter(ModuleLayerFeatureUtils::isModuleSynthetic)
                         .collect(Collectors.toSet());
@@ -199,7 +232,7 @@ public final class ModuleLayerFeature implements InternalFeature {
          * layer. This order is important because in order to synthesize a module layer, all of its
          * parent module layers also need to be synthesized as well.
          */
-        List<ModuleLayer> reachableModuleLayers = analysisReachableNamedModules
+        List<ModuleLayer> reachableModuleLayers = runtimeImageNamedModules
                         .stream()
                         .map(Module::getLayer)
                         .filter(Objects::nonNull)
@@ -207,7 +240,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                         .sorted(Comparator.comparingInt(ModuleLayerFeatureUtils::distanceFromBootModuleLayer))
                         .collect(Collectors.toList());
 
-        List<ModuleLayer> runtimeModuleLayers = synthesizeRuntimeModuleLayers(accessImpl, reachableModuleLayers, analysisReachableNamedModules, analysisReachableSyntheticModules);
+        List<ModuleLayer> runtimeModuleLayers = synthesizeRuntimeModuleLayers(accessImpl, reachableModuleLayers, runtimeImageNamedModules, analysisReachableSyntheticModules);
         ModuleLayer runtimeBootLayer = runtimeModuleLayers.get(0);
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
 
@@ -215,7 +248,50 @@ public final class ModuleLayerFeature implements InternalFeature {
          * Ensure that runtime modules have the same relations (i.e., reads, opens and exports) as
          * the originals.
          */
-        replicateVisibilityModifications(runtimeBootLayer, accessImpl.imageClassLoader, analysisReachableNamedModules);
+        replicateVisibilityModifications(runtimeBootLayer, accessImpl.imageClassLoader, runtimeImageNamedModules);
+    }
+
+    private static boolean typeIsReachable(AnalysisType t) {
+        return t.isReachable() && !t.isArray();
+    }
+
+    private static boolean typeIsModuleRootOrReachable(AnalysisType t) {
+        if (typeIsReachable(t)) {
+            return true;
+        }
+
+        Module m = t.getJavaClass().getModule();
+        return isModuleRoot(m);
+    }
+
+    private static boolean isModuleRoot(Module m) {
+        if (!m.isNamed()) {
+            return false;
+        }
+
+        /*
+         * When the main class of the application is loaded from the class path into the unnamed
+         * module of the application class loader, then the default set of root modules for the
+         * unnamed module is computed as follows (https://openjdk.org/jeps/261):
+         *
+         * 1. The java.se module is a root, if it exists. If it does not exist then every java.*
+         * module on the upgrade module path or among the system modules that exports at least one
+         * package, without qualification, is a root.
+         *
+         * 2. Every non-java.* module on the upgrade module path or among the system modules that
+         * exports at least one package, without qualification, is also a root.
+         */
+        if (m.getName().startsWith("java.")) {
+            return true;
+        } else {
+            for (String pn : m.getPackages()) {
+                if (m.isExported(pn)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /*
