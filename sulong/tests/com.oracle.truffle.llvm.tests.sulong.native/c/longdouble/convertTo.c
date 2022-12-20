@@ -36,42 +36,42 @@
 
 
 __attribute__((noinline))
-void fromLong(long n) {
+void toLong(long double n) {
 
-    long double m = (long double) n;
-    printfp("from long", &m);
+    long m = (long) n;
+    printf("to long %ld\n", m);
 }
 
 __attribute__((noinline))
-void fromDouble(double n){
+void toDouble(long double n){
 
-    long double m = (long double) n;
-    printfp("from double", &m);
-}
-
-
-__attribute__((noinline))
-void fromInt(int n){
-
-    long double m = (long double) n;
-    printfp("from int", &m);
+    double m = (double) n;
+    printf("to double %lf\n", m);
 }
 
 
 __attribute__((noinline))
-void fromFloat(float n){
+void toInt(long double n){
 
-    long double m = (long double) n;
-    printfp("from float", &m);
+    int m = (int) n;
+    printf("to int %d\n", m);
+}
+
+
+__attribute__((noinline))
+void toFloat(long double n){
+
+    float m = (float) n;
+    printf("to float %f\n", m);
 }
 
 int main(void){
     
     long double m = 5.0;
     printfp("from long double", &m);
-    fromLong(5);
-    fromDouble(5.0);
-    fromInt(5);
-    fromFloat(5.0);
+    toLong(m);
+    toDouble(m);
+    toInt(m);
+    //fromFloat(5.0);
     return 0;
 }

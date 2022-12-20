@@ -62,6 +62,7 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ToVoidLLVMNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo128BitFloatingNodeGen.LLVMSignedCastToLLVM128BitFloatNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMBitcastToLLVM80BitFloatNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMSignedCastToLLVM80BitFloatNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMUnsignedCastToLLVM80BitFloatNodeGen;
@@ -227,6 +228,7 @@ import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessGlobalSymbolNodeGe
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessThreadLocalSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnsupportedInstructionNode;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.LLVM128BitFloatReadNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.LLVM80BitFloatReadNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.LLVMDebugReadNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.LLVMDoubleReadNode;
@@ -239,6 +241,7 @@ import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.LLVMIReadVarBitNo
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.LLVMObjectReadNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMI64ReadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNode;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWrite128BitFloatingNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWrite80BitFloatingNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteDoubleNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteFloatNodeGen;
@@ -672,6 +675,8 @@ public class CommonNodeFactory {
                     return LLVMDoubleReadNode.create(frameSlot);
                 case X86_FP80:
                     return LLVM80BitFloatReadNode.create(frameSlot);
+                case F128:
+                    return LLVM128BitFloatReadNode.create(frameSlot);
             }
         } else if (llvmType instanceof VectorType) {
             Type elemType = ((VectorType) llvmType).getElementType();
@@ -733,6 +738,8 @@ public class CommonNodeFactory {
                     return LLVMWriteDoubleNodeGen.create(slot, result);
                 case X86_FP80:
                     return LLVMWrite80BitFloatingNodeGen.create(slot, result);
+                case F128:
+                    return LLVMWrite128BitFloatingNodeGen.create(slot, result);
                 default:
                     throw new AssertionError(llvmType);
             }
@@ -1281,6 +1288,8 @@ public class CommonNodeFactory {
                 return LLVMSignedCastToDoubleNodeGen.create(fromNode);
             case X86_FP80:
                 return LLVMSignedCastToLLVM80BitFloatNodeGen.create(fromNode);
+            case F128:
+                return LLVMSignedCastToLLVM128BitFloatNodeGen.create(fromNode);
             default:
                 throw unsupportedCast(kind);
         }

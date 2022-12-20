@@ -518,6 +518,8 @@ public class BasicNodeFactory implements NodeFactory {
                     return LLVMDoubleStoreNodeGen.create(pointerNode, valueNode);
                 case X86_FP80:
                     return LLVM80BitFloatStoreNodeGen.create(pointerNode, valueNode);
+                case F128:
+                    return LLVM128BitFloatStoreNodeGen.create(pointerNode, valueNode);
                 default:
                     throw new AssertionError(type);
             }

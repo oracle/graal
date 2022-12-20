@@ -309,6 +309,24 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
         }
     }
 
+    public static final class LLVM128BitFloatReadNode extends LLVMReadCachableNode {
+
+        protected LLVM128BitFloatReadNode(int slot) {
+            super(slot);
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame) {
+            return frame.getObject(slot);
+        }
+
+        private static final IndexedSlotCache<LLVM128BitFloatReadNode> CACHE = new IndexedSlotCache<>(LLVM128BitFloatReadNode::new);
+
+        public static LLVM128BitFloatReadNode create(int slot) {
+            return CACHE.get(slot);
+        }
+    }
+
     public static final class LLVMObjectReadNode extends LLVMReadCachableNode {
         protected LLVMObjectReadNode(int slot) {
             super(slot);

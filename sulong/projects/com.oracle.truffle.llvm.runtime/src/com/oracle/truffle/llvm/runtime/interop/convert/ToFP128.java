@@ -12,6 +12,31 @@ import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat;
 public abstract class ToFP128 extends ForeignToLLVM {
 
     @Specialization
+    protected LLVM128BitFloat fromInt(int value) {
+        return LLVM128BitFloat.fromInt(value);
+    }
+
+    @Specialization
+    protected LLVM128BitFloat fromChar(char value) {
+        return LLVM128BitFloat.fromInt(value);
+    }
+
+    @Specialization
+    protected LLVM128BitFloat fromByte(byte value) {
+        return LLVM128BitFloat.fromInt(value);
+    }
+
+    @Specialization
+    protected LLVM128BitFloat fromShort(short value) {
+        return LLVM128BitFloat.fromInt(value);
+    }
+
+    @Specialization
+    protected LLVM128BitFloat fromFloat(float value) {
+        return LLVM128BitFloat.fromFloat(value);
+    }
+
+    @Specialization
     protected LLVM128BitFloat fromLong(long value) {
         return LLVM128BitFloat.fromLong(value);
     }

@@ -187,8 +187,8 @@ public abstract class LLVMSimpleLiteralNode extends LLVMExpressionNode {
         private final long fraction;
 
         public LLVM128BitFloatLiteralNode(LLVM128BitFloat literal) {
-            this.expSignFraction = literal.getExpSign();
-            this.fraction = literal.getFraction();
+            this.expSignFraction = literal.getExpSignFractionPart();
+            this.fraction = literal.getFractionPart();
         }
 
         @Specialization
