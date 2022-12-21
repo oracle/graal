@@ -183,11 +183,6 @@ public abstract class BinaryInput {
     public abstract int read();
 
     /**
-     * Reads up to {@code len} bytes into a byte array starting at offset {@code off}.
-     */
-    public abstract int read(byte[] b, int off, int len);
-
-    /**
      * Reads {@code len} bytes into a byte array starting at offset {@code off}.
      *
      * @throws IndexOutOfBoundsException if there are not enough bytes to read
@@ -230,10 +225,9 @@ public abstract class BinaryInput {
         } else {
             len = (b1 << 8) + b2;
         }
-        if (byteBuffer == null || byteBuffer.length < len) {
-            int bufSize = Math.max(bufferSize(0, len), 80);
-            byteBuffer = new byte[bufSize];
-            charBuffer = new char[bufSize];
+        ensureBufferSize(len);
+        if (charBuffer == null || charBuffer.length < len) {
+            charBuffer = new char[Math.max(bufferSize(0, len), 80)];
         }
 
         int c1;
@@ -348,6 +342,140 @@ public abstract class BinaryInput {
     }
 
     /**
+     * Reads {@code len} bytes into a boolean array starting at offset {@code off}.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read
+     */
+    public final void readFully(boolean[] b, int off, int len) {
+        ensureBufferSize(len);
+        readFully(byteBuffer, 0, len);
+        int limit = off + len;
+        for (int i = off, j = 0; i < limit; i++) {
+            b[i] = byteBuffer[j++] != 0;
+        }
+    }
+
+    /**
+     * Reads {@code len} shorts into a short array starting at offset {@code off}.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read
+     */
+    public final void readFully(short[] b, int off, int len) {
+        int size = len * Short.BYTES;
+        ensureBufferSize(size);
+        readFully(byteBuffer, 0, size);
+        int limit = off + len;
+        for (int i = off, j = 0; i < limit; i++) {
+            int b1 = (byteBuffer[j++] & 0xff);
+            int b2 = (byteBuffer[j++] & 0xff);
+            b[i] = (short) ((b1 << 8) + b2);
+        }
+    }
+
+    /**
+     * Reads {@code len} chars into a char array starting at offset {@code off}.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read
+     */
+    public final void readFully(char[] b, int off, int len) {
+        int size = len * Character.BYTES;
+        ensureBufferSize(size);
+        readFully(byteBuffer, 0, size);
+        int limit = off + len;
+        for (int i = off, j = 0; i < limit; i++) {
+            int b1 = (byteBuffer[j++] & 0xff);
+            int b2 = (byteBuffer[j++] & 0xff);
+            b[i] = (char) ((b1 << 8) + b2);
+        }
+    }
+
+    /**
+     * Reads {@code len} ints into an int array starting at offset {@code off}.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read
+     */
+    public final void readFully(int[] b, int off, int len) {
+        int size = len * Integer.BYTES;
+        ensureBufferSize(size);
+        readFully(byteBuffer, 0, size);
+        int limit = off + len;
+        for (int i = off, j = 0; i < limit; i++) {
+            int b1 = (byteBuffer[j++] & 0xff);
+            int b2 = (byteBuffer[j++] & 0xff);
+            int b3 = (byteBuffer[j++] & 0xff);
+            int b4 = (byteBuffer[j++] & 0xff);
+            b[i] = (b1 << 24) + (b2 << 16) + (b3 << 8) + b4;
+        }
+    }
+
+    /**
+     * Reads {@code len} longs into a long array starting at offset {@code off}.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read
+     */
+    public final void readFully(long[] b, int off, int len) {
+        int size = len * Long.BYTES;
+        ensureBufferSize(size);
+        readFully(byteBuffer, 0, size);
+        int limit = off + len;
+        for (int i = off, j = 0; i < limit; i++) {
+            int b1 = (byteBuffer[j++] & 0xff);
+            int b2 = (byteBuffer[j++] & 0xff);
+            int b3 = (byteBuffer[j++] & 0xff);
+            int b4 = (byteBuffer[j++] & 0xff);
+            int b5 = (byteBuffer[j++] & 0xff);
+            int b6 = (byteBuffer[j++] & 0xff);
+            int b7 = (byteBuffer[j++] & 0xff);
+            int b8 = (byteBuffer[j++] & 0xff);
+            b[i] = ((long) b1 << 56) + ((long) b2 << 48) + ((long) b3 << 40) + ((long) b4 << 32) +
+                            ((long) b5 << 24) + ((long) b6 << 16) + ((long) b7 << 8) + b8;
+        }
+    }
+
+    /**
+     * Reads {@code len} floats into a float array starting at offset {@code off}.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read
+     */
+    public final void readFully(float[] b, int off, int len) {
+        int size = len * Float.BYTES;
+        ensureBufferSize(size);
+        readFully(byteBuffer, 0, size);
+        int limit = off + len;
+        for (int i = off, j = 0; i < limit; i++) {
+            int b1 = (byteBuffer[j++] & 0xff);
+            int b2 = (byteBuffer[j++] & 0xff);
+            int b3 = (byteBuffer[j++] & 0xff);
+            int b4 = (byteBuffer[j++] & 0xff);
+            b[i] = Float.intBitsToFloat((b1 << 24) + (b2 << 16) + (b3 << 8) + b4);
+        }
+    }
+
+    /**
+     * Reads {@code len} doubles into a double array starting at offset {@code off}.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read
+     */
+    public final void readFully(double[] b, int off, int len) {
+        int size = len * Double.BYTES;
+        ensureBufferSize(size);
+        readFully(byteBuffer, 0, size);
+        int limit = off + len;
+        for (int i = off, j = 0; i < limit; i++) {
+            int b1 = (byteBuffer[j++] & 0xff);
+            int b2 = (byteBuffer[j++] & 0xff);
+            int b3 = (byteBuffer[j++] & 0xff);
+            int b4 = (byteBuffer[j++] & 0xff);
+            int b5 = (byteBuffer[j++] & 0xff);
+            int b6 = (byteBuffer[j++] & 0xff);
+            int b7 = (byteBuffer[j++] & 0xff);
+            int b8 = (byteBuffer[j++] & 0xff);
+            b[i] = Double.longBitsToDouble(((long) b1 << 56) + ((long) b2 << 48) + ((long) b3 << 40) + ((long) b4 << 32) +
+                            ((long) b5 << 24) + ((long) b6 << 16) + ((long) b7 << 8) + b8);
+        }
+    }
+
+    /**
      * Creates a new buffer backed by a byte array.
      */
     public static BinaryInput create(byte[] buffer) {
@@ -360,6 +488,17 @@ public abstract class BinaryInput {
      */
     public static BinaryInput create(CCharPointer address, int length) {
         return new CCharPointerInput(address, length);
+    }
+
+    /**
+     * Reads up to {@code len} bytes into a byte array starting at offset {@code off}.
+     */
+    abstract int read(byte[] b, int off, int len);
+
+    private void ensureBufferSize(int len) {
+        if (byteBuffer == null || byteBuffer.length < len) {
+            byteBuffer = new byte[Math.max(bufferSize(0, len), 80)];
+        }
     }
 
     private static final class ByteArrayBinaryInput extends BinaryInput {

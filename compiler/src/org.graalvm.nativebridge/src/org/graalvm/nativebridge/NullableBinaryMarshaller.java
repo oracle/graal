@@ -59,6 +59,22 @@ final class NullableBinaryMarshaller<T> implements BinaryMarshaller<T> {
     }
 
     @Override
+    public void update(BinaryInput input, T object) {
+        byte nullStatus = input.readByte();
+        switch (nullStatus) {
+            case NULL:
+                assert object == null;
+                break;
+            case NON_NULL:
+                assert object != null;
+                delegate.update(input, object);
+                break;
+            default:
+                throw new IllegalArgumentException("Unexpected input " + nullStatus);
+        }
+    }
+
+    @Override
     public int inferSize(T object) {
         if (object != null) {
             return 1 + delegate.inferSize(object);

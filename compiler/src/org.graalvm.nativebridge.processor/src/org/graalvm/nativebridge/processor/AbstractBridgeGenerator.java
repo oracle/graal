@@ -34,6 +34,7 @@ import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.IntersectionType;
+import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.UnionType;
@@ -274,31 +275,78 @@ abstract class AbstractBridgeGenerator {
             } else {
                 builder.spaceIfNeeded().write("+").space();
             }
-            if (e.marshallerData.isCustom()) {
-                builder.invoke(e.marshallerData.name, "inferSize", e.parameterName);
-            } else if (e.marshallerData.isReference()) {
-                AnnotationMirror in = find(e.marshallerData.annotations, typeCache.in, types);
-                AnnotationMirror out = find(e.marshallerData.annotations, typeCache.out, types);
-                CharSequence arrayLength = null;
-                if (in != null) {
-                    arrayLength = getArrayLengthParameterName(in);
-                } else if (out != null) {
-                    arrayLength = getArrayLengthParameterName(out);
-                }
-                if (arrayLength == null) {
-                    arrayLength = new CodeBuilder(builder).memberSelect(e.parameterName, "length", false).build();
-                }
-                TypeMirror boxedLong = types.boxedClass(types.getPrimitiveType(TypeKind.LONG)).asType();
-                if (addReferenceArrayLength) {
-                    TypeMirror boxedInt = types.boxedClass(types.getPrimitiveType(TypeKind.INT)).asType();
-                    builder.memberSelect(boxedInt, "BYTES", false).write(" + ");
-                }
-                builder.write("(").write(e.parameterName).write(" != null ? ").write(arrayLength).write(" * ").memberSelect(boxedLong, "BYTES", false).write(" : 0").write(")");
-            } else {
-                throw new IllegalStateException(String.format("Unsupported marshaller %s of kind %s.", e.marshallerData.name, e.marshallerData.kind));
+            switch (e.marshallerData.kind) {
+                case CUSTOM:
+                    builder.invoke(e.marshallerData.name, "inferSize", e.parameterName);
+                    break;
+                case REFERENCE:
+                    if (e.parameterType.getKind() == TypeKind.ARRAY) {
+                        CharSequence arrayLength = null;
+                        if (e.marshallerData.in != null) {
+                            arrayLength = e.marshallerData.in.lengthParameter;
+                        } else if (e.marshallerData.out != null) {
+                            arrayLength = e.marshallerData.out.lengthParameter;
+                        }
+                        if (arrayLength == null) {
+                            arrayLength = new CodeBuilder(builder).memberSelect(e.parameterName, "length", false).build();
+                        }
+                        TypeMirror boxedLong = types.boxedClass(types.getPrimitiveType(TypeKind.LONG)).asType();
+                        if (addReferenceArrayLength) {
+                            TypeMirror boxedInt = types.boxedClass(types.getPrimitiveType(TypeKind.INT)).asType();
+                            builder.memberSelect(boxedInt, "BYTES", false).write(" + ");
+                        }
+                        builder.write("(").write(e.parameterName).write(" != null ? ").write(arrayLength).write(" * ").memberSelect(boxedLong, "BYTES", false).write(" : 0").write(")");
+                    } else {
+                        generateSizeOf(builder, e.parameterName, types.getPrimitiveType(TypeKind.LONG));
+                    }
+                    break;
+                case VALUE:
+                    generateSizeOf(builder, e.parameterName, e.parameterType);
+                    break;
+                case RAW_REFERENCE:
+                    generateSizeOf(builder, e.parameterName, types.getPrimitiveType(TypeKind.LONG));
+                    break;
+                default:
+                    throw new IllegalStateException(String.format("Unsupported marshaller %s of kind %s.", e.marshallerData.name, e.marshallerData.kind));
             }
         }
         builder.lineEnd(";");
+    }
+
+    private void generateSizeOf(CodeBuilder builder, CharSequence variable, TypeMirror type) {
+        switch (type.getKind()) {
+            case BOOLEAN:
+            case BYTE:
+                builder.write("1");
+                break;
+            case SHORT:
+            case CHAR:
+            case INT:
+            case LONG:
+            case FLOAT:
+            case DOUBLE:
+                builder.memberSelect(types.boxedClass((PrimitiveType) type).asType(), "BYTES", false);
+                break;
+            case ARRAY:
+                builder.memberSelect(variable, "length", false);
+                builder.write(" * ");
+                TypeMirror componentType = ((ArrayType) type).getComponentType();
+                if (componentType.getKind().isPrimitive()) {
+                    generateSizeOf(builder, null, componentType);
+                } else {
+                    assert types.isSameType(typeCache.string, type);
+                    builder.write("32");    // String array element size estimate
+                }
+                break;
+            case DECLARED:
+                assert types.isSameType(typeCache.string, type);
+                generateSizeOf(builder, null, types.getPrimitiveType(TypeKind.INT));
+                builder.write(" + ");
+                builder.invoke(variable, "length");
+                break;
+            default:
+                throw new IllegalArgumentException(String.valueOf(type));
+        }
     }
 
     static CharSequence[] parameterNames(List<? extends CodeBuilder.Parameter> parameters) {
@@ -314,14 +362,6 @@ abstract class AbstractBridgeGenerator {
         return null;
     }
 
-    static CharSequence getArrayLengthParameterName(AnnotationMirror annotation) {
-        return (CharSequence) AbstractBridgeParser.getAnnotationValue(annotation, "arrayLengthParameter");
-    }
-
-    static CharSequence getArrayOffsetParameterName(AnnotationMirror annotation) {
-        return (CharSequence) AbstractBridgeParser.getAnnotationValue(annotation, "arrayOffsetParameter");
-    }
-
     static boolean isBinaryMarshallable(MarshallerData marshaller, TypeMirror type, boolean hostToIsolate) {
         if (marshaller.isCustom()) {
             // Custom type is always marshalled
@@ -335,10 +375,7 @@ abstract class AbstractBridgeGenerator {
     }
 
     boolean isOutParameter(MarshallerData marshaller, TypeMirror type, boolean hostToIsolate) {
-        if (isBinaryMarshallable(marshaller, type, hostToIsolate) && marshaller.isReference()) {
-            return find(marshaller.annotations, typeCache.out, types) != null;
-        }
-        return false;
+        return isBinaryMarshallable(marshaller, type, hostToIsolate) && marshaller.out != null;
     }
 
     abstract static class MarshallerSnippets {
@@ -412,20 +449,16 @@ abstract class AbstractBridgeGenerator {
         abstract CharSequence unmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence marshalledResultInput,
                         CharSequence jniEnvFieldName);
 
+        abstract void write(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence marshalledResultOutput, CharSequence jniEnvFieldName);
+
+        abstract void read(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence resultVariable, CharSequence marshalledResultInput, CharSequence jniEnvFieldName);
+
         static CharSequence outArrayLocal(CharSequence parameterName) {
             return parameterName + "Out";
         }
 
         final boolean isArrayWithDirectionModifiers(TypeMirror parameterType) {
-            return parameterType.getKind() == TypeKind.ARRAY && !marshallerData.annotations.isEmpty();
-        }
-
-        final AnnotationMirror findIn(List<? extends AnnotationMirror> annotations) {
-            return find(annotations, cache.in, types);
-        }
-
-        final AnnotationMirror findOut(List<? extends AnnotationMirror> annotations) {
-            return find(annotations, cache.out, types);
+            return parameterType.getKind() == TypeKind.ARRAY && (marshallerData.in != null || marshallerData.out != null);
         }
 
         final CharSequence unmarshallHotSpotToNativeProxyInNative(CodeBuilder builder, TypeMirror parameterType, CharSequence parameterName, DefinitionData data) {
@@ -490,6 +523,64 @@ abstract class AbstractBridgeGenerator {
             return result;
         }
 
+        final CharSequence lookupDirectSnippetWriteMethod(TypeMirror type) {
+            if (types.isSameType(cache.string, type)) {
+                return "writeUTF";
+            } else if (type.getKind() == TypeKind.ARRAY) {
+                return "write";
+            } else {
+                switch (type.getKind()) {
+                    case BOOLEAN:
+                        return "writeBoolean";
+                    case BYTE:
+                        return "writeByte";
+                    case CHAR:
+                        return "writeChar";
+                    case SHORT:
+                        return "writeShort";
+                    case INT:
+                        return "writeInt";
+                    case LONG:
+                        return "writeLong";
+                    case FLOAT:
+                        return "writeFloat";
+                    case DOUBLE:
+                        return "writeDouble";
+                    default:
+                        throw new IllegalArgumentException("Unsupported kind " + type.getKind());
+                }
+            }
+        }
+
+        final CharSequence lookupDirectSnippetReadMethod(TypeMirror type) {
+            if (types.isSameType(cache.string, type)) {
+                return "readUTF";
+            } else if (type.getKind() == TypeKind.ARRAY) {
+                return "readFully";
+            } else {
+                switch (type.getKind()) {
+                    case BOOLEAN:
+                        return "readBoolean";
+                    case BYTE:
+                        return "readByte";
+                    case CHAR:
+                        return "readChar";
+                    case SHORT:
+                        return "readShort";
+                    case INT:
+                        return "readInt";
+                    case LONG:
+                        return "readLong";
+                    case FLOAT:
+                        return "readFloat";
+                    case DOUBLE:
+                        return "readDouble";
+                    default:
+                        throw new IllegalArgumentException("Unsupported kind " + type.getKind());
+                }
+            }
+        }
+
         private CharSequence createProxy(CodeBuilder builder, CharSequence commonFactoryMethod, CharSequence jniFactoryMethod, CharSequence nativeFactoryMethod, List<CharSequence> args) {
             if (marshallerData.hasGeneratedFactory) {
                 CharSequence type = new CodeBuilder(builder).write(types.erasure(marshallerData.forType)).write("Gen").build();
@@ -546,11 +637,6 @@ abstract class AbstractBridgeGenerator {
                 receiver = new CodeBuilder(builder).memberSelect(cast, marshallerData.nonDefaultReceiver.getSimpleName(), true);
             }
             return new CodeBuilder(builder).write(parameterName).write(" != null ? ").invoke(receiver.build(), "getHandle").write(" : 0L").build();
-        }
-
-        static boolean trimToResult(AnnotationMirror annotation) {
-            Boolean value = (Boolean) AbstractBridgeParser.getAnnotationValue(annotation, "trimToResult");
-            return value != null && value;
         }
 
         final CharSequence marshallCopyHSObjectArrayToHotSpot(CodeBuilder currentBuilder, TypeMirror guestArrayComponentType, CharSequence guestArray,

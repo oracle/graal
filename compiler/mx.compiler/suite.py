@@ -417,6 +417,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.nativebridge",
+        "mx:JUNIT",
       ],
       "annotationProcessors" : [
         "GRAAL_NATIVEBRIDGE_PROCESSOR",

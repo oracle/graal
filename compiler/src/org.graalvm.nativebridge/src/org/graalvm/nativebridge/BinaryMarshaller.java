@@ -54,6 +54,14 @@ public interface BinaryMarshaller<T> {
     }
 
     /**
+     * Updates the {@code object} used as an {@link Out} parameter after a foreign call.
+     */
+    @SuppressWarnings("unused")
+    default void update(BinaryInput input, T object) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Decorates {@code forMarshaller} by a {@link BinaryMarshaller} handling {@code null} values.
      * The returned {@link BinaryMarshaller} calls the {@code forMarshaller} only non-null values.
      */

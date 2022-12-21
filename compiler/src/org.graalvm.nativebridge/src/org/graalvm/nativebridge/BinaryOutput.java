@@ -294,6 +294,125 @@ public abstract class BinaryOutput {
         }
     }
 
+    /**
+     * Writes {@code len} bytes from the boolean {@code array} starting at offset {@code off}. The
+     * value {@code true} is written as the value {@code (byte)1}, the value {@code false} is
+     * written as the value {@code (byte)0}. The buffer position is incremented by {@code len}.
+     */
+    public final void write(boolean[] array, int off, int len) {
+        ensureBufferSize(0, len);
+        for (int i = 0, j = 0; i < len; i++, j++) {
+            byteBuffer[j] = (byte) (array[off + i] ? 1 : 0);
+        }
+        write(byteBuffer, 0, len);
+    }
+
+    /**
+     * Writes {@code len} shorts from the {@code array} starting at offset {@code off}. The buffer
+     * position is incremented by {@code 2 * len}.
+     */
+    public final void write(short[] array, int off, int len) {
+        int size = len * Short.BYTES;
+        ensureBufferSize(0, size);
+        for (int i = 0, j = 0; i < len; i++) {
+            byteBuffer[j++] = (byte) ((array[off + i] >>> 8) & 0xff);
+            byteBuffer[j++] = (byte) (array[off + i] & 0xff);
+        }
+        write(byteBuffer, 0, size);
+    }
+
+    /**
+     * Writes {@code len} chars from the {@code array} starting at offset {@code off}. The buffer
+     * position is incremented by {@code 2 * len}.
+     */
+    public final void write(char[] array, int off, int len) {
+        int size = len * Character.BYTES;
+        ensureBufferSize(0, size);
+        for (int i = 0, j = 0; i < len; i++) {
+            byteBuffer[j++] = (byte) ((array[off + i] >>> 8) & 0xff);
+            byteBuffer[j++] = (byte) (array[off + i] & 0xff);
+        }
+        write(byteBuffer, 0, size);
+    }
+
+    /**
+     * Writes {@code len} ints from the {@code array} starting at offset {@code off}. The buffer
+     * position is incremented by {@code 4 * len}.
+     */
+    public final void write(int[] array, int off, int len) {
+        int size = len * Integer.BYTES;
+        ensureBufferSize(0, size);
+        for (int i = 0, j = 0; i < len; i++) {
+            byteBuffer[j++] = (byte) ((array[off + i] >>> 24) & 0xff);
+            byteBuffer[j++] = (byte) ((array[off + i] >>> 16) & 0xff);
+            byteBuffer[j++] = (byte) ((array[off + i] >>> 8) & 0xff);
+            byteBuffer[j++] = (byte) (array[off + i] & 0xff);
+        }
+        write(byteBuffer, 0, size);
+    }
+
+    /**
+     * Writes {@code len} longs from the {@code array} starting at offset {@code off}. The buffer
+     * position is incremented by {@code 8 * len}.
+     */
+    public final void write(long[] array, int off, int len) {
+        int size = len * Long.BYTES;
+        ensureBufferSize(0, size);
+        for (int i = 0, j = 0; i < len; i++) {
+            byteBuffer[j++] = (byte) ((array[off + i] >>> 56) & 0xff);
+            byteBuffer[j++] = (byte) ((array[off + i] >>> 48) & 0xff);
+            byteBuffer[j++] = (byte) ((array[off + i] >>> 40) & 0xff);
+            byteBuffer[j++] = (byte) ((array[off + i] >>> 32) & 0xff);
+            byteBuffer[j++] = (byte) ((array[off + i] >>> 24) & 0xff);
+            byteBuffer[j++] = (byte) ((array[off + i] >>> 16) & 0xff);
+            byteBuffer[j++] = (byte) ((array[off + i] >>> 8) & 0xff);
+            byteBuffer[j++] = (byte) (array[off + i] & 0xff);
+        }
+        write(byteBuffer, 0, size);
+    }
+
+    /**
+     * Writes {@code len} floats from the {@code array} starting at offset {@code off}. Each
+     * {@code float} value is converted to an {@code int} using the
+     * {@link Float#floatToIntBits(float)} and written as an int. The buffer position is incremented
+     * by {@code 4 * len}.
+     */
+    public final void write(float[] array, int off, int len) {
+        int size = len * Float.BYTES;
+        ensureBufferSize(0, size);
+        for (int i = 0, j = 0; i < len; i++) {
+            int bits = Float.floatToIntBits(array[off + i]);
+            byteBuffer[j++] = (byte) ((bits >>> 24) & 0xff);
+            byteBuffer[j++] = (byte) ((bits >>> 16) & 0xff);
+            byteBuffer[j++] = (byte) ((bits >>> 8) & 0xff);
+            byteBuffer[j++] = (byte) (bits & 0xff);
+        }
+        write(byteBuffer, 0, size);
+    }
+
+    /**
+     * Writes {@code len} doubles from the {@code array} starting at offset {@code off}. Each
+     * {@code double} value is converted to an {@code lang} using the
+     * {@link Double#doubleToLongBits(double)} and written as a long. The buffer position is
+     * incremented by {@code 8 * len}.
+     */
+    public final void write(double[] array, int off, int len) {
+        int size = len * Double.BYTES;
+        ensureBufferSize(Integer.BYTES, size);
+        for (int i = 0, j = 0; i < len; i++) {
+            long bits = Double.doubleToLongBits(array[off + i]);
+            byteBuffer[j++] = (byte) ((bits >>> 56) & 0xff);
+            byteBuffer[j++] = (byte) ((bits >>> 48) & 0xff);
+            byteBuffer[j++] = (byte) ((bits >>> 40) & 0xff);
+            byteBuffer[j++] = (byte) ((bits >>> 32) & 0xff);
+            byteBuffer[j++] = (byte) ((bits >>> 24) & 0xff);
+            byteBuffer[j++] = (byte) ((bits >>> 16) & 0xff);
+            byteBuffer[j++] = (byte) ((bits >>> 8) & 0xff);
+            byteBuffer[j++] = (byte) (bits & 0xff);
+        }
+        write(byteBuffer, 0, size);
+    }
+
     private void ensureBufferSize(int headerSize, int dataSize) {
         if (byteBuffer == null || byteBuffer.length < (headerSize + dataSize)) {
             byteBuffer = new byte[bufferSize(headerSize, dataSize)];
