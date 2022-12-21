@@ -34,10 +34,10 @@ import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
-public abstract class EntryPointCallStubMethod extends NonBytecodeStaticMethod {
+public abstract class EntryPointCallStubMethod extends NonBytecodeMethod {
 
     protected EntryPointCallStubMethod(String name, ResolvedJavaType declaringClass, Signature signature, ConstantPool constantPool) {
-        super(name, declaringClass, signature, constantPool);
+        super(name, true, declaringClass, signature, constantPool);
     }
 
     /**
