@@ -24,7 +24,7 @@ The Dockerfile will be provided.
 
 ## Note on a Sample Application
 
-For the demo you will use the [Spring Boot "Jibber" application"](https://github.com/graalvm/graalvm-demos/tree/master/spring-native-image). 
+For the demo you will use the [Spring Boot 3 Native Image Microservice example](https://github.com/graalvm/graalvm-demos/blob/master/spring-native-image/README.md). 
 
 1. Clone the [GraalVM Demos repository](https://github.com/graalvm/graalvm-demos) and enter the application directory:
 
@@ -57,13 +57,13 @@ If you use a Mac or Windows, to build a Docker image containing your native exec
 If you are a Linux user, you can just pass a native executable to Docker and use the simplest slim or distroless container, depending on static libraries your application is linked against. 
 For example:
 
-    ```
-    FROM gcr.io/distroless/base
-    ARG APP_FILE
-    EXPOSE 8080
-    COPY target/${APP_FILE} app 
-    ENTRYPOINT ["/jibber"]
-    ```
+```
+FROM gcr.io/distroless/base
+ARG APP_FILE
+EXPOSE 8080
+COPY target/${APP_FILE} app 
+ENTRYPOINT ["/jibber"]
+```
 
 For user's convenience, Dockerfiles are provided with the sample application. 
 
