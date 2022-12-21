@@ -54,7 +54,6 @@ import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
-import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -140,8 +139,6 @@ import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
-import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.bytecode.BytecodeSensitiveAnalysisPolicy;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.ImageHeap;
@@ -156,10 +153,8 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.reports.AnalysisReporter;
 import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
-import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
@@ -1561,60 +1556,7 @@ public class NativeImageGenerator {
         return true;
     }
 
-    private static String format(BigBang bb, TypeState state) {
-        return state.typesStream(bb).map(t -> t.toJavaName(true)).collect(Collectors.joining(","));
-    }
-
     private void checkUniverse() {
-        if (bb instanceof NativeImagePointsToAnalysis) {
-            NativeImagePointsToAnalysis bigbang = (NativeImagePointsToAnalysis) this.bb;
-            /*
-             * Check that the type states for method parameters and fields are compatible with the
-             * declared type. This is required for interface types because interfaces are not
-             * trusted according to the Java language specification, but we trust all interface
-             * types (see HostedType.isTrustedInterfaceType)
-             *
-             * TODO Enable checks for non-interface types too.
-             */
-            for (AnalysisMethod m : aUniverse.getMethods()) {
-                PointsToAnalysisMethod method = PointsToAnalysis.assertPointsToAnalysisMethod(m);
-                for (TypeFlow<?> parameter : method.getTypeFlow().getParameters()) {
-                    TypeState parameterState = method.getTypeFlow().foldTypeFlow(bigbang, parameter);
-                    if (parameterState != null) {
-                        AnalysisType declaredType = parameter.getDeclaredType();
-                        if (declaredType.isInterface()) {
-                            TypeState declaredTypeState = declaredType.getAssignableTypes(true);
-                            parameterState = TypeState.forSubtraction(bigbang, parameterState, declaredTypeState);
-                            if (!parameterState.isEmpty()) {
-                                String methodKey = method.format("%H.%n(%p)");
-                                bigbang.getUnsupportedFeatures().addMessage(methodKey, method,
-                                                "Parameter " + ((FormalParamTypeFlow) parameter).position() + " of " + methodKey + " has declared type " + declaredType.toJavaName(true) +
-                                                                ", with assignable types: " + format(bb, declaredTypeState) +
-                                                                ", which is incompatible with analysis inferred types: " + format(bb, parameterState) + ".");
-                            }
-                        }
-                    }
-                }
-            }
-            for (AnalysisField field : aUniverse.getFields()) {
-                TypeState state = field.getTypeState();
-                if (state != null) {
-                    AnalysisType declaredType = field.getType();
-                    if (declaredType.isInterface()) {
-                        TypeState declaredTypeState = declaredType.getAssignableTypes(true);
-                        state = TypeState.forSubtraction(bigbang, state, declaredTypeState);
-                        if (!state.isEmpty()) {
-                            String fieldKey = field.format("%H.%n");
-                            bigbang.getUnsupportedFeatures().addMessage(fieldKey, null,
-                                            "Field " + fieldKey + " has declared type " + declaredType.toJavaName(true) +
-                                                            ", with assignable types: " + format(bb, declaredTypeState) +
-                                                            ", which is incompatible with analysis inferred types: " + format(bb, state) + ".");
-                        }
-                    }
-                }
-            }
-        }
-
         if (SubstrateOptions.VerifyNamingConventions.getValue()) {
             for (AnalysisMethod method : aUniverse.getMethods()) {
                 if ((method.isInvoked() || method.isReachable()) && method.getAnnotation(Fold.class) == null) {

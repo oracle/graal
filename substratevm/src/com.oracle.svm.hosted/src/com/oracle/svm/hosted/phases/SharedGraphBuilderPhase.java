@@ -29,7 +29,9 @@ import java.util.List;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.BciBlockMapping;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.FrameStateBuilder;
@@ -354,14 +356,14 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 var causeCtor = ReflectionUtil.lookupConstructor(cause.getClass(), String.class);
                 ResolvedJavaMethod causeCtorMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(causeCtor), false);
                 ValueNode causeMessageNode = ConstantNode.forConstant(b.getConstantReflection().forString(cause.getMessage()), metaAccess, b.getGraph());
-                Invoke causeCtorInvoke = b.appendInvoke(InvokeKind.Static, causeCtorMethod, new ValueNode[]{causeMessageNode});
+                Invoke causeCtorInvoke = b.appendInvoke(InvokeKind.Static, causeCtorMethod, new ValueNode[]{causeMessageNode}, null);
                 /*
                  * Invoke method that creates and throws throwable-instance with message and cause
                  */
                 var errorCtor = ReflectionUtil.lookupConstructor(throwable.getClass(), String.class, Throwable.class);
                 ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
                 ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwable.getMessage()), metaAccess, b.getGraph());
-                b.appendInvoke(InvokeKind.Static, throwingMethod, new ValueNode[]{messageNode, causeCtorInvoke.asNode()});
+                b.appendInvoke(InvokeKind.Static, throwingMethod, new ValueNode[]{messageNode, causeCtorInvoke.asNode()}, null);
                 b.add(new LoweredDeadEndNode());
             } else {
                 replaceWithThrowingAtRuntime(b, throwable.getClass(), throwable.getMessage());
@@ -386,7 +388,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             var metaAccess = (UniverseMetaAccess) b.getMetaAccess();
             ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
             ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwableMessage), b.getMetaAccess(), b.getGraph());
-            b.appendInvoke(InvokeKind.Static, throwingMethod, new ValueNode[]{messageNode});
+            b.appendInvoke(InvokeKind.Static, throwingMethod, new ValueNode[]{messageNode}, null);
             b.add(new LoweredDeadEndNode());
         }
 
@@ -516,6 +518,17 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         @Override
         public boolean needsExplicitException() {
             return explicitExceptionEdges && !parsingIntrinsic();
+        }
+
+        @Override
+        protected boolean needsIncompatibleClassChangeErrorCheck() {
+            /*
+             * Note that the explicit check for incompatible class changes is necessary even when
+             * explicit exception edges for other exception are not required. We have no mechanism
+             * to do the check implicitly as part of interface calls. Interface calls are vtable
+             * calls both in AOT compiled code and JIT compiled code.
+             */
+            return !parsingIntrinsic();
         }
 
         @Override
@@ -720,5 +733,26 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             return super.allowDeoptInPlugins();
         }
 
+        @Override
+        @SuppressWarnings("try")
+        protected ValueNode emitIncompatibleClassChangeCheck(ValueNode object, ResolvedJavaType checkedType) {
+            try (DebugCloseable context = maybeDisableNodeSourcePositions()) {
+                return super.emitIncompatibleClassChangeCheck(object, checkedType);
+            }
+        }
+
+        private DebugCloseable maybeDisableNodeSourcePositions() {
+            if (!SubstrateOptions.parseOnce() && graph.trackNodeSourcePosition()) {
+                /*
+                 * Without "parse once", we use the bci of the invocation to look up static analysis
+                 * results. Having a InstanceOfNode with the same bci disables static analysis
+                 * results because we treat non-unique bci as "do not store any information. The
+                 * workaround is to give the InstanceOfNode for the incompatible class change check
+                 * the invalid bci -1.
+                 */
+                return graph.withNodeSourcePosition(new NodeSourcePosition(createBytecodePosition(), method, -1));
+            }
+            return null;
+        }
     }
 }
