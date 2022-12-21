@@ -87,7 +87,7 @@ public final class Instruction {
         }
     }
 
-    private static final int REASONABLE_INSTRUCTION_LENGTH = 16;
+    private static final int REASONABLE_INSTRUCTION_LENGTH = 3;
 
     @Override
     public String toString() {

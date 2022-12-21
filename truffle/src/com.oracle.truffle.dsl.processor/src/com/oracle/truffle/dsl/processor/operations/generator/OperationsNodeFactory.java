@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.operations.generator;
 
+import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createTransferToInterpreterAndInvalidate;
 import static javax.lang.model.element.Modifier.ABSTRACT;
 import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PRIVATE;
@@ -48,7 +49,6 @@ import static javax.lang.model.element.Modifier.STATIC;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -83,7 +83,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionField;
-import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel.CustomSignature;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel.OperationKind;
@@ -155,10 +154,18 @@ public class OperationsNodeFactory {
 
         operationNodeGen.add(createGetIntrospectionData());
 
+        operationNodeGen.add(createChangeInterpreters());
+
+        operationNodeGen.add(createCloneUninitializedSupported());
+        operationNodeGen.add(createCloneUninitialized());
+
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(short[].class), "bc")));
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(Object[].class), "objs")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLocals")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "buildIndex")));
+        if (model.generateUncached) {
+            operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "uncachedExecuteCount")).createInitBuilder().string("16");
+        }
         operationNodeGen.add(createInterpreterField());
 
         operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(Object.class), "EPSILON = new Object()"));
@@ -183,6 +190,61 @@ public class OperationsNodeFactory {
         operationNodeGen.addAll(consts.elements());
 
         return operationNodeGen;
+    }
+
+    private CodeExecutableElement createCloneUninitializedSupported() {
+        CodeExecutableElement ex = GeneratorUtils.override(types.RootNode, "isCloneUninitializedSupported");
+        ex.createBuilder().returnTrue();
+        return ex;
+    }
+
+    private CodeExecutableElement createCloneUninitialized() {
+        CodeExecutableElement ex = GeneratorUtils.override(types.RootNode, "cloneUninitialized");
+
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.declaration(operationNodeGen.asType(), "clone", "(" + operationNodeGen.getSimpleName() + ") this.copy()");
+
+        b.statement("clone.interpreter = UNCACHED_INTERPRETER");
+        b.statement("clone.objs = new Object[objs.length]");
+
+        b.startFor().string("int bci = 0; bci < bc.length; bci++").end().startBlock();
+
+        b.startSwitch().string("bc[bci]").end().startBlock();
+
+        for (InstructionModel instr : model.getInstructions()) {
+            b.startCase().string(instr.id + " /* " + instr.name + " */").end().startBlock();
+
+            switch (instr.kind) {
+                case CUSTOM:
+                case CUSTOM_SHORT_CIRCUIT:
+                    String udName = instr.getInternalName() + "Gen" + (model.generateUncached && instr.needsUncachedData() ? "_UncachedData" : "");
+                    b.declaration(udName, "curData", "(" + udName + ") objs[bci]");
+                    b.declaration(udName, "newData", "new " + udName + "()");
+
+                    for (InstructionField field : instr.getUncachedFields()) {
+                        b.statement("newData." + field.name + " = curData." + field.name);
+                    }
+
+                    b.statement("clone.objs[bci] = newData");
+
+                    break;
+                default:
+                    b.statement("clone.objs[bci] = this.objs[bci]");
+                    break;
+            }
+
+            b.statement("break");
+            b.end();
+        }
+
+        b.end();
+
+        b.end();
+
+        b.startReturn().string("clone").end();
+
+        return ex;
     }
 
     private CodeVariableElement createInterpreterField() {
@@ -271,11 +333,11 @@ public class OperationsNodeFactory {
         b.statement("int state = numLocals << 16");
 
         b.startWhile().string("true").end().startBlock();
-        b.statement("state = interpreter.continueAt(frame, bc, objs, state)");
+        b.statement("state = interpreter.continueAt(this, frame, bc, objs, state)");
         b.startIf().string("(state & 0xffff) == 0xffff").end().startBlock();
         b.statement("break");
         b.end().startElseBlock();
-        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+        b.tree(createTransferToInterpreterAndInvalidate());
         b.end();
         b.end();
 
@@ -321,11 +383,43 @@ public class OperationsNodeFactory {
 
         for (InstructionModel instr : model.getInstructions()) {
             b.startCase().string("" + instr.id + " /* " + instr.name + " */").end().startBlock();
+            b.statement("Object data = objs[bci]");
             b.startAssign("instructions[bci]").startNewArray(arrayOf(context.getType(Object.class)), null);
             b.string("bci");
             b.doubleQuote(instr.name);
             b.string("new short[] {" + instr.id + "}");
-            b.string("new Object[0]");
+
+            b.startNewArray(arrayOf(context.getType(Object.class)), null);
+
+            switch (instr.kind) {
+                case BRANCH:
+                case BRANCH_FALSE:
+                    buildIntrospectionArgument(b, "BRANCH_OFFSET", "((IntRef) data).value");
+                    break;
+                case CUSTOM:
+                    if (instr.signature.isVariadic) {
+                        buildIntrospectionArgument(b, "VARIADIC", "((" + instr.getInternalName() + "Gen" + (model.generateUncached ? "_UncachedData" : "") + ") data).op_variadicCount_");
+                    }
+                    break;
+                case LOAD_CONSTANT:
+                    buildIntrospectionArgument(b, "CONSTANT", "data");
+                    break;
+                case LOAD_ARGUMENT:
+                    buildIntrospectionArgument(b, "ARGUMENT", "data");
+                    break;
+                case LOAD_LOCAL:
+                case LOAD_LOCAL_MATERIALIZED:
+                case STORE_LOCAL:
+                case STORE_LOCAL_MATERIALIZED:
+                    buildIntrospectionArgument(b, "LOCAL", "((IntRef) data).value");
+                    break;
+                case CUSTOM_SHORT_CIRCUIT:
+                    buildIntrospectionArgument(b, "BRANCH_OFFSET", "((" + instr.getInternalName() + "Gen" + (model.generateUncached ? "_UncachedData" : "") + " ) data).op_branchTarget_");
+                    break;
+            }
+
+            b.end();
+
             b.end(2);
             b.statement("break");
             b.end();
@@ -340,6 +434,16 @@ public class OperationsNodeFactory {
         b.end(2);
 
         return ex;
+    }
+
+    private void buildIntrospectionArgument(CodeTreeBuilder b, String kind, String content) {
+        DeclaredType argumentKindType = context.getDeclaredType("com.oracle.truffle.api.operation.introspection.Argument.ArgumentKind");
+
+        b.startNewArray(arrayOf(context.getType(Object.class)), null);
+        b.staticReference(argumentKindType, kind);
+        b.string(content);
+        b.end();
+
     }
 
     private CodeExecutableElement createReadVariadic() {
@@ -360,6 +464,80 @@ public class OperationsNodeFactory {
         b.end();
 
         b.statement("return result");
+
+        return ex;
+    }
+
+    private CodeExecutableElement createChangeInterpreters() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "changeInterpreters");
+
+        ex.addParameter(new CodeVariableElement(baseInterpreter.asType(), "toInterpreter"));
+
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.startIf().string("toInterpreter == interpreter").end().startBlock();
+        b.returnStatement();
+        b.end();
+
+        b.startIf().string("toInterpreter == CACHED_INTERPRETER && interpreter == INSTRUMENTABLE_INTERPRETER").end().startBlock();
+        b.returnStatement();
+        b.end();
+
+        b.statement("Object[] newObjs = new Object[bc.length]");
+
+        b.startFor().string("int bci = 0; bci < bc.length; bci++").end().startBlock();
+
+        b.startSwitch().string("bc[bci]").end().startBlock();
+
+        for (InstructionModel instr : model.getInstructions()) {
+            switch (instr.kind) {
+                case CUSTOM:
+                case CUSTOM_SHORT_CIRCUIT:
+                    break;
+                default:
+                    continue;
+            }
+
+            b.startCase().string(instr.id + " /* " + instr.name + " */").end().startBlock();
+
+            switch (instr.kind) {
+                case CUSTOM:
+                case CUSTOM_SHORT_CIRCUIT:
+                    b.statement(instr.getInternalName() + "Gen data = new " + instr.getInternalName() + "Gen()");
+                    if (model.generateUncached && instr.needsUncachedData()) {
+                        b.startIf().string("interpreter == UNCACHED_INTERPRETER").end().startBlock();
+
+                        b.statement(instr.getInternalName() + "Gen_UncachedData oldData = (" + instr.getInternalName() + "Gen_UncachedData) objs[bci]");
+                        for (InstructionField field : instr.getUncachedFields()) {
+                            b.statement("data." + field.name + " = oldData." + field.name);
+                        }
+
+                        // todo: initialize cached fields
+                        b.end();
+                    }
+
+                    b.statement("newObjs[bci] = insert(data)");
+                    break;
+
+                default:
+                    throw new AssertionError();
+            }
+
+            b.statement("break");
+            b.end();
+        }
+
+        b.caseDefault().startBlock();
+        b.statement("newObjs[bci] = objs[bci]");
+        b.statement("break");
+        b.end();
+
+        b.end(); // } switch
+
+        b.end(); // } for
+
+        b.statement("objs = newObjs");
+        b.statement("interpreter = toInterpreter");
 
         return ex;
     }
@@ -587,6 +765,9 @@ public class OperationsNodeFactory {
                 case LOAD_LOCAL_MATERIALIZED:
                     b.string("arg0");
                     break;
+                case CUSTOM_SHORT_CIRCUIT:
+                    b.string("new IntRef()");
+                    break;
                 default:
                     b.string("null");
                     break;
@@ -686,6 +867,10 @@ public class OperationsNodeFactory {
 
             if (operation.instruction != null && operation.kind != OperationKind.CUSTOM_SHORT_CIRCUIT) {
                 buildEmitOperationInstruction(b, operation);
+            }
+
+            if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
+                b.statement("((IntRef) operationData[operationSp]).value = bci");
             }
 
             b.startStatement().startCall("afterChild");
@@ -800,6 +985,11 @@ public class OperationsNodeFactory {
             if (instruction.signature.isVariadic) {
                 b.statement("argument.op_variadicCount_ = operationChildCount[operationSp] - " + instruction.signature.valueCount);
             }
+
+            if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
+                b.statement("argument.op_branchTarget_ = (IntRef) data");
+            }
+
         }
 
         private CodeExecutableElement createBeforeChild() {
@@ -821,6 +1011,13 @@ public class OperationsNodeFactory {
                 if (op.isTransparent && (op.isVariadic || op.numChildren > 1)) {
                     b.startIf().string("(boolean) ((Object[]) data)[0]").end().startBlock();
                     buildEmitInstruction(b, model.popInstruction, null);
+                    b.end();
+                }
+
+                if (op.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
+                    b.startIf().string("childIndex != 0").end().startBlock();
+                    buildCustomInitializer(b, op, op.instruction);
+                    buildEmitInstruction(b, op.instruction, "argument");
                     b.end();
                 }
 
@@ -1028,6 +1225,7 @@ public class OperationsNodeFactory {
         private CodeExecutableElement createContinueAt() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(ABSTRACT), context.getType(int.class), "continueAt");
 
+            ex.addParameter(new CodeVariableElement(operationNodeGen.asType(), "$this"));
             ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
             ex.addParameter(new CodeVariableElement(context.getType(short[].class), "bc"));
             ex.addParameter(new CodeVariableElement(context.getType(Object[].class), "objs"));
@@ -1069,22 +1267,46 @@ public class OperationsNodeFactory {
             b.statement("int curOpcode = bc[bci]");
             b.statement("Object curObj = objs[bci]");
 
+            if (isUncached) {
+                b.statement("int uncachedExecuteCount = $this.uncachedExecuteCount");
+            }
+
             b.startSwitch().string("curOpcode").end().startBlock();
 
             for (InstructionModel instr : model.getInstructions()) {
+
+                if (instr.isInstrumentationOnly() && !isInstrumented) {
+                    continue;
+                }
 
                 b.startCase().string(instr.id + " /* " + instr.name + " */").end().startBlock();
 
                 switch (instr.kind) {
                     case BRANCH:
-                        b.statement("bci = ((IntRef) curObj).value");
+                        b.statement("int nextBci = ((IntRef) curObj).value");
+
+                        if (isUncached) {
+                            b.startIf().string("nextBci <= bci").end().startBlock();
+
+                            b.startIf().string("uncachedExecuteCount-- <= 0").end().startBlock();
+                            b.tree(createTransferToInterpreterAndInvalidate());
+                            b.statement("$this.changeInterpreters(CACHED_INTERPRETER)");
+                            b.statement("return (sp << 16) | nextBci");
+                            b.end();
+
+                            b.end();
+                        }
+
+                        b.statement("bci = nextBci");
                         b.statement("continue loop");
                         break;
                     case BRANCH_FALSE:
                         b.startIf().string("frame.getObject(sp - 1) == Boolean.TRUE").end().startBlock();
+                        b.statement("sp -= 1");
                         b.statement("bci += 1");
                         b.statement("continue loop");
                         b.end().startElseBlock();
+                        b.statement("sp -= 1");
                         b.statement("bci = ((IntRef) curObj).value");
                         b.statement("continue loop");
                         b.end();
@@ -1146,6 +1368,15 @@ public class OperationsNodeFactory {
                         b.statement("sp -= 1");
                         break;
                     case RETURN:
+                        if (isUncached) {
+                            b.startIf().string("uncachedExecuteCount-- <= 0").end().startBlock();
+                            b.tree(createTransferToInterpreterAndInvalidate());
+                            b.statement("$this.changeInterpreters(CACHED_INTERPRETER)");
+                            b.end().startElseBlock();
+                            b.statement("$this.uncachedExecuteCount = uncachedExecuteCount");
+                            b.end();
+                        }
+
                         b.statement("return ((sp - 1) << 16) | 0xffff");
                         break;
                     case STORE_LOCAL:
@@ -1155,6 +1386,7 @@ public class OperationsNodeFactory {
                     case STORE_LOCAL_MATERIALIZED:
                         b.statement("VirtualFrame matFrame = (VirtualFrame) frame.getObject(sp - 2)");
                         b.statement("matFrame.setObject(((IntRef) curObj).value, frame.getObject(sp - 1))");
+                        b.statement("sp -= 2");
                         break;
                     case THROW:
                         break;

@@ -219,7 +219,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
 
         data.signature = signature;
         data.numChildren = signature.valueCount;
-        data.isVariadic = signature.isVariadic;
+        data.isVariadic = signature.isVariadic || isShortCircuit;
         data.isVoid = signature.isVoid;
 
         data.operationArguments = new TypeMirror[signature.localSetterCount + signature.localSetterRangeCount];

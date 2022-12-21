@@ -166,11 +166,13 @@ public class OperationsModel extends Template implements InfoDumpable {
         operation(OperationKind.STORE_LOCAL, "StoreLocal") //
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //
+                        .setVoid(true) //
                         .setOperationArguments(types.OperationLocal) //
                         .setInstruction(instruction(InstructionKind.STORE_LOCAL, "store.local"));
         operation(OperationKind.STORE_LOCAL_MATERIALIZED, "StoreLocalMaterialized") //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(true, true) //
+                        .setVoid(true) //
                         .setOperationArguments(types.OperationLocal) //
                         .setInstruction(instruction(InstructionKind.STORE_LOCAL_MATERIALIZED, "store.local.mat"));
         operation(OperationKind.RETURN, "Return") //

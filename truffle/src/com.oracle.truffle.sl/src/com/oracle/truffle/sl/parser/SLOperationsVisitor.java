@@ -94,7 +94,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
  */
 public final class SLOperationsVisitor extends SLBaseVisitor {
 
-    private static final boolean DO_LOG_NODE_CREATION = true;
+    private static final boolean DO_LOG_NODE_CREATION = false;
     private static final boolean FORCE_SERIALIZE = false;
 
     public static void parseSL(SLLanguage language, Source source, Map<TruffleString, RootCallTarget> functions) {

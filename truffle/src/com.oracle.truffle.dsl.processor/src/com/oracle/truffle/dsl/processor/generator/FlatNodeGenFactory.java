@@ -2279,6 +2279,9 @@ public class FlatNodeGenFactory {
             NodeChildData child = execution.getChild();
             LocalVariable var = frameState.getValue(execution);
             plugs.createNodeChildReferenceForException(this, frameState, builder, values, execution, child, var);
+            if (var != null) {
+                values.add(var.createReference());
+            }
         }
         builder.end();
         builder.trees(values.toArray(new CodeTree[0]));
@@ -2292,9 +2295,6 @@ public class FlatNodeGenFactory {
             builder.string(accessNodeField(execution));
         } else {
             builder.string("null");
-        }
-        if (var != null) {
-            values.add(var.createReference());
         }
     }
 
