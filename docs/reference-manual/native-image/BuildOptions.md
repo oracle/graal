@@ -16,7 +16,7 @@ The following options are supported across both GraalVM Community and Enterprise
 * `--add-modules <module name>[,<module name>...]`: add root modules to resolve in addition to the initial module. `<module name>` can also be `ALL-DEFAULT`, `ALL-SYSTEM`, `ALL-MODULE-PATH`
 * `-D<name>=<value>`: set a system property for the image builder
 * `-J<flag>`: pass `<flag>` directly to the JVM running the `native-image` builder
-* `-O<level>`: 0 for no optimizations, or 1 for basic optimizations (default)
+* `-O<level>`: 0 for no optimizations, or 1 for basic optimizations (default), b - quick build mode for development
 * `--verbose`: enable verbose output
 * `--version`: print the product version and exit
 * `--help`: print this help message
