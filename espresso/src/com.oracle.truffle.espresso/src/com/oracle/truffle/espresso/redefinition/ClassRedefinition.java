@@ -258,11 +258,11 @@ public final class ClassRedefinition {
                 case ADD_METHOD:
                 case REMOVE_METHOD:
                 case SCHEMA_CHANGE:
-                    doRedefineClass(packet, invalidatedClasses, redefinedClasses, controller);
+                    doRedefineClass(packet, invalidatedClasses, redefinedClasses);
                     return 0;
                 case CLASS_HIERARCHY_CHANGED:
                     context.markChangedHierarchy();
-                    doRedefineClass(packet, invalidatedClasses, redefinedClasses, controller);
+                    doRedefineClass(packet, invalidatedClasses, redefinedClasses);
                     return 0;
                 case NEW_CLASS:
                     ClassInfo classInfo = packet.info;
@@ -775,7 +775,7 @@ public final class ClassRedefinition {
         return false;
     }
 
-    private void doRedefineClass(ChangePacket packet, List<ObjectKlass> invalidatedClasses, List<ObjectKlass> redefinedClasses, DebuggerController controller) {
+    private void doRedefineClass(ChangePacket packet, List<ObjectKlass> invalidatedClasses, List<ObjectKlass> redefinedClasses) {
         ObjectKlass oldKlass = packet.info.getKlass();
         if (packet.info.isRenamed()) {
             // renaming a class is done by
