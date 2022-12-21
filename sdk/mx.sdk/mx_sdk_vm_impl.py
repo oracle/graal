@@ -1273,6 +1273,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                     '--install-exit-handlers',
                     '--enable-monitoring',
                     '-H:+DumpRuntimeCompilationOnSignal',
+                    '-H:+ReportExceptionStackTraces',
                 ]
 
             if isinstance(image_config, (mx_sdk.LauncherConfig, mx_sdk.LanguageLibraryConfig)):

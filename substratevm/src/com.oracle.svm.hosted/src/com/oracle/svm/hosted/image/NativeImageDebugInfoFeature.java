@@ -24,11 +24,8 @@
  */
 package com.oracle.svm.hosted.image;
 
-import java.lang.management.ManagementFactory;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -50,6 +47,7 @@ import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.image.sources.SourceManager;
+import com.oracle.svm.hosted.util.DiagnosticUtils;
 
 @AutomaticallyRegisteredFeature
 @SuppressWarnings("unused")
@@ -121,19 +119,10 @@ class NativeImageDebugInfoFeature implements InternalFeature {
                 };
 
                 var imageClassLoader = accessImpl.getImageClassLoader();
-
-                var classPath = imageClassLoader.classpath().stream().map(Path::toString).collect(Collectors.toList());
-                objectFile.newUserDefinedSection(".debug.svm.imagebuild.classpath", makeSectionImpl.apply(classPath));
-                var modulePath = imageClassLoader.modulepath().stream().map(Path::toString).collect(Collectors.toList());
-                objectFile.newUserDefinedSection(".debug.svm.imagebuild.modulepath", makeSectionImpl.apply(modulePath));
-                /* Get original arguments that got passed to the builder when it got started */
-                var builderArguments = imageClassLoader.classLoaderSupport.getHostedOptionParser().getArguments();
-                objectFile.newUserDefinedSection(".debug.svm.imagebuild.arguments", makeSectionImpl.apply(builderArguments));
-                /* System properties that got passed to the VM that runs the builder */
-                var builderProperties = ManagementFactory.getRuntimeMXBean().getInputArguments().stream()
-                                .filter(arg -> arg.startsWith("-D"))
-                                .sorted().collect(Collectors.toList());
-                objectFile.newUserDefinedSection(".debug.svm.imagebuild.java.properties", makeSectionImpl.apply(builderProperties));
+                objectFile.newUserDefinedSection(".debug.svm.imagebuild.classpath", makeSectionImpl.apply(DiagnosticUtils.getClassPath(imageClassLoader)));
+                objectFile.newUserDefinedSection(".debug.svm.imagebuild.modulepath", makeSectionImpl.apply(DiagnosticUtils.getModulePath(imageClassLoader)));
+                objectFile.newUserDefinedSection(".debug.svm.imagebuild.arguments", makeSectionImpl.apply(DiagnosticUtils.getBuilderArguments(imageClassLoader)));
+                objectFile.newUserDefinedSection(".debug.svm.imagebuild.java.properties", makeSectionImpl.apply(DiagnosticUtils.getBuilderProperties()));
             }
         }
         ProgressReporter.singleton().setDebugInfoTimer(timer);
