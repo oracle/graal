@@ -28,7 +28,6 @@ package com.oracle.svm.core.code;
 import org.graalvm.compiler.core.common.util.AbstractTypeReader;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
@@ -38,48 +37,42 @@ import com.oracle.svm.core.util.VMError;
  * Custom uninterruptible TypeReader that allows reusing the same instance over and over again. Only
  * getSV(), getSVInt(), getUV(), getUVInt() needs implementation.
  */
-public class UninterruptibleReusableTypeReader extends AbstractTypeReader {
+public class ReusableTypeReader extends AbstractTypeReader {
     private NonmovableArray<Byte> data;
     private long byteIndex = -1;
 
-    public UninterruptibleReusableTypeReader() {
+    public ReusableTypeReader() {
     }
 
-    public UninterruptibleReusableTypeReader(NonmovableArray<Byte> data, long byteIndex) {
+    public ReusableTypeReader(NonmovableArray<Byte> data, long byteIndex) {
         this.data = data;
         this.byteIndex = byteIndex;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public UninterruptibleReusableTypeReader reset() {
+    public ReusableTypeReader reset() {
         data = NonmovableArrays.nullArray();
         byteIndex = -1;
         return this;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isValid() {
         return data != null && byteIndex >= 0;
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getByteIndex() {
         return byteIndex;
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void setByteIndex(long byteIndex) {
         this.byteIndex = byteIndex;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public NonmovableArray<Byte> getData() {
         return data;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void setData(NonmovableArray<Byte> data) {
         this.data = data;
     }
@@ -115,7 +108,6 @@ public class UninterruptibleReusableTypeReader extends AbstractTypeReader {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getU1() {
         int result = NonmovableByteArrayReader.getU1(data, byteIndex);
         byteIndex += Byte.BYTES;
@@ -123,35 +115,29 @@ public class UninterruptibleReusableTypeReader extends AbstractTypeReader {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getUVInt() {
         return asS4(getUV());
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getSVInt() {
         return asS4(getSV());
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getSV() {
         return decodeSign(read());
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getUV() {
         return read();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long decodeSign(long value) {
         return (value >>> 1) ^ -(value & 1);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private long read() {
         int b0 = getU1();
         if (b0 < UnsafeArrayTypeWriter.NUM_LOW_CODES) {
@@ -161,7 +147,6 @@ public class UninterruptibleReusableTypeReader extends AbstractTypeReader {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private long readPacked(int b0) {
         assert b0 >= UnsafeArrayTypeWriter.NUM_LOW_CODES;
         long sum = b0;
@@ -176,12 +161,10 @@ public class UninterruptibleReusableTypeReader extends AbstractTypeReader {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isS4(long value) {
         return value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int asS4(long value) {
         assert isS4(value);
         return (int) value;

@@ -242,7 +242,7 @@ public class DebugHelper {
     }
 
     static class StringDebugHelper {
-        @Uninterruptible(reason = "Called with a raw object pointer.", calleeMustBe = false)
+        @Uninterruptible(reason = "Called with a raw object pointer.")
         @CEntryPoint(name = "svm_dbg_string_length", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class)
         public static int getStringLength(@SuppressWarnings("unused") IsolateThread thread, Pointer strPtr) {
