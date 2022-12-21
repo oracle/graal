@@ -35,7 +35,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
-import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 
 public final class CallFrame {
 
