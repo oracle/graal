@@ -828,10 +828,6 @@ For example, calling the method below prints high-level information about the Na
 (gdb) call svm_dbg_print_fatalErrorDiagnostics($r15, $rsp, $rip)
 ```
 
-### Further Reading
-
-- [Debugging Native Image in VS Code](Debugging.md)
-
 ## Special Considerations for using perf and valgrind
 
 Debug info includes details of address ranges for top level and
