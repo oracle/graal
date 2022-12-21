@@ -57,7 +57,7 @@ public final class CallFrame {
     private Object scope;
 
     public CallFrame(long threadId, byte typeTag, long classId, MethodRef method, long methodId, long codeIndex, Frame frame, Node currentNode, RootNode rootNode,
-                     DebugStackFrame debugStackFrame, JDWPContext context, DebuggerController controller) {
+                    DebugStackFrame debugStackFrame, JDWPContext context, DebuggerController controller) {
         this.threadId = threadId;
         this.typeTag = typeTag;
         this.classId = classId;
