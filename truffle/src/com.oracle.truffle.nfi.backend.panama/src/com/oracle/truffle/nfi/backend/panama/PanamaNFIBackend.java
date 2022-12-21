@@ -140,6 +140,6 @@ final class PanamaNFIBackend implements NFIBackend {
             error.enter();
             throw new NFIError("Access to native code is not allowed by the host environment.", self);
         }
-        return new PanamaSignatureBuilder();
+        return new PanamaSignatureBuilder(builderFactory);
     }
 }

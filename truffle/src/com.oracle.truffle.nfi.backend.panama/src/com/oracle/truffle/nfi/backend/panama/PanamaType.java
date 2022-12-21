@@ -52,6 +52,7 @@ import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.ValueLayout;
 
+
 final class PanamaType {
 
     final MemoryLayout nativeLayout;
@@ -93,11 +94,18 @@ final class PanamaType {
                 javaType = double.class;
                 break;
             case STRING:
+                javaType = String.class;
+                nativeLayout = ValueLayout.ADDRESS;
+                break;
             case OBJECT:
+                javaType = Object.class;
+                // TODO
+                throw CompilerDirectives.shouldNotReachHere("OBJ not imple");
             case NULLABLE:
                 // TODO
+                throw CompilerDirectives.shouldNotReachHere("Nullable not imple");
             default:
-                throw CompilerDirectives.shouldNotReachHere("TODO not implemented yet");
+                throw CompilerDirectives.shouldNotReachHere("Type does not exist.");
         }
     }
 
@@ -118,5 +126,9 @@ final class PanamaType {
                 throw UnsupportedTypeException.create(new Object[]{value});
             }
         }
+    }
+
+    public ArgumentNode createArgumentNode() {
+        return ArgumentNodeGen.create(this);
     }
 }
