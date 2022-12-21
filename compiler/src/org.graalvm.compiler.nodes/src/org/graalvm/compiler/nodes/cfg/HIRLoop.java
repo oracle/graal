@@ -28,23 +28,23 @@ import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.word.LocationIdentity;
 
-public final class HIRLoop extends Loop<Block> {
+public final class HIRLoop extends Loop<HIRBlock> {
 
     private LocationSet killLocations;
 
-    protected HIRLoop(Loop<Block> parent, int index, Block header) {
+    protected HIRLoop(Loop<HIRBlock> parent, int index, HIRBlock header) {
         super(parent, index, header);
     }
 
     @Override
-    public long numBackedges() {
+    public int numBackedges() {
         return ((LoopBeginNode) getHeader().getBeginNode()).loopEnds().count();
     }
 
     public LocationSet getKillLocations() {
         if (killLocations == null) {
             killLocations = new LocationSet();
-            for (Block b : this.getBlocks()) {
+            for (HIRBlock b : this.getBlocks()) {
                 if (b.getLoop() == this) {
                     killLocations.addAll(b.getKillLocations());
                     if (killLocations.isAny()) {
@@ -53,7 +53,7 @@ public final class HIRLoop extends Loop<Block> {
                 }
             }
         }
-        for (Loop<Block> child : this.getChildren()) {
+        for (Loop<HIRBlock> child : this.getChildren()) {
             if (killLocations.isAny()) {
                 break;
             }

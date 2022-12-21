@@ -29,7 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.BiConsumer;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.cfg.DominatorOptimizationProblem;
@@ -97,7 +97,7 @@ public class ConstantTree extends DominatorOptimizationProblem<ConstantTree.Flag
         tree.forEach(u -> getOrInitList(u.getBlock()).add(u));
     }
 
-    private List<UseEntry> getOrInitList(AbstractBlockBase<?> block) {
+    private List<UseEntry> getOrInitList(BasicBlock<?> block) {
         List<UseEntry> list = blockMap.get(block);
         if (list == null) {
             list = new ArrayList<>();
@@ -106,7 +106,7 @@ public class ConstantTree extends DominatorOptimizationProblem<ConstantTree.Flag
         return list;
     }
 
-    public List<UseEntry> getUsages(AbstractBlockBase<?> block) {
+    public List<UseEntry> getUsages(BasicBlock<?> block) {
         List<UseEntry> list = blockMap.get(block);
         if (list == null) {
             return Collections.emptyList();
@@ -118,7 +118,7 @@ public class ConstantTree extends DominatorOptimizationProblem<ConstantTree.Flag
      * Returns the cost object associated with {@code block}. If there is none, a new cost object is
      * created.
      */
-    NodeCost getOrInitCost(AbstractBlockBase<?> block) {
+    NodeCost getOrInitCost(BasicBlock<?> block) {
         NodeCost cost = getCost(block);
         if (cost == null) {
             cost = new NodeCost(block.getRelativeFrequency(), blockMap.get(block), 1);
@@ -142,24 +142,24 @@ public class ConstantTree extends DominatorOptimizationProblem<ConstantTree.Flag
         return super.getName(type);
     }
 
-    public AbstractBlockBase<?> getStartBlock() {
+    public BasicBlock<?> getStartBlock() {
         return stream(Flags.SUBTREE).findFirst().get();
     }
 
     public void markBlocks() {
-        for (AbstractBlockBase<?> block : getBlocks()) {
+        for (BasicBlock<?> block : getBlocks()) {
             if (get(Flags.USAGE, block)) {
                 setDominatorPath(Flags.SUBTREE, block);
             }
         }
     }
 
-    public boolean isMarked(AbstractBlockBase<?> block) {
+    public boolean isMarked(BasicBlock<?> block) {
         return get(Flags.SUBTREE, block);
     }
 
-    public boolean isLeafBlock(AbstractBlockBase<?> block) {
-        AbstractBlockBase<?> dom = block.getFirstDominated();
+    public boolean isLeafBlock(BasicBlock<?> block) {
+        BasicBlock<?> dom = block.getFirstDominated();
         while (dom != null) {
             if (isMarked(dom)) {
                 return false;
@@ -169,7 +169,7 @@ public class ConstantTree extends DominatorOptimizationProblem<ConstantTree.Flag
         return true;
     }
 
-    public void setSolution(AbstractBlockBase<?> block) {
+    public void setSolution(BasicBlock<?> block) {
         set(Flags.MATERIALIZE, block);
     }
 

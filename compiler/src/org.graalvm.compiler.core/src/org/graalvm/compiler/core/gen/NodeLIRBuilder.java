@@ -42,7 +42,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.Condition;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -102,7 +102,7 @@ import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerTestNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
@@ -253,11 +253,12 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
     public LabelRef getLIRBlock(FixedNode b) {
         assert gen.getResult().getLIR().getControlFlowGraph() instanceof ControlFlowGraph;
-        Block result = ((ControlFlowGraph) gen.getResult().getLIR().getControlFlowGraph()).blockFor(b);
+        HIRBlock result = ((ControlFlowGraph) gen.getResult().getLIR().getControlFlowGraph()).blockFor(b);
         int suxIndex = 0;
-        for (AbstractBlockBase<?> succ : gen.getCurrentBlock().getSuccessors()) {
+        for (int i = 0; i < gen.getCurrentBlock().getSuccessorCount(); i++) {
+            BasicBlock<?> succ = gen.getCurrentBlock().getSuccessorAt(i);
             if (succ == result) {
-                assert gen.getCurrentBlock() instanceof Block;
+                assert gen.getCurrentBlock() instanceof HIRBlock;
                 return LabelRef.forSuccessor(gen.getResult().getLIR(), gen.getCurrentBlock(), suxIndex);
             }
             suxIndex++;
@@ -342,11 +343,12 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         return values.toArray(new Value[values.size()]);
     }
 
-    public void doBlockPrologue(@SuppressWarnings("unused") Block block, @SuppressWarnings("unused") OptionValues options) {
+    public void doBlockPrologue(@SuppressWarnings("unused") HIRBlock block, @SuppressWarnings("unused") OptionValues options) {
 
         if (SpectrePHTBarriers.getValue(options) == AllTargets) {
             boolean hasControlSplitPredecessor = false;
-            for (Block b : block.getPredecessors()) {
+            for (int i = 0; i < block.getPredecessorCount(); i++) {
+                HIRBlock b = block.getPredecessorAt(i);
                 if (b.getSuccessorCount() > 1) {
                     hasControlSplitPredecessor = true;
                     break;
@@ -361,7 +363,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
     @Override
     @SuppressWarnings("try")
-    public void doBlock(Block block, StructuredGraph graph, BlockMap<List<Node>> blockMap) {
+    public void doBlock(HIRBlock block, StructuredGraph graph, BlockMap<List<Node>> blockMap) {
 
         OptionValues options = graph.getOptions();
         try (BlockScope blockScope = gen.getBlockScope(block)) {
@@ -446,7 +448,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     }
 
     @SuppressWarnings("try")
-    public void matchBlock(Block block, StructuredGraph.ScheduleResult schedule) {
+    public void matchBlock(HIRBlock block, StructuredGraph.ScheduleResult schedule) {
         try (DebugCloseable matchScope = gen.getMatchScope(block)) {
             // Allow NodeLIRBuilder subclass to specialize code generation of any interesting groups
             // of instructions
@@ -455,7 +457,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     }
 
     @SuppressWarnings("try")
-    protected void matchComplexExpressions(Block block, StructuredGraph.ScheduleResult schedule) {
+    protected void matchComplexExpressions(HIRBlock block, StructuredGraph.ScheduleResult schedule) {
 
         if (matchRules != null) {
             DebugContext debug = gen.getResult().getLIR().getDebug();

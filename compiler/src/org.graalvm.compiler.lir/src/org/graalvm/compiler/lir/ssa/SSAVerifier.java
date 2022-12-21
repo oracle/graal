@@ -35,7 +35,7 @@ import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.HashMap;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.InstructionValueConsumer;
@@ -49,9 +49,9 @@ import jdk.vm.ci.meta.Value;
 final class SSAVerifier {
     private static class Entry {
         private final LIRInstruction inst;
-        private final AbstractBlockBase<?> block;
+        private final BasicBlock<?> block;
 
-        Entry(LIRInstruction inst, AbstractBlockBase<?> block) {
+        Entry(LIRInstruction inst, BasicBlock<?> block) {
             this.inst = inst;
             this.block = block;
         }
@@ -60,7 +60,7 @@ final class SSAVerifier {
     private final LIR lir;
     private final BitSet visited;
     private final HashMap<Value, Entry> defined;
-    private AbstractBlockBase<?> currentBlock;
+    private BasicBlock<?> currentBlock;
 
     SSAVerifier(LIR lir) {
         this.lir = lir;
@@ -72,7 +72,7 @@ final class SSAVerifier {
     public boolean verify() {
         DebugContext debug = lir.getDebug();
         try (DebugContext.Scope s = debug.scope("SSAVerifier", lir)) {
-            for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
+            for (BasicBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
                 doBlock(block);
             }
         } catch (Throwable e) {
@@ -82,11 +82,12 @@ final class SSAVerifier {
     }
 
     @SuppressWarnings("try")
-    private void doBlock(AbstractBlockBase<?> b) {
+    private void doBlock(BasicBlock<?> b) {
         if (visited.get(b.getId())) {
             return;
         }
-        for (AbstractBlockBase<?> pred : b.getPredecessors()) {
+        for (int i = 0; i < b.getPredecessorCount(); i++) {
+            BasicBlock<?> pred = b.getPredecessorAt(i);
             if (!b.isLoopHeader() || !pred.isLoopEnd()) {
                 doBlock(pred);
             }
@@ -96,7 +97,7 @@ final class SSAVerifier {
         }
     }
 
-    private boolean verifyBlock(AbstractBlockBase<?> block) {
+    private boolean verifyBlock(BasicBlock<?> block) {
         currentBlock = block;
         assert !visited.get(block.getId()) : "Block already visited: " + block;
         visited.set(block.getId());

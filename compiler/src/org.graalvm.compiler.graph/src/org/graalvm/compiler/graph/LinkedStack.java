@@ -24,43 +24,50 @@
  */
 package org.graalvm.compiler.graph;
 
+import org.graalvm.compiler.debug.GraalError;
+
 /**
- * A stack implementation for {@linkplain Node} that uses a singly linked list as its underlying
- * storage strategy making push/pop operation O(1) at the cost of a constant memory overhead per
- * entry.
+ * A stack implementation that uses a singly linked list as its underlying storage strategy making
+ * push/pop operation O(1) at the cost of a constant memory overhead per entry.
  */
-public class LinkedNodeStack {
+public class LinkedStack<T> {
 
-    private static class ListNode {
-        ListNode next;
-        Node node;
+    private static class LinkedListNode<T> {
+        LinkedListNode<T> next;
+        T data;
 
-        ListNode(Node node) {
-            this.node = node;
+        LinkedListNode(T data) {
+            this.data = data;
         }
     }
 
-    public LinkedNodeStack() {
-        dummyHead = new ListNode(null);
+    public LinkedStack() {
+        dummyHead = new LinkedListNode<>(null);
     }
 
-    final ListNode dummyHead;
+    final LinkedListNode<T> dummyHead;
 
-    public void push(Node n) {
-        ListNode prevHead = dummyHead.next;
-        ListNode newHead = new ListNode(n);
+    public void push(T data) {
+        LinkedListNode<T> prevHead = dummyHead.next;
+        LinkedListNode<T> newHead = new LinkedListNode<>(data);
         newHead.next = prevHead;
         dummyHead.next = newHead;
     }
 
-    public Node pop() {
-        ListNode prevHead = dummyHead.next;
+    public T pop() {
+        GraalError.guarantee(!isEmpty(), "Cannot pop on empty stack");
+        LinkedListNode<T> prevHead = dummyHead.next;
         dummyHead.next = prevHead.next;
-        return prevHead.node;
+        return prevHead.data;
     }
 
     public boolean isEmpty() {
         return dummyHead.next == null;
     }
 
+    public T peek() {
+        GraalError.guarantee(!isEmpty(), "Cannot peek on empty stack");
+        LinkedListNode<T> head = dummyHead.next;
+        return head.data;
+    }
 }

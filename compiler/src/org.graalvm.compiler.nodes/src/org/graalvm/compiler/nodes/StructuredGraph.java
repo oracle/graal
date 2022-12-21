@@ -48,6 +48,7 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.JavaMethodContext;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
@@ -56,7 +57,7 @@ import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
@@ -99,10 +100,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public static class ScheduleResult {
         private final ControlFlowGraph cfg;
-        private final NodeMap<Block> nodeToBlockMap;
+        private final NodeMap<HIRBlock> nodeToBlockMap;
         private final BlockMap<List<Node>> blockToNodesMap;
 
-        public ScheduleResult(ControlFlowGraph cfg, NodeMap<Block> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap) {
+        public ScheduleResult(ControlFlowGraph cfg, NodeMap<HIRBlock> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap) {
             this.cfg = cfg;
             this.nodeToBlockMap = nodeToBlockMap;
             this.blockToNodesMap = blockToNodesMap;
@@ -112,7 +113,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return cfg;
         }
 
-        public NodeMap<Block> getNodeToBlockMap() {
+        public NodeMap<HIRBlock> getNodeToBlockMap() {
             return nodeToBlockMap;
         }
 
@@ -120,7 +121,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return blockToNodesMap;
         }
 
-        public List<Node> nodesFor(Block block) {
+        public List<Node> nodesFor(HIRBlock block) {
             return blockToNodesMap.get(block);
         }
     }
@@ -356,6 +357,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     public void setLastSchedule(ScheduleResult result) {
+        GraalError.guarantee(result == null || result.cfg.getStartBlock().isModifiable(), "Schedule must use blocks that can be modified");
         lastSchedule = result;
     }
 

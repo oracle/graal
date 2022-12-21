@@ -35,7 +35,7 @@ import java.util.EnumSet;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
@@ -82,16 +82,16 @@ final class FixPointIntervalBuilder {
      * virtual stack slots.
      */
     EconomicSet<LIRInstruction> build() {
-        Deque<AbstractBlockBase<?>> worklist = new ArrayDeque<>();
-        AbstractBlockBase<?>[] blocks = lir.getControlFlowGraph().getBlocks();
+        Deque<BasicBlock<?>> worklist = new ArrayDeque<>();
+        BasicBlock<?>[] blocks = lir.getControlFlowGraph().getBlocks();
         for (int i = blocks.length - 1; i >= 0; i--) {
             worklist.add(blocks[i]);
         }
-        for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
+        for (BasicBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
             liveInMap.put(block, new BitSet(stackSlotMap.length));
         }
         while (!worklist.isEmpty()) {
-            AbstractBlockBase<?> block = worklist.poll();
+            BasicBlock<?> block = worklist.poll();
             processBlock(block, worklist);
         }
         return usePos;
@@ -100,9 +100,10 @@ final class FixPointIntervalBuilder {
     /**
      * Merge outSet with in-set of successors.
      */
-    private boolean updateOutBlock(AbstractBlockBase<?> block) {
+    private boolean updateOutBlock(BasicBlock<?> block) {
         BitSet union = new BitSet(stackSlotMap.length);
-        for (AbstractBlockBase<?> succ : block.getSuccessors()) {
+        for (int i = 0; i < block.getSuccessorCount(); i++) {
+            BasicBlock<?> succ = block.getSuccessorAt(i);
             union.or(liveInMap.get(succ));
         }
         BitSet outSet = liveOutMap.get(block);
@@ -115,7 +116,7 @@ final class FixPointIntervalBuilder {
     }
 
     @SuppressWarnings("try")
-    private void processBlock(AbstractBlockBase<?> block, Deque<AbstractBlockBase<?>> worklist) {
+    private void processBlock(BasicBlock<?> block, Deque<BasicBlock<?>> worklist) {
         DebugContext debug = lir.getDebug();
         if (updateOutBlock(block)) {
             try (Indent indent = debug.logAndIndent("handle block %s", block)) {
@@ -133,7 +134,8 @@ final class FixPointIntervalBuilder {
                 }
 
                 // add predecessors to work list
-                for (AbstractBlockBase<?> b : block.getPredecessors()) {
+                for (int i = 0; i < block.getPredecessorCount(); i++) {
+                    BasicBlock<?> b = block.getPredecessorAt(i);
                     worklist.add(b);
                 }
                 // set in set and mark intervals

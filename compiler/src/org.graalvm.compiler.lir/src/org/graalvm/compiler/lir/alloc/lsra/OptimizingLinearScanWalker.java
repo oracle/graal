@@ -28,7 +28,7 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.alloc.lsra.Interval.RegisterBinding;
@@ -76,7 +76,8 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
     @Override
     void walk() {
         try (DebugContext.Scope s = allocator.getDebug().scope("OptimizingLinearScanWalker")) {
-            for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
+            for (int blockId : allocator.sortedBlocks()) {
+                BasicBlock<?> block = allocator.getLIR().getBlockById(blockId);
                 optimizeBlock(block);
             }
         }
@@ -84,7 +85,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
     }
 
     @SuppressWarnings("try")
-    private void optimizeBlock(AbstractBlockBase<?> block) {
+    private void optimizeBlock(BasicBlock<?> block) {
         if (block.getPredecessorCount() == 1) {
             int nextBlock = allocator.getFirstLirInstructionId(block);
             DebugContext debug = allocator.getDebug();
@@ -122,7 +123,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
     }
 
     @SuppressWarnings("try")
-    private boolean optimize(int currentPos, AbstractBlockBase<?> currentBlock, Interval currentInterval, RegisterBinding binding) {
+    private boolean optimize(int currentPos, BasicBlock<?> currentBlock, Interval currentInterval, RegisterBinding binding) {
         // BEGIN initialize and sanity checks
         assert currentBlock != null : "block must not be null";
         assert currentInterval != null : "interval must not be null";
@@ -144,7 +145,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
         assert currentLocation != null : "active intervals must have a location assigned!";
 
         // get predecessor stuff
-        AbstractBlockBase<?> predecessorBlock = currentBlock.getPredecessors()[0];
+        BasicBlock<?> predecessorBlock = currentBlock.getPredecessorAt(0);
         int predEndId = allocator.getLastLirInstructionId(predecessorBlock);
         Interval predecessorInterval = currentInterval.getIntervalCoveringOpId(predEndId);
         assert predecessorInterval != null : "variable not live at the end of the only predecessor! " + predecessorBlock + " -> " + currentBlock + " interval: " + currentInterval;

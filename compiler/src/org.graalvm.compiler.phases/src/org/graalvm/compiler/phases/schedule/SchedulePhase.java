@@ -79,7 +79,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.calc.ConvertNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.cfg.LocationSet;
@@ -201,7 +201,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
          */
         protected ControlFlowGraph cfg;
         protected BlockMap<List<Node>> blockToNodesMap;
-        protected NodeMap<Block> nodeToBlockMap;
+        protected NodeMap<HIRBlock> nodeToBlockMap;
         protected boolean supportsImplicitNullChecks;
 
         public Instance(boolean supportsImplicitNullChecks) {
@@ -216,10 +216,10 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         @SuppressWarnings("try")
         public void run(StructuredGraph graph, SchedulingStrategy selectedStrategy, boolean immutableGraph) {
             if (this.cfg == null) {
-                this.cfg = ControlFlowGraph.compute(graph, true, true, true, false);
+                this.cfg = ControlFlowGraph.computeForSchedule(graph);
             }
 
-            NodeMap<Block> currentNodeMap = graph.createNodeMap();
+            NodeMap<HIRBlock> currentNodeMap = graph.createNodeMap();
             NodeBitMap visited = graph.createNodeBitMap();
             BlockMap<List<Node>> earliestBlockToNodesMap = new BlockMap<>(cfg);
             this.nodeToBlockMap = currentNodeMap;
@@ -230,7 +230,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             if (!selectedStrategy.isEarliest()) {
                 // For non-earliest schedules, we need to do a second pass.
                 BlockMap<List<Node>> latestBlockToNodesMap = new BlockMap<>(cfg);
-                for (Block b : cfg.getBlocks()) {
+                for (HIRBlock b : cfg.getBlocks()) {
                     latestBlockToNodesMap.put(b, new ArrayList<>());
                 }
 
@@ -250,12 +250,12 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         }
 
         @SuppressFBWarnings(value = "RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE", justification = "false positive found by findbugs")
-        private BlockMap<ArrayList<FloatingReadNode>> calcLatestBlocks(SchedulingStrategy strategy, NodeMap<Block> currentNodeMap, BlockMap<List<Node>> earliestBlockToNodesMap, NodeBitMap visited,
+        private BlockMap<ArrayList<FloatingReadNode>> calcLatestBlocks(SchedulingStrategy strategy, NodeMap<HIRBlock> currentNodeMap, BlockMap<List<Node>> earliestBlockToNodesMap, NodeBitMap visited,
                         BlockMap<List<Node>> latestBlockToNodesMap, boolean immutableGraph) {
             BlockMap<ArrayList<FloatingReadNode>> watchListMap = new BlockMap<>(cfg);
-            Block[] reversePostOrder = cfg.reversePostOrder();
+            HIRBlock[] reversePostOrder = cfg.reversePostOrder();
             for (int j = reversePostOrder.length - 1; j >= 0; --j) {
-                Block currentBlock = reversePostOrder[j];
+                HIRBlock currentBlock = reversePostOrder[j];
                 List<Node> blockToNodes = earliestBlockToNodesMap.get(currentBlock);
                 LocationSet killed = null;
                 int previousIndex = blockToNodes.size();
@@ -267,7 +267,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                     if (currentNode instanceof FixedNode) {
                         // For these nodes, the earliest is at the same time the latest block.
                     } else {
-                        Block latestBlock = null;
+                        HIRBlock latestBlock = null;
 
                         if (currentBlock.getFirstDominated() == null && !(currentNode instanceof VirtualState)) {
                             // This block doesn't dominate any other blocks =>
@@ -312,7 +312,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             return watchListMap;
         }
 
-        protected static void selectLatestBlock(Node currentNode, Block currentBlock, Block latestBlock, NodeMap<Block> currentNodeMap, BlockMap<ArrayList<FloatingReadNode>> watchListMap,
+        protected static void selectLatestBlock(Node currentNode, HIRBlock currentBlock, HIRBlock latestBlock, NodeMap<HIRBlock> currentNodeMap, BlockMap<ArrayList<FloatingReadNode>> watchListMap,
                         LocationIdentity constrainingLocation, BlockMap<List<Node>> latestBlockToNodesMap) {
             if (currentBlock != latestBlock) {
                 checkLatestEarliestRelation(currentNode, currentBlock, latestBlock);
@@ -330,13 +330,13 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             latestBlockToNodesMap.get(latestBlock).add(currentNode);
         }
 
-        private static void checkLatestEarliestRelation(Node currentNode, Block earliestBlock, Block latestBlock) {
+        private static void checkLatestEarliestRelation(Node currentNode, HIRBlock earliestBlock, HIRBlock latestBlock) {
             GraalError.guarantee(AbstractControlFlowGraph.dominates(earliestBlock, latestBlock) || (currentNode instanceof VirtualState && latestBlock == earliestBlock.getDominator()),
                             "%s %s (%s) %s (%s)", currentNode, earliestBlock, earliestBlock.getBeginNode(), latestBlock, latestBlock.getBeginNode());
         }
 
-        private static boolean verifySchedule(ControlFlowGraph cfg, BlockMap<List<Node>> blockToNodesMap, NodeMap<Block> nodeMap) {
-            for (Block b : cfg.getBlocks()) {
+        private static boolean verifySchedule(ControlFlowGraph cfg, BlockMap<List<Node>> blockToNodesMap, NodeMap<HIRBlock> nodeMap) {
+            for (HIRBlock b : cfg.getBlocks()) {
                 List<Node> nodes = blockToNodesMap.get(b);
                 for (Node n : nodes) {
                     assert n.isAlive();
@@ -350,12 +350,12 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             return true;
         }
 
-        public static Block checkKillsBetween(Block earliestBlock, Block latestBlock, LocationIdentity location) {
+        public static HIRBlock checkKillsBetween(HIRBlock earliestBlock, HIRBlock latestBlock, LocationIdentity location) {
             assert strictlyDominates(earliestBlock, latestBlock);
-            Block current = latestBlock.getDominator();
+            HIRBlock current = latestBlock.getDominator();
 
             // Collect dominator chain that needs checking.
-            List<Block> dominatorChain = new ArrayList<>();
+            List<HIRBlock> dominatorChain = new ArrayList<>();
             dominatorChain.add(latestBlock);
             while (current != earliestBlock) {
                 // Current is an intermediate dominator between earliestBlock and latestBlock.
@@ -371,9 +371,9 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             assert dominatorChain.size() >= 1;
             assert dominatorChain.get(dominatorChain.size() - 1).getDominator() == earliestBlock;
 
-            Block lastBlock = earliestBlock;
+            HIRBlock lastBlock = earliestBlock;
             for (int i = dominatorChain.size() - 1; i >= 0; --i) {
-                Block currentBlock = dominatorChain.get(i);
+                HIRBlock currentBlock = dominatorChain.get(i);
                 if (currentBlock.getLoopDepth() > lastBlock.getLoopDepth()) {
                     // We are entering a loop boundary. The new loops must not kill the location for
                     // the crossing to be safe.
@@ -413,14 +413,14 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             }
         }
 
-        private static void sortNodesLatestWithinBlock(ControlFlowGraph cfg, BlockMap<List<Node>> earliestBlockToNodesMap, BlockMap<List<Node>> latestBlockToNodesMap, NodeMap<Block> currentNodeMap,
+        private static void sortNodesLatestWithinBlock(ControlFlowGraph cfg, BlockMap<List<Node>> earliestBlockToNodesMap, BlockMap<List<Node>> latestBlockToNodesMap, NodeMap<HIRBlock> currentNodeMap,
                         BlockMap<ArrayList<FloatingReadNode>> watchListMap, NodeBitMap visited, boolean supportsImplicitNullChecks) {
-            for (Block b : cfg.getBlocks()) {
+            for (HIRBlock b : cfg.getBlocks()) {
                 sortNodesLatestWithinBlock(b, earliestBlockToNodesMap, latestBlockToNodesMap, currentNodeMap, watchListMap, visited, supportsImplicitNullChecks);
             }
         }
 
-        private static void sortNodesLatestWithinBlock(Block b, BlockMap<List<Node>> earliestBlockToNodesMap, BlockMap<List<Node>> latestBlockToNodesMap, NodeMap<Block> nodeMap,
+        private static void sortNodesLatestWithinBlock(HIRBlock b, BlockMap<List<Node>> earliestBlockToNodesMap, BlockMap<List<Node>> latestBlockToNodesMap, NodeMap<HIRBlock> nodeMap,
                         BlockMap<ArrayList<FloatingReadNode>> watchListMap, NodeBitMap unprocessed, boolean supportsImplicitNullChecks) {
             List<Node> earliestSorting = earliestBlockToNodesMap.get(b);
             ArrayList<Node> result = new ArrayList<>(earliestSorting.size());
@@ -489,7 +489,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             latestBlockToNodesMap.put(b, result);
         }
 
-        private static void checkWatchList(Block b, NodeMap<Block> nodeMap, NodeBitMap unprocessed, ArrayList<Node> result, ArrayList<FloatingReadNode> watchList, Node n) {
+        private static void checkWatchList(HIRBlock b, NodeMap<HIRBlock> nodeMap, NodeBitMap unprocessed, ArrayList<Node> result, ArrayList<FloatingReadNode> watchList, Node n) {
             if (watchList != null && !watchList.isEmpty()) {
                 // Check if this node kills a node in the watch list.
                 if (MemoryKill.isSingleMemoryKill(n)) {
@@ -503,7 +503,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             }
         }
 
-        private static void checkWatchList(ArrayList<FloatingReadNode> watchList, LocationIdentity identity, Block b, ArrayList<Node> result, NodeMap<Block> nodeMap, NodeBitMap unprocessed) {
+        private static void checkWatchList(ArrayList<FloatingReadNode> watchList, LocationIdentity identity, HIRBlock b, ArrayList<Node> result, NodeMap<HIRBlock> nodeMap, NodeBitMap unprocessed) {
             if (identity.isImmutable()) {
                 // Nothing to do. This can happen for an initialization write.
             } else if (identity.isAny()) {
@@ -534,7 +534,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             }
         }
 
-        private static void sortIntoList(Node n, Block b, ArrayList<Node> result, NodeMap<Block> nodeMap, NodeBitMap unprocessed, Node excludeNode) {
+        private static void sortIntoList(Node n, HIRBlock b, ArrayList<Node> result, NodeMap<HIRBlock> nodeMap, NodeBitMap unprocessed, Node excludeNode) {
             assert unprocessed.isMarked(n) : n;
             assert nodeMap.get(n) == b;
 
@@ -558,9 +558,9 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
 
         }
 
-        protected void calcLatestBlock(Block earliestBlock, SchedulingStrategy strategy, Node currentNode, NodeMap<Block> currentNodeMap, LocationIdentity constrainingLocation,
+        protected void calcLatestBlock(HIRBlock earliestBlock, SchedulingStrategy strategy, Node currentNode, NodeMap<HIRBlock> currentNodeMap, LocationIdentity constrainingLocation,
                         BlockMap<ArrayList<FloatingReadNode>> watchListMap, BlockMap<List<Node>> latestBlockToNodesMap, NodeBitMap visited, boolean immutableGraph) {
-            Block latestBlock = null;
+            HIRBlock latestBlock = null;
             if (!currentNode.hasUsages()) {
                 assert currentNode instanceof GuardNode;
                 latestBlock = earliestBlock;
@@ -581,9 +581,9 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                 assert latestBlock != null : currentNode;
 
                 if (strategy.scheduleOutOfLoops()) {
-                    Block currentBlock = latestBlock;
+                    HIRBlock currentBlock = latestBlock;
                     while (currentBlock.getLoopDepth() > earliestBlock.getLoopDepth() && currentBlock != earliestBlock.getDominator()) {
-                        Block previousCurrentBlock = currentBlock;
+                        HIRBlock previousCurrentBlock = currentBlock;
                         currentBlock = currentBlock.getDominator();
                         if (previousCurrentBlock.isLoopHeader()) {
                             if (compareRelativeFrequencies(currentBlock.getRelativeFrequency(), latestBlock.getRelativeFrequency()) <= 0 ||
@@ -621,7 +621,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             return 0;
         }
 
-        protected static boolean isImplicitNullOpportunity(Node currentNode, Block block, boolean supportsImplicitNullChecks) {
+        protected static boolean isImplicitNullOpportunity(Node currentNode, HIRBlock block, boolean supportsImplicitNullChecks) {
             if (!supportsImplicitNullChecks) {
                 return false;
             }
@@ -661,18 +661,18 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             return result;
         }
 
-        private static Block calcBlockForUsage(Node node, Node usage, Block startBlock, NodeMap<Block> currentNodeMap) {
+        private static HIRBlock calcBlockForUsage(Node node, Node usage, HIRBlock startBlock, NodeMap<HIRBlock> currentNodeMap) {
             assert !(node instanceof PhiNode);
-            Block currentBlock = startBlock;
+            HIRBlock currentBlock = startBlock;
             if (usage instanceof PhiNode) {
                 // An input to a PhiNode is used at the end of the predecessor block that
                 // corresponds to the PhiNode input. One PhiNode can use an input multiple times.
                 PhiNode phi = (PhiNode) usage;
                 AbstractMergeNode merge = phi.merge();
-                Block mergeBlock = currentNodeMap.get(merge);
+                HIRBlock mergeBlock = currentNodeMap.get(merge);
                 for (int i = 0; i < phi.valueCount(); ++i) {
                     if (phi.valueAt(i) == node) {
-                        Block otherBlock = mergeBlock.getPredecessors()[i];
+                        HIRBlock otherBlock = mergeBlock.getPredecessorAt(i);
                         currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, otherBlock);
                     }
                 }
@@ -681,12 +681,12 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                 if (abstractBeginNode instanceof StartNode) {
                     currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, currentNodeMap.get(abstractBeginNode));
                 } else {
-                    Block otherBlock = currentNodeMap.get(abstractBeginNode).getDominator();
+                    HIRBlock otherBlock = currentNodeMap.get(abstractBeginNode).getDominator();
                     currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, otherBlock);
                 }
             } else {
                 // All other types of usages: Put the input into the same block as the usage.
-                Block otherBlock = currentNodeMap.get(usage);
+                HIRBlock otherBlock = currentNodeMap.get(usage);
                 if (usage instanceof ProxyNode) {
                     ProxyNode proxyNode = (ProxyNode) usage;
                     otherBlock = currentNodeMap.get(proxyNode.proxyPoint());
@@ -806,7 +806,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             }
         }
 
-        private void scheduleEarliestIterative(BlockMap<List<Node>> blockToNodes, NodeMap<Block> nodeToBlock, NodeBitMap visited, StructuredGraph graph, boolean immutableGraph,
+        private void scheduleEarliestIterative(BlockMap<List<Node>> blockToNodes, NodeMap<HIRBlock> nodeToBlock, NodeBitMap visited, StructuredGraph graph, boolean immutableGraph,
                         boolean withGuardOrder) {
 
             NodeMap<MicroBlock> entries = graph.createNodeMap();
@@ -815,7 +815,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             // Initialize with fixed nodes.
             MicroBlock startBlock = null;
             int nextId = 1;
-            for (Block b : cfg.reversePostOrder()) {
+            for (HIRBlock b : cfg.reversePostOrder()) {
                 for (FixedNode current : b.getBeginNode().getBlockNodes()) {
                     MicroBlock microBlock = new MicroBlock(nextId++);
                     entries.set(current, microBlock);
@@ -847,7 +847,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             }
 
             // Now process inputs of fixed nodes.
-            for (Block b : cfg.reversePostOrder()) {
+            for (HIRBlock b : cfg.reversePostOrder()) {
                 for (FixedNode current : b.getBeginNode().getBlockNodes()) {
                     processNodes(visited, entries, stack, startBlock, current.inputs());
                 }
@@ -893,7 +893,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                 }
             }
 
-            for (Block b : cfg.reversePostOrder()) {
+            for (HIRBlock b : cfg.reversePostOrder()) {
                 FixedNode fixedNode = b.getEndNode();
                 if (fixedNode instanceof ControlSplitNode) {
                     ControlSplitNode controlSplitNode = (ControlSplitNode) fixedNode;
@@ -908,7 +908,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             }
 
             // Create lists for each block
-            for (Block b : cfg.reversePostOrder()) {
+            for (HIRBlock b : cfg.reversePostOrder()) {
                 // Count nodes in block
                 int totalCount = 0;
                 for (FixedNode current : b.getBeginNode().getBlockNodes()) {
@@ -1197,11 +1197,22 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         public String printScheduleHelper(String desc) {
             Formatter buf = new Formatter();
             buf.format("=== %s / %s ===%n", getCFG().getStartBlock().getBeginNode().graph(), desc);
-            for (Block b : getCFG().getBlocks()) {
+            for (HIRBlock b : getCFG().getBlocks()) {
                 buf.format("==== b: %s (loopDepth: %s). ", b, b.getLoopDepth());
                 buf.format("dom: %s. ", b.getDominator());
-                buf.format("preds: %s. ", Arrays.toString(b.getPredecessors()));
-                buf.format("succs: %s ====%n", Arrays.toString(b.getSuccessors()));
+
+                int predCount = b.getPredecessorCount();
+                HIRBlock[] pred = new HIRBlock[predCount];
+                for (int i = 0; i < predCount; i++) {
+                    pred[i] = b.getPredecessorAt(i);
+                }
+                int succCount = b.getSuccessorCount();
+                HIRBlock[] succ = new HIRBlock[succCount];
+                for (int i = 0; i < succCount; i++) {
+                    succ[i] = b.getSuccessorAt(i);
+                }
+                buf.format("preds: %s. ", Arrays.toString(pred));
+                buf.format("succs: %s ====%n", Arrays.toString(succ));
 
                 if (blockToNodesMap.get(b) != null) {
                     for (Node n : nodesFor(b)) {
@@ -1245,7 +1256,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         /**
          * Gets the nodes in a given block.
          */
-        public List<Node> nodesFor(Block block) {
+        public List<Node> nodesFor(HIRBlock block) {
             return blockToNodesMap.get(block);
         }
     }

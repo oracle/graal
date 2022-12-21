@@ -31,7 +31,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.nodes.WithExceptionNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 
 public abstract class EffectsBlockState<T extends EffectsBlockState<T>> {
 
@@ -45,7 +45,7 @@ public abstract class EffectsBlockState<T extends EffectsBlockState<T>> {
      * Exception edges marked dead for this state by dominating {@link WithExceptionNode} control
      * flow split nodes.
      */
-    protected EconomicSet<Block> exceptionEdgesToKill;
+    protected EconomicSet<HIRBlock> exceptionEdgesToKill;
 
     public EffectsBlockState() {
         // emtpy
@@ -53,7 +53,7 @@ public abstract class EffectsBlockState<T extends EffectsBlockState<T>> {
 
     public EffectsBlockState(EffectsBlockState<T> other) {
         this.dead = other.dead;
-        EconomicSet<Block> otherExceptionEdgesToKill = other.exceptionEdgesToKill;
+        EconomicSet<HIRBlock> otherExceptionEdgesToKill = other.exceptionEdgesToKill;
         if (otherExceptionEdgesToKill != null) {
             this.exceptionEdgesToKill = EconomicSet.create(otherExceptionEdgesToKill);
         }

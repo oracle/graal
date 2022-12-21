@@ -37,7 +37,7 @@ import java.util.EnumSet;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
@@ -121,7 +121,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
             try (Indent indent = debug.logAndIndent("ConstantLoadOptimization")) {
                 try (DebugContext.Scope s = debug.scope("BuildDefUseTree")) {
                     // build DefUseTree
-                    for (AbstractBlockBase<?> b : lir.getControlFlowGraph().getBlocks()) {
+                    for (BasicBlock<?> b : lir.getControlFlowGraph().getBlocks()) {
                         this.analyzeBlock(b);
                     }
                     // remove all with only one use
@@ -144,7 +144,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
                     map.forEach(this::createConstantTree);
 
                     // insert moves, delete null instructions and reset instruction ids
-                    for (AbstractBlockBase<?> b : lir.getControlFlowGraph().getBlocks()) {
+                    for (BasicBlock<?> b : lir.getControlFlowGraph().getBlocks()) {
                         this.rewriteBlock(b);
                     }
 
@@ -169,7 +169,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
                     assert !operand.equals(var) : "constant usage through variable in frame state " + var;
                 }
             };
-            for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
+            for (BasicBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
                 for (LIRInstruction inst : lir.getLIRforBlock(block)) {
                     // set instruction id to the index in the lir instruction list
                     inst.visitEachState(stateConsumer);
@@ -185,7 +185,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
         }
 
         private void addUsageToBlockMap(UseEntry entry) {
-            AbstractBlockBase<?> block = entry.getBlock();
+            BasicBlock<?> block = entry.getBlock();
             List<UseEntry> list = blockMap.get(block);
             if (list == null) {
                 list = new ArrayList<>();
@@ -198,7 +198,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
          * Collects def-use information for a {@code block}.
          */
         @SuppressWarnings("try")
-        private void analyzeBlock(AbstractBlockBase<?> block) {
+        private void analyzeBlock(BasicBlock<?> block) {
             try (Indent indent = debug.logAndIndent("Block: %s", block)) {
 
                 InstructionValueConsumer loadConsumer = (instruction, value, mode, flags) -> {
@@ -321,17 +321,17 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
             debug.dump(DebugContext.DETAILED_LEVEL, constTree, "ConstantTree for %s", tree.getVariable());
         }
 
-        private void createLoads(DefUseTree tree, ConstantTree constTree, AbstractBlockBase<?> startBlock) {
-            Deque<AbstractBlockBase<?>> worklist = new ArrayDeque<>();
+        private void createLoads(DefUseTree tree, ConstantTree constTree, BasicBlock<?> startBlock) {
+            Deque<BasicBlock<?>> worklist = new ArrayDeque<>();
             worklist.add(startBlock);
             while (!worklist.isEmpty()) {
-                AbstractBlockBase<?> block = worklist.pollLast();
+                BasicBlock<?> block = worklist.pollLast();
                 if (constTree.get(Flags.CANDIDATE, block)) {
                     constTree.set(Flags.MATERIALIZE, block);
                     // create and insert load
                     insertLoad(tree.getConstant(), tree.getVariable().getValueKind(), block, constTree.getCost(block).getUsages());
                 } else {
-                    AbstractBlockBase<?> dominated = block.getFirstDominated();
+                    BasicBlock<?> dominated = block.getFirstDominated();
                     while (dominated != null) {
                         if (constTree.isMarked(dominated)) {
                             worklist.addLast(dominated);
@@ -342,7 +342,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
             }
         }
 
-        private void insertLoad(Constant constant, ValueKind<?> kind, AbstractBlockBase<?> block, List<UseEntry> usages) {
+        private void insertLoad(Constant constant, ValueKind<?> kind, BasicBlock<?> block, List<UseEntry> usages) {
             assert usages != null && usages.size() > 0 : String.format("No usages %s %s %s", constant, block, usages);
             // create variable
             Variable variable = lirGen.newVariable(kind);
@@ -369,7 +369,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
          * Inserts the constant loads created in {@link #createConstantTree} and deletes the
          * original definition.
          */
-        private void rewriteBlock(AbstractBlockBase<?> block) {
+        private void rewriteBlock(BasicBlock<?> block) {
             // insert moves
             LIRInsertionBuffer buffer = insertionBuffers.get(block);
             if (buffer != null) {
@@ -394,13 +394,13 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
         }
 
         private void deleteInstruction(DefUseTree tree) {
-            AbstractBlockBase<?> block = tree.getBlock();
+            BasicBlock<?> block = tree.getBlock();
             LIRInstruction instruction = tree.getInstruction();
             debug.log("deleting instruction %s from block %s", instruction, block);
             lir.getLIRforBlock(block).set(instruction.id(), null);
         }
 
-        private LIRInsertionBuffer getInsertionBuffer(AbstractBlockBase<?> block) {
+        private LIRInsertionBuffer getInsertionBuffer(BasicBlock<?> block) {
             LIRInsertionBuffer insertionBuffer = insertionBuffers.get(block);
             if (insertionBuffer == null) {
                 insertionBuffer = new LIRInsertionBuffer();
