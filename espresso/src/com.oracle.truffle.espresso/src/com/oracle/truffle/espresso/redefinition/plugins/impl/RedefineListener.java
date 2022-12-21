@@ -28,9 +28,9 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 
 public interface RedefineListener {
-    boolean shouldRerunClassInitializer(ObjectKlass klass, boolean changed);
+    boolean shouldRerunClassInitializer(ObjectKlass klass, boolean changed, DebuggerController controller);
 
-    void postRedefinition(ObjectKlass[] changedKlasses);
+    void postRedefinition(ObjectKlass[] changedKlasses, DebuggerController controller);
 
     void collectExtraClassesToReload(List<RedefineInfo> redefineInfos, List<RedefineInfo> additional);
 }

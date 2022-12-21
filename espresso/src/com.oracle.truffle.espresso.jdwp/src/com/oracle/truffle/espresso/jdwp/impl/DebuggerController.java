@@ -744,7 +744,8 @@ public final class DebuggerController implements ContextsListener {
                 if (currentNode instanceof RootNode) {
                     currentNode = context.getInstrumentableNode((RootNode) currentNode);
                 }
-                callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, method, methodId, codeIndex, frame, currentNode, root, null, context));
+                callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, method, methodId, codeIndex, frame, currentNode, root, null, context,
+                                DebuggerController.this));
                 return null;
             }
         });
@@ -1048,7 +1049,7 @@ public final class DebuggerController implements ContextsListener {
                     codeIndex = context.getBCI(rawNode, rawFrame);
                 }
 
-                list.addLast(new CallFrame(threadId, typeTag, klassId, method, methodId, codeIndex, rawFrame, rawNode, root, frame, context));
+                list.addLast(new CallFrame(threadId, typeTag, klassId, method, methodId, codeIndex, rawFrame, rawNode, root, frame, context, DebuggerController.this));
                 frameCount++;
                 if (frameLimit != -1 && frameCount >= frameLimit) {
                     return list.toArray(new CallFrame[list.size()]);
@@ -1059,31 +1060,31 @@ public final class DebuggerController implements ContextsListener {
     }
 
     // Truffle logging
-    public static void info(Supplier<String> supplier) {
+    public void info(Supplier<String> supplier) {
         if (!BOOTSTRAPPING.get()) {
             LOGGER.info(supplier);
         }
     }
 
-    public static void fine(Supplier<String> supplier) {
+    public void fine(Supplier<String> supplier) {
         if (!BOOTSTRAPPING.get()) {
             LOGGER.fine(supplier);
         }
     }
 
-    public static void finest(Supplier<String> supplier) {
+    public void finest(Supplier<String> supplier) {
         if (!BOOTSTRAPPING.get()) {
             LOGGER.finest(supplier);
         }
     }
 
-    public static void warning(Supplier<String> supplier) {
+    public void warning(Supplier<String> supplier) {
         if (!BOOTSTRAPPING.get()) {
             LOGGER.warning(supplier);
         }
     }
 
-    public static void severe(Supplier<String> supplier) {
+    public void severe(Supplier<String> supplier) {
         if (!BOOTSTRAPPING.get()) {
             LOGGER.severe(supplier);
         }
