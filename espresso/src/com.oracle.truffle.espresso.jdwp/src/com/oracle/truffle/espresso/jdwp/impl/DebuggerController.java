@@ -67,15 +67,16 @@ import com.oracle.truffle.espresso.jdwp.api.VMEventListener;
 
 public final class DebuggerController implements ContextsListener {
 
+    private static final TruffleLogger LOGGER = TruffleLogger.getLogger(JDWPInstrument.ID);
     private static final StepConfig STEP_CONFIG = StepConfig.newBuilder().suspendAnchors(SourceElement.ROOT, SuspendAnchor.AFTER).build();
-    private static final ThreadLocal<Boolean> BOOTSTRAPPING = new ThreadLocal<>() {
+
+    private final ThreadLocal<Boolean> bootStrapping = new ThreadLocal<>() {
         @Override
         protected Boolean initialValue() {
             return true;
         }
     };
 
-    private static final TruffleLogger LOGGER = TruffleLogger.getLogger(JDWPInstrument.ID);
 
     // justification for all of the hash maps is that lookups only happen when at a breakpoint
     private final Map<Object, SimpleLock> suspendLocks = Collections.synchronizedMap(new HashMap<>());
@@ -536,14 +537,14 @@ public final class DebuggerController implements ContextsListener {
     public Object enterTruffleContext() {
         if (truffleContext != null) {
             // we have a truffle context, so bootstrapping phase is over
-            BOOTSTRAPPING.set(false);
+            bootStrapping.set(false);
             return truffleContext.enter(null);
         }
         return null;
     }
 
     public void leaveTruffleContext(Object previous) {
-        if (truffleContext != null && !BOOTSTRAPPING.get()) {
+        if (truffleContext != null && !bootStrapping.get()) {
             truffleContext.leave(null, previous);
         }
     }
@@ -1061,31 +1062,31 @@ public final class DebuggerController implements ContextsListener {
 
     // Truffle logging
     public void info(Supplier<String> supplier) {
-        if (!BOOTSTRAPPING.get()) {
+        if (!bootStrapping.get()) {
             LOGGER.info(supplier);
         }
     }
 
     public void fine(Supplier<String> supplier) {
-        if (!BOOTSTRAPPING.get()) {
+        if (!bootStrapping.get()) {
             LOGGER.fine(supplier);
         }
     }
 
     public void finest(Supplier<String> supplier) {
-        if (!BOOTSTRAPPING.get()) {
+        if (!bootStrapping.get()) {
             LOGGER.finest(supplier);
         }
     }
 
     public void warning(Supplier<String> supplier) {
-        if (!BOOTSTRAPPING.get()) {
+        if (!bootStrapping.get()) {
             LOGGER.warning(supplier);
         }
     }
 
     public void severe(Supplier<String> supplier) {
-        if (!BOOTSTRAPPING.get()) {
+        if (!bootStrapping.get()) {
             LOGGER.severe(supplier);
         }
     }
