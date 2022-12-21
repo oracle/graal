@@ -45,6 +45,7 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Assumption;

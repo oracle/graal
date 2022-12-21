@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 
+import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 
