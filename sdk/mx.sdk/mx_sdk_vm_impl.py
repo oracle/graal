@@ -2661,11 +2661,20 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
     def get_artifact_metadata(self):
         return {'type': 'standalone', 'edition': get_graalvm_edition(), 'project': _project_name}
 
+def _get_jvm_cfg():
+    candidates = (['lib', 'jvm.cfg'], ['jre', 'lib', 'jvm.cfg'], ['jre', 'lib', mx.get_arch(), 'jvm.cfg'])
+    probed = []
+    for candidate in candidates:
+        jvm_cfg = join(_src_jdk.home, *candidate)
+        if exists(jvm_cfg):
+            return jvm_cfg
+        probed.append(jvm_cfg)
+    nl = os.linesep
+    probed = f'{nl}  '.join(probed)
+    raise mx.abort(f"Could not find jvm.cfg. Locations probed:{nl}  {probed}")
 
 def _get_jvm_cfg_contents():
-    jvm_cfg = join(_src_jdk.home, 'lib', 'jvm.cfg')
-    if not exists(jvm_cfg):
-        raise mx.abort("Could not find jvm.cfg from source JDK at " + jvm_cfg)
+    jvm_cfg = _get_jvm_cfg()
     with open(jvm_cfg, 'r') as orig_f:
         orig_lines = orig_f.readlines()
     new_lines = []
