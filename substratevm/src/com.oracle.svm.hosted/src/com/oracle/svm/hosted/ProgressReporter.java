@@ -77,6 +77,7 @@ import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -381,8 +382,8 @@ public class ProgressReporter {
                             .a(" methods included for ").doclink("runtime compilation", "#glossary-runtime-methods").println();
         }
         String typesFieldsMethodFormat = "%,8d types, %,5d fields, and %,5d methods ";
+        int reflectClassesCount = ClassForNameSupport.count();
         ReflectionHostedSupport rs = ImageSingletons.lookup(ReflectionHostedSupport.class);
-        int reflectClassesCount = rs.getReflectionClassesCount();
         int reflectFieldsCount = rs.getReflectionFieldsCount();
         int reflectMethodsCount = rs.getReflectionMethodsCount();
         recordJsonMetric(AnalysisResults.METHOD_REFLECT, reflectMethodsCount);
