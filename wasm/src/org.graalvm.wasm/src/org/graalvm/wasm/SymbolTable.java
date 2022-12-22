@@ -1179,11 +1179,11 @@ public abstract class SymbolTable {
         codeEntryCount++;
     }
 
-    int codeEntryOffset(int index) {
+    public int codeEntryOffset(int index) {
         return codeEntries[index];
     }
 
-    int codeEntryCount() {
+    public int codeEntryCount() {
         return codeEntryCount;
     }
 

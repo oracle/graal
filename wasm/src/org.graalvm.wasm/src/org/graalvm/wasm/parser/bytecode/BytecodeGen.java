@@ -46,16 +46,16 @@ import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.collection.ByteArrayList;
 
 import org.graalvm.wasm.constants.Bytecode;
-import org.graalvm.wasm.constants.BytecodeFlags;
+import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.SegmentMode;
 
 /**
- * A list for generating the GraalWasm runtime bytecode.
+ * A data structure for generating the GraalWasm runtime bytecode.
  */
-public class BytecodeList {
+public class BytecodeGen {
     private final ByteArrayList bytecode;
 
-    public BytecodeList() {
+    public BytecodeGen() {
         bytecode = new ByteArrayList();
     }
 
@@ -65,10 +65,6 @@ public class BytecodeList {
 
     private static boolean fitsIntoSignedByte(long value) {
         return value >= Byte.MIN_VALUE && value <= Byte.MAX_VALUE;
-    }
-
-    private static boolean fitsIntoUnsignedValue(int value, int maxValue) {
-        return Integer.compareUnsigned(value, maxValue) <= 0;
     }
 
     private static boolean fitsIntoUnsignedByte(int value) {
@@ -140,187 +136,194 @@ public class BytecodeList {
     }
 
     /**
-     * Adds an instruction to the bytecode. See {@link Bytecode} for a list of instructions.
+     * Adds an opcode to the bytecode. See {@link Bytecode} for a list of opcodes.
      * 
-     * @param instruction The instruction
+     * @param opcode The opcode
      */
-    public void add(int instruction) {
-        add1(instruction);
+    public void add(int opcode) {
+        assert fitsIntoUnsignedByte(opcode) : "opcode does not fit into byte";
+        add1(opcode);
     }
 
     /**
-     * Adds an instruction and an i32 immediate value to the bytecode. See {@link Bytecode} for a
-     * list of instructions.
+     * Adds an opcode and an i32 immediate value to the bytecode. See {@link Bytecode} for a list of
+     * opcode.
      * 
-     * @param instruction The instruction
+     * @param opcode The opcode
      * @param value The immediate value
      */
-    public void add(int instruction, int value) {
-        add1(instruction);
+    public void add(int opcode, int value) {
+        assert fitsIntoUnsignedByte(opcode) : "opcode does not fit into byte";
+        add1(opcode);
         add4(value);
     }
 
     /**
-     * Adds an instruction and an i64 immediate value to the bytecode. See {@link Bytecode} for a
-     * list of instructions.
+     * Adds an opcode and an i64 immediate value to the bytecode. See {@link Bytecode} for a list of
+     * opcodes.
      * 
-     * @param instruction The instruction
+     * @param opcode The opcode
      * @param value The immediate value
      */
-    public void add(int instruction, long value) {
-        add1(instruction);
+    public void add(int opcode, long value) {
+        assert fitsIntoUnsignedByte(opcode) : "opcode does not fit into byte";
+        add1(opcode);
         add8(value);
     }
 
     /**
-     * Adds an instruction and two i32 immediate values to the bytecode. See {@link Bytecode} for a
-     * list of instructions.
+     * Adds an opcode and two i32 immediate values to the bytecode. See {@link Bytecode} for a list
+     * of opcodes.
      * 
-     * @param instruction The instruction
+     * @param opcode The opcode
      * @param value1 The first immediate value
      * @param value2 The second immediate value
      */
-    public void add(int instruction, int value1, int value2) {
-        add1(instruction);
+    public void add(int opcode, int value1, int value2) {
+        assert fitsIntoUnsignedByte(opcode) : "opcode does not fit into byte";
+        add1(opcode);
         add4(value1);
         add4(value2);
     }
 
     /**
-     * Adds an instruction and an immediate value to the bytecode. If the value fits into a signed
-     * i8 value, the i8 instruction and an i8 value are added. Otherwise, the i32 instruction and an
-     * i32 value are added.
+     * Adds an opcode and an immediate value to the bytecode. If the value fits into a signed i8
+     * value, the i8 opcode and an i8 value are added. Otherwise, the i32 opcode and an i32 value
+     * are added. See {@link Bytecode} for a list of opcode.
      * 
-     * @param i8Instruction The i8 instruction
-     * @param i32Instruction The i32 instruction
+     * @param opcodeI8 The i8 opcode
+     * @param opcodeI32 The i32 opcode
      * @param value The immediate value
      */
-    public void addSigned(int i8Instruction, int i32Instruction, int value) {
+    public void addSigned(int opcodeI8, int opcodeI32, int value) {
+        assert fitsIntoUnsignedByte(opcodeI8) && fitsIntoUnsignedByte(opcodeI32) : "opcode does not fit into byte";
         if (fitsIntoSignedByte(value)) {
-            add1(i8Instruction);
+            add1(opcodeI8);
             add1(value);
         } else {
-            add1(i32Instruction);
+            add1(opcodeI32);
             add4(value);
         }
     }
 
     /**
-     * Adds an instruction and an immediate value to the bytecode. If the value fits into an i8
-     * value, the i8 instruction and an i8 value are added. Otherwise, the i64 instruction and an
-     * i64 value are added.
+     * Adds an opcode and an immediate value to the bytecode. If the value fits into an i8 value,
+     * the i8 opcode and an i8 value are added. Otherwise, the i64 opcode and an i64 value are
+     * added. See {@link Bytecode} for a list of opcode.
      *
-     * @param i8Instruction The i8 instruction
-     * @param i64Instruction The i64 instruction
+     * @param opcodeI8 The i8 opcode
+     * @param opcodeI64 The i64 opcode
      * @param value The immediate value
      */
-    public void addSigned(int i8Instruction, int i64Instruction, long value) {
+    public void addSigned(int opcodeI8, int opcodeI64, long value) {
+        assert fitsIntoUnsignedByte(opcodeI8) && fitsIntoUnsignedByte(opcodeI64) : "opcode does not fit into byte";
         if (fitsIntoSignedByte(value)) {
-            add1(i8Instruction);
+            add1(opcodeI8);
             add1(value);
         } else {
-            add1(i64Instruction);
+            add1(opcodeI64);
             add8(value);
         }
     }
 
     /**
-     * Adds an instruction and an immediate value to the bytecode. If the value fits into a u8
-     * value, the u8 instruction and a u8 value are added. Otherwise, the i32 instruction and an i32
-     * value are added.
+     * Adds an opcode and an immediate value to the bytecode. If the value fits into a u8 value, the
+     * u8 opcode and a u8 value are added. Otherwise, the i32 opcode and an i32 value are added. See
+     * {@link Bytecode} for a list of opcode.
      *
-     * @param u8Instruction The u8 instruction
-     * @param i32Instruction The i32 instruction
+     * @param opcodeU8 The u8 opcode
+     * @param opcodeI32 The i32 opcode
      * @param value The immediate value
      */
-    public void addUnsignedImmediateInstruction(int u8Instruction, int i32Instruction, int value) {
+    public void addUnsigned(int opcodeU8, int opcodeI32, int value) {
+        assert fitsIntoUnsignedByte(opcodeU8) && fitsIntoSignedByte(opcodeI32) : "opcode does not fit into byte";
         if (fitsIntoUnsignedByte(value)) {
-            add1(u8Instruction);
+            add1(opcodeU8);
             add1(value);
         } else {
-            add1(i32Instruction);
+            add1(opcodeI32);
             add4(value);
         }
     }
 
-    public void addMemoryInstruction(int baseInstruction, int u8Instruction, int i32Instruction, long value, boolean indexType64) {
+    /**
+     * Adds a memory access instruction to the bytecode. If the value fits into a u8 value and
+     * indexType64 is false, the u8 opcode and a u8 value are added. If the value fits into a i32
+     * value and indexType64 is false, the i32 opcode and an i32 value are added. Otherwise, the
+     * generic opcode and data encoding are added. See {@link Bytecode} for a list of opcode.
+     * 
+     * @param opcode The generic memory opcode
+     * @param opcodeU8 The u8 memory opcode
+     * @param opcodeI32 The i32 memory opcode
+     * @param offset The offset value
+     * @param indexType64 If the accessed memory has index type 64.
+     */
+    public void addMemoryInstruction(int opcode, int opcodeU8, int opcodeI32, long offset, boolean indexType64) {
+        assert fitsIntoUnsignedByte(opcode) && fitsIntoUnsignedByte(opcodeU8) && fitsIntoUnsignedByte(opcodeI32) : "opcode does not fit into byte";
         if (!indexType64) {
-            if (fitsIntoUnsignedByte(value)) {
-                add1(u8Instruction);
-                add1(value);
-            } else if (fitsIntoUnsignedInt(value)) {
-                add1(i32Instruction);
-                add4(value);
+            if (fitsIntoUnsignedByte(offset)) {
+                add1(opcodeU8);
+                add1(offset);
+            } else if (fitsIntoUnsignedInt(offset)) {
+                add1(opcodeI32);
+                add4(offset);
             } else {
-                add1(BytecodeFlags.MEMORY_OFFSET_LENGTH_I64);
-                add8(value);
+                add1(opcode);
+                add1(BytecodeBitEncoding.MEMORY_OFFSET_I64);
+                add8(offset);
             }
         } else {
-            add1(baseInstruction);
+            add1(opcode);
             final int location = bytecode.size();
             add1(0);
-            int flags = BytecodeFlags.MEMORY_64_FLAG;
-            if (fitsIntoUnsignedByte(value)) {
-                flags |= BytecodeFlags.MEMORY_OFFSET_LENGTH_U8;
-                add1(value);
-            } else if (fitsIntoUnsignedInt(value)) {
-                flags |= BytecodeFlags.MEMORY_OFFSET_LENGTH_U32;
-                add4(value);
+            int flags = BytecodeBitEncoding.MEMORY_64_FLAG;
+            if (fitsIntoUnsignedByte(offset)) {
+                flags |= BytecodeBitEncoding.MEMORY_OFFSET_U8;
+                add1(offset);
+            } else if (fitsIntoUnsignedInt(offset)) {
+                flags |= BytecodeBitEncoding.MEMORY_OFFSET_U32;
+                add4(offset);
             } else {
-                flags |= BytecodeFlags.MEMORY_OFFSET_LENGTH_I64;
-                add8(value);
+                flags |= BytecodeBitEncoding.MEMORY_OFFSET_I64;
+                add8(offset);
             }
             bytecode.set(location, (byte) flags);
         }
     }
 
-    private int addLabel(int resultCount, int stackSize, int commonResultType, int label) {
-        final int location;
-        if (resultCount <= 1 && stackSize <= 15) {
-            add1(Bytecode.SKIP_LABEL);
-            location = bytecode.size();
-            add1(label);
-            add1(resultCount << BytecodeFlags.LABEL_DIRECT_STACK_SIZE_RESULT_SHIFT | commonResultType | stackSize);
-        } else if (resultCount <= 15 && fitsIntoUnsignedByte(stackSize)) {
-            add1(Bytecode.SKIP_LABEL_U8);
-            add1(4);
-            location = bytecode.size();
-            add1(label);
-            add1(BytecodeFlags.LABEL_DIRECT_STACK_SIZE_FLAG | commonResultType | resultCount);
-            add1(stackSize);
-        } else {
-            final boolean resultFitsIntoByte = fitsIntoUnsignedByte(resultCount);
-            final boolean stackFitsIntoByte = fitsIntoUnsignedByte(stackSize);
-            add1(Bytecode.SKIP_LABEL_U8);
-            add1(3 + (resultFitsIntoByte ? 1 : 4) + (stackFitsIntoByte ? 1 : 4));
-            location = bytecode.size();
-            add1(label);
-            add1(BytecodeFlags.LABEL_DIRECT_STACK_SIZE_RESULT_SHIFT | BytecodeFlags.LABEL_DIRECT_RESULT_FLAG | commonResultType | (resultFitsIntoByte ? 0 : BytecodeFlags.LABEL_RESULT_LENGTH_FLAG) |
-                            (stackFitsIntoByte ? 0 : BytecodeFlags.LABEL_STACK_SIZE_LENGTH_FLAG));
-            if (resultFitsIntoByte) {
-                add1(resultCount);
-            } else {
-                add4(resultCount);
-            }
-            if (stackFitsIntoByte) {
-                add1(stackSize);
-            } else {
-                add4(stackSize);
-            }
-        }
-        return location;
-    }
-
     /**
      * Adds a branch label to the bytecode.
-     * 
+     *
      * @param resultCount The number of results of the block.
      * @param stackSize The stack size at the start of the block.
-     * @param commonResultType The most common result type of the result types of the block.
+     * @param commonResultType The most common result type of the result types of the block. See
+     *            {@link WasmType#getCommonValueType(byte[])}.
      * @return The location of the label in the bytecode.
      */
     public int addLabel(int resultCount, int stackSize, int commonResultType) {
-        return addLabel(resultCount, stackSize, commonResultType, Bytecode.LABEL);
+        assert commonResultType == WasmType.NONE_COMMON_TYPE || commonResultType == WasmType.NUM_COMMON_TYPE || commonResultType == WasmType.REF_COMMON_TYPE ||
+                        commonResultType == WasmType.MIX_COMMON_TYPE : "invalid result type";
+        final int location;
+        if (resultCount <= 1 && stackSize <= 31) {
+            add1(Bytecode.SKIP_LABEL_U8);
+            location = bytecode.size();
+            add1(Bytecode.LABEL_U8);
+            add1(resultCount << BytecodeBitEncoding.LABEL_U8_RESULT_SHIFT | commonResultType << BytecodeBitEncoding.LABEL_U8_RESULT_TYPE_SHIFT | stackSize);
+        } else if (resultCount <= 63 && fitsIntoUnsignedByte(stackSize)) {
+            add1(Bytecode.SKIP_LABEL_U16);
+            location = bytecode.size();
+            add1(Bytecode.LABEL_U16);
+            add1(commonResultType << BytecodeBitEncoding.LABEL_U16_RESULT_TYPE_SHIFT | resultCount);
+            add1(stackSize);
+        } else {
+            add1(Bytecode.SKIP_LABEL_I32);
+            location = bytecode.size();
+            add1(Bytecode.LABEL_I32);
+            add1(commonResultType);
+            add4(resultCount);
+            add4(stackSize);
+        }
+        return location;
     }
 
     /**
@@ -328,13 +331,23 @@ public class BytecodeList {
      *
      * @param resultCount The number of results of the loop.
      * @param stackSize The stack size at the start of the loop.
-     * @param commonResultType The most common result type of the result types of the loop.
-     * @return The location of the label in the bytecode.
+     * @param commonResultType The most common result type of the result types of the loop. See
+     *            {@link WasmType#getCommonValueType(byte[])}.
+     * @return The location of the loop label in the bytecode.
      */
     public int addLoopLabel(int resultCount, int stackSize, int commonResultType) {
-        return addLabel(resultCount, stackSize, commonResultType, Bytecode.LOOP_LABEL);
+        int loopLabel = addLabel(resultCount, stackSize, commonResultType);
+        add(Bytecode.LOOP);
+        return loopLabel;
     }
 
+    /**
+     * Adds an if opcode to the bytecode and reserves an i32 value for the jump offset and a 2-byte
+     * profile.
+     * 
+     * @return The location of the jump offset to be patched later. (see
+     *         {@link #patchLocation(int, int)}.
+     */
     public int addIfLocation() {
         add1(Bytecode.IF);
         final int location = bytecode.size();
@@ -346,16 +359,18 @@ public class BytecodeList {
     }
 
     /**
-     * Adds a branch instruction to the bytecode. If the jump offset fits into a signed i8 value, a
-     * br_i8 and i8 jump offset is added. Otherwise, a br_i32 and i32 jump offset is added.
+     * Adds a branch opcode to the bytecode. If the negative jump offset fits into a u8 value, a
+     * br_u8 and u8 jump offset is added (The jump offset is encoded as a positive value).
+     * Otherwise, a br_i32 and i32 jump offset is added.
      * 
      * @param location The target location of the branch.
      */
     public void addBranch(int location) {
+        assert location >= 0;
         final int relativeOffset = location - (bytecode.size() + 1);
-        if (fitsIntoSignedByte(relativeOffset)) {
-            add1(Bytecode.BR_I8);
-            add1(relativeOffset);
+        if (relativeOffset <= 0 && relativeOffset >= -255) {
+            add1(Bytecode.BR_U8);
+            add1(-relativeOffset);
         } else {
             add1(Bytecode.BR_I32);
             add4(relativeOffset);
@@ -366,7 +381,7 @@ public class BytecodeList {
      * Adds a br_i32 instruction to the bytecode and reserves an i32 value for the jump offset.
      * 
      * @return The location of the jump offset to be patched later. (see
-     *         {@link #patchLocation(int, int)})
+     *         {@link #patchLocation(int, int)}).
      */
     public int addBranchLocation() {
         add1(Bytecode.BR_I32);
@@ -376,18 +391,19 @@ public class BytecodeList {
     }
 
     /**
-     * Adds a conditional branch instruction to the bytecode. If the jump offset fits into a signed
-     * i8 value, a br_if_i8 and i8 jump offset is added. Otherwise, a br_if_i32 and i32 jump offset
-     * is added. In both cases a profile with a size of 2-byte is added.
+     * Adds a conditional branch opcode to the bytecode. If the jump offset fits into a signed i8
+     * value, a br_if_i8 and i8 jump offset is added. Otherwise, a br_if_i32 and i32 jump offset is
+     * added. In both cases, a profile with a size of 2-byte is added.
      * 
      * @param location The target location of the branch.
      */
     public void addBranchIf(int location) {
+        assert location >= 0;
         final int relativeOffset = location - (bytecode.size() + 1);
-        if (fitsIntoSignedByte(relativeOffset)) {
-            add1(Bytecode.BR_IF_I8);
+        if (relativeOffset <= 0 && relativeOffset >= -255) {
+            add1(Bytecode.BR_IF_U8);
             // target
-            add1(relativeOffset);
+            add1(-relativeOffset);
             // profile
             addProfile();
         } else {
@@ -400,8 +416,8 @@ public class BytecodeList {
     }
 
     /**
-     * Adds a br_if_i32 instruction to the bytecode and reserves an i32 value for the jump offset.
-     * In addition, a profile with a size of 2-byte is added.
+     * Adds a br_if_i32 opcode to the bytecode and reserves an i32 value for the jump offset. In
+     * addition, a profile with a size of 2-byte is added.
      * 
      * @return The location of the jump offset to be patched later. (see
      *         {@link #patchLocation(int, int)})
@@ -417,9 +433,9 @@ public class BytecodeList {
     }
 
     /**
-     * Adds a branch table instruction to the bytecode. If the size fits into an unsigned i8 value,
-     * a br_table_I8 and i8 size is added. Otherwise, a br_table_i32 and i32 size is added. In both
-     * cases a profile with a size of 2-byte is added.
+     * Adds a branch table opcode to the bytecode. If the size fits into an u8 value, a br_table_u8
+     * and u8 size are added. Otherwise, a br_table_i32 and i32 size are added. In both cases, a
+     * profile with a size of 2-byte is added.
      * 
      * @param size The number of items in the branch table.
      */
@@ -441,7 +457,7 @@ public class BytecodeList {
      * Reserves an i32 jump offset location and 2-byte profile for a branch table item.
      * 
      * @return The location of the jump offset to be patched later. (see
-     *         {@link #patchLocation(int, int)})
+     *         {@link #patchLocation(int, int)}).
      */
     public int addBranchTableItemLocation() {
         final int location = bytecode.size();
@@ -474,9 +490,9 @@ public class BytecodeList {
     }
 
     /**
-     * Adds a call instruction to the bytecode. If the nodeIndex and functionIndex both fit into an
-     * unsigned i8 value, a call_i8 and two i8 values are added. Otherwise, a call_i32 and two i32
-     * value are added.
+     * Adds a call instruction to the bytecode. If the nodeIndex and functionIndex both fit into a
+     * u8 value, a call_u8 and two u8 values are added. Otherwise, a call_i32 and two i32 value are
+     * added.
      * 
      * @param nodeIndex The node index of the call
      * @param functionIndex The function index of the call
@@ -495,8 +511,8 @@ public class BytecodeList {
 
     /**
      * Adds an indirect call instruction to the bytecode. If the nodeIndex, typeIndex, and
-     * tableIndex all fit into an unsigned i8 value, a call_indirect_i8 and three i8 values are
-     * added. Otherwise, a call_indirect_i32 and three i32 values are added. In both cases, a 2-byte
+     * tableIndex all fit into a u8 value, a call_indirect_u8 and three u8 values are added.
+     * Otherwise, a call_indirect_i32 and three i32 values are added. In both cases, a 2-byte
      * profile is added.
      * 
      * @param nodeIndex The node index of the indirect call
@@ -522,44 +538,46 @@ public class BytecodeList {
     }
 
     private void addDataHeader(int mode, int length, int globalIndex, long offsetAddress) {
-        assert mode == SegmentMode.ACTIVE || mode == SegmentMode.PASSIVE;
+        assert globalIndex == -1 || offsetAddress == -1 : "data header does not allow global index and offset address";
+        assert mode == SegmentMode.ACTIVE || mode == SegmentMode.PASSIVE : "invalid segment mode in data header";
         int location = bytecode.size();
         add1(0);
         int flags = mode;
         if (fitsIntoUnsignedByte(length)) {
-            flags |= BytecodeFlags.DATA_SEG_LENGTH_U8;
+            flags |= BytecodeBitEncoding.DATA_SEG_LENGTH_U8;
             add1(length);
         } else if (fitsIntoUnsignedShort(length)) {
-            flags |= BytecodeFlags.DATA_SEG_LENGTH_U16;
+            flags |= BytecodeBitEncoding.DATA_SEG_LENGTH_U16;
             add2(length);
         } else {
-            flags |= BytecodeFlags.DATA_SEG_LENGTH_I32;
+            flags |= BytecodeBitEncoding.DATA_SEG_LENGTH_I32;
             add4(length);
         }
         if (globalIndex != -1) {
             if (fitsIntoUnsignedByte(globalIndex)) {
-                flags |= BytecodeFlags.DATA_SEG_GLOBAL_INDEX_U8;
+                flags |= BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_U8;
                 add1(globalIndex);
             } else if (fitsIntoUnsignedShort(globalIndex)) {
-                flags |= BytecodeFlags.DATA_SEG_GLOBAL_INDEX_U16;
+                flags |= BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_U16;
                 add2(globalIndex);
             } else {
-                flags |= BytecodeFlags.DATA_SEG_GLOBAL_INDEX_I32;
+                flags |= BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_I32;
                 add4(globalIndex);
             }
         }
         if (offsetAddress != -1) {
             if (fitsIntoUnsignedByte(offsetAddress)) {
-                flags |= BytecodeFlags.DATA_SEG_OFFSET_ADDRESS_U8;
+                flags |= BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_U8;
                 add1(offsetAddress);
             } else if (fitsIntoUnsignedShort(offsetAddress)) {
-                flags |= BytecodeFlags.DATA_SEG_OFFSET_ADDRESS_U16;
+                flags |= BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_U16;
                 add2(offsetAddress);
             } else if (fitsIntoUnsignedInt(offsetAddress)) {
-                flags |= BytecodeFlags.DATA_SEG_OFFSET_ADDRESS_U32;
+                flags |= BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_U32;
                 add4(offsetAddress);
             } else {
-                flags |= BytecodeFlags.DATA_SEG_OFFSET_ADDRESS_U64;
+                flags |= BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_U64;
+                add8(offsetAddress);
             }
         }
         bytecode.set(location, (byte) flags);
@@ -583,6 +601,7 @@ public class BytecodeList {
      * @param length The length of the data segment
      */
     public void addDataHeader(int mode, int length) {
+        assert mode != SegmentMode.ACTIVE : "invalid active segment mode in passive data header";
         addDataHeader(mode, length, -1, -1);
     }
 
@@ -596,16 +615,16 @@ public class BytecodeList {
         int location = bytecode.size();
         add1(0);
         int flags = 0;
-        if (fitsIntoUnsignedValue(length, 31)) {
-            flags |= length << 3;
+        if (length <= 63) {
+            flags = length;
         } else if (fitsIntoUnsignedByte(length)) {
-            flags |= BytecodeFlags.DATA_SEG_RUNTIME_LENGTH_U8;
+            flags |= BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U8;
             add1(length);
         } else if (fitsIntoUnsignedShort(length)) {
-            flags |= BytecodeFlags.DATA_SEG_RUNTIME_LENGTH_U16;
+            flags |= BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U16;
             add2(length);
         } else {
-            flags |= BytecodeFlags.DATA_SEG_RUNTIME_LENGTH_I32;
+            flags |= BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_I32;
             add4(length);
         }
         if (unsafeMemory) {
@@ -626,65 +645,68 @@ public class BytecodeList {
      * @return The location after the header in the bytecode
      */
     public int addElemHeader(int mode, int count, byte elemType, int tableIndex, int globalIndex, int offsetAddress) {
+        assert globalIndex == -1 || offsetAddress == -1 : "elem header does not allow global index and offset address";
+        assert mode == SegmentMode.ACTIVE || mode == SegmentMode.PASSIVE || mode == SegmentMode.DECLARATIVE : "invalid segment mode in elem header";
+        assert elemType == WasmType.FUNCREF_TYPE || elemType == WasmType.EXTERNREF_TYPE : "invalid elem type in elem header";
         int location = bytecode.size();
         add1(0);
         final int type;
         switch (elemType) {
             case WasmType.FUNCREF_TYPE:
-                type = BytecodeFlags.ELEM_SEG_TYPE_FUNREF;
+                type = BytecodeBitEncoding.ELEM_SEG_TYPE_FUNREF;
                 break;
             case WasmType.EXTERNREF_TYPE:
-                type = BytecodeFlags.ELEM_SEG_TYPE_EXTERNREF;
+                type = BytecodeBitEncoding.ELEM_SEG_TYPE_EXTERNREF;
                 break;
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
-        add1(type << 4 | mode);
+        add1(type | mode);
 
         int flags = 0;
         if (fitsIntoUnsignedByte(count)) {
-            flags |= BytecodeFlags.ELEM_SEG_COUNT_U8;
+            flags |= BytecodeBitEncoding.ELEM_SEG_COUNT_U8;
             add1(count);
         } else if (fitsIntoUnsignedShort(count)) {
-            flags |= BytecodeFlags.ELEM_SEG_COUNT_U16;
+            flags |= BytecodeBitEncoding.ELEM_SEG_COUNT_U16;
             add2(count);
         } else {
-            flags |= BytecodeFlags.ELEM_SEG_COUNT_I32;
+            flags |= BytecodeBitEncoding.ELEM_SEG_COUNT_I32;
             add4(count);
         }
         if (tableIndex != 0) {
             if (fitsIntoUnsignedByte(tableIndex)) {
-                flags |= BytecodeFlags.ELEM_SEG_TABLE_INDEX_U8;
+                flags |= BytecodeBitEncoding.ELEM_SEG_TABLE_INDEX_U8;
                 add1(tableIndex);
             } else if (fitsIntoUnsignedShort(tableIndex)) {
-                flags |= BytecodeFlags.ELEM_SEG_TABLE_INDEX_U16;
+                flags |= BytecodeBitEncoding.ELEM_SEG_TABLE_INDEX_U16;
                 add2(tableIndex);
             } else {
-                flags |= BytecodeFlags.ELEM_SEG_TABLE_INDEX_I32;
+                flags |= BytecodeBitEncoding.ELEM_SEG_TABLE_INDEX_I32;
                 add4(tableIndex);
             }
         }
         if (globalIndex != -1) {
             if (fitsIntoUnsignedByte(globalIndex)) {
-                flags |= BytecodeFlags.ELEM_SEG_GLOBAL_INDEX_U8;
+                flags |= BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_U8;
                 add1(globalIndex);
             } else if (fitsIntoUnsignedShort(globalIndex)) {
-                flags |= BytecodeFlags.ELEM_SEG_GLOBAL_INDEX_U16;
+                flags |= BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_U16;
                 add2(globalIndex);
             } else {
-                flags |= BytecodeFlags.ELEM_SEG_GLOBAL_INDEX_I32;
+                flags |= BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_I32;
                 add4(globalIndex);
             }
         }
         if (offsetAddress != -1) {
             if (fitsIntoUnsignedByte(offsetAddress)) {
-                flags |= BytecodeFlags.ELEM_SEG_OFFSET_ADDRESS_U8;
+                flags |= BytecodeBitEncoding.ELEM_SEG_OFFSET_ADDRESS_U8;
                 add1(offsetAddress);
             } else if (fitsIntoUnsignedShort(offsetAddress)) {
-                flags |= BytecodeFlags.ELEM_SEG_OFFSET_ADDRESS_U16;
+                flags |= BytecodeBitEncoding.ELEM_SEG_OFFSET_ADDRESS_U16;
                 add2(offsetAddress);
             } else {
-                flags |= BytecodeFlags.ELEM_SEG_OFFSET_ADDRESS_I32;
+                flags |= BytecodeBitEncoding.ELEM_SEG_OFFSET_ADDRESS_I32;
                 add4(offsetAddress);
             }
         }
@@ -705,7 +727,7 @@ public class BytecodeList {
      * Adds a null entry to the data of an elem segment.
      */
     public void addElemNull() {
-        add1(BytecodeFlags.ELEM_ITEM_TYPE_FUNCTION_INDEX | BytecodeFlags.ELEM_ITEM_NULL_FLAG);
+        add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_FUNCTION_INDEX | BytecodeBitEncoding.ELEM_ITEM_NULL_FLAG);
     }
 
     /**
@@ -715,15 +737,15 @@ public class BytecodeList {
      */
     public void addElemFunctionIndex(int functionIndex) {
         if (functionIndex >= 0 && functionIndex <= 15) {
-            add1(BytecodeFlags.ELEM_ITEM_TYPE_FUNCTION_INDEX | BytecodeFlags.ELEM_ITEM_LENGTH_U4 | functionIndex);
+            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_FUNCTION_INDEX | BytecodeBitEncoding.ELEM_ITEM_LENGTH_INLINE | functionIndex);
         } else if (fitsIntoUnsignedByte(functionIndex)) {
-            add1(BytecodeFlags.ELEM_ITEM_TYPE_FUNCTION_INDEX | BytecodeFlags.ELEM_ITEM_LENGTH_U8);
+            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_FUNCTION_INDEX | BytecodeBitEncoding.ELEM_ITEM_LENGTH_U8);
             add1(functionIndex);
         } else if (fitsIntoUnsignedShort(functionIndex)) {
-            add1(BytecodeFlags.ELEM_ITEM_TYPE_FUNCTION_INDEX | BytecodeFlags.ELEM_ITEM_LENGTH_U16);
+            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_FUNCTION_INDEX | BytecodeBitEncoding.ELEM_ITEM_LENGTH_U16);
             add2(functionIndex);
         } else {
-            add1(BytecodeFlags.ELEM_ITEM_TYPE_FUNCTION_INDEX | BytecodeFlags.ELEM_ITEM_LENGTH_I32);
+            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_FUNCTION_INDEX | BytecodeBitEncoding.ELEM_ITEM_LENGTH_I32);
             add4(functionIndex);
         }
     }
@@ -735,71 +757,71 @@ public class BytecodeList {
      */
     public void addElemGlobalIndex(int globalIndex) {
         if (globalIndex >= 0 && globalIndex <= 15) {
-            add1(BytecodeFlags.ELEM_ITEM_TYPE_GLOBAL_INDEX | BytecodeFlags.ELEM_ITEM_LENGTH_U4 | globalIndex);
+            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_GLOBAL_INDEX | BytecodeBitEncoding.ELEM_ITEM_LENGTH_INLINE | globalIndex);
         } else if (fitsIntoUnsignedByte(globalIndex)) {
-            add1(BytecodeFlags.ELEM_ITEM_TYPE_GLOBAL_INDEX | BytecodeFlags.ELEM_ITEM_LENGTH_U8);
+            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_GLOBAL_INDEX | BytecodeBitEncoding.ELEM_ITEM_LENGTH_U8);
             add1(globalIndex);
         } else if (fitsIntoUnsignedShort(globalIndex)) {
-            add1(BytecodeFlags.ELEM_ITEM_TYPE_GLOBAL_INDEX | BytecodeFlags.ELEM_ITEM_LENGTH_U16);
+            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_GLOBAL_INDEX | BytecodeBitEncoding.ELEM_ITEM_LENGTH_U16);
             add2(globalIndex);
         } else {
-            add1(BytecodeFlags.ELEM_ITEM_TYPE_GLOBAL_INDEX | BytecodeFlags.ELEM_ITEM_LENGTH_I32);
+            add1(BytecodeBitEncoding.ELEM_ITEM_TYPE_GLOBAL_INDEX | BytecodeBitEncoding.ELEM_ITEM_LENGTH_I32);
             add4(globalIndex);
         }
     }
 
     /**
-     * Adds additional information about a code entry to the bytecode.
+     * Adds information about a code entry to the bytecode.
      * 
-     * @param functionIndex The function index
-     * @param maxStackSize The maximum stack size
-     * @param bytecodeStartOffset The start offset in the bytecode
+     * @param functionIndex The function index of the code entry
+     * @param maxStackSize The maximum stack size of the code entry
+     * @param length The length of the function in the bytecode
      * @param localCount The number of local values (parameters + locals) of the function
      * @param resultCount The number of result values of the function
      */
-    public void addCodeEntry(int functionIndex, int maxStackSize, int bytecodeStartOffset, int localCount, int resultCount) {
+    public void addCodeEntry(int functionIndex, int maxStackSize, int length, int localCount, int resultCount) {
         final int location = bytecode.size();
         add1(0);
         int flags = 0;
         if (functionIndex != 0) {
             if (fitsIntoUnsignedByte(functionIndex)) {
-                flags |= BytecodeFlags.CODE_ENTRY_FUNCTION_INDEX_U8;
+                flags |= BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_U8;
                 add1(functionIndex);
             } else if (fitsIntoUnsignedShort(functionIndex)) {
-                flags |= BytecodeFlags.CODE_ENTRY_FUNCTION_INDEX_U16;
+                flags |= BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_U16;
                 add2(functionIndex);
             } else {
-                flags |= BytecodeFlags.CODE_ENTRY_FUNCTION_INDEX_I32;
+                flags |= BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_I32;
                 add4(functionIndex);
             }
         }
         if (maxStackSize != 0) {
             if (fitsIntoUnsignedByte(maxStackSize)) {
-                flags |= BytecodeFlags.CODE_ENTRY_MAX_STACK_SIZE_U8;
+                flags |= BytecodeBitEncoding.CODE_ENTRY_MAX_STACK_SIZE_U8;
                 add1(maxStackSize);
             } else if (fitsIntoUnsignedShort(maxStackSize)) {
-                flags |= BytecodeFlags.CODE_ENTRY_MAX_STACK_SIZE_U16;
+                flags |= BytecodeBitEncoding.CODE_ENTRY_MAX_STACK_SIZE_U16;
                 add2(maxStackSize);
             } else {
-                flags |= BytecodeFlags.CODE_ENTRY_MAX_STACK_SIZE_I32;
+                flags |= BytecodeBitEncoding.CODE_ENTRY_MAX_STACK_SIZE_I32;
                 add4(maxStackSize);
             }
         }
-        if (fitsIntoUnsignedByte(bytecodeStartOffset)) {
-            flags |= BytecodeFlags.CODE_ENTRY_START_OFFSET_U8;
-            add1(bytecodeStartOffset);
-        } else if (fitsIntoUnsignedShort(bytecodeStartOffset)) {
-            flags |= BytecodeFlags.CODE_ENTRY_START_OFFSET_U16;
-            add2(bytecodeStartOffset);
+        if (fitsIntoUnsignedByte(length)) {
+            flags |= BytecodeBitEncoding.CODE_ENTRY_LENGTH_U8;
+            add1(length);
+        } else if (fitsIntoUnsignedShort(length)) {
+            flags |= BytecodeBitEncoding.CODE_ENTRY_LENGTH_U16;
+            add2(length);
         } else {
-            flags |= BytecodeFlags.CODE_ENTRY_START_OFFSET_I32;
-            add4(bytecodeStartOffset);
+            flags |= BytecodeBitEncoding.CODE_ENTRY_LENGTH_I32;
+            add4(length);
         }
         if (localCount != 0) {
-            flags |= BytecodeFlags.CODE_ENTRY_LOCALS_FLAG;
+            flags |= BytecodeBitEncoding.CODE_ENTRY_LOCALS_FLAG;
         }
         if (resultCount != 0) {
-            flags |= BytecodeFlags.CODE_ENTRY_RESULT_FLAG;
+            flags |= BytecodeBitEncoding.CODE_ENTRY_RESULT_FLAG;
         }
         bytecode.set(location, (byte) flags);
     }

@@ -42,7 +42,7 @@
 package org.graalvm.wasm.parser.validation;
 
 import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.parser.bytecode.BytecodeList;
+import org.graalvm.wasm.parser.bytecode.BytecodeGen;
 
 /**
  * Represents the scope of a block structure during module validation.
@@ -119,38 +119,38 @@ public abstract class ControlFrame {
      * @param state The current parser state.
      * @param bytecode The current extra data array.
      */
-    abstract void enterElse(ParserState state, BytecodeList bytecode);
+    abstract void enterElse(ParserState state, BytecodeGen bytecode);
 
     /**
      * Performs checks and actions when exiting a frame.
      * 
      * @param bytecode The current extra data array.
      */
-    abstract void exit(BytecodeList bytecode);
+    abstract void exit(BytecodeGen bytecode);
 
     /**
      * Adds an unconditional branch targeting this control frame. Automatically patches the branch
      * target as soon as it is available.
      * 
-     * @param bytecodeList The bytecode of the current control frame.
+     * @param bytecode The bytecode of the current control frame.
      */
-    abstract void addBranch(BytecodeList bytecodeList);
+    abstract void addBranch(BytecodeGen bytecode);
 
     /**
      * Adds a conditional branch targeting this control frame. Automatically patches the branch *
      * target as soon as it is available.
      * 
-     * @param bytecodeList The bytecode of the current control frame.
+     * @param bytecode The bytecode of the current control frame.
      */
 
-    abstract void addBranchIf(BytecodeList bytecodeList);
+    abstract void addBranchIf(BytecodeGen bytecode);
 
     /**
      * Adds a branch table item targeting this control frame. Automatically patches the branch *
      * target as soon as it is available.
      * 
-     * @param bytecodeList The bytecode of the current control frame.
+     * @param bytecode The bytecode of the current control frame.
      */
 
-    abstract void addBranchTableItem(BytecodeList bytecodeList);
+    abstract void addBranchTableItem(BytecodeGen bytecode);
 }

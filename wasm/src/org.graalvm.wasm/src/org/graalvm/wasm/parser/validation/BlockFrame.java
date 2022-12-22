@@ -44,7 +44,7 @@ package org.graalvm.wasm.parser.validation;
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.parser.bytecode.BytecodeList;
+import org.graalvm.wasm.parser.bytecode.BytecodeGen;
 
 /**
  * Representation of a wasm block during module validation.
@@ -63,12 +63,12 @@ class BlockFrame extends ControlFrame {
     }
 
     @Override
-    void enterElse(ParserState state, BytecodeList bytecode) {
+    void enterElse(ParserState state, BytecodeGen bytecode) {
         throw WasmException.create(Failure.TYPE_MISMATCH, "Expected then branch. Else branch requires preceding then branch.");
     }
 
     @Override
-    void exit(BytecodeList bytecode) {
+    void exit(BytecodeGen bytecode) {
         if (branches.size() == 0) {
             return;
         }
@@ -79,17 +79,17 @@ class BlockFrame extends ControlFrame {
     }
 
     @Override
-    void addBranch(BytecodeList bytecodeList) {
-        branches.add(bytecodeList.addBranchLocation());
+    void addBranch(BytecodeGen bytecode) {
+        branches.add(bytecode.addBranchLocation());
     }
 
     @Override
-    void addBranchIf(BytecodeList bytecodeList) {
-        branches.add(bytecodeList.addBranchIfLocation());
+    void addBranchIf(BytecodeGen bytecode) {
+        branches.add(bytecode.addBranchIfLocation());
     }
 
     @Override
-    void addBranchTableItem(BytecodeList bytecodeList) {
-        branches.add(bytecodeList.addBranchTableItemLocation());
+    void addBranchTableItem(BytecodeGen bytecode) {
+        branches.add(bytecode.addBranchTableItemLocation());
     }
 }

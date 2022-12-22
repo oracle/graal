@@ -189,7 +189,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * bytes to 0.
      * <p>
      * Note: this does not restore content from data section. For this, use
-     * {@link org.graalvm.wasm.BinaryParser#resetMemoryState}.
+     * {@link org.graalvm.wasm.parser.bytecode.BytecodeParser#resetMemoryState}.
      */
     public abstract void reset();
 

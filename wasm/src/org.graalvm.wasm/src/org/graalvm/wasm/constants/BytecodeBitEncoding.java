@@ -41,137 +41,137 @@
 
 package org.graalvm.wasm.constants;
 
-public class BytecodeFlags {
+/**
+ * Representation of bit encoded bytecode values.
+ */
+public class BytecodeBitEncoding {
     // Labels
-    public static final int LABEL_RESULT_TYPE_FLAG = 0b0011_0000;
-    public static final int LABEL_RESULT_TYPE_NUM = 0b0001_0000;
-    public static final int LABEL_RESULT_TYPE_REF = 0b0010_0000;
-    public static final int LABEL_RESULT_TYPE_MIX = 0b0011_0000;
 
-    // This flag is inverted
-    public static final int LABEL_DIRECT_STACK_SIZE_FLAG = 0b0100_0000;
-    public static final int LABEL_DIRECT_STACK_SIZE_RESULT_SHIFT = 7;
-    public static final int LABEL_DIRECT_STACK_SIZE_VALUE = 0b0000_1111;
+    public static final int LABEL_U8_RESULT_SHIFT = 7;
+    public static final int LABEL_U8_RESULT_TYPE_MASK = 0b0110_0000;
+    public static final int LABEL_U8_RESULT_TYPE_NUM = 0b0010_0000;
+    public static final int LABEL_U8_RESULT_TYPE_REF = 0b0100_0000;
+    public static final int LABEL_U8_RESULT_TYPE_MIX = 0b0110_0000;
+    public static final int LABEL_U8_RESULT_TYPE_SHIFT = 5;
+    public static final int LABEL_U8_STACK_VALUE = 0b0001_1111;
 
-    // This flag is inverted
-    public static final int LABEL_DIRECT_RESULT_FLAG = 0b1000_0000;
-    public static final int LABEL_DIRECT_RESULT_VALUE = 0b0000_1111;
+    public static final int LABEL_U16_RESULT_TYPE_MASK = 0b1100_0000;
+    public static final int LABEL_U16_RESULT_TYPE_NUM = 0b0100_0000;
+    public static final int LABEL_U16_RESULT_TYPE_REF = 0b1000_0000;
+    public static final int LABEL_U16_RESULT_TYPE_MIX = 0b1100_0000;
+    public static final int LABEL_U16_RESULT_TYPE_SHIFT = 6;
+    public static final int LABEL_U16_RESULT_VALUE = 0b0011_1111;
 
-    public static final int LABEL_RESULT_LENGTH_FLAG = 0b0000_0100;
-    public static final int LABEL_STACK_SIZE_LENGTH_FLAG = 0b0000_0001;
+    public static final int LABEL_RESULT_TYPE_NUM = 0b0000_0001;
+    public static final int LABEL_RESULT_TYPE_REF = 0b0000_0010;
+    public static final int LABEL_RESULT_TYPE_MIX = 0b0000_0011;
 
     public static final int MEMORY_64_FLAG = 0b1000_0000;
-    public static final int MEMORY_INDEX_LENGTH_FLAG = 0b0110_0000;
+    public static final int MEMORY_INDEX_MASK = 0b0110_0000;
     // Reserved for the future introduction of multiple memories
-    public static final int MEMORY_INDEX_LENGTH_ZERO = 0b0000_0000;
-    public static final int MEMORY_INDEX_LENGTH_U8 = 0b001_0000;
-    public static final int MEMORY_INDEX_LENGTH_U16 = 0b0010_0000;
-    public static final int MEMORY_INDEX_LENGTH_I32 = 0b0100_0000;
-    public static final int MEMORY_OFFSET_LENGTH_FLAG = 0b0000_1111;
-    public static final int MEMORY_OFFSET_LENGTH_U8 = 0b0000_0001;
-    public static final int MEMORY_OFFSET_LENGTH_U32 = 0b0000_0100;
-    public static final int MEMORY_OFFSET_LENGTH_I64 = 0b0000_1000;
+    public static final int MEMORY_INDEX_ZERO = 0b0000_0000;
+    public static final int MEMORY_INDEX_U8 = 0b001_0000;
+    public static final int MEMORY_INDEX_U16 = 0b0010_0000;
+    public static final int MEMORY_INDEX_I32 = 0b0100_0000;
+    public static final int MEMORY_OFFSET_MASK = 0b0000_1111;
+    public static final int MEMORY_OFFSET_U8 = 0b0000_0001;
+    public static final int MEMORY_OFFSET_U32 = 0b0000_0100;
+    public static final int MEMORY_OFFSET_I64 = 0b0000_1000;
 
-    // Data section
+    // Data sections
 
-    public static final int DATA_SEG_LENGTH_FLAG = 0b1100_0000;
-    public static final int DATA_SEG_LENGTH_ZERO = 0b0000_0000;
+    public static final int DATA_SEG_LENGTH_MASK = 0b1100_0000;
     public static final int DATA_SEG_LENGTH_U8 = 0b0100_0000;
     public static final int DATA_SEG_LENGTH_U16 = 0b1000_0000;
     public static final int DATA_SEG_LENGTH_I32 = 0b1100_0000;
 
-    public static final int DATA_SEG_GLOBAL_INDEX_FLAG = 0b0011_0000;
+    public static final int DATA_SEG_GLOBAL_INDEX_MASK = 0b0011_0000;
     public static final int DATA_SEG_GLOBAL_INDEX_UNDEFINED = 0b0000_0000;
     public static final int DATA_SEG_GLOBAL_INDEX_U8 = 0b0001_0000;
     public static final int DATA_SEG_GLOBAL_INDEX_U16 = 0b0010_0000;
     public static final int DATA_SEG_GLOBAL_INDEX_I32 = 0b0011_0000;
 
-    public static final int DATA_SEG_OFFSET_ADDRESS_FLAG = 0b0000_1110;
+    public static final int DATA_SEG_OFFSET_ADDRESS_MASK = 0b0000_1110;
     public static final int DATA_SEG_OFFSET_ADDRESS_UNDEFINED = 0b0000_0000;
     public static final int DATA_SEG_OFFSET_ADDRESS_U8 = 0b0000_0010;
     public static final int DATA_SEG_OFFSET_ADDRESS_U16 = 0b0000_0100;
     public static final int DATA_SEG_OFFSET_ADDRESS_U32 = 0b0000_0110;
     public static final int DATA_SEG_OFFSET_ADDRESS_U64 = 0b0000_1000;
 
-    public static final int DATA_SEG_MODE = 0b0000_0001;
+    public static final int DATA_SEG_MODE_VALUE = 0b0000_0001;
 
-    // Data section runtime info
+    // Runtime data sections
 
-    public static final int DATA_SEG_RUNTIME_LENGTH_FLAG = 0b0000_0111;
-    public static final int DATA_SEG_RUNTIME_LENGTH_ZERO = 0b0000_0000;
-    public static final int DATA_SEG_RUNTIME_LENGTH_U8 = 0b0000_0001;
-    public static final int DATA_SEG_RUNTIME_LENGTH_U16 = 0b0000_0010;
-    public static final int DATA_SEG_RUNTIME_LENGTH_I32 = 0b0000_0100;
+    public static final int DATA_SEG_RUNTIME_LENGTH_MASK = 0b1100_0000;
+    public static final int DATA_SEG_RUNTIME_LENGTH_INLINE = 0b0000_0000;
+    public static final int DATA_SEG_RUNTIME_LENGTH_U8 = 0b0100_0000;
+    public static final int DATA_SEG_RUNTIME_LENGTH_U16 = 0b1000_0000;
+    public static final int DATA_SEG_RUNTIME_LENGTH_I32 = 0b1100_0000;
 
-    public static final int DATA_SEG_RUNTIME_LENGTH_VALUE = 0b1111_1000;
+    // Elem sections
 
-    // Elem section
-
-    public static final int ELEM_SEG_COUNT_FLAG = 0b1100_0000;
-    public static final int ELEM_SEG_COUNT_ZERO = 0b0000_0000;
+    public static final int ELEM_SEG_COUNT_MASK = 0b1100_0000;
     public static final int ELEM_SEG_COUNT_U8 = 0b0100_0000;
     public static final int ELEM_SEG_COUNT_U16 = 0b1000_0000;
     public static final int ELEM_SEG_COUNT_I32 = 0b1100_0000;
 
-    public static final int ELEM_SEG_TABLE_INDEX_FLAG = 0b0011_0000;
+    public static final int ELEM_SEG_TABLE_INDEX_MASK = 0b0011_0000;
     public static final int ELEM_SEG_TABLE_INDEX_ZERO = 0b0000_0000;
     public static final int ELEM_SEG_TABLE_INDEX_U8 = 0b0001_0000;
     public static final int ELEM_SEG_TABLE_INDEX_U16 = 0b0010_0000;
     public static final int ELEM_SEG_TABLE_INDEX_I32 = 0b0011_0000;
 
-    public static final int ELEM_SEG_GLOBAL_INDEX_FLAG = 0b0000_1100;
+    public static final int ELEM_SEG_GLOBAL_INDEX_MASK = 0b0000_1100;
     public static final int ELEM_SEG_GLOBAL_INDEX_UNDEFINED = 0b0000_0000;
     public static final int ELEM_SEG_GLOBAL_INDEX_U8 = 0b0000_0100;
     public static final int ELEM_SEG_GLOBAL_INDEX_U16 = 0b0000_1000;
     public static final int ELEM_SEG_GLOBAL_INDEX_I32 = 0b0000_1100;
 
-    public static final int ELEM_SEG_OFFSET_ADDRESS_FLAG = 0b0000_0011;
+    public static final int ELEM_SEG_OFFSET_ADDRESS_MASK = 0b0000_0011;
     public static final int ELEM_SEG_OFFSET_ADDRESS_UNDEFINED = 0b0000_0000;
     public static final int ELEM_SEG_OFFSET_ADDRESS_U8 = 0b0000_0001;
     public static final int ELEM_SEG_OFFSET_ADDRESS_U16 = 0b0000_0010;
     public static final int ELEM_SEG_OFFSET_ADDRESS_I32 = 0b0000_0011;
 
-    public static final int ELEM_SEG_TYPE = 0b1111_0000;
     public static final int ELEM_SEG_TYPE_FUNREF = 0b0001_0000;
     public static final int ELEM_SEG_TYPE_EXTERNREF = 0b0010_0000;
 
-    public static final int ELEM_SEG_MODE = 0b0000_1111;
+    public static final int ELEM_SEG_MODE_VALUE = 0b0000_1111;
 
-    // Elem item
+    // Elem items
 
-    public static final int ELEM_ITEM_TYPE = 0b1000_0000;
+    public static final int ELEM_ITEM_TYPE_MASK = 0b1000_0000;
     public static final int ELEM_ITEM_TYPE_FUNCTION_INDEX = 0b0000_0000;
     public static final int ELEM_ITEM_TYPE_GLOBAL_INDEX = 0b1000_0000;
 
-    public static final int ELEM_ITEM_LENGTH = 0b0110_0000;
-    public static final int ELEM_ITEM_LENGTH_U4 = 0b0000_0000;
+    public static final int ELEM_ITEM_LENGTH_MASK = 0b0110_0000;
+    public static final int ELEM_ITEM_LENGTH_INLINE = 0b0000_0000;
     public static final int ELEM_ITEM_LENGTH_U8 = 0b0010_0000;
     public static final int ELEM_ITEM_LENGTH_U16 = 0b0100_0000;
     public static final int ELEM_ITEM_LENGTH_I32 = 0b0110_0000;
 
     public static final int ELEM_ITEM_NULL_FLAG = 0b0001_0000;
 
-    public static final int ELEM_ITEM_DIRECT_VALUE = 0b0000_1111;
+    public static final int ELEM_ITEM_INLINE_VALUE = 0b0000_1111;
 
-    // Code section info
+    // Code entries
 
-    public static final int CODE_ENTRY_FUNCTION_INDEX_FLAG = 0b1100_0000;
+    public static final int CODE_ENTRY_FUNCTION_INDEX_MASK = 0b1100_0000;
     public static final int CODE_ENTRY_FUNCTION_INDEX_ZERO = 0b0000_0000;
     public static final int CODE_ENTRY_FUNCTION_INDEX_U8 = 0b0100_0000;
     public static final int CODE_ENTRY_FUNCTION_INDEX_U16 = 0b1000_0000;
     public static final int CODE_ENTRY_FUNCTION_INDEX_I32 = 0b1100_0000;
 
-    public static final int CODE_ENTRY_MAX_STACK_SIZE_FLAG = 0b0011_0000;
+    public static final int CODE_ENTRY_MAX_STACK_SIZE_MASK = 0b0011_0000;
     public static final int CODE_ENTRY_MAX_STACK_SIZE_ZERO = 0b0000_0000;
     public static final int CODE_ENTRY_MAX_STACK_SIZE_U8 = 0b0001_0000;
     public static final int CODE_ENTRY_MAX_STACK_SIZE_U16 = 0b0010_0000;
     public static final int CODE_ENTRY_MAX_STACK_SIZE_I32 = 0b0011_0000;
 
-    public static final int CODE_ENTRY_START_OFFSET_FLAG = 0b0000_1100;
-    public static final int CODE_ENTRY_START_OFFSET_UNDEFINED = 0b0000_0000;
-    public static final int CODE_ENTRY_START_OFFSET_U8 = 0b0000_0100;
-    public static final int CODE_ENTRY_START_OFFSET_U16 = 0b0000_1000;
-    public static final int CODE_ENTRY_START_OFFSET_I32 = 0b0000_1100;
+    public static final int CODE_ENTRY_LENGTH_MASK = 0b0000_1100;
+    public static final int CODE_ENTRY_LENGTH_U8 = 0b0000_0100;
+    public static final int CODE_ENTRY_LENGTH_U16 = 0b0000_1000;
+    public static final int CODE_ENTRY_LENGTH_I32 = 0b0000_1100;
 
     public static final int CODE_ENTRY_LOCALS_FLAG = 0b0000_0010;
     public static final int CODE_ENTRY_RESULT_FLAG = 0b0000_0001;

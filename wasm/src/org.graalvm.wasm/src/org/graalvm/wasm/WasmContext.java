@@ -46,6 +46,7 @@ import java.util.Map;
 
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.parser.bytecode.BytecodeParser;
 import org.graalvm.wasm.predefined.BuiltinModule;
 import org.graalvm.wasm.predefined.wasi.fd.FdManager;
 
@@ -179,8 +180,7 @@ public final class WasmContext {
         }
         // Reread code sections if module is instantiated multiple times
         if (!module.hasCodeEntries()) {
-            final BinaryParser reader = new BinaryParser(module, this);
-            reader.readCodeEntries();
+            BytecodeParser.readCodeEntries(module);
         }
         final WasmInstantiator translator = new WasmInstantiator(language);
         final WasmInstance instance = translator.createInstance(this, module);
@@ -194,11 +194,10 @@ public final class WasmContext {
         // Note: this is not a complete and correct instantiation as defined in
         // https://webassembly.github.io/spec/core/exec/modules.html#instantiation
         // For testing only.
-        final BinaryParser reader = new BinaryParser(instance.module(), this);
-        reader.resetGlobalState(this, instance);
+        BytecodeParser.resetGlobalState(this, instance.module(), instance);
         if (reinitMemory) {
-            reader.resetMemoryState(this, instance);
-            reader.resetTableState(this, instance);
+            BytecodeParser.resetMemoryState(this, instance.module(), instance);
+            BytecodeParser.resetTableState(this, instance.module(), instance);
             final WasmFunction startFunction = instance.symbolTable().startFunction();
             if (startFunction != null) {
                 instance.target(startFunction.index()).call();

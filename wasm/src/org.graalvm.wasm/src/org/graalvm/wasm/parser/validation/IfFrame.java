@@ -46,7 +46,7 @@ import java.util.Arrays;
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.parser.bytecode.BytecodeList;
+import org.graalvm.wasm.parser.bytecode.BytecodeGen;
 
 /**
  * Representation of a wasm if and else block during module validation.
@@ -70,7 +70,7 @@ class IfFrame extends ControlFrame {
     }
 
     @Override
-    void enterElse(ParserState state, BytecodeList bytecode) {
+    void enterElse(ParserState state, BytecodeGen bytecode) {
         final int location = bytecode.addBranchLocation();
         bytecode.patchLocation(falseJumpLocation, bytecode.location());
         falseJumpLocation = location;
@@ -81,7 +81,7 @@ class IfFrame extends ControlFrame {
     }
 
     @Override
-    void exit(BytecodeList bytecode) {
+    void exit(BytecodeGen bytecode) {
         if (!elseBranch && !Arrays.equals(paramTypes(), resultTypes())) {
             throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with incompatible param and result types requires else branch.");
         }
@@ -97,17 +97,17 @@ class IfFrame extends ControlFrame {
     }
 
     @Override
-    void addBranch(BytecodeList bytecodeList) {
-        branchTargets.add(bytecodeList.addBranchLocation());
+    void addBranch(BytecodeGen bytecode) {
+        branchTargets.add(bytecode.addBranchLocation());
     }
 
     @Override
-    void addBranchIf(BytecodeList bytecodeList) {
-        branchTargets.add(bytecodeList.addBranchIfLocation());
+    void addBranchIf(BytecodeGen bytecode) {
+        branchTargets.add(bytecode.addBranchIfLocation());
     }
 
     @Override
-    void addBranchTableItem(BytecodeList bytecodeList) {
-        branchTargets.add(bytecodeList.addBranchTableItemLocation());
+    void addBranchTableItem(BytecodeGen bytecode) {
+        branchTargets.add(bytecode.addBranchTableItemLocation());
     }
 }

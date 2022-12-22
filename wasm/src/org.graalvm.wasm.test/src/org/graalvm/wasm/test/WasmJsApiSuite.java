@@ -2114,7 +2114,6 @@ public class WasmJsApiSuite {
 
     private static void runTest(Consumer<Context.Builder> options, Consumer<WasmContext> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
-        contextBuilder.option("wasm.BulkMemoryAndRefTypes", "true");
         if (options != null) {
             options.accept(contextBuilder);
         }

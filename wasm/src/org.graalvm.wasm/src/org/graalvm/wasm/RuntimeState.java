@@ -43,7 +43,7 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import org.graalvm.wasm.constants.BytecodeFlags;
+import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.memory.NativeDataInstanceUtil;
 import org.graalvm.wasm.memory.WasmMemory;
 
@@ -266,7 +266,7 @@ public class RuntimeState {
         }
     }
 
-    void setDataInstance(int index, int bytecodeOffset) {
+    public void setDataInstance(int index, int bytecodeOffset) {
         assert bytecodeOffset != -1;
         ensureDataInstanceCapacity(index);
         dataInstances[index] = bytecodeOffset;
@@ -294,7 +294,7 @@ public class RuntimeState {
         }
         final int bytecodeOffset = dataInstances[index];
         final byte[] bytecode = module().bytecode();
-        return bytecodeOffset + (bytecode[bytecodeOffset] & BytecodeFlags.DATA_SEG_RUNTIME_LENGTH_FLAG) + 1;
+        return bytecodeOffset + (bytecode[bytecodeOffset] & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK) + 1;
     }
 
     public int dataInstanceLength(int index) {
@@ -303,20 +303,20 @@ public class RuntimeState {
         }
         final int bytecodeOffset = dataInstances[index];
         final byte[] bytecode = module().bytecode();
-        final int flags = bytecode[bytecodeOffset];
-        final int lengthBytes = flags & BytecodeFlags.DATA_SEG_RUNTIME_LENGTH_FLAG;
+        final int encoding = bytecode[bytecodeOffset];
+        final int lengthEncoding = encoding & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK;
         final int length;
-        switch (lengthBytes) {
-            case BytecodeFlags.DATA_SEG_RUNTIME_LENGTH_ZERO:
-                length = (flags & BytecodeFlags.DATA_SEG_RUNTIME_LENGTH_VALUE) >>> 3;
+        switch (lengthEncoding) {
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_INLINE:
+                length = encoding;
                 break;
-            case BytecodeFlags.DATA_SEG_RUNTIME_LENGTH_U8:
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U8:
                 length = BinaryStreamParser.rawPeekU8(bytecode, bytecodeOffset + 1);
                 break;
-            case BytecodeFlags.DATA_SEG_RUNTIME_LENGTH_U16:
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U16:
                 length = BinaryStreamParser.rawPeekU16(bytecode, bytecodeOffset + 1);
                 break;
-            case BytecodeFlags.DATA_SEG_RUNTIME_LENGTH_I32:
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_I32:
                 length = BinaryStreamParser.rawPeekI32(bytecode, bytecodeOffset + 1);
                 break;
             default:
@@ -331,9 +331,20 @@ public class RuntimeState {
         }
         final int bytecodeOffset = dataInstances[index];
         final byte[] bytecode = module().bytecode();
-        final byte flags = bytecode[bytecodeOffset];
-        final int lengthBytes = flags & BytecodeFlags.DATA_SEG_RUNTIME_LENGTH_FLAG;
-        return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + lengthBytes + 1);
+        final byte encoding = bytecode[bytecodeOffset];
+        final int lengthEncoding = encoding & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK;
+        switch (lengthEncoding) {
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_INLINE:
+                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 1);
+            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_U8:
+                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 2);
+            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_U16:
+                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 3);
+            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_I32:
+                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 5);
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
     }
 
     public int droppedDataInstanceOffset() {

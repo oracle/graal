@@ -67,12 +67,9 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
 
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Bytecode;
-import org.graalvm.wasm.constants.BytecodeFlags;
 import org.graalvm.wasm.constants.ExportIdentifier;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.constants.ImportIdentifier;
@@ -82,15 +79,13 @@ import org.graalvm.wasm.constants.Section;
 import org.graalvm.wasm.constants.SegmentMode;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.memory.NativeDataInstanceUtil;
-import org.graalvm.wasm.memory.WasmMemory;
-
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.ExceptionType;
-import org.graalvm.wasm.parser.bytecode.BytecodeList;
+import org.graalvm.wasm.parser.bytecode.BytecodeGen;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 import org.graalvm.wasm.parser.validation.ParserState;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.ExceptionType;
 
 /**
  * Simple recursive-descend parser for the binary WebAssembly format.
@@ -140,7 +135,7 @@ public class BinaryParser extends BinaryStreamParser {
     private void readSymbolSections() {
         int lastNonCustomSection = 0;
         boolean hasCodeSection = false;
-        BytecodeList bytecode = new BytecodeList();
+        BytecodeGen bytecode = new BytecodeGen();
         while (!isEOF()) {
             final byte sectionID = read1();
 
@@ -394,7 +389,7 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private void readCodeSection(BytecodeList bytecode) {
+    private void readCodeSection(BytecodeGen bytecode) {
         final int importedFunctionCount = module.importedFunctions().size();
         final int codeEntryCount = readLength();
         final int expectedCodeEntryCount = module.numFunctions() - importedFunctionCount;
@@ -414,7 +409,7 @@ public class BinaryParser extends BinaryStreamParser {
         module.setCodeEntries(codeEntries);
     }
 
-    private CodeEntry readCodeEntry(int functionIndex, ByteArrayList locals, int endOffset, boolean hasNextFunction, BytecodeList bytecode, int codeEntryIndex) {
+    private CodeEntry readCodeEntry(int functionIndex, ByteArrayList locals, int endOffset, boolean hasNextFunction, BytecodeGen bytecode, int codeEntryIndex) {
         final WasmFunction function = module.symbolTable().function(functionIndex);
         int paramCount = function.paramCount();
         byte[] localTypes = new byte[function.paramCount() + locals.size()];
@@ -487,7 +482,7 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private CodeEntry readFunction(int functionIndex, byte[] locals, byte[] resultTypes, int sourceCodeEndOffset, boolean hasNextFunction, BytecodeList bytecode, int codeEntryIndex) {
+    private CodeEntry readFunction(int functionIndex, byte[] locals, byte[] resultTypes, int sourceCodeEndOffset, boolean hasNextFunction, BytecodeGen bytecode, int codeEntryIndex) {
         final ParserState state = new ParserState(bytecode);
         final ArrayList<CallNode> callNodes = new ArrayList<>();
         final int bytecodeStartOffset = bytecode.location();
@@ -833,7 +828,7 @@ public class BinaryParser extends BinaryStreamParser {
                     if (module.memoryHasIndexType64() && memory64) {
                         state.push(I64_TYPE);
                         state.addMiscFlag();
-                        state.addInstruction(Bytecode.MEMORY_SIZE64);
+                        state.addInstruction(Bytecode.MEMORY64_SIZE);
                     } else {
                         state.push(I32_TYPE);
                         state.addInstruction(Bytecode.MEMORY_SIZE);
@@ -848,7 +843,7 @@ public class BinaryParser extends BinaryStreamParser {
                         state.popChecked(I64_TYPE);
                         state.push(I64_TYPE);
                         state.addMiscFlag();
-                        state.addInstruction(Bytecode.MEMORY_GROW64);
+                        state.addInstruction(Bytecode.MEMORY64_GROW);
                     } else {
                         state.popChecked(I32_TYPE);
                         state.push(I32_TYPE);
@@ -874,7 +869,7 @@ public class BinaryParser extends BinaryStreamParser {
             }
         }
         final int bytecodeEndOffset = bytecode.location();
-        bytecode.addCodeEntry(functionIndex, state.maxStackSize(), bytecodeStartOffset, locals.length, resultTypes.length);
+        bytecode.addCodeEntry(functionIndex, state.maxStackSize(), bytecodeEndOffset - bytecodeStartOffset, locals.length, resultTypes.length);
         for (byte local : locals) {
             bytecode.addByte(local);
         }
@@ -950,7 +945,7 @@ public class BinaryParser extends BinaryStreamParser {
                 state.popChecked(I32_TYPE);
                 state.popChecked(I32_TYPE);
                 state.push(I32_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.I64_EQZ:
                 state.popChecked(I64_TYPE);
@@ -970,7 +965,7 @@ public class BinaryParser extends BinaryStreamParser {
                 state.popChecked(I64_TYPE);
                 state.popChecked(I64_TYPE);
                 state.push(I32_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.F32_EQ:
             case Instructions.F32_NE:
@@ -981,7 +976,7 @@ public class BinaryParser extends BinaryStreamParser {
                 state.popChecked(F32_TYPE);
                 state.popChecked(F32_TYPE);
                 state.push(I32_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.F64_EQ:
             case Instructions.F64_NE:
@@ -992,21 +987,21 @@ public class BinaryParser extends BinaryStreamParser {
                 state.popChecked(F64_TYPE);
                 state.popChecked(F64_TYPE);
                 state.push(I32_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.I32_CLZ:
             case Instructions.I32_CTZ:
             case Instructions.I32_POPCNT:
                 state.popChecked(I32_TYPE);
                 state.push(I32_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.I64_CLZ:
             case Instructions.I64_CTZ:
             case Instructions.I64_POPCNT:
                 state.popChecked(I64_TYPE);
                 state.push(I64_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.I64_ADD:
             case Instructions.I64_SUB:
@@ -1026,7 +1021,7 @@ public class BinaryParser extends BinaryStreamParser {
                 state.popChecked(I64_TYPE);
                 state.popChecked(I64_TYPE);
                 state.push(I64_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.F32_ABS:
             case Instructions.F32_NEG:
@@ -1037,7 +1032,7 @@ public class BinaryParser extends BinaryStreamParser {
             case Instructions.F32_SQRT:
                 state.popChecked(F32_TYPE);
                 state.push(F32_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.F32_ADD:
             case Instructions.F32_SUB:
@@ -1049,7 +1044,7 @@ public class BinaryParser extends BinaryStreamParser {
                 state.popChecked(F32_TYPE);
                 state.popChecked(F32_TYPE);
                 state.push(F32_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.F64_ABS:
             case Instructions.F64_NEG:
@@ -1060,7 +1055,7 @@ public class BinaryParser extends BinaryStreamParser {
             case Instructions.F64_SQRT:
                 state.popChecked(F64_TYPE);
                 state.push(F64_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.F64_ADD:
             case Instructions.F64_SUB:
@@ -1072,7 +1067,7 @@ public class BinaryParser extends BinaryStreamParser {
                 state.popChecked(F64_TYPE);
                 state.popChecked(F64_TYPE);
                 state.push(F64_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.I32_WRAP_I64:
                 state.popChecked(I64_TYPE);
@@ -1084,68 +1079,68 @@ public class BinaryParser extends BinaryStreamParser {
             case Instructions.I32_REINTERPRET_F32:
                 state.popChecked(F32_TYPE);
                 state.push(I32_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.I32_TRUNC_F64_S:
             case Instructions.I32_TRUNC_F64_U:
                 state.popChecked(F64_TYPE);
                 state.push(I32_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.I64_EXTEND_I32_S:
             case Instructions.I64_EXTEND_I32_U:
                 state.popChecked(I32_TYPE);
                 state.push(I64_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.I64_TRUNC_F32_S:
             case Instructions.I64_TRUNC_F32_U:
                 state.popChecked(F32_TYPE);
                 state.push(I64_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.I64_TRUNC_F64_S:
             case Instructions.I64_TRUNC_F64_U:
             case Instructions.I64_REINTERPRET_F64:
                 state.popChecked(F64_TYPE);
                 state.push(I64_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.F32_CONVERT_I32_S:
             case Instructions.F32_CONVERT_I32_U:
             case Instructions.F32_REINTERPRET_I32:
                 state.popChecked(I32_TYPE);
                 state.push(F32_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.F32_CONVERT_I64_S:
             case Instructions.F32_CONVERT_I64_U:
                 state.popChecked(I64_TYPE);
                 state.push(F32_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.F32_DEMOTE_F64:
                 state.popChecked(F64_TYPE);
                 state.push(F32_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.F64_CONVERT_I32_S:
             case Instructions.F64_CONVERT_I32_U:
                 state.popChecked(I32_TYPE);
                 state.push(F64_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.F64_CONVERT_I64_S:
             case Instructions.F64_CONVERT_I64_U:
             case Instructions.F64_REINTERPRET_I64:
                 state.popChecked(I64_TYPE);
                 state.push(F64_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.F64_PROMOTE_F32:
                 state.popChecked(F32_TYPE);
                 state.push(F64_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.MISC:
                 int miscOpcode = readUnsignedInt32();
@@ -1193,9 +1188,9 @@ public class BinaryParser extends BinaryStreamParser {
                             state.popChecked(I64_TYPE);
                             state.addMiscFlag();
                             if (unsafeMemory) {
-                                state.addInstruction(Bytecode.MEMORY_INIT64_UNSAFE, dataIndex);
+                                state.addInstruction(Bytecode.MEMORY64_INIT_UNSAFE, dataIndex);
                             } else {
-                                state.addInstruction(Bytecode.MEMORY_INIT64, dataIndex);
+                                state.addInstruction(Bytecode.MEMORY64_INIT, dataIndex);
                             }
                         } else {
                             state.popChecked(I32_TYPE);
@@ -1229,7 +1224,7 @@ public class BinaryParser extends BinaryStreamParser {
                             state.popChecked(I64_TYPE);
                             state.popChecked(I64_TYPE);
                             state.addMiscFlag();
-                            state.addInstruction(Bytecode.MEMORY_COPY64);
+                            state.addInstruction(Bytecode.MEMORY64_COPY);
                         } else {
                             state.popChecked(I32_TYPE);
                             state.popChecked(I32_TYPE);
@@ -1247,7 +1242,7 @@ public class BinaryParser extends BinaryStreamParser {
                             state.popChecked(I32_TYPE);
                             state.popChecked(I64_TYPE);
                             state.addMiscFlag();
-                            state.addInstruction(Bytecode.MEMORY_FILL64);
+                            state.addInstruction(Bytecode.MEMORY64_FILL);
                         } else {
                             state.popChecked(I32_TYPE);
                             state.popChecked(I32_TYPE);
@@ -1331,7 +1326,7 @@ public class BinaryParser extends BinaryStreamParser {
                 checkSignExtensionOpsSupport(opcode);
                 state.popChecked(I32_TYPE);
                 state.push(I32_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.I64_EXTEND8_S:
             case Instructions.I64_EXTEND16_S:
@@ -1339,7 +1334,7 @@ public class BinaryParser extends BinaryStreamParser {
                 checkSignExtensionOpsSupport(opcode);
                 state.popChecked(I64_TYPE);
                 state.push(I64_TYPE);
-                state.addInstruction(opcode + 0x2E);
+                state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
                 break;
             case Instructions.REF_NULL:
                 checkBulkMemoryAndRefTypesSupport(opcode);
@@ -1529,7 +1524,7 @@ public class BinaryParser extends BinaryStreamParser {
         return functionIndices;
     }
 
-    private void readElementSection(BytecodeList bytecode) {
+    private void readElementSection(BytecodeGen bytecode) {
         int elemSegmentCount = readLength();
         module.limits().checkElementSegmentCount(elemSegmentCount);
         for (int elemSegmentIndex = 0; elemSegmentIndex != elemSegmentCount; elemSegmentIndex++) {
@@ -1776,7 +1771,7 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private void readDataSection(BytecodeList bytecode) {
+    private void readDataSection(BytecodeGen bytecode) {
         final int dataSegmentCount = readLength();
         module.limits().checkDataSegmentCount(dataSegmentCount);
         if (bulkMemoryAndRefTypes && dataSegmentCount != 0) {
@@ -2082,524 +2077,5 @@ public class BinaryParser extends BinaryStreamParser {
         final byte length = peekLeb128Length(data, offset);
         offset += length;
         return value;
-    }
-
-    /**
-     * Reset the state of the globals in a module that had already been parsed and linked.
-     */
-    public void resetGlobalState(WasmContext context, WasmInstance instance) {
-        final GlobalRegistry globals = context.globals();
-        for (int i = 0; i < module.numGlobals(); i++) {
-            if (module.globalImported(i)) {
-                continue;
-            }
-            final int address = instance.globalAddress(i);
-            final long value = module.globalInitialValue(i);
-            if (module.globalInitialized(i)) {
-                if (module.globalFunctionOrNull(i)) {
-                    globals.storeReference(address, WasmConstant.NULL);
-                } else {
-                    globals.storeLong(address, value);
-                }
-            } else {
-                if (module.globalFunctionOrNull(i)) {
-                    final int functionIndex = (int) value;
-                    final WasmFunctionInstance function = instance.functionInstance(functionIndex);
-                    globals.storeReference(address, function);
-                } else {
-                    final int existingAddress = instance.globalAddress(module.globalExistingIndex(i));
-                    globals.storeLong(address, globals.loadAsLong(existingAddress));
-                }
-            }
-        }
-    }
-
-    public void resetMemoryState(WasmContext context, WasmInstance instance) {
-        final byte[] bytecode = module.bytecode();
-        for (int i = 0; i < module.dataInstanceCount(); i++) {
-            if (unsafeMemory) {
-                // free all memory allocated for data instances
-                instance.dropUnsafeDataInstance(i);
-            }
-
-            final int dataOffset = module.dataInstanceOffset(i);
-            final int flags = bytecode[dataOffset];
-            int effectiveOffset = dataOffset + 1;
-
-            final int dataMode = flags & BytecodeFlags.DATA_SEG_MODE;
-            final int dataLength;
-            switch (flags & BytecodeFlags.DATA_SEG_LENGTH_FLAG) {
-                case BytecodeFlags.DATA_SEG_LENGTH_ZERO:
-                    dataLength = 0;
-                    break;
-                case BytecodeFlags.DATA_SEG_LENGTH_U8:
-                    dataLength = rawPeekU8(bytecode, effectiveOffset);
-                    effectiveOffset++;
-                    break;
-                case BytecodeFlags.DATA_SEG_LENGTH_U16:
-                    dataLength = rawPeekU16(bytecode, effectiveOffset);
-                    effectiveOffset += 2;
-                    break;
-                case BytecodeFlags.DATA_SEG_LENGTH_I32:
-                    dataLength = rawPeekI32(bytecode, effectiveOffset);
-                    effectiveOffset += 4;
-                    break;
-                default:
-                    throw CompilerDirectives.shouldNotReachHere();
-            }
-            if (dataMode == SegmentMode.ACTIVE) {
-                final int offsetGlobalIndex;
-                switch (flags & BytecodeFlags.DATA_SEG_GLOBAL_INDEX_FLAG) {
-                    case BytecodeFlags.DATA_SEG_GLOBAL_INDEX_UNDEFINED:
-                        offsetGlobalIndex = -1;
-                        break;
-                    case BytecodeFlags.DATA_SEG_GLOBAL_INDEX_U8:
-                        offsetGlobalIndex = rawPeekU8(bytecode, effectiveOffset);
-                        effectiveOffset++;
-                        break;
-                    case BytecodeFlags.DATA_SEG_GLOBAL_INDEX_U16:
-                        offsetGlobalIndex = rawPeekU16(bytecode, effectiveOffset);
-                        effectiveOffset += 2;
-                        break;
-                    case BytecodeFlags.DATA_SEG_GLOBAL_INDEX_I32:
-                        offsetGlobalIndex = rawPeekI32(bytecode, effectiveOffset);
-                        effectiveOffset += 4;
-                        break;
-                    default:
-                        throw CompilerDirectives.shouldNotReachHere();
-                }
-                long offsetAddress;
-                switch (flags & BytecodeFlags.DATA_SEG_OFFSET_ADDRESS_FLAG) {
-                    case BytecodeFlags.DATA_SEG_OFFSET_ADDRESS_UNDEFINED:
-                        offsetAddress = -1;
-                        break;
-                    case BytecodeFlags.DATA_SEG_OFFSET_ADDRESS_U8:
-                        offsetAddress = rawPeekU8(bytecode, effectiveOffset);
-                        effectiveOffset++;
-                        break;
-                    case BytecodeFlags.DATA_SEG_OFFSET_ADDRESS_U16:
-                        offsetAddress = rawPeekU16(bytecode, effectiveOffset);
-                        effectiveOffset += 2;
-                        break;
-                    case BytecodeFlags.DATA_SEG_OFFSET_ADDRESS_U32:
-                        offsetAddress = rawPeekU32(bytecode, effectiveOffset);
-                        effectiveOffset += 4;
-                        break;
-                    case BytecodeFlags.DATA_SEG_OFFSET_ADDRESS_U64:
-                        offsetAddress = rawPeekI64(bytecode, effectiveOffset);
-                        effectiveOffset += 8;
-                        break;
-                    default:
-                        throw CompilerDirectives.shouldNotReachHere();
-                }
-                if (offsetGlobalIndex != -1) {
-                    int offsetGlobalAddress = instance.globalAddress(offsetGlobalIndex);
-                    byte globalType = instance.symbolTable().globalValueType(offsetGlobalIndex);
-                    if (globalType == I32_TYPE) {
-                        offsetAddress = context.globals().loadAsInt(offsetGlobalAddress);
-                    } else {
-                        offsetAddress = context.globals().loadAsLong(offsetGlobalAddress);
-                    }
-                }
-
-                // Reading of the data segment is called after linking, so initialize the memory
-                // directly.
-                final WasmMemory memory = instance.memory();
-
-                Assert.assertUnsignedLongLessOrEqual(offsetAddress, memory.byteSize(), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-                Assert.assertUnsignedLongLessOrEqual(offsetAddress + dataLength, memory.byteSize(), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-                memory.initialize(module.bytecode(), effectiveOffset, offsetAddress, dataLength);
-            } else {
-                if (unsafeMemory) {
-                    final int lengthBytes = bytecode[effectiveOffset] & BytecodeFlags.DATA_SEG_RUNTIME_LENGTH_FLAG;
-                    final long instanceAddress = NativeDataInstanceUtil.allocateNativeInstance(bytecode, effectiveOffset + lengthBytes + 9, dataLength);
-                    BinaryStreamParser.writeI64(bytecode, effectiveOffset + lengthBytes + 1, instanceAddress);
-                }
-                instance.setDataInstance(i, effectiveOffset);
-            }
-        }
-    }
-
-    public void resetTableState(WasmContext context, WasmInstance instance) {
-        final byte[] bytecode = module.bytecode();
-        for (int i = 0; i < module.elemInstanceCount(); i++) {
-            final int elemOffset = module.elemInstanceOffset(i);
-            final int flags = bytecode[elemOffset];
-            final int typeAndMode = bytecode[elemOffset + 1];
-            int effectiveOffset = elemOffset + 2;
-
-            final int elemMode = typeAndMode & BytecodeFlags.ELEM_SEG_MODE;
-
-            final int elemCount;
-            switch (flags & BytecodeFlags.ELEM_SEG_COUNT_FLAG) {
-                case BytecodeFlags.ELEM_SEG_COUNT_ZERO:
-                    elemCount = 0;
-                    break;
-                case BytecodeFlags.ELEM_SEG_COUNT_U8:
-                    elemCount = rawPeekU8(bytecode, effectiveOffset);
-                    effectiveOffset++;
-                    break;
-                case BytecodeFlags.ELEM_SEG_COUNT_U16:
-                    elemCount = rawPeekU16(bytecode, effectiveOffset);
-                    effectiveOffset += 2;
-                    break;
-                case BytecodeFlags.ELEM_SEG_COUNT_I32:
-                    elemCount = rawPeekI32(bytecode, effectiveOffset);
-                    effectiveOffset += 4;
-                    break;
-                default:
-                    throw CompilerDirectives.shouldNotReachHere();
-            }
-            final Linker linker = Objects.requireNonNull(context.linker());
-            if (elemMode == SegmentMode.ACTIVE) {
-                final int tableIndex;
-                switch (flags & BytecodeFlags.ELEM_SEG_TABLE_INDEX_FLAG) {
-                    case BytecodeFlags.ELEM_SEG_TABLE_INDEX_ZERO:
-                        tableIndex = 0;
-                        break;
-                    case BytecodeFlags.ELEM_SEG_TABLE_INDEX_U8:
-                        tableIndex = rawPeekU8(bytecode, effectiveOffset);
-                        effectiveOffset++;
-                        break;
-                    case BytecodeFlags.ELEM_SEG_TABLE_INDEX_U16:
-                        tableIndex = rawPeekU16(bytecode, effectiveOffset);
-                        effectiveOffset += 2;
-                        break;
-                    case BytecodeFlags.ELEM_SEG_TABLE_INDEX_I32:
-                        tableIndex = rawPeekI32(bytecode, effectiveOffset);
-                        effectiveOffset += 4;
-                        break;
-                    default:
-                        throw CompilerDirectives.shouldNotReachHere();
-                }
-                final int offsetGlobalIndex;
-                switch (flags & BytecodeFlags.ELEM_SEG_GLOBAL_INDEX_FLAG) {
-                    case BytecodeFlags.ELEM_SEG_GLOBAL_INDEX_UNDEFINED:
-                        offsetGlobalIndex = -1;
-                        break;
-                    case BytecodeFlags.ELEM_SEG_GLOBAL_INDEX_U8:
-                        offsetGlobalIndex = rawPeekU8(bytecode, effectiveOffset);
-                        effectiveOffset++;
-                        break;
-                    case BytecodeFlags.ELEM_SEG_GLOBAL_INDEX_U16:
-                        offsetGlobalIndex = rawPeekU16(bytecode, effectiveOffset);
-                        effectiveOffset += 2;
-                        break;
-                    case BytecodeFlags.ELEM_SEG_GLOBAL_INDEX_I32:
-                        offsetGlobalIndex = rawPeekI32(bytecode, effectiveOffset);
-                        effectiveOffset += 4;
-                        break;
-                    default:
-                        throw CompilerDirectives.shouldNotReachHere();
-                }
-                final int offsetAddress;
-                switch (flags & BytecodeFlags.ELEM_SEG_OFFSET_ADDRESS_FLAG) {
-                    case BytecodeFlags.ELEM_SEG_OFFSET_ADDRESS_UNDEFINED:
-                        offsetAddress = -1;
-                        break;
-                    case BytecodeFlags.ELEM_SEG_OFFSET_ADDRESS_U8:
-                        offsetAddress = rawPeekU8(bytecode, effectiveOffset);
-                        effectiveOffset++;
-                        break;
-                    case BytecodeFlags.ELEM_SEG_OFFSET_ADDRESS_U16:
-                        offsetAddress = rawPeekU16(bytecode, effectiveOffset);
-                        effectiveOffset += 2;
-                        break;
-                    case BytecodeFlags.ELEM_SEG_OFFSET_ADDRESS_I32:
-                        offsetAddress = rawPeekI32(bytecode, effectiveOffset);
-                        effectiveOffset += 4;
-                        break;
-                    default:
-                        throw CompilerDirectives.shouldNotReachHere();
-                }
-                linker.immediatelyResolveElemSegment(context, instance, tableIndex, i, offsetAddress, offsetGlobalIndex, effectiveOffset, elemCount);
-            } else if (elemMode == SegmentMode.PASSIVE) {
-                linker.immediatelyResolvePassiveElementSegment(context, instance, i, effectiveOffset, elemCount);
-            }
-        }
-    }
-
-    public void readCodeEntries() {
-        final byte[] bytecode = module.bytecode();
-        CodeEntry[] codeEntries = new CodeEntry[module.codeEntryCount()];
-        for (int i = 0; i < module.codeEntryCount(); i++) {
-            final int codeEntryOffset = module.codeEntryOffset(i);
-            final int flags = bytecode[codeEntryOffset];
-            int effectiveOffset = codeEntryOffset + 1;
-
-            final int functionIndex;
-            switch (flags & BytecodeFlags.CODE_ENTRY_FUNCTION_INDEX_FLAG) {
-                case BytecodeFlags.CODE_ENTRY_FUNCTION_INDEX_ZERO:
-                    functionIndex = 0;
-                    break;
-                case BytecodeFlags.CODE_ENTRY_FUNCTION_INDEX_U8:
-                    functionIndex = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
-                    effectiveOffset++;
-                    break;
-                case BytecodeFlags.CODE_ENTRY_FUNCTION_INDEX_U16:
-                    functionIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
-                    effectiveOffset += 2;
-                    break;
-                case BytecodeFlags.CODE_ENTRY_FUNCTION_INDEX_I32:
-                    functionIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
-                    effectiveOffset += 4;
-                    break;
-                default:
-                    throw CompilerDirectives.shouldNotReachHere();
-            }
-            final int maxStackSize;
-            switch (flags & BytecodeFlags.CODE_ENTRY_MAX_STACK_SIZE_FLAG) {
-                case BytecodeFlags.CODE_ENTRY_MAX_STACK_SIZE_ZERO:
-                    maxStackSize = 0;
-                    break;
-                case BytecodeFlags.CODE_ENTRY_MAX_STACK_SIZE_U8:
-                    maxStackSize = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
-                    effectiveOffset++;
-                    break;
-                case BytecodeFlags.CODE_ENTRY_MAX_STACK_SIZE_U16:
-                    maxStackSize = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
-                    effectiveOffset += 2;
-                    break;
-                case BytecodeFlags.CODE_ENTRY_MAX_STACK_SIZE_I32:
-                    maxStackSize = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
-                    effectiveOffset += 4;
-                    break;
-                default:
-                    throw CompilerDirectives.shouldNotReachHere();
-            }
-            final int bytecodeStartOffset;
-            switch (flags & BytecodeFlags.CODE_ENTRY_START_OFFSET_FLAG) {
-                case BytecodeFlags.CODE_ENTRY_START_OFFSET_UNDEFINED:
-                    bytecodeStartOffset = 0;
-                    break;
-                case BytecodeFlags.CODE_ENTRY_START_OFFSET_U8:
-                    bytecodeStartOffset = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
-                    effectiveOffset++;
-                    break;
-                case BytecodeFlags.CODE_ENTRY_START_OFFSET_U16:
-                    bytecodeStartOffset = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
-                    effectiveOffset += 2;
-                    break;
-                case BytecodeFlags.CODE_ENTRY_START_OFFSET_I32:
-                    bytecodeStartOffset = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
-                    effectiveOffset += 4;
-                    break;
-                default:
-                    throw CompilerDirectives.shouldNotReachHere();
-            }
-            final byte[] locals;
-            if ((flags & BytecodeFlags.CODE_ENTRY_LOCALS_FLAG) != 0) {
-                ByteArrayList localsList = new ByteArrayList();
-                for (; bytecode[effectiveOffset] != 0; effectiveOffset++) {
-                    localsList.add(bytecode[effectiveOffset]);
-                }
-                effectiveOffset++;
-                locals = localsList.toArray();
-            } else {
-                locals = Bytecode.EMPTY_BYTES;
-            }
-            final byte[] results;
-            if ((flags & BytecodeFlags.CODE_ENTRY_RESULT_FLAG) != 0) {
-                ByteArrayList resultsList = new ByteArrayList();
-                for (; bytecode[effectiveOffset] != 0; effectiveOffset++) {
-                    resultsList.add(bytecode[effectiveOffset]);
-                }
-                results = resultsList.toArray();
-            } else {
-                results = Bytecode.EMPTY_BYTES;
-            }
-            List<CallNode> callNodes = readCallNodes(bytecodeStartOffset, codeEntryOffset);
-            codeEntries[i] = new CodeEntry(functionIndex, maxStackSize, locals, results, callNodes, bytecodeStartOffset, codeEntryOffset);
-        }
-        module.setCodeEntries(codeEntries);
-    }
-
-    /**
-     * Rereads the code section entries for all functions based on the bytecode of the module and
-     * adds the resulting call nodes to the entries.
-     */
-    private List<CallNode> readCallNodes(int startOffset, int endOffset) {
-        final byte[] bytecode = module.bytecode();
-        int bytecodeOffset = startOffset;
-        ArrayList<CallNode> callNodes = new ArrayList<>();
-        while (bytecodeOffset < endOffset) {
-            int opcode = BinaryStreamParser.rawPeekU8(bytecode, bytecodeOffset);
-            bytecodeOffset++;
-            switch (opcode) {
-                case Bytecode.SKIP_LABEL:
-                    bytecodeOffset += 2;
-                    break;
-                case Bytecode.SKIP_LABEL_U8:
-                    bytecodeOffset += BinaryStreamParser.rawPeekU8(bytecode, bytecodeOffset);
-                    break;
-                case Bytecode.BR_I8:
-                case Bytecode.LOCAL_GET_U8:
-                case Bytecode.LOCAL_SET_U8:
-                case Bytecode.LOCAL_TEE_U8:
-                case Bytecode.GLOBAL_GET_U8:
-                case Bytecode.GLOBAL_SET_U8:
-                case Bytecode.I32_LOAD_U8:
-                case Bytecode.I64_LOAD_U8:
-                case Bytecode.F32_LOAD_U8:
-                case Bytecode.F64_LOAD_U8:
-                case Bytecode.I32_LOAD8_S_U8:
-                case Bytecode.I32_LOAD8_U_U8:
-                case Bytecode.I32_LOAD16_S_U8:
-                case Bytecode.I32_LOAD16_U_U8:
-                case Bytecode.I64_LOAD8_S_U8:
-                case Bytecode.I64_LOAD8_U_U8:
-                case Bytecode.I64_LOAD16_S_U8:
-                case Bytecode.I64_LOAD16_U_U8:
-                case Bytecode.I64_LOAD32_S_U8:
-                case Bytecode.I64_LOAD32_U_U8:
-                case Bytecode.I32_STORE_U8:
-                case Bytecode.I64_STORE_U8:
-                case Bytecode.F32_STORE_U8:
-                case Bytecode.F64_STORE_U8:
-                case Bytecode.I32_STORE_8_U8:
-                case Bytecode.I32_STORE_16_U8:
-                case Bytecode.I64_STORE_8_U8:
-                case Bytecode.I64_STORE_16_U8:
-                case Bytecode.I64_STORE_32_U8:
-                case Bytecode.I32_CONST_I8:
-                case Bytecode.I64_CONST_I8:
-                    bytecodeOffset++;
-                    break;
-                case Bytecode.BR_I32:
-                case Bytecode.LOCAL_GET_I32:
-                case Bytecode.LOCAL_SET_I32:
-                case Bytecode.LOCAL_TEE_I32:
-                case Bytecode.GLOBAL_GET_I32:
-                case Bytecode.GLOBAL_SET_I32:
-                case Bytecode.I32_LOAD_I32:
-                case Bytecode.I64_LOAD_I32:
-                case Bytecode.F32_LOAD_I32:
-                case Bytecode.F64_LOAD_I32:
-                case Bytecode.I32_LOAD8_S_I32:
-                case Bytecode.I32_LOAD8_U_I32:
-                case Bytecode.I32_LOAD16_S_I32:
-                case Bytecode.I32_LOAD16_U_I32:
-                case Bytecode.I64_LOAD8_S_I32:
-                case Bytecode.I64_LOAD8_U_I32:
-                case Bytecode.I64_LOAD16_S_I32:
-                case Bytecode.I64_LOAD16_U_I32:
-                case Bytecode.I64_LOAD32_S_I32:
-                case Bytecode.I64_LOAD32_U_I32:
-                case Bytecode.I32_STORE_I32:
-                case Bytecode.I64_STORE_I32:
-                case Bytecode.F32_STORE_I32:
-                case Bytecode.F64_STORE_I32:
-                case Bytecode.I32_STORE_8_I32:
-                case Bytecode.I32_STORE_16_I32:
-                case Bytecode.I64_STORE_8_I32:
-                case Bytecode.I64_STORE_16_I32:
-                case Bytecode.I64_STORE_32_I32:
-                case Bytecode.I32_CONST_I32:
-                case Bytecode.F32_CONST:
-                case Bytecode.TABLE_SET:
-                case Bytecode.TABLE_GET:
-                case Bytecode.REF_FUNC:
-                    bytecodeOffset += 4;
-                    break;
-                case Bytecode.BR_IF_I8:
-                    bytecodeOffset += 3;
-                    break;
-                case Bytecode.IF:
-                case Bytecode.BR_IF_I32:
-                    bytecodeOffset += 6;
-                    break;
-                case Bytecode.BR_TABLE_U8: {
-                    final int size = BinaryStreamParser.rawPeekU8(bytecode, bytecodeOffset);
-                    bytecodeOffset += 3 + size * 6;
-                    break;
-                }
-                case Bytecode.BR_TABLE_I32: {
-                    final int size = BinaryStreamParser.rawPeekI32(bytecode, bytecodeOffset);
-                    bytecodeOffset += 6 * size * 6;
-                    break;
-                }
-                case Bytecode.CALL_U8: {
-                    // skip node index
-                    bytecodeOffset++;
-                    final int functionIndex = BinaryStreamParser.rawPeekU8(bytecode, bytecodeOffset);
-                    callNodes.add(new CallNode(functionIndex));
-                    bytecodeOffset++;
-                    break;
-                }
-                case Bytecode.CALL_I32: {
-                    // skip node index
-                    bytecodeOffset += 4;
-                    final int functionIndex = BinaryStreamParser.rawPeekI32(bytecode, bytecodeOffset);
-                    callNodes.add(new CallNode(functionIndex));
-                    bytecodeOffset += 4;
-                    break;
-                }
-                case Bytecode.CALL_INDIRECT_U8: {
-                    callNodes.add(new CallNode());
-                    bytecodeOffset += 5;
-                    break;
-                }
-                case Bytecode.CALL_INDIRECT_I32: {
-                    callNodes.add(new CallNode());
-                    bytecodeOffset += 14;
-                    break;
-                }
-                case Bytecode.I64_CONST_I64:
-                case Bytecode.F64_CONST:
-                    bytecodeOffset += 8;
-                    break;
-                case Bytecode.I32_LOAD:
-                case Bytecode.I64_LOAD:
-                case Bytecode.F32_LOAD:
-                case Bytecode.F64_LOAD:
-                case Bytecode.I32_LOAD8_S:
-                case Bytecode.I32_LOAD8_U:
-                case Bytecode.I32_LOAD16_S:
-                case Bytecode.I32_LOAD16_U:
-                case Bytecode.I64_LOAD8_S:
-                case Bytecode.I64_LOAD8_U:
-                case Bytecode.I64_LOAD16_S:
-                case Bytecode.I64_LOAD16_U:
-                case Bytecode.I64_LOAD32_S:
-                case Bytecode.I64_LOAD32_U:
-                case Bytecode.I32_STORE:
-                case Bytecode.I64_STORE:
-                case Bytecode.F32_STORE:
-                case Bytecode.F64_STORE:
-                case Bytecode.I32_STORE_8:
-                case Bytecode.I32_STORE_16:
-                case Bytecode.I64_STORE_8:
-                case Bytecode.I64_STORE_16:
-                case Bytecode.I64_STORE_32:
-                    int flags = rawPeekU8(bytecode, bytecodeOffset);
-                    bytecodeOffset++;
-                    bytecodeOffset += flags & BytecodeFlags.MEMORY_INDEX_LENGTH_FLAG >> 4;
-                    bytecodeOffset += flags & BytecodeFlags.MEMORY_OFFSET_LENGTH_FLAG;
-                    break;
-                case Bytecode.MISC:
-                    int miscOpcode = rawPeekU8(bytecode, bytecodeOffset);
-                    bytecodeOffset++;
-                    switch (miscOpcode) {
-                        case Bytecode.MEMORY_INIT:
-                        case Bytecode.DATA_DROP:
-                        case Bytecode.ELEM_DROP:
-                        case Bytecode.TABLE_GROW:
-                        case Bytecode.TABLE_SIZE:
-                        case Bytecode.TABLE_FILL:
-                        case Bytecode.MEMORY_INIT_UNSAFE:
-                        case Bytecode.DATA_DROP_UNSAFE:
-                        case Bytecode.MEMORY_INIT64:
-                        case Bytecode.MEMORY_INIT64_UNSAFE:
-                            bytecodeOffset += 4;
-                            break;
-                        case Bytecode.TABLE_INIT:
-                        case Bytecode.TABLE_COPY:
-                            bytecodeOffset += 8;
-                            break;
-                    }
-                    break;
-            }
-        }
-        return callNodes;
     }
 }

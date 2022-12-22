@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,56 +39,79 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.parser.validation.collections.entries;
-
-import org.graalvm.wasm.parser.validation.collections.ExtraDataFormatHelper;
-import org.graalvm.wasm.util.ExtraDataUtil;
+package org.graalvm.wasm.parser.validation;
 
 /**
- * Represents an else entry in the extra data list.
- * <p>
- * Compact format:
- * <p>
- * <ul>
- * <li>compactFormatIndicator (1-bit)
- * <li>extraDataDisplacement (signed 15-bit)
- * <li>byteCodeDisplacement (signed 16-bit)
- * </ul>
- * <p>
- * Extended format:
- * <p>
- * <ul>
- * <li>extendedFormatIndicator (1-bit)
- * <li>extraDataDisplacement (signed 31-bit)
- * <li>byteCodeDisplacement (signed 32-bit)
- * </ul>
+ * Represents a stack of control frames that are used for validation of modules.
  */
-public class ElseEntry extends BranchTarget {
-    public ElseEntry(ExtraDataFormatHelper formatHelper, int byteCodeOffset, int extraDataOffset, int extraDataIndex) {
-        super(formatHelper, byteCodeOffset, extraDataOffset, extraDataIndex);
+public class ControlStack {
+    private ControlFrame[] stack;
+
+    private int size;
+
+    public ControlStack() {
+        stack = new ControlFrame[4];
+        size = 0;
     }
 
-    @Override
-    protected int generateCompactData(int[] extraData, int entryOffset) {
-        int offset = entryOffset;
-        offset += ExtraDataUtil.addCompactBranchTarget(extraData, offset, compactByteCodeDisplacement(), compactExtraDataDisplacement());
-        return offset;
+    private void ensureSize() {
+        if (size == stack.length) {
+            ControlFrame[] nStack = new ControlFrame[stack.length * 2];
+            System.arraycopy(stack, 0, nStack, 0, size);
+            stack = nStack;
+        }
     }
 
-    @Override
-    protected int generateExtendedData(int[] extraData, int entryOffset) {
-        int offset = entryOffset;
-        offset += ExtraDataUtil.addExtendedBranchTarget(extraData, offset, extendedByteCodeDisplacement(), extendedExtraDataDisplacement());
-        return offset;
+    /**
+     * Pushes the given control frame onto the stack.
+     * 
+     * @param frame A control frame.
+     */
+    public void push(ControlFrame frame) {
+        ensureSize();
+        stack[size] = frame;
+        size++;
     }
 
-    @Override
-    public int compactLength() {
-        return ExtraDataUtil.COMPACT_JUMP_TARGET_SIZE;
+    /**
+     * Pops the topmost control frame from the stack.
+     */
+    public void pop() {
+        assert size > 0 : "cannot pop from empty stack";
+        size--;
     }
 
-    @Override
-    public int extendedLength() {
-        return ExtraDataUtil.EXTENDED_JUMP_TARGET_SIZE;
+    /**
+     * Returns the topmost stack value without removing it.
+     * 
+     * @return The topmost control frame.
+     */
+    public ControlFrame peek() {
+        assert size > 0 : "cannot peek empty stack";
+        return stack[size - 1];
+    }
+
+    /**
+     * @param index Index from top of the stack
+     * @return The value at (size - index - 1)
+     */
+    public ControlFrame get(int index) {
+        assert (size - index - 1) >= 0 && (size - index - 1) < size : "invalid element index";
+        return stack[size - index - 1];
+    }
+
+    /**
+     * @return The control frame on the bottom of the stack.
+     */
+    public ControlFrame getFirst() {
+        return stack[0];
+    }
+
+    public boolean isEmpty() {
+        return size == 0;
+    }
+
+    public int size() {
+        return size;
     }
 }

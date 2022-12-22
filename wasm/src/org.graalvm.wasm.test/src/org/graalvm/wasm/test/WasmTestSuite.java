@@ -46,6 +46,8 @@ import org.graalvm.wasm.test.suites.arithmetic.Float64Suite;
 import org.graalvm.wasm.test.suites.arithmetic.Integer32Suite;
 import org.graalvm.wasm.test.suites.arithmetic.Integer64Suite;
 import org.graalvm.wasm.test.suites.arithmetic.ReferenceTypeSuite;
+import org.graalvm.wasm.test.suites.bytecode.BytecodeSuite;
+import org.graalvm.wasm.test.suites.bytecode.MultiInstantiationSuite;
 import org.graalvm.wasm.test.suites.control.BlockWithLocalsSuite;
 import org.graalvm.wasm.test.suites.control.BranchBlockSuite;
 import org.graalvm.wasm.test.suites.control.IfThenElseSuite;
@@ -94,7 +96,9 @@ import org.junit.runners.Suite;
                 MultiValueValidationSuite.class,
                 ReferenceTypesValidationSuite.class,
                 WasmLateLinkingSuite.class,
-                WasmImplementationLimitationsSuite.class
+                WasmImplementationLimitationsSuite.class,
+                BytecodeSuite.class,
+                MultiInstantiationSuite.class
 })
 
 public class WasmTestSuite {

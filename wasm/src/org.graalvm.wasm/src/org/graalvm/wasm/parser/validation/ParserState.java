@@ -49,8 +49,7 @@ import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.parser.bytecode.BytecodeList;
-import org.graalvm.wasm.parser.validation.collections.ControlStack;
+import org.graalvm.wasm.parser.bytecode.BytecodeGen;
 
 /**
  * Represents the values and stack frames of a Wasm code section during validation. Stores
@@ -62,11 +61,11 @@ public class ParserState {
 
     private final ByteArrayList valueStack;
     private final ControlStack controlStack;
-    private final BytecodeList bytecode;
+    private final BytecodeGen bytecode;
 
     private int maxStackSize;
 
-    public ParserState(BytecodeList bytecode) {
+    public ParserState(BytecodeGen bytecode) {
         this.valueStack = new ByteArrayList();
         this.controlStack = new ControlStack();
         this.bytecode = bytecode;
@@ -284,7 +283,7 @@ public class ParserState {
      * @param resultTypes The result types of the loop that was entered.
      */
     public void enterLoop(byte[] paramTypes, byte[] resultTypes) {
-        final int label = bytecode.addLoopLabel(paramTypes.length, valueStack.size(), WasmType.getCommonValueType(paramTypes));
+        final int label = bytecode.addLoopLabel(paramTypes.length, valueStack.size(), WasmType.getCommonValueType(resultTypes));
         ControlFrame frame = new LoopFrame(paramTypes, resultTypes, valueStack.size(), false, label);
         controlStack.push(frame);
         pushAll(paramTypes);
@@ -473,7 +472,7 @@ public class ParserState {
      * @param value The immediate value
      */
     public void addUnsignedInstruction(int instruction, int value) {
-        bytecode.addUnsignedImmediateInstruction(instruction, instruction + 1, value);
+        bytecode.addUnsigned(instruction, instruction + 1, value);
     }
 
     /**
