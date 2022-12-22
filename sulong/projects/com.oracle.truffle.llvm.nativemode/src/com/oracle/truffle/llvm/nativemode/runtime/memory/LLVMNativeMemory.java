@@ -268,9 +268,9 @@ public final class LLVMNativeMemory extends LLVMHandleMemoryBase {
     public LLVM128BitFloat get128BitFloat(Node location, LLVMNativePointer addr){
         //load two long from the location.
         long currentAddressPtr = addr.asNative();
-        long expSignFraction = getI64(location, currentAddressPtr);
-        currentAddressPtr += Double.BYTES;
         long fraction = getI64(location, currentAddressPtr);
+        currentAddressPtr += Long.BYTES;
+        long expSignFraction = getI64(location, currentAddressPtr);
         return new LLVM128BitFloat(expSignFraction, fraction);
     }
 
@@ -350,9 +350,9 @@ public final class LLVMNativeMemory extends LLVMHandleMemoryBase {
     @Override
     public void put128BitFloat(Node location, long ptr, LLVM128BitFloat value) {
         long currentptr = ptr;
-        putI64(location, currentptr, value.getExpSignFractionPart());
-        currentptr += Double.BYTES;
         putI64(location, currentptr, value.getFractionPart());
+        currentptr += Double.BYTES;
+        putI64(location, currentptr, value.getExpSignFractionPart());
     }
 
     @Override

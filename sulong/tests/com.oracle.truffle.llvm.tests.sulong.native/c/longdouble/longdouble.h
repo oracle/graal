@@ -76,6 +76,9 @@
 #define LONGDOUBLE_SIZE sizeof(long double)
 #endif
 
+#define LONG_SIZE sizeof(long)
+#define DOUBLE_SIZE sizeof(double)
+
 static void printfp(const char *msg, long double *x) {
     uint8_t *p = (uint8_t *) x;
     size_t i;
@@ -84,6 +87,21 @@ static void printfp(const char *msg, long double *x) {
     for (i = 0; i < LONGDOUBLE_SIZE; i++)
         printf(" %02x", *(p++));
     printf("\n");
+}
+
+void printBits(size_t const size, void const * const ptr)
+{
+    unsigned char *b = (unsigned char*) ptr;
+    unsigned char byte;
+    int i, j;
+    
+    for (i = size-1; i >= 0; i--) {
+        for (j = 7; j >= 0; j--) {
+            byte = (b[i] >> j) & 1;
+            printf("%u", byte);
+        }
+    }
+    puts("");
 }
 
 #endif

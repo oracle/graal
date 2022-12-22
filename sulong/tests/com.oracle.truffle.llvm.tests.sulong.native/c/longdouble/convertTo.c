@@ -40,6 +40,7 @@ void toLong(long double n) {
 
     long m = (long) n;
     printf("to long %ld\n", m);
+    printBits(sizeof(m), &m);
 }
 
 __attribute__((noinline))
@@ -47,6 +48,7 @@ void toDouble(long double n){
 
     double m = (double) n;
     printf("to double %lf\n", m);
+    printBits(sizeof(m), &m);
 }
 
 
@@ -71,7 +73,7 @@ int main(void){
     printfp("from long double", &m);
     toLong(m);
     toDouble(m);
-    toInt(m);
+    //toInt(m);
     //fromFloat(5.0);
     return 0;
 }
