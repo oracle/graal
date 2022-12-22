@@ -57,46 +57,49 @@ final class PanamaType {
 
     final MemoryLayout nativeLayout;
     final Class<?> javaType;
+    final ConvertNode convertNode;
 
     PanamaType(NativeSimpleType type) {
         switch(type) {
             case VOID:
                 nativeLayout = null;
                 javaType = void.class;
-                break;
+                throw CompilerDirectives.shouldNotReachHere("OBJ not imple");
             case UINT8:
             case SINT8:
                 nativeLayout = ValueLayout.JAVA_BYTE;
                 javaType = byte.class;
+                convertNode = PanamaTypeFactory.ToSINT8NodeFactory.create();
                 break;
             case UINT16:
             case SINT16:
                 nativeLayout = ValueLayout.JAVA_SHORT;
                 javaType = short.class;
-                break;
+                throw CompilerDirectives.shouldNotReachHere("OBJ not imple");
             case UINT32:
             case SINT32:
                 nativeLayout = ValueLayout.JAVA_INT;
                 javaType = int.class;
+                convertNode = PanamaTypeFactory.ToUINT32NodeFactory.create();
                 break;
             case UINT64:
             case SINT64:
             case POINTER:
                 nativeLayout = ValueLayout.JAVA_LONG;
                 javaType = long.class;
-                break;
+                throw CompilerDirectives.shouldNotReachHere("OBJ not imple");
             case FLOAT:
                 nativeLayout = ValueLayout.JAVA_FLOAT;
                 javaType = float.class;
-                break;
+                throw CompilerDirectives.shouldNotReachHere("OBJ not imple");
             case DOUBLE:
                 nativeLayout = ValueLayout.JAVA_DOUBLE;
                 javaType = double.class;
-                break;
+                throw CompilerDirectives.shouldNotReachHere("OBJ not imple");
             case STRING:
                 javaType = String.class;
                 nativeLayout = ValueLayout.ADDRESS;
-                break;
+                throw CompilerDirectives.shouldNotReachHere("OBJ not imple");
             case OBJECT:
                 javaType = Object.class;
                 // TODO
@@ -128,7 +131,21 @@ final class PanamaType {
         }
     }
 
+    @GenerateNodeFactory
+    static abstract class ToUINT32Node extends ConvertNode {
+
+        @Specialization(limit = "3")
+        int doConvert(Object value,
+                       @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
+            try {
+                return interop.asInt(value);
+            } catch (UnsupportedMessageException ex) {
+                throw UnsupportedTypeException.create(new Object[]{value});
+            }
+        }
+    }
+
     public ArgumentNode createArgumentNode() {
-        return ArgumentNodeGen.create(this);
+        return new ArgumentNode(this);
     }
 }

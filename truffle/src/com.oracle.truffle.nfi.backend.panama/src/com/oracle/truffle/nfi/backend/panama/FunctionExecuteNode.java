@@ -134,7 +134,6 @@ abstract class FunctionExecuteNode extends Node {
             assert argNodes.length == types.length;
 
             for (int i = 0; i < argNodes.length; i++) {
-                System.out.println(args[i]);
                 try {
                     args[i] = argNodes[i].execute(args[i]);
                 } catch (UnsupportedTypeException e) {
