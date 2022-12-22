@@ -38,6 +38,7 @@ import java.util.stream.Stream;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 
+import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
@@ -50,45 +51,54 @@ public final class ConfigurationFiles {
 
     public static final class Options {
         @Option(help = "Directories directly containing configuration files for dynamic features at runtime.", type = OptionType.User)//
-        static final HostedOptionKey<LocatableMultiOptionValue.Strings> ConfigurationFileDirectories = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+        static final HostedOptionKey<LocatableMultiOptionValue.Strings> ConfigurationFileDirectories = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "Resource path above configuration resources for dynamic features at runtime.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ConfigurationResourceRoots = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ConfigurationResourceRoots = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "file:doc-files/ReflectionConfigurationFilesHelp.txt", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> ReflectionConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.commaSeparated());
+        @BundleMember(role = BundleMember.Role.Input)//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> ReflectionConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
         @Option(help = "Resources describing program elements to be made available for reflection (see ReflectionConfigurationFiles).", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ReflectionConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ReflectionConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "file:doc-files/ProxyConfigurationFilesHelp.txt", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> DynamicProxyConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.commaSeparated());
+        @BundleMember(role = BundleMember.Role.Input)//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> DynamicProxyConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
         @Option(help = "Resources describing program elements to be made available for reflection (see ProxyConfigurationFiles).", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DynamicProxyConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DynamicProxyConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "file:doc-files/SerializationConfigurationFilesHelp.txt", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> SerializationConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.commaSeparated());
+        @BundleMember(role = BundleMember.Role.Input)//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> SerializationConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
         @Option(help = "Resources describing program elements to be made available for serialization (see SerializationConfigurationFiles).", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SerializationConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SerializationConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "file:doc-files/SerializationConfigurationFilesHelp.txt", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> SerializationDenyConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.commaSeparated());
+        @BundleMember(role = BundleMember.Role.Input)//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> SerializationDenyConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
         @Option(help = "Resources describing program elements that must not be made available for serialization.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SerializationDenyConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SerializationDenyConfigurationResources = new HostedOptionKey<>(
+                        LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "Files describing Java resources to be included in the image.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> ResourceConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.commaSeparated());
+        @BundleMember(role = BundleMember.Role.Input)//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> ResourceConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
         @Option(help = "Resources describing Java resources to be included in the image.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ResourceConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ResourceConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "Files describing program elements to be made accessible via JNI (for syntax, see ReflectionConfigurationFiles)", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> JNIConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.commaSeparated());
+        @BundleMember(role = BundleMember.Role.Input)//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> JNIConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
         @Option(help = "Resources describing program elements to be made accessible via JNI (see JNIConfigurationFiles).", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> JNIConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> JNIConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "Files describing predefined classes that can be loaded at runtime.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> PredefinedClassesConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.commaSeparated());
+        @BundleMember(role = BundleMember.Role.Input)//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> PredefinedClassesConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
         @Option(help = "Resources describing predefined classes that can be loaded at runtime.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> PredefinedClassesConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> PredefinedClassesConfigurationResources = new HostedOptionKey<>(
+                        LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "Causes unknown attributes in configuration objects to abort the image build instead of emitting a warning.")//
         public static final HostedOptionKey<Boolean> StrictConfiguration = new HostedOptionKey<>(false);

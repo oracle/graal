@@ -50,6 +50,7 @@ import org.graalvm.util.json.JSONParserException;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.util.json.JsonPrinter;
 import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.util.ClassUtil;
@@ -85,6 +86,7 @@ final class BundleSupport {
     final Path classPathDir;
     final Path modulePathDir;
     final Path auxiliaryDir;
+    final Path outputDir;
 
     Map<Path, Path> pathCanonicalizations = new HashMap<>();
     Map<Path, Path> pathSubstitutions = new HashMap<>();
@@ -92,6 +94,8 @@ final class BundleSupport {
     private final List<String> buildArgs;
 
     private static final String bundleTempDirPrefix = "bundleRoot-";
+
+    Path bundleFile;
 
     static BundleSupport create(NativeImage nativeImage, String bundleArg, NativeImage.ArgumentQueue args) {
         if (!nativeImage.userConfigProperties.isEmpty()) {
@@ -137,6 +141,7 @@ final class BundleSupport {
         } else {
             bundleSupport = new BundleSupport(nativeImage, bundleStatus);
         }
+        bundleSupport.bundleFile = nativeImage.config.getWorkingDirectory().resolve("unnamed.nib");
         return bundleSupport;
     }
 
@@ -153,6 +158,7 @@ final class BundleSupport {
             Path classesDir = inputDir.resolve("classes");
             classPathDir = Files.createDirectories(classesDir.resolve("cp"));
             modulePathDir = Files.createDirectories(classesDir.resolve("p"));
+            outputDir = Files.createDirectories(rootDir.resolve("output"));
         } catch (IOException e) {
             throw NativeImage.showError("Unable to create bundle directory layout", e);
         }
@@ -200,6 +206,7 @@ final class BundleSupport {
         Path classesDir = inputDir.resolve("classes");
         classPathDir = classesDir.resolve("cp");
         modulePathDir = classesDir.resolve("p");
+        outputDir = rootDir.resolve("output");
 
         Path pathCanonicalizationsFile = stageDir.resolve("path_canonicalizations.json");
         try (Reader reader = Files.newBufferedReader(pathCanonicalizationsFile)) {
@@ -252,8 +259,19 @@ final class BundleSupport {
         return after;
     }
 
-    Path substituteAuxiliaryPath(Path origPath) {
-        return substitutePath(origPath, auxiliaryDir);
+    Path substituteAuxiliaryPath(Path origPath, BundleMember.Role bundleMemberRole) {
+        Path destinationDir;
+        switch (bundleMemberRole) {
+            case Input:
+                destinationDir = auxiliaryDir;
+                break;
+            case Output:
+                destinationDir = outputDir;
+                break;
+            default:
+                return origPath;
+        }
+        return substitutePath(origPath, destinationDir);
     }
 
     Path substituteClassPath(Path origPath) {
@@ -356,15 +374,18 @@ final class BundleSupport {
             throw new BundlePathSubstitutionError("Failed to create a unique path-name in " + destinationDir + ". " + substitutedPath + " already exists", origPath);
         }
 
-        if (Files.isDirectory(origPath)) {
-            try (Stream<Path> walk = Files.walk(origPath)) {
-                walk.forEach(sourcePath -> copyFile(sourcePath, substitutedPath.resolve(origPath.relativize(sourcePath))));
-            } catch (IOException e) {
-                throw new BundlePathSubstitutionError("Failed to iterate through directory " + origPath, origPath, e);
+        if (!destinationDir.startsWith(outputDir)) {
+            if (Files.isDirectory(origPath)) {
+                try (Stream<Path> walk = Files.walk(origPath)) {
+                    walk.forEach(sourcePath -> copyFile(sourcePath, substitutedPath.resolve(origPath.relativize(sourcePath))));
+                } catch (IOException e) {
+                    throw new BundlePathSubstitutionError("Failed to iterate through directory " + origPath, origPath, e);
+                }
+            } else {
+                copyFile(origPath, substitutedPath);
             }
-        } else {
-            copyFile(origPath, substitutedPath);
         }
+
         Path relativeSubstitutedPath = rootDir.relativize(substitutedPath);
         if (nativeImage.isVerbose()) {
             System.out.println("RecordSubstitution src: " + origPath + ", dst: " + relativeSubstitutedPath);
@@ -388,7 +409,6 @@ final class BundleSupport {
         if (!status.loadBundle) {
             writeBundle();
         }
-
         nativeImage.deleteAllFiles(rootDir);
     }
 
@@ -416,7 +436,6 @@ final class BundleSupport {
             throw NativeImage.showError("Failed to write bundle-file " + pathSubstitutionsFile, e);
         }
 
-        Path bundleFile = Path.of(nativeImage.imagePath).resolve(nativeImage.imageName + ".nib");
         try (JarOutputStream jarOutStream = new JarOutputStream(Files.newOutputStream(bundleFile), new Manifest())) {
             try (Stream<Path> walk = Files.walk(rootDir)) {
                 walk.forEach(bundleEntry -> {

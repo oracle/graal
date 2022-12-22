@@ -77,6 +77,7 @@ import com.oracle.svm.core.FallbackExecutor.Options;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ClasspathUtils;
@@ -268,12 +269,6 @@ public class NativeImage {
     private long imageBuilderPid = -1;
 
     BundleSupport bundleSupport;
-
-    void replaySupportShutdown() {
-        if (bundleSupport != null) {
-            bundleSupport.shutdown();
-        }
-    }
 
     protected static class BuildConfiguration {
 
@@ -651,7 +646,7 @@ public class NativeImage {
         buildArgs.add(oH + "+" + SubstrateOptions.ParseRuntimeOptions.getName());
         Path imagePathPath;
         try {
-            imagePathPath = canonicalize(Paths.get(imagePath));
+            imagePathPath = canonicalize(imagePath);
         } catch (NativeImage.NativeImageError | InvalidPathException e) {
             throw showError("The given " + oHPath + imagePath + " argument does not specify a valid path", e);
         }
@@ -1044,7 +1039,6 @@ public class NativeImage {
         imageBuilderJavaArgs.addAll(getAgentArguments());
 
         mainClass = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHClass);
-        imagePath = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHPath);
         boolean buildExecutable = imageBuilderArgs.stream().noneMatch(arg -> arg.contains(oHEnableSharedLibraryFlag));
         boolean listModules = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(oH + "+" + "ListModules"));
         boolean printFlags = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags) || arg.contains(enablePrintFlagsWithExtraHelp));
@@ -1111,7 +1105,34 @@ public class NativeImage {
             }
         }
 
-        imageName = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHName);
+        ArgumentEntry imageNameEntry = getHostedOptionFinalArgument(imageBuilderArgs, oHName).orElseThrow();
+        imageName = imageNameEntry.value;
+        ArgumentEntry imagePathEntry = getHostedOptionFinalArgument(imageBuilderArgs, oHPath).orElseThrow();
+        imagePath = Path.of(imagePathEntry.value);
+        Path imageNamePath = Path.of(imageName);
+        Path imageNamePathParent = imageNamePath.getParent();
+        if (imageNamePathParent != null) {
+            /* Readjust imageName & imagePath so that imageName is just a simple fileName */
+            imageName = imageNamePath.getFileName().toString();
+            if (!imageNamePathParent.isAbsolute()) {
+                imageNamePathParent = imagePath.resolve(imageNamePathParent);
+            }
+            if (!Files.isDirectory(imageNamePathParent)) {
+                throw NativeImage.showError("Writing image to non-existent directory " + imageNamePathParent + " is not allowed.");
+            }
+            if (!Files.isWritable(imageNamePathParent)) {
+                throw NativeImage.showError("Writing image to directory without write access " + imageNamePathParent + " is not possible.");
+            }
+            imagePath = imageNamePathParent;
+            /* Update arguments passed to builder */
+            updateArgumentEntryValue(imageBuilderArgs, imageNameEntry, imageName);
+            updateArgumentEntryValue(imageBuilderArgs, imagePathEntry, imagePath.toString());
+        }
+        if (useBundle()) {
+            bundleSupport.bundleFile = imagePath.resolve(imageName + ".nib");
+            imagePath = bundleSupport.substituteAuxiliaryPath(imagePath, BundleMember.Role.Output);
+            updateArgumentEntryValue(imageBuilderArgs, imagePathEntry, imagePath.toString());
+        }
 
         if (!leftoverArgs.isEmpty()) {
             String prefix = "Unrecognized option" + (leftoverArgs.size() == 1 ? ": " : "s: ");
@@ -1147,28 +1168,49 @@ public class NativeImage {
         return buildImage(finalImageBuilderJavaArgs, imageBuilderClasspath, imageBuilderModulePath, imageBuilderArgs, finalImageClasspath, finalImageModulePath);
     }
 
+    private static void updateArgumentEntryValue(List<String> argList, ArgumentEntry listEntry, String newValue) {
+        APIOptionHandler.BuilderArgumentParts argParts = APIOptionHandler.BuilderArgumentParts.from(argList.get(listEntry.index));
+        argParts.optionValue = newValue;
+        argList.set(listEntry.index, argParts.toString());
+    }
+
     private static String getLocationAgnosticArgPrefix(String argPrefix) {
         VMError.guarantee(argPrefix.startsWith(oH) && argPrefix.endsWith("="), "argPrefix has to be a hosted option that ends with \"=\"");
         return "^" + argPrefix.substring(0, argPrefix.length() - 1) + "(@[^=]*)?" + argPrefix.substring(argPrefix.length() - 1);
     }
 
-    protected static String getHostedOptionFinalArgumentValue(List<String> args, String argPrefix) {
-        List<String> values = getHostedOptionArgumentValues(args, argPrefix);
-        return values.isEmpty() ? null : values.get(values.size() - 1);
+    private static String getHostedOptionFinalArgumentValue(List<String> args, String argPrefix) {
+        return getHostedOptionFinalArgument(args, argPrefix).map(entry -> entry.value).orElse(null);
     }
 
-    protected static List<String> getHostedOptionArgumentValues(List<String> args, String argPrefix) {
-        ArrayList<String> values = new ArrayList<>();
+    private static Optional<ArgumentEntry> getHostedOptionFinalArgument(List<String> args, String argPrefix) {
+        List<ArgumentEntry> values = getHostedOptionArgumentValues(args, argPrefix);
+        return values.isEmpty() ? Optional.empty() : Optional.of(values.get(values.size() - 1));
+    }
+
+    private static List<ArgumentEntry> getHostedOptionArgumentValues(List<String> args, String argPrefix) {
+        ArrayList<ArgumentEntry> values = new ArrayList<>();
         String locationAgnosticArgPrefix = getLocationAgnosticArgPrefix(argPrefix);
         Pattern pattern = Pattern.compile(locationAgnosticArgPrefix);
 
-        for (String arg : args) {
+        for (int i = 0; i < args.size(); i++) {
+            String arg = args.get(i);
             Matcher matcher = pattern.matcher(arg);
             if (matcher.find()) {
-                values.add(arg.substring(matcher.group().length()));
+                values.add(new ArgumentEntry(i, arg.substring(matcher.group().length())));
             }
         }
         return values;
+    }
+
+    private static final class ArgumentEntry {
+        private final int index;
+        private final String value;
+
+        private ArgumentEntry(int index, String value) {
+            this.index = index;
+            this.value = value;
+        }
     }
 
     private boolean shouldAddCWDToCP() {
@@ -1189,8 +1231,8 @@ public class NativeImage {
     private List<String> getAgentArguments() {
         List<String> args = new ArrayList<>();
         String agentOptions = "";
-        List<String> traceClassInitializationOpts = getHostedOptionArgumentValues(imageBuilderArgs, oHTraceClassInitialization);
-        List<String> traceObjectInstantiationOpts = getHostedOptionArgumentValues(imageBuilderArgs, oHTraceObjectInstantiation);
+        List<ArgumentEntry> traceClassInitializationOpts = getHostedOptionArgumentValues(imageBuilderArgs, oHTraceClassInitialization);
+        List<ArgumentEntry> traceObjectInstantiationOpts = getHostedOptionArgumentValues(imageBuilderArgs, oHTraceObjectInstantiation);
         if (!traceClassInitializationOpts.isEmpty()) {
             agentOptions = getAgentOptions(traceClassInitializationOpts, "c");
         }
@@ -1212,8 +1254,8 @@ public class NativeImage {
         return args;
     }
 
-    private static String getAgentOptions(List<String> options, String optionName) {
-        return options.stream().flatMap(optValue -> Arrays.stream(optValue.split(","))).map(clazz -> optionName + "=" + clazz).collect(Collectors.joining(","));
+    private static String getAgentOptions(List<ArgumentEntry> options, String optionName) {
+        return options.stream().flatMap(optValue -> Arrays.stream(optValue.value.split(","))).map(clazz -> optionName + "=" + clazz).collect(Collectors.joining(","));
     }
 
     private String targetPlatform = null;
@@ -1254,7 +1296,7 @@ public class NativeImage {
 
     String mainClass;
     String imageName;
-    String imagePath;
+    Path imagePath;
 
     protected static List<String> createImageBuilderArgs(List<String> imageArgs, List<Path> imagecp, List<Path> imagemp) {
         List<String> result = new ArrayList<>();
@@ -1332,25 +1374,12 @@ public class NativeImage {
             arguments.addAll(Arrays.asList(SubstrateOptions.WATCHPID_PREFIX, "" + ProcessProperties.getProcessID()));
         }
 
-        boolean useReplay = bundleSupport != null;
-        if (useReplay) {
-            Path imageNamePath = Path.of(imageName);
-            if (imageNamePath.getParent() != null) {
-                throw NativeImage.showError("Replay-bundle support can only be used with simple output image-name. Use '" + imageNamePath.getFileName() + "' instead of '" + imageNamePath + "'.");
-            }
-            if (!Path.of(imagePath).equals(config.getWorkingDirectory())) {
-                /* Allow bundle write to succeed in working directory */
-                imagePath = config.getWorkingDirectory().toString();
-
-                throw NativeImage.showError("Replay-bundle support can only be used with default image output directory. Ensure '" + oHPath + "<value>' is not explicitly set.");
-            }
-        }
-        Function<Path, Path> substituteAuxiliaryPath = useReplay ? bundleSupport::substituteAuxiliaryPath : Function.identity();
+        BiFunction<Path, BundleMember.Role, Path> substituteAuxiliaryPath = useBundle() ? bundleSupport::substituteAuxiliaryPath : (a, b) -> a;
         Function<String, String> imageArgsTransformer = rawArg -> apiOptionHandler.transformBuilderArgument(rawArg, substituteAuxiliaryPath);
         List<String> finalImageArgs = imageArgs.stream().map(imageArgsTransformer).collect(Collectors.toList());
-        Function<Path, Path> substituteClassPath = useReplay ? bundleSupport::substituteClassPath : Function.identity();
+        Function<Path, Path> substituteClassPath = useBundle() ? bundleSupport::substituteClassPath : Function.identity();
         List<Path> finalImageClassPath = imagecp.stream().map(substituteClassPath).collect(Collectors.toList());
-        Function<Path, Path> substituteModulePath = useReplay ? bundleSupport::substituteModulePath : Function.identity();
+        Function<Path, Path> substituteModulePath = useBundle() ? bundleSupport::substituteModulePath : Function.identity();
         List<Path> finalImageModulePath = imagemp.stream().map(substituteModulePath).collect(Collectors.toList());
         List<String> finalImageBuilderArgs = createImageBuilderArgs(finalImageArgs, finalImageClassPath, finalImageModulePath);
 
@@ -1372,7 +1401,7 @@ public class NativeImage {
             showVerboseMessage(isVerbose() || dryRun, "]");
         }
 
-        if (dryRun || useReplay && bundleSupport.status == BundleSupport.BundleStatus.prepare) {
+        if (dryRun || useBundle() && bundleSupport.status == BundleSupport.BundleStatus.prepare) {
             return ExitStatus.OK.getValue();
         }
 
@@ -1392,6 +1421,10 @@ public class NativeImage {
                 p.destroy();
             }
         }
+    }
+
+    boolean useBundle() {
+        return bundleSupport != null;
     }
 
     private static void sanitizeJVMEnvironment(Map<String, String> environment) {
@@ -1484,7 +1517,9 @@ public class NativeImage {
                         throw showError(message, null, exitStatusCode);
                 }
             } finally {
-                nativeImage.replaySupportShutdown();
+                if (nativeImage.useBundle()) {
+                    nativeImage.bundleSupport.shutdown();
+                }
             }
         }
     }

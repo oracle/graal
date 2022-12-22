@@ -33,6 +33,8 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.svm.common.option.MultiOptionValue;
+import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 
@@ -189,7 +191,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             args.poll();
             headArg = headArg.substring(1);
             Path origArgFile = Paths.get(headArg);
-            Path argFile = nativeImage.bundleSupport != null ? nativeImage.bundleSupport.substituteAuxiliaryPath(origArgFile) : origArgFile;
+            Path argFile = nativeImage.bundleSupport != null ? nativeImage.bundleSupport.substituteAuxiliaryPath(origArgFile, BundleMember.Role.Input) : origArgFile;
             NativeImage.NativeImageArgsProcessor processor = nativeImage.new NativeImageArgsProcessor(OptionOrigin.argFilePrefix + argFile);
             readArgFile(argFile).forEach(processor::accept);
             List<String> leftoverArgs = processor.apply(false);

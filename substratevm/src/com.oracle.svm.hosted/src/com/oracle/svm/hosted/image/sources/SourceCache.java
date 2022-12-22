@@ -68,7 +68,7 @@ public class SourceCache {
     /**
      * A list of all entries in the source search path specified by the user on the command line.
      */
-    protected static final List<String> sourcePathEntries = new ArrayList<>();
+    protected static final List<Path> sourcePathEntries = new ArrayList<>();
 
     /**
      * A list of root directories which may contain source files from which this cache can be
@@ -132,7 +132,7 @@ public class SourceCache {
         modulePathEntries.stream()
                         .forEach(modulePathEntry -> addGraalSourceRoot(modulePathEntry, true));
         sourcePathEntries.stream()
-                        .forEach(sourcePathEntry -> addGraalSourceRoot(Paths.get(sourcePathEntry), false));
+                        .forEach(sourcePathEntry -> addGraalSourceRoot(sourcePathEntry, false));
     }
 
     private void addGraalSourceRoot(Path sourcePath, boolean fromClassPath) {
@@ -187,7 +187,7 @@ public class SourceCache {
         modulePathEntries.stream()
                         .forEach(modulePathEntry -> addApplicationSourceRoot(modulePathEntry, true));
         sourcePathEntries.stream()
-                        .forEach(sourcePathEntry -> addApplicationSourceRoot(Paths.get(sourcePathEntry), false));
+                        .forEach(sourcePathEntry -> addApplicationSourceRoot(sourcePathEntry, false));
     }
 
     protected void addApplicationSourceRoot(Path sourceRoot, boolean fromClassPath) {
@@ -524,7 +524,7 @@ public class SourceCache {
      *
      * @param path The path to add.
      */
-    static void addSourcePathEntry(String path) {
+    static void addSourcePathEntry(Path path) {
         sourcePathEntries.add(path);
     }
 }
@@ -548,7 +548,7 @@ class SourceCacheFeature implements InternalFeature {
         }
         // also add any necessary source path entries
         if (SubstrateOptions.DebugInfoSourceSearchPath.getValue() != null) {
-            for (String searchPathEntry : SubstrateOptions.DebugInfoSourceSearchPath.getValue().values()) {
+            for (Path searchPathEntry : SubstrateOptions.DebugInfoSourceSearchPath.getValue().values()) {
                 SourceCache.addSourcePathEntry(searchPathEntry);
             }
         }

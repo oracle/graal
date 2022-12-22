@@ -60,6 +60,7 @@ import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
+import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
@@ -81,7 +82,7 @@ public class SubstrateOptions {
     @Option(help = "Preserve the local variable information for every Java source line to allow line-by-line stepping in the debugger. Allow the lookup of Java-level method information, e.g., in stack traces.")//
     public static final HostedOptionKey<Boolean> SourceLevelDebug = new HostedOptionKey<>(false);
     @Option(help = "Constrain debug info generation to the comma-separated list of package prefixes given to this option.")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SourceLevelDebugFilter = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SourceLevelDebugFilter = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     public static boolean parseOnce() {
         /*
@@ -271,10 +272,11 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> IncludeNodeSourcePositions = new HostedOptionKey<>(false);
 
     @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Paths> CLibraryPath = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.commaSeparated());
+    @BundleMember(role = BundleMember.Role.Input)//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Paths> CLibraryPath = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
 
     @Option(help = "Path passed to the linker as the -rpath (list of comma-separated directories)")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkerRPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkerRPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
     public static final HostedOptionKey<String> Path = new HostedOptionKey<>(null);
@@ -346,11 +348,11 @@ public class SubstrateOptions {
 
     @APIOption(name = "trace-class-initialization")//
     @Option(help = "Comma-separated list of fully-qualified class names that class initialization is traced for.")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> TraceClassInitialization = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> TraceClassInitialization = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @APIOption(name = "trace-object-instantiation")//
     @Option(help = "Comma-separated list of fully-qualified class names that object instantiation is traced for.")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> TraceObjectInstantiation = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> TraceObjectInstantiation = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @Option(help = "Trace all native tool invocations as part of image building", type = User)//
     public static final HostedOptionKey<Boolean> TraceNativeToolUsage = new HostedOptionKey<>(false);
@@ -365,10 +367,10 @@ public class SubstrateOptions {
     @APIOption(name = "enable-https", fixedValue = "https", customHelp = "enable https support in the generated image")//
     @APIOption(name = "enable-url-protocols")//
     @Option(help = "List of comma separated URL protocols to enable.")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableURLProtocols = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableURLProtocols = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @Option(help = "List of comma separated URL protocols that must never be included.")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DisableURLProtocols = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DisableURLProtocols = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @SuppressWarnings("unused") //
     @APIOption(name = "enable-all-security-services")//
@@ -485,7 +487,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> AOTTrivialInline = new HostedOptionKey<>(true);
 
     @Option(help = "file:doc-files/NeverInlineHelp.txt", type = OptionType.Debug)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> NeverInline = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> NeverInline = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
     @Option(help = "Maximum number of nodes in a method so that it is considered trivial.")//
     public static final HostedOptionKey<Integer> MaxNodesInTrivialMethod = new HostedOptionKey<>(20);
@@ -506,7 +508,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> UseCompressedFrameEncodings = new HostedOptionKey<>(true);
 
     @Option(help = "Report error if <typename>[:<UsageKind>{,<UsageKind>}] is discovered during analysis (valid values for UsageKind: InHeap, Allocated, Reachable).", type = OptionType.Debug)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ReportAnalysisForbiddenType = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ReportAnalysisForbiddenType = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
     @Option(help = "Backend used by the compiler", type = OptionType.User)//
     public static final HostedOptionKey<String> CompilerBackend = new HostedOptionKey<>("lir") {
@@ -573,7 +575,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<String> CCompilerPath = new HostedOptionKey<>(null);
     @APIOption(name = "native-compiler-options")//
     @Option(help = "Provide custom C compiler option used for query code compilation.", type = OptionType.User)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CCompilerOption = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CCompilerOption = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
     @Option(help = "Use strict checks when performing query code compilation.", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> StrictQueryCodeCompilation = new HostedOptionKey<>(true);
@@ -635,7 +637,7 @@ public class SubstrateOptions {
     }
 
     @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DebugInfoSourceSearchPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Paths> DebugInfoSourceSearchPath = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
 
     @Option(help = "Directory under which to create source file cache for Application or GraalVM classes")//
     public static final HostedOptionKey<String> DebugInfoSourceCacheRoot = new HostedOptionKey<>("sources");
