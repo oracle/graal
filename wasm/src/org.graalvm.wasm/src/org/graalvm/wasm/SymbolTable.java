@@ -190,6 +190,9 @@ public abstract class SymbolTable {
          */
         public final long maximumSize;
 
+        /**
+         * If the memory uses index type 64.
+         */
         public final boolean indexType64;
 
         public MemoryInfo(long initialSize, long maximumSize, boolean indexType64) {
@@ -291,6 +294,9 @@ public abstract class SymbolTable {
      */
     @CompilationFinal(dimensions = 1) private byte[] globalTypes;
 
+    /**
+     * The values or indices used for initializing globals.
+     */
     @CompilationFinal(dimensions = 1) private long[] globalInitializers;
 
     /**
@@ -353,12 +359,26 @@ public abstract class SymbolTable {
 
     @CompilationFinal private int elemSegmentCount;
 
+    /**
+     * The offsets of the data instances in the bytecode.
+     */
     @CompilationFinal(dimensions = 1) private int[] dataInstances;
+
+    /**
+     * The offsets of the elem instances in the bytecode.
+     */
     @CompilationFinal(dimensions = 1) private long[] elemInstances;
 
+    /**
+     * The offset of the code entries in the bytecode.
+     */
     @CompilationFinal(dimensions = 1) private int[] codeEntries;
     @CompilationFinal private boolean dataCountExists;
     @CompilationFinal private int dataSegmentCount;
+
+    /**
+     * Offset representing dropped data instances.
+     */
     @CompilationFinal private int droppedDataInstanceOffset;
 
     @CompilationFinal private int codeEntryCount;

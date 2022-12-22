@@ -73,6 +73,7 @@ import org.graalvm.wasm.globals.DefaultWasmGlobal;
 import org.graalvm.wasm.globals.ExportedWasmGlobal;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryFactory;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleContext;
@@ -81,7 +82,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import org.graalvm.wasm.memory.WasmMemoryFactory;
 
 public class WebAssembly extends Dictionary {
     private final WasmContext currentContext;

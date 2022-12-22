@@ -107,6 +107,9 @@ public class RuntimeState {
      */
     @CompilationFinal(dimensions = 0) private int[] dataInstances;
 
+    /**
+     * Offset representing an already dropped data instance.
+     */
     private final int droppedDataInstanceOffset;
 
     @CompilationFinal private Linker.LinkState linkState;
