@@ -212,6 +212,7 @@ suite = {
         "org.graalvm.wasm",
         "JOL",
       ],
+      "workingSets": "WebAssembly",
       "javaCompliance": "11+",
       "defaultBuild": False,
     }

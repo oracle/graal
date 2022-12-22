@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,56 +38,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package org.graalvm.wasm.memory;
 
-package org.graalvm.wasm.parser.validation.collections.entries;
+import org.graalvm.wasm.constants.Sizes;
 
-import org.graalvm.wasm.parser.validation.collections.ExtraDataFormatHelper;
-import org.graalvm.wasm.util.ExtraDataUtil;
-
-/**
- * Represents a call entry in the extra data list.
- * <p>
- * Compact format:
- * <p>
- * <ul>
- * <li>compactFormatIndicator (1-bit)
- * <li>nodeIndex (unsigned 15-bit)
- * <li>unused (16-bit)
- * </ul>
- * <p>
- * Extended format:
- * <p>
- * <ul>
- * <li>extendedFormatIndicator (1-bit)
- * <li>nodeIndex (unsigned 31-bit)
- * </ul>
- */
-public class CallEntry extends CallTarget {
-    public CallEntry(int nodeIndex, ExtraDataFormatHelper formatHelper) {
-        super(nodeIndex, formatHelper);
-    }
-
-    @Override
-    protected int generateCompactData(int[] extraData, int entryOffset) {
-        int offset = entryOffset;
-        offset += ExtraDataUtil.addCompactCallTarget(extraData, offset, getNodeIndex());
-        return offset;
-    }
-
-    @Override
-    protected int generateExtendedData(int[] extraData, int entryOffset) {
-        int offset = entryOffset;
-        offset += ExtraDataUtil.addExtendedCallTarget(extraData, offset, getNodeIndex());
-        return offset;
-    }
-
-    @Override
-    public int compactLength() {
-        return ExtraDataUtil.COMPACT_CALL_TARGET_SIZE;
-    }
-
-    @Override
-    public int extendedLength() {
-        return ExtraDataUtil.EXTENDED_CALL_TARGET_SIZE;
+public class WasmMemoryFactory {
+    public static WasmMemory createMemory(long declaredMinSize, long declaredMaxSize, long maxAllowedSize, boolean indexType64, boolean unsafeMemory) {
+        if (unsafeMemory) {
+            if (maxAllowedSize > Sizes.MAX_MEMORY_INSTANCE_SIZE) {
+                return new NativeWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64);
+            } else {
+                return new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64);
+            }
+        } else {
+            assert maxAllowedSize <= Sizes.MAX_MEMORY_INSTANCE_SIZE;
+            return new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64);
+        }
     }
 }

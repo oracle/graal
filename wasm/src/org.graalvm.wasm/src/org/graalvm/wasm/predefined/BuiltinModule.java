@@ -144,8 +144,8 @@ public abstract class BuiltinModule {
         instance.symbolTable().exportMemory(memoryName);
     }
 
-    protected void defineMemory(WasmInstance instance, String memoryName, int initSize, int maxSize) {
-        instance.symbolTable().allocateMemory(initSize, maxSize);
+    protected void defineMemory(WasmInstance instance, String memoryName, int initSize, int maxSize, boolean is64Bit) {
+        instance.symbolTable().allocateMemory(initSize, maxSize, is64Bit);
         instance.symbolTable().exportMemory(memoryName);
     }
 
@@ -155,8 +155,8 @@ public abstract class BuiltinModule {
         instance.symbolTable().exportFunction(function.index(), exportName);
     }
 
-    protected void importMemory(WasmInstance instance, String importModuleName, String memoryName, int initSize, int maxSize) {
-        instance.symbolTable().importMemory(importModuleName, memoryName, initSize, maxSize);
+    protected void importMemory(WasmInstance instance, String importModuleName, String memoryName, int initSize, long maxSize, boolean is64Bit) {
+        instance.symbolTable().importMemory(importModuleName, memoryName, initSize, maxSize, is64Bit);
     }
 
     protected byte[] types(byte... args) {

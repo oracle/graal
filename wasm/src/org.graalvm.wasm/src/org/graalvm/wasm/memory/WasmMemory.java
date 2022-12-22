@@ -40,7 +40,9 @@
  */
 package org.graalvm.wasm.memory;
 
-import static java.lang.Integer.compareUnsigned;
+import static java.lang.Long.compareUnsigned;
+import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_DECLARATION_SIZE;
+import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_INSTANCE_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_INSTANCE_SIZE;
 
@@ -78,17 +80,17 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     /**
      * @see #declaredMinSize()
      */
-    protected final int declaredMinSize;
+    protected final long declaredMinSize;
 
     /**
      * @see #declaredMaxSize()
      */
-    protected final int declaredMaxSize;
+    protected final long declaredMaxSize;
 
     /**
      * @see #minSize()
      */
-    protected int currentMinSize;
+    protected long currentMinSize;
 
     /**
      * The maximum practical size of this memory instance (measured in number of
@@ -100,33 +102,39 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * <p>
      * This is different from {@link #declaredMaxSize()}, which can be higher.
      */
-    protected final int maxAllowedSize;
+    protected final long maxAllowedSize;
 
     /**
      * Optional grow callback to notify the embedder .
      */
     private Object growCallback;
 
-    protected WasmMemory(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize) {
+    /**
+     * @see #hasIndexType64()
+     */
+    protected final boolean indexType64;
+
+    protected WasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64) {
         assert compareUnsigned(declaredMinSize, initialSize) <= 0;
         assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
         assert compareUnsigned(maxAllowedSize, declaredMaxSize) <= 0;
-        assert compareUnsigned(maxAllowedSize, MAX_MEMORY_INSTANCE_SIZE) <= 0;
-        assert compareUnsigned(declaredMaxSize, MAX_MEMORY_DECLARATION_SIZE) <= 0;
+        assert indexType64 || compareUnsigned(maxAllowedSize, MAX_MEMORY_INSTANCE_SIZE) <= 0;
+        assert indexType64 || compareUnsigned(declaredMaxSize, MAX_MEMORY_DECLARATION_SIZE) <= 0;
+        assert !indexType64 || compareUnsigned(maxAllowedSize, MAX_MEMORY_64_INSTANCE_SIZE) <= 0;
+        assert !indexType64 || compareUnsigned(declaredMaxSize, MAX_MEMORY_64_DECLARATION_SIZE) <= 0;
 
         this.declaredMinSize = declaredMinSize;
         this.declaredMaxSize = declaredMaxSize;
         this.currentMinSize = declaredMinSize;
         this.maxAllowedSize = maxAllowedSize;
+        this.indexType64 = indexType64;
     }
-
-    public abstract void copy(Node node, int src, int dst, int n);
 
     /**
      * The current size of this memory instance (measured in number of {@link Sizes#MEMORY_PAGE_SIZE
      * pages}).
      */
-    public abstract int size();
+    public abstract long size();
 
     /**
      * The current size of this memory instance (measured in bytes).
@@ -139,7 +147,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * <p>
      * This is different from the current minimum size, which can be larger.
      */
-    public final int declaredMinSize() {
+    public final long declaredMinSize() {
         return declaredMinSize;
     }
 
@@ -152,29 +160,36 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * <p>
      * This is different from the internal maximum allowed size, which can be lower.
      */
-    public final int declaredMaxSize() {
+    public final long declaredMaxSize() {
         return declaredMaxSize;
     }
 
     /**
      * The current minimum size of the memory (measured in number of {@link Sizes#MEMORY_PAGE_SIZE
-     * pages}). The size can change based on calls to {@link #grow(int)}.
+     * pages}). The size can change based on calls to {@link #grow(long)}.
      * <p>
      * This is a lower bound on this memory's size. This memory can only be imported with a lower or
      * equal minimum size.
      */
-    public final int minSize() {
+    public final long minSize() {
         return currentMinSize;
     }
 
-    public abstract boolean grow(int extraPageSize);
+    /**
+     * @return Whether the index type (addressing mode) is 64-bit or 32-bit.
+     */
+    public final boolean hasIndexType64() {
+        return indexType64;
+    }
+
+    public abstract boolean grow(long extraPageSize);
 
     /**
      * Shrinks this memory's size to its {@link #declaredMinSize()} initial size}, and sets all
      * bytes to 0.
      * <p>
      * Note: this does not restore content from data section. For this, use
-     * {@link org.graalvm.wasm.BinaryParser#resetMemoryState}.
+     * {@link org.graalvm.wasm.parser.bytecode.BytecodeParser#resetMemoryState}.
      */
     public abstract void reset();
 
@@ -229,33 +244,50 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     public abstract WasmMemory duplicate();
 
     /**
-     * Initializes the content of the memory based on the given data instance.
-     * 
-     * @param dataInstance The source data instance that should be copied to the memory
+     * Initializes the content of a byte array based memory with the given data instance.
+     *
+     * @param source The source data instance that should be copied to the memory
      * @param sourceOffset The offset in the source data segment
      * @param destinationOffset The offset in the memory
      * @param length The number of bytes that should be copied
+     * 
+     * @throws UnsupportedOperationException If this method is called on an unsafe wasm memory.
      */
-    public abstract void initialize(byte[] dataInstance, int sourceOffset, int destinationOffset, int length);
+    public abstract void initialize(byte[] source, int sourceOffset, long destinationOffset, int length);
+
+    /**
+     * Initializes the content of an unsafe wasm memory with the given date instance.
+     * 
+     * @param sourceAddress The address of the memory portion that should be copied to the memory
+     * @param sourceOffset The offset from the data instance address
+     * @param destinationOffset The offset in the memory
+     * @param length The number of bytes that should be copied
+     * 
+     * @throws UnsupportedOperationException If the method is called on a byte array based memory
+     */
+    @TruffleBoundary
+    public void initializeUnsafe(long sourceAddress, int sourceOffset, long destinationOffset, int length) {
+        throw new UnsupportedOperationException();
+    }
 
     /**
      * Fills the memory with the given value.
-     * 
+     *
      * @param offset The offset in the memory
      * @param length The number of bytes that should be filled
      * @param value The value that should be used for filling the memory
      */
-    public abstract void fill(int offset, int length, byte value);
+    public abstract void fill(long offset, long length, byte value);
 
     /**
      * Copies data from another memory into this memory.
-     * 
+     *
      * @param source The source memory
      * @param sourceOffset The offset in the source memory
      * @param destinationOffset The offset in this memory
      * @param length The number of bytes that should be copied
      */
-    public abstract void copyFrom(WasmMemory source, int sourceOffset, int destinationOffset, int length);
+    public abstract void copyFrom(WasmMemory source, long sourceOffset, long destinationOffset, long length);
 
     @TruffleBoundary
     protected final WasmException trapOutOfBounds(Node node, long address, int length) {
@@ -419,14 +451,14 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     final byte readBufferByte(long byteOffset,
                     @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
         checkOffset(byteOffset, Byte.BYTES, errorBranch);
-        return (byte) load_i32_8s(null, (int) byteOffset);
+        return (byte) load_i32_8s(null, byteOffset);
     }
 
     @ExportMessage
     final short readBufferShort(ByteOrder order, long byteOffset,
                     @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
         checkOffset(byteOffset, Short.BYTES, errorBranch);
-        short result = (short) load_i32_16s(null, (int) byteOffset);
+        short result = (short) load_i32_16s(null, byteOffset);
         if (order == ByteOrder.BIG_ENDIAN) {
             result = Short.reverseBytes(result);
         }
@@ -437,7 +469,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     final int readBufferInt(ByteOrder order, long byteOffset,
                     @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
         checkOffset(byteOffset, Integer.BYTES, errorBranch);
-        int result = load_i32(null, (int) byteOffset);
+        int result = load_i32(null, byteOffset);
         if (order == ByteOrder.BIG_ENDIAN) {
             result = Integer.reverseBytes(result);
         }
@@ -448,7 +480,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     final long readBufferLong(ByteOrder order, long byteOffset,
                     @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
         checkOffset(byteOffset, Long.BYTES, errorBranch);
-        long result = load_i64(null, (int) byteOffset);
+        long result = load_i64(null, byteOffset);
         if (order == ByteOrder.BIG_ENDIAN) {
             result = Long.reverseBytes(result);
         }
@@ -459,7 +491,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     final float readBufferFloat(ByteOrder order, long byteOffset,
                     @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
         checkOffset(byteOffset, Float.BYTES, errorBranch);
-        float result = load_f32(null, (int) byteOffset);
+        float result = load_f32(null, byteOffset);
         if (order == ByteOrder.BIG_ENDIAN) {
             result = Float.intBitsToFloat(Integer.reverseBytes(Float.floatToRawIntBits(result)));
         }
@@ -470,7 +502,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     final double readBufferDouble(ByteOrder order, long byteOffset,
                     @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
         checkOffset(byteOffset, Double.BYTES, errorBranch);
-        double result = load_f64(null, (int) byteOffset);
+        double result = load_f64(null, byteOffset);
         if (order == ByteOrder.BIG_ENDIAN) {
             result = Double.longBitsToDouble(Long.reverseBytes(Double.doubleToRawLongBits(result)));
         }
@@ -487,7 +519,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     final void writeBufferByte(long byteOffset, byte value,
                     @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
         checkOffset(byteOffset, Byte.BYTES, errorBranch);
-        store_i32_8(null, (int) byteOffset, value);
+        store_i32_8(null, byteOffset, value);
     }
 
     @ExportMessage
@@ -495,7 +527,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
                     @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
         checkOffset(byteOffset, Short.BYTES, errorBranch);
         short actualValue = (order == ByteOrder.LITTLE_ENDIAN) ? value : Short.reverseBytes(value);
-        store_i32_16(null, (int) byteOffset, actualValue);
+        store_i32_16(null, byteOffset, actualValue);
     }
 
     @ExportMessage
@@ -503,7 +535,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
                     @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
         checkOffset(byteOffset, Integer.BYTES, errorBranch);
         int actualValue = (order == ByteOrder.LITTLE_ENDIAN) ? value : Integer.reverseBytes(value);
-        store_i32(null, (int) byteOffset, actualValue);
+        store_i32(null, byteOffset, actualValue);
     }
 
     @ExportMessage
@@ -511,7 +543,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
                     @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
         checkOffset(byteOffset, Long.BYTES, errorBranch);
         long actualValue = (order == ByteOrder.LITTLE_ENDIAN) ? value : Long.reverseBytes(value);
-        store_i64(null, (int) byteOffset, actualValue);
+        store_i64(null, byteOffset, actualValue);
     }
 
     @ExportMessage
@@ -519,7 +551,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
                     @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
         checkOffset(byteOffset, Float.BYTES, errorBranch);
         float actualValue = (order == ByteOrder.LITTLE_ENDIAN) ? value : Float.intBitsToFloat(Integer.reverseBytes(Float.floatToRawIntBits(value)));
-        store_f32(null, (int) byteOffset, actualValue);
+        store_f32(null, byteOffset, actualValue);
     }
 
     @ExportMessage
@@ -527,7 +559,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
                     @Shared("errorBranch") @Cached BranchProfile errorBranch) throws InvalidBufferOffsetException {
         checkOffset(byteOffset, Double.BYTES, errorBranch);
         double actualValue = (order == ByteOrder.LITTLE_ENDIAN) ? value : Double.longBitsToDouble(Long.reverseBytes(Double.doubleToRawLongBits(value)));
-        store_f64(null, (int) byteOffset, actualValue);
+        store_f64(null, byteOffset, actualValue);
     }
 
     @ExportMessage
@@ -563,7 +595,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
             errorBranch.enter();
             throw InvalidArrayIndexException.create(address);
         }
-        return load_i32_8u(null, (int) address);
+        return load_i32_8u(null, address);
     }
 
     @ExportMessage
@@ -582,7 +614,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
             errorBranch.enter();
             throw UnsupportedTypeException.create(new Object[]{value}, "Only bytes can be stored into WebAssembly memory.");
         }
-        store_i32_8(null, (int) address, rawValue);
+        store_i32_8(null, address, rawValue);
     }
 
     public void setGrowCallback(Object growCallback) {
@@ -600,4 +632,8 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     public abstract void close();
 
     public abstract ByteBuffer asByteBuffer();
+
+    public boolean freed() {
+        return true;
+    }
 }

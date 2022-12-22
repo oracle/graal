@@ -537,6 +537,24 @@ public class WasmJsApiSuite {
     }
 
     @Test
+    public void testInstantiateModuleWithCallTwice() throws IOException, InterruptedException {
+        final byte[] binary = compileWat("exportTwice", "(func (nop)) (func (export \"a\") (call 0))");
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            WasmModule module = wasm.moduleDecode(binary);
+            Object importObject = new Dictionary();
+            wasm.moduleInstantiate(module, importObject);
+            WasmInstance instance = wasm.moduleInstantiate(module, importObject);
+            final Object func = WebAssembly.instanceExport(instance, "a");
+            try {
+                InteropLibrary.getUncached(func).execute(func);
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
     public void testInstantiateWithUnicodeExport() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
@@ -812,11 +830,11 @@ public class WasmJsApiSuite {
             context.readModule(binaryWithMixedExports, limits);
 
             final int noLimit = Integer.MAX_VALUE;
-            limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, 6, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
+            limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, 6, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
             context.readModule(binaryWithMixedExports, limits);
 
             try {
-                limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, 5, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
+                limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, 5, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
                 context.readModule(binaryWithMixedExports, limits);
                 Assert.fail("Should have failed - export count exceeds the limit");
             } catch (WasmException ex) {
@@ -2096,7 +2114,6 @@ public class WasmJsApiSuite {
 
     private static void runTest(Consumer<Context.Builder> options, Consumer<WasmContext> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
-        contextBuilder.option("wasm.BulkMemoryAndRefTypes", "true");
         if (options != null) {
             options.accept(contextBuilder);
         }

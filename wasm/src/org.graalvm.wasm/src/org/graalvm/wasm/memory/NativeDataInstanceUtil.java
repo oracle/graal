@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,57 +38,45 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package org.graalvm.wasm.memory;
 
-package org.graalvm.wasm.parser.validation.collections.entries;
+import sun.misc.Unsafe;
 
-import org.graalvm.wasm.parser.validation.collections.ExtraDataFormatHelper;
-import org.graalvm.wasm.util.ExtraDataUtil;
+import java.lang.reflect.Field;
 
 /**
- * Represents an else entry in the extra data list.
- * <p>
- * Compact format:
- * <p>
- * <ul>
- * <li>compactFormatIndicator (1-bit)
- * <li>extraDataDisplacement (signed 15-bit)
- * <li>byteCodeDisplacement (signed 16-bit)
- * </ul>
- * <p>
- * Extended format:
- * <p>
- * <ul>
- * <li>extendedFormatIndicator (1-bit)
- * <li>extraDataDisplacement (signed 31-bit)
- * <li>byteCodeDisplacement (signed 32-bit)
- * </ul>
+ * Collection of methods for handling the native representation of data segments at runtime.
  */
-public class ElseEntry extends BranchTarget {
-    public ElseEntry(ExtraDataFormatHelper formatHelper, int byteCodeOffset, int extraDataOffset, int extraDataIndex) {
-        super(formatHelper, byteCodeOffset, extraDataOffset, extraDataIndex);
+public final class NativeDataInstanceUtil {
+    private static final Unsafe unsafe = initUnsafe();
+
+    private static Unsafe initUnsafe() {
+        try {
+            return Unsafe.getUnsafe();
+        } catch (SecurityException se) {
+            try {
+                Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+                theUnsafe.setAccessible(true);
+                return (Unsafe) theUnsafe.get(Unsafe.class);
+            } catch (Exception e) {
+                throw new RuntimeException("exception while trying to get Unsafe", e);
+            }
+        }
     }
 
-    @Override
-    protected int generateCompactData(int[] extraData, int entryOffset) {
-        int offset = entryOffset;
-        offset += ExtraDataUtil.addCompactBranchTarget(extraData, offset, compactByteCodeDisplacement(), compactExtraDataDisplacement());
-        return offset;
+    private NativeDataInstanceUtil() {
+        // no instantiation allowed
     }
 
-    @Override
-    protected int generateExtendedData(int[] extraData, int entryOffset) {
-        int offset = entryOffset;
-        offset += ExtraDataUtil.addExtendedBranchTarget(extraData, offset, extendedByteCodeDisplacement(), extendedExtraDataDisplacement());
-        return offset;
+    public static long allocateNativeInstance(byte[] data, int offset, int length) {
+        final long address = unsafe.allocateMemory(length);
+        for (int i = 0; i < length; i++) {
+            unsafe.putByte(address + i, data[offset + i]);
+        }
+        return address;
     }
 
-    @Override
-    public int compactLength() {
-        return ExtraDataUtil.COMPACT_JUMP_TARGET_SIZE;
-    }
-
-    @Override
-    public int extendedLength() {
-        return ExtraDataUtil.EXTENDED_JUMP_TARGET_SIZE;
+    public static void freeNativeInstance(long address) {
+        unsafe.freeMemory(address);
     }
 }
