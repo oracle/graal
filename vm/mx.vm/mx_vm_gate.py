@@ -297,7 +297,19 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
         delay = abspath(join(dirname(__file__), 'Delay.sl'))
         cp = mx.classpath(["com.oracle.truffle.sl", "com.oracle.truffle.sl.launcher"])
         cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + ['-cp', cp, 'com.oracle.truffle.sl.launcher.SLMain', delay]
-        exit_code = mx.run(cmd, nonZeroIsFatal=False)
+        err = mx.OutputCapture()
+        exit_code = mx.run(cmd, nonZeroIsFatal=False, err=err)
+        if err.data:
+            mx.log(err.data)
+            if 'Could not find or load main class com.oracle.truffle.sl.launcher.SLMain' in err.data:
+                # Try again with verbose and -Xlog to debug GR-43161
+                try:
+                    old_value = mx._opts.verbose
+                    mx._opts.verbose = True
+                    cmd = cmd[0:1] + ['-Xlog'] + cmd[1:]
+                    exit_code = mx.run(cmd, nonZeroIsFatal=False)
+                finally:
+                    mx._opts.verbose = old_value
 
         expectations = ['detected long running compilation'] + (['a stuck compilation'] if vm_can_exit else [])
         _check_compiler_log(compiler_log_file, expectations)
