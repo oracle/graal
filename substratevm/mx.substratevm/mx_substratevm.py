@@ -415,7 +415,7 @@ def svm_gate_body(args, tasks):
         if t:
             hellomodule(args.extra_image_builder_arguments)
 
-    with Task('Validate JSON build info', tasks, tags=[mx_gate.Tags.style]) as t:
+    with Task('Validate JSON build info', tasks, tags=[GraalTags.helloworld]) as t:
         if t:
             import json
             try:
