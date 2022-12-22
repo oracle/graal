@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,8 @@ package org.graalvm.compiler.nodes;
 
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
@@ -67,25 +67,11 @@ public abstract class UnaryOpLogicNode extends LogicNode implements LIRLowerable
     }
 
     /**
-     * In general the input stamp cannot be trusted, this method is reserved for the cases when it's
-     * "safe" to use the input stamp. To ensure safety use
-     * {@link #getSucceedingStampForValue(boolean)} instead.
-     */
-    public Stamp getSucceedingStampForValue(boolean negated, Stamp valueStamp) {
-        Stamp succStamp = getSucceedingStampForValue(negated);
-        if (succStamp != null) {
-            succStamp = succStamp.join(valueStamp);
-        }
-        return succStamp;
-    }
-
-    /**
      * The input stamp cannot be trusted, the returned stamp cannot use the input stamp to narrow
      * itself or derive any assumptions. This method does not use the input stamp and is considered
      * safe.
      *
-     * It's responsibility of the caller to determine when it's "safe" to "trust" the input stamp
-     * and use {@link #getSucceedingStampForValue(boolean, Stamp)} instead.
+     * It's responsibility of the caller to determine when it's "safe" to "trust" the input stamp.
      */
     public abstract Stamp getSucceedingStampForValue(boolean negated);
 

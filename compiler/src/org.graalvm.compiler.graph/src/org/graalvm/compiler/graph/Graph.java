@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,6 @@
 package org.graalvm.compiler.graph;
 
 import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeInsertion;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -221,15 +219,6 @@ public class Graph {
         return trackNodeSourcePosition() && sourcePosition != null ? new NodeSourcePositionScope(sourcePosition) : null;
     }
 
-    /**
-     * Opens a scope in which newly created nodes do not get any source information added.
-     *
-     * @return a {@link DebugCloseable} for managing the opened scope
-     */
-    public DebugCloseable withoutNodeSourcePosition() {
-        return new NodeSourcePositionScope(null);
-    }
-
     public boolean trackNodeSourcePosition() {
         return trackNodeSourcePosition;
     }
@@ -386,18 +375,6 @@ public class Graph {
      * Creates a copy of this graph.
      *
      * @param newName the name of the copy, used for debugging purposes (can be null)
-     * @param debugForCopy the debug context for the graph copy. This must not be the debug for this
-     *            graph if this graph can be accessed from multiple threads (e.g., it's in a cache
-     *            accessed by multiple threads).
-     */
-    public final Graph copy(String newName, DebugContext debugForCopy) {
-        return copy(newName, null, debugForCopy);
-    }
-
-    /**
-     * Creates a copy of this graph.
-     *
-     * @param newName the name of the copy, used for debugging purposes (can be null)
      * @param duplicationMapCallback consumer of the duplication map created during the copying
      * @param debugForCopy the debug context for the graph copy. This must not be the debug for this
      *            graph if this graph can be accessed from multiple threads (e.g., it's in a cache
@@ -448,15 +425,6 @@ public class Graph {
      */
     public int getNodeCount() {
         return nodesSize - getNodesDeletedSinceLastCompression();
-    }
-
-    /**
-     * Gets the number of times this graph has been {@linkplain #maybeCompress() compressed}. Node
-     * identifiers are only stable between compressions. To ensure this constraint is observed, any
-     * entity relying upon stable node identifiers should use {@link NodeIdAccessor}.
-     */
-    public int getCompressions() {
-        return compressions;
     }
 
     /**
@@ -913,13 +881,6 @@ public class Graph {
         }
 
         /**
-         * Determines if this mark is positioned at the first live node in the graph.
-         */
-        public boolean isStart() {
-            return value == 0;
-        }
-
-        /**
          * Gets the {@linkplain Graph#getNodeCount() live node count} of the associated graph when
          * this object was created.
          */
@@ -978,18 +939,6 @@ public class Graph {
         };
     }
 
-    // Fully qualified annotation name is required to satisfy javac
-    @org.graalvm.compiler.nodeinfo.NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
-    static final class PlaceHolderNode extends Node {
-
-        public static final NodeClass<PlaceHolderNode> TYPE = NodeClass.create(PlaceHolderNode.class);
-
-        protected PlaceHolderNode() {
-            super(TYPE);
-        }
-
-    }
-
     private static final CounterKey GraphCompressions = DebugContext.counter("GraphCompressions");
 
     @SuppressWarnings("unused")
@@ -1008,16 +957,6 @@ public class Graph {
      */
     public final boolean maybeCompress() {
         return compress(false);
-    }
-
-    /**
-     * Minimize the memory occupied by the graph by trimming all node arrays to the minimum size.
-     * Note that this can make subsequent optimization phases run slower, because additions to the
-     * graph must re-allocate larger arrays again. So invoking this method is only beneficial if a
-     * graph is alive for a long time.
-     */
-    public final void minimizeSize() {
-        compress(true);
     }
 
     protected boolean compress(boolean minimizeSize) {
@@ -1235,11 +1174,6 @@ public class Graph {
     @SuppressWarnings("unused")
     protected void afterRegister(Node node) {
 
-    }
-
-    @SuppressWarnings("unused")
-    private void postDeserialization() {
-        recomputeIterableNodeLists();
     }
 
     /**

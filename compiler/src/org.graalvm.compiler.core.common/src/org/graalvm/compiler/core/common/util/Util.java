@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.core.common.util;
 
-import java.lang.reflect.AccessibleObject;
-import java.lang.reflect.Field;
 import java.util.List;
 
 import org.graalvm.compiler.debug.TTY;
@@ -106,34 +104,6 @@ public class Util {
 
     private static String methodName(ResolvedJavaMethod method) {
         return method.format("%H.%n(%p):%r") + " (" + method.getCodeSize() + " bytes)";
-    }
-
-    /**
-     * Calls {@link AccessibleObject#setAccessible(boolean)} on {@code field} with the value
-     * {@code flag}.
-     */
-    public static void setAccessible(Field field, boolean flag) {
-        field.setAccessible(flag);
-    }
-
-    /**
-     * Converts a hex string to a byte array. Two characters are converted to a byte at a time.
-     *
-     * @param hex the hex string
-     * @return byte array
-     */
-    public static byte[] hexStringToBytes(String hex) {
-        int len = hex.length() / 2;
-        byte[] bytes = new byte[len];
-        for (int i = 0; i < len; i++) {
-            // need to parse as int, because parseByte will throw on values > 127
-            int val = Integer.parseInt(hex.substring(i << 1, (i << 1) + 2), 16);
-            if (val < 0 || val > 255) {
-                throw new NumberFormatException("Value out of range: " + val);
-            }
-            bytes[i] = (byte) val;
-        }
-        return bytes;
     }
 
     /**
