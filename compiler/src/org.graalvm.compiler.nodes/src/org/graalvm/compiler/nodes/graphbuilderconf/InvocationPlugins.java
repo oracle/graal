@@ -1168,7 +1168,7 @@ public class InvocationPlugins {
      * {@link ResolvedJavaType} and {@link ResolvedJavaMethod}.
      */
     public static ResolvedJavaMethod resolveJavaMethod(ResolvedJavaType declaringClass, InvocationPlugin plugin) {
-        ResolvedJavaMethod[] methods = declaringClass.getDeclaredMethods();
+        ResolvedJavaMethod[] methods = declaringClass.getDeclaredMethods(false);
         if (plugin.name.equals("<init>")) {
             for (ResolvedJavaMethod m : methods) {
                 if (m.getName().equals("<init>") && m.getSignature().toMethodDescriptor().startsWith(plugin.argumentsDescriptor)) {

@@ -167,7 +167,7 @@ abstract class AbstractKnownTruffleTypes {
         GraalError.guarantee(fields.size() == entries.length, "duplicate field name");
 
         Map<String, List<ResolvedJavaMethod>> methods = new HashMap<>();
-        for (ResolvedJavaMethod method : declaringClass.getDeclaredMethods()) {
+        for (ResolvedJavaMethod method : declaringClass.getDeclaredMethods(false)) {
             methods.computeIfAbsent(method.getName(), (v) -> new ArrayList<>(2)).add(method);
         }
         return new TypeCache(declaringClass, instanceFields, fields, methods);

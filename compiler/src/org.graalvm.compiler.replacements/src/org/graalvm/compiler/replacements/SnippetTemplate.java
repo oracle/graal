@@ -873,8 +873,9 @@ public class SnippetTemplate {
 
         public static ResolvedJavaMethod findMethod(MetaAccessProvider metaAccess, Class<?> declaringClass, String methodName) {
             ResolvedJavaType type = metaAccess.lookupJavaType(declaringClass);
+            type.link();
             ResolvedJavaMethod result = null;
-            for (ResolvedJavaMethod m : type.getDeclaredMethods()) {
+            for (ResolvedJavaMethod m : type.getDeclaredMethods(false)) {
                 if (m.getName().equals(methodName)) {
                     if (!Assertions.assertionsEnabled()) {
                         return m;

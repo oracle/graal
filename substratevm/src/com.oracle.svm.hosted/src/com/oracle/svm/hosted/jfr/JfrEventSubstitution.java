@@ -128,7 +128,7 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
         if (name.equals("<clinit>")) {
             return type.getClassInitializer();
         } else if (name.equals("<init>")) {
-            for (ResolvedJavaMethod m : type.getDeclaredConstructors()) {
+            for (ResolvedJavaMethod m : type.getDeclaredConstructors(false)) {
                 if (m.getName().equals(name) && m.getSignature().equals(signature)) {
                     return m;
                 }
@@ -176,7 +176,7 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
      * that method using the hacky way below.
      */
     private static void changeWriterResetMethod(ResolvedJavaType eventWriterType) {
-        for (ResolvedJavaMethod m : eventWriterType.getDeclaredMethods()) {
+        for (ResolvedJavaMethod m : eventWriterType.getDeclaredMethods(false)) {
             if (m.getName().equals("reset")) {
                 setPublicModifier(m);
             }

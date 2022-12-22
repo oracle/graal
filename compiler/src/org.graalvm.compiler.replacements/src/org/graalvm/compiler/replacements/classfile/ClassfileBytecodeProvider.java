@@ -233,14 +233,14 @@ public final class ClassfileBytecodeProvider implements BytecodeProvider {
             if (!name.equals("<init>")) {
                 if (methods == null) {
                     // Racy initialization is safe since `methods` is volatile
-                    methods = createMethodMap(type.getDeclaredMethods());
+                    methods = createMethodMap(type.getDeclaredMethods(false));
                 }
 
                 return methods.get(key);
             } else {
                 if (constructors == null) {
                     // Racy initialization is safe since instanceFields is volatile
-                    constructors = createMethodMap(type.getDeclaredConstructors());
+                    constructors = createMethodMap(type.getDeclaredConstructors(false));
                 }
                 return constructors.get(key);
             }

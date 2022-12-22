@@ -266,8 +266,8 @@ public class SerializationFeature implements InternalFeature {
 
     private static Stream<? extends ResolvedJavaMethod> allExecutablesDeclaredInClass(ResolvedJavaType t) {
         return Stream.concat(Stream.concat(
-                        Arrays.stream(t.getDeclaredMethods()),
-                        Arrays.stream(t.getDeclaredConstructors())),
+                        Arrays.stream(t.getDeclaredMethods(false)),
+                        Arrays.stream(t.getDeclaredConstructors(false))),
                         t.getClassInitializer() == null ? Stream.empty() : Stream.of(t.getClassInitializer()));
     }
 }
