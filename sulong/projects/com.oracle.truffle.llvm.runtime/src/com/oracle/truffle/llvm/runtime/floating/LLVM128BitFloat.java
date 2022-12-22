@@ -7,11 +7,8 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import java.util.Arrays;
 
 public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
-    //private static final int BIT_TO_HEX_FACTOR = 4;
     public static final long SIGN_BIT = 1L << 63;
-    //private static final int EXPONENT_BIT_WIDTH = 15;
     private static final int FRACTION_BIT_WIDTH = 112;
-    private static final int EXPLICIT_LEADING_ONE_BITS = 1;
     public static final int BIT_WIDTH = 128;
     public static final int EXPONENT_POSITION = FRACTION_BIT_WIDTH - Long.SIZE; // 112 - 64 = 48
     public static final int BYTE_WIDTH = BIT_WIDTH / Byte.SIZE;
@@ -22,9 +19,6 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
     private static final LLVM128BitFloat POSITIVE_ZERO = LLVM128BitFloat.fromRawValues(false, 0, 0);
     private static final LLVM128BitFloat NEGATIVE_ZERO = LLVM128BitFloat.fromRawValues(true, 0, 0);
     private static final int EXPONENT_BIAS = 16383;
-    //private static final int FLOAT_EXPONENT_BIAS = 127;
-    //private static final int DOUBLE_EXPONENT_BIAS = 1023;
-
 
     @Override
     public String toString() {
