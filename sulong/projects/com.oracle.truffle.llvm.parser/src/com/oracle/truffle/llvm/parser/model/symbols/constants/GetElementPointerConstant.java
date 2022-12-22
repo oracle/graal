@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,19 +38,23 @@ import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class GetElementPointerConstant extends AbstractConstant {
 
     private final boolean isInbounds;
 
+    private final Type gepType;
+
     private Constant base;
 
     private final Constant[] indices;
 
-    private GetElementPointerConstant(Type type, boolean isInbounds, int size) {
+    private GetElementPointerConstant(Type type, Type gepType, boolean isInbounds, int size) {
         super(type);
         this.isInbounds = isInbounds;
+        this.gepType = gepType;
         indices = new Constant[size];
     }
 
@@ -83,8 +87,8 @@ public final class GetElementPointerConstant extends AbstractConstant {
         }
     }
 
-    public static GetElementPointerConstant fromSymbols(SymbolTable symbols, Type type, int pointer, int[] indices, boolean isInbounds) {
-        final GetElementPointerConstant constant = new GetElementPointerConstant(type, isInbounds, indices.length);
+    public static GetElementPointerConstant fromSymbols(SymbolTable symbols, Type type, Type gepType, int pointer, int[] indices, boolean isInbounds) {
+        final GetElementPointerConstant constant = new GetElementPointerConstant(type, gepType, isInbounds, indices.length);
 
         constant.base = (Constant) symbols.getForwardReferenced(pointer, constant);
         for (int i = 0; i < indices.length; i++) {
@@ -109,7 +113,7 @@ public final class GetElementPointerConstant extends AbstractConstant {
         }
 
         LLVMExpressionNode currentAddress = base.createNode(runtime, dataLayout, stackFactory);
-        Type currentType = base.getType();
+        Type currentType = gepType == null ? base.getType() : new PointerType(gepType);
         return CommonNodeFactory.createNestedElementPointerNode(runtime.getNodeFactory(), dataLayout, indexNodes, indexConstants, indexTypes, currentAddress, currentType);
     }
 }
