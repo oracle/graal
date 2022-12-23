@@ -418,6 +418,8 @@ static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_info)
   {
     features->fAVX = 1;
     features->fVZEROUPPER = 1;
+    if (_cpuid_info->std_cpuid1_ecx.bits.f16c != 0)
+      features->fF16C = 1;
     if (_cpuid_info->sef_cpuid7_ebx.bits.avx2 != 0)
       features->fAVX2 = 1;
     if (_cpuid_info->sef_cpuid7_ebx.bits.avx512f != 0 &&
@@ -430,6 +432,8 @@ static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_info)
         features->fAVX512CD = 1;
       if (_cpuid_info->sef_cpuid7_ebx.bits.avx512dq != 0)
         features->fAVX512DQ = 1;
+      if (_cpuid_info->sef_cpuid7_ebx.bits.avx512ifma != 0)
+        features->fAVX512_IFMA = 1;
       if (_cpuid_info->sef_cpuid7_ebx.bits.avx512pf != 0)
         features->fAVX512PF = 1;
       if (_cpuid_info->sef_cpuid7_ebx.bits.avx512er != 0)
@@ -594,6 +598,7 @@ void determineCPUFeatures(CPUFeatures *features)
       features->fFLUSHOPT = 0;
       features->fGFNI = 0;
       features->fAVX512_BITALG = 0;
+      features->fAVX512_IFMA = 0;
     }
   }
 }
