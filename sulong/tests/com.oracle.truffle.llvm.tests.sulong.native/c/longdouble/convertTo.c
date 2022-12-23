@@ -41,6 +41,8 @@ void toLong(long double n) {
     long m = (long) n;
     printf("to long %ld\n", m);
     printBits(sizeof(m), &m);
+    printfplong("to long fp", &m);
+
 }
 
 __attribute__((noinline))
@@ -49,22 +51,26 @@ void toDouble(long double n){
     double m = (double) n;
     printf("to double %lf\n", m);
     printBits(sizeof(m), &m);
-}
+    printfpdouble("to double fp", &m);
 
+}
 
 __attribute__((noinline))
 void toInt(long double n){
 
     int m = (int) n;
     printf("to int %d\n", m);
+    printBits(sizeof(m), &m);
+    printfpint("to int fp", &m);
 }
-
 
 __attribute__((noinline))
 void toFloat(long double n){
 
     float m = (float) n;
     printf("to float %f\n", m);
+    printBits(sizeof(m), &m);
+    printfpfloat("to float fp", &m);
 }
 
 int main(void){
@@ -73,7 +79,7 @@ int main(void){
     printfp("from long double", &m);
     toLong(m);
     toDouble(m);
-    //toInt(m);
-    //fromFloat(5.0);
+    toInt(m);
+    toFloat(m);
     return 0;
 }

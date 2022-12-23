@@ -19,6 +19,8 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
     private static final LLVM128BitFloat POSITIVE_ZERO = LLVM128BitFloat.fromRawValues(false, 0, 0);
     private static final LLVM128BitFloat NEGATIVE_ZERO = LLVM128BitFloat.fromRawValues(true, 0, 0);
     private static final int EXPONENT_BIAS = 16383;
+    private static final int FLOAT_EXPONENT_BIAS = 127;
+
 
     @Override
     public String toString() {
@@ -119,10 +121,6 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
         return fromLong(Math.abs(val), sign);
     }
 
-    public long getFractionWithoutImplicitZero() {
-        return fraction << 1;
-    }
-
     public long getFractionPart() {
         return fraction;
     }
@@ -172,11 +170,25 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
            long shiftedSignBit = (getSign() ? 1L : 0L) << DoubleHelper.DOUBLE_SIGN_POS;
            long shiftedExponent = doubleExponent << DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH; //TODO: overflow case. Test this.
            long rawVal = doubleFraction | shiftedExponent | shiftedSignBit;
-           /*System.out.println("doubleFraction: " + doubleFraction);
-           System.out.println("shiftedExponent: " + shiftedExponent);
-           System.out.println("rawVal: " + rawVal);*/
            return Double.longBitsToDouble(rawVal);
        }
+    }
+
+    public float toFloatValue() {
+        if (isPositiveInfinity()) {
+            return FloatHelper.POSITIVE_INFINITY;
+        } else if (isNegativeInfinity()) {
+            return FloatHelper.NEGATIVE_INFINITY;
+        } else {
+            int floatExponent = (int) getUnbiasedExponent() + FLOAT_EXPONENT_BIAS;
+            int floatFraction = 1;
+            floatFraction |= (expSignFraction & FRACTION_MASK) >>> (EXPONENT_POSITION - FloatHelper.FLOAT_FRACTION_BIT_WIDTH);
+            int shiftedSignBit = (getSign() ? 1 : 0) << FloatHelper.FLOAT_SIGN_POS;
+            int shiftedExponent = floatExponent << FloatHelper.FLOAT_FRACTION_BIT_WIDTH;
+            int rawVal = floatFraction | shiftedExponent | shiftedSignBit;
+            return Float.intBitsToFloat(rawVal);
+
+        }
     }
 
     public byte[] getBytes() {
@@ -215,7 +227,7 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
         long shiftAmount = FRACTION_BIT_WIDTH - leadingOnePosition + 1;
         long fraction;
         long exponentFraction;
-        if (shiftAmount >= Long.SIZE) { // Need to test both cases.
+        if (shiftAmount >= Long.SIZE) { //TODO: Need to test both cases.
             exponentFraction = (exponent << EXPONENT_POSITION) | (val << (shiftAmount - Long.SIZE));
             fraction = 0;
         } else {
