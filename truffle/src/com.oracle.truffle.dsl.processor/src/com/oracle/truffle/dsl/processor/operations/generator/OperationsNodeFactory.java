@@ -161,6 +161,7 @@ public class OperationsNodeFactory {
 
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(short[].class), "bc")));
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(Object[].class), "objs")));
+        operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "handlers")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLocals")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "buildIndex")));
         if (model.generateUncached) {
@@ -205,7 +206,7 @@ public class OperationsNodeFactory {
 
         b.declaration(operationNodeGen.asType(), "clone", "(" + operationNodeGen.getSimpleName() + ") this.copy()");
 
-        b.statement("clone.interpreter = UNCACHED_INTERPRETER");
+        b.statement("clone.interpreter = " + (model.generateUncached ? "UN" : "") + "CACHED_INTERPRETER");
         b.statement("clone.objs = new Object[objs.length]");
 
         b.startFor().string("int bci = 0; bci < bc.length; bci++").end().startBlock();
@@ -333,7 +334,7 @@ public class OperationsNodeFactory {
         b.statement("int state = numLocals << 16");
 
         b.startWhile().string("true").end().startBlock();
-        b.statement("state = interpreter.continueAt(this, frame, bc, objs, state)");
+        b.statement("state = interpreter.continueAt(this, frame, bc, objs, handlers, state)");
         b.startIf().string("(state & 0xffff) == 0xffff").end().startBlock();
         b.statement("break");
         b.end().startElseBlock();
@@ -557,6 +558,8 @@ public class OperationsNodeFactory {
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLocals"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "maxStack"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "curStack"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "exHandlers"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "exHandlerCount"),
 
                         // must be last
                         new CodeVariableElement(Set.of(PRIVATE), savedState.asType(), "savedState"),
@@ -729,6 +732,8 @@ public class OperationsNodeFactory {
                 b.statement("numLocals = 0");
                 b.statement("curStack = 0");
                 b.statement("maxStack = 10");
+                b.statement("exHandlers = new int[10]");
+                b.statement("exHandlerCount = 0");
             } else {
                 b.startStatement().startCall("beforeChild").end(2);
             }
@@ -737,6 +742,17 @@ public class OperationsNodeFactory {
             b.string("" + operation.id);
             buildOperationBeginData(b, operation);
             b.end(2);
+
+            switch (operation.kind) {
+                case TRY_CATCH:
+                    b.startBlock();
+                    b.statement("Object[] data = (Object[]) operationData[operationSp - 1]");
+                    b.statement("data[0] = bci");
+                    b.statement("data[3] = curStack");
+                    b.statement("data[4] = arg0");
+                    b.end();
+                    break;
+            }
 
             return ex;
         }
@@ -765,8 +781,21 @@ public class OperationsNodeFactory {
                 case LOAD_LOCAL_MATERIALIZED:
                     b.string("arg0");
                     break;
+                case CUSTOM_SIMPLE:
                 case CUSTOM_SHORT_CIRCUIT:
-                    b.string("new IntRef()");
+                    b.startNewArray(arrayOf(context.getType(Object.class)), null);
+                    if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
+                        b.string("new IntRef()");
+                    }
+
+                    for (int i = 0; i < operation.operationArguments.length; i++) {
+                        b.string("arg" + i);
+                    }
+
+                    b.end();
+                    break;
+                case TRY_CATCH:
+                    b.string("new Object[6]");
                     break;
                 default:
                     b.string("null");
@@ -843,6 +872,7 @@ public class OperationsNodeFactory {
 
                 b.startAssign("result.bc").string("Arrays.copyOf(bc, bci)").end();
                 b.startAssign("result.objs").string("Arrays.copyOf(objs, bci)").end();
+                b.startAssign("result.handlers").string("Arrays.copyOf(exHandlers, exHandlerCount)").end();
                 b.startAssign("result.numLocals").string("numLocals").end();
                 b.startAssign("result.buildIndex").string("buildIndex").end();
 
@@ -865,12 +895,33 @@ public class OperationsNodeFactory {
                 return ex;
             }
 
-            if (operation.instruction != null && operation.kind != OperationKind.CUSTOM_SHORT_CIRCUIT) {
-                buildEmitOperationInstruction(b, operation);
-            }
+            switch (operation.kind) {
+                case TRY_CATCH:
+                    b.startBlock();
+                    b.statement("Object[] data = (Object[])operationData[operationSp]");
+                    b.statement("((IntRef) data[5]).value = bci");
 
-            if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
-                b.statement("((IntRef) operationData[operationSp]).value = bci");
+                    b.startIf().string("exHandlers.length <= exHandlerCount + 5").end().startBlock();
+                    b.statement("exHandlers = Arrays.copyOf(exHandlers, exHandlers.length * 2)");
+                    b.end();
+
+                    b.statement("exHandlers[exHandlerCount] = (int) data[0]");
+                    b.statement("exHandlers[exHandlerCount + 1] = (int) data[1]");
+                    b.statement("exHandlers[exHandlerCount + 2] = (int) data[2]");
+                    b.statement("exHandlers[exHandlerCount + 3] = (int) data[3]");
+                    b.statement("exHandlers[exHandlerCount + 4] = ((OperationLocalImpl) data[4]).index.value");
+                    b.statement("exHandlerCount += 5");
+
+                    b.end();
+                    break;
+                case CUSTOM_SHORT_CIRCUIT:
+                    b.statement("((IntRef) operationData[operationSp]).value = bci");
+                    break;
+                default:
+                    if (operation.instruction != null) {
+                        buildEmitOperationInstruction(b, operation);
+                    }
+                    break;
             }
 
             b.startStatement().startCall("afterChild");
@@ -986,9 +1037,22 @@ public class OperationsNodeFactory {
                 b.statement("argument.op_variadicCount_ = operationChildCount[operationSp] - " + instruction.signature.valueCount);
             }
 
+            int argBase;
             if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
-                b.statement("argument.op_branchTarget_ = (IntRef) data");
+                b.statement("argument.op_branchTarget_ = (IntRef) ((Object[]) data)[0]");
+                argBase = 1;
+            } else {
+                argBase = 0;
             }
+
+            for (int i = 0; i < instruction.signature.localSetterCount; i++) {
+                b.startAssign("argument.op_localSetter" + i + "_");
+                b.startStaticCall(types.LocalSetter, "create");
+                b.string("((IntRef)((OperationLocalImpl)((Object[]) operationData[operationSp])[" + (argBase + i) + "]).index).value");
+                b.end(2);
+            }
+
+            argBase += instruction.signature.localSetterCount;
 
         }
 
@@ -1098,6 +1162,15 @@ public class OperationsNodeFactory {
                         b.statement("((IntRef[]) data)[1].value = bci");
                         b.end();
                         break;
+                    case TRY_CATCH:
+                        b.startIf().string("childIndex == 0").end().startBlock();
+                        b.statement("Object[] dArray = (Object[]) data");
+                        b.statement("dArray[1] = bci");
+                        b.statement("dArray[5] = new IntRef()");
+                        buildEmitInstruction(b, model.branchInstruction, "dArray[5]");
+                        b.statement("dArray[2] = bci");
+                        b.end();
+                        break;
                 }
 
                 b.statement("break");
@@ -1157,7 +1230,7 @@ public class OperationsNodeFactory {
         }
 
         private CodeExecutableElement createConstructor() {
-            CodeExecutableElement ctor = new CodeExecutableElement(null, "Builder");
+            CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, "Builder");
             ctor.addParameter(new CodeVariableElement(operationNodes.asType(), "nodes"));
             ctor.addParameter(new CodeVariableElement(context.getType(boolean.class), "isReparse"));
             ctor.addParameter(new CodeVariableElement(types.OperationConfig, "config"));
@@ -1229,6 +1302,7 @@ public class OperationsNodeFactory {
             ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
             ex.addParameter(new CodeVariableElement(context.getType(short[].class), "bc"));
             ex.addParameter(new CodeVariableElement(context.getType(Object[].class), "objs"));
+            ex.addParameter(new CodeVariableElement(context.getType(int[].class), "handlers"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "startState"));
 
             return ex;
@@ -1270,6 +1344,8 @@ public class OperationsNodeFactory {
             if (isUncached) {
                 b.statement("int uncachedExecuteCount = $this.uncachedExecuteCount");
             }
+
+            b.startTryBlock();
 
             b.startSwitch().string("curOpcode").end().startBlock();
 
@@ -1405,9 +1481,27 @@ public class OperationsNodeFactory {
 
             }
 
-            b.end();
+            b.end(); // switch
 
-            b.end();
+            b.end().startCatchBlock(context.getDeclaredType("com.oracle.truffle.api.exception.AbstractTruffleException"), "ex");
+
+            b.startFor().string("int idx = 0; idx < handlers.length; idx += 5").end().startBlock();
+
+            b.startIf().string("handlers[idx] > bci").end().startBlock().statement("continue").end();
+            b.startIf().string("handlers[idx + 1] <= bci").end().startBlock().statement("break").end();
+
+            b.statement("bci = handlers[idx + 2]");
+            b.statement("sp = handlers[idx + 3]");
+            b.statement("frame.setObject(handlers[idx + 4], ex)");
+            b.statement("continue loop");
+
+            b.end(); // for
+
+            b.statement("throw ex");
+
+            b.end(); // catch
+
+            b.end(); // while (true)
 
             return ex;
         }
