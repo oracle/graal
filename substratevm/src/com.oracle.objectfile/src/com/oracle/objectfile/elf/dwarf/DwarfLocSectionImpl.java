@@ -295,7 +295,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         if (sp < 32) {
             // fold the base reg index into the op
             stackOp = DwarfDebugInfo.DW_OP_breg0;
-            stackOp += sp;
+            stackOp += (byte) sp;
         } else {
             // pass base reg index as a ULEB operand
             stackOp = DwarfDebugInfo.DW_OP_bregx;

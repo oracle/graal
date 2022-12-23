@@ -405,7 +405,7 @@ public abstract class RuntimeCompilationFeature {
             try {
                 /* Strip optional comment string from MaxRuntimeCompileMethods value */
                 numberStr = value.split("#")[0];
-                maxMethods += Long.parseLong(numberStr);
+                maxMethods += Integer.parseInt(numberStr);
             } catch (NumberFormatException ex) {
                 throw UserError.abort("Invalid value for option 'MaxRuntimeCompileMethods': '%s' is not a valid number", numberStr);
             }
