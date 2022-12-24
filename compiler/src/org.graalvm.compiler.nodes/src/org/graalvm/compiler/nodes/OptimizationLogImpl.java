@@ -516,7 +516,7 @@ public class OptimizationLogImpl implements OptimizationLog {
     /**
      * The graph that holds the optimization tree if it is enabled.
      */
-    private final Graph optimizationTree;
+    private Graph optimizationTree;
 
     /**
      * Constructs an optimization log bound with a given graph. Optimization
@@ -590,18 +590,82 @@ public class OptimizationLogImpl implements OptimizationLog {
      * Notifies the log that an optimization phase is entered.
      *
      * @param name the name of the phase
-     * @param nesting the level of nesting (ignored)
      * @return a scope that represents the open phase
      */
     @Override
-    public OptimizationPhaseScopeImpl enterPhase(CharSequence name, int nesting) {
-        assert currentPhase != null;
-        return currentPhase.enterSubphase(name);
+    public OptimizationPhaseScopeImpl enterPhase(CharSequence name) {
+        if (optimizationLogEnabled) {
+            return currentPhase.enterSubphase(name);
+        }
+        return null;
     }
 
     @Override
-    public void notifyInlining(ResolvedJavaMethod caller, ResolvedJavaMethod callee, boolean succeeded, CharSequence message, int bci) {
+    public void inline(OptimizationLog calleeOptimizationLog, NodeSourcePosition invokePosition) {
+        if (calleeOptimizationLog.isOptimizationLogEnabled()) {
+            assert calleeOptimizationLog instanceof OptimizationLogImpl;
+            inlineSubtree(((OptimizationLogImpl) calleeOptimizationLog).findRootPhase(), currentPhase, invokePosition);
+        }
+    }
 
+    private void inlineSubtree(OptimizationTreeNode node, OptimizationPhaseScopeImpl parentPhase, NodeSourcePosition invokePosition) {
+        if (node instanceof OptimizationPhaseScopeImpl) {
+            OptimizationPhaseScopeImpl phase = (OptimizationPhaseScopeImpl) node;
+            try (OptimizationPhaseScopeImpl inlinedPhase = currentPhase.enterSubphase(phase.phaseName)) {
+                if (phase.children != null) {
+                    for (OptimizationTreeNode child : phase.children) {
+                        inlineSubtree(child, inlinedPhase, invokePosition);
+                    }
+                }
+            }
+        } else {
+            assert node instanceof OptimizationEntryImpl;
+            OptimizationEntryImpl optimization = (OptimizationEntryImpl) node;
+            NodeSourcePosition position = invokePosition;
+            if (invokePosition != null && optimization.position != null) {
+                position = optimization.position.addCaller(invokePosition);
+            }
+            parentPhase.addChild(new OptimizationEntryImpl(this, optimization.properties, position,
+                            optimization.optimizationName, optimization.event));
+        }
+    }
+
+    @Override
+    public void replaceLog(OptimizationLog replacementLog) {
+        if (!optimizationLogEnabled) {
+            return;
+        }
+        currentPhase = new OptimizationPhaseScopeImpl(this, ROOT_PHASE_NAME);
+        optimizationTree = new Graph(optimizationTree.name, optimizationTree.getOptions(), optimizationTree.getDebug(), false);
+        optimizationTree.add(currentPhase);
+        if (!(replacementLog instanceof OptimizationLogImpl)) {
+            return;
+        }
+        OptimizationPhaseScopeImpl root = ((OptimizationLogImpl) replacementLog).findRootPhase();
+        if (root.children == null) {
+            return;
+        }
+        for (OptimizationTreeNode child : root.children) {
+            replaceSubtree(child, currentPhase);
+        }
+    }
+
+    private void replaceSubtree(OptimizationTreeNode node, OptimizationPhaseScopeImpl parentPhase) {
+        if (node instanceof OptimizationPhaseScopeImpl) {
+            OptimizationPhaseScopeImpl phase = (OptimizationPhaseScopeImpl) node;
+            try (OptimizationPhaseScopeImpl inlinedPhase = currentPhase.enterSubphase(phase.phaseName)) {
+                if (phase.children != null) {
+                    for (OptimizationTreeNode child : phase.children) {
+                        replaceSubtree(child, inlinedPhase);
+                    }
+                }
+            }
+        } else {
+            assert node instanceof OptimizationEntryImpl;
+            OptimizationEntryImpl optimization = (OptimizationEntryImpl) node;
+            parentPhase.addChild(new OptimizationEntryImpl(this, optimization.properties,
+                    optimization.position, optimization.optimizationName, optimization.event));
+        }
     }
 
     @Override
@@ -619,15 +683,6 @@ public class OptimizationLogImpl implements OptimizationLog {
             }
             partialEscapeLog = null;
         };
-    }
-
-    @Override
-    public DebugCloseable listen() {
-        if (!optimizationLogEnabled) {
-            return DebugCloseable.VOID_CLOSEABLE;
-        }
-        graph.getDebug().setCompilationListener(this);
-        return () -> graph.getDebug().setCompilationListener(null);
     }
 
     @Override

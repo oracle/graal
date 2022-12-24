@@ -31,7 +31,6 @@ import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.util.CollectionsUtil;
@@ -44,18 +43,18 @@ public class InliningLogCodec extends CompanionObjectCodec<InliningLog, Inlining
         private final List<EncodedCallsite> children;
         private final int bci;
         private final EncodedCallsite originalCallsite;
-        private final Integer invokableNode;
+        private final Integer invokeOrderId;
         private final ResolvedJavaMethod target;
         private final boolean indirect;
 
         private EncodedCallsite(List<InliningLog.Decision> decisions, List<EncodedCallsite> children, int bci,
-                        EncodedCallsite originalCallsite, Integer invokableNode, ResolvedJavaMethod target,
+                        EncodedCallsite originalCallsite, Integer invokeOrderId, ResolvedJavaMethod target,
                         boolean indirect) {
             this.decisions = decisions;
             this.children = children;
             this.bci = bci;
             this.originalCallsite = originalCallsite;
-            this.invokableNode = invokableNode;
+            this.invokeOrderId = invokeOrderId;
             this.target = target;
             this.indirect = indirect;
         }
@@ -120,30 +119,54 @@ public class InliningLogCodec extends CompanionObjectCodec<InliningLog, Inlining
     }
 
     private static final class InliningLogDecoder implements Decoder<InliningLog> {
+        private EconomicMap<Integer, InliningLog.Callsite> orderIdToCallsite = EconomicMap.create();
+
         @Override
-        public void decode(InliningLog inliningLog, Object encodedObject, Function<Integer, Node> mapper) {
+        public boolean shouldBeDecoded(InliningLog emptyCompanionObject) {
+            return emptyCompanionObject != null;
+        }
+
+        @Override
+        public void decode(InliningLog inliningLog, Object encodedObject) {
+            assert shouldBeDecoded(inliningLog);
             assert encodedObject instanceof EncodedInliningLog;
+            orderIdToCallsite = EconomicMap.create();
             EncodedInliningLog instance = (EncodedInliningLog) encodedObject;
             assert instance.root != null && instance.leaves != null;
             EconomicMap<EncodedCallsite, InliningLog.Callsite> replacements = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
-            inliningLog.setRootCallsite(decodeSubtree(null, instance.root, mapper, replacements));
-            MapCursor<Integer, EncodedCallsite> cursor = instance.leaves.getEntries();
-            while (cursor.advance()) {
-                Invokable invokable = (Invokable) mapper.apply(cursor.getKey());
-                inliningLog.addLeafCallsite(invokable, replacements.get(cursor.getValue()));
+            inliningLog.setRootCallsite(decodeSubtree(null, instance.root, replacements));
+        }
+
+        @Override
+        public void registerNode(StructuredGraph graph, Node node, int orderId) {
+            InliningLog inliningLog = graph.getInliningLog();
+            if (inliningLog == null) {
+                return;
+            }
+            if (!(node instanceof Invokable)) {
+                return;
+            }
+            Invokable invokable = (Invokable) node;
+            if (orderIdToCallsite.containsKey(orderId)) {
+                InliningLog.Callsite callsite = orderIdToCallsite.get(orderId);
+                callsite.setInvoke(invokable);
+                inliningLog.addLeafCallsite(invokable, callsite);
+            } else if (!inliningLog.containsLeafCallsite(invokable)) {
+                inliningLog.trackNewCallsite(invokable);
             }
         }
 
-        private static InliningLog.Callsite decodeSubtree(InliningLog.Callsite parent, EncodedCallsite replacementSite,
-                        Function<Integer, Node> mapper, EconomicMap<EncodedCallsite, InliningLog.Callsite> replacements) {
-            Invokable invokable = replacementSite.invokableNode == null ? null : (Invokable) mapper.apply(replacementSite.invokableNode);
+        private InliningLog.Callsite decodeSubtree(InliningLog.Callsite parent, EncodedCallsite replacementSite, EconomicMap<EncodedCallsite, InliningLog.Callsite> replacements) {
             InliningLog.Callsite originalCallsite = replacementSite.originalCallsite == null ? null : replacements.get(replacementSite.originalCallsite);
-            InliningLog.Callsite site = new InliningLog.Callsite(parent, originalCallsite, invokable, replacementSite.target,
+            InliningLog.Callsite site = new InliningLog.Callsite(parent, originalCallsite, null, replacementSite.target,
                             replacementSite.bci, replacementSite.indirect);
+            if (replacementSite.invokeOrderId != null) {
+                orderIdToCallsite.put(replacementSite.invokeOrderId, site);
+            }
             site.getDecisions().addAll(replacementSite.decisions);
             replacements.put(replacementSite, site);
             for (EncodedCallsite replacementChild : replacementSite.children) {
-                decodeSubtree(site, replacementChild, mapper, replacements);
+                decodeSubtree(site, replacementChild, replacements);
             }
             return site;
         }

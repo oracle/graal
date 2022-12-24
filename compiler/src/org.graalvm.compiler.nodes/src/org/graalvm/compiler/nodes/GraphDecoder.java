@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.function.BiConsumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -90,6 +91,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * during decoding, as well as method inlining during decoding.
  */
 public class GraphDecoder {
+
+    private final InliningLogCodec inliningLogCodec;
+    private final OptimizationLogCodec optimizationLogCodec;
 
     /** Decoding state maintained for each encoded graph. */
     protected class MethodScope {
@@ -144,6 +148,8 @@ public class GraphDecoder {
                 maxFixedNodeOrderId = reader.getUVInt();
                 graph.getGraphState().setGuardsStage((GraphState.GuardsStage) readObject(this));
                 graph.getGraphState().getStageFlags().addAll((EnumSet<StageFlag>) readObject(this));
+                encodedInliningLog = (InliningLogCodec.EncodedInliningLog) readObject(this);
+                encodedOptimizationLog = (OptimizationLogCodec.EncodedOptimizationLog) readObject(this);
                 int nodeCount = reader.getUVInt();
                 if (encodedGraph.nodeStartOffsets == null) {
                     int[] nodeStartOffsets = new int[nodeCount];
@@ -160,9 +166,6 @@ public class GraphDecoder {
                 } else {
                     orderIdWidth = 4;
                 }
-
-                encodedInliningLog = (InliningLogCodec.EncodedInliningLog) readObject(this);
-                encodedOptimizationLog = (OptimizationLogCodec.EncodedOptimizationLog) readObject(this);
             } else {
                 reader = null;
                 maxFixedNodeOrderId = 0;
@@ -494,6 +497,8 @@ public class GraphDecoder {
         this.options = graph.getOptions();
         this.debug = graph.getDebug();
         reusableFloatingNodes = EconomicMap.create(Equivalence.IDENTITY);
+        inliningLogCodec = new InliningLogCodec();
+        optimizationLogCodec = new OptimizationLogCodec();
     }
 
     public final void decode(EncodedGraph encodedGraph) {
@@ -506,8 +511,6 @@ public class GraphDecoder {
             MethodScope methodScope = new MethodScope(null, graph, encodedGraph, LoopExplosionKind.NONE);
             LoopScope loopScope = createInitialLoopScope(methodScope, null);
             decode(loopScope);
-            new InliningLogCodec().decode(graph, methodScope.encodedInliningLog, (id) -> loopScope.createdNodes[id]);
-            new OptimizationLogCodec().decode(graph, methodScope.encodedOptimizationLog, (id) -> loopScope.createdNodes[id]);
             cleanupGraph(methodScope);
             assert graph.verify();
 
@@ -555,49 +558,53 @@ public class GraphDecoder {
     }
 
     protected final void decode(LoopScope initialLoopScope) {
-        LoopScope loopScope = initialLoopScope;
-        /* Process (inlined) methods. */
-        while (loopScope != null) {
-            MethodScope methodScope = loopScope.methodScope;
-
-            /* Process loops of method. */
+        inliningLogCodec.decode(graph, initialLoopScope.methodScope.encodedInliningLog);
+        optimizationLogCodec.decode(graph, initialLoopScope.methodScope.encodedOptimizationLog);
+        try (InliningLog.UpdateScope updateScope = InliningLog.openDefaultUpdateScope(graph.getInliningLog())) {
+            LoopScope loopScope = initialLoopScope;
+            /* Process (inlined) methods. */
             while (loopScope != null) {
-                /* Process nodes of loop. */
-                while (!loopScope.nodesToProcess.isEmpty()) {
-                    loopScope = processNextNode(methodScope, loopScope);
-                    methodScope = loopScope.methodScope;
-                    /*
-                     * We can have entered a new loop, and we can have entered a new inlined method.
-                     */
-                }
+                MethodScope methodScope = loopScope.methodScope;
 
-                /* Finished with a loop. */
-                if (loopScope.hasIterationsToProcess()) {
-                    loopScope = loopScope.getNextIterationToProcess(true);
-                } else {
-                    propagateCreatedNodes(loopScope);
-                    loopScope = loopScope.outer;
+                /* Process loops of method. */
+                while (loopScope != null) {
+                    /* Process nodes of loop. */
+                    while (!loopScope.nodesToProcess.isEmpty()) {
+                        loopScope = processNextNode(methodScope, loopScope);
+                        methodScope = loopScope.methodScope;
+                        /*
+                         * We can have entered a new loop, and we can have entered a new inlined method.
+                         */
+                    }
 
-                    if (loopScope == null) {
-                        // finished all loops of a method
-                        afterMethodScope(methodScope);
+                    /* Finished with a loop. */
+                    if (loopScope.hasIterationsToProcess()) {
+                        loopScope = loopScope.getNextIterationToProcess(true);
+                    } else {
+                        propagateCreatedNodes(loopScope);
+                        loopScope = loopScope.outer;
+
+                        if (loopScope == null) {
+                            // finished all loops of a method
+                            afterMethodScope(methodScope);
+                        }
                     }
                 }
-            }
 
-            /*
-             * Finished with an inlined method. Perform end-of-method cleanup tasks.
-             */
-            if (methodScope.loopExplosion.mergeLoops()) {
-                LoopDetector loopDetector = new LoopDetector(graph, methodScope);
-                loopDetector.run();
-            }
-            if (methodScope.isInlinedMethod()) {
-                finishInlining(methodScope);
-            }
+                /*
+                 * Finished with an inlined method. Perform end-of-method cleanup tasks.
+                 */
+                if (methodScope.loopExplosion.mergeLoops()) {
+                    LoopDetector loopDetector = new LoopDetector(graph, methodScope);
+                    loopDetector.run();
+                }
+                if (methodScope.isInlinedMethod()) {
+                    finishInlining(methodScope);
+                }
 
-            /* continue with the caller */
-            loopScope = methodScope.callerLoopScope;
+                /* continue with the caller */
+                loopScope = methodScope.callerLoopScope;
+            }
         }
     }
 
@@ -1668,6 +1675,7 @@ public class GraphDecoder {
         assert allowNull || node != null;
         assert allowOverwrite || lookupNode(loopScope, nodeOrderId) == null;
         loopScope.createdNodes[nodeOrderId] = node;
+        inliningLogCodec.registerNode(graph, node, nodeOrderId);
     }
 
     protected int readOrderId(MethodScope methodScope) {

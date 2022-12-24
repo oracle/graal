@@ -28,10 +28,12 @@ import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.Inl
 import static org.junit.Assume.assumeTrue;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.InvokeNode;
@@ -49,6 +51,7 @@ import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.replacements.CachingPEGraphDecoder;
 import org.graalvm.compiler.serviceprovider.GraalServices;
@@ -165,24 +168,32 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
         assumeTrue(GraalServices.hasLookupReferencedType());
         EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache = EconomicMap.create();
         // Parse and cache doIncrement before the single implementor is loaded
-        test("doIncrement", graphCache);
+        test("doIncrement", graphCache, getInitialOptions());
         // Force loading of the single implementor
         SingleInterfaceImpl.init();
-        StructuredGraph graph = test("testSingleImplementorDevirtualize", graphCache);
+        StructuredGraph graph = test("testSingleImplementorDevirtualize", graphCache, getInitialOptions());
         Assert.assertEquals(0, graph.getNodes().filter(InvokeNode.class).count());
     }
 
     @Test
     @SuppressWarnings("try")
     public void test() {
-        test("doTest", EconomicMap.create());
+        test("doTest", EconomicMap.create(), getInitialOptions());
+    }
+
+    @Test
+    public void inliningLogAndOptimizationLogDecodedCorrectly() {
+        EconomicSet<DebugOptions.OptimizationLogTarget> targets = EconomicSet.create();
+        targets.add(DebugOptions.OptimizationLogTarget.Stdout);
+        OptionValues optionValues = new OptionValues(getInitialOptions(), DebugOptions.OptimizationLog, targets);
+        test("doTest", EconomicMap.create(), optionValues);
     }
 
     @SuppressWarnings("try")
-    private StructuredGraph test(String methodName, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
+    private StructuredGraph test(String methodName, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache, OptionValues optionValues) {
         ResolvedJavaMethod testMethod = getResolvedJavaMethod(methodName);
         StructuredGraph targetGraph = null;
-        DebugContext debug = getDebugContext();
+        DebugContext debug = getDebugContext(optionValues, null, null);
         try (DebugContext.Scope scope = debug.scope("GraphPETest", testMethod)) {
             GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(getDefaultGraphBuilderPlugins()).withEagerResolving(true).withUnresolvedIsError(true);
             graphBuilderConfig = editGraphBuilderConfiguration(graphBuilderConfig);

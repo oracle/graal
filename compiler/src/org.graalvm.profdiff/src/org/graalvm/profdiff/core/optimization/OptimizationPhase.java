@@ -57,7 +57,7 @@ public class OptimizationPhase extends OptimizationTreeNode {
      * Suffixes of optimization phases names which produce many optimizations with little individual
      * impact.
      */
-    private static final String[] veryDetailedPhaseSuffixes = {"CanonicalizerPhase", "DeadCodeEliminationPhase", "InliningPhase"};
+    private static final String[] veryDetailedPhaseSuffixes = {"CanonicalizerPhase", "DeadCodeEliminationPhase"};
 
     /**
      * Returns whether this optimization phase produces many optimizations with little individual

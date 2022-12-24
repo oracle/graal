@@ -120,7 +120,6 @@ public class OptimizationLogTest extends GraalCompilerTest {
         OptimizationLog optimizationLog = graph.getOptimizationLog();
         Assert.assertTrue(optimizationLog.isOptimizationLogEnabled());
 
-        graph.getDebug().setCompilationListener(optimizationLog);
         new ReportNodePhase(() -> 43).apply(graph, getProviders());
 
         OptimizationLogImpl.OptimizationPhaseScope rootPhase = graph.getOptimizationLog().getCurrentPhase();

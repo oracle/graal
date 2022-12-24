@@ -126,7 +126,7 @@ public class InliningLog {
          * The invoke is also lost (the value is {@code null}) when it is removed and
          * {@link #copyTree copied}.
          */
-        private final Invokable invoke;
+        private Invokable invoke;
 
         /**
          * The target method of the callsite. This field should reflect the correct target method at
@@ -273,6 +273,10 @@ public class InliningLog {
          */
         public Invokable getInvoke() {
             return invoke;
+        }
+
+        public void setInvoke(Invokable newInvoke) {
+            invoke = newInvoke;
         }
 
         /**

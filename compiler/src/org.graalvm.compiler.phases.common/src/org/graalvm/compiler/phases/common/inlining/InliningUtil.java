@@ -446,7 +446,7 @@ public class InliningUtil extends ValueMergeUtil {
         InliningLog inliningLog = graph.getInliningLog();
         try (InliningLog.UpdateScope scope = InliningLog.openDefaultUpdateScope(inliningLog)) {
             duplicates = graph.addDuplicates(nodes, inlineGraph, inlineGraph.getNodeCount(), localReplacement);
-            graph.notifyInliningDecision(invoke, true, phase, duplicates, inlineGraph.getInliningLog(), reason);
+            graph.notifyInliningDecision(invoke, true, phase, duplicates, inlineGraph.getInliningLog(), inlineGraph.getOptimizationLog(), reason);
         }
 
         FrameState stateAfter = invoke.stateAfter();

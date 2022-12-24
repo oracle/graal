@@ -52,6 +52,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
+import org.graalvm.compiler.nodes.OptimizationLog;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -363,7 +364,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         return false;
     }
 
-    protected boolean shouldDumpAfterAtBasicLevel() {
+    protected static boolean shouldDumpAfterAtBasicLevel() {
         return false;
     }
 
@@ -407,6 +408,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         DebugContext debug = graph.getDebug();
         try (DebugContext.Scope s = debug.scope(getName(), this);
                         CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName()) : null;
+                        OptimizationLog.OptimizationPhaseScope l = graph.getOptimizationLog().enterPhase(getName());
                         DebugCloseable a = timer.start(debug);
                         DebugCloseable c = memUseTracker.start(debug)) {
 
@@ -509,8 +511,8 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
 
     private static final class GraphChangeListener extends NodeEventListener {
         boolean changed;
-        private StructuredGraph graph;
-        private Mark mark;
+        private final StructuredGraph graph;
+        private final Mark mark;
 
         GraphChangeListener(StructuredGraph graphCopy) {
             this.graph = graphCopy;
@@ -548,12 +550,12 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         /**
          * Contains the excluded phases and the corresponding methods to exclude.
          */
-        private EconomicMap<Pattern, MethodFilter> filters;
+        private final EconomicMap<Pattern, MethodFilter> filters;
 
         /**
          * Cache instances of this class to avoid parsing the same option string more than once.
          */
-        private static ConcurrentHashMap<String, ExcludePhaseFilter> instances;
+        private static final ConcurrentHashMap<String, ExcludePhaseFilter> instances;
 
         static {
             instances = new ConcurrentHashMap<>();

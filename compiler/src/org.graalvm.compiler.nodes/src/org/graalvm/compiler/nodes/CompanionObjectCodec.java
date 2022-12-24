@@ -44,7 +44,11 @@ public abstract class CompanionObjectCodec<T, E extends CompanionObjectCodec.Enc
     }
 
     protected interface Decoder<T> {
-        void decode(T emptyCompanionObject, Object encodedObject, Function<Integer, Node> mapper);
+        boolean shouldBeDecoded(T emptyCompanionObject);
+
+        void decode(T emptyCompanionObject, Object encodedObject);
+
+        void registerNode(StructuredGraph graph, Node node, int orderId);
 
         boolean verify(T original, T decoded);
     }
@@ -89,13 +93,16 @@ public abstract class CompanionObjectCodec<T, E extends CompanionObjectCodec.Enc
         }
     }
 
-    public void decode(StructuredGraph emptyGraph, Object encodedObject, Function<Integer, Node> mapper) {
-        if (encodedObject == null) {
+    public void decode(StructuredGraph emptyGraph, Object encodedObject) {
+        T emptyCompanionObject = getter.apply(emptyGraph);
+        if (encodedObject == null || !decoder.shouldBeDecoded(emptyCompanionObject)) {
             return;
         }
-        T emptyCompanionObject = getter.apply(emptyGraph);
-        assert emptyCompanionObject != null;
-        decoder.decode(emptyCompanionObject, encodedObject, mapper);
+        decoder.decode(emptyCompanionObject, encodedObject);
+    }
+
+    public void registerNode(StructuredGraph graph, Node node, int orderId) {
+        decoder.registerNode(graph, node, orderId);
     }
 
     public boolean verify(StructuredGraph original, StructuredGraph decoded) {

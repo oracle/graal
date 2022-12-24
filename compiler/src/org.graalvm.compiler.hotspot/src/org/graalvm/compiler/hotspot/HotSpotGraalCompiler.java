@@ -242,9 +242,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
         PhaseSuite<HighTierContext> graphBuilderSuite = configGraphBuilderSuite(providers.getSuites().getDefaultGraphBuilderSuite(), shouldDebugNonSafepoints, shouldRetainLocalVariables,
                         eagerResolving, isOSR);
 
-        try (DebugCloseable l = graph.getOptimizationLog().listen()) {
-            GraalCompiler.compileGraph(graph, method, providers, backend, graphBuilderSuite, optimisticOpts, profilingInfo, suites, lirSuites, result, crbf, true);
-        }
+        GraalCompiler.compileGraph(graph, method, providers, backend, graphBuilderSuite, optimisticOpts, profilingInfo, suites, lirSuites, result, crbf, true);
         graph.getOptimizationLog().emit(new StableMethodNameFormatter(providers, graph.getDebug()));
         if (!isOSR) {
             profilingInfo.setCompilerIRSize(StructuredGraph.class, graph.getNodeCount());

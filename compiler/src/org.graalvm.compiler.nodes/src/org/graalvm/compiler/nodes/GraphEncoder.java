@@ -28,7 +28,6 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.Objects;
-import java.util.function.Function;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableMapCursor;
@@ -342,12 +341,12 @@ public class GraphEncoder {
         writer.putUV(nodeOrder.maxFixedNodeOrderId);
         writeObjectId(graph.getGuardsStage());
         writeObjectId(graph.getGraphState().getStageFlags());
+        writeObjectId(inliningLogCodec.encode(graph, nodeOrder.orderIds::get));
+        writeObjectId(optimizationLogCodec.encode(graph, nodeOrder.orderIds::get));
         writer.putUV(nodeCount);
         for (int i = 0; i < nodeCount; i++) {
             writer.putUV(metadataStart - nodeStartOffsets[i]);
         }
-        writeObjectId(inliningLogCodec.encode(graph, nodeOrder.orderIds::get));
-        writeObjectId(optimizationLogCodec.encode(graph, nodeOrder.orderIds::get));
 
         /* Check that the decoding of the encode graph is the same as the input. */
         assert verifyEncoding(graph, new EncodedGraph(getEncoding(), metadataStart, getObjects(), getNodeClasses(), graph));

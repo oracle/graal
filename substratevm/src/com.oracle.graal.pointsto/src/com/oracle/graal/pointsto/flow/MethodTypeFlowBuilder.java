@@ -753,7 +753,7 @@ public class MethodTypeFlowBuilder {
      */
     class NodeIterator extends PostOrderNodeIterator<TypeFlowsOfNodes> {
 
-        private HashMap<Object, TypeFlowBuilder<?>> instanceOfFlows;
+        private final HashMap<Object, TypeFlowBuilder<?>> instanceOfFlows;
         private TypeFlowBuilder<?> returnBuilder;
 
         NodeIterator(FixedNode start, TypeFlowsOfNodes typeFlows) {

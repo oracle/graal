@@ -29,13 +29,13 @@ import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.debug.CompilationListener;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.NodeSuccessorList;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -50,7 +50,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * optimizations performed in a single compilation and dumps them to the standard output, JSON
  * files, and/or IGV.
  */
-public interface OptimizationLog extends CompilationListener {
+public interface OptimizationLog {
 
     /**
      * Represents a node in the tree of optimizations. The tree of optimizations consists of
@@ -208,12 +208,17 @@ public interface OptimizationLog extends CompilationListener {
          * disabled.
          */
         @Override
-        public OptimizationPhaseScope enterPhase(CharSequence name, int nesting) {
+        public OptimizationPhaseScope enterPhase(CharSequence name) {
             return null;
         }
 
         @Override
-        public void notifyInlining(ResolvedJavaMethod caller, ResolvedJavaMethod callee, boolean succeeded, CharSequence message, int bci) {
+        public void inline(OptimizationLog calleeOptimizationLog, NodeSourcePosition invokePosition) {
+
+        }
+
+        @Override
+        public void replaceLog(OptimizationLog replacementLog) {
 
         }
 
@@ -266,17 +271,6 @@ public interface OptimizationLog extends CompilationListener {
          */
         @Override
         public DebugCloseable enterPartialEscapeAnalysis() {
-            return DebugCloseable.VOID_CLOSEABLE;
-        }
-
-        /**
-         * Does not set itself as the compilation listener and returns a scope that does nothing,
-         * because the optimization log is disabled.
-         *
-         * @return a scope that does nothing
-         */
-        @Override
-        public DebugCloseable listen() {
             return DebugCloseable.VOID_CLOSEABLE;
         }
 
@@ -434,6 +428,12 @@ public interface OptimizationLog extends CompilationListener {
      */
     Graph getOptimizationTree();
 
+    OptimizationPhaseScope enterPhase(CharSequence name);
+
+    void inline(OptimizationLog calleeOptimizationLog, NodeSourcePosition invokePosition);
+
+    void replaceLog(OptimizationLog replacementLog);
+
     /**
      * Gets the scope of the most recently opened phase (from unclosed phases) or {@code null} if
      * the optimization log is not enabled.
@@ -449,15 +449,6 @@ public interface OptimizationLog extends CompilationListener {
      * virtualized allocations are reported.
      */
     DebugCloseable enterPartialEscapeAnalysis();
-
-    /**
-     * Opens a {@link DebugCloseable} and sets itself as the compilation listener, if the
-     * optimization log is enabled. When the closable is closed, the compilation listener is reset
-     * to {@code null}.
-     *
-     * @return a closable in whose lifespan the optimization log is set as the compilation listener
-     */
-    DebugCloseable listen();
 
     /**
      * Depending on the {@link DebugOptions#OptimizationLog OptimizationLog} option, prints the

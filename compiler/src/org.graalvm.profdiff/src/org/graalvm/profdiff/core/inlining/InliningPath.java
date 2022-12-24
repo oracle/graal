@@ -119,9 +119,7 @@ public final class InliningPath {
 
         @Override
         public int hashCode() {
-            int result = methodName.hashCode();
-            result = 31 * result + callsiteBCI;
-            return result;
+            return Objects.hash(callsiteBCI, methodName);
         }
     }
 

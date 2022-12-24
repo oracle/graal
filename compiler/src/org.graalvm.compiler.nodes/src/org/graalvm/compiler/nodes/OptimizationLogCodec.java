@@ -114,7 +114,13 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
 
     private static final class OptimizationLogDecoder implements Decoder<OptimizationLog> {
         @Override
-        public void decode(OptimizationLog optimizationLog, Object encodedObject, Function<Integer, Node> mapper) {
+        public boolean shouldBeDecoded(OptimizationLog emptyCompanionObject) {
+            return emptyCompanionObject.isOptimizationLogEnabled();
+        }
+
+        @Override
+        public void decode(OptimizationLog optimizationLog, Object encodedObject) {
+            assert shouldBeDecoded(optimizationLog);
             assert encodedObject instanceof EncodedOptimizationLog;
             EncodedOptimizationLog instance = (EncodedOptimizationLog) encodedObject;
             assert instance.root != null && optimizationLog instanceof OptimizationLogImpl;
@@ -122,19 +128,24 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
             OptimizationLogImpl.OptimizationPhaseScopeImpl rootPhase = optimizationLogImpl.findRootPhase();
             if (instance.root.children != null) {
                 for (OptimizationTreeNode child : instance.root.children) {
-                    decodeSubtreeInto(rootPhase, child, optimizationLogImpl, 1);
+                    decodeSubtreeInto(rootPhase, child, optimizationLogImpl);
                 }
             }
         }
 
+        @Override
+        public void registerNode(StructuredGraph graph, Node node, int orderId) {
+
+        }
+
         private static void decodeSubtreeInto(OptimizationLogImpl.OptimizationPhaseScopeImpl parent, OptimizationTreeNode node,
-                        OptimizationLogImpl optimizationLog, int nesting) {
+                        OptimizationLogImpl optimizationLog) {
             if (node instanceof OptimizationPhase) {
                 OptimizationPhase optimizationPhase = (OptimizationPhase) node;
-                try (OptimizationLogImpl.OptimizationPhaseScopeImpl decodedPhase = optimizationLog.enterPhase(optimizationPhase.phaseName, nesting)) {
+                try (OptimizationLogImpl.OptimizationPhaseScopeImpl decodedPhase = optimizationLog.enterPhase(optimizationPhase.phaseName)) {
                     if (optimizationPhase.children != null) {
                         for (OptimizationTreeNode child : optimizationPhase.children) {
-                            decodeSubtreeInto(decodedPhase, child, optimizationLog, nesting + 1);
+                            decodeSubtreeInto(decodedPhase, child, optimizationLog);
                         }
                     }
                 }

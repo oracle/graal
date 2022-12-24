@@ -544,15 +544,22 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * @param invoke the invocation to which the inlining decision pertains
      * @param positive {@code true} if the invocation was inlined, {@code false} otherwise
      * @param phase name of the phase doing the inlining
-     * @param replacements the node replacement map used by inlining. Must be non-null if
-     *            {@code positive == true}, ignored if {@code positive == false}.
-     * @param calleeLog the inlining log of the inlined graph. Must be non-null if
-     *            {@code positive == true}, ignored if {@code positive == false}.
+     * @param replacements the node replacement map used by inlining, ignored if
+     *            {@code positive == false}
+     * @param calleeInliningLog the inlining log of the inlined graph, ignored if
+     *            {@code positive == false}
+     * @param calleeOptimizationLog the optimization log of the inlined graph, ignored if
+     *            {@code positive == false}
      * @param reason format string that along with {@code args} provides the reason for decision
      */
-    public void notifyInliningDecision(Invokable invoke, boolean positive, String phase, EconomicMap<Node, Node> replacements, InliningLog calleeLog, String reason, Object... args) {
+    public void notifyInliningDecision(Invokable invoke, boolean positive, String phase, EconomicMap<Node, Node> replacements,
+                                       InliningLog calleeInliningLog, OptimizationLog calleeOptimizationLog, String reason, Object... args) {
         if (inliningLog != null) {
-            inliningLog.addDecision(invoke, positive, phase, replacements, calleeLog, reason, args);
+            inliningLog.addDecision(invoke, positive, phase, replacements, calleeInliningLog, reason, args);
+        }
+        if (positive && calleeOptimizationLog != null && optimizationLog.isOptimizationLogEnabled()) {
+            FixedNode invokeNode = invoke.asFixedNodeOrNull();
+            optimizationLog.inline(calleeOptimizationLog, invokeNode == null ? null : invokeNode.getNodeSourcePosition());
         }
         if (getDebug().hasCompilationListener()) {
             String message = String.format(reason, args);
@@ -630,6 +637,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                 copyInliningLog.replaceLog(duplicates, this.getInliningLog());
             }
         }
+        copy.getOptimizationLog().replaceLog(optimizationLog);
         if (duplicationMapCallback != null) {
             duplicationMapCallback.accept(duplicates);
         }
