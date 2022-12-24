@@ -37,7 +37,9 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
+import com.oracle.svm.core.jdk.JDK19OrEarlier;
 import com.oracle.svm.core.jdk.JDK19OrLater;
+import com.oracle.svm.core.jdk.JDK20OrLater;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.core.util.VMError;
 
@@ -49,7 +51,11 @@ import jdk.jfr.internal.LogTag;
 @TargetClass(value = jdk.jfr.internal.JVM.class, onlyWith = HasJfrSupport.class)
 public final class Target_jdk_jfr_internal_JVM {
     // Checkstyle: stop
-    @Alias static Object FILE_DELTA_CHANGE;
+    @Alias @TargetElement(onlyWith = JDK20OrLater.class) //
+    static Object CHUNK_ROTATION_MONITOR;
+
+    @Alias @TargetElement(onlyWith = JDK19OrEarlier.class) //
+    static Object FILE_DELTA_CHANGE;
     // Checkstyle: resume
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
