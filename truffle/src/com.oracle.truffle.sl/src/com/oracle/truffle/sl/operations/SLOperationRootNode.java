@@ -174,7 +174,7 @@ public abstract class SLOperationRootNode extends SLRootNode implements Operatio
                         Object function,
                         @Variadic Object[] arguments,
                         @CachedLibrary(limit = "3") InteropLibrary library,
-                        @Bind("this") Node node,
+                        @Bind("$root") Node node,
                         @Bind("$bci") int bci) {
             try {
                 return library.execute(function, arguments);

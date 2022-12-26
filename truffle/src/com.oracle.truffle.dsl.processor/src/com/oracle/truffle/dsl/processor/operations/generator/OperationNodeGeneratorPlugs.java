@@ -3,6 +3,7 @@ package com.oracle.truffle.dsl.processor.operations.generator;
 import java.util.List;
 
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
@@ -23,16 +24,21 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
     private final ProcessorContext context;
     private final TruffleTypes types;
+    private final TypeMirror nodeType;
     private final InstructionModel instr;
 
-    public OperationNodeGeneratorPlugs(ProcessorContext context, InstructionModel instr) {
+    public OperationNodeGeneratorPlugs(ProcessorContext context, TypeMirror nodeType, InstructionModel instr) {
         this.context = context;
         this.types = context.getTypes();
+        this.nodeType = nodeType;
         this.instr = instr;
     }
 
     public List<? extends VariableElement> additionalArguments() {
-        return List.of(new CodeVariableElement(context.getType(int.class), "$sp"));
+        return List.of(
+                        new CodeVariableElement(nodeType, "$root"),
+                        new CodeVariableElement(context.getType(int.class), "$bci"),
+                        new CodeVariableElement(context.getType(int.class), "$sp"));
     }
 
     public ChildExecutionResult createExecuteChild(FlatNodeGenFactory factory, CodeTreeBuilder builder, FrameState originalFrameState, FrameState frameState, NodeExecutionData execution,

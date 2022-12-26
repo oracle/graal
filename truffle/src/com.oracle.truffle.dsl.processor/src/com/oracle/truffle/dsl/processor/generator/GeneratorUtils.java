@@ -434,6 +434,16 @@ public class GeneratorUtils {
         return overrideImplement((TypeElement) type.asElement(), methodName);
     }
 
+    public static CodeExecutableElement createGetter(Set<Modifier> modifiers, VariableElement field) {
+        CodeExecutableElement setter = new CodeExecutableElement(modifiers, field.asType(), "get" + ElementUtils.firstLetterUpperCase(field.getSimpleName().toString()));
+
+        CodeTreeBuilder b = setter.createBuilder();
+
+        b.startReturn().string(field.getSimpleName().toString()).end();
+
+        return setter;
+    }
+
     public static CodeExecutableElement createSetter(Set<Modifier> modifiers, VariableElement field) {
         CodeExecutableElement setter = new CodeExecutableElement(modifiers, new CodeTypeMirror(TypeKind.VOID), "set" + ElementUtils.firstLetterUpperCase(field.getSimpleName().toString()));
         setter.addParameter(new CodeVariableElement(field.asType(), field.getSimpleName().toString()));

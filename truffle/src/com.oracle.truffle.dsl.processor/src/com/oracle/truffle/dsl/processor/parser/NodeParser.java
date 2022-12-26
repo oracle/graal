@@ -2190,6 +2190,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
         globalMembers.addAll(fields);
         globalMembers.addAll(members);
         DSLExpressionResolver originalResolver = new DSLExpressionResolver(context, node.getTemplateType(), globalMembers);
+        if (mode == ParseMode.OPERATION) {
+            originalResolver.addVariable("$root", new CodeVariableElement(types.Node, "$root"));
+            originalResolver.addVariable("$bci", new CodeVariableElement(context.getType(int.class), "$bci"));
+        }
 
         // the number of specializations might grow while expressions are initialized.
         List<SpecializationData> specializations = node.getSpecializations();

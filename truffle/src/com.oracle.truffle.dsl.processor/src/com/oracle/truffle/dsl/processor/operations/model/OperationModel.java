@@ -78,7 +78,7 @@ public class OperationModel extends MessageContainer implements InfoDumpable {
         STORE_LOCAL_MATERIALIZED,
 
         CUSTOM_SIMPLE,
-        CUSTOM_SHORT_CIRCUIT,
+        CUSTOM_SHORT_CIRCUIT
     }
 
     public static class CustomSignature {
@@ -231,6 +231,10 @@ public class OperationModel extends MessageContainer implements InfoDumpable {
     public void dump(Dumper dumper) {
         dumper.print("Operation %s", name);
         dumper.field("kind", kind);
+    }
+
+    public boolean isSourceOnly() {
+        return kind == OperationKind.SOURCE || kind == OperationKind.SOURCE_SECTION;
     }
 
 }

@@ -79,7 +79,7 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
 
     @Specialization(guards = "arrays.hasArrayElements(receiver)", limit = "LIBRARY_LIMIT")
     public static Object writeArray(Object receiver, Object index, Object value,
-                    @Bind("this") Node node,
+                    @Bind("$root") Node node,
                     @Bind("$bci") int bci,
                     @CachedLibrary("receiver") InteropLibrary arrays,
                     @CachedLibrary("index") InteropLibrary numbers) {
@@ -102,7 +102,7 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
 
     @Specialization(guards = "!isSLObject(receiver)", limit = "LIBRARY_LIMIT")
     public static Object writeObject(Object receiver, Object name, Object value,
-                    @Bind("this") Node node,
+                    @Bind("$root") Node node,
                     @Bind("$bci") int bci,
                     @CachedLibrary("receiver") InteropLibrary objectLibrary,
                     @Cached SLToMemberNode asMember) {

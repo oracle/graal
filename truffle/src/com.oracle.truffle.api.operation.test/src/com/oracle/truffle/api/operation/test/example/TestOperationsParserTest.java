@@ -872,50 +872,6 @@ public class TestOperationsParserTest {
         testOrdering(true, root, 1L);
     }
 
-    @Test
-    public void testMetadata() {
-        final String value = "test data";
-
-        OperationRootNode node = parseNode(b -> {
-            b.beginRoot(LANGUAGE);
-
-//            b.setTestData(value);
-
-            b.endRoot();
-        });
-
-        Assert.assertEquals(value, node.getMetadata(TestOperations.TestData));
-        Assert.assertEquals(value, TestOperations.TestData.getValue(node));
-    }
-
-    @Test
-    public void testMetadataChange() {
-        final String value = "test data";
-
-        OperationRootNode node = parseNode(b -> {
-            b.beginRoot(LANGUAGE);
-
-//            b.setTestData("some old value");
-//            b.setTestData(value);
-
-            b.endRoot();
-        });
-
-        Assert.assertEquals(value, node.getMetadata(TestOperations.TestData));
-        Assert.assertEquals(value, TestOperations.TestData.getValue(node));
-    }
-
-    @Test
-    public void testMetadataDefaultValue() {
-        OperationRootNode node = parseNode(b -> {
-            b.beginRoot(LANGUAGE);
-
-            b.endRoot();
-        });
-
-        Assert.assertEquals(TestOperations.TestData.getDefaultValue(), node.getMetadata(TestOperations.TestData));
-        Assert.assertEquals(TestOperations.TestData.getDefaultValue(), TestOperations.TestData.getValue(node));
-    }
 
     @Test
     public void testTeeLocal() {

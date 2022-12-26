@@ -76,7 +76,7 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
 
     @Specialization(guards = "arrays.hasArrayElements(receiver)", limit = "LIBRARY_LIMIT")
     public static Object readArray(Object receiver, Object index,
-                    @Bind("this") Node node,
+                    @Bind("$root") Node node,
                     @Bind("$bci") int bci,
                     @CachedLibrary("receiver") InteropLibrary arrays,
                     @CachedLibrary("index") InteropLibrary numbers) {
@@ -90,7 +90,7 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
 
     @Specialization(limit = "LIBRARY_LIMIT")
     public static Object readSLObject(SLObject receiver, Object name,
-                    @Bind("this") Node node,
+                    @Bind("$root") Node node,
                     @Bind("$bci") int bci,
                     @CachedLibrary("receiver") DynamicObjectLibrary objectLibrary,
                     @Cached SLToTruffleStringNode toTruffleStringNode) {
@@ -105,7 +105,7 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
 
     @Specialization(guards = {"!isSLObject(receiver)", "objects.hasMembers(receiver)"}, limit = "LIBRARY_LIMIT")
     public static Object readObject(Object receiver, Object name,
-                    @Bind("this") Node node,
+                    @Bind("$root") Node node,
                     @Bind("$bci") int bci,
                     @CachedLibrary("receiver") InteropLibrary objects,
                     @Cached SLToMemberNode asMember) {

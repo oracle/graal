@@ -232,8 +232,6 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
         switch (name) {
             case "null":
                 return new CodeVariableElement(new CodeTypeMirror(TypeKind.NULL), "null");
-            case "$bci":
-                return new CodeVariableElement(new CodeTypeMirror(TypeKind.INT), "-1");
             case "false":
                 return new CodeVariableElement(new CodeTypeMirror(TypeKind.BOOLEAN), "false");
             case "true":
@@ -255,8 +253,12 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
                     return parent.resolveVariable(variable);
                 }
 
-                if (name.equals("this")) {
+                if (name.equals("this") || name.equals("$root")) {
                     return new CodeVariableElement(ProcessorContext.getInstance().getTypes().Node, "this");
+                }
+
+                if (name.equals("$bci")) {
+                    return new CodeVariableElement(new CodeTypeMirror(TypeKind.INT), "-1");
                 }
 
                 return null;

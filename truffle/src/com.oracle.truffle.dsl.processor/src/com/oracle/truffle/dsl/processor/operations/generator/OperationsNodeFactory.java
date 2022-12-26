@@ -156,12 +156,16 @@ public class OperationsNodeFactory {
 
         operationNodeGen.add(createChangeInterpreters());
 
+        operationNodeGen.add(createGetSourceSection());
+        operationNodeGen.add(createGetSourceSectionAtBci());
         operationNodeGen.add(createCloneUninitializedSupported());
         operationNodeGen.add(createCloneUninitialized());
 
+        operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), operationNodes.asType(), "nodes")));
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(short[].class), "bc")));
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(Object[].class), "objs")));
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "handlers")));
+        operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceInfo")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLocals")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "buildIndex")));
         if (model.generateUncached) {
@@ -179,7 +183,8 @@ public class OperationsNodeFactory {
                 continue;
             }
 
-            FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, instr.nodeData, consts, new OperationNodeGeneratorPlugs(context, instr));
+            OperationNodeGeneratorPlugs plugs = new OperationNodeGeneratorPlugs(context, operationNodeGen.asType(), instr);
+            FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, instr.nodeData, consts, plugs);
 
             CodeTypeElement el = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, instr.getInternalName() + "Gen");
             el.setSuperClass(types.Node);
@@ -191,6 +196,56 @@ public class OperationsNodeFactory {
         operationNodeGen.addAll(consts.elements());
 
         return operationNodeGen;
+    }
+
+    private CodeExecutableElement createGetSourceSection() {
+        CodeExecutableElement ex = GeneratorUtils.override(types.Node, "getSourceSection");
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.startIf().string("sourceInfo == null || sourceInfo.length == 0").end().startBlock();
+        b.returnNull();
+        b.end();
+
+        b.statement("Source[] sources = nodes.getSources()");
+
+        b.startIf().string("sources == null").end().startBlock();
+        b.returnNull();
+        b.end();
+
+        b.startReturn().string("sources[(sourceInfo[0] >> 16) & 0xffff].createSection(sourceInfo[1], sourceInfo[2])").end();
+
+        return ex;
+    }
+
+    private CodeExecutableElement createGetSourceSectionAtBci() {
+        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.OperationRootNode, "getSourceSectionAtBci");
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.startIf().string("sourceInfo == null || sourceInfo.length == 0").end().startBlock();
+        b.returnNull();
+        b.end();
+
+        b.statement("Source[] sources = nodes.getSources()");
+
+        b.startIf().string("sources == null").end().startBlock();
+        b.returnNull();
+        b.end();
+
+        b.statement("int i = 0;");
+
+        b.startWhile().string("i < sourceInfo.length && (sourceInfo[i] & 0xffff) <= bci").end().startBlock();
+        b.statement("i += 3");
+        b.end();
+
+        b.startIf().string("i == 0").end().startBlock();
+        b.returnNull();
+        b.end();
+
+        b.statement("i -= 3");
+
+        b.statement("return sources[(sourceInfo[i] >> 16) & 0xffff].createSection(sourceInfo[i + 1], sourceInfo[i + 2])");
+
+        return ex;
     }
 
     private CodeExecutableElement createCloneUninitializedSupported() {
@@ -560,6 +615,12 @@ public class OperationsNodeFactory {
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "curStack"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "exHandlers"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "exHandlerCount"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceIndexStack"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceIndexSp"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceLocationStack"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceLocationSp"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceInfo"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceInfoIndex"),
 
                         // must be last
                         new CodeVariableElement(Set.of(PRIVATE), savedState.asType(), "savedState"),
@@ -590,6 +651,7 @@ public class OperationsNodeFactory {
             operationBuilder.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean.class), "withInstrumentation"));
             operationBuilder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(context.getDeclaredType(ArrayList.class), operationNodeGen.asType()), "builtNodes"));
             operationBuilder.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "buildIndex"));
+            operationBuilder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(context.getDeclaredType(ArrayList.class), types.Source), "sources"));
 
             operationBuilder.addAll(List.of(builderState));
 
@@ -611,6 +673,7 @@ public class OperationsNodeFactory {
             operationBuilder.add(createBeforeChild());
             operationBuilder.add(createAfterChild());
             operationBuilder.add(createEmitInstruction());
+            operationBuilder.add(createdoEmitSourceInfo());
             operationBuilder.add(createFinish());
 
             return operationBuilder;
@@ -622,6 +685,10 @@ public class OperationsNodeFactory {
 
             b.startIf().string("!isReparse").end().startBlock();
             b.startStatement().string("nodes.setNodes(builtNodes.toArray(new ").type(operationNodeGen.asType()).string("[0]))").end();
+            b.end();
+
+            b.startIf().string("withSource").end().startBlock();
+            b.startStatement().string("nodes.setSources(sources.toArray(new ").type(types.Source).string("[0]))").end();
             b.end();
 
             return ex;
@@ -715,6 +782,12 @@ public class OperationsNodeFactory {
 
             CodeTreeBuilder b = ex.createBuilder();
 
+            if (operation.isSourceOnly()) {
+                b.startIf().string("!withSource").end().startBlock();
+                b.returnStatement();
+                b.end();
+            }
+
             if (operation.kind == OperationKind.ROOT) {
                 b.startIf().string("bc != null").end().startBlock(); // {
                 b.startAssign("savedState").startNew(savedState.asType());
@@ -734,6 +807,14 @@ public class OperationsNodeFactory {
                 b.statement("maxStack = 10");
                 b.statement("exHandlers = new int[10]");
                 b.statement("exHandlerCount = 0");
+                b.startIf().string("withSource").end().startBlock();
+                b.statement("sourceIndexStack = new int[1]");
+                b.statement("sourceIndexSp = 0");
+                b.statement("sourceLocationStack = new int[12]");
+                b.statement("sourceLocationSp = 0");
+                b.statement("sourceInfo = new int[15]");
+                b.statement("sourceInfoIndex = 0");
+                b.end();
             } else {
                 b.startStatement().startCall("beforeChild").end(2);
             }
@@ -752,6 +833,42 @@ public class OperationsNodeFactory {
                     b.statement("data[4] = arg0");
                     b.end();
                     break;
+                case SOURCE:
+                    b.startIf().string("sourceIndexStack.length == sourceIndexSp").end().startBlock();
+                    b.statement("sourceIndexStack = Arrays.copyOf(sourceIndexStack, sourceIndexSp * 2)");
+                    b.end();
+
+                    b.statement("int index = sources.indexOf(arg0)");
+                    b.startIf().string("index == -1").end().startBlock();
+                    b.statement("index = sources.size()");
+                    b.statement("sources.add(arg0)");
+                    b.end();
+
+                    b.statement("sourceIndexStack[sourceIndexSp++] = index");
+
+                    b.startIf().string("sourceLocationStack.length == sourceLocationSp").end().startBlock();
+                    b.statement("sourceLocationStack = Arrays.copyOf(sourceLocationStack, sourceLocationSp * 2)");
+                    b.end();
+
+                    b.statement("sourceLocationStack[sourceLocationSp++] = -1");
+                    b.statement("sourceLocationStack[sourceLocationSp++] = -1");
+
+                    b.statement("doEmitSourceInfo(index, -1, -1)");
+
+                    break;
+                case SOURCE_SECTION:
+                    b.startIf().string("sourceIndexSp == 0").end().startBlock();
+                    buildThrowIllegalStateException(b, "\"No enclosing Source operation found - each SourceSection must be enclosed in a Source operation.\"");
+                    b.end();
+
+                    b.startIf().string("sourceLocationStack.length == sourceLocationSp").end().startBlock();
+                    b.statement("sourceLocationStack = Arrays.copyOf(sourceLocationStack, sourceLocationSp * 2)");
+                    b.end();
+
+                    b.statement("sourceLocationStack[sourceLocationSp++] = arg0");
+                    b.statement("sourceLocationStack[sourceLocationSp++] = arg1");
+
+                    b.statement("doEmitSourceInfo(sourceIndexStack[sourceIndexSp - 1], arg0, arg1)");
             }
 
             return ex;
@@ -830,6 +947,12 @@ public class OperationsNodeFactory {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "end" + operation.name);
             CodeTreeBuilder b = ex.createBuilder();
 
+            if (operation.isSourceOnly()) {
+                b.startIf().string("!withSource").end().startBlock();
+                b.returnStatement();
+                b.end();
+            }
+
             b.startStatement().startCall("endOperation");
             b.string("" + operation.id);
             b.end(2);
@@ -870,6 +993,7 @@ public class OperationsNodeFactory {
 
                 b.startAssign("result").startNew(operationNodeGen.asType()).string("language").string("fdb").end(2);
 
+                b.startAssign("result.nodes").string("nodes").end();
                 b.startAssign("result.bc").string("Arrays.copyOf(bc, bci)").end();
                 b.startAssign("result.objs").string("Arrays.copyOf(objs, bci)").end();
                 b.startAssign("result.handlers").string("Arrays.copyOf(exHandlers, exHandlerCount)").end();
@@ -882,6 +1006,10 @@ public class OperationsNodeFactory {
                 b.end(); // }
 
                 b.statement("buildIndex++");
+
+                b.startIf().string("withSource").end().startBlock();
+                b.statement("result.sourceInfo = Arrays.copyOf(sourceInfo, sourceInfoIndex)");
+                b.end();
 
                 b.startIf().string("savedState == null").end().startBlock(); // {
                 b.statement("bc = null");
@@ -905,17 +1033,31 @@ public class OperationsNodeFactory {
                     b.statement("exHandlers = Arrays.copyOf(exHandlers, exHandlers.length * 2)");
                     b.end();
 
-                    b.statement("exHandlers[exHandlerCount] = (int) data[0]");
-                    b.statement("exHandlers[exHandlerCount + 1] = (int) data[1]");
-                    b.statement("exHandlers[exHandlerCount + 2] = (int) data[2]");
-                    b.statement("exHandlers[exHandlerCount + 3] = (int) data[3]");
-                    b.statement("exHandlers[exHandlerCount + 4] = ((OperationLocalImpl) data[4]).index.value");
-                    b.statement("exHandlerCount += 5");
+                    b.statement("exHandlers[exHandlerCount++] = (int) data[0]");
+                    b.statement("exHandlers[exHandlerCount++] = (int) data[1]");
+                    b.statement("exHandlers[exHandlerCount++] = (int) data[2]");
+                    b.statement("exHandlers[exHandlerCount++] = (int) data[3]");
+                    b.statement("exHandlers[exHandlerCount++] = ((OperationLocalImpl) data[4]).index.value");
 
                     b.end();
                     break;
                 case CUSTOM_SHORT_CIRCUIT:
-                    b.statement("((IntRef) operationData[operationSp]).value = bci");
+                    b.statement("((IntRef) ((Object[]) operationData[operationSp])[0]).value = bci");
+                    break;
+                case SOURCE_SECTION:
+                    b.statement("sourceLocationSp -= 2");
+
+                    b.startStatement().startCall("doEmitSourceInfo");
+                    b.string("sourceIndexStack[sourceIndexSp - 1]");
+                    b.string("sourceLocationStack[sourceLocationSp]");
+                    b.string("sourceLocationStack[sourceLocationSp + 1]");
+                    b.end(2);
+                    break;
+
+                case SOURCE:
+                    b.statement("sourceLocationSp -= 2");
+                    b.statement("sourceIndexSp -= 1");
+                    b.statement("doEmitSourceInfo(sourceIndexStack[sourceIndexSp], -1, -1)");
                     break;
                 default:
                     if (operation.instruction != null) {
@@ -1229,6 +1371,38 @@ public class OperationsNodeFactory {
             b.end(2);
         }
 
+        private CodeExecutableElement createdoEmitSourceInfo() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitSourceInfo");
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "sourceIndex"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "start"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "length"));
+
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startAssert().string("withSource").end();
+
+            b.startIf().string("sourceInfoIndex == 0 && start == -1").end().startBlock();
+            b.returnStatement();
+            b.end();
+
+            // this is > 3 and not > 0 since we explicitly want to keep the very first entry, even
+            // if the second has the same BCI, since that first one is the entire function source
+            // section that we report
+            b.startIf().string("sourceInfoIndex > 3 && (sourceInfo[sourceInfoIndex - 3] & 0xffff) == bci").end().startBlock();
+            b.statement("sourceInfoIndex -= 3");
+            b.end();
+
+            b.startIf().string("sourceInfo.length == sourceInfoIndex").end().startBlock();
+            b.statement("sourceInfo = Arrays.copyOf(sourceInfo, sourceInfo.length * 2)");
+            b.end();
+
+            b.statement("sourceInfo[sourceInfoIndex++] = (sourceIndex << 16) | bci");
+            b.statement("sourceInfo[sourceInfoIndex++] = start");
+            b.statement("sourceInfo[sourceInfoIndex++] = length");
+
+            return ex;
+        }
+
         private CodeExecutableElement createConstructor() {
             CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, "Builder");
             ctor.addParameter(new CodeVariableElement(operationNodes.asType(), "nodes"));
@@ -1241,6 +1415,8 @@ public class OperationsNodeFactory {
             b.statement("this.isReparse = isReparse");
             b.statement("this.withSource = config.isWithSource()");
             b.statement("this.withInstrumentation = config.isWithInstrumentation()");
+
+            b.statement("sources = withSource ? new ArrayList<>() : null");
 
             b.statement("this.builtNodes = new ArrayList<>()");
 
@@ -1256,6 +1432,8 @@ public class OperationsNodeFactory {
             operationNodes.add(createConstructor());
             operationNodes.add(createReparseImpl());
             operationNodes.add(createSetNodes());
+            operationNodes.add(createSetSources());
+            operationNodes.add(createGetSources());
 
             return operationNodes;
         }
@@ -1285,6 +1463,14 @@ public class OperationsNodeFactory {
 
         private CodeExecutableElement createSetNodes() {
             return GeneratorUtils.createSetter(Set.of(), new CodeVariableElement(arrayOf(operationNodeGen.asType()), "nodes"));
+        }
+
+        private CodeExecutableElement createSetSources() {
+            return GeneratorUtils.createSetter(Set.of(), new CodeVariableElement(arrayOf(types.Source), "sources"));
+        }
+
+        private CodeExecutableElement createGetSources() {
+            return GeneratorUtils.createGetter(Set.of(), new CodeVariableElement(arrayOf(types.Source), "sources"));
         }
     }
 
@@ -1549,6 +1735,8 @@ public class OperationsNodeFactory {
                 b.string("frame");
             }
 
+            b.string("$this");
+            b.string("bci");
             b.string("sp");
 
             b.end(2);
