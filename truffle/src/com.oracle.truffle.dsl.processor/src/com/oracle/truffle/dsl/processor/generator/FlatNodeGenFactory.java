@@ -2960,7 +2960,7 @@ public class FlatNodeGenFactory {
         return childField;
     }
 
-    private static CodeTree callMethod(FrameState frameState, CodeTree receiver, ExecutableElement method, CodeTree... boundValues) {
+    private CodeTree callMethod(FrameState frameState, CodeTree receiver, ExecutableElement method, CodeTree... boundValues) {
         if (frameState != null) {
             frameState.addThrownExceptions(method);
         }
@@ -4586,15 +4586,20 @@ public class FlatNodeGenFactory {
             }
         }
 
-        CodeTree call = callMethod(frameState, null, targetType.getMethod(), bindings.toArray(new CodeTree[0]));
+        CodeTreeBuilder callBuilder = CodeTreeBuilder.createBuilder();
+        callBuilder.startCall("this", targetType.getMethod());
+        callBuilder.trees(bindings.toArray(new CodeTree[0]));
+        callBuilder.variables(plugs.additionalArguments());
+        callBuilder.end();
+
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder = builder.create();
         if (isVoid(forType.getReturnType())) {
-            builder.statement(call);
+            builder.statement(callBuilder.build());
             builder.returnStatement();
         } else {
             builder.startReturn();
-            builder.tree(expectOrCast(returnType, forType, call));
+            builder.tree(expectOrCast(returnType, forType, callBuilder.build()));
             builder.end();
         }
         return builder.build();

@@ -12,6 +12,7 @@ import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.ChildExecut
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
 import com.oracle.truffle.dsl.processor.generator.NodeGeneratorPlugs;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
@@ -37,6 +38,7 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
     public List<? extends VariableElement> additionalArguments() {
         return List.of(
                         new CodeVariableElement(nodeType, "$root"),
+                        new CodeVariableElement(context.getType(Object[].class), "$objs"),
                         new CodeVariableElement(context.getType(int.class), "$bci"),
                         new CodeVariableElement(context.getType(int.class), "$sp"));
     }
@@ -51,23 +53,36 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
         int index = execution.getIndex();
 
-        buildChildExecution(b, frame, index);
+        boolean th = buildChildExecution(b, frame, index, targetValue.getTypeMirror());
 
-        return new ChildExecutionResult(b.build(), false);
+        return new ChildExecutionResult(b.build(), th);
     }
 
-    private void buildChildExecution(CodeTreeBuilder b, CodeTree frame, int idx) {
+    private boolean buildChildExecution(CodeTreeBuilder b, CodeTree frame, int idx, TypeMirror resultType) {
         int index = idx;
 
         if (index < instr.signature.valueCount) {
-            b.startCall(frame, "getObject").startGroup();
-            b.string("$sp");
+
+            String slotString = "$sp - " + (instr.signature.valueCount - index);
+
             if (instr.signature.isVariadic) {
-                b.string(" - this.op_variadicCount_");
+                slotString += " - this.op_variadicCount_";
             }
-            b.string(" - " + (instr.signature.valueCount - index));
-            b.end(2);
-            return;
+
+            if (ElementUtils.isObject(resultType)) {
+                b.startCall(frame, "getObject");
+                b.string(slotString);
+                b.end();
+                return false;
+            } else {
+                b.startCall("doPopPrimitive" + ElementUtils.firstLetterUpperCase(resultType.toString()));
+                b.tree(frame);
+                b.string(slotString);
+                b.string("this.op_childValue" + index + "_boxing_");
+                b.string("$objs");
+                b.end();
+                return true;
+            }
         }
 
         index -= instr.signature.valueCount;
@@ -78,21 +93,21 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
                 b.string("$sp");
                 b.string("this.op_variadicCount_");
                 b.end();
-                return;
+                return false;
             }
             index -= 1;
         }
 
         if (index < instr.signature.localSetterCount) {
             b.string("this.op_localSetter" + index + "_");
-            return;
+            return false;
         }
 
         index -= instr.signature.localSetterCount;
 
         if (index < instr.signature.localSetterRangeCount) {
             b.string("this.op_localSetterRange" + index + "_");
-            return;
+            return false;
         }
 
         throw new AssertionError("index=" + index + ", signature=" + instr.signature);

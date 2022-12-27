@@ -158,18 +158,16 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
         // find and bind boxing elimination types
         Set<TypeMirror> beTypes = new HashSet<>();
 
-        if (false) {
-            List<AnnotationValue> boxingEliminatedTypes = (List<AnnotationValue>) ElementUtils.getAnnotationValue(generateOperationsMirror, "boxingEliminationTypes").getValue();
-            for (AnnotationValue value : boxingEliminatedTypes) {
+        List<AnnotationValue> boxingEliminatedTypes = (List<AnnotationValue>) ElementUtils.getAnnotationValue(generateOperationsMirror, "boxingEliminationTypes").getValue();
+        for (AnnotationValue value : boxingEliminatedTypes) {
 
-                TypeMirror mir = getTypeMirror(value);
+            TypeMirror mir = getTypeMirror(value);
 
-                if (BOXABLE_TYPE_KINDS.contains(mir.getKind())) {
-                    beTypes.add(mir);
-                } else {
-                    model.addError("Cannot perform boxing elimination on %s. Remove this type from the boxing eliminated types list. Only primitive types boolean, byte, int, float, long, and double are supported.",
-                                    mir);
-                }
+            if (BOXABLE_TYPE_KINDS.contains(mir.getKind())) {
+                beTypes.add(mir);
+            } else {
+                model.addError("Cannot perform boxing elimination on %s. Remove this type from the boxing eliminated types list. Only primitive types boolean, byte, int, float, long, and double are supported.",
+                                mir);
             }
         }
 

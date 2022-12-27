@@ -124,7 +124,7 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
     @GenerateAOT
     static final class ThrowOperation {
         @Specialization
-        public static Object perform(@Bind("$bci") int bci, @Bind("this") Node node) {
+        public static Object perform(@Bind("$bci") int bci, @Bind("$root") Node node) {
             throw new TestException("fail", node, bci);
         }
     }

@@ -254,4 +254,8 @@ public class OperationsModel extends Template implements InfoDumpable {
         dumper.field("instructions", instructions);
     }
 
+    public boolean hasBoxingElimination() {
+        return !boxingEliminatedTypes.isEmpty();
+    }
+
 }

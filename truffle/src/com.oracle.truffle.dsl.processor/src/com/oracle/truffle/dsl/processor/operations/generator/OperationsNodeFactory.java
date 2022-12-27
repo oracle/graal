@@ -40,7 +40,10 @@
  */
 package com.oracle.truffle.dsl.processor.operations.generator;
 
+import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createNeverPartOfCompilation;
+import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createShouldNotReachHere;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createTransferToInterpreterAndInvalidate;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterUpperCase;
 import static javax.lang.model.element.Modifier.ABSTRACT;
 import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PRIVATE;
@@ -105,6 +108,7 @@ public class OperationsNodeFactory {
     private CodeTypeElement uncachedInterpreter;
     private CodeTypeElement cachedInterpreter = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "CachedInterpreter");
     private CodeTypeElement instrumentableInterpreter = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "InstrumentableInterpreter");
+    private CodeTypeElement boxableInterface = new CodeTypeElement(Set.of(PRIVATE), ElementKind.INTERFACE, null, "BoxableInterface");
 
     private static final Name Uncached_Name = CodeNames.of("Uncached");
 
@@ -144,6 +148,7 @@ public class OperationsNodeFactory {
         operationNodeGen.add(new IntRefFactory().create());
         operationNodeGen.add(new OperationLocalImplFactory().create());
         operationNodeGen.add(new OperationLabelImplFactory().create());
+        operationNodeGen.add(new BoxableInterfaceFactory().create());
 
         operationNodeGen.add(createFrameDescriptorConstructor());
         operationNodeGen.add(createFrameDescriptorBuliderConstructor());
@@ -177,6 +182,10 @@ public class OperationsNodeFactory {
 
         operationNodeGen.add(createReadVariadic());
 
+        for (TypeMirror type : model.boxingEliminatedTypes) {
+            operationNodeGen.add(createDoPopPrimitive(type));
+        }
+
         StaticConstants consts = new StaticConstants();
         for (InstructionModel instr : model.getInstructions()) {
             if (instr.nodeData == null) {
@@ -189,7 +198,7 @@ public class OperationsNodeFactory {
             CodeTypeElement el = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, instr.getInternalName() + "Gen");
             el.setSuperClass(types.Node);
             factory.create(el);
-            processNodeType(el, instr);
+            new CustomInstructionNodeFactory().processNodeType(el, instr);
             operationNodeGen.add(el);
         }
 
@@ -320,43 +329,6 @@ public class OperationsNodeFactory {
         CodeVariableElement fld = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), interpreterType.asType(), name + "_INTERPRETER");
         fld.createInitBuilder().startNew(interpreterType.asType()).end();
         return fld;
-    }
-
-    @SuppressWarnings("unchecked")
-    private void processNodeType(CodeTypeElement el, InstructionModel instr) {
-        for (VariableElement fld : ElementFilter.fieldsIn(el.getEnclosedElements())) {
-            if (ElementUtils.getQualifiedName(fld.asType()).equals("C")) {
-                el.remove(fld);
-            }
-        }
-
-        for (ExecutableElement ctor : ElementFilter.constructorsIn(el.getEnclosedElements())) {
-            el.remove(ctor);
-        }
-
-        for (CodeTypeElement type : (List<CodeTypeElement>) (List<?>) ElementFilter.typesIn(el.getEnclosedElements())) {
-            if (type.getSimpleName() == Uncached_Name) {
-                type.setSuperClass(types.Node);
-            }
-        }
-
-        if (instr.needsUncachedData()) {
-            CodeTypeElement uncachedType = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, el.getSimpleName() + "_UncachedData");
-            uncachedType.setSuperClass(types.Node);
-            uncachedType.setEnclosingElement(operationNodeGen);
-            operationNodeGen.add(uncachedType);
-
-            el.setSuperClass(uncachedType.asType());
-
-            for (InstructionField field : instr.getUncachedFields()) {
-                uncachedType.add(new CodeVariableElement(field.type, field.name));
-            }
-        }
-
-        int index = 0;
-        for (InstructionField field : instr.getCachedFields()) {
-            el.getEnclosedElements().add(index++, new CodeVariableElement(field.type, field.name));
-        }
     }
 
     private CodeExecutableElement createFrameDescriptorConstructor() {
@@ -524,6 +496,52 @@ public class OperationsNodeFactory {
         return ex;
     }
 
+    private CodeExecutableElement createDoPopPrimitive(TypeMirror resultType) {
+        String typeName = firstLetterUpperCase(resultType.toString());
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), resultType, "doPopPrimitive" + typeName);
+        ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+        ex.addParameter(new CodeVariableElement(context.getType(int.class), "slot"));
+        ex.addParameter(new CodeVariableElement(context.getType(int.class), "boxing"));
+        ex.addParameter(new CodeVariableElement(context.getType(Object[].class), "objs"));
+
+        ex.addThrownType(types.UnexpectedResultException);
+
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.startIf().string("boxing == 0xffff0000").end().startBlock(); // {
+        b.statement("Object result = frame.getObject(slot)");
+
+        b.startIf().string("result").instanceOf(ElementUtils.boxType(resultType)).end().startBlock(); // {
+        b.startReturn().cast(resultType).string("result").end();
+        b.end().startElseBlock(); // } {
+        b.tree(createTransferToInterpreterAndInvalidate());
+        b.startThrow().startNew(types.UnexpectedResultException).string("result").end(2);
+        b.end(); // }
+
+        b.end().startElseBlock(); // } {
+
+        b.startIf().string("frame.is" + typeName + "(slot)").end().startBlock();
+        b.startReturn().string("frame.get" + typeName + "(slot)").end();
+        b.end().startElseBlock();
+        b.tree(createTransferToInterpreterAndInvalidate());
+        b.statement("((BoxableInterface) objs[boxing & 0xffff]).setBoxing((boxing >> 16) & 0xffff, (byte) " + (resultType.getKind().ordinal() + 1) + " /* " + resultType + "  */ )");
+
+        b.statement("Object result = frame.getValue(slot)");
+
+        b.startIf().string("result").instanceOf(ElementUtils.boxType(resultType)).end().startBlock(); // {
+        b.startReturn().cast(resultType).string("result").end();
+        b.end().startElseBlock(); // } {
+        b.tree(createTransferToInterpreterAndInvalidate());
+        b.startThrow().startNew(types.UnexpectedResultException).string("result").end(2);
+        b.end();
+
+        b.end();
+
+        b.end();
+
+        return ex;
+    }
+
     private CodeExecutableElement createChangeInterpreters() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "changeInterpreters");
 
@@ -615,6 +633,8 @@ public class OperationsNodeFactory {
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "curStack"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "exHandlers"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "exHandlerCount"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "stackValueBciStack"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "stackValueBciSp"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceIndexStack"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceIndexSp"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceLocationStack"),
@@ -804,9 +824,15 @@ public class OperationsNodeFactory {
                 b.statement("operationSp = 0");
                 b.statement("numLocals = 0");
                 b.statement("curStack = 0");
-                b.statement("maxStack = 10");
+                b.statement("maxStack = 0");
                 b.statement("exHandlers = new int[10]");
                 b.statement("exHandlerCount = 0");
+
+                if (model.hasBoxingElimination()) {
+                    b.statement("stackValueBciStack = new int[8]");
+                    b.statement("stackValueBciSp = 0");
+                }
+
                 b.startIf().string("withSource").end().startBlock();
                 b.statement("sourceIndexStack = new int[1]");
                 b.statement("sourceIndexSp = 0");
@@ -1358,7 +1384,144 @@ public class OperationsNodeFactory {
             return ex;
         }
 
+        private void buildPushStackIndex(CodeTreeBuilder b, String index, boolean performCheck) {
+            if (performCheck) {
+                b.startIf().string("stackValueBciStack.length == stackValueBciSp").end().startBlock();
+                b.statement("stackValueBciStack = Arrays.copyOf(stackValueBciStack, stackValueBciStack.length * 2)");
+                b.end();
+            }
+
+            if (index != null) {
+                if (index.equals("0")) {
+                    b.statement("stackValueBciStack[stackValueBciSp++] = bci");
+                } else {
+                    b.statement("stackValueBciStack[stackValueBciSp++] = ((" + index + ") << 16 | bci");
+                }
+            } else {
+                b.statement("stackValueBciStack[stackValueBciSp++] = 0xffff0000");
+            }
+
+        }
+
         private void buildEmitInstruction(CodeTreeBuilder b, InstructionModel instr, String argument) {
+
+            if (model.hasBoxingElimination()) {
+                switch (instr.kind) {
+                    case BRANCH:
+                    case INSTRUMENTATION_ENTER:
+                    case INSTRUMENTATION_EXIT:
+                    case INSTRUMENTATION_LEAVE:
+                    case RETURN:
+                        break;
+                    case BRANCH_FALSE:
+                    case CUSTOM_SHORT_CIRCUIT:
+                    case POP:
+                        b.statement("stackValueBciSp--");
+                        break;
+                    case CUSTOM:
+                    case CUSTOM_QUICKENED:
+                        if (instr.signature.isVariadic) {
+                            b.statement("stackValueBciSp -= " + argument + ".op_variadicCount_");
+                        }
+                        for (int i = instr.signature.valueCount - 1; i >= 0; i--) {
+                            if (instr.signature.valueBoxingElimination[i]) {
+                                b.statement(argument + ".op_childValue" + i + "_boxing_ = stackValueBciStack[--stackValueBciSp]");
+                            } else {
+                                b.statement("stackValueBciSp--");
+                            }
+                        }
+                        if (!instr.signature.isVoid) {
+                            buildPushStackIndex(b, instr.signature.resultBoxingElimination ? "0" : null, instr.signature.valueCount == 0);
+                        }
+                        break;
+                    case LOAD_ARGUMENT:
+                    case LOAD_CONSTANT:
+                        buildPushStackIndex(b, null, true);
+                        break;
+                    case LOAD_LOCAL:
+                        // todo: buildPushStackIndex(b, "0", true);
+                        buildPushStackIndex(b, null, true);
+                        break;
+                    case LOAD_LOCAL_MATERIALIZED:
+                        b.statement("stackValueBciSp--");
+                        // todo: buildPushStackIndex(b, "0", false);
+                        buildPushStackIndex(b, null, true);
+                        break;
+                    case STORE_LOCAL:
+                        // todo: store boxing elim
+                        b.statement("stackValueBciSp--");
+                        break;
+                    case STORE_LOCAL_MATERIALIZED:
+                        b.statement("stackValueBciSp -= 2");
+                        break;
+                    case SUPERINSTRUCTION:
+                        // todo
+                        break;
+                    case THROW:
+                        break;
+                    case YIELD:
+                        b.statement("stackValueBciSp--");
+                        buildPushStackIndex(b, "0", false);
+                        break;
+                    default:
+                        throw new UnsupportedOperationException();
+
+                }
+            }
+
+            boolean hasDelta = false;
+
+            switch (instr.kind) {
+                case BRANCH:
+                case INSTRUMENTATION_ENTER:
+                case INSTRUMENTATION_EXIT:
+                case INSTRUMENTATION_LEAVE:
+                case LOAD_LOCAL_MATERIALIZED:
+                case THROW:
+                case YIELD:
+                    break;
+                case BRANCH_FALSE:
+                case CUSTOM_SHORT_CIRCUIT:
+                case RETURN:
+                case POP:
+                case STORE_LOCAL:
+                    hasDelta = true;
+                    b.statement("curStack -= 1");
+                    break;
+                case CUSTOM:
+                case CUSTOM_QUICKENED:
+                    if (instr.signature.isVariadic) {
+                        b.statement("curStack -= " + argument + ".op_variadicCount_");
+                        hasDelta = true;
+                    }
+                    int delta = (instr.signature.isVoid ? 0 : 1) - instr.signature.valueCount;
+                    if (delta != 0) {
+                        b.statement("curStack += " + delta);
+                        hasDelta = true;
+                    }
+                    break;
+                case LOAD_ARGUMENT:
+                case LOAD_CONSTANT:
+                case LOAD_LOCAL:
+                    hasDelta = true;
+                    b.statement("curStack += 1");
+                    break;
+                case STORE_LOCAL_MATERIALIZED:
+                    b.statement("curStack -= 2");
+                    break;
+                case SUPERINSTRUCTION:
+                    // todo
+                    break;
+                default:
+                    throw new UnsupportedOperationException();
+            }
+
+            if (hasDelta) {
+                b.startIf().string("curStack > maxStack").end().startBlock();
+                b.statement("maxStack = curStack");
+                b.end();
+            }
+
             b.startStatement().startCall("doEmitInstruction");
             b.string(instr.id + " /* " + instr.name + " */");
             b.startGroup();
@@ -1574,17 +1737,11 @@ public class OperationsNodeFactory {
                         b.end();
                         break;
                     case CUSTOM: {
-                        buildCustomInstructionExecute(b, instr);
-
-                        int stackOffset = -instr.signature.valueCount + (instr.signature.isVoid ? 0 : 1);
-                        b.statement("sp += " + stackOffset + (instr.signature.isVariadic ? " - variadicCount" : ""));
-                        if (!instr.signature.isVoid) {
-                            b.statement("frame.setObject(sp - 1, result)");
-                        }
+                        buildCustomInstructionExecute(b, instr, true);
                         break;
                     }
                     case CUSTOM_SHORT_CIRCUIT:
-                        buildCustomInstructionExecute(b, instr);
+                        buildCustomInstructionExecute(b, instr, false);
 
                         b.startIf().string("result", instr.continueWhen ? "!=" : "==", "Boolean.TRUE").end().startBlock();
                         b.startAssign("bci");
@@ -1692,10 +1849,12 @@ public class OperationsNodeFactory {
             return ex;
         }
 
-        private void buildCustomInstructionExecute(CodeTreeBuilder b, InstructionModel instr) {
+        private void buildCustomInstructionExecute(CodeTreeBuilder b, InstructionModel instr, boolean doPush) {
             TypeMirror genType = new GeneratedTypeMirror("", instr.getInternalName() + "Gen");
             TypeMirror uncachedType = new GeneratedTypeMirror("", instr.getInternalName() + "Gen_UncachedData");
             CustomSignature signature = instr.signature;
+
+            String extraArguments = "$this, objs, bci, sp";
 
             if (signature.isVariadic) {
                 b.startAssign("int variadicCount");
@@ -1703,16 +1862,18 @@ public class OperationsNodeFactory {
                 b.end();
             }
 
-            String executeName;
-            if (signature.isVoid) {
-                b.startStatement();
-                executeName = "executeVoid";
-            } else {
-                b.startAssign("Object result");
-                executeName = "executeObject";
+            if (doPush) {
+                int stackOffset = -instr.signature.valueCount + (instr.signature.isVoid ? 0 : 1);
+                b.statement("int resultSp = sp + " + stackOffset + (instr.signature.isVariadic ? " - variadicCount" : ""));
             }
 
             if (isUncached) {
+                if (signature.isVoid) {
+                    b.startStatement();
+                } else {
+                    b.startAssign("Object result");
+                }
+
                 b.staticReference(genType, "UNCACHED").startCall(".executeUncached");
                 b.string("frame");
 
@@ -1730,16 +1891,96 @@ public class OperationsNodeFactory {
                     b.string("readVariadic(frame, sp, variadicCount)");
                 }
 
-            } else {
-                b.startParantheses().cast(genType).string("curObj").end().startCall("." + executeName);
+                b.string(extraArguments);
+                b.end(2);
+
+                if (!signature.isVoid && doPush) {
+                    b.statement("frame.setObject(resultSp - 1, result)");
+                }
+            } else if (signature.isVoid) {
+                b.startStatement();
+                b.startParantheses().cast(genType).string("curObj").end().startCall(".executeVoid");
                 b.string("frame");
+                b.string(extraArguments);
+                b.end(2);
+            } else if (signature.resultBoxingElimination) {
+
+                if (!doPush) {
+                    throw new AssertionError("RBE is set for " + instr.name + " but !doPush");
+                }
+
+                b.startBlock();
+                b.declaration(genType, "nObj");
+                b.startAssign("nObj").cast(genType).string("curObj").end();
+
+                b.startSwitch().string("nObj.op_resultType_").end().startBlock();
+
+                b.startCase().string("-1").end();
+                b.startCase().string("0").end().startCaseBlock();
+                // object case
+                b.startStatement().startCall("frame.setObject");
+                b.string("resultSp - 1");
+                b.startCall("nObj.executeObject");
+                b.string("frame").string(extraArguments);
+                b.end(3);
+                b.statement("break");
+                b.end();
+
+                Set<TypeMirror> mirs = signature.possibleBoxingResults;
+                if (mirs == null) {
+                    mirs = model.boxingEliminatedTypes;
+                }
+
+                for (TypeMirror mir : mirs) {
+                    if (ElementUtils.isObject(mir)) {
+                        continue;
+                    }
+
+                    b.startCase().string("" + (mir.getKind().ordinal() + 1) + " /* " + mir + " */").end().startCaseBlock();
+
+                    b.startTryBlock();
+                    b.startStatement().startCall("frame.set" + firstLetterUpperCase(mir.toString()));
+                    b.string("resultSp - 1");
+                    b.startCall("nObj.execute" + firstLetterUpperCase(mir.toString()));
+                    b.string("frame").string(extraArguments);
+                    b.end(3);
+
+                    b.end().startCatchBlock(types.UnexpectedResultException, "ex");
+
+                    b.tree(createTransferToInterpreterAndInvalidate());
+                    b.statement("nObj.op_resultType_ = -1");
+                    b.statement("frame.setObject(resultSp - 1, ex.getResult())");
+
+                    b.end();
+
+                    b.statement("break");
+
+                    b.end();
+                }
+
+                b.caseDefault().startCaseBlock();
+                b.tree(createShouldNotReachHere("tried to BE " + instr.name + " as type \" + nObj.op_resultType_ + \" but no bueno"));
+                b.end();
+
+                b.end();
+
+                b.end();
+            } else {
+                // non-boxing-eliminated, non-void, cached
+                b.startAssign("Object result");
+                b.startParantheses().cast(genType).string("curObj").end().startCall(".executeObject");
+                b.string("frame");
+                b.string(extraArguments);
+                b.end(2);
+
+                if (doPush) {
+                    b.statement("frame.setObject(resultSp - 1, result)");
+                }
             }
 
-            b.string("$this");
-            b.string("bci");
-            b.string("sp");
-
-            b.end(2);
+            if (doPush) {
+                b.statement("sp = resultSp");
+            }
         }
     }
 
@@ -1780,6 +2021,111 @@ public class OperationsNodeFactory {
             intRef.add(GeneratorUtils.createConstructorUsingFields(Set.of(), intRef, null));
 
             return intRef;
+        }
+    }
+
+    private static final Set<String> EXECUTE_NAMES = Set.of("executeBoolean", "executeLong", "executeInt", "executeByte", "executeDouble", "executeFloat");
+
+    private class CustomInstructionNodeFactory {
+
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        private void processNodeType(CodeTypeElement el, InstructionModel instr) {
+            for (VariableElement fld : ElementFilter.fieldsIn(el.getEnclosedElements())) {
+                if (ElementUtils.getQualifiedName(fld.asType()).equals("C")) {
+                    el.remove(fld);
+                }
+            }
+
+            for (ExecutableElement ctor : ElementFilter.constructorsIn(el.getEnclosedElements())) {
+                el.remove(ctor);
+            }
+
+            for (ExecutableElement met : ElementFilter.methodsIn(el.getEnclosedElements())) {
+                if (EXECUTE_NAMES.contains(met.getSimpleName().toString())) {
+                    if (!met.getThrownTypes().contains(types.UnexpectedResultException)) {
+                        ((List) met.getThrownTypes()).add(types.UnexpectedResultException);
+                    }
+                }
+            }
+
+            for (CodeTypeElement type : (List<CodeTypeElement>) (List<?>) ElementFilter.typesIn(el.getEnclosedElements())) {
+                if (type.getSimpleName() == Uncached_Name) {
+                    type.setSuperClass(types.Node);
+                }
+            }
+
+            if (instr.needsUncachedData()) {
+                CodeTypeElement uncachedType = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, el.getSimpleName() + "_UncachedData");
+                uncachedType.setSuperClass(types.Node);
+                uncachedType.setEnclosingElement(operationNodeGen);
+                operationNodeGen.add(uncachedType);
+
+                el.setSuperClass(uncachedType.asType());
+
+                for (InstructionField field : instr.getUncachedFields()) {
+                    uncachedType.add(new CodeVariableElement(field.type, field.name));
+                }
+            }
+
+            int index = 0;
+            for (InstructionField field : instr.getCachedFields()) {
+                el.getEnclosedElements().add(index++, new CodeVariableElement(field.type, field.name));
+            }
+
+            if (instr.signature.resultBoxingElimination) {
+                el.getInterfaces().add(boxableInterface.asType());
+                el.add(creatSetBoxing(instr));
+            }
+        }
+
+        private CodeExecutableElement creatSetBoxing(InstructionModel instr) {
+            CodeExecutableElement setBoxing = GeneratorUtils.overrideImplement((DeclaredType) boxableInterface.asType(), "setBoxing");
+            CodeTreeBuilder b = setBoxing.createBuilder();
+
+            b.tree(createNeverPartOfCompilation());
+
+            b.startAssert().string("index == 0").end();
+
+            b.startIf().string("this.op_resultType_ == kind").end().startBlock();
+            b.returnStatement();
+            b.end();
+
+            b.startIf().string("this.op_resultType_ == 0 && (");
+            Set<TypeMirror> mirs = instr.signature.possibleBoxingResults;
+            if (mirs == null) {
+                mirs = model.boxingEliminatedTypes;
+            }
+            boolean first = true;
+            for (TypeMirror mir : mirs) {
+                if (first) {
+                    first = false;
+                } else {
+                    b.string(" || ");
+                }
+                b.string("kind == " + (mir.getKind().ordinal() + 1) + " /* " + mir + " */");
+            }
+            b.string(")").end().startBlock();
+            b.statement("this.op_resultType_ = kind");
+            b.returnStatement();
+            b.end();
+
+            b.statement("this.op_resultType_ = -1");
+            return setBoxing;
+        }
+    }
+
+    class BoxableInterfaceFactory {
+        private CodeTypeElement create() {
+            boxableInterface.add(createSetBoxing());
+
+            return boxableInterface;
+        }
+
+        private CodeExecutableElement createSetBoxing() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, ABSTRACT), context.getType(void.class), "setBoxing");
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "index"));
+            ex.addParameter(new CodeVariableElement(context.getType(byte.class), "kind"));
+            return ex;
         }
     }
 

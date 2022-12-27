@@ -384,7 +384,15 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         instr.nodeData.redirectMessagesOnGeneratedElements(parent);
 
         if (signature.resultBoxingElimination) {
-            instr.addField(context.getType(int.class), "op_resultType_", false);
+            instr.addField(context.getType(byte.class), "op_resultType_", false);
+        }
+
+        for (int i = 0; i < signature.valueBoxingElimination.length; i++) {
+            if (signature.valueBoxingElimination[i]) {
+                // we could move these to cached-only fields, but then we need more processing
+                // once we go uncached -> cached
+                instr.addField(context.getType(int.class), "op_childValue" + i + "_boxing_", true);
+            }
         }
 
         if (signature.isVariadic) {
@@ -575,19 +583,22 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
             signature.valueBoxingElimination[i] = canBeBoxingEliminated.get(i);
         }
 
-        TypeMirror returnType = spec.getReturnType();
-        if (ElementUtils.isVoid(spec.getReturnType())) {
-            signature.isVoid = true;
-            signature.resultBoxingElimination = false;
-        } else if (parent.isBoxingEliminated(returnType)) {
-            signature.resultBoxingElimination = true;
-            signature.possibleBoxingResults = new HashSet<>(Set.of(returnType));
-        } else if (ElementUtils.isObject(returnType)) {
-            signature.resultBoxingElimination = false;
-            signature.possibleBoxingResults = null;
-        } else {
-            signature.resultBoxingElimination = false;
-            signature.possibleBoxingResults = new HashSet<>(Set.of(context.getType(Object.class)));
+        // short-circuit ops are never boxing-eliminated
+        if (data.kind != OperationKind.CUSTOM_SHORT_CIRCUIT) {
+            TypeMirror returnType = spec.getReturnType();
+            if (ElementUtils.isVoid(spec.getReturnType())) {
+                signature.isVoid = true;
+                signature.resultBoxingElimination = false;
+            } else if (parent.isBoxingEliminated(returnType)) {
+                signature.resultBoxingElimination = true;
+                signature.possibleBoxingResults = new HashSet<>(Set.of(returnType));
+            } else if (ElementUtils.isObject(returnType)) {
+                signature.resultBoxingElimination = false;
+                signature.possibleBoxingResults = null;
+            } else {
+                signature.resultBoxingElimination = false;
+                signature.possibleBoxingResults = new HashSet<>(Set.of(context.getType(Object.class)));
+            }
         }
 
         return signature;
