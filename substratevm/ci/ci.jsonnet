@@ -53,7 +53,6 @@
   // JDKs
   local jdk_name_to_dict = {
     "jdk17"+: common.labsjdk17,
-    "jdk19"+: common.labsjdk19,
     "jdk20"+: common.labsjdk20,
   },
 
@@ -80,6 +79,7 @@
 
   local all_jobs = {
     "windows:aarch64"+: exclude,
+    "*:*:jdk19"+: exclude,
   },
   local no_jobs = all_jobs {
     "*"+: exclude,
@@ -112,7 +112,7 @@
       "linux:amd64:jdk20": gate + t("30:00"),
     }),
     "basics": mxgate("build,helloworld,native_unittests,truffle_unittests,debuginfotest,hellomodule") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk19": gate + gdb("10.2") + t("55:00"),
+      "linux:amd64:jdk20": gate + gdb("10.2") + t("55:00"),
       "windows:amd64:jdk17": gate + t("1:30:00"),
     }) + variants({
       "optlevel:quickbuild": {
