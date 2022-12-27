@@ -54,6 +54,7 @@ import com.oracle.svm.core.jdk.ContinuationsSupported;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
+import com.oracle.svm.core.jdk.JDK19OrEarlier;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.jdk.NotLoomJDK;
@@ -483,18 +484,21 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK19OrEarlier.class)
     @SuppressWarnings({"static-method"})
     private void stop0(Object o) {
         throw VMError.unsupportedFeature("The deprecated method Thread.stop is not supported");
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK19OrEarlier.class)
     @SuppressWarnings({"static-method"})
     private void suspend0() {
         throw VMError.unsupportedFeature("The deprecated method Thread.suspend is not supported");
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK19OrEarlier.class)
     @SuppressWarnings({"static-method"})
     private void resume0() {
         throw VMError.unsupportedFeature("The deprecated method Thread.resume is not supported");
