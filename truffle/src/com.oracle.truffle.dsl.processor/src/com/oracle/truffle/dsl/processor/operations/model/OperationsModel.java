@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.dsl.processor.operations.model;
 
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.isPrimitive;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.typeEquals;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -55,7 +58,6 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.Template;
@@ -228,12 +230,12 @@ public class OperationsModel extends Template implements InfoDumpable {
     }
 
     public boolean isBoxingEliminated(TypeMirror mirror) {
-        if (!mirror.getKind().isPrimitive()) {
+        if (!isPrimitive(mirror)) {
             return false;
         }
 
         for (TypeMirror mir : boxingEliminatedTypes) {
-            if (ElementUtils.typeEquals(mir, mirror)) {
+            if (typeEquals(mir, mirror)) {
                 return true;
             }
         }

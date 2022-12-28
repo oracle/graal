@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.dsl.processor.operations.generator;
 
+import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createConstructorUsingFields;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createNeverPartOfCompilation;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createShouldNotReachHere;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createTransferToInterpreterAndInvalidate;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.boxType;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterUpperCase;
 import static javax.lang.model.element.Modifier.ABSTRACT;
 import static javax.lang.model.element.Modifier.FINAL;
@@ -101,6 +103,8 @@ public class OperationsNodeFactory {
     private CodeTypeElement operationNodes = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "OperationNodesImpl");
 
     private CodeTypeElement intRef = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "IntRef");
+    private CodeTypeElement loadLocalData = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "LoadLocalData");
+    private CodeTypeElement storeLocalData = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "StoreLocalData");
     private CodeTypeElement operationLocalImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "OperationLocalImpl");
     private CodeTypeElement operationLabelImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "OperationLabelImpl");
 
@@ -149,6 +153,10 @@ public class OperationsNodeFactory {
         operationNodeGen.add(new OperationLocalImplFactory().create());
         operationNodeGen.add(new OperationLabelImplFactory().create());
         operationNodeGen.add(new BoxableInterfaceFactory().create());
+        if (model.hasBoxingElimination()) {
+            operationNodeGen.add(new LoadLocalDataFactory().create());
+            operationNodeGen.add(new StoreLocalDataFactory().create());
+        }
 
         operationNodeGen.add(createFrameDescriptorConstructor());
         operationNodeGen.add(createFrameDescriptorBuliderConstructor());
@@ -173,6 +181,9 @@ public class OperationsNodeFactory {
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceInfo")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLocals")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "buildIndex")));
+        if (model.hasBoxingElimination()) {
+            operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(byte[].class), "localBoxingState")));
+        }
         if (model.generateUncached) {
             operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "uncachedExecuteCount")).createInitBuilder().string("16");
         }
@@ -181,9 +192,11 @@ public class OperationsNodeFactory {
         operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(Object.class), "EPSILON = new Object()"));
 
         operationNodeGen.add(createReadVariadic());
-
-        for (TypeMirror type : model.boxingEliminatedTypes) {
-            operationNodeGen.add(createDoPopPrimitive(type));
+        if (model.hasBoxingElimination()) {
+            operationNodeGen.add(createDoPopObject());
+            for (TypeMirror type : model.boxingEliminatedTypes) {
+                operationNodeGen.add(createDoPopPrimitive(type));
+            }
         }
 
         StaticConstants consts = new StaticConstants();
@@ -361,7 +374,12 @@ public class OperationsNodeFactory {
         b.statement("int state = numLocals << 16");
 
         b.startWhile().string("true").end().startBlock();
-        b.statement("state = interpreter.continueAt(this, frame, bc, objs, handlers, state)");
+        b.startAssign("state").startCall("interpreter.continueAt");
+        b.string("this, frame, bc, objs, handlers, state");
+        if (model.hasBoxingElimination()) {
+            b.string("localBoxingState");
+        }
+        b.end(2);
         b.startIf().string("(state & 0xffff) == 0xffff").end().startBlock();
         b.statement("break");
         b.end().startElseBlock();
@@ -496,6 +514,26 @@ public class OperationsNodeFactory {
         return ex;
     }
 
+    private CodeExecutableElement createDoPopObject() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), context.getType(Object.class), "doPopObject");
+        ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+        ex.addParameter(new CodeVariableElement(context.getType(int.class), "slot"));
+        ex.addParameter(new CodeVariableElement(context.getType(int.class), "boxing"));
+        ex.addParameter(new CodeVariableElement(context.getType(Object[].class), "objs"));
+
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.startIf().string("boxing == 0xffff0000 || frame.isObject(slot)").end().startBlock(); // {
+        b.startReturn().string("frame.getObject(slot)").end();
+        b.end(); // }
+
+        b.tree(createTransferToInterpreterAndInvalidate());
+        b.statement("((BoxableInterface) objs[boxing & 0xffff]).setBoxing((boxing >> 16) & 0xffff, (byte) -1)");
+        b.startReturn().string("frame.getValue(slot)").end();
+
+        return ex;
+    }
+
     private CodeExecutableElement createDoPopPrimitive(TypeMirror resultType) {
         String typeName = firstLetterUpperCase(resultType.toString());
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), resultType, "doPopPrimitive" + typeName);
@@ -511,7 +549,7 @@ public class OperationsNodeFactory {
         b.startIf().string("boxing == 0xffff0000").end().startBlock(); // {
         b.statement("Object result = frame.getObject(slot)");
 
-        b.startIf().string("result").instanceOf(ElementUtils.boxType(resultType)).end().startBlock(); // {
+        b.startIf().string("result").instanceOf(boxType(resultType)).end().startBlock(); // {
         b.startReturn().cast(resultType).string("result").end();
         b.end().startElseBlock(); // } {
         b.tree(createTransferToInterpreterAndInvalidate());
@@ -524,11 +562,13 @@ public class OperationsNodeFactory {
         b.startReturn().string("frame.get" + typeName + "(slot)").end();
         b.end().startElseBlock();
         b.tree(createTransferToInterpreterAndInvalidate());
-        b.statement("((BoxableInterface) objs[boxing & 0xffff]).setBoxing((boxing >> 16) & 0xffff, (byte) " + (resultType.getKind().ordinal() + 1) + " /* " + resultType + "  */ )");
+        b.startStatement();
+        b.string("((BoxableInterface) objs[boxing & 0xffff]).setBoxing((boxing >> 16) & 0xffff, (byte) ").tree(boxingTypeToInt(resultType)).string(")");
+        b.end();
 
         b.statement("Object result = frame.getValue(slot)");
 
-        b.startIf().string("result").instanceOf(ElementUtils.boxType(resultType)).end().startBlock(); // {
+        b.startIf().string("result").instanceOf(boxType(resultType)).end().startBlock(); // {
         b.startReturn().cast(resultType).string("result").end();
         b.end().startElseBlock(); // } {
         b.tree(createTransferToInterpreterAndInvalidate());
@@ -610,6 +650,12 @@ public class OperationsNodeFactory {
 
         b.end(); // } for
 
+        if (model.hasBoxingElimination() && model.generateUncached) {
+            b.startIf().string("interpreter == UNCACHED_INTERPRETER").end().startBlock();
+            b.statement("localBoxingState = new byte[numLocals]");
+            b.end();
+        }
+
         b.statement("objs = newObjs");
         b.statement("interpreter = toInterpreter");
 
@@ -649,7 +695,7 @@ public class OperationsNodeFactory {
         class SavedStateFactory {
             private CodeTypeElement create() {
                 savedState.addAll(List.of(builderState));
-                savedState.add(GeneratorUtils.createConstructorUsingFields(Set.of(), savedState, null));
+                savedState.add(createConstructorUsingFields(Set.of(), savedState, null));
 
                 return savedState;
             }
@@ -1026,6 +1072,11 @@ public class OperationsNodeFactory {
                 b.startAssign("result.numLocals").string("numLocals").end();
                 b.startAssign("result.buildIndex").string("buildIndex").end();
 
+                if (model.hasBoxingElimination() && !model.generateUncached) {
+                    // need to initialize it now
+                    b.startAssign("result.localBoxingState").string("new byte[numLocals]").end();
+                }
+
                 b.startAssert().string("builtNodes.size() == buildIndex").end();
                 b.statement("builtNodes.add(result)");
 
@@ -1107,9 +1158,15 @@ public class OperationsNodeFactory {
             b.startBlock();
             switch (operation.kind) {
                 case STORE_LOCAL:
+                    if (model.hasBoxingElimination()) {
+                        b.statement("StoreLocalData argument = new StoreLocalData((short) ((OperationLocalImpl) operationData[operationSp]).index.value)");
+                    } else {
+                        b.statement("IntRef argument = ((OperationLocalImpl) operationData[operationSp]).index");
+                    }
+                    break;
                 case STORE_LOCAL_MATERIALIZED:
                 case LOAD_LOCAL_MATERIALIZED:
-                    b.statement("Object argument = ((OperationLocalImpl) operationData[operationSp]).index");
+                    b.statement("IntRef argument = ((OperationLocalImpl) operationData[operationSp]).index");
                     break;
                 case RETURN:
                 case YIELD:
@@ -1120,10 +1177,14 @@ public class OperationsNodeFactory {
                     b.statement("Object argument = arg0");
                     break;
                 case LOAD_LOCAL:
-                    b.statement("Object argument = ((OperationLocalImpl) arg0).index");
+                    if (model.hasBoxingElimination()) {
+                        b.statement("LoadLocalData argument = new LoadLocalData((short) ((OperationLocalImpl) arg0).index.value)");
+                    } else {
+                        b.statement("IntRef argument = ((OperationLocalImpl) arg0).index");
+                    }
                     break;
                 case BRANCH:
-                    b.statement("Object argument = ((OperationLabelImpl) arg0).index");
+                    b.statement("IntRef argument = ((OperationLabelImpl) arg0).index");
                     break;
                 case CUSTOM_SIMPLE:
                 case CUSTOM_SHORT_CIRCUIT:
@@ -1439,17 +1500,18 @@ public class OperationsNodeFactory {
                         buildPushStackIndex(b, null, true);
                         break;
                     case LOAD_LOCAL:
-                        // todo: buildPushStackIndex(b, "0", true);
-                        buildPushStackIndex(b, null, true);
+                        buildPushStackIndex(b, "0", true);
                         break;
                     case LOAD_LOCAL_MATERIALIZED:
                         b.statement("stackValueBciSp--");
-                        // todo: buildPushStackIndex(b, "0", false);
                         buildPushStackIndex(b, null, true);
                         break;
                     case STORE_LOCAL:
-                        // todo: store boxing elim
-                        b.statement("stackValueBciSp--");
+                        if (model.hasBoxingElimination()) {
+                            b.statement(argument + ".s_childIndex = stackValueBciStack[--stackValueBciSp]");
+                        } else {
+                            b.statement("stackValueBciSp--");
+                        }
                         break;
                     case STORE_LOCAL_MATERIALIZED:
                         b.statement("stackValueBciSp -= 2");
@@ -1469,7 +1531,7 @@ public class OperationsNodeFactory {
                 }
             }
 
-            boolean hasDelta = false;
+            boolean hasPositiveDelta = false;
 
             switch (instr.kind) {
                 case BRANCH:
@@ -1485,25 +1547,23 @@ public class OperationsNodeFactory {
                 case RETURN:
                 case POP:
                 case STORE_LOCAL:
-                    hasDelta = true;
                     b.statement("curStack -= 1");
                     break;
                 case CUSTOM:
                 case CUSTOM_QUICKENED:
                     if (instr.signature.isVariadic) {
                         b.statement("curStack -= " + argument + ".op_variadicCount_");
-                        hasDelta = true;
                     }
                     int delta = (instr.signature.isVoid ? 0 : 1) - instr.signature.valueCount;
                     if (delta != 0) {
                         b.statement("curStack += " + delta);
-                        hasDelta = true;
+                        hasPositiveDelta = delta > 0;
                     }
                     break;
                 case LOAD_ARGUMENT:
                 case LOAD_CONSTANT:
                 case LOAD_LOCAL:
-                    hasDelta = true;
+                    hasPositiveDelta = true;
                     b.statement("curStack += 1");
                     break;
                 case STORE_LOCAL_MATERIALIZED:
@@ -1516,7 +1576,7 @@ public class OperationsNodeFactory {
                     throw new UnsupportedOperationException();
             }
 
-            if (hasDelta) {
+            if (hasPositiveDelta) {
                 b.startIf().string("curStack > maxStack").end().startBlock();
                 b.statement("maxStack = curStack");
                 b.end();
@@ -1653,6 +1713,9 @@ public class OperationsNodeFactory {
             ex.addParameter(new CodeVariableElement(context.getType(Object[].class), "objs"));
             ex.addParameter(new CodeVariableElement(context.getType(int[].class), "handlers"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "startState"));
+            if (model.hasBoxingElimination()) {
+                ex.addParameter(new CodeVariableElement(context.getType(byte[].class), "localBoxingState"));
+            }
 
             return ex;
         }
@@ -1674,6 +1737,11 @@ public class OperationsNodeFactory {
             interpreterType.setSuperClass(baseInterpreter.asType());
 
             interpreterType.add(createContinueAt());
+
+            if (!isUncached && model.hasBoxingElimination()) {
+                interpreterType.add(createDoLoadLocalInitialize());
+                interpreterType.add(createDoStoreLocalInitialize());
+            }
 
             return interpreterType;
         }
@@ -1775,7 +1843,64 @@ public class OperationsNodeFactory {
                         b.statement("sp += 1");
                         break;
                     case LOAD_LOCAL:
-                        b.statement("frame.setObject(sp, frame.getObject(((IntRef) curObj).value))");
+                        if (!model.hasBoxingElimination()) {
+                            b.statement("frame.setObject(sp, frame.getObject(((IntRef) curObj).value))");
+                        } else if (isUncached) {
+                            b.statement("frame.setObject(sp, frame.getObject(((LoadLocalData) curObj).v_index))");
+                        } else {
+                            b.statement("LoadLocalData curData = (LoadLocalData) curObj");
+                            b.statement("int curIndex = curData.v_index");
+
+                            b.startSwitch().string("curData.v_kind").end().startBlock();
+
+                            b.startCase().string("0").end().startCaseBlock();
+                            // uninitialized
+                            b.tree(createTransferToInterpreterAndInvalidate());
+                            b.statement("doLoadLocalInitialize(frame, sp, curData, curIndex, true)");
+                            b.statement("break");
+                            b.end();
+
+                            b.startCase().string("-1").end().startCaseBlock();
+                            // generic
+                            b.startIf().string("frame.isObject(curIndex)").end().startBlock();
+                            b.statement("frame.copyObject(curIndex, sp)");
+                            b.end().startElseBlock();
+                            b.tree(createTransferToInterpreterAndInvalidate());
+                            b.statement("frame.setObject(sp, frame.getValue(curIndex))");
+                            b.end();
+                            b.statement("break");
+                            b.end();
+
+                            for (TypeMirror mir : model.boxingEliminatedTypes) {
+                                String frameName = firstLetterUpperCase(mir.toString());
+
+                                b.startCase().tree(boxingTypeToInt(mir)).end().startCaseBlock();
+                                b.startIf().string("frame.is" + frameName + "(curIndex)").end().startBlock();
+                                b.statement("frame.copyPrimitive(curIndex, sp)");
+                                b.end().startElseBlock();
+                                b.tree(createTransferToInterpreterAndInvalidate());
+                                b.statement("doLoadLocalInitialize(frame, sp, curData, curIndex, false)");
+                                b.end();
+                                b.statement("break");
+                                b.end();
+
+                                b.startCase().tree(boxingTypeToInt(mir)).string("| 0x40 /* (boxed) */").end().startCaseBlock();
+                                b.startIf().string("frame.is" + frameName + "(curIndex)").end().startBlock();
+                                b.statement("frame.setObject(sp, frame.get" + frameName + "(curIndex))");
+                                b.end().startElseBlock();
+                                b.tree(createTransferToInterpreterAndInvalidate());
+                                b.statement("doLoadLocalInitialize(frame, sp, curData, curIndex, false)");
+                                b.end();
+                                b.statement("break");
+                                b.end();
+                            }
+
+                            b.caseDefault().startCaseBlock();
+                            b.tree(createShouldNotReachHere());
+                            b.end();
+
+                            b.end();
+                        }
                         b.statement("sp += 1");
                         break;
                     case LOAD_LOCAL_MATERIALIZED:
@@ -1799,7 +1924,45 @@ public class OperationsNodeFactory {
                         b.statement("return ((sp - 1) << 16) | 0xffff");
                         break;
                     case STORE_LOCAL:
-                        b.statement("frame.setObject(((IntRef) curObj).value, frame.getObject(sp - 1))");
+                        if (!model.hasBoxingElimination()) {
+                            b.statement("frame.setObject(((IntRef) curObj).value, frame.getObject(sp - 1))");
+                        } else if (isUncached) {
+                            b.statement("frame.setObject(((StoreLocalData) curObj).s_index, frame.getObject(sp - 1))");
+                        } else {
+                            b.statement("StoreLocalData curData = (StoreLocalData) curObj");
+                            b.statement("int curIndex = curData.s_index");
+
+                            b.startSwitch().string("localBoxingState[curIndex]").end().startBlock();
+
+                            b.startCase().string("0").end().startBlock();
+                            b.tree(createTransferToInterpreterAndInvalidate());
+                            b.statement("doStoreLocalInitialize(frame, sp, localBoxingState, curIndex)");
+                            b.statement("break");
+                            b.end();
+
+                            b.startCase().string("-1").end().startBlock();
+                            b.statement("frame.setObject(curIndex, doPopObject(frame, sp - 1, curData.s_childIndex, objs))");
+                            b.statement("break");
+                            b.end();
+
+                            for (TypeMirror mir : model.boxingEliminatedTypes) {
+
+                                String frameName = firstLetterUpperCase(mir.toString());
+
+                                b.startCase().tree(boxingTypeToInt(mir)).end().startBlock();
+
+                                b.startTryBlock();
+                                b.statement("frame.set" + frameName + "(curIndex, doPopPrimitive" + frameName + "(frame, sp - 1, curData.s_childIndex, objs))");
+                                b.end().startCatchBlock(types.UnexpectedResultException, "ex");
+                                b.statement("localBoxingState[curIndex] = -1");
+                                b.statement("frame.setObject(curIndex, ex.getResult())");
+                                b.end();
+                                b.statement("break");
+                                b.end();
+                            }
+
+                            b.end();
+                        }
                         b.statement("sp -= 1");
                         break;
                     case STORE_LOCAL_MATERIALIZED:
@@ -1936,7 +2099,7 @@ public class OperationsNodeFactory {
                         continue;
                     }
 
-                    b.startCase().string("" + (mir.getKind().ordinal() + 1) + " /* " + mir + " */").end().startCaseBlock();
+                    b.startCase().tree(boxingTypeToInt(mir)).end().startCaseBlock();
 
                     b.startTryBlock();
                     b.startStatement().startCall("frame.set" + firstLetterUpperCase(mir.toString()));
@@ -1982,6 +2145,63 @@ public class OperationsNodeFactory {
                 b.statement("sp = resultSp");
             }
         }
+
+        private CodeExecutableElement createDoLoadLocalInitialize() {
+            CodeExecutableElement ex = new CodeExecutableElement(context.getType(void.class), "doLoadLocalInitialize");
+            ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "sp"));
+            ex.addParameter(new CodeVariableElement(loadLocalData.asType(), "curData"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "curIndex"));
+            ex.addParameter(new CodeVariableElement(context.getType(boolean.class), "prim"));
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.statement("Object value = frame.getValue(curIndex)");
+            b.statement("frame.setObject(sp, value)");
+
+            b.startIf().string("prim").end().startBlock();
+
+            for (TypeMirror mir : model.boxingEliminatedTypes) {
+                b.startIf().string("value").instanceOf(boxType(mir)).end().startBlock();
+                b.startAssign("curData.v_kind").tree(boxingTypeToInt(mir)).string(" | 0x40 /* (boxed) */").end();
+                b.returnStatement();
+                b.end();
+            }
+
+            b.end();
+
+            b.startAssign("curData.v_kind").string("-1").end();
+
+            return ex;
+        }
+
+        private CodeExecutableElement createDoStoreLocalInitialize() {
+            CodeExecutableElement ex = new CodeExecutableElement(context.getType(void.class), "doStoreLocalInitialize");
+            ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "sp"));
+            ex.addParameter(new CodeVariableElement(context.getType(byte[].class), "localBoxingState"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "curIndex"));
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.tree(createNeverPartOfCompilation());
+
+            b.startAssert().string("frame.isObject(sp - 1)").end();
+            b.statement("Object value = frame.getObject(sp - 1)");
+
+            for (TypeMirror mir : model.boxingEliminatedTypes) {
+                String frameName = firstLetterUpperCase(mir.toString());
+
+                b.startIf().string("value").instanceOf(boxType(mir)).end().startBlock();
+                b.startAssign("localBoxingState[curIndex]").tree(boxingTypeToInt(mir)).end();
+                b.statement("frame.set" + frameName + "(curIndex, (" + mir + ") value)");
+                b.returnStatement();
+                b.end();
+            }
+
+            b.startAssign("localBoxingState[curIndex]").string("-1").end();
+            b.statement("frame.setObject(curIndex, value)");
+
+            return ex;
+        }
     }
 
     class OperationLocalImplFactory {
@@ -1991,7 +2211,7 @@ public class OperationsNodeFactory {
 
             operationLocalImpl.add(new CodeVariableElement(intRef.asType(), "index"));
 
-            operationLocalImpl.add(GeneratorUtils.createConstructorUsingFields(Set.of(), operationLocalImpl, null));
+            operationLocalImpl.add(createConstructorUsingFields(Set.of(), operationLocalImpl, null));
 
             return operationLocalImpl;
         }
@@ -2004,7 +2224,7 @@ public class OperationsNodeFactory {
 
             operationLabelImpl.add(new CodeVariableElement(intRef.asType(), "index"));
 
-            operationLabelImpl.add(GeneratorUtils.createConstructorUsingFields(Set.of(), operationLabelImpl, null));
+            operationLabelImpl.add(createConstructorUsingFields(Set.of(), operationLabelImpl, null));
 
             return operationLabelImpl;
         }
@@ -2014,13 +2234,59 @@ public class OperationsNodeFactory {
         private CodeTypeElement create() {
             intRef.setEnclosingElement(operationNodeGen);
 
-            intRef.add(GeneratorUtils.createConstructorUsingFields(Set.of(), intRef, null));
+            intRef.add(createConstructorUsingFields(Set.of(), intRef, null));
 
             intRef.add(new CodeVariableElement(context.getType(int.class), "value"));
 
-            intRef.add(GeneratorUtils.createConstructorUsingFields(Set.of(), intRef, null));
+            intRef.add(createConstructorUsingFields(Set.of(), intRef, null));
 
             return intRef;
+        }
+    }
+
+    class LoadLocalDataFactory {
+        private CodeTypeElement create() {
+            loadLocalData.setEnclosingElement(operationNodeGen);
+            loadLocalData.add(new CodeVariableElement(Set.of(FINAL), context.getType(short.class), "v_index"));
+            loadLocalData.add(createConstructorUsingFields(Set.of(), loadLocalData, null));
+            loadLocalData.add(compFinal(new CodeVariableElement(context.getType(byte.class), "v_kind")));
+
+            loadLocalData.getImplements().add(boxableInterface.asType());
+            loadLocalData.add(createSetBoxing());
+
+            return loadLocalData;
+        }
+
+        private CodeExecutableElement createSetBoxing() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement((DeclaredType) boxableInterface.asType(), "setBoxing");
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.tree(createNeverPartOfCompilation());
+
+            b.startAssert().string("index == 0").end();
+
+            b.startIf().string("v_kind == kind || v_kind == -1").end().startBlock();
+            b.returnStatement();
+            b.end();
+
+            b.startIf().string("v_kind == 0").end().startBlock();
+            b.statement("v_kind = kind");
+            b.end();
+
+            b.statement("v_kind = -1");
+            return ex;
+        }
+    }
+
+    class StoreLocalDataFactory {
+        private CodeTypeElement create() {
+            storeLocalData.setEnclosingElement(operationNodeGen);
+            storeLocalData.add(new CodeVariableElement(Set.of(FINAL), context.getType(short.class), "s_index"));
+            storeLocalData.add(createConstructorUsingFields(Set.of(), storeLocalData, null));
+
+            storeLocalData.add(new CodeVariableElement(context.getType(int.class), "s_childIndex"));
+
+            return storeLocalData;
         }
     }
 
@@ -2097,12 +2363,15 @@ public class OperationsNodeFactory {
             }
             boolean first = true;
             for (TypeMirror mir : mirs) {
+                if (!ElementUtils.isPrimitive(mir)) {
+                    continue;
+                }
                 if (first) {
                     first = false;
                 } else {
                     b.string(" || ");
                 }
-                b.string("kind == " + (mir.getKind().ordinal() + 1) + " /* " + mir + " */");
+                b.string("kind == ").tree(boxingTypeToInt(mir));
             }
             b.string(")").end().startBlock();
             b.statement("this.op_resultType_ = kind");
@@ -2139,6 +2408,14 @@ public class OperationsNodeFactory {
 
     private CodeVariableElement compFinal(CodeVariableElement fld) {
         return compFinal(-1, fld);
+    }
+
+    private static CodeTree boxingTypeToInt(TypeMirror mir) {
+        if (!ElementUtils.isPrimitive(mir)) {
+            throw new AssertionError();
+        }
+
+        return CodeTreeBuilder.singleString(mir.getKind().ordinal() + 1 + " /* " + mir + " */ ");
     }
 
     private CodeVariableElement compFinal(int dims, CodeVariableElement fld) {
