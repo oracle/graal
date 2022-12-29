@@ -198,10 +198,6 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
             boolean t2Primitive = compareType2.isPrimitive();
             Klass t2AsPrimitive = t2Primitive ? compareType2 : MethodArgsUtils.boxedTypeToPrimitiveType(compareType2);
 
-            if (t2AsPrimitive == null) {
-                return 0;
-            }
-
             if (hostClass == Boolean.class) {
                 if (t1AsPrimitive == meta._boolean) {
                     return -1;
@@ -269,10 +265,10 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
         }
         // String
         if (hostClass == String.class) {
-            if (compareType1 == meta.java_lang_String) {
+            if (compareType1 == meta.java_lang_String || compareType1 == meta.java_lang_CharSequence) {
                 return -1;
             }
-            if (compareType2 == meta.java_lang_String) {
+            if (compareType2 == meta.java_lang_String || compareType2 == meta.java_lang_CharSequence) {
                 return 1;
             }
         }

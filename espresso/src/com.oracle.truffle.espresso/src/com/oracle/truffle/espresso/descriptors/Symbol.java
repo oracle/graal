@@ -574,7 +574,7 @@ public final class Symbol<T> extends ByteSequence {
         // Core types.
         public static final Symbol<Type> java_lang_String = StaticSymbols.putType("Ljava/lang/String;");
         public static final Symbol<Type> java_lang_String_array = StaticSymbols.putType("[Ljava/lang/String;");
-        public static final Symbol<Type> java_lang_CharSequence = StaticSymbols.putType("Ljava/lang/String;");
+        public static final Symbol<Type> java_lang_CharSequence = StaticSymbols.putType("Ljava/lang/CharSequence;");
 
         public static final Symbol<Type> java_lang_Object = StaticSymbols.putType("Ljava/lang/Object;");
         public static final Symbol<Type> java_lang_Object_array = StaticSymbols.putType("[Ljava/lang/Object;");
