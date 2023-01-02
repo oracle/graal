@@ -34,7 +34,9 @@ import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.replacements.IdentityHashCodeSnippets;
 import org.graalvm.compiler.word.ObjectAccess;
 
-import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.ObjectHeader;
+import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 
@@ -45,12 +47,15 @@ final class SubstrateIdentityHashCodeSnippets extends IdentityHashCodeSnippets {
 
     @Override
     protected int computeIdentityHashCode(Object obj) {
-        int identityHashCode = ObjectAccess.readInt(obj, ConfigurationValues.getObjectLayout().getIdentityHashCodeOffset(), IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
-        if (probability(FAST_PATH_PROBABILITY, identityHashCode != 0)) {
-            return identityHashCode;
-        } else {
-            return generateIdentityHashCode(GENERATE_IDENTITY_HASH_CODE, obj);
+        ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
+        if (probability(FAST_PATH_PROBABILITY, objectHeader.hasIdentityHashField(obj))) {
+            int offset = LayoutEncoding.getOptionalIdentityHashOffset(obj);
+            int identityHashCode = ObjectAccess.readInt(obj, offset, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
+            if (probability(FAST_PATH_PROBABILITY, identityHashCode != 0)) {
+                return identityHashCode;
+            }
         }
+        return generateIdentityHashCode(GENERATE_IDENTITY_HASH_CODE, obj);
     }
 
     @NodeIntrinsic(ForeignCallNode.class)

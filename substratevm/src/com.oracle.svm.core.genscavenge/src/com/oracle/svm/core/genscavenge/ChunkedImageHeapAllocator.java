@@ -179,7 +179,7 @@ class ChunkedImageHeapAllocator {
         this.position = position;
 
         /* Cache to prevent frequent lookups of the object layout from ImageSingletons. */
-        minimumObjectSize = ConfigurationValues.getObjectLayout().getMinimumObjectSize();
+        minimumObjectSize = ConfigurationValues.getObjectLayout().getMinimumObjectSize(true);
     }
 
     public long getPosition() {

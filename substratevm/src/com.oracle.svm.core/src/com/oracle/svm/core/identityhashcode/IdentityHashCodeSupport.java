@@ -31,9 +31,15 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.IdentityHashCodeSnippets;
 import org.graalvm.compiler.word.ObjectAccess;
+import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.ObjectHeader;
+import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
@@ -60,17 +66,41 @@ public final class IdentityHashCodeSupport {
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     public static int generateIdentityHashCode(Object obj) {
+        int newHashCode;
+        ObjectLayout ol = ConfigurationValues.getObjectLayout();
+        if (ol.hasFixedIdentityHashField()) {
+            newHashCode = computeRandomHashCode();
 
-        // generate a new hashcode and try to store it into the object
-        int newHashCode = generateHashCode();
-        if (!Unsafe.getUnsafe().compareAndSetInt(obj, ConfigurationValues.getObjectLayout().getIdentityHashCodeOffset(), 0, newHashCode)) {
-            newHashCode = ObjectAccess.readInt(obj, ConfigurationValues.getObjectLayout().getIdentityHashCodeOffset(), IDENTITY_HASHCODE_LOCATION);
+            if (!Unsafe.getUnsafe().compareAndSetInt(obj, ol.getFixedIdentityHashOffset(), 0, newHashCode)) {
+                newHashCode = ObjectAccess.readInt(obj, ol.getFixedIdentityHashOffset(), IDENTITY_HASHCODE_LOCATION);
+            }
+        } else {
+            newHashCode = assignHashCodeFromAddress(obj);
         }
-        VMError.guarantee(newHashCode != 0, "Missing identity hash code");
+        VMError.guarantee(newHashCode != 0, "Must not return 0 because it can mean 'hash code not computed yet'");
+        assert newHashCode > 0 : "The Java HotSpot VM only returns positive numbers for the identity hash code, so we want to have the same restriction on Substrate VM in order to not surprise users";
         return newHashCode;
     }
 
-    private static int generateHashCode() {
+    @Uninterruptible(reason = "Prevent a GC interfering with the object's identity hash state.")
+    private static int assignHashCodeFromAddress(Object obj) {
+        ObjectHeader oh = Heap.getHeap().getObjectHeader();
+        if (oh.hasIdentityHashField(obj)) { // a GC has created the field since we last checked
+            return ObjectAccess.readInt(obj, LayoutEncoding.getOptionalIdentityHashOffset(obj), IDENTITY_HASHCODE_LOCATION);
+        } else {
+            oh.setIdentityHashFromAddress(obj);
+            return computeHashCodeFromAddress(obj);
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static int computeHashCodeFromAddress(Object obj) {
+        Word address = Word.objectToUntrackedPointer(obj);
+        int hash = (int) address.xor(address.unsignedShiftRight(32)).rawValue();
+        return 1 | (hash >>> 1);
+    }
+
+    private static int computeRandomHashCode() {
         SplittableRandom hashCodeGenerator = hashCodeGeneratorTL.get();
         if (hashCodeGenerator == null) {
             /*
@@ -85,11 +115,6 @@ public final class IdentityHashCodeSupport {
          * The range of nextInt(MAX_INT) includes 0 and excludes MAX_INT, so adding 1 gives us the
          * range [1, MAX_INT] that we want.
          */
-        int hashCode = hashCodeGenerator.nextInt(Integer.MAX_VALUE) + 1;
-
-        assert hashCode != 0 : "Must not return 0 because it means 'hash code not computed yet' in the field that stores the hash code";
-        assert hashCode > 0 : "The Java HotSpot VM only returns positive numbers for the identity hash code, so we want to have the same restriction on Substrate VM in order to not surprise users";
-
-        return hashCode;
+        return hashCodeGenerator.nextInt(Integer.MAX_VALUE) + 1;
     }
 }

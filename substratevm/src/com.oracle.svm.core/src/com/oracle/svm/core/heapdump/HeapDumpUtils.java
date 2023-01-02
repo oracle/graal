@@ -98,7 +98,7 @@ public class HeapDumpUtils {
     public int instanceSizeOf(Class<?> cls) {
         final int encoding = DynamicHub.fromClass(cls).getLayoutEncoding();
         if (LayoutEncoding.isPureInstance(encoding)) {
-            return (int) LayoutEncoding.getPureInstanceSize(encoding).rawValue();
+            return (int) LayoutEncoding.getPureInstanceAllocationSize(encoding).rawValue();
         } else {
             return 0;
         }
