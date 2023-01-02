@@ -30,6 +30,7 @@ import java.util.List;
 
 import org.graalvm.profdiff.core.inlining.InliningPath;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
+import org.graalvm.profdiff.core.optimization.Optimization;
 
 /**
  * Represents a named Java method, which may have been compiled by Graal several times. The class is
@@ -188,8 +189,12 @@ public class Method {
                 for (InliningPath.PathElement element : fragment.getPathFromRoot().elements()) {
                     writer.write(first ? "  |_ a fragment of " : "                   ");
                     writer.write(element.getMethodName());
-                    writer.write(" at bci ");
-                    writer.writeln(Integer.toString(element.getCallsiteBCI()));
+                    if (element.getCallsiteBCI() == Optimization.UNKNOWN_BCI) {
+                        writer.writeln();
+                    } else {
+                        writer.write(" at bci ");
+                        writer.writeln(Integer.toString(element.getCallsiteBCI()));
+                    }
                     first = false;
                 }
             }
