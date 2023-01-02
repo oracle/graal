@@ -536,52 +536,7 @@ Compilation fragment X#1
 Proftool provides execution data on the granularity of compilation units. For that reason, the reported execution
 fraction of a compilation fragment is inherited from its parent compilation unit.
 
-#### Identifying inlining subtrees for fragmentation
-
-It is possible create a fragment rooted in any inlining-tree node. However, it is not desirable to create too many
-fragments. Therefore, we have created a heuristic identifying fragments which might be useful.
-
-Definition: An *inlining path* is a list of pairs `m1 at b1, m2 at b2, ..., mn at bn`, where `mi` is a method name
-and `bi` is the bci of the `mi`'s callsite for `i` in `1, 2, ..., n`. If `n > 1`, we say that the path is *from `m1`
-to `mn`*.
-
-We will consider only paths from the root method. The root method does not have a callsite, and therefore it does not
-have a bci. For that reason, we use -1 as the value of `b1`.
-
-As an example, consider the following inlining tree:
-
-```
-Inlining tree
-    a() at bci -1
-        b() at bci 1
-            d() at bci 3
-        b() at bci 1
-            (not inlined) d() at bci 3
-        c() at bci 2
-        (not inlined) e() at bci 3
-```
-
-There is an inlined method at `a() at -1, c() at 2`. There are 2 inlined methods at `a() at -1, b() at 1`, 1 inlined
-method at `a() at -1, b() at 1, d() at 3`, but there is no inlined method at `x() at -1` or `a() at -1, e() at 3`.
-
-A compilation fragment is defined in terms of a parent compilation unit and an inlining path.
-
-Definition: Let `P` be an inlining path and let `C` be a compilation unit which has an inlined method at `P`.
-Then, `(C, P)` is a *compilation fragment*.
-
-Note that it is sufficient to have `C` and `P` in order to create the optimization and inlining tree of a fragment. We
-create the trees lazily when they are needed.
-
-The heuristic considers each inlining path `P` separately and decides whether we should create all possible fragments
-using the path `P`. Such an inlining path is called a fragmentation path.
-
-Definition: Let us have 2 experiments. An inlining path `P` from `R` to `P` is a *fragmentation path* iff:
-
-- `|P| > 1` (i.e. `P` is not empty and does not contain just the root method),
-- and `M` has a hot compilation unit in at least one of the experiments,
-- and in any of the experiments, there exists a hot compilation unit of `R` with an inlined method at `P`,
-- and in the other experiment, it is not true that for each hot compilation unit of `R` there is an inlined method
-  at `P`.
-
-To sum up, the tool first identifies the set of all fragmentation paths. Then, it pairs each fragmentation path `P`
-with all hot compilation units having an inlined method at `P`.
+A fragment is defined by a parent compilation unit and a non-root node from the compilation unit's inlining tree.
+The inlining-tree node becomes the root node of the fragment. The tool creates compilation fragments for all hot
+inlinees in all hot compilation units. We have described how hot compilation units are determined in a previous section.
+An inlinee is considered hot iff there exists a hot compilation unit of the inlined method in any of the experiments.

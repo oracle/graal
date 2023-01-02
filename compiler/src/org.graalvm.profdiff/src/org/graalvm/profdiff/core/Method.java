@@ -29,6 +29,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import org.graalvm.profdiff.core.inlining.InliningPath;
+import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 
 /**
  * Represents a named Java method, which may have been compiled by Graal several times. The class is
@@ -111,11 +112,11 @@ public class Method {
      * Creates and adds a compilation fragment to the method.
      *
      * @param parentCompilationUnit the parent compilation unit of the fragment
-     * @param pathFromRoot the path in the inlining tree to the root of the fragment
+     * @param rootNode the root inlining node of the compilation fragment
      * @return the added compilation fragment
      */
-    public CompilationFragment addCompilationFragment(CompilationUnit parentCompilationUnit, InliningPath pathFromRoot) {
-        CompilationFragment compilationFragment = new CompilationFragment(this, parentCompilationUnit, pathFromRoot);
+    public CompilationFragment addCompilationFragment(CompilationUnit parentCompilationUnit, InliningTreeNode rootNode) {
+        CompilationFragment compilationFragment = new CompilationFragment(this, parentCompilationUnit, rootNode);
         compilationUnits.add(compilationFragment);
         return compilationFragment;
     }

@@ -25,7 +25,6 @@
 package org.graalvm.profdiff.test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -145,82 +144,6 @@ public class ExperimentPairTest {
     }
 
     /**
-     * Tests that {@link ExperimentPair#createCompilationFragments()} does not create unnecessary
-     * fragments.
-     *
-     * Let us have the following compilation units:
-     *
-     * <pre>
-     * Experiment 1
-     *      Compilation unit of a() (hot)
-     *          a()
-     *              b() at bci 1
-     *              c() at bci 2
-     *              d() at bci 3
-     * Experiment 2
-     *      Compilation unit of a() (hot)
-     *          a()
-     *              b()
-     *      Compilation unit of b() (hot)
-     *          b()
-     *      Compilation unit of c() (not hot)
-     *          c()
-     * </pre>
-     *
-     * There should be no fragments created, because:
-     *
-     * <ul>
-     * <li>{@code b()} is inlined in the compilation units of {@code a()} (there is no inlining
-     * difference),</li>
-     * <li>{@code c()} is not hot in any of the experiments,</li>
-     * <li>{@code d()} does not have any compilation unit and thus it is not hot.</li>
-     * </ul>
-     */
-    @Test
-    public void unnecessaryFragmentsAreNotCreated() throws ExperimentParserError {
-        String a = "a()";
-        String b = "b()";
-        String c = "c()";
-        String d = "d()";
-
-        Experiment experiment1 = new Experiment(ExperimentId.ONE, Experiment.CompilationKind.JIT);
-        InliningTreeNode a1 = new InliningTreeNode(a, -1, true, null, false, null);
-        InliningTreeNode b1 = new InliningTreeNode(b, 1, true, null, false, null);
-        InliningTreeNode c1 = new InliningTreeNode(c, 2, true, null, false, null);
-        InliningTreeNode d1 = new InliningTreeNode(d, 3, true, null, false, null);
-        a1.addChild(b1);
-        a1.addChild(c1);
-        a1.addChild(d1);
-        InliningTree inliningTree1 = new InliningTree(a1);
-        experiment1.addCompilationUnit(a, "1", 0, () -> new CompilationUnit.TreePair(null, inliningTree1)).setHot(true);
-
-        Experiment experiment2 = new Experiment(ExperimentId.TWO, Experiment.CompilationKind.JIT);
-
-        InliningTreeNode a2 = new InliningTreeNode(a, -1, true, null, false, null);
-        InliningTreeNode b2 = new InliningTreeNode(b, 1, true, null, false, null);
-        a2.addChild(b2);
-        InliningTree inliningTree2 = new InliningTree(a2);
-        experiment2.addCompilationUnit(a, "1", 0, () -> new CompilationUnit.TreePair(null, inliningTree2)).setHot(true);
-
-        InliningTreeNode b3 = new InliningTreeNode(b, -1, true, null, false, null);
-        InliningTree inliningTree3 = new InliningTree(b3);
-        experiment2.addCompilationUnit(b, "2", 0, () -> new CompilationUnit.TreePair(null, inliningTree3)).setHot(true);
-
-        InliningTreeNode c2 = new InliningTreeNode(c, -1, true, null, false, null);
-        InliningTree inliningTree4 = new InliningTree(c2);
-        experiment2.addCompilationUnit(c, "3", 0, () -> new CompilationUnit.TreePair(null, inliningTree4));
-
-        ExperimentPair experimentPair = new ExperimentPair(experiment1, experiment2);
-        experimentPair.createCompilationFragments();
-
-        for (Experiment experiment : List.of(experiment1, experiment2)) {
-            for (String methodName : List.of(a, b, c, d)) {
-                assertFalse(experiment.getMethodOrCreate(methodName).getCompilationFragments().iterator().hasNext());
-            }
-        }
-    }
-
-    /**
      * Tests that {@link ExperimentPair#createCompilationFragments()} creates a compilation fragment
      * in a scenario with multiple compilations.
      *
@@ -235,14 +158,11 @@ public class ExperimentPairTest {
      *      Compilation unit of a()
      *          a()
      *              b()
-     *      Compilation unit of a()
-     *          a()
      *      Compilation unit of b()
      *          b()
      * </pre>
      *
-     * The fragment for {@code b()} should be created in experiment 1, because {@code b()} is hot in
-     * experiment 2 and there exists a compilation unit where {@code b()} is not inlined.
+     * The fragment for {@code b()} should be created, because {@code b()} is hot.
      */
     @Test
     public void fragmentCreationWithMultipleCompilations() throws ExperimentParserError {
@@ -263,17 +183,15 @@ public class ExperimentPairTest {
         InliningTree inliningTree2 = new InliningTree(a2);
         experiment2.addCompilationUnit(a, "1", 0, () -> new CompilationUnit.TreePair(null, inliningTree2)).setHot(true);
 
-        InliningTreeNode a3 = new InliningTreeNode(a, -1, true, null, false, null);
-        InliningTree inliningTree3 = new InliningTree(a3);
-        experiment2.addCompilationUnit(a, "2", 0, () -> new CompilationUnit.TreePair(null, inliningTree3)).setHot(true);
-
         InliningTreeNode b3 = new InliningTreeNode(b, -1, true, null, false, null);
-        InliningTree inliningTree4 = new InliningTree(b3);
-        experiment2.addCompilationUnit(b, "3", 0, () -> new CompilationUnit.TreePair(null, inliningTree4)).setHot(true);
+        InliningTree inliningTree3 = new InliningTree(b3);
+        experiment2.addCompilationUnit(b, "2", 0, () -> new CompilationUnit.TreePair(null, inliningTree3)).setHot(true);
 
         ExperimentPair experimentPair = new ExperimentPair(experiment1, experiment2);
         experimentPair.createCompilationFragments();
-        List<CompilationFragment> fragments = asList(experiment1.getMethodOrCreate(b).getCompilationFragments());
-        assertEquals(1, fragments.size());
+        List<CompilationFragment> fragments1 = asList(experiment1.getMethodOrCreate(b).getCompilationFragments());
+        assertEquals(1, fragments1.size());
+        List<CompilationFragment> fragments2 = asList(experiment2.getMethodOrCreate(b).getCompilationFragments());
+        assertEquals(1, fragments2.size());
     }
 }

@@ -31,7 +31,6 @@ import org.graalvm.profdiff.core.CompilationFragment;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
-import org.graalvm.profdiff.core.inlining.InliningPath;
 import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.optimization.Optimization;
@@ -145,7 +144,7 @@ public class CompilationFragmentTest {
         Experiment experiment = new Experiment(ExperimentId.ONE, Experiment.CompilationKind.JIT);
         CompilationUnit.TreeLoader mockTreeLoader = () -> new CompilationUnit.TreePair(optimizationTree, inliningTree);
         CompilationUnit compilationUnit = experiment.addCompilationUnit("a()", "foo", 0, mockTreeLoader);
-        CompilationFragment compilationFragment = new CompilationFragment(experiment.getMethodOrCreate("b()"), compilationUnit, InliningPath.fromRootToNode(b));
+        CompilationFragment compilationFragment = new CompilationFragment(experiment.getMethodOrCreate("b()"), compilationUnit, b);
         CompilationUnit.TreePair treePair = compilationFragment.loadTrees();
         InliningTreeNode actualInliningTreeRoot = treePair.getInliningTree().getRoot();
         OptimizationTreeNode actualOptimizationTreeRoot = treePair.getOptimizationTree().getRoot();

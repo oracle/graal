@@ -25,6 +25,7 @@
 package org.graalvm.profdiff.core;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -117,6 +118,40 @@ public abstract class TreeNode<T extends TreeNode<T>> {
      */
     public boolean isInfoNode() {
         return false;
+    }
+
+    /**
+     * Gets the index of this node in the tree. The index is a list of indices into the
+     * {@link #getChildren() lists of children}. The first number in the array is the index's of a
+     * root's child, the second number is the index of that child's child, and so on.
+     *
+     * @return the index of this node in the tree
+     */
+    public List<Integer> getIndex() {
+        List<Integer> index = new ArrayList<>();
+        T node = asT();
+        while (node.getParent() != null) {
+            T parent = node.getParent();
+            index.add(parent.getChildren().indexOf(node));
+            node = parent;
+        }
+        Collections.reverse(index);
+        return index;
+    }
+
+    /**
+     * Returns the tree node at an index created by {@link #getIndex()}. The index is relative to
+     * this node, i.e., the first number in the list is the index of this node's child.
+     *
+     * @param index the index of a node in the tree
+     * @return the node at the provided index
+     */
+    public T atIndex(List<Integer> index) {
+        T node = asT();
+        for (int i : index) {
+            node = node.getChildren().get(i);
+        }
+        return node;
     }
 
     /**

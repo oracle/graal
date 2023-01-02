@@ -35,7 +35,6 @@ import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.Method;
-import org.graalvm.profdiff.core.inlining.InliningPath;
 import org.graalvm.profdiff.parser.ExperimentParserError;
 
 /**
@@ -106,13 +105,13 @@ public class ExperimentPair {
     }
 
     /**
-     * Creates compilation fragments for both experiments. Fragments are created for all
-     * {@link #findFragmentationPaths() fragmentation paths} in all hot compilation units.
+     * Creates compilation fragments for both experiments. Fragments are created for all inlinees
+     * where both the compilation unit is {@link CompilationUnit#isHot() hot} and the method of the
+     * inlinee is {@link #isHot(String) hot}.
      *
      * @throws ExperimentParserError failed to load a tree pair for an experiment
      */
     public void createCompilationFragments() throws ExperimentParserError {
-        EconomicSet<InliningPath> fragmentationPaths = findFragmentationPaths();
         for (MethodPair methodPair : getHotMethodPairs()) {
             for (Method method : List.of(methodPair.getMethod1(), methodPair.getMethod2())) {
                 List<CompilationUnit> compilationUnitsSnapshot = new ArrayList<>();
@@ -122,14 +121,9 @@ public class ExperimentPair {
                     }
                 }
                 for (CompilationUnit compilationUnit : compilationUnitsSnapshot) {
-                    EconomicSet<InliningPath> usedFragmentationPaths = EconomicSet.create();
                     compilationUnit.loadTrees().getInliningTree().getRoot().forEach(node -> {
-                        if (node.getName() != null && node.isPositive() && node.getParent() != null) {
-                            InliningPath path = InliningPath.fromRootToNode(node);
-                            if (fragmentationPaths.contains(path) && !usedFragmentationPaths.contains(path)) {
-                                usedFragmentationPaths.add(path);
-                                method.getExperiment().getMethodOrCreate(node.getName()).addCompilationFragment(compilationUnit, path);
-                            }
+                        if (node.getParent() != null && node.isPositive() && node.getName() != null && isHot(node.getName())) {
+                            method.getExperiment().getMethodOrCreate(node.getName()).addCompilationFragment(compilationUnit, node);
                         }
                     });
                 }
@@ -145,106 +139,5 @@ public class ExperimentPair {
      */
     private boolean isHot(String methodName) {
         return experiment1.getMethodOrCreate(methodName).isHot() || experiment2.getMethodOrCreate(methodName).isHot();
-    }
-
-    /**
-     * Finds the set of fragmentation paths. If an inlining path {@code P} is a fragmentation path,
-     * it is desirable to create compilation fragments from hot compilation units containing an
-     * inlinee at {@code P}.
-     *
-     * Let {@code P} be an inlining path from a root method {@code R} to some method {@code M}. The
-     * path {@code P} is a fragmentation path iff:
-     *
-     * <ul>
-     * <li>{@code |P| > 1},</li>
-     * <li>and {@code M} is {@link #isHot(String) hot} in at least one of the experiments,</li>
-     * <li>and in any of the experiments, there exists a hot compilation unit of {@code R} with an
-     * inlined method at {@code P},</li>
-     * <li>and in the other experiment, it is not true that for each hot compilation unit of
-     * {@code R} there is an inlined method at {@code P}.</li>
-     * </ul>
-     *
-     * @return the set of fragment-root methods for the given method pair.
-     * @throws ExperimentParserError r failed to load an inlining tree of a compilation unit
-     */
-    private EconomicSet<InliningPath> findFragmentationPaths() throws ExperimentParserError {
-        EconomicSet<InliningPath> result = EconomicSet.create();
-        for (MethodPair methodPair : getHotMethodPairs()) {
-            MethodInliningPaths paths1 = getMethodInliningPaths(methodPair.getMethod1());
-            MethodInliningPaths paths2 = getMethodInliningPaths(methodPair.getMethod2());
-            for (InliningPath path : paths1.atLeastOnceInlined) {
-                if (!paths2.isAlwaysInlined(path)) {
-                    result.add(path);
-                }
-            }
-            for (InliningPath path : paths2.atLeastOnceInlined) {
-                if (!paths1.isAlwaysInlined(path)) {
-                    result.add(path);
-                }
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Statistics about inlining paths leading to hot inlinees of one method that is necessary to
-     * identify fragmentation paths.
-     *
-     * The hotness of an inlinee is determined by {@link #isHot(String)}. Only hot inlinees are
-     * considered, because fragments are created only for hot methods (both the parent compilation
-     * unit of the fragment must be {@link CompilationUnit#isHot() hot} and the fragment's root
-     * method must be {@link #isHot(String) hot} in at least one of the experiments).
-     */
-    private static final class MethodInliningPaths {
-        /**
-         * Paths to hot inlined methods that are present in each hot compilation unit of the method.
-         * Initially {@code null}, which is interpreted as the set which contains all paths.
-         */
-        private EconomicSet<InliningPath> alwaysInlined = null;
-
-        /**
-         * Paths to hot inlined methods that are present in at least one hot compilation unit of the
-         * method.
-         */
-        private final EconomicSet<InliningPath> atLeastOnceInlined = EconomicSet.create();
-
-        /**
-         * Returns {@code true} iff the given inlined path is inlined in each hot compilation unit
-         * of this method.
-         *
-         * @param inliningPath the inlining path to be tested
-         * @return {@code true} {@code true} iff the given inlined path is inlined in each hot
-         *         compilation unit of this method
-         */
-        private boolean isAlwaysInlined(InliningPath inliningPath) {
-            return alwaysInlined != null && alwaysInlined.contains(inliningPath);
-        }
-    }
-
-    /**
-     * Computes statistics about inlining paths leading to hot methods in hot compilation units of
-     * the given method.
-     *
-     * @param method the method to compute statistics for
-     * @return statistics about inlining paths
-     * @throws ExperimentParserError failed to load an inlining tree of a compilation unit
-     */
-    private MethodInliningPaths getMethodInliningPaths(Method method) throws ExperimentParserError {
-        MethodInliningPaths methodInliningPaths = new MethodInliningPaths();
-        for (CompilationUnit compilationUnit : method.getHotCompilationUnits()) {
-            EconomicSet<InliningPath> inlinees = EconomicSet.create();
-            compilationUnit.loadTrees().getInliningTree().getRoot().forEach(node -> {
-                if (node.getParent() != null && node.isPositive() && node.getName() != null && isHot(node.getName())) {
-                    inlinees.add(InliningPath.fromRootToNode(node));
-                }
-            });
-            if (methodInliningPaths.alwaysInlined == null) {
-                methodInliningPaths.alwaysInlined = inlinees;
-            } else {
-                methodInliningPaths.alwaysInlined.retainAll(inlinees);
-            }
-            methodInliningPaths.atLeastOnceInlined.addAll(inlinees);
-        }
-        return methodInliningPaths;
     }
 }

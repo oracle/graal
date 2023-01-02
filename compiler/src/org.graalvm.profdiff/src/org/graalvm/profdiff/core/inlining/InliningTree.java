@@ -199,20 +199,15 @@ public class InliningTree {
     }
 
     /**
-     * Clones a subtree given by path. The cloned subtree is rooted in the node given by path. The
-     * bci of the cloned root is set to {@link Optimization#UNKNOWN_BCI} and the inlining reason is
-     * reset. The path should lead to exactly one node, i.e. {@code findNodesAt(path).size() == 1}.
+     * Clones a subtree given by an index. The cloned subtree is rooted in the node given at the
+     * provided index. The bci of the cloned root is set to {@link Optimization#UNKNOWN_BCI} and the
+     * inlining reason is reset.
      *
-     * @param path the path to the root of the cloned subtree
+     * @param index the index of the root of the cloned subtree
      * @return a cloned subtree
      */
-    public InliningTree cloneSubtreeAt(InliningPath path) {
-        List<InliningTreeNode> rootNodes = new ArrayList<>();
-        findNodesAt(null, path, 0, rootNodes);
-        if (rootNodes.size() != 1) {
-            throw new IllegalArgumentException("The given inlining path should correspond to exactly one node.");
-        }
-        InliningTreeNode rootNode = rootNodes.get(0);
+    public InliningTree cloneSubtreeAt(List<Integer> index) {
+        InliningTreeNode rootNode = root.atIndex(index);
         InliningTreeNode clonedNode = new InliningTreeNode(rootNode.getName(), Optimization.UNKNOWN_BCI, rootNode.isPositive(), null, rootNode.isIndirect(), rootNode.getReceiverTypeProfile());
         cloneSubtreeInto(rootNode, clonedNode);
         return new InliningTree(clonedNode);

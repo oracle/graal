@@ -26,8 +26,11 @@ package org.graalvm.profdiff.core;
 
 import org.graalvm.profdiff.core.inlining.InliningPath;
 import org.graalvm.profdiff.core.inlining.InliningTree;
+import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
 import org.graalvm.profdiff.parser.ExperimentParserError;
+
+import java.util.List;
 
 /**
  * Represents a fragment of a full compilation unit in terms of optimization scope.
@@ -55,7 +58,14 @@ public class CompilationFragment extends CompilationUnit {
     private final CompilationUnit parentCompilationUnit;
 
     /**
-     * The path to root in the parent compilation unit's inlining tree which defines this fragment.
+     * The index of the root method of this fragment in the inlining tree. The parent compilation
+     * unit and the index define the fragment.
+     */
+    private final List<Integer> index;
+
+    /**
+     * The path to root in the parent compilation unit's inlining tree. The path does not define the
+     * fragment precisely, because a path can lead to multiple nodes in an inlining tree.
      */
     private final InliningPath pathFromRoot;
 
@@ -69,13 +79,14 @@ public class CompilationFragment extends CompilationUnit {
      *
      * @param rootFragmentMethod the root method of this fragment
      * @param parentCompilationUnit the compilation unit from which this fragment was created
-     * @param pathFromRoot the path in the inlining tree of the parent to the root method
+     * @param rootNode the root inlining node of this compilation fragment
      */
-    public CompilationFragment(Method rootFragmentMethod, CompilationUnit parentCompilationUnit, InliningPath pathFromRoot) {
+    public CompilationFragment(Method rootFragmentMethod, CompilationUnit parentCompilationUnit, InliningTreeNode rootNode) {
         super(rootFragmentMethod, parentCompilationUnit.getCompilationId(), parentCompilationUnit.getPeriod(), null);
         this.parentCompilationUnit = parentCompilationUnit;
-        this.pathFromRoot = pathFromRoot;
-        fragmentId = ++nextFragmentId;
+        this.index = rootNode.getIndex();
+        this.pathFromRoot = InliningPath.fromRootToNode(rootNode);
+        this.fragmentId = ++nextFragmentId;
         setHot(parentCompilationUnit.isHot());
     }
 
@@ -101,7 +112,7 @@ public class CompilationFragment extends CompilationUnit {
     @Override
     public TreePair loadTrees() throws ExperimentParserError {
         TreePair treePair = parentCompilationUnit.loadTrees();
-        InliningTree inliningTree = treePair.getInliningTree().cloneSubtreeAt(pathFromRoot);
+        InliningTree inliningTree = treePair.getInliningTree().cloneSubtreeAt(index);
         OptimizationTree optimizationTree = new OptimizationTree(treePair.getOptimizationTree().getRoot().cloneMatchingPath(pathFromRoot));
         return new TreePair(optimizationTree, inliningTree);
     }
