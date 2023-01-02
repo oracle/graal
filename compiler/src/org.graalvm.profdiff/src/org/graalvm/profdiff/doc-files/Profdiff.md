@@ -10,8 +10,8 @@ compilations by utilizing tree diffing algorithms. A compilation unit consists o
 tree. Read `OptimizationLog.md` first to understand the meaning of the trees. It is possible to compare 2 JIT
 compilation or a JIT compilation with an AOT compilation.
 
-The tool reads the data produced by the optimization log. The optimization log can is enabled by
-the `-Dgraal.OptimizationLog` flag (`-H:OptimizationLog` for `native-image`). Read `OptimizationLog.md` to learn more.
+The tool reads the data produced by the optimization log. The optimization log is enabled by
+the `-Dgraal.OptimizationLog` flag (`-H:OptimizationLog` for Native Image). Read `OptimizationLog.md` to learn more.
 
 ## Usage
 

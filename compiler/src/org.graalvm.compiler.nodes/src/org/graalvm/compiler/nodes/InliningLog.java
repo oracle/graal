@@ -271,6 +271,10 @@ public class InliningLog {
         /**
          * Gets the parent callsite, which may be overridden by {@link #originalCallsite} if it set.
          *
+         * The optimization log interprets the call-tree node returned by this method as the parent
+         * of this node. This allows it to build a slightly different call-tree while preserving the
+         * behavior of {@link #positionString()} and {@link #formatAsTree}.
+         *
          * @return the parent callsite (overridable by {@link #originalCallsite})
          */
         public Callsite getOverriddenParent() {
