@@ -110,8 +110,8 @@ public class ProfileCompiledMethodsPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
-        SchedulePhase.runWithoutContextOptimizations(graph, SchedulePhase.getDefaultStrategy(graph.getOptions()), cfg, true);
+        SchedulePhase.runWithoutContextOptimizations(graph, SchedulePhase.getDefaultStrategy(graph.getOptions()), true);
+        ControlFlowGraph cfg = graph.getLastSchedule().getCFG();
         for (Loop<HIRBlock> loop : cfg.getLoops()) {
             double loopProbability = cfg.blockFor(loop.getHeader().getBeginNode()).getRelativeFrequency();
             if (loopProbability > (1D / Integer.MAX_VALUE)) {
