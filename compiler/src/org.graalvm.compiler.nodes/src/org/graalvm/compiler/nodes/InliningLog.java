@@ -141,7 +141,7 @@ public class InliningLog {
          *
          * @see #copyTree(Callsite, Callsite, UnmodifiableEconomicMap, EconomicMap)
          */
-        private final int bci;
+        private int bci;
 
         /**
          * {@code true} if the call was known to be indirect at the time of the last inlining
@@ -180,14 +180,32 @@ public class InliningLog {
         }
 
         /**
-         * Adds an inlining decision, updates the target method and the indirect field.
+         * Adds an inlining decision, updates the target method, bci, and the indirect field.
          *
          * @param decision the decision to be added
          */
         private void addDecision(Decision decision) {
             decisions.add(decision);
             target = invoke.getTargetMethod();
-            indirect = invoke instanceof Invoke && ((Invoke) invoke).callTarget().invokeKind.isIndirect();
+            indirect = invokeIsIndirect(invoke);
+            bci = invoke.bci();
+        }
+
+        /**
+         * Returns {@code true} if the invokable is an {@link Invoke} with an indirect call target.
+         *
+         * @param invokable an invokable
+         * @return {@code true} if the invokable is an indirect invoke
+         */
+        private static boolean invokeIsIndirect(Invokable invokable) {
+            if (!(invokable instanceof Invoke)) {
+                return false;
+            }
+            CallTargetNode callTargetNode = ((Invoke) invokable).callTarget();
+            if (callTargetNode == null) {
+                return false;
+            }
+            return callTargetNode.invokeKind.isIndirect();
         }
 
         /**
@@ -199,8 +217,7 @@ public class InliningLog {
          * @return the created callsite for the child
          */
         private Callsite addChild(Invokable childInvoke, Callsite childOriginalCallsite) {
-            boolean childIndirect = childInvoke instanceof Invoke && ((Invoke) childInvoke).callTarget().invokeKind.isIndirect();
-            return new Callsite(this, childOriginalCallsite, childInvoke, childInvoke.getTargetMethod(), childInvoke.bci(), childIndirect);
+            return new Callsite(this, childOriginalCallsite, childInvoke, childInvoke.getTargetMethod(), childInvoke.bci(), invokeIsIndirect(childInvoke));
         }
 
         public String positionString() {
