@@ -748,7 +748,7 @@ public class OptimizationLogImpl implements OptimizationLog {
      * @return inlining subtree as a JSON map
      */
     @SuppressWarnings("unchecked")
-    private static EconomicMap<String, Object> callsiteAsJSONMap(InliningLog.Callsite callsite, boolean isInlined, List<String> reason,
+    private EconomicMap<String, Object> callsiteAsJSONMap(InliningLog.Callsite callsite, boolean isInlined, List<String> reason,
                     Function<ResolvedJavaMethod, String> methodNameFormatter, EconomicMap<InliningLog.Callsite, EconomicMap<String, Object>> replacements) {
         EconomicMap<String, Object> map = EconomicMap.create();
         replacements.put(callsite, map);
@@ -797,11 +797,14 @@ public class OptimizationLogImpl implements OptimizationLog {
      * @param callsite the callsite whose profiling info is returned
      * @return the type profile as a map or {@code null}
      */
-    private static EconomicMap<String, Object> receiverTypeProfileAsJSONMap(InliningLog.Callsite callsite, Function<ResolvedJavaMethod, String> methodNameFormatter) {
-        if (callsite.getParent() == null || callsite.getParent().getTarget() == null || callsite.getParent().getTarget().getProfilingInfo() == null) {
+    private EconomicMap<String, Object> receiverTypeProfileAsJSONMap(InliningLog.Callsite callsite, Function<ResolvedJavaMethod, String> methodNameFormatter) {
+        if (callsite.getParent() == null || callsite.getParent().getTarget() == null) {
             return null;
         }
-        ProfilingInfo profilingInfo = callsite.getParent().getTarget().getProfilingInfo();
+        ProfilingInfo profilingInfo = graph.getProfileProvider().getProfilingInfo(callsite.getParent().getTarget());
+        if (profilingInfo == null) {
+            return null;
+        }
         EconomicMap<String, Object> typeProfileMap = EconomicMap.create();
         typeProfileMap.put(MATURE_PROPERTY, profilingInfo.isMature());
         JavaTypeProfile typeProfile = profilingInfo.getTypeProfile(callsite.getBci());

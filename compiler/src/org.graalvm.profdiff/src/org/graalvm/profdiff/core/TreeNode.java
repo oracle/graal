@@ -131,9 +131,9 @@ public abstract class TreeNode<T extends TreeNode<T>> {
         List<Integer> index = new ArrayList<>();
         T node = asT();
         while (node.getParent() != null) {
-            T parent = node.getParent();
-            index.add(parent.getChildren().indexOf(node));
-            node = parent;
+            T parentNode = node.getParent();
+            index.add(parentNode.getChildren().indexOf(node));
+            node = parentNode;
         }
         Collections.reverse(index);
         return index;
