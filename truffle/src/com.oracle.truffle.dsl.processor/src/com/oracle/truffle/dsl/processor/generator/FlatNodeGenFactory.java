@@ -6312,8 +6312,6 @@ public class FlatNodeGenFactory {
                     builder.declaration(cache.getParameter().getType(), localName, value);
                     value = CodeTreeBuilder.singleString(localName);
                 }
-                builder.startIf().tree(value).string(" == ").string(defaultValue).end().startBlock();
-
                 String message = String.format(
                                 "Specialization '%s' cache '%s' returned a '%s' default value. The cache initializer must never return a default value for this cache. " +
                                                 "Use @%s(neverDefault=false) to allow default values for this cached value or make sure the cache initializer never returns '%s'.",
@@ -6323,8 +6321,13 @@ public class FlatNodeGenFactory {
                                 getSimpleName(types.Cached),
                                 defaultValue);
 
-                builder.startThrow().startNew(context.getType(IllegalStateException.class)).doubleQuote(message).end().end();
-                builder.end();
+                if (ElementUtils.isPrimitive(cache.getParameter().getType())) {
+                    builder.startIf().tree(value).string(" == ").string(defaultValue).end().startBlock();
+                    builder.startThrow().startNew(context.getType(NullPointerException.class)).doubleQuote(message).end().end();
+                    builder.end();
+                } else {
+                    builder.startStatement().startStaticCall(context.getType(Objects.class), "requireNonNull").tree(value).doubleQuote(message).end().end();
+                }
 
                 builder.end();
                 builder.startStatement().tree(createCacheAccess(frameState, specialization, cache, CodeTreeBuilder.singleString(localName))).end();
