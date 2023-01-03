@@ -1090,7 +1090,6 @@ public abstract class GraalCompilerTest extends GraalTest {
             try (AllocSpy spy = AllocSpy.open(installedCodeOwner); DebugContext.Scope ds = debug.scope("Compiling", graph)) {
                 CompilationPrinter printer = CompilationPrinter.begin(options, id, installedCodeOwner, INVOCATION_ENTRY_BCI);
                 CompilationResult compResult = compile(installedCodeOwner, graphToCompile, new CompilationResult(graphToCompile.compilationId()), id, options);
-                printer.finish(compResult);
 
                 try (DebugContext.Scope s = debug.scope("CodeInstall", getCodeCache(), installedCodeOwner, compResult);
                                 DebugContext.Activation a = debug.activate()) {
@@ -1114,6 +1113,8 @@ public abstract class GraalCompilerTest extends GraalTest {
                 } catch (Throwable e) {
                     throw debug.handle(e);
                 }
+                printer.finish(compResult, installedCode);
+
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
