@@ -275,6 +275,11 @@ public class InliningLog {
             return invoke;
         }
 
+        /**
+         * Updates the invoke associated with the callsite.
+         *
+         * @param newInvoke the new invoke
+         */
         public void setInvoke(Invokable newInvoke) {
             invoke = newInvoke;
         }
@@ -289,10 +294,6 @@ public class InliningLog {
             return target;
         }
 
-        public Callsite getOriginalCallsite() {
-            return originalCallsite;
-        }
-
         /**
          * Gets the parent callsite, which may be overridden by {@link #originalCallsite} if it set.
          *
@@ -304,6 +305,16 @@ public class InliningLog {
          */
         public Callsite getOverriddenParent() {
             return originalCallsite == null ? parent : originalCallsite;
+        }
+
+        /**
+         * Gets the original callsite, which overrides the parent callsite when it is set.
+         *
+         * @see #getOverriddenParent()
+         * @return the original callsite
+         */
+        public Callsite getOriginalCallsite() {
+            return originalCallsite;
         }
 
         /**
@@ -759,11 +770,12 @@ public class InliningLog {
         return root;
     }
 
+    /**
+     * Sets the call tree to the provided call tree.
+     *
+     * @param root the root of the new call tree
+     */
     public void setRootCallsite(Callsite root) {
         this.root = root;
-    }
-
-    public UnmodifiableEconomicMap<Invokable, InliningLog.Callsite> getLeaves() {
-        return leaves;
     }
 }

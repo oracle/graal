@@ -428,10 +428,30 @@ public interface OptimizationLog {
      */
     Graph getOptimizationTree();
 
+    /**
+     * Notifies the optimization log that a phase was entered. Returns a scope that should be closed
+     * when the phase is exited.
+     *
+     * @param name the name of the entered phase
+     * @return a phase scope that should be closed when the phase is exited
+     */
     OptimizationPhaseScope enterPhase(CharSequence name);
 
+    /**
+     * Inlines the optimization log of the callee into the current phase of this optimization log.
+     * The node source position of the inlined optimization log are updated using the position of
+     * the inlined invoke node.
+     *
+     * @param calleeOptimizationLog the optimization log of the inlined callee
+     * @param invokePosition the node source position of the inlined callee
+     */
     void inline(OptimizationLog calleeOptimizationLog, NodeSourcePosition invokePosition);
 
+    /**
+     * Replaces this optimization log with a copy of the replacement log.
+     *
+     * @param replacementLog the optimization log which replaces this log
+     */
     void replaceLog(OptimizationLog replacementLog);
 
     /**

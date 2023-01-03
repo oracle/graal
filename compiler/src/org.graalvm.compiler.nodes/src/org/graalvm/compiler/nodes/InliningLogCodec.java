@@ -37,7 +37,17 @@ import org.graalvm.util.CollectionsUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+/**
+ * Encodes and decodes the {@link InliningLog}.
+ *
+ * @see CompanionObjectCodec
+ */
 public class InliningLogCodec extends CompanionObjectCodec<InliningLog, InliningLogCodec.EncodedInliningLog> {
+    /**
+     * An encoded representation of a {@link InliningLog.Callsite}. The fields match
+     * {@link InliningLog.Callsite}, except there is an {@link #invokeOrderId} instead of a
+     * {@link Invokable}.
+     */
     private static final class EncodedCallsite {
         private final List<InliningLog.Decision> decisions;
         private final List<EncodedCallsite> children;
@@ -60,10 +70,12 @@ public class InliningLogCodec extends CompanionObjectCodec<InliningLog, Inlining
         }
     }
 
+    /**
+     * An encoded instance of the inlining log. It is not necessary to encode leaf callsites,
+     * because they are created on {@link InliningLogDecoder#registerNode registration}.
+     */
     protected static final class EncodedInliningLog implements EncodedObject {
         private EncodedCallsite root;
-
-        private EconomicMap<Integer, EncodedCallsite> leaves;
     }
 
     private static final class InliningLogEncoder implements Encoder<InliningLog, EncodedInliningLog> {
@@ -83,14 +95,6 @@ public class InliningLogCodec extends CompanionObjectCodec<InliningLog, Inlining
             assert shouldBeEncoded(inliningLog);
             EconomicMap<InliningLog.Callsite, EncodedCallsite> replacements = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
             encodedObject.root = encodeSubtree(inliningLog.getRootCallsite(), mapper, replacements);
-            encodedObject.leaves = EconomicMap.create(inliningLog.getLeaves().size());
-            UnmodifiableMapCursor<Invokable, InliningLog.Callsite> cursor = inliningLog.getLeaves().getEntries();
-            while (cursor.advance()) {
-                Integer invokableNode = encodeInvokable(cursor.getKey(), mapper);
-                if (invokableNode != null) {
-                    encodedObject.leaves.put(invokableNode, replacements.get(cursor.getValue()));
-                }
-            }
         }
 
         private static Integer encodeInvokable(Invokable invokable, Function<Node, Integer> mapper) {
@@ -132,17 +136,14 @@ public class InliningLogCodec extends CompanionObjectCodec<InliningLog, Inlining
             assert encodedObject instanceof EncodedInliningLog;
             orderIdToCallsite = EconomicMap.create();
             EncodedInliningLog instance = (EncodedInliningLog) encodedObject;
-            assert instance.root != null && instance.leaves != null;
+            assert instance.root != null;
             EconomicMap<EncodedCallsite, InliningLog.Callsite> replacements = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
             inliningLog.setRootCallsite(decodeSubtree(null, instance.root, replacements));
         }
 
         @Override
-        public void registerNode(StructuredGraph graph, Node node, int orderId) {
-            InliningLog inliningLog = graph.getInliningLog();
-            if (inliningLog == null) {
-                return;
-            }
+        public void registerNode(InliningLog inliningLog, Node node, int orderId) {
+            assert inliningLog != null;
             if (!(node instanceof Invokable)) {
                 return;
             }

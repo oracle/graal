@@ -557,6 +557,7 @@ public class GraphDecoder {
         return loopScope;
     }
 
+    @SuppressWarnings("try")
     protected final void decode(LoopScope initialLoopScope) {
         inliningLogCodec.decode(graph, initialLoopScope.methodScope.encodedInliningLog);
         optimizationLogCodec.decode(graph, initialLoopScope.methodScope.encodedOptimizationLog);

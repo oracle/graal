@@ -608,6 +608,15 @@ public class OptimizationLogImpl implements OptimizationLog {
         }
     }
 
+    /**
+     * Recursively inlines the optimization subtree given by the {@code node} to the given parent
+     * phase. The optimization subtree is copied and node source positions are updated using the
+     * provided position of the invoke that was inlined.
+     *
+     * @param node the root of the optimization subtree to be inlined
+     * @param parentPhase the parent phase to which the subtree should be inlined
+     * @param invokePosition the position of the inlined invoke
+     */
     private void inlineSubtree(OptimizationTreeNode node, OptimizationPhaseScopeImpl parentPhase, NodeSourcePosition invokePosition) {
         if (node instanceof OptimizationPhaseScopeImpl) {
             OptimizationPhaseScopeImpl phase = (OptimizationPhaseScopeImpl) node;
@@ -650,6 +659,12 @@ public class OptimizationLogImpl implements OptimizationLog {
         }
     }
 
+    /**
+     * Recursively copies the optimization subtree given by the {@code node} to the parent phase.
+     *
+     * @param node the root of the optimization subtree to be copied
+     * @param parentPhase the parent phase to which the subtree should be copied
+     */
     private void replaceSubtree(OptimizationTreeNode node, OptimizationPhaseScopeImpl parentPhase) {
         if (node instanceof OptimizationPhaseScopeImpl) {
             OptimizationPhaseScopeImpl phase = (OptimizationPhaseScopeImpl) node;
@@ -762,6 +777,11 @@ public class OptimizationLogImpl implements OptimizationLog {
         }
     }
 
+    /**
+     * Finds and returns the root of the optimization tree.
+     *
+     * @return the root of the optimization tree
+     */
     public OptimizationPhaseScopeImpl findRootPhase() {
         OptimizationPhaseScopeImpl root = currentPhase;
         while (root.predecessor() != null) {

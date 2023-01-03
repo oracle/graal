@@ -34,11 +34,22 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.util.CollectionsUtil;
 
+/**
+ * Encodes and decodes the {@link OptimizationLog}.
+ *
+ * @see CompanionObjectCodec
+ */
 public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, OptimizationLogCodec.EncodedOptimizationLog> {
+    /**
+     * An encoded optimization or optimization phase.
+     */
     private interface OptimizationTreeNode {
 
     }
 
+    /**
+     * An encoded representation of {@link OptimizationLogImpl.OptimizationPhaseScopeImpl}.
+     */
     private static final class OptimizationPhase implements OptimizationTreeNode {
         private final CharSequence phaseName;
 
@@ -57,6 +68,9 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
         }
     }
 
+    /**
+     * An encoded representation of {@link OptimizationLogImpl.OptimizationEntryImpl}.
+     */
     private static final class Optimization implements OptimizationTreeNode {
         private final EconomicMap<String, Object> properties;
 
@@ -74,6 +88,9 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
         }
     }
 
+    /**
+     * An encoded representation of the {@link OptimizationLog}.
+     */
     protected static final class EncodedOptimizationLog implements EncodedObject {
         private OptimizationPhase root;
     }
@@ -134,7 +151,7 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
         }
 
         @Override
-        public void registerNode(StructuredGraph graph, Node node, int orderId) {
+        public void registerNode(OptimizationLog optimizationLog, Node node, int orderId) {
 
         }
 

@@ -96,7 +96,7 @@ The ASCII art below is a snippet of an optimization tree.
                                   RootPhase
                     _____________/    |    \_____________
                    /                  |                  \
-                LowTier            MidTier            HighTier
+               HighTier            MidTier             LowTier
            ______/  \___              |                   |
           /             \     CanonicalizerPhase         ...
   LoopPeelingPhase      ...     ___|     |__________
@@ -105,6 +105,24 @@ The ASCII art below is a snippet of an optimization tree.
       at bci 122           at bci 13                at bci 25
                                          {replacedNodeClass: ValuePhi,
                                           canonicalNodeClass: Constant}
+```
+
+When a method is inlined, it may have already gone through some optimization phases. For that reason, the optimization
+tree of the inlinee is copied to the optimization tree of the caller. Therefore, the children of an optimization phase
+that performs inlining may be whole optimization subtrees rooted in a `RootPhase` like in the example below.
+
+```
+                                  RootPhase
+                    _____________/    |    \_____________
+                   /                  |                  \
+               HighTier            MidTier             LowTier
+                   |                  |                   |
+             InliningPhase           ...                 ...
+             ___/    \___
+            /            \
+        RootPhase     RootPhase
+            |             |
+           ...           ...
 ```
 
 In reality, however, the trees are significantly larger than in this example. Read `Profdiff.md` to learn how to inspect
