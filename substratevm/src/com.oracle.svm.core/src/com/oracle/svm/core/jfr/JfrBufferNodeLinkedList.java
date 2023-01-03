@@ -41,6 +41,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.thread.VMOperation;
 import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
 
 public class JfrBufferNodeLinkedList {
     @RawStructure
@@ -91,6 +92,7 @@ public class JfrBufferNodeLinkedList {
     private static final int NOT_ACQUIRED = 0;
     private volatile JfrBufferNode head;
     private JfrBufferNode tail; // this never gets deleted until torn down
+    private static final int ACQUIRE_RETRY_COUNT = 10000;
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public JfrBufferNode getAndLockTail() {
@@ -103,7 +105,7 @@ public class JfrBufferNodeLinkedList {
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public static boolean tryAcquire(JfrBufferNode node) {
-        for (int retry = 0; retry < 10000; retry++) {
+        for (int retry = 0; retry < ACQUIRE_RETRY_COUNT; retry++) {
             if (node.isNull() || acquire(node)) {
                 return true;
             }
@@ -234,7 +236,7 @@ public class JfrBufferNodeLinkedList {
                 continue;
             }
             if (!isHead(oldHead)) {
-                // head in main memory may have changed between setting and acquiring oldHead
+                // head may have been written sometime between setting and acquiring oldHead
                 release(oldHead);
                 continue;
             }
@@ -256,7 +258,7 @@ public class JfrBufferNodeLinkedList {
             return true;
         }
         boolean success = ((org.graalvm.word.Pointer) node).logicCompareAndSwapInt(JfrBufferNode.offsetOfAcquired(), NOT_ACQUIRED, ACQUIRED,
-                        org.graalvm.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION);
+                        NamedLocationIdentity.OFF_HEAP_LOCATION);
         if (success) {
             node.setLockOwner(CurrentIsolate.getCurrentThread());
         }
