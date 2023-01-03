@@ -692,6 +692,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long notifyAddress = getAddress("JVMCIRuntime::object_notify");
     public final long notifyAllAddress = getAddress("JVMCIRuntime::object_notifyAll");
 
+    // This flag indicates that support for loom is enabled.
+    public final boolean continuationsEnabled = getFieldValue("CompilerToVM::Data::continuations_enabled", Boolean.class, "bool", JDK > 19, JDK >= 19 && jvmciGE(JVMCI_23_0_b04));
+
     // Tracking of the number of monitors held by the current thread. This is used by loom but in
     // JDK 20 was enabled by default to ensure it was correctly implemented.
     public final int threadHeldMonitorCountOffset;
