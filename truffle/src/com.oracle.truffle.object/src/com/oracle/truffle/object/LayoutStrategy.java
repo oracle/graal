@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -308,8 +308,7 @@ public abstract class LayoutStrategy {
             newShape = applyTransition(newShape, previous, true);
         }
 
-        shape.addIndirectTransition(transition, newShape);
-        return newShape;
+        return shape.addIndirectTransition(transition, newShape);
     }
 
     /**
@@ -319,8 +318,7 @@ public abstract class LayoutStrategy {
         PropertyMap newPropertyMap = shape.getPropertyMap().removeCopy(property);
         ShapeImpl newShape = shape.createShape(shape.getLayout(), shape.sharedData, shape, shape.objectType, newPropertyMap, transition, shape.allocator(), shape.flags);
 
-        shape.addDirectTransition(transition, newShape);
-        return newShape;
+        return shape.addDirectTransition(transition, newShape);
     }
 
     protected ShapeImpl directReplaceProperty(ShapeImpl shape, Property oldProperty, Property newProperty) {
@@ -346,7 +344,7 @@ public abstract class LayoutStrategy {
 
         assert newProperty.isSame(newShape.getProperty(newProperty.getKey())) : newShape.getProperty(newProperty.getKey());
 
-        shape.addDirectTransition(replacePropertyTransition, newShape);
+        newShape = shape.addDirectTransition(replacePropertyTransition, newShape);
         if (!shape.isValid()) {
             newShape.invalidateValidAssumption();
             return ensureValid ? ensureValid(newShape) : newShape;
@@ -401,7 +399,7 @@ public abstract class LayoutStrategy {
         ShapeImpl oldShape = ensureSpace(shape, property.getLocation());
 
         ShapeImpl newShape = ShapeImpl.makeShapeWithAddedProperty(oldShape, addTransition);
-        oldShape.addDirectTransition(addTransition, newShape);
+        newShape = oldShape.addDirectTransition(addTransition, newShape);
         if (!oldShape.isValid()) {
             newShape.invalidateValidAssumption();
             return ensureValid ? ensureValid(newShape) : newShape;
@@ -473,8 +471,7 @@ public abstract class LayoutStrategy {
 
         ShapeImpl oldShape = ensureSpace(shape, layout.getPrimitiveArrayLocation());
         ShapeImpl newShape = ShapeImpl.makeShapeWithPrimitiveExtensionArray(oldShape, transition);
-        oldShape.addDirectTransition(transition, newShape);
-        return newShape;
+        return oldShape.addDirectTransition(transition, newShape);
     }
 
     /**
