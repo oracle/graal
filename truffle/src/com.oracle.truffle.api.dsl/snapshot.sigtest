@@ -48,6 +48,8 @@ intf java.lang.annotation.Annotation
 meth public abstract java.lang.String[] value()
 
 CLSS public abstract com.oracle.truffle.api.dsl.DSLSupport
+meth public static <%0 extends com.oracle.truffle.api.nodes.NodeInterface> {%%0} maybeInsert(com.oracle.truffle.api.nodes.Node,{%%0})
+meth public static <%0 extends com.oracle.truffle.api.nodes.NodeInterface> {%%0}[] maybeInsert(com.oracle.truffle.api.nodes.Node,{%%0}[])
 meth public static <%0 extends java.lang.Enum<?>> {%%0}[] lookupEnumConstants(java.lang.Class<{%%0}>)
 supr java.lang.Object
 hfds ENUM_CONSTANTS

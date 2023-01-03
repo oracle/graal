@@ -6242,7 +6242,7 @@ public class FlatNodeGenFactory {
         }
 
         CodeTreeBuilder builder = new CodeTreeBuilder(null);
-        value = createInsertNode(builder, frameState, specialization, cache, value);
+        value = createInsertNode(frameState, specialization, cache, value);
 
         boolean sharedCheck = sharedCaches.containsKey(cache);
         boolean defaultCheck = !cache.isWeakReference() && cache.isNeverDefault() && !cache.isNeverDefaultGuaranteed();
@@ -6263,7 +6263,7 @@ public class FlatNodeGenFactory {
 
                     builder.startStatement();
                     builder.string(cacheClass.getName(), " = ");
-                    builder.tree(createInsertNode(builder, frameState, specialization, cache, builder.create().startNew(createCacheClassType(cache)).end().build()));
+                    builder.tree(createInsertNode(frameState, specialization, cache, builder.create().startNew(createCacheClassType(cache)).end().build()));
                     builder.end();
 
                     builder.startStatement();
@@ -6345,17 +6345,19 @@ public class FlatNodeGenFactory {
 
     }
 
-    private CodeTree createInsertNode(CodeTreeBuilder builder, FrameState frameState, SpecializationData specialization, CacheExpression cache, CodeTree value) {
+    private CodeTree createInsertNode(FrameState frameState, SpecializationData specialization, CacheExpression cache, CodeTree value) {
         if (cache.isAlwaysInitialized()) {
             return value;
         } else if (cache.isBind()) {
             return value;
+        } else if (!cache.isAdopt()) {
+            return value;
         }
 
         Parameter parameter = cache.getParameter();
+        TypeMirror type = parameter.getType();
         TypeMirror nodeType = types.Node;
         TypeMirror nodeArrayType = new ArrayCodeTypeMirror(types.Node);
-        TypeMirror type = parameter.getType();
         boolean isNode = isAssignable(parameter.getType(), nodeType);
         boolean isNodeInterface = isNode || isAssignable(type, types.NodeInterface);
         boolean isNodeArray = isAssignable(type, nodeArrayType);
@@ -6363,7 +6365,6 @@ public class FlatNodeGenFactory {
 
         if (isNodeInterface || isNodeInterfaceArray) {
             CodeTree insertTarget;
-
             if (frameState.isSpecializationClassInitialized(specialization) && specializationClassIsNode(specialization)) {
                 insertTarget = singleString(createSpecializationLocalName(specialization));
             } else {
@@ -6384,29 +6385,17 @@ public class FlatNodeGenFactory {
                     castType = nodeArrayType;
                 }
             }
+
+            CodeTreeBuilder noCast = new CodeTreeBuilder(null);
             if (castType == null) {
-                CodeTreeBuilder noCast = new CodeTreeBuilder(null);
-                if (cache.isAdopt()) {
-                    noCast.startCall(insertTarget, "insert");
-                }
-                noCast.tree(value);
-                if (cache.isAdopt()) {
-                    noCast.end();
-                }
-                return noCast.build();
+                noCast.startCall(insertTarget, "insert");
             } else {
-                String fieldName = createFieldName(specialization, cache) + "__";
-                builder.declaration(cache.getDefaultExpression().getResolvedType(), fieldName, value);
-                if (cache.isAdopt()) {
-                    builder.startIf().string(fieldName).instanceOf(castType).end().startBlock();
-                    builder.startStatement();
-                    builder.startCall(insertTarget, "insert");
-                    builder.startGroup().cast(castType).string(fieldName).end();
-                    builder.end().end();
-                }
-                builder.end();
-                return CodeTreeBuilder.singleString(fieldName);
+                noCast.startStaticCall(types.DSLSupport, "maybeInsert");
+                noCast.tree(insertTarget);
             }
+            noCast.tree(value);
+            noCast.end();
+            return noCast.build();
         }
         return value;
     }
@@ -6446,7 +6435,7 @@ public class FlatNodeGenFactory {
             builder.tree(initializeSpecializationClass(frameState, specialization, false));
         }
 
-        CodeTree useValue = createInsertNode(builder, frameState, specialization, cache, value);
+        CodeTree useValue = createInsertNode(frameState, specialization, cache, value);
 
         if (sharedCaches.containsKey(cache)) {
             builder.declaration(type, refName, (CodeTree) null);
@@ -6474,7 +6463,6 @@ public class FlatNodeGenFactory {
                 builder.end();
                 checkSharedCacheNull(builder, refName, specialization, cache);
             }
-
             builder.end();
             builder.end();
 
