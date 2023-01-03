@@ -248,7 +248,25 @@ public final class Introspection {
          */
         @Override
         public String toString() {
-            return "SpecializationInfo[name=" + methodName + ", active=" + isActive() + ", excluded" + isExcluded() + ", instances=" + getInstances() + "]";
+            StringBuilder cacheInfo = new StringBuilder();
+            for (int i = 0; i < getInstances(); i++) {
+                List<Object> cacheData = getCachedData(i);
+                cacheInfo.append(", cache[").append(i).append("] = {");
+                String sep = "";
+                for (Object object : cacheData) {
+                    cacheInfo.append(sep);
+                    if (object == null) {
+                        cacheInfo.append("null");
+                    } else if (object instanceof Number) {
+                        cacheInfo.append(object);
+                    } else {
+                        cacheInfo.append(object.getClass().getSimpleName() + "@" + Integer.toHexString(hashCode()));
+                    }
+                    sep = ", ";
+                }
+                cacheInfo.append("}");
+            }
+            return "SpecializationInfo[name=" + methodName + ", active=" + isActive() + ", excluded=" + isExcluded() + ", instances=" + getInstances() + cacheInfo + "]";
         }
 
     }
