@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes.bytecodes;
+//TODO GR-43114 fix warnings
+@SuppressPackageWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
+package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.nodes.EspressoNode;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-
-@GenerateUncached
-@NodeInfo(shortName = "nullcheck")
-public abstract class NullCheck extends EspressoNode {
-
-    abstract StaticObject execute(StaticObject receiver);
-
-    @Specialization
-    StaticObject doNullCheck(StaticObject receiver, @Cached BranchProfile exceptionProfile) {
-        if (StaticObject.isNull(receiver)) {
-            exceptionProfile.enter();
-            throw getMeta().throwNullPointerException();
-        }
-        return receiver;
-    }
-}
+import com.oracle.truffle.api.dsl.SuppressPackageWarnings;
