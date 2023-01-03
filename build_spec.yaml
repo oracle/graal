@@ -1,0 +1,16 @@
+# Copyright (c) 2023, 2022 year, Oracle and/or its affiliates.
+
+version: 0.1
+component: build
+timeoutInSeconds: 1000
+shell: bash
+
+steps:
+  - type: Command
+    name: "compress the repo"
+    command: |
+      tar -cvzf ${OCI_WORKSPACE_DIR}/repo.tgz ./
+outputArtifacts:
+  - name: artifact
+    type: BINARY
+    location: ${OCI_WORKSPACE_DIR}/repo.tgz
