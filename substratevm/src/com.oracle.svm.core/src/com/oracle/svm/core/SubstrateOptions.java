@@ -26,7 +26,6 @@ package com.oracle.svm.core;
 
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
-import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.None;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
 import static org.graalvm.compiler.options.OptionType.Debug;
@@ -203,6 +202,8 @@ public class SubstrateOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             OptimizationLevel newLevel = parseOptimizationLevel(newValue);
+            // `-g -O0` is recommended for a better debugging experience
+            GraalOptions.TrackNodeSourcePosition.update(values, newLevel == OptimizationLevel.O0);
             SubstrateOptions.IncludeNodeSourcePositions.update(values, newLevel == OptimizationLevel.O0);
             SubstrateOptions.SourceLevelDebug.update(values, newLevel == OptimizationLevel.O0);
             SubstrateOptions.AOTTrivialInline.update(values, newLevel != OptimizationLevel.O0);
@@ -644,8 +645,6 @@ public class SubstrateOptions {
     };
 
     public static void defaultDebugInfoValueUpdateHandler(EconomicMap<OptionKey<?>, Object> values, Integer newValue) {
-        /* Force update of TrackNodeSourcePosition */
-        TrackNodeSourcePosition.update(values, newValue > 0);
         if (OS.WINDOWS.isCurrent()) {
             /* Keep symbols on Windows. The symbol table is part of the pdb-file. */
             DeleteLocalSymbols.update(values, newValue == 0);
