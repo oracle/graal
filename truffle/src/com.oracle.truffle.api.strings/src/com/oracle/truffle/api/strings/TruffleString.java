@@ -239,7 +239,7 @@ public final class TruffleString extends AbstractTruffleString {
         if (bytes instanceof NativePointer) {
             ((NativePointer) bytes).materializeByteArray(null, offset, length << stride, InlinedConditionProfile.getUncached());
         }
-        long attrs = CalcStringAttributesNodeGen.getUncached().execute(null, null, bytes, offset, length, stride, encoding, 0, knownCodeRange);
+        long attrs = CalcStringAttributesNodeGen.getUncached().execute(CalcStringAttributesNodeGen.getUncached(), null, bytes, offset, length, stride, encoding, 0, knownCodeRange);
         int cpLengthCalc = StringAttributes.getCodePointLength(attrs);
         int codeRangeCalc = StringAttributes.getCodeRange(attrs);
         assert cpLengthCalc == codePointLength : "inconsistent codePointLength: " + cpLengthCalc + " != " + codePointLength;
@@ -4619,7 +4619,8 @@ public final class TruffleString extends AbstractTruffleString {
             if (a.isImmutable()) {
                 return (TruffleString) a;
             }
-            return TStringInternalNodes.FromBufferWithStringCompactionKnownAttributesNode.getUncached().execute(null, a, encoding);
+            return TStringInternalNodes.FromBufferWithStringCompactionKnownAttributesNode.getUncached().execute(TStringInternalNodes.FromBufferWithStringCompactionKnownAttributesNode.getUncached(), a,
+                            encoding);
         }
 
         /**
