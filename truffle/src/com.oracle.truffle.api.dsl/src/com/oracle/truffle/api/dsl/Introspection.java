@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import com.oracle.truffle.api.dsl.Introspection.SpecializationInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -106,7 +107,11 @@ public final class Introspection {
      * @since 0.22
      */
     public static SpecializationInfo getSpecialization(Node node, String methodName) {
-        return getIntrospectionData(node).getSpecialization(methodName);
+        try {
+            return getIntrospectionData(node).getSpecialization(methodName);
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException("Failed to provide introspection data for node class " + node.getClass() + " and method " + methodName + ".", e);
+        }
     }
 
     /**
@@ -121,7 +126,13 @@ public final class Introspection {
      * @since 23.0
      */
     public static SpecializationInfo getSpecialization(Node inlineParent, Node node, String methodName) {
-        return getIntrospectionData(inlineParent, node).getSpecialization(methodName);
+        try {
+            return getIntrospectionData(inlineParent, node).getSpecialization(methodName);
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException(
+                            "Failed to provide introspection data for node class " + node.getClass() + " and inlinig parent " + inlineParent.getClass().getName() + " and method " + methodName + ".",
+                            e);
+        }
     }
 
     /**
@@ -140,7 +151,11 @@ public final class Introspection {
      * @since 0.22
      */
     public static List<SpecializationInfo> getSpecializations(Node node) {
-        return getIntrospectionData(node).getSpecializations();
+        try {
+            return getIntrospectionData(node).getSpecializations();
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException("Failed to provide introspection data for node class " + node.getClass() + ".", e);
+        }
     }
 
     /**
@@ -153,10 +168,16 @@ public final class Introspection {
      * @since 23.0
      */
     public static List<SpecializationInfo> getSpecializations(Node inlineParent, Node node) {
-        return getIntrospectionData(inlineParent, node).getSpecializations();
+        try {
+            return getIntrospectionData(inlineParent, node).getSpecializations();
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException(
+                            "Failed to provide introspection data for node class " + node.getClass() + " and inlinig parent " + inlineParent.getClass().getName() + ".", e);
+        }
     }
 
     private static Introspection getIntrospectionData(Node node) {
+        Objects.requireNonNull(node);
         if (!(node instanceof Provider)) {
             throw new IllegalArgumentException(String.format("Provided node is not introspectable. Annotate with @%s to make a node introspectable.", Introspectable.class.getSimpleName()));
         }
@@ -164,6 +185,8 @@ public final class Introspection {
     }
 
     private static Introspection getIntrospectionData(Node inlineParent, Node node) {
+        Objects.requireNonNull(inlineParent);
+        Objects.requireNonNull(node);
         if (!(node instanceof Provider)) {
             throw new IllegalArgumentException(String.format("Provided node is not introspectable. Annotate with @%s to make a node introspectable.", Introspectable.class.getSimpleName()));
         }
@@ -351,13 +374,17 @@ public final class Introspection {
 
     private static Object[] getIntrospectionData(Object specializationData) {
         if (!(specializationData instanceof Object[])) {
-            throw new IllegalStateException("Invalid introspection data.");
+            throw new IllegalStateException("Invalid introspection data: expected object array");
         }
         Object[] fieldData = (Object[]) specializationData;
-        if (fieldData.length < 3 || !(fieldData[0] instanceof String) //
-                        || !(fieldData[1] instanceof Byte) //
-                        || (fieldData[2] != null && !(fieldData[2] instanceof List))) {
-            throw new IllegalStateException("Invalid introspection data.");
+        if (fieldData.length < 3) {
+            throw new IllegalStateException("Invalid introspection data: invalid array length");
+        } else if (!(fieldData[0] instanceof String)) {
+            throw new IllegalStateException("Invalid introspection data: expected string at index 0");
+        } else if (!(fieldData[1] instanceof Byte)) {
+            throw new IllegalStateException("Invalid introspection data: expected byte at index 1");
+        } else if ((fieldData[2] != null && !(fieldData[2] instanceof List))) {
+            throw new IllegalStateException("Invalid introspection data: expected list or null at index 2");
         }
         return fieldData;
     }
