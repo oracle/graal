@@ -33,6 +33,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
+import java.security.CodeSource;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -109,8 +110,6 @@ public class ProgressReporter {
     private static final boolean IS_CI = System.console() == null || System.getenv("CI") != null;
     private static final boolean IS_DUMB_TERM = isDumbTerm();
     private static final int MAX_NUM_BREAKDOWN = 10;
-    private static final String CODE_BREAKDOWN_TITLE = String.format("Top %d packages in code area:", MAX_NUM_BREAKDOWN);
-    private static final String HEAP_BREAKDOWN_TITLE = String.format("Top %d object types in image heap:", MAX_NUM_BREAKDOWN);
     private static final String STAGE_DOCS_URL = "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md";
     private static final double EXCESSIVE_GC_MIN_THRESHOLD_MILLIS = 15_000;
     private static final double EXCESSIVE_GC_RATIO = 0.5;
@@ -490,12 +489,23 @@ public class ProgressReporter {
 
     private void calculateCodeBreakdown(Collection<CompileTask> compilationTasks) {
         for (CompileTask task : compilationTasks) {
-            String classOrPackageName = task.method.format("%H");
-            int lastDotIndex = classOrPackageName.lastIndexOf('.');
-            if (lastDotIndex > 0) {
-                classOrPackageName = classOrPackageName.substring(0, lastDotIndex);
+            CodeSource codeSource = task.method.getDeclaringClass().getJavaClass().getProtectionDomain().getCodeSource();
+            String key = null;
+            if (codeSource != null && codeSource.getLocation() != null) {
+                String path = codeSource.getLocation().getPath();
+                if (path.endsWith(".jar")) {
+                    // Use String API to determine basename of path to handle both / and \.
+                    key = path.substring(Math.max(path.lastIndexOf('/') + 1, path.lastIndexOf('\\') + 1));
+                }
             }
-            codeBreakdown.merge(classOrPackageName, (long) task.result.getTargetCodeSize(), Long::sum);
+            if (key == null) {
+                key = task.method.format("%H");
+                int lastDotIndex = key.lastIndexOf('.');
+                if (lastDotIndex > 0) {
+                    key = key.substring(0, lastDotIndex);
+                }
+            }
+            codeBreakdown.merge(key, (long) task.result.getTargetCodeSize(), Long::sum);
         }
     }
 
@@ -558,7 +568,9 @@ public class ProgressReporter {
                         .sorted(Entry.comparingByValue(Comparator.reverseOrder())).iterator();
 
         final TwoColumnPrinter p = new TwoColumnPrinter();
-        p.l().yellowBold().a(CODE_BREAKDOWN_TITLE).jumpToMiddle().a(HEAP_BREAKDOWN_TITLE).reset().flushln();
+        p.l().yellowBold().a(String.format("Top %d ", MAX_NUM_BREAKDOWN)).doclink("origins", "#glossary-code-area-origins").a(" of code area:")
+                        .jumpToMiddle()
+                        .a(String.format("Top %d object types in image heap:", MAX_NUM_BREAKDOWN)).reset().flushln();
 
         long printedCodeBytes = 0;
         long printedHeapBytes = 0;
@@ -596,7 +608,7 @@ public class ProgressReporter {
         int numHeapItems = heapBreakdown.size();
         long totalCodeBytes = codeBreakdown.values().stream().collect(Collectors.summingLong(Long::longValue));
         long totalHeapBytes = heapBreakdown.values().stream().collect(Collectors.summingLong(Long::longValue));
-        p.l().a(String.format("%9s for %s more packages", Utils.bytesToHuman(totalCodeBytes - printedCodeBytes), numCodeItems - printedCodeItems))
+        p.l().a(String.format("%9s for %s more ", Utils.bytesToHuman(totalCodeBytes - printedCodeBytes), numCodeItems - printedCodeItems)).doclink("origins", "#glossary-code-area-origins")
                         .jumpToMiddle()
                         .a(String.format("%9s for %s more object types", Utils.bytesToHuman(totalHeapBytes - printedHeapBytes), numHeapItems - printedHeapItems)).flushln();
     }
