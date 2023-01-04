@@ -1825,7 +1825,7 @@ public class FlatNodeGenFactory {
                 }
                 BlockState excludeBlocks = BlockState.NONE;
                 if (!excludeTripples.isEmpty()) {
-                    excludeBlocks = IfTriple.materialize(builder, excludeTripples, false);
+                    excludeBlocks = IfTriple.materialize(builder, IfTriple.optimize(excludeTripples), false);
                     builder.startStatement().string("s[1] = (byte)0b10 /* excluded */").end();
                     builder.end(excludeBlocks.blockCount);
                     builder.startElseBlock();
