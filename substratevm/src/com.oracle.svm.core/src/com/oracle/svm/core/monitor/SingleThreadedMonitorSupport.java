@@ -26,6 +26,7 @@ package com.oracle.svm.core.monitor;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.thread.ThreadStatus;
+import com.oracle.svm.core.jfr.JfrInflationCause;
 
 /**
  * Without support for threads, there is no need for any monitor operations.
@@ -36,9 +37,16 @@ public class SingleThreadedMonitorSupport extends MonitorSupport {
     public void monitorEnter(Object obj) {
         /* Synchronization is a no-op in single threaded mode. */
     }
-
+    @Override
+    public void monitorEnter(Object obj, JfrInflationCause cause) {
+        /* Synchronization is a no-op in single threaded mode. */
+    }
     @Override
     public void monitorExit(Object obj) {
+        /* Synchronization is a no-op in single threaded mode. */
+    }
+    @Override
+    public void monitorExit(Object obj, JfrInflationCause cause) {
         /* Synchronization is a no-op in single threaded mode. */
     }
 

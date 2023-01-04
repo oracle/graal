@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +23,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.svm.core.jfr;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.Uninterruptible;
+
 /**
- * Maps JFR types against their IDs in the JDK.
+ * List of all possible inflation causes.
  */
-public enum JfrType {
-    Class("java.lang.Class"),
-    String("java.lang.String"),
-    Thread("java.lang.Thread"),
-    ThreadState("jdk.types.ThreadState"),
-    ThreadGroup("jdk.types.ThreadGroup"),
-    StackTrace("jdk.types.StackTrace"),
-    ClassLoader("jdk.types.ClassLoader"),
-    Method("jdk.types.Method"),
-    Symbol("jdk.types.Symbol"),
-    Module("jdk.types.Module"),
-    Package("jdk.types.Package"),
-    FrameType("jdk.types.FrameType"),
-    GCCause("jdk.types.GCCause"),
-    GCName("jdk.types.GCName"),
-    VMOperation("jdk.types.VMOperationType"),
-    InflationCause("jdk.types.InflateCause");
+public enum JfrInflationCause {
+    VM_INTERNAL("VM Internal"),
+    MONITOR_ENTER("Monitor Enter"),
+    WAIT("Monitor Wait"),
+    NOTIFY("Monitor Notify"),
+    HASH_CODE("Monitor Hash Code"),
+    JNI_ENTER("JNI Monitor Enter"),
+    JNI_EXIT("JNI Monitor Exit");
 
-    private final long id;
+    private final String text;
 
-    JfrType(String name) {
-        this.id = JfrMetadataTypeLibrary.lookupType(name);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    JfrInflationCause(String text) {
+        this.text = text;
     }
 
+    public String getText() {
+        return text;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getId() {
-        return id;
+        // First entry needs to have id 0.
+        return ordinal();
     }
 }

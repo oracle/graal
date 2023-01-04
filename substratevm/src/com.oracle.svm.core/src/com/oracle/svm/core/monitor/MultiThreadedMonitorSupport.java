@@ -54,6 +54,9 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.jfr.events.JavaMonitorInflateEvent;
+import com.oracle.svm.core.jfr.JfrTicks;
+import com.oracle.svm.core.jfr.JfrInflationCause;
 
 import jdk.internal.misc.Unsafe;
 
@@ -239,7 +242,13 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
     @Override
     public void monitorEnter(Object obj) {
-        JavaMonitor lockObject = getOrCreateMonitor(obj, true);
+        monitorEnter(obj, JfrInflationCause.MONITOR_ENTER);
+    }
+
+    @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
+    @Override
+    public void monitorEnter(Object obj, JfrInflationCause cause) {
+        JavaMonitor lockObject = getOrCreateMonitor(obj, true, cause);
         lockObject.monitorEnter(obj);
     }
 
@@ -276,7 +285,13 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
     @Override
     public void monitorExit(Object obj) {
-        JavaMonitor lockObject = getOrCreateMonitor(obj, true);
+        monitorExit(obj, JfrInflationCause.VM_INTERNAL);
+    }
+
+    @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
+    @Override
+    public void monitorExit(Object obj, JfrInflationCause cause) {
+        JavaMonitor lockObject = getOrCreateMonitor(obj, true, cause);
         lockObject.monitorExit();
     }
 
@@ -325,7 +340,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
          * Ensure that the current thread holds the lock. Required by the specification of
          * Object.wait, and also required for our implementation.
          */
-        JavaMonitor lock = ensureLocked(obj);
+        JavaMonitor lock = ensureLocked(obj, JfrInflationCause.WAIT);
         JavaMonitorConditionObject condition = lock.getOrCreateCondition(true);
         if (timeoutMillis == 0L) {
             condition.await(obj);
@@ -337,7 +352,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     @Override
     public void notify(Object obj, boolean notifyAll) {
         /* Make sure the current thread holds the lock on the receiver. */
-        JavaMonitor lock = ensureLocked(obj);
+        JavaMonitor lock = ensureLocked(obj, JfrInflationCause.NOTIFY);
         /* Find the wait/notify condition of the receiver. */
         JavaMonitorConditionObject condition = lock.getOrCreateCondition(false);
         /* If the receiver does not have a condition, then it has not been waited on. */
@@ -351,8 +366,8 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     }
 
     /** Returns the lock of the object. */
-    protected JavaMonitor ensureLocked(Object obj) {
-        JavaMonitor lockObject = getOrCreateMonitor(obj, true);
+    protected JavaMonitor ensureLocked(Object obj, JfrInflationCause cause) {
+        JavaMonitor lockObject = getOrCreateMonitor(obj, true, cause);
         if (!lockObject.isHeldByCurrentThread()) {
             throw new IllegalMonitorStateException("Receiver is not locked by the current thread.");
         }
@@ -376,42 +391,48 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     }
 
     protected final JavaMonitor getOrCreateMonitor(Object obj, boolean createIfNotExisting) {
+        return getOrCreateMonitor(obj, createIfNotExisting, JfrInflationCause.VM_INTERNAL);
+    }
+
+    protected final JavaMonitor getOrCreateMonitor(Object obj, boolean createIfNotExisting, JfrInflationCause cause) {
         int monitorOffset = getMonitorOffset(obj);
         if (monitorOffset != 0) {
             /* The common case: pointer to the monitor reserved in the object. */
-            return getOrCreateMonitorFromObject(obj, createIfNotExisting, monitorOffset);
+            return getOrCreateMonitorFromObject(obj, createIfNotExisting, monitorOffset, cause);
         } else {
-            return getOrCreateMonitorSlow(obj, createIfNotExisting);
+            return getOrCreateMonitorSlow(obj, createIfNotExisting, cause);
         }
     }
 
-    private JavaMonitor getOrCreateMonitorSlow(Object unreplacedObject, boolean createIfNotExisting) {
+    private JavaMonitor getOrCreateMonitorSlow(Object unreplacedObject, boolean createIfNotExisting, JfrInflationCause cause) {
         Object replacedObject = replaceObject(unreplacedObject);
         if (replacedObject != unreplacedObject) {
             int monitorOffset = getMonitorOffset(replacedObject);
             if (monitorOffset != 0) {
-                return getOrCreateMonitorFromObject(replacedObject, createIfNotExisting, monitorOffset);
+                return getOrCreateMonitorFromObject(replacedObject, createIfNotExisting, monitorOffset, cause);
             }
         }
         /* No memory reserved for a lock in the object, fall back to secondary storage. */
-        return getOrCreateMonitorFromMap(replacedObject, createIfNotExisting);
+        return getOrCreateMonitorFromMap(replacedObject, createIfNotExisting, cause);
     }
 
-    protected JavaMonitor getOrCreateMonitorFromObject(Object obj, boolean createIfNotExisting, int monitorOffset) {
+    protected JavaMonitor getOrCreateMonitorFromObject(Object obj, boolean createIfNotExisting, int monitorOffset, JfrInflationCause cause) {
         JavaMonitor existingMonitor = (JavaMonitor) BarrieredAccess.readObject(obj, monitorOffset);
         if (existingMonitor != null || !createIfNotExisting) {
             return existingMonitor;
         }
+        long startTicks = JfrTicks.elapsedTicks();
         /* Atomically put a new lock in place of the null at the monitorOffset. */
         JavaMonitor newMonitor = newMonitorLock();
         if (UNSAFE.compareAndSetObject(obj, monitorOffset, null, newMonitor)) {
+            JavaMonitorInflateEvent.emit(obj, startTicks, cause);
             return newMonitor;
         }
         /* We lost the race, use the lock some other thread installed. */
         return (JavaMonitor) BarrieredAccess.readObject(obj, monitorOffset);
     }
 
-    protected JavaMonitor getOrCreateMonitorFromMap(Object obj, boolean createIfNotExisting) {
+    protected JavaMonitor getOrCreateMonitorFromMap(Object obj, boolean createIfNotExisting, JfrInflationCause cause) {
         assert JavaVersionUtil.JAVA_SPEC > 17 ||
                         obj.getClass() != Target_java_lang_ref_ReferenceQueue_Lock.class : "ReferenceQueue.Lock must have a monitor field or we can deadlock accessing WeakIdentityHashMap below";
         VMError.guarantee(!additionalMonitorsLock.isHeldByCurrentThread(),
@@ -427,9 +448,11 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             if (existingMonitor != null || !createIfNotExisting) {
                 return existingMonitor;
             }
+            long startTicks = JfrTicks.elapsedTicks();
             JavaMonitor newMonitor = newMonitorLock();
             JavaMonitor previousEntry = additionalMonitors.put(obj, newMonitor);
             VMError.guarantee(previousEntry == null, "Replaced monitor in secondary storage map");
+            JavaMonitorInflateEvent.emit(obj, startTicks, cause);
             return newMonitor;
         } finally {
             additionalMonitorsLock.unlock();

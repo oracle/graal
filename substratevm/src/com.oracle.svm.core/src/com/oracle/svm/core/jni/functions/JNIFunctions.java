@@ -35,6 +35,7 @@ import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import com.oracle.svm.core.jfr.JfrInflationCause;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -1015,7 +1016,7 @@ public final class JNIFunctions {
         }
         boolean acquired = false;
         try {
-            MonitorSupport.singleton().monitorEnter(obj);
+            MonitorSupport.singleton().monitorEnter(obj, JfrInflationCause.JNI_ENTER);
             assert Thread.holdsLock(obj);
             acquired = true;
 
@@ -1024,7 +1025,7 @@ public final class JNIFunctions {
         } catch (Throwable t) {
             try {
                 if (acquired) {
-                    MonitorSupport.singleton().monitorExit(obj);
+                    MonitorSupport.singleton().monitorExit(obj, JfrInflationCause.JNI_EXIT);
                 }
                 if (pinned) {
                     VirtualThreads.singleton().unpinCurrent();
@@ -1049,7 +1050,7 @@ public final class JNIFunctions {
         if (!Thread.holdsLock(obj)) {
             throw new IllegalMonitorStateException();
         }
-        MonitorSupport.singleton().monitorExit(obj);
+        MonitorSupport.singleton().monitorExit(obj, JfrInflationCause.JNI_EXIT);
         JNIThreadOwnedMonitors.exited(obj);
         if (VirtualThreads.isSupported() && JavaThreads.isCurrentThreadVirtual()) {
             try {
