@@ -31,11 +31,11 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.stripCast;
 
-import java.util.BitSet;
 import java.util.EnumSet;
 import java.util.HashMap;
 
 import org.graalvm.compiler.core.common.cfg.BasicBlock;
+import org.graalvm.compiler.core.common.cfg.BasicBlockSet;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.InstructionValueConsumer;
@@ -58,13 +58,13 @@ final class SSAVerifier {
     }
 
     private final LIR lir;
-    private final BitSet visited;
+    private final BasicBlockSet visited;
     private final HashMap<Value, Entry> defined;
     private BasicBlock<?> currentBlock;
 
     SSAVerifier(LIR lir) {
         this.lir = lir;
-        this.visited = new BitSet(lir.getControlFlowGraph().getBlocks().length);
+        this.visited = lir.getControlFlowGraph().createBasicBlockSet();
         this.defined = new HashMap<>();
     }
 
@@ -83,7 +83,7 @@ final class SSAVerifier {
 
     @SuppressWarnings("try")
     private void doBlock(BasicBlock<?> b) {
-        if (visited.get(b.getId())) {
+        if (visited.get(b)) {
             return;
         }
         for (int i = 0; i < b.getPredecessorCount(); i++) {
@@ -99,8 +99,8 @@ final class SSAVerifier {
 
     private boolean verifyBlock(BasicBlock<?> block) {
         currentBlock = block;
-        assert !visited.get(block.getId()) : "Block already visited: " + block;
-        visited.set(block.getId());
+        assert !visited.get(block) : "Block already visited: " + block;
+        visited.set(block);
         for (LIRInstruction op : lir.getLIRforBlock(block)) {
             op.visitEachAlive(this::useConsumer);
             op.visitEachState(this::useConsumer);

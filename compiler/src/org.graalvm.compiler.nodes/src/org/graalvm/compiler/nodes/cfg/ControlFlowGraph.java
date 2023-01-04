@@ -28,7 +28,6 @@ import static org.graalvm.compiler.core.common.cfg.BasicBlock.BLOCK_ID_COMPARATO
 import static org.graalvm.compiler.core.common.cfg.BasicBlock.safeCast;
 
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -37,6 +36,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
+import org.graalvm.compiler.core.common.cfg.BasicBlockSet;
 import org.graalvm.compiler.core.common.cfg.CFGVerifier;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.Assertions;
@@ -321,7 +321,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
     public <V> void visitDominatorTreeDeferLoopExits(RecursiveVisitor<V> visitor) {
         HIRBlock[] stack = new HIRBlock[getBlocks().length];
         int tos = 0;
-        BitSet visited = new BitSet(getBlocks().length);
+        BasicBlockSet visited = this.createBasicBlockSet();
         int loopCount = getLoops().size();
         DeferredExit[] deferredExits = new DeferredExit[loopCount];
         Object[] values = null;
@@ -330,8 +330,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
 
         while (tos >= 0) {
             HIRBlock cur = stack[tos];
-            int curId = cur.getId();
-            if (visited.get(curId)) {
+            if (visited.get(cur)) {
                 V value = null;
                 if (values != null && valuesTOS > 0) {
                     value = (V) values[--valuesTOS];
@@ -350,7 +349,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                     }
                 }
             } else {
-                visited.set(curId);
+                visited.set(cur);
                 V value = visitor.enter(cur);
                 if (value != null || values != null) {
                     if (values == null) {
