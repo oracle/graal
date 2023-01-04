@@ -393,7 +393,7 @@ public abstract class GraalCompilerState {
     }
 
     private static ControlFlowGraph deepCopy(ControlFlowGraph cfg) {
-        return ControlFlowGraph.compute(cfg.graph, true, true, true, true);
+        return ControlFlowGraph.compute(cfg.graph, true, true, true, true, true, true);
     }
 
     /**
