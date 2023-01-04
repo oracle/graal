@@ -1395,7 +1395,7 @@ final class TStringInternalNodes {
         abstract long execute(Node node, AbstractTruffleString a, Object arrayA, int codeRangeA, Encoding encoding, int radix) throws TruffleString.NumberFormatException;
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "compaction == cachedCompaction", limit = Stride.STRIDE_CACHE_LIMIT, unroll = Stride.STRIDE_UNROLL)
+        @Specialization(guards = {"is7Bit(codeRangeA)", "compaction == cachedCompaction"}, limit = Stride.STRIDE_CACHE_LIMIT, unroll = Stride.STRIDE_UNROLL)
         static long do7Bit(Node node, AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") Encoding encoding, int radix,
                         @Bind("fromStride(a.stride())") CompactionLevel compaction,
                         @Cached("compaction") CompactionLevel cachedCompaction,
