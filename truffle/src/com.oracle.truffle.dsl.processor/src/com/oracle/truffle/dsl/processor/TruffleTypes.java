@@ -201,6 +201,7 @@ public class TruffleTypes {
     public static final String InlineSupport_LongField_Name = "com.oracle.truffle.api.dsl.InlineSupport.LongField";
     public static final String InlineSupport_DoubleField_Name = "com.oracle.truffle.api.dsl.InlineSupport.DoubleField";
     public static final String InlineSupport_ReferenceField_Name = "com.oracle.truffle.api.dsl.InlineSupport.ReferenceField";
+    public static final String InlineSupport_UnsafeAccessedField_Name = "com.oracle.truffle.api.dsl.InlineSupport.UnsafeAccessedField";
     public static final String NodeChild_Name = "com.oracle.truffle.api.dsl.NodeChild";
     public static final String NodeChildren_Name = "com.oracle.truffle.api.dsl.NodeChildren";
     public static final String NeverDefault_Name = "com.oracle.truffle.api.dsl.NeverDefault";
@@ -258,6 +259,7 @@ public class TruffleTypes {
     public final DeclaredType InlineSupport_IntField = c.getDeclaredType(InlineSupport_IntField_Name);
     public final DeclaredType InlineSupport_LongField = c.getDeclaredType(InlineSupport_LongField_Name);
     public final DeclaredType InlineSupport_DoubleField = c.getDeclaredType(InlineSupport_DoubleField_Name);
+    public final DeclaredType InlineSupport_UnsafeAccessedField = c.getDeclaredType(InlineSupport_UnsafeAccessedField_Name);
     public final DeclaredType NodeChild = c.getDeclaredType(NodeChild_Name);
     public final DeclaredType NodeChildren = c.getDeclaredType(NodeChildren_Name);
     public final DeclaredType NeverDefault = c.getDeclaredType(NeverDefault_Name);

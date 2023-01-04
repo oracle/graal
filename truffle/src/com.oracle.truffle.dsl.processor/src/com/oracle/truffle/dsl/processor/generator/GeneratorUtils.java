@@ -163,6 +163,13 @@ public class GeneratorUtils {
         method.addAnnotationMirror(new CodeAnnotationMirror(override));
     }
 
+    public static void markUnsafeAccessed(CodeElement<?> element) {
+        DeclaredType unsafeAccessed = ProcessorContext.types().InlineSupport_UnsafeAccessedField;
+        if (ElementUtils.findAnnotationMirror(element, unsafeAccessed) == null) {
+            element.getAnnotationMirrors().add(new CodeAnnotationMirror(unsafeAccessed));
+        }
+    }
+
     public static void mergeSuppressWarnings(CodeElement<?> element, String... addWarnings) {
         List<String> mergedWarnings = Arrays.asList(addWarnings);
         AnnotationMirror currentWarnings = ElementUtils.findAnnotationMirror(element, SuppressWarnings.class);

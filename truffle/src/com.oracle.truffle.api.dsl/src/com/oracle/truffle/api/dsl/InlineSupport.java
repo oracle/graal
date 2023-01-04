@@ -156,6 +156,17 @@ public final class InlineSupport {
     }
 
     /**
+     * Marks a field to be accessed with unsafe. This annotation is useful to communicate fields
+     * that must not e rewritten by code obfuscation tools like Proguard.
+     *
+     * @since 23.0
+     */
+    @Retention(RetentionPolicy.CLASS)
+    @Target({ElementType.FIELD})
+    public @interface UnsafeAccessedField {
+    }
+
+    /**
      * Used to specify multiple {@link RequiredField}.
      *
      * @see RequiredField

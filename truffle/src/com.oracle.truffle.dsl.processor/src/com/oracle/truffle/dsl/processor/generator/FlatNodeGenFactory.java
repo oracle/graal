@@ -1915,6 +1915,10 @@ public class FlatNodeGenFactory {
                 CodeVariableElement specializationClassVar = createNodeField(PRIVATE, createSpecializationClassReferenceType(specialization),
                                 createSpecializationFieldName(specialization), null);
 
+                if (needsUpdater(specialization) && baseType != null) {
+                    GeneratorUtils.markUnsafeAccessed(specializationClassVar);
+                }
+
                 if (specializationClassIsNode(specialization)) {
                     specializationClassVar.getAnnotationMirrors().add(new CodeAnnotationMirror(types().Node_Child));
                 } else {
@@ -2172,6 +2176,8 @@ public class FlatNodeGenFactory {
                     } else {
                         nodeElements.add(inlinedCacheField);
                     }
+
+                    GeneratorUtils.markUnsafeAccessed(inlinedCacheField);
 
                     CodeTreeBuilder javadoc = inlinedCacheField.createDocBuilder();
                     javadoc.startJavadoc();
@@ -7506,6 +7512,13 @@ public class FlatNodeGenFactory {
             CodeVariableElement var = FlatNodeGenFactory.createNodeField(PRIVATE, bitSet.getType(), bitSet.getName() + "_",
                             ProcessorContext.getInstance().getTypes().CompilerDirectives_CompilationFinal);
             CodeTreeBuilder docBuilder = var.createDocBuilder();
+
+            for (BitRangedState state : bitSet.getStates().getEntries()) {
+                if (state.state.isInlined()) {
+                    GeneratorUtils.markUnsafeAccessed(var);
+                }
+            }
+
             docBuilder.startJavadoc();
             FlatNodeGenFactory.addStateDoc(docBuilder, bitSet);
             docBuilder.end();
