@@ -37,14 +37,17 @@ public class SingleThreadedMonitorSupport extends MonitorSupport {
     public void monitorEnter(Object obj) {
         /* Synchronization is a no-op in single threaded mode. */
     }
+
     @Override
     public void monitorEnter(Object obj, JfrInflationCause cause) {
         /* Synchronization is a no-op in single threaded mode. */
     }
+
     @Override
     public void monitorExit(Object obj) {
         /* Synchronization is a no-op in single threaded mode. */
     }
+
     @Override
     public void monitorExit(Object obj, JfrInflationCause cause) {
         /* Synchronization is a no-op in single threaded mode. */

@@ -46,12 +46,14 @@ public abstract class MonitorSupport {
      * Implements the semantics of the monitorenter bytecode.
      */
     public abstract void monitorEnter(Object obj);
+
     public abstract void monitorEnter(Object obj, JfrInflationCause cause);
 
     /**
      * Implements the semantics of the monitorexit bytecode.
      */
     public abstract void monitorExit(Object obj);
+
     public abstract void monitorExit(Object obj, JfrInflationCause cause);
 
     /*
