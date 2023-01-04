@@ -1071,6 +1071,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public boolean isInternalFileSystem(FileSystem fileSystem) {
+            return false;
+        }
+
+        @Override
         public ThreadScope createThreadScope() {
             return null;
         }

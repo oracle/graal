@@ -556,7 +556,7 @@ abstract class AbstractBridgeGenerator {
             if (types.isSameType(cache.string, type)) {
                 return "readUTF";
             } else if (type.getKind() == TypeKind.ARRAY) {
-                return "readFully";
+                return "read";
             } else {
                 switch (type.getKind()) {
                     case BOOLEAN:

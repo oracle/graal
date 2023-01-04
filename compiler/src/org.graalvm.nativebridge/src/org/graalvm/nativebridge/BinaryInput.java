@@ -187,13 +187,13 @@ public abstract class BinaryInput {
      *
      * @throws IndexOutOfBoundsException if there are not enough bytes to read
      */
-    public final void readFully(byte[] b, int off, int len) throws IndexOutOfBoundsException {
+    public final void read(byte[] b, int off, int len) throws IndexOutOfBoundsException {
         if (len < 0) {
             throw new IllegalArgumentException(String.format("Len must be non negative but was %d", len));
         }
         int n = 0;
         while (n < len) {
-            int count = read(b, off + n, len - n);
+            int count = readImpl(b, off + n, len - n);
             if (count < 0) {
                 throw new IndexOutOfBoundsException();
             }
@@ -236,7 +236,7 @@ public abstract class BinaryInput {
         int byteCount = 0;
         int charCount = 0;
 
-        readFully(byteBuffer, 0, len);
+        read(byteBuffer, 0, len);
 
         while (byteCount < len) {
             c1 = byteBuffer[byteCount] & 0xff;
@@ -346,9 +346,9 @@ public abstract class BinaryInput {
      *
      * @throws IndexOutOfBoundsException if there are not enough bytes to read
      */
-    public final void readFully(boolean[] b, int off, int len) {
+    public final void read(boolean[] b, int off, int len) {
         ensureBufferSize(len);
-        readFully(byteBuffer, 0, len);
+        read(byteBuffer, 0, len);
         int limit = off + len;
         for (int i = off, j = 0; i < limit; i++) {
             b[i] = byteBuffer[j++] != 0;
@@ -360,10 +360,10 @@ public abstract class BinaryInput {
      *
      * @throws IndexOutOfBoundsException if there are not enough bytes to read
      */
-    public final void readFully(short[] b, int off, int len) {
+    public final void read(short[] b, int off, int len) {
         int size = len * Short.BYTES;
         ensureBufferSize(size);
-        readFully(byteBuffer, 0, size);
+        read(byteBuffer, 0, size);
         int limit = off + len;
         for (int i = off, j = 0; i < limit; i++) {
             int b1 = (byteBuffer[j++] & 0xff);
@@ -377,10 +377,10 @@ public abstract class BinaryInput {
      *
      * @throws IndexOutOfBoundsException if there are not enough bytes to read
      */
-    public final void readFully(char[] b, int off, int len) {
+    public final void read(char[] b, int off, int len) {
         int size = len * Character.BYTES;
         ensureBufferSize(size);
-        readFully(byteBuffer, 0, size);
+        read(byteBuffer, 0, size);
         int limit = off + len;
         for (int i = off, j = 0; i < limit; i++) {
             int b1 = (byteBuffer[j++] & 0xff);
@@ -394,10 +394,10 @@ public abstract class BinaryInput {
      *
      * @throws IndexOutOfBoundsException if there are not enough bytes to read
      */
-    public final void readFully(int[] b, int off, int len) {
+    public final void read(int[] b, int off, int len) {
         int size = len * Integer.BYTES;
         ensureBufferSize(size);
-        readFully(byteBuffer, 0, size);
+        read(byteBuffer, 0, size);
         int limit = off + len;
         for (int i = off, j = 0; i < limit; i++) {
             int b1 = (byteBuffer[j++] & 0xff);
@@ -413,10 +413,10 @@ public abstract class BinaryInput {
      *
      * @throws IndexOutOfBoundsException if there are not enough bytes to read
      */
-    public final void readFully(long[] b, int off, int len) {
+    public final void read(long[] b, int off, int len) {
         int size = len * Long.BYTES;
         ensureBufferSize(size);
-        readFully(byteBuffer, 0, size);
+        read(byteBuffer, 0, size);
         int limit = off + len;
         for (int i = off, j = 0; i < limit; i++) {
             int b1 = (byteBuffer[j++] & 0xff);
@@ -437,10 +437,10 @@ public abstract class BinaryInput {
      *
      * @throws IndexOutOfBoundsException if there are not enough bytes to read
      */
-    public final void readFully(float[] b, int off, int len) {
+    public final void read(float[] b, int off, int len) {
         int size = len * Float.BYTES;
         ensureBufferSize(size);
-        readFully(byteBuffer, 0, size);
+        read(byteBuffer, 0, size);
         int limit = off + len;
         for (int i = off, j = 0; i < limit; i++) {
             int b1 = (byteBuffer[j++] & 0xff);
@@ -456,10 +456,10 @@ public abstract class BinaryInput {
      *
      * @throws IndexOutOfBoundsException if there are not enough bytes to read
      */
-    public final void readFully(double[] b, int off, int len) {
+    public final void read(double[] b, int off, int len) {
         int size = len * Double.BYTES;
         ensureBufferSize(size);
-        readFully(byteBuffer, 0, size);
+        read(byteBuffer, 0, size);
         int limit = off + len;
         for (int i = off, j = 0; i < limit; i++) {
             int b1 = (byteBuffer[j++] & 0xff);
@@ -493,7 +493,7 @@ public abstract class BinaryInput {
     /**
      * Reads up to {@code len} bytes into a byte array starting at offset {@code off}.
      */
-    abstract int read(byte[] b, int off, int len);
+    abstract int readImpl(byte[] b, int off, int len);
 
     private void ensureBufferSize(int len) {
         if (byteBuffer == null || byteBuffer.length < len) {
@@ -519,7 +519,7 @@ public abstract class BinaryInput {
         }
 
         @Override
-        public int read(byte[] b, int off, int len) {
+        public int readImpl(byte[] b, int off, int len) {
             if (pos >= length) {
                 return EOF;
             }
@@ -548,7 +548,7 @@ public abstract class BinaryInput {
         }
 
         @Override
-        public int read(byte[] b, int off, int len) {
+        public int readImpl(byte[] b, int off, int len) {
             if (pos >= length) {
                 return EOF;
             }

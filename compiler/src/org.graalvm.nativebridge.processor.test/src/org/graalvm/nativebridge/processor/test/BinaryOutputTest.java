@@ -254,7 +254,7 @@ public class BinaryOutputTest {
         output.write(expected, 0, expected.length);
         BinaryInput input = BinaryInput.create(output.getArray());
         boolean[] actual = new boolean[expected.length];
-        input.readFully(actual, 0, actual.length);
+        input.read(actual, 0, actual.length);
         Assert.assertArrayEquals(expected, actual);
     }
 
@@ -273,7 +273,7 @@ public class BinaryOutputTest {
         output.write(expected, 0, expected.length);
         BinaryInput input = BinaryInput.create(output.getArray());
         byte[] actual = new byte[expected.length];
-        input.readFully(actual, 0, actual.length);
+        input.read(actual, 0, actual.length);
         Assert.assertArrayEquals(expected, actual);
     }
 
@@ -294,7 +294,7 @@ public class BinaryOutputTest {
         output.write(expected, 0, expected.length);
         BinaryInput input = BinaryInput.create(output.getArray());
         short[] actual = new short[expected.length];
-        input.readFully(actual, 0, actual.length);
+        input.read(actual, 0, actual.length);
         Assert.assertArrayEquals(expected, actual);
     }
 
@@ -315,7 +315,7 @@ public class BinaryOutputTest {
         output.write(expected, 0, expected.length);
         BinaryInput input = BinaryInput.create(output.getArray());
         char[] actual = new char[expected.length];
-        input.readFully(actual, 0, actual.length);
+        input.read(actual, 0, actual.length);
         Assert.assertArrayEquals(expected, actual);
     }
 
@@ -336,7 +336,7 @@ public class BinaryOutputTest {
         output.write(expected, 0, expected.length);
         BinaryInput input = BinaryInput.create(output.getArray());
         int[] actual = new int[expected.length];
-        input.readFully(actual, 0, actual.length);
+        input.read(actual, 0, actual.length);
         Assert.assertArrayEquals(expected, actual);
     }
 
@@ -357,7 +357,7 @@ public class BinaryOutputTest {
         output.write(expected, 0, expected.length);
         BinaryInput input = BinaryInput.create(output.getArray());
         long[] actual = new long[expected.length];
-        input.readFully(actual, 0, actual.length);
+        input.read(actual, 0, actual.length);
         Assert.assertArrayEquals(expected, actual);
     }
 
@@ -379,7 +379,7 @@ public class BinaryOutputTest {
         output.write(expected, 0, expected.length);
         BinaryInput input = BinaryInput.create(output.getArray());
         float[] actual = new float[expected.length];
-        input.readFully(actual, 0, actual.length);
+        input.read(actual, 0, actual.length);
         Assert.assertTrue(Arrays.equals(expected, actual));
     }
 
@@ -401,7 +401,7 @@ public class BinaryOutputTest {
         output.write(expected, 0, expected.length);
         BinaryInput input = BinaryInput.create(output.getArray());
         double[] actual = new double[expected.length];
-        input.readFully(actual, 0, actual.length);
+        input.read(actual, 0, actual.length);
         Assert.assertArrayEquals(expected, actual, 0);
     }
 }
