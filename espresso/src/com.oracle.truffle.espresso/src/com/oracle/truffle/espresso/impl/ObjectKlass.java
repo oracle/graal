@@ -1015,14 +1015,15 @@ public final class ObjectKlass extends Klass {
         return getVTable()[vtableIndex].getMethod();
     }
 
-    public Method itableLookup(Klass interfKlass, int index) {
-        assert (index >= 0) : "Undeclared interface method";
-        try {
-            return getItable()[fastLookup(interfKlass, getiKlassTable())][index].getMethod();
-        } catch (IndexOutOfBoundsException e) {
+    public Method itableLookup(Klass interfKlass, int methodIndex) {
+        assert methodIndex >= 0 : "Undeclared interface method";
+        int itableIndex = fastLookup(interfKlass, getiKlassTable());
+        Method.MethodVersion[][] itable = getItable();
+        if (itableIndex < 0 || methodIndex >= itable[itableIndex].length) {
             Meta meta = getMeta();
             throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Class %s does not implement interface %s", getName(), interfKlass.getName());
         }
+        return itable[itableIndex][methodIndex].getMethod();
     }
 
     int findVirtualMethodIndex(Symbol<Name> methodName, Symbol<Signature> signature, Klass subClass) {
