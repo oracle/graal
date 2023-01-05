@@ -78,6 +78,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
      */
     public synchronized void setAsStubFlow() {
         graphKind = MethodFlowsGraph.GraphKind.STUB;
+        assert !method.isOriginalMethod() : "setting original method as stub";
         assert !flowsGraphCreated() : "cannot set as flow creation kind flows graph is created";
     }
 
