@@ -307,8 +307,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         }
     }
     public final int threadCarrierThreadObjectOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "OopHandle");
-    // TODO update expectPresent
-    public final int threadExtentLocalCacheOffset = getFieldOffset("JavaThread::_extentLocalCache", Integer.class, "OopHandle", -1, false);
+    public final int threadExtentLocalCacheOffset = getFieldOffset("JavaThread::_extentLocalCache", Integer.class, "OopHandle", -1, JVMCI ? jvmciGE(JVMCI_23_0_b04) : JDK >= 20);
 
     public final int osThreadOffset = getFieldOffset("JavaThread::_osthread", Integer.class, "OSThread*");
     public final int threadObjectResultOffset = getFieldOffset("JavaThread::_vm_result", Integer.class, "oop");

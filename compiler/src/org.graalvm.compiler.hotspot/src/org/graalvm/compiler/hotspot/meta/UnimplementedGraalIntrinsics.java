@@ -302,7 +302,7 @@ public final class UnimplementedGraalIntrinsics {
         if (config.sha3ImplCompress == 0L) {
             add(ignore, "sun/security/provider/SHA3.implCompress0([BI)V");
         }
-        if (config.contDoYield == 0L) {
+        if (config.contDoYield == 0L && JAVA_SPEC == 19) {
             add(ignore, "jdk/internal/vm/Continuation.doYield()I");
         }
 
@@ -334,6 +334,14 @@ public final class UnimplementedGraalIntrinsics {
                 add(ignore,
                                 "java/lang/Thread.extentLocalCache()[Ljava/lang/Object;",
                                 "java/lang/Thread.setExtentLocalCache([Ljava/lang/Object;)V");
+            }
+
+            if (arch instanceof AMD64) {
+                if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.AVX512DQ)) {
+                    add(ignore,
+                                    "java/lang/Double.isInfinite(D)Z",
+                                    "java/lang/Float.isInfinite(F)Z");
+                }
             }
         }
 
@@ -406,9 +414,6 @@ public final class UnimplementedGraalIntrinsics {
 
         if (JAVA_SPEC >= 19) {
             add(toBeInvestigated,
-                            // isInfinite are riscv only atm
-                            "java/lang/Double.isInfinite(D)Z",
-                            "java/lang/Float.isInfinite(F)Z",
                             "java/lang/StringCoding.countPositives([BII)I",
                             "jdk/internal/vm/Continuation.enter(Ljdk/internal/vm/Continuation;Z)V",
                             "jdk/internal/vm/Continuation.enterSpecial(Ljdk/internal/vm/Continuation;ZZ)V",
@@ -427,6 +432,11 @@ public final class UnimplementedGraalIntrinsics {
                             "jdk/jfr/internal/JVM.getEventWriter()Ljdk/jfr/internal/event/EventWriter;");
 
             if (arch instanceof AArch64) {
+                // not implemented yet, watch https://bugs.openjdk.org/browse/JDK-8285868
+                add(toBeInvestigated,
+                                "java/lang/Double.isInfinite(D)Z",
+                                "java/lang/Float.isInfinite(F)Z");
+
                 // not implemented yet, watch https://bugs.openjdk.org/browse/JDK-8283892
                 add(toBeInvestigated,
                                 "java/lang/Integer.compress(II)I",
@@ -440,10 +450,8 @@ public final class UnimplementedGraalIntrinsics {
             add(toBeInvestigated,
                             "com/sun/crypto/provider/ChaCha20Cipher.implChaCha20Block([I[B)I",
                             "com/sun/crypto/provider/Poly1305.processMultipleBlocks([BII[J[J)V",
-                            "java/lang/Double.isFinite(D)Z",
                             "java/lang/Float.float16ToFloat(S)F",
                             "java/lang/Float.floatToFloat16(F)S",
-                            "java/lang/Float.isFinite(F)Z",
                             "java/lang/Integer.compareUnsigned(II)I",
                             "java/lang/Integer.reverse(I)I",
                             "java/lang/Long.compareUnsigned(JJ)I",
@@ -451,10 +459,15 @@ public final class UnimplementedGraalIntrinsics {
                             "java/lang/Thread.findScopedValueBindings()Ljava/lang/Object;",
                             "java/lang/Thread.scopedValueCache()[Ljava/lang/Object;",
                             "java/lang/Thread.setScopedValueCache([Ljava/lang/Object;)V",
+                            "jdk/internal/vm/Continuation.doYield()I",
                             // @formatter:off
                             "jdk/internal/vm/vector/VectorSupport.indexVector(Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;ILjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$IndexOperation;)Ljdk/internal/vm/vector/VectorSupport$Vector;");
                             // @formatter:on
 
+            // not implemented yet, watch https://bugs.openjdk.org/browse/JDK-8294198
+            add(toBeInvestigated,
+                            "java/lang/Double.isFinite(D)Z",
+                            "java/lang/Float.isFinite(F)Z");
         }
 
         if (arch instanceof AArch64) {
@@ -482,7 +495,6 @@ public final class UnimplementedGraalIntrinsics {
                         "java/lang/StringBuilder.toString()Ljava/lang/String;",
                         "java/util/Arrays.copyOf([Ljava/lang/Object;ILjava/lang/Class;)[Ljava/lang/Object;",
                         "java/util/Arrays.copyOfRange([Ljava/lang/Object;IILjava/lang/Class;)[Ljava/lang/Object;");
-
     }
 
     /**

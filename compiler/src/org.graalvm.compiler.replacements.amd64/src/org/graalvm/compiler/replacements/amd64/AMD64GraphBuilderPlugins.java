@@ -26,6 +26,7 @@ package org.graalvm.compiler.replacements.amd64;
 
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName.ASCII;
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName.ISO_8859_1;
+import static org.graalvm.compiler.nodes.calc.FloatTypeTestNode.FloatTypeTestOp.IS_INFINITE;
 import static org.graalvm.compiler.nodes.calc.ShuffleBitsNode.ShuffleMode.COMPRESS;
 import static org.graalvm.compiler.nodes.calc.ShuffleBitsNode.ShuffleMode.EXPAND;
 import static org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
@@ -52,6 +53,7 @@ import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CopySignNode;
+import org.graalvm.compiler.nodes.calc.FloatTypeTestNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.MaxNode;
 import org.graalvm.compiler.nodes.calc.MinNode;
@@ -114,6 +116,9 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 registerThreadPlugins(invocationPlugins, arch);
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Int, arch, replacements);
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Long, arch, replacements);
+                registerFloatDoublePlugins(invocationPlugins, JavaKind.Float, arch, replacements);
+                registerFloatDoublePlugins(invocationPlugins, JavaKind.Double, arch, replacements);
+
                 if (GraalOptions.EmitStringSubstitutions.getValue(options)) {
                     registerStringLatin1Plugins(invocationPlugins, replacements);
                     registerStringUTF16Plugins(invocationPlugins, replacements);
@@ -177,6 +182,20 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode mask) {
                 b.push(kind, b.append(new ShuffleBitsNode(value, mask, EXPAND)));
+                return true;
+            }
+        });
+    }
+
+    private static void registerFloatDoublePlugins(InvocationPlugins plugins, JavaKind kind, AMD64 arch, Replacements replacements) {
+        Class<?> declaringClass = kind.toBoxedJavaClass();
+        Class<?> type = kind.toJavaClass();
+        Registration r = new Registration(plugins, declaringClass, replacements);
+
+        r.registerConditional(arch.getFeatures().contains(CPUFeature.AVX512DQ), new InvocationPlugin("isInfinite", type) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.push(JavaKind.Boolean, b.append(new FloatTypeTestNode(value, IS_INFINITE)));
                 return true;
             }
         });

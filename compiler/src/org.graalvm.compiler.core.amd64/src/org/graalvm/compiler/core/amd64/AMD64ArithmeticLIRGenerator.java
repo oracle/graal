@@ -84,6 +84,8 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.DREM;
 import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.FREM;
+import static org.graalvm.compiler.lir.amd64.vector.AMD64VectorUnary.FloatPointClassTestOp.NEG_INF;
+import static org.graalvm.compiler.lir.amd64.vector.AMD64VectorUnary.FloatPointClassTestOp.POS_INF;
 
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
@@ -1453,6 +1455,18 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         } else {
             GraalError.guarantee(value.getPlatformKind() == AMD64Kind.DWORD, "Unsupported value kind");
             getLIRGen().append(new AMD64VectorBinary.AVXBinaryOp(VexGeneralPurposeRVMOp.PDEP, AVXSize.DWORD, result, asAllocatable(value), asAllocatable(mask)));
+        }
+        return result;
+    }
+
+    @Override
+    public Value emitFloatIsInfinite(Value input) {
+        Variable result = getLIRGen().newVariable(LIRKind.value(AMD64Kind.DWORD));
+        if (input.getPlatformKind() == AMD64Kind.DOUBLE) {
+            getLIRGen().append(new AMD64VectorUnary.FloatPointClassTestOp(getLIRGen(), OperandSize.SD, POS_INF | NEG_INF, result, asAllocatable(input)));
+        } else {
+            GraalError.guarantee(input.getPlatformKind() == AMD64Kind.SINGLE, "Unsupported value kind " + input.getPlatformKind());
+            getLIRGen().append(new AMD64VectorUnary.FloatPointClassTestOp(getLIRGen(), OperandSize.SS, POS_INF | NEG_INF, result, asAllocatable(input)));
         }
         return result;
     }

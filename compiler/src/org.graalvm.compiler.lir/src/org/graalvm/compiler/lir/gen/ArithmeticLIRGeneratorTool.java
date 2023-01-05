@@ -185,6 +185,10 @@ public interface ArithmeticLIRGeneratorTool {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 
+    default Value emitFloatIsInfinite(Value input) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
     enum RoundingMode {
         NEAREST(0),
         DOWN(1),

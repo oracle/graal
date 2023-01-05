@@ -724,7 +724,7 @@ suite = {
       },
       "checkstyle": "org.graalvm.compiler.graph",
       "javaCompliance" : "19+",
-      "javaPreviewNeeded": "19",
+      "javaPreviewNeeded": "19+",
       "workingSets" : "Graal,HotSpot,Test",
     },
 
