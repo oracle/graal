@@ -49,6 +49,14 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  */
 @EspressoSubstitutions(nameProvider = Target_sun_reflect_NativeMethodAccessorImpl.SharedNativeMetohdAccessorImpl.class)
 public final class Target_sun_reflect_NativeMethodAccessorImpl {
+    private static final String[] NAMES = {
+                    "Target_sun_reflect_NativeMethodAccessorImpl",
+                    "Target_jdk_internal_reflect_NativeMethodAccessorImpl",
+                    "Target_jdk_internal_reflect_DirectMethodHandleAccessor$NativeAccessor"
+    };
+
+    private Target_sun_reflect_NativeMethodAccessorImpl() {
+    }
 
     /**
      * Checks argument for reflection, checking type matches and widening for primitives. Throws
@@ -245,7 +253,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         }
     }
 
-    private static @JavaType(Object.class) StaticObject invoke0(@JavaType(java.lang.reflect.Method.class) StaticObject guestMethod, @JavaType(Object.class) StaticObject receiver,
+    static @JavaType(Object.class) StaticObject invoke0(@JavaType(java.lang.reflect.Method.class) StaticObject guestMethod, @JavaType(Object.class) StaticObject receiver,
                     @JavaType(Object[].class) StaticObject args, @Inject EspressoLanguage language, @Inject Meta meta, ToEspressoNode toEspressoNode) {
         StaticObject curMethod = guestMethod;
 
@@ -409,10 +417,6 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
     }
 
     public static class SharedNativeMetohdAccessorImpl extends SubstitutionNamesProvider {
-        private static String[] NAMES = new String[]{
-                        TARGET_SUN_REFLECT_NATIVEMETHODACCESSORIMPL,
-                        TARGET_JDK_INTERNAL_REFLECT_NATIVEMETHODACCESSORIMPL
-        };
         public static SubstitutionNamesProvider INSTANCE = new SharedNativeMetohdAccessorImpl();
 
         @Override
@@ -420,8 +424,5 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
             return NAMES;
         }
     }
-
-    private static final String TARGET_SUN_REFLECT_NATIVEMETHODACCESSORIMPL = "Target_sun_reflect_NativeMethodAccessorImpl";
-    private static final String TARGET_JDK_INTERNAL_REFLECT_NATIVEMETHODACCESSORIMPL = "Target_jdk_internal_reflect_NativeMethodAccessorImpl";
 
 }
