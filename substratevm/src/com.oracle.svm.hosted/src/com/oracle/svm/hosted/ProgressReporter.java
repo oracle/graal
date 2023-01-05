@@ -71,6 +71,7 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.OS;
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -298,7 +299,9 @@ public class ProgressReporter {
         recordJsonMetric(GeneralInfo.CC, cCompilerShort);
         String gcName = Heap.getHeap().getGC().getName();
         recordJsonMetric(GeneralInfo.GC, gcName);
-        l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(gcName).println();
+        long maxHeapSize = SubstrateGCOptions.MaxHeapSize.getValue();
+        String maxHeapValue = maxHeapSize == 0 ? "unlimited" : Utils.bytesToHuman(maxHeapSize);
+        l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(gcName).a(" (").doclink("max heap size", "#glossary-gc-max-heap-size").a(": ").a(maxHeapValue).a(")").println();
     }
 
     public void printFeatures(List<Feature> features) {
