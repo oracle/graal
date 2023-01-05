@@ -325,7 +325,7 @@ def execute_tck(graalvm_home, mode=Mode.default(), language_filter=None, values_
     # On JDK9+ this does not work as one of the dependencies is Graal SDK which is in Java module org.graalvm.sdk, so instead
     # we patch the org.graalvm.sdk module to include the truffle-tck-common.jar and also its other dependency polyglot-tck.jar.
     # GR-35018 was filed to resolve this inconvenience.
-    additional_vm_arguments = []
+    additional_vm_arguments = ['-ea']
     jarsToPatch = []
     for jarPath in cp:
         if 'polyglot-tck.jar' in jarPath:
