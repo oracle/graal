@@ -23,7 +23,7 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
 [1/8] Initializing...                                            (2.5s @ 0.21GB)
  Version info: 'GraalVM dev Java 11 CE'
  C compiler: gcc (linux, x86_64, 9.3.0)
- Garbage collector: Serial GC
+ Garbage collector: Serial GC (max heap size: unlimited)
 [2/8] Performing analysis...  [*******]                          (5.6s @ 0.46GB)
    2,718 (72.93%) of  3,727 types reachable
    3,442 (53.43%) of  6,442 fields reachable
@@ -94,6 +94,12 @@ The garbage collector used within the generated executable:
 - The *Epsilon GC* does not perform any garbage collection and is designed for very short-running applications that only allocate a small amount of memory.
 
 For more information see the [docs on Memory Management at Image Run Time](MemoryManagement.md).
+
+#### <a name="glossary-gc-max-heap-size"></a>Maximum Heap Size
+By default, the heap size is *unlimited*, allowing the garbage collector to freely allocate memory according to its policy.
+Use the `-Xmx` option when invoking your native executable (for example `./myapp -Xmx64m` for 64MB) to limit the maximum heap size for a lower and more predictable memory footprint.
+This can also improve latency in some cases.
+Use the `-R:MaxHeapSize` option when building with Native Image to pre-configure the maximum heap size.
 
 #### <a name="glossary-user-specific-features"></a>User-Specific Features
 All [`Features`](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html) that are either provided or specifically enabled by the user, or implicitly registered for the user, for example, by a framework.
