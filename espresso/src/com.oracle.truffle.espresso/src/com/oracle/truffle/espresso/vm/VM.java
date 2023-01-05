@@ -1533,7 +1533,7 @@ public final class VM extends NativeEnv {
         }
         StaticObject thread = getContext().createThread(Thread.currentThread(), group, name);
         if (daemon) {
-            getMeta().java_lang_Thread_daemon.set(thread, true);
+            getContext().getThreadAccess().setDaemon(thread, true);
         }
         return JNI_OK;
     }

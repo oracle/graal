@@ -166,12 +166,21 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         }
     }
 
-    boolean getDaemon(StaticObject thread) {
+    public boolean isDaemon(StaticObject thread) {
         if (getJavaVersion().java17OrEarlier()) {
             return meta.java_lang_Thread_daemon.getBoolean(thread);
         } else {
             StaticObject holder = meta.java_lang_Thread_holder.getObject(thread);
             return meta.java_lang_Thread$FieldHolder_daemon.getBoolean(holder);
+        }
+    }
+
+    public void setDaemon(StaticObject thread, boolean daemon) {
+        if (getJavaVersion().java17OrEarlier()) {
+            meta.java_lang_Thread_daemon.setBoolean(thread, daemon);
+        } else {
+            StaticObject holder = meta.java_lang_Thread_holder.getObject(thread);
+            meta.java_lang_Thread$FieldHolder_daemon.setBoolean(holder, daemon);
         }
     }
 
@@ -307,7 +316,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         Thread host = getContext().getEnv().createThread(new GuestRunnable(getContext(), guest, exit, dispatch));
         initializeHiddenFields(guest, host, true);
         // Prepare host thread
-        host.setDaemon(getDaemon(guest));
+        host.setDaemon(isDaemon(guest));
         host.setPriority(getPriority(guest));
         if (isInterrupted(guest, false)) {
             host.interrupt();

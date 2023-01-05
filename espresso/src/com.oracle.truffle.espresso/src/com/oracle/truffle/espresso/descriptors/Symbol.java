@@ -171,6 +171,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> run = StaticSymbols.putName("run");
         // Thread and System
         public static final Symbol<Name> exit = StaticSymbols.putName("exit");
+        // Thread
+        public static final Symbol<Name> getThreadGroup = StaticSymbols.putName("getThreadGroup");
         // Object and arrays
         public static final Symbol<Name> clone = StaticSymbols.putName("clone");
         public static final Symbol<Name> toString = StaticSymbols.putName("toString");
@@ -1035,6 +1037,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Thread$State_int = StaticSymbols.putSignature(Type.java_lang_Thread$State, Type._int);
         public static final Symbol<Signature> _void_ThreadGroup_String = StaticSymbols.putSignature(Type._void, Type.java_lang_ThreadGroup, Type.java_lang_String);
         public static final Symbol<Signature> _void_ThreadGroup_Runnable = StaticSymbols.putSignature(Type._void, Type.java_lang_ThreadGroup, Type.java_lang_Runnable);
+        public static final Symbol<Signature> ThreadGroup = StaticSymbols.putSignature(Type.java_lang_ThreadGroup);
         public static final Symbol<Signature> _void_Thread = StaticSymbols.putSignature(Type._void, Type.java_lang_Thread);
 
         public static final Symbol<Signature> Reference = StaticSymbols.putSignature(Type.java_lang_ref_Reference);
