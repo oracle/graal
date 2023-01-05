@@ -576,6 +576,15 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             assert !MemoryKill.class.isAssignableFrom(c) || Modifier.isAbstract(c.getModifiers()) || SingleMemoryKill.class.isAssignableFrom(c) || MultiMemoryKill.class.isAssignableFrom(c) : c +
                             " must inherit from either SingleMemoryKill or MultiMemoryKill";
         }
+        if (c.equals(DebugContext.class)) {
+            try {
+                // there are many log/logIndent methods, check the 2 most basic versions
+                c.getDeclaredMethod("log", String.class);
+                c.getDeclaredMethod("logAndIndent", String.class);
+            } catch (NoSuchMethodException | SecurityException e) {
+                throw new VerificationError("DebugContext misses basic log/logAndIndent methods", e);
+            }
+        }
         for (VerifyPhase<CoreProviders> verifier : verifiers) {
             verifier.verifyClass(c, metaAccess);
         }
