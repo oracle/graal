@@ -326,6 +326,16 @@ public abstract class LayoutStrategy {
     }
 
     protected ShapeImpl directReplaceProperty(ShapeImpl shape, Property oldProperty, Property newProperty, boolean ensureValid) {
+        ShapeImpl newShape = directReplacePropertyInner(shape, oldProperty, newProperty);
+
+        Property actualProperty = newShape.getProperty(newProperty.getKey());
+        // Ensure the actual property location is of the same type or more general.
+        ensureSameTypeOrMoreGeneral(actualProperty, newProperty);
+
+        return ensureValid ? ensureValid(newShape) : newShape;
+    }
+
+    private static ShapeImpl directReplacePropertyInner(ShapeImpl shape, Property oldProperty, Property newProperty) {
         assert oldProperty.getKey().equals(newProperty.getKey());
         if (oldProperty.equals(newProperty)) {
             return shape;
@@ -336,18 +346,16 @@ public abstract class LayoutStrategy {
         Transition replacePropertyTransition = new Transition.DirectReplacePropertyTransition(oldProperty, newProperty);
         ShapeImpl cachedShape = shape.queryTransition(replacePropertyTransition);
         if (cachedShape != null) {
-            return ensureValid ? ensureValid(cachedShape) : cachedShape;
+            return cachedShape;
         }
         PropertyMap newPropertyMap = shape.getPropertyMap().replaceCopy(oldProperty, newProperty);
         BaseAllocator allocator = shape.allocator().addLocation(newProperty.getLocation());
         ShapeImpl newShape = shape.createShape(shape.getLayout(), shape.sharedData, shape, shape.objectType, newPropertyMap, replacePropertyTransition, allocator, shape.flags);
 
-        assert newProperty.isSame(newShape.getProperty(newProperty.getKey())) : newShape.getProperty(newProperty.getKey());
-
         newShape = shape.addDirectTransition(replacePropertyTransition, newShape);
+
         if (!shape.isValid()) {
             newShape.invalidateValidAssumption();
-            return ensureValid ? ensureValid(newShape) : newShape;
         }
         return newShape;
     }
@@ -387,22 +395,32 @@ public abstract class LayoutStrategy {
 
     /** @since 0.17 or earlier */
     protected ShapeImpl addProperty(ShapeImpl shape, Property property, boolean ensureValid) {
+        ShapeImpl newShape = addPropertyInner(shape, property);
+
+        Property actualProperty = newShape.getLastProperty();
+        // Ensure the actual property location is of the same type or more general.
+        ensureSameTypeOrMoreGeneral(actualProperty, property);
+
+        return ensureValid ? ensureValid(newShape) : newShape;
+    }
+
+    private ShapeImpl addPropertyInner(ShapeImpl shape, Property property) {
         assert !(shape.hasProperty(property.getKey())) : "duplicate property " + property.getKey();
         shape.onPropertyTransition(property);
 
         AddPropertyTransition addTransition = newAddPropertyTransition(property);
         ShapeImpl cachedShape = shape.queryTransition(addTransition);
         if (cachedShape != null) {
-            return ensureValid ? ensureValid(cachedShape) : cachedShape;
+            return cachedShape;
         }
 
         ShapeImpl oldShape = ensureSpace(shape, property.getLocation());
 
         ShapeImpl newShape = ShapeImpl.makeShapeWithAddedProperty(oldShape, addTransition);
         newShape = oldShape.addDirectTransition(addTransition, newShape);
+
         if (!oldShape.isValid()) {
             newShape.invalidateValidAssumption();
-            return ensureValid ? ensureValid(newShape) : newShape;
         }
         return newShape;
     }
@@ -490,5 +508,12 @@ public abstract class LayoutStrategy {
         }
 
         return null;
+    }
+
+    protected void ensureSameTypeOrMoreGeneral(Property generalProperty, Property specificProperty) {
+        assert ((PropertyImpl) generalProperty).isSame(specificProperty) : generalProperty;
+        if (generalProperty.getLocation() != specificProperty.getLocation()) {
+            assert ((LocationImpl) generalProperty.getLocation()).getType() == ((LocationImpl) specificProperty.getLocation()).getType() : generalProperty;
+        }
     }
 }
