@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.classinitialization;
 import static com.oracle.svm.core.SubstrateOptions.TraceObjectInstantiation;
 
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -138,6 +139,11 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
                         .filter(e -> e.getValue() == kind)
                         .map(Map.Entry::getKey)
                         .collect(Collectors.toSet());
+    }
+
+    public Map<Class<?>, InitKind> getClassInitKinds() {
+        assert configurationSealed;
+        return Collections.unmodifiableMap(classInitKinds);
     }
 
     /**

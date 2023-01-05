@@ -410,6 +410,11 @@ public class SubstrateOptions {
                     "docs/reference-manual/native-image/assets/build-artifacts-schema-v0.9.0.json", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> GenerateBuildArtifactsFile = new HostedOptionKey<>(false);
 
+    public static final String REACHABILITY_FILE_NAME = "reachability.json";
+    @Option(help = "Create a " + REACHABILITY_FILE_NAME + " file in the build directory. The output conforms to the JSON schema located at: " +
+                    "docs/reference-manual/native-image/assets/reachability-schema-v0.9.0.json", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> GenerateReachabilityFile = new HostedOptionKey<>(true);
+
     /*
      * Build output options.
      */

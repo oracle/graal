@@ -38,7 +38,7 @@ import com.oracle.svm.core.util.UserError;
  * The initialization kind for a class. The order of the enum values matters, {@link #max} depends
  * on it.
  */
-enum InitKind {
+public enum InitKind {
     /** Class is initialized during image building, so it is already initialized at runtime. */
     BUILD_TIME,
     /** Class is initialized both at runtime and during image building. */

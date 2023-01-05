@@ -33,6 +33,8 @@ import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Map;
 
+import org.graalvm.collections.EconomicMap;
+
 public class JsonWriter implements AutoCloseable {
     private final Writer writer;
 
@@ -70,6 +72,30 @@ public class JsonWriter implements AutoCloseable {
             quote(key).append(':');
             if (value instanceof Map) {
                 print((Map<String, Object>) value); // Must always be <String, Object>
+            } else {
+                quote(value);
+            }
+            if (keySetIter.hasNext()) {
+                append(',');
+            }
+        }
+        append('}');
+    }
+
+    @SuppressWarnings("unchecked")
+    public void print(EconomicMap<String, Object> map) throws IOException {
+        if (map.isEmpty()) {
+            append("{}");
+            return;
+        }
+        append('{');
+        Iterator<String> keySetIter = map.getKeys().iterator();
+        while (keySetIter.hasNext()) {
+            String key = keySetIter.next();
+            Object value = map.get(key);
+            quote(key).append(':');
+            if (value instanceof EconomicMap) {
+                print((EconomicMap<String, Object>) value); // Must always be <String, Object>
             } else {
                 quote(value);
             }
