@@ -899,7 +899,7 @@ public final class ObjectKlass extends Klass {
         return permittedSubclasses != null && permittedSubclasses.getClasses().length > 0;
     }
 
-    public boolean permittedSubclassCheck(ObjectKlass k) {
+    public boolean permittedSubclassCheck(ObjectKlass subKlass) {
         CompilerAsserts.neverPartOfCompilation();
         if (!getContext().getJavaVersion().java17OrLater()) {
             return true;
@@ -908,15 +908,15 @@ public final class ObjectKlass extends Klass {
         if (permittedSubclasses == null) {
             return true;
         }
-        if (module() != k.module()) {
+        if (module() != subKlass.module()) {
             return false;
         }
-        if (!isPublic() && !sameRuntimePackage(k)) {
+        if (!subKlass.isPublic() && !sameRuntimePackage(subKlass)) {
             return false;
         }
         RuntimeConstantPool pool = getConstantPool();
         for (int index : permittedSubclasses.getClasses()) {
-            if (k.getName().equals(pool.classAt(index).getName(pool))) {
+            if (subKlass.getName().equals(pool.classAt(index).getName(pool))) {
                 // There should be no need to resolve: the previous checks guarantees it would
                 // resolve to k, but resolving here would cause circularity errors.
                 return true;
