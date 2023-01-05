@@ -927,8 +927,6 @@ public abstract class ShapeImpl extends Shape {
     @TruffleBoundary
     @Override
     public final ShapeImpl removeProperty(Property prop) {
-        onPropertyTransition(prop);
-
         return layout.getStrategy().removeProperty(this, prop);
     }
 
@@ -954,8 +952,6 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public ShapeImpl replaceProperty(Property oldProperty, Property newProperty) {
         assert oldProperty.getKey().equals(newProperty.getKey());
-        onPropertyTransition(oldProperty);
-
         return layout.getStrategy().replaceProperty(this, oldProperty, newProperty);
     }
 

@@ -263,6 +263,8 @@ public abstract class LayoutStrategy {
 
     /** @since 0.17 or earlier */
     protected ShapeImpl removeProperty(ShapeImpl shape, Property property) {
+        shape.onPropertyTransition(property);
+
         boolean direct = shape.isShared();
         RemovePropertyTransition transition = newRemovePropertyTransition(property, direct);
         ShapeImpl cachedShape = shape.queryTransition(transition);
