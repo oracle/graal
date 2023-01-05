@@ -30,6 +30,8 @@ import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -57,6 +59,16 @@ public final class MemoryFeedback implements Feedback, Iterable<Memory> {
                 return mems.poll();
             }
         };
+    }
+
+    @Override
+    public void addLocalResponseHeadersCache(URL location, Map<String, List<String>> local) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public Map<String, List<String>> getLocalResponseHeadersCache(URL location) {
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     public enum Case {
