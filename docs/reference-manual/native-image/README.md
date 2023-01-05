@@ -195,7 +195,7 @@ native-image [options] -jar jarfile [imagename]
 4. Create a native executable:
 
     ```
-    native-image --jar App.jar
+    native-image -jar App.jar
     ```
     It will produce a native executable in the project root directory.
 5. Run the native executable:
@@ -248,7 +248,7 @@ Lastly, not all applications may be compatible with Native Image.
 For more details, see [Native Image Compatibility Guide](Compatibility.md).
 
 Native Image can also interop with native languages through a custom API.
-Using this API, you can specify custom native entry points into your Java application and build it into a nativw shared library.
+Using this API, you can specify custom native entry points into your Java application and build it into a native shared library.
 To learn more, see [Interoperability with Native Code](InteropWithNativeCode.md).
  
 ## License
