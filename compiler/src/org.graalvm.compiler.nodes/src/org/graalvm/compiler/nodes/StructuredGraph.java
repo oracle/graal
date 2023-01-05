@@ -553,7 +553,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * @param reason format string that along with {@code args} provides the reason for decision
      */
     public void notifyInliningDecision(Invokable invoke, boolean positive, String phase, EconomicMap<Node, Node> replacements,
-                                       InliningLog calleeInliningLog, OptimizationLog calleeOptimizationLog, String reason, Object... args) {
+                    InliningLog calleeInliningLog, OptimizationLog calleeOptimizationLog, String reason, Object... args) {
         if (inliningLog != null) {
             inliningLog.addDecision(invoke, positive, phase, replacements, calleeInliningLog, reason, args);
         }

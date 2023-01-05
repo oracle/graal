@@ -30,6 +30,7 @@ import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicMapUtil;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.util.CollectionsUtil;
@@ -48,7 +49,7 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
     }
 
     /**
-     * An encoded representation of {@link OptimizationLogImpl.OptimizationPhaseScopeImpl}.
+     * An encoded representation of {@link OptimizationLogImpl.OptimizationPhaseNode}.
      */
     private static final class OptimizationPhase implements OptimizationTreeNode {
         private final CharSequence phaseName;
@@ -69,7 +70,7 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
     }
 
     /**
-     * An encoded representation of {@link OptimizationLogImpl.OptimizationEntryImpl}.
+     * An encoded representation of {@link OptimizationLogImpl.OptimizationNode}.
      */
     private static final class Optimization implements OptimizationTreeNode {
         private final EconomicMap<String, Object> properties;
@@ -114,16 +115,16 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
         }
 
         private static OptimizationTreeNode encodeSubtree(OptimizationLog.OptimizationTreeNode node) {
-            if (node instanceof OptimizationLogImpl.OptimizationPhaseScopeImpl) {
-                OptimizationLogImpl.OptimizationPhaseScopeImpl phaseNode = (OptimizationLogImpl.OptimizationPhaseScopeImpl) node;
+            if (node instanceof OptimizationLogImpl.OptimizationPhaseNode) {
+                OptimizationLogImpl.OptimizationPhaseNode phaseNode = (OptimizationLogImpl.OptimizationPhaseNode) node;
                 OptimizationPhase encodedPhase = new OptimizationPhase(phaseNode.getPhaseName());
                 if (phaseNode.getChildren() != null) {
                     phaseNode.getChildren().forEach((child) -> encodedPhase.addChild(encodeSubtree(child)));
                 }
                 return encodedPhase;
             }
-            assert node instanceof OptimizationLogImpl.OptimizationEntryImpl;
-            OptimizationLogImpl.OptimizationEntryImpl optimizationEntry = (OptimizationLogImpl.OptimizationEntryImpl) node;
+            assert node instanceof OptimizationLogImpl.OptimizationNode;
+            OptimizationLogImpl.OptimizationNode optimizationEntry = (OptimizationLogImpl.OptimizationNode) node;
             return new Optimization(optimizationEntry.getProperties(), optimizationEntry.getPosition(),
                             optimizationEntry.getOptimizationName(), optimizationEntry.getEventName());
         }
@@ -142,10 +143,9 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
             EncodedOptimizationLog instance = (EncodedOptimizationLog) encodedObject;
             assert instance.root != null && optimizationLog instanceof OptimizationLogImpl;
             OptimizationLogImpl optimizationLogImpl = (OptimizationLogImpl) optimizationLog;
-            OptimizationLogImpl.OptimizationPhaseScopeImpl rootPhase = optimizationLogImpl.findRootPhase();
             if (instance.root.children != null) {
                 for (OptimizationTreeNode child : instance.root.children) {
-                    decodeSubtreeInto(rootPhase, child, optimizationLogImpl);
+                    decodeSubtreeInto(child, optimizationLogImpl);
                 }
             }
         }
@@ -155,21 +155,21 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
 
         }
 
-        private static void decodeSubtreeInto(OptimizationLogImpl.OptimizationPhaseScopeImpl parent, OptimizationTreeNode node,
-                        OptimizationLogImpl optimizationLog) {
+        @SuppressWarnings("try")
+        private static void decodeSubtreeInto(OptimizationTreeNode node, OptimizationLogImpl optimizationLog) {
             if (node instanceof OptimizationPhase) {
                 OptimizationPhase optimizationPhase = (OptimizationPhase) node;
-                try (OptimizationLogImpl.OptimizationPhaseScopeImpl decodedPhase = optimizationLog.enterPhase(optimizationPhase.phaseName)) {
+                try (DebugCloseable c = optimizationLog.enterPhase(optimizationPhase.phaseName)) {
                     if (optimizationPhase.children != null) {
                         for (OptimizationTreeNode child : optimizationPhase.children) {
-                            decodeSubtreeInto(decodedPhase, child, optimizationLog);
+                            decodeSubtreeInto(child, optimizationLog);
                         }
                     }
                 }
             } else {
-                assert node instanceof Optimization && parent != null;
+                assert node instanceof Optimization;
                 Optimization optimization = (Optimization) node;
-                parent.addChild(new OptimizationLogImpl.OptimizationEntryImpl(optimizationLog, optimization.properties,
+                optimizationLog.getCurrentPhase().addChild(new OptimizationLogImpl.OptimizationNode(optimization.properties,
                                 optimization.position, optimization.optimizationName, optimization.event));
             }
         }
@@ -183,13 +183,13 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
 
         private static boolean subtreesEqual(OptimizationLog.OptimizationTreeNode treeNode1, OptimizationLog.OptimizationTreeNode treeNode2) {
             if (treeNode1 instanceof OptimizationLog.OptimizationEntry && treeNode2 instanceof OptimizationLog.OptimizationEntry) {
-                OptimizationLogImpl.OptimizationEntryImpl entry1 = (OptimizationLogImpl.OptimizationEntryImpl) treeNode1;
-                OptimizationLogImpl.OptimizationEntryImpl entry2 = (OptimizationLogImpl.OptimizationEntryImpl) treeNode2;
+                OptimizationLogImpl.OptimizationNode entry1 = (OptimizationLogImpl.OptimizationNode) treeNode1;
+                OptimizationLogImpl.OptimizationNode entry2 = (OptimizationLogImpl.OptimizationNode) treeNode2;
                 return entry1.getOptimizationName().equals(entry2.getOptimizationName()) && entry1.getEventName().equals(entry2.getEventName()) &&
                                 EconomicMapUtil.equals(entry1.getProperties(), entry2.getProperties());
-            } else if (treeNode1 instanceof OptimizationLog.OptimizationPhaseScope && treeNode2 instanceof OptimizationLog.OptimizationPhaseScope) {
-                OptimizationLogImpl.OptimizationPhaseScopeImpl phase1 = (OptimizationLogImpl.OptimizationPhaseScopeImpl) treeNode1;
-                OptimizationLogImpl.OptimizationPhaseScopeImpl phase2 = (OptimizationLogImpl.OptimizationPhaseScopeImpl) treeNode2;
+            } else if (treeNode1 instanceof OptimizationLogImpl.OptimizationPhaseNode && treeNode2 instanceof OptimizationLogImpl.OptimizationPhaseNode) {
+                OptimizationLogImpl.OptimizationPhaseNode phase1 = (OptimizationLogImpl.OptimizationPhaseNode) treeNode1;
+                OptimizationLogImpl.OptimizationPhaseNode phase2 = (OptimizationLogImpl.OptimizationPhaseNode) treeNode2;
                 if (!phase1.getPhaseName().equals(phase2.getPhaseName())) {
                     return false;
                 }

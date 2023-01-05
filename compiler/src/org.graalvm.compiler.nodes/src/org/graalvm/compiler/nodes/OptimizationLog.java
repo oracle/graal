@@ -29,14 +29,13 @@ import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugOptions;
-import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.graph.NodeSuccessorList;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
@@ -51,7 +50,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * files, and/or IGV.
  */
 public interface OptimizationLog {
-
     /**
      * Represents a node in the tree of optimizations. The tree of optimizations consists of
      * optimization phases and individual optimizations. Extending {@link Node} allows the tree to
@@ -164,32 +162,38 @@ public interface OptimizationLog {
     }
 
     /**
-     * The scope of an entered optimization phase that is also a node in the optimization tree,
-     * i.e., it has child {@link OptimizationTreeNode nodes}.
-     */
-    interface OptimizationPhaseScope extends DebugContext.CompilerPhaseScope {
-        CharSequence getPhaseName();
-
-        NodeSuccessorList<OptimizationTreeNode> getChildren();
-    }
-
-    /**
      * Keeps track of virtualized allocations and materializations during partial escape analysis.
      */
-    interface PartialEscapeLog {
+    class PartialEscapeLog {
+        /**
+         * Tracks the number of materializations per virtual node.
+         */
+        private final EconomicMap<VirtualObjectNode, Integer> virtualNodes = EconomicMap.create(Equivalence.IDENTITY);
+
         /**
          * Notifies the log that an allocation was virtualized.
          *
          * @param virtualObjectNode the virtualized node
          */
-        void allocationRemoved(VirtualObjectNode virtualObjectNode);
+        public void allocationRemoved(VirtualObjectNode virtualObjectNode) {
+            virtualNodes.put(virtualObjectNode, 0);
+        }
 
         /**
          * Notifies the log that an object was materialized.
          *
          * @param virtualObjectNode the object that was materialized
          */
-        void objectMaterialized(VirtualObjectNode virtualObjectNode);
+        public void objectMaterialized(VirtualObjectNode virtualObjectNode) {
+            Integer count = virtualNodes.get(virtualObjectNode);
+            if (count != null) {
+                virtualNodes.put(virtualObjectNode, count + 1);
+            }
+        }
+
+        protected EconomicMap<VirtualObjectNode, Integer> getVirtualNodes() {
+            return virtualNodes;
+        }
     }
 
     /**
@@ -208,7 +212,7 @@ public interface OptimizationLog {
          * disabled.
          */
         @Override
-        public OptimizationPhaseScope enterPhase(CharSequence name) {
+        public DebugCloseable enterPhase(CharSequence name) {
             return null;
         }
 
@@ -252,16 +256,6 @@ public interface OptimizationLog {
          */
         @Override
         public PartialEscapeLog getPartialEscapeLog() {
-            return null;
-        }
-
-        @Override
-        public Graph getOptimizationTree() {
-            return null;
-        }
-
-        @Override
-        public OptimizationPhaseScope getCurrentPhase() {
             return null;
         }
 
@@ -422,20 +416,13 @@ public interface OptimizationLog {
     PartialEscapeLog getPartialEscapeLog();
 
     /**
-     * Gets the tree of optimizations.
-     *
-     * @see OptimizationTreeNode
-     */
-    Graph getOptimizationTree();
-
-    /**
-     * Notifies the optimization log that a phase was entered. Returns a scope that should be closed
-     * when the phase is exited.
+     * Notifies the optimization log that a phase was entered. Returns a closeable that should be
+     * closed when the phase is exited.
      *
      * @param name the name of the entered phase
-     * @return a phase scope that should be closed when the phase is exited
+     * @return a closeable that should be closed when the phase is exited
      */
-    OptimizationPhaseScope enterPhase(CharSequence name);
+    DebugCloseable enterPhase(CharSequence name);
 
     /**
      * Inlines the optimization log of the callee into the current phase of this optimization log.
@@ -453,14 +440,6 @@ public interface OptimizationLog {
      * @param replacementLog the optimization log which replaces this log
      */
     void replaceLog(OptimizationLog replacementLog);
-
-    /**
-     * Gets the scope of the most recently opened phase (from unclosed phases) or {@code null} if
-     * the optimization log is not enabled.
-     *
-     * @return the scope of the most recently opened phase (from unclosed phases) or {@code null}
-     */
-    OptimizationPhaseScope getCurrentPhase();
 
     /**
      * Notifies the log that partial escape analysis will be entered and returns a

@@ -52,7 +52,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
-import org.graalvm.compiler.nodes.OptimizationLog;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -407,10 +406,10 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
 
         DebugContext debug = graph.getDebug();
         try (DebugContext.Scope s = debug.scope(getName(), this);
-                        CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName()) : null;
-                        OptimizationLog.OptimizationPhaseScope l = graph.getOptimizationLog().enterPhase(getName());
-                        DebugCloseable a = timer.start(debug);
-                        DebugCloseable c = memUseTracker.start(debug)) {
+             CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName()) : null;
+             DebugCloseable l = graph.getOptimizationLog().enterPhase(getName());
+             DebugCloseable a = timer.start(debug);
+             DebugCloseable c = memUseTracker.start(debug)) {
 
             int sizeBefore = 0;
             int edgesBefore = graph.getEdgeModificationCount();

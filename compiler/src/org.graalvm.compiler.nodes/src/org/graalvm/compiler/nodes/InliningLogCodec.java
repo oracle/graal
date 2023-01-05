@@ -31,7 +31,6 @@ import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.util.CollectionsUtil;
 

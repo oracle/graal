@@ -39,7 +39,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.function.BiConsumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -574,7 +573,8 @@ public class GraphDecoder {
                         loopScope = processNextNode(methodScope, loopScope);
                         methodScope = loopScope.methodScope;
                         /*
-                         * We can have entered a new loop, and we can have entered a new inlined method.
+                         * We can have entered a new loop, and we can have entered a new inlined
+                         * method.
                          */
                     }
 
