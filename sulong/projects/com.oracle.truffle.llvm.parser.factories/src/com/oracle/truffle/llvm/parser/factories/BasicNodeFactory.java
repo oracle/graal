@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -184,6 +184,10 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_Convers
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_MovmskpdNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_Pmovmskb128NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_MissingBuiltin;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_SSE_VectorMaxNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_SSE_VectorMaxsdNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_SSE_VectorMinNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_SSE_VectorMinsdNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorCmpNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorMaxNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorMaxsdNodeGen;
@@ -1674,6 +1678,14 @@ public class BasicNodeFactory implements NodeFactory {
                     return LLVMX86_VectorMinNodeGen.create(args[1], args[2]);
                 case "llvm.x86.sse2.min.sd":
                     return LLVMX86_VectorMinsdNodeGen.create(args[1], args[2]);
+                case "llvm.x86.sse.max.ps":
+                    return LLVMX86_SSE_VectorMaxNodeGen.create(args[1], args[2]);
+                case "llvm.x86.sse.max.ss":
+                    return LLVMX86_SSE_VectorMaxsdNodeGen.create(args[1], args[2]);
+                case "llvm.x86.sse.min.ps":
+                    return LLVMX86_SSE_VectorMinNodeGen.create(args[1], args[2]);
+                case "llvm.x86.sse.min.ss":
+                    return LLVMX86_SSE_VectorMinsdNodeGen.create(args[1], args[2]);
                 case "llvm.x86.sse2.cmp.sd":
                     return LLVMX86_VectorCmpNodeGen.create(args[1], args[2], args[3]);
                 case "llvm.x86.sse2.packssdw.128":
