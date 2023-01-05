@@ -54,7 +54,7 @@ public class GraphDumpWithAssertionsTest extends GraalCompilerTest {
         try (TTY.Filter suppressTTY = new TTY.Filter(); TemporaryDirectory temp = new TemporaryDirectory(Paths.get("."), "GraphDumpWithAssertionsTest")) {
             EconomicMap<OptionKey<?>, Object> overrides = OptionValues.newOptionMap();
             overrides.put(DebugOptions.DumpPath, temp.toString());
-            overrides.put(DebugOptions.Dump, ":3");
+            overrides.put(DebugOptions.Dump, ":5");
             overrides.put(DebugOptions.PrintGraph, PrintGraphTarget.File);
             overrides.put(DebugOptions.MethodFilter, null);
 
