@@ -198,7 +198,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
             // If the name of the method of a CONSTANT_Methodref_info structure begins with a '<'
             // ('\u003c'), then the name must be the special name <init>, representing an instance
             // initialization method (&sect;2.9). The return type of such a method must be void.
-            pool.nameAndTypeAt(nameAndTypeIndex).validateMethod(pool, false);
+            pool.nameAndTypeAt(nameAndTypeIndex).validateMethod(pool, false, true);
             Symbol<Name> name = pool.nameAndTypeAt(nameAndTypeIndex).getName(pool);
             if (Name._init_.equals(name)) {
                 Symbol<? extends Descriptor> descriptor = pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool);
