@@ -1,7 +1,7 @@
 {
   "README": "This file contains definitions that are useful for the hocon and jsonnet CI files of multiple repositories.",
 
-  "mx_version" : "6.14.9",
+  "mx_version" : "6.14.12",
 
   "jdks": {
     "oraclejdk11":        {"name": "jpg-jdk",   "version": "11.0.11", "build_id": "9", "release": true, "platformspecific": true, "extrabundles": ["static-libs"] },
