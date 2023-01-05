@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -57,49 +58,50 @@ final class PanamaType {
 
     final MemoryLayout nativeLayout;
     final Class<?> javaType;
-    final ConvertNode convertNode;
+    final NativeSimpleType type;
 
     PanamaType(NativeSimpleType type) {
+        this.type = type;
         switch(type) {
             case VOID:
                 nativeLayout = null;
                 javaType = void.class;
-                throw CompilerDirectives.shouldNotReachHere("OBJ not imple");
+                break;
             case UINT8:
             case SINT8:
                 nativeLayout = ValueLayout.JAVA_BYTE;
                 javaType = byte.class;
-                convertNode = PanamaTypeFactory.ToSINT8NodeFactory.create();
                 break;
             case UINT16:
             case SINT16:
                 nativeLayout = ValueLayout.JAVA_SHORT;
                 javaType = short.class;
-                throw CompilerDirectives.shouldNotReachHere("OBJ not imple");
+                break;
             case UINT32:
             case SINT32:
                 nativeLayout = ValueLayout.JAVA_INT;
                 javaType = int.class;
-                convertNode = PanamaTypeFactory.ToUINT32NodeFactory.create();
                 break;
             case UINT64:
             case SINT64:
             case POINTER:
                 nativeLayout = ValueLayout.JAVA_LONG;
                 javaType = long.class;
-                throw CompilerDirectives.shouldNotReachHere("OBJ not imple");
+                break;
+            case FP80:
+                throw new UnsupportedOperationException();
             case FLOAT:
                 nativeLayout = ValueLayout.JAVA_FLOAT;
                 javaType = float.class;
-                throw CompilerDirectives.shouldNotReachHere("OBJ not imple");
+                break;
             case DOUBLE:
                 nativeLayout = ValueLayout.JAVA_DOUBLE;
                 javaType = double.class;
-                throw CompilerDirectives.shouldNotReachHere("OBJ not imple");
+                break;
             case STRING:
                 javaType = String.class;
                 nativeLayout = ValueLayout.ADDRESS;
-                throw CompilerDirectives.shouldNotReachHere("OBJ not imple");
+                break;
             case OBJECT:
                 javaType = Object.class;
                 // TODO
@@ -112,40 +114,39 @@ final class PanamaType {
         }
     }
 
-    static abstract class ConvertNode extends Node {
-
-        abstract Object execute(Object value) throws UnsupportedTypeException;
-    }
-
-    @GenerateNodeFactory
-    static abstract class ToSINT8Node extends ConvertNode {
-
-        @Specialization(limit = "3")
-        byte doConvert(Object value,
-                        @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
-            try {
-                return interop.asByte(value);
-            } catch (UnsupportedMessageException ex) {
-                throw UnsupportedTypeException.create(new Object[]{value});
-            }
-        }
-    }
-
-    @GenerateNodeFactory
-    static abstract class ToUINT32Node extends ConvertNode {
-
-        @Specialization(limit = "3")
-        int doConvert(Object value,
-                       @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
-            try {
-                return interop.asInt(value);
-            } catch (UnsupportedMessageException ex) {
-                throw UnsupportedTypeException.create(new Object[]{value});
-            }
-        }
-    }
-
     public ArgumentNode createArgumentNode() {
-        return new ArgumentNode(this);
+        switch(type) {
+            case VOID:
+                return ArgumentNodeFactory.ToVOIDNodeGen.create(this);
+            case UINT8:
+            case SINT8:
+                return  ArgumentNodeFactory.ToINT8NodeGen.create(this);
+            case UINT16:
+            case SINT16:
+                return  ArgumentNodeFactory.ToINT16NodeGen.create(this);
+            case UINT32:
+            case SINT32:
+                return  ArgumentNodeFactory.ToINT32NodeGen.create(this);
+            case UINT64:
+            case SINT64:
+            case POINTER:
+                return  ArgumentNodeFactory.ToINT64NodeGen.create(this);
+            case FP80:
+                throw new UnsupportedOperationException();
+            case FLOAT:
+                return  ArgumentNodeFactory.ToFLOATNodeGen.create(this);
+            case DOUBLE:
+                return  ArgumentNodeFactory.ToDOUBLENodeGen.create(this);
+            case STRING:
+                return  ArgumentNodeFactory.ToSTRINGNodeGen.create(this);
+            case OBJECT:
+                // TODO
+                throw CompilerDirectives.shouldNotReachHere("OBJ not imple");
+            case NULLABLE:
+                // TODO
+                throw CompilerDirectives.shouldNotReachHere("Nullable not imple");
+            default:
+                throw CompilerDirectives.shouldNotReachHere("Type does not exist.");
+        }
     }
 }
