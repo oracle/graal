@@ -31,10 +31,10 @@ Here you will learn how to:
 
 ## Microservices Frameworks
 
-- [Build a Native Executable from a Spring Boot 3 Application](https://docs.spring.io/spring-boot/docs/3.0.0/reference/htmlsingle/#native-image.developing-your-first-application)
-- [Build a Native Executable from a Micronaut Application](https://guides.micronaut.io/latest/micronaut-creating-first-graal-app.html)
-- [Build a Native Executable from a Quarkus Application](https://quarkus.io/guides/building-native-image)
-- [Build a Native Executable from a Helidon MP Application](https://helidon.io/docs/v3/#/mp/guides/graalnative)
-- [Build a Native Executable from a Helidon SP Application](https://helidon.io/docs/v3/#/se/guides/graalnative)
+- <a href="https://docs.spring.io/spring-boot/docs/3.0.0/reference/htmlsingle/#native-image.developing-your-first-application" target="_blank">Build a Native Executable from a Spring Boot 3 Application</a>
+- <a href="https://guides.micronaut.io/latest/micronaut-creating-first-graal-app.html" target="_blank">Build a Native Executable from a Micronaut Application</a>
+- <a href="https://quarkus.io/guides/building-native-image" target="_blank">Build a Native Executable from a Quarkus Application</a>
+- <a href="https://helidon.io/docs/v3/#/mp/guides/graalnative" target="_blank">Build a Native Executable from a Helidon MP Application</a>
+- <a href="https://helidon.io/docs/v3/#/se/guides/graalnative" target="_blank">Build a Native Executable from a Helidon SP Application</a>
 
 > Note: To follow these guides, a user is expected to have [GraalVM installed with Native Image support](../README.md#install-native-image). 
