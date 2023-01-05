@@ -169,8 +169,8 @@ public final class ClassfileParser {
 
     private Symbol<Type> classType;
 
-    private int minorVersion;
-    private int majorVersion;
+    private int minorVersion = -1;
+    private int majorVersion = -1;
     private int classFlags;
 
     private int maxBootstrapMethodAttrIndex = -1;
@@ -199,10 +199,10 @@ public final class ClassfileParser {
             if (majorVersion >= JAVA_9_VERSION) {
                 s.readU2();
                 badConstantSeen = tag;
-                throw stream.classFormatError("Illegal constant tag for a class file: %d. Should appear only in module info files.", tag.getValue());
             }
+        } else {
+            throw stream.classFormatError("Unknown constant tag %d", tag.getValue());
         }
-        throw stream.classFormatError("Unknown constant tag %d", tag.getValue());
     }
 
     void updateMaxBootstrapMethodAttrIndex(int bsmAttrIndex) {
@@ -358,6 +358,10 @@ public final class ClassfileParser {
         }
     }
 
+    boolean hasSeenBadConstant() {
+        return badConstantSeen != null;
+    }
+
     private ParserKlass parseClassImpl() {
         readMagic();
 
@@ -386,7 +390,7 @@ public final class ClassfileParser {
             throw ConstantPool.noClassDefFoundError(classType + " is not a class because access_flag ACC_MODULE is set");
         }
 
-        if (badConstantSeen != null) {
+        if (hasSeenBadConstant()) {
             // Do not throw CFE until after the access_flags are checked because if
             // ACC_MODULE is set in the access flags, then NCDFE must be thrown, not CFE.
             // https://bugs.openjdk.java.net/browse/JDK-8175383
@@ -1723,7 +1727,7 @@ public final class ClassfileParser {
     }
 
     int getMajorVersion() {
-        assert majorVersion != 0;
+        assert majorVersion != -1;
         return majorVersion;
     }
 
