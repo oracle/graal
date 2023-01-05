@@ -1945,5 +1945,10 @@ public final class ObjectKlass extends Klass {
             }
             return source;
         }
+
+        @Override
+        public String toString() {
+            return "KlassVersion<" + getType() + ">";
+        }
     }
 }

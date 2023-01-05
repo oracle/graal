@@ -125,7 +125,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
 
     int fromRunnable(StaticObject self, State state) {
         int old = getState(self);
-        assert (old & State.RUNNABLE.value) != 0;
+        assert (old & State.RUNNABLE.value) != 0 : old;
         setState(self, state.value);
         fullSafePoint(self);
         return old;
@@ -589,7 +589,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
                             throw new EspressoExitException(meta.getContext().getExitStatus());
                         }
                         // Stop status has been cleared somewhere else.
-                        assert s == NORMAL || s == EXITING;
+                        assert s == NORMAL || s == EXITING : s;
                         return;
                     }
                 case KILL:
