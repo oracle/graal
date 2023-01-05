@@ -2493,8 +2493,12 @@ public final class JniEnv extends NativeEnv {
     public int GetVersion() {
         if (getJavaVersion().java8OrEarlier()) {
             return JniVersion.JNI_VERSION_ESPRESSO_8.version();
-        } else {
+        } else if (getJavaVersion().java11OrEarlier()) {
             return JniVersion.JNI_VERSION_ESPRESSO_11.version();
+        } else if (getJavaVersion().java17OrEarlier()) {
+            return JniVersion.JNI_VERSION_ESPRESSO_17.version();
+        } else {
+            return JniVersion.JNI_VERSION_ESPRESSO_19.version();
         }
     }
 

@@ -30,27 +30,28 @@ public enum JniVersion {
     JNI_VERSION_1_4(0x00010004),
     JNI_VERSION_1_6(0x00010006),
     JNI_VERSION_1_8(0x00010008),
-    JNI_VERSION_9(0x00090000, true),
-    JNI_VERSION_10(0x000A0000, true);
+    JNI_VERSION_9(0x00090000),
+    JNI_VERSION_10(0x000A0000),
+    JNI_VERSION_19(0x00130000);
 
     private final int version;
-    private final boolean v9OrLater;
 
     JniVersion(int version) {
-        this(version, false);
-    }
-
-    JniVersion(int version, boolean v9OrLater) {
         this.version = version;
-        this.v9OrLater = v9OrLater;
     }
 
     public int version() {
         return version;
     }
 
-    private boolean supports(int v, JavaVersion contextVersion) {
-        return v == version() && (!v9OrLater || contextVersion.java9OrLater());
+    public JavaVersion getJavaVersion() {
+        int major = (version >> 16) & 0xffff;
+        int minor = version & 0xffff;
+        if (major == 1) {
+            return JavaVersion.forVersion(minor);
+        } else {
+            return JavaVersion.forVersion(major);
+        }
     }
 
     /**
@@ -63,9 +64,19 @@ public enum JniVersion {
      */
     static final JniVersion JNI_VERSION_ESPRESSO_11 = JNI_VERSION_10;
 
+    /**
+     * JNI version implemented by Espresso when running a java 17 home.
+     */
+    static final JniVersion JNI_VERSION_ESPRESSO_17 = JNI_VERSION_10;
+
+    /**
+     * JNI version implemented by Espresso when running a java 19 home.
+     */
+    static final JniVersion JNI_VERSION_ESPRESSO_19 = JNI_VERSION_19;
+
     public static boolean isSupported(int version, JavaVersion contextVersion) {
         for (JniVersion v : JniVersion.values()) {
-            if (v.supports(version, contextVersion)) {
+            if (v.version == version && contextVersion.compareTo(v.getJavaVersion()) >= 0) {
                 return true;
             }
         }
