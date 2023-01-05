@@ -1013,6 +1013,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             /*
              * The invocation plugin handled the call, so decoding continues in the calling method.
              */
+            graph.notifyInliningDecision(invokeData.invoke, true, "PEGraphDecoder", null, null, null, "invocation plugin triggered");
             return loopScope;
         }
         final LoopScope inlineLoopScope = tryInline(methodScope, loopScope, invokeData, callTarget);
@@ -1020,6 +1021,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             /*
              * We can inline the call, so decoding continues in the inlined method.
              */
+            graph.notifyInliningDecision(invokeData.invoke, true, "PEGraphDecoder", null, null, null, "inline invoke plugin triggered");
             return inlineLoopScope;
         }
 
