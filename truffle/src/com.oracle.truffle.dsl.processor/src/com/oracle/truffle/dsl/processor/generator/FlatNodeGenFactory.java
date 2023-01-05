@@ -749,6 +749,14 @@ public class FlatNodeGenFactory {
                 // we need a place to store the next pointer.
                 return true;
             }
+            if (specialization.isGuardBindsCache() && guardUseInstanceField(specialization)) {
+                /*
+                 * For specializations that bind cached values in guards that use instance fields we
+                 * need to use specialization classes because the duplication check is not reliable
+                 * otherwise.
+                 */
+                return true;
+            }
             for (CacheExpression cache : specialization.getCaches()) {
                 if (cache.isEncodedEnum()) {
                     continue;
@@ -767,6 +775,26 @@ public class FlatNodeGenFactory {
             }
             return false;
         }
+    }
+
+    private static boolean guardUseInstanceField(SpecializationData s) {
+        for (GuardExpression guard : s.getGuards()) {
+            if (guard.isLibraryAcceptsGuard()) {
+                continue;
+            }
+            for (CacheExpression cache : s.getBoundCaches(guard.getExpression(), false)) {
+                if (!canCacheBeStoredInSpecialializationClass(cache)) {
+                    continue;
+                } else if (cache.isEncodedEnum()) {
+                    continue;
+                } else if (cache.getInlinedNode() != null) {
+                    continue;
+                }
+                return true;
+            }
+        }
+        return false;
+
     }
 
     public static boolean shouldUseSpecializationClassBySize(SpecializationData specialization) {
@@ -2045,8 +2073,9 @@ public class FlatNodeGenFactory {
             annotationType = types.CompilerDirectives_CompilationFinal;
         }
 
+        String nextName = "next_";
         if (specialization.getMaximumNumberOfInstances() > 1) {
-            CodeVariableElement var = createNodeField(null, referenceType, "next_", annotationType);
+            CodeVariableElement var = createNodeField(null, referenceType, nextName, annotationType);
             if (annotationType != types.Node_Child) {
                 var.getModifiers().add(Modifier.FINAL);
             }
@@ -2060,6 +2089,13 @@ public class FlatNodeGenFactory {
         }
 
         specializationClass.getEnclosedElements().addAll(specializationClassElements);
+
+        if (specializationClassNeedsCopyConstructor(specialization)) {
+            if (specialization.getMaximumNumberOfInstances() > 1) {
+                throw new AssertionError("Copy constructor with next_ field is dangerous.");
+            }
+            specializationClass.add(GeneratorUtils.createCopyConstructorUsingFields(modifiers(), specializationClass, Collections.emptySet()));
+        }
 
         if (specialization.hasMultipleInstances() && !specialization.getAssumptionExpressions().isEmpty()) {
             CodeExecutableElement remove = specializationClass.add(new CodeExecutableElement(referenceType, "remove"));
@@ -4933,7 +4969,7 @@ public class FlatNodeGenFactory {
         String countName = specialization != null ? "count" + specialization.getIndex() + "_" : null;
         final boolean useSpecializationClass = useSpecializationClass(specialization);
         final boolean multipleInstances = specialization.hasMultipleInstances();
-        final boolean needsDuplicationCheck = specialization.isGuardBindsCache() || multipleInstances;
+        final boolean needsDuplicationCheck = needsDuplicationCheck(specialization);
         final boolean useDuplicateFlag = specialization.isGuardBindsCache() && !useSpecializationClass;
         final String duplicateFoundName = specialization.getId() + "_duplicateFound_";
 
@@ -5640,15 +5676,12 @@ public class FlatNodeGenFactory {
 
         CodeTree ref = var.createReference();
         CodeTreeBuilder builder = new CodeTreeBuilder(null);
-        // We need to insert memory fence if there are cached values and those are stored in a
-        // linked list. Another thread may be traversing the linked list while we are updating it
-        // here: we must ensure that the item that is being appended to the list is fully
-        // initialized.
-        builder.startStatement();
-        builder.startStaticCall(context.getType(VarHandle.class), "storeStoreFence").end();
-        builder.end();
 
         if (!aotSpecialize && needsDuplicationCheck(specialization)) {
+            /*
+             * No storeStore fence in this branch as we always use compareAndSet which has implicit
+             * storeStoreFence semantics.
+             */
             builder.startIf();
             if (frameState.isInlinedNode()) {
                 String fieldName = createSpecializationFieldName(specialization);
@@ -5669,6 +5702,14 @@ public class FlatNodeGenFactory {
             builder.statement("continue");
             builder.end();
         } else {
+            // We need to insert memory fence if there are cached values and those are stored in a
+            // linked list. Another thread may be traversing the linked list while we are updating
+            // it here: we must ensure that the item that is being appended to the list is fully
+            // initialized.
+            builder.startStatement();
+            builder.startStaticCall(context.getType(VarHandle.class), "storeStoreFence").end();
+            builder.end();
+
             builder.startStatement();
             builder.tree(createSpecializationFieldAccess(frameState, specialization, true, true, null, ref));
             builder.end();
@@ -6155,13 +6196,41 @@ public class FlatNodeGenFactory {
 
             innerTriples.addAll(persistSpecializationClass(innerFrameState, group.getSpecialization(), false));
 
-            if (useSpecializationClass(specialization) && needsDuplicationCheck(specialization)) {
-                CodeTreeBuilder b = builder.create();
+            if (useSpecializationClass(specialization)) {
+                CodeTreeBuilder b;
+                if (needsDuplicationCheck(specialization)) {
+                    b = builder.create();
+                    b.startStatement();
+                    b.string(createSpecializationLocalOriginalName(specialization));
+                    b.string(" = ");
+                    b.tree(createGetSpecializationClass(frameState, specialization, true));
+                    b.end();
+                    innerTriples.add(new IfTriple(null, null, b.build()));
+                }
+
+                b = builder.create();
                 b.startStatement();
-                b.string(createSpecializationLocalOriginalName(specialization));
-                b.string(" = ");
-                b.tree(createGetSpecializationClass(frameState, specialization, true));
+                String localName = createSpecializationLocalName(specialization);
+                b.string(localName).string(" = ");
+                boolean isNode = specializationClassIsNode(specialization);
+                if (isNode) {
+                    if (frameState.isInlinedNode()) {
+                        b.startCall(frameState.getValue(INLINED_NODE_INDEX).createReference(), "insert");
+                    } else {
+                        b.startCall("this.insert");
+                    }
+                }
+                if (!specializationClassNeedsCopyConstructor(specialization)) {
+                    throw new AssertionError("Inconsistent copy constructor condition.");
+                }
+                b.startNew(createSpecializationClassReferenceType(specialization));
+                b.string(localName);
                 b.end();
+                if (isNode) {
+                    b.end();
+                }
+                b.end();
+
                 innerTriples.add(new IfTriple(null, null, b.build()));
             }
 
@@ -6171,6 +6240,25 @@ public class FlatNodeGenFactory {
         }
 
         return Arrays.asList(new IfTriple(builder.build(), null, null));
+    }
+
+    private static boolean specializationClassNeedsCopyConstructor(SpecializationData specialization) {
+        if (!useSpecializationClass(specialization)) {
+            return false;
+        }
+
+        if (!specialization.isReachesFallback()) {
+            return false;
+        }
+
+        for (GuardExpression guard : specialization.getGuards()) {
+            boolean guardStateBit = guardNeedsStateBit(specialization, guard);
+            if (guardStateBit) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private List<IfTriple> initializeCaches(FrameState frameState, NodeExecutionMode mode, SpecializationGroup group, Collection<CacheExpression> caches, boolean store, boolean forcePersist) {
