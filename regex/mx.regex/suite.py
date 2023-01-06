@@ -130,6 +130,11 @@ suite = {
           "java.logging",
           "jdk.unsupported", # sun.misc.Unsafe
         ],
+        "requiresConcealed" : {
+          "org.graalvm.truffle" : [
+            "com.oracle.truffle.api"
+          ],
+        },
       },
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.regex"],
