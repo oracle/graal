@@ -38,7 +38,6 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
-import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -115,13 +114,7 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
 
     @Override
     public Collection<AnalysisMethod> getAllCallees() {
-        return getAllCallees(true);
-    }
-
-    protected final Collection<AnalysisMethod> getAllCallees(boolean assertInvoked) {
-        Collection<AnalysisMethod> result = ConcurrentLightHashSet.getElements(this, CALLEES_UPDATER);
-        assert !assertInvoked || result.stream().filter(MultiMethod::isOriginalMethod).allMatch(AnalysisMethod::isImplementationInvoked);
-        return result;
+        return ConcurrentLightHashSet.getElements(this, CALLEES_UPDATER);
     }
 
     @Override
