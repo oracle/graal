@@ -59,6 +59,7 @@ public class RuntimeImageHeapChunkWriter implements ImageHeapChunkWriter {
         header.setSpace(null);
         header.setOffsetToPreviousChunk(WordFactory.unsigned(offsetToPreviousChunk));
         header.setOffsetToNextChunk(WordFactory.unsigned(offsetToNextChunk));
+        header.setIdentityHashSalt(0);
     }
 
     @Override
@@ -69,6 +70,7 @@ public class RuntimeImageHeapChunkWriter implements ImageHeapChunkWriter {
         header.setSpace(null);
         header.setOffsetToPreviousChunk(WordFactory.unsigned(offsetToPreviousChunk));
         header.setOffsetToNextChunk(WordFactory.unsigned(offsetToNextChunk));
+        header.setIdentityHashSalt(0);
     }
 
     @Override

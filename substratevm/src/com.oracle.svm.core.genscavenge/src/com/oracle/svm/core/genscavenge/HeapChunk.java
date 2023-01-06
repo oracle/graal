@@ -30,6 +30,7 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawFieldOffset;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
 import org.graalvm.word.ComparableWord;
@@ -166,6 +167,15 @@ public final class HeapChunk {
         @RawField
         @UniqueLocationIdentity
         void setOffsetToNextChunk(SignedWord newNext);
+
+        @RawField
+        long getIdentityHashSalt();
+
+        @RawField
+        void setIdentityHashSalt(long value);
+
+        @RawFieldOffset
+        int offsetOfIdentityHashSalt();
     }
 
     public static void initialize(Header<?> chunk, Pointer objectsStart, UnsignedWord chunkSize) {
@@ -302,6 +312,7 @@ public final class HeapChunk {
         return (Pointer) that;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static HeapChunk.Header<?> getEnclosingHeapChunk(Object obj) {
         assert !HeapImpl.getHeapImpl().isInImageHeap(obj) || HeapImpl.usesImageHeapChunks() : "Must be checked before calling this method";
         assert !ObjectHeaderImpl.isPointerToForwardedObject(Word.objectToUntrackedPointer(obj)) : "Forwarded objects must be a pointer and not an object";

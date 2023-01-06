@@ -33,6 +33,8 @@ import org.graalvm.compiler.replacements.IdentityHashCodeSnippets;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.SignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -75,7 +77,14 @@ public final class IdentityHashCodeSupport {
                 newHashCode = ObjectAccess.readInt(obj, ol.getFixedIdentityHashOffset(), IDENTITY_HASHCODE_LOCATION);
             }
         } else {
-            newHashCode = assignHashCodeFromAddress(obj);
+            newHashCode = assignHashCodeFromAddress(obj, 0);
+            if (newHashCode == 0) {
+                long newSalt;
+                do {
+                    newSalt = ensureRandomGenerator().nextLong();
+                } while (newSalt == 0);
+                newHashCode = assignHashCodeFromAddress(obj, newSalt);
+            }
         }
         VMError.guarantee(newHashCode != 0, "Must not return 0 because it can mean 'hash code not computed yet'");
         assert newHashCode > 0 : "The Java HotSpot VM only returns positive numbers for the identity hash code, so we want to have the same restriction on Substrate VM in order to not surprise users";
@@ -83,24 +92,45 @@ public final class IdentityHashCodeSupport {
     }
 
     @Uninterruptible(reason = "Prevent a GC interfering with the object's identity hash state.")
-    private static int assignHashCodeFromAddress(Object obj) {
+    private static int assignHashCodeFromAddress(Object obj, long newSalt) {
         ObjectHeader oh = Heap.getHeap().getObjectHeader();
         if (oh.hasIdentityHashField(obj)) { // a GC has created the field since we last checked
             return ObjectAccess.readInt(obj, LayoutEncoding.getOptionalIdentityHashOffset(obj), IDENTITY_HASHCODE_LOCATION);
         } else {
+            long salt = Heap.getHeap().getOrSetIdentityHashSalt(obj, newSalt);
+            if (salt == 0) {
+                assert newSalt == 0;
+                return 0; // must call again with a salt computed outside of uninterruptible code
+            }
             oh.setIdentityHashFromAddress(obj);
-            return computeHashCodeFromAddress(obj);
+            return computeHashCodeFromAddress(obj, salt);
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Prevent a GC interfering with the object's identity hash state.", callerMustBe = true)
     public static int computeHashCodeFromAddress(Object obj) {
-        Word address = Word.objectToUntrackedPointer(obj);
-        int hash = (int) address.xor(address.unsignedShiftRight(32)).rawValue();
-        return 1 | (hash >>> 1);
+        long salt = Heap.getHeap().getOrSetIdentityHashSalt(obj, 0);
+        return computeHashCodeFromAddress(obj, salt);
     }
 
-    private static int computeRandomHashCode() {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static int computeHashCodeFromAddress(Object obj, long salt) {
+        assert salt != 0;
+        Word address = Word.objectToUntrackedPointer(obj);
+        SignedWord salted = WordFactory.signed(salt).xor(address);
+        int hash = mix32(salted.rawValue()) >>> 1;
+        return (hash == 0) ? 1 : hash;
+    }
+
+    /** Avalanching bit mixer, from {@link SplittableRandom}. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static int mix32(long a) {
+        long z = a;
+        z = (z ^ (z >>> 33)) * 0x62a9d9ed799705f5L;
+        return (int) (((z ^ (z >>> 28)) * 0xcb24d0a5c88c35b3L) >>> 32);
+    }
+
+    private static SplittableRandom ensureRandomGenerator() {
         SplittableRandom hashCodeGenerator = hashCodeGeneratorTL.get();
         if (hashCodeGenerator == null) {
             /*
@@ -110,11 +140,14 @@ public final class IdentityHashCodeSupport {
             hashCodeGenerator = new SplittableRandom();
             hashCodeGeneratorTL.set(hashCodeGenerator);
         }
+        return hashCodeGenerator;
+    }
 
+    private static int computeRandomHashCode() {
         /*
          * The range of nextInt(MAX_INT) includes 0 and excludes MAX_INT, so adding 1 gives us the
          * range [1, MAX_INT] that we want.
          */
-        return hashCodeGenerator.nextInt(Integer.MAX_VALUE) + 1;
+        return ensureRandomGenerator().nextInt(Integer.MAX_VALUE) + 1;
     }
 }

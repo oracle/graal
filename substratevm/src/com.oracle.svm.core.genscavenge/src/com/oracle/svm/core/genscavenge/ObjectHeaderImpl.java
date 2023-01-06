@@ -328,6 +328,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         return header;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isAlignedObject(Object o) {
         return !isUnalignedObject(o);
     }
@@ -336,11 +337,13 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         return !isUnalignedHeader(header);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isUnalignedObject(Object obj) {
         UnsignedWord header = ObjectHeaderImpl.readHeaderFromObject(obj);
         return isUnalignedHeader(header);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isUnalignedHeader(UnsignedWord header) {
         return header.and(UNALIGNED_BIT).notEqual(0);
     }
@@ -355,15 +358,18 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         return header.and(REMEMBERED_SET_BIT).notEqual(0);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isPointerToForwardedObject(Pointer p) {
         UnsignedWord header = readHeaderFromPointer(p);
         return isForwardedHeader(header);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isForwardedHeader(UnsignedWord header) {
         return testForwardedHeaderBit(header);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean testForwardedHeaderBit(UnsignedWord headerBits) {
         return headerBits.and(FORWARDED_BIT).notEqual(0);
     }

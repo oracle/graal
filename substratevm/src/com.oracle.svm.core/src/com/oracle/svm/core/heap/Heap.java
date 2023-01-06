@@ -244,4 +244,15 @@ public abstract class Heap {
     /** Consider all references in the given object as needing remembered set entries. */
     @Uninterruptible(reason = "Ensure that no GC can occur between modification of the object and this call.", callerMustBe = true)
     public abstract void dirtyAllReferencesOf(Object obj);
+
+    /**
+     * Retrieves or assigns the salt value for computing the {@linkplain System#identityHashCode
+     * identity hash code} of the passed object (and potentially other objects) from its address.
+     *
+     * @param newSalt If no salt value is already assigned, a new salt value to assign. A value of 0
+     *            only attempts to get the existing value.
+     * @return the current salt value, or 0 if no value is assigned and 0 was passed. If a new salt
+     *         value was passed, the new value or a value which another thread assigned in a race.
+     */
+    public abstract long getOrSetIdentityHashSalt(Object obj, long newSalt);
 }

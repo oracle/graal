@@ -43,6 +43,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
@@ -388,7 +389,9 @@ public final class Space {
         Object copy = copyMemory.toObject();
         if (probability(SLOW_PATH_PROBABILITY, addIdentityHashField)) {
             // Must do first: ensures correct object size below and in other places
-            int value = IdentityHashCodeSupport.computeHashCodeFromAddress(originalObj);
+            long salt = Heap.getHeap().getOrSetIdentityHashSalt(originalObj, 0);
+            assert salt != 0;
+            int value = IdentityHashCodeSupport.computeHashCodeFromAddress(originalObj, salt);
             int offset = LayoutEncoding.getOptionalIdentityHashOffset(copy);
             ObjectAccess.writeInt(copy, offset, value, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
             objectHeader.setIdentityHashInField(copy);
