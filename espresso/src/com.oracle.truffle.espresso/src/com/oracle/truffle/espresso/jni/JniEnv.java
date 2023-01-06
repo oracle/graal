@@ -535,7 +535,7 @@ public final class JniEnv extends NativeEnv {
                 Klass klass = clazz.getMirrorKlass(getMeta());
                 klass.safeInitialize();
                 // Lookup only if name and type are known symbols.
-                method = klass.lookupMethod(methodName, methodSignature, klass);
+                method = klass.lookupMethod(methodName, methodSignature);
             }
         }
         if (method == null || method.isStatic()) {
