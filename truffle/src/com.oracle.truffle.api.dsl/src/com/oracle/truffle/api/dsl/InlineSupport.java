@@ -1173,6 +1173,12 @@ public final class InlineSupport {
         }
 
         UnsafeField(Class<?> receiverClass, Class<?> declaringClass, Lookup declaringLookup, String fieldName, Class<?> valueClass) {
+            Objects.requireNonNull(receiverClass);
+            Objects.requireNonNull(declaringClass);
+            Objects.requireNonNull(declaringLookup);
+            Objects.requireNonNull(fieldName);
+            Objects.requireNonNull(valueClass);
+
             Field field;
             try {
                 this.declaringClass = declaringClass;
@@ -1197,6 +1203,10 @@ public final class InlineSupport {
                 throw new IllegalArgumentException(String.format("Expected field type %s, but got %s. ",
                                 valueClass.getName(), fieldClass.getName()));
             }
+            if (!declaringClass.isAssignableFrom(receiverClass)) {
+                throw new AssertionError(String.format("Receiver class  is not assignable to declaring class.", declaringClass.getName(), receiverClass.getName()));
+            }
+
             final int modifiers = field.getModifiers();
             if (Modifier.isFinal(modifiers)) {
                 throw new IllegalArgumentException("Must not be final field");
