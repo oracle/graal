@@ -88,7 +88,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
-import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 @SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
@@ -855,6 +854,7 @@ public class FallbackTest extends AbstractPolyglotTest {
 
     }
 
+    @SuppressWarnings("unused")
     abstract static class FallbackGuardWithCachesNode extends SlowPathListenerNode {
 
         abstract int execute(int left);
@@ -893,9 +893,6 @@ public class FallbackTest extends AbstractPolyglotTest {
         }
     }
 
-    /*
-     * Test for GR-33857.
-     */
     @Test
     public void testFallbackGuardWithCachesNode() {
         FallbackGuardWithCachesNode node;
