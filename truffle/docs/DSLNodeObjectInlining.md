@@ -64,7 +64,7 @@ Footprint = 3 * 12 + 5 * 4 + 12 = 68 bytes
 
 Therefore, we use `68` bytes to represent a single operation with nodes.
 
-The Truffle DSL annotation processor will now produce the following warning for the `AbsNode` class:
+With 23.0, the Truffle DSL annotation processor will produce the following warning for the `AbsNode` class:
 
 ```
 This node is a candidate for node object inlining. The memory footprint is estimated to be reduced from 20 to 1 byte(s). Add @GenerateInline(true) to enable object inlining for this node or @GenerateInline(false) to disable this warning. Also, consider disabling cached node generation with @GenerateCached(false) if all usages will be inlined. This warning may be suppressed using @SuppressWarnings("truffle-inlining").
