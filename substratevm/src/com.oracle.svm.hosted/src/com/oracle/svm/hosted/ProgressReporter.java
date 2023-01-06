@@ -96,6 +96,7 @@ import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.hosted.util.VMErrorReporter;
 import com.oracle.svm.util.ImageBuildStatistics;
@@ -489,24 +490,40 @@ public class ProgressReporter {
 
     private void calculateCodeBreakdown(Collection<CompileTask> compilationTasks) {
         for (CompileTask task : compilationTasks) {
-            CodeSource codeSource = task.method.getDeclaringClass().getJavaClass().getProtectionDomain().getCodeSource();
             String key = null;
-            if (codeSource != null && codeSource.getLocation() != null) {
-                String path = codeSource.getLocation().getPath();
-                if (path.endsWith(".jar")) {
-                    // Use String API to determine basename of path to handle both / and \.
-                    key = path.substring(Math.max(path.lastIndexOf('/') + 1, path.lastIndexOf('\\') + 1));
-                }
-            }
-            if (key == null) {
-                key = task.method.format("%H");
-                int lastDotIndex = key.lastIndexOf('.');
-                if (lastDotIndex > 0) {
-                    key = key.substring(0, lastDotIndex);
+            Class<?> javaClass = task.method.getDeclaringClass().getJavaClass();
+            Module module = javaClass.getModule();
+            if (module.isNamed()) {
+                key = module.getName();
+            } else {
+                key = findJARFile(javaClass);
+                if (key == null) {
+                    key = findPackageOrClassName(task.method);
                 }
             }
             codeBreakdown.merge(key, (long) task.result.getTargetCodeSize(), Long::sum);
         }
+    }
+
+    private static String findJARFile(Class<?> javaClass) {
+        CodeSource codeSource = javaClass.getProtectionDomain().getCodeSource();
+        if (codeSource != null && codeSource.getLocation() != null) {
+            String path = codeSource.getLocation().getPath();
+            if (path.endsWith(".jar")) {
+                // Use String API to determine basename of path to handle both / and \.
+                return path.substring(Math.max(path.lastIndexOf('/') + 1, path.lastIndexOf('\\') + 1));
+            }
+        }
+        return null;
+    }
+
+    private static String findPackageOrClassName(HostedMethod method) {
+        String qualifier = method.format("%H");
+        int lastDotIndex = qualifier.lastIndexOf('.');
+        if (lastDotIndex > 0) {
+            qualifier = qualifier.substring(0, lastDotIndex);
+        }
+        return qualifier;
     }
 
     private void calculateHeapBreakdown(HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects) {
