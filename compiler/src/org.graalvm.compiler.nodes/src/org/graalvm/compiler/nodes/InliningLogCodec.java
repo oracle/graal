@@ -80,7 +80,7 @@ public class InliningLogCodec extends CompanionObjectCodec<InliningLog, Inlining
     private static final class InliningLogEncoder implements Encoder<InliningLog, EncodedInliningLog> {
         @Override
         public boolean shouldBeEncoded(InliningLog inliningLog) {
-            return inliningLog != null && (!inliningLog.getRootCallsite().getDecisions().isEmpty() || !inliningLog.getRootCallsite().getChildren().isEmpty());
+            return inliningLog != null;
         }
 
         @Override
@@ -97,21 +97,17 @@ public class InliningLogCodec extends CompanionObjectCodec<InliningLog, Inlining
         }
 
         private static Integer encodeInvokable(Invokable invokable, Function<Node, Integer> mapper) {
-            if (invokable == null) {
-                return null;
+            if (invokable instanceof Node && ((Node) invokable).isAlive()) {
+                return mapper.apply((Node) invokable);
             }
-            FixedNode fixedNode = invokable.asFixedNodeOrNull();
-            if (fixedNode == null || !fixedNode.isAlive()) {
-                return null;
-            }
-            return mapper.apply(fixedNode);
+            return null;
         }
 
         private static EncodedCallsite encodeSubtree(InliningLog.Callsite replacementSite, Function<Node, Integer> mapper,
                         EconomicMap<InliningLog.Callsite, EncodedCallsite> mapping) {
             Integer invokableNode = encodeInvokable(replacementSite.getInvoke(), mapper);
             EncodedCallsite originalCallsite = replacementSite.getOriginalCallsite() == null ? null : mapping.get(replacementSite.getOriginalCallsite());
-            EncodedCallsite site = new EncodedCallsite(replacementSite.getDecisions(), new ArrayList<>(), replacementSite.getBci(),
+            EncodedCallsite site = new EncodedCallsite(new ArrayList<>(replacementSite.getDecisions()), new ArrayList<>(), replacementSite.getBci(),
                             originalCallsite, invokableNode, replacementSite.getTarget(), replacementSite.isIndirect());
             mapping.put(replacementSite, site);
             for (InliningLog.Callsite replacementChild : replacementSite.getChildren()) {
@@ -122,30 +118,34 @@ public class InliningLogCodec extends CompanionObjectCodec<InliningLog, Inlining
     }
 
     private static final class InliningLogDecoder implements Decoder<InliningLog> {
-        private EconomicMap<Integer, InliningLog.Callsite> orderIdToCallsite = EconomicMap.create();
+        private EconomicMap<Integer, InliningLog.Callsite> orderIdToCallsite;
 
         @Override
-        public boolean shouldBeDecoded(InliningLog emptyCompanionObject) {
-            return emptyCompanionObject != null;
-        }
-
-        @Override
-        public void decode(InliningLog inliningLog, Object encodedObject) {
-            assert shouldBeDecoded(inliningLog);
-            assert encodedObject instanceof EncodedInliningLog;
+        public InliningLog decode(StructuredGraph graph, Object encodedObject) {
+            if (graph.getInliningLog() == null) {
+                return null;
+            }
+            assert orderIdToCallsite == null;
             orderIdToCallsite = EconomicMap.create();
-            EncodedInliningLog instance = (EncodedInliningLog) encodedObject;
-            assert instance.root != null;
-            EconomicMap<EncodedCallsite, InliningLog.Callsite> replacements = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
-            inliningLog.setRootCallsite(decodeSubtree(null, instance.root, replacements));
+            InliningLog inliningLog = new InliningLog(null);
+            if (encodedObject != null) {
+                EncodedInliningLog instance = (EncodedInliningLog) encodedObject;
+                assert instance.root != null;
+                EconomicMap<EncodedCallsite, InliningLog.Callsite> replacements = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+                inliningLog.setRootCallsite(decodeSubtree(null, instance.root, replacements));
+            }
+            return inliningLog;
         }
 
         @Override
         public void registerNode(InliningLog inliningLog, Node node, int orderId) {
-            assert inliningLog != null;
+            if (inliningLog == null) {
+                return;
+            }
             if (!(node instanceof Invokable)) {
                 return;
             }
+            assert orderIdToCallsite != null;
             Invokable invokable = (Invokable) node;
             if (orderIdToCallsite.containsKey(orderId)) {
                 InliningLog.Callsite callsite = orderIdToCallsite.get(orderId);
@@ -170,24 +170,34 @@ public class InliningLogCodec extends CompanionObjectCodec<InliningLog, Inlining
             }
             return site;
         }
-
-        @Override
-        public boolean verify(InliningLog original, InliningLog decoded) {
-            return subtreesEqual(original.getRootCallsite(), decoded.getRootCallsite());
-        }
-
-        private static boolean subtreesEqual(InliningLog.Callsite callsite1, InliningLog.Callsite callsite2) {
-            if (callsite1 == null || callsite2 == null || !Objects.equals(callsite1.getTarget(), callsite2.getTarget()) ||
-                            callsite1.getBci() != callsite2.getBci() || callsite1.isIndirect() != callsite2.isIndirect()) {
-                return false;
-            }
-            Iterable<InliningLog.Callsite> children1 = () -> callsite1.getChildren().stream().iterator();
-            Iterable<InliningLog.Callsite> children2 = () -> callsite2.getChildren().stream().iterator();
-            return CollectionsUtil.allMatch(CollectionsUtil.zipLongest(children1, children2), (pair) -> subtreesEqual(pair.getLeft(), pair.getRight()));
-        }
     }
 
     public InliningLogCodec() {
-        super(StructuredGraph::getInliningLog, new InliningLogEncoder(), new InliningLogDecoder());
+        super(StructuredGraph::getInliningLog, new InliningLogEncoder());
+    }
+
+    @Override
+    public Decoder<InliningLog> singleObjectDecoder() {
+        return new InliningLogDecoder();
+    }
+
+    @Override
+    public boolean verify(StructuredGraph originalGraph, StructuredGraph decodedGraph) {
+        InliningLog original = originalGraph.getInliningLog();
+        InliningLog decoded = decodedGraph.getInliningLog();
+        if (original == null || decoded == null) {
+            return true;
+        }
+        return subtreesEqual(original.getRootCallsite(), decoded.getRootCallsite());
+    }
+
+    private static boolean subtreesEqual(InliningLog.Callsite callsite1, InliningLog.Callsite callsite2) {
+        if (callsite1 == null || callsite2 == null || !Objects.equals(callsite1.getTarget(), callsite2.getTarget()) ||
+                        callsite1.getBci() != callsite2.getBci() || callsite1.isIndirect() != callsite2.isIndirect()) {
+            return false;
+        }
+        Iterable<InliningLog.Callsite> children1 = () -> callsite1.getChildren().stream().iterator();
+        Iterable<InliningLog.Callsite> children2 = () -> callsite2.getChildren().stream().iterator();
+        return CollectionsUtil.allMatch(CollectionsUtil.zipLongest(children1, children2), (pair) -> subtreesEqual(pair.getLeft(), pair.getRight()));
     }
 }

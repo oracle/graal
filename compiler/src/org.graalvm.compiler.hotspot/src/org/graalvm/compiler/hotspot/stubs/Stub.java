@@ -43,6 +43,7 @@ import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugContext.Description;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.hotspot.HotSpotCompiledCodeBuilder;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
@@ -142,7 +143,8 @@ public abstract class Stub {
         this.linkage = linkage;
         // The RegisterPressure flag can be ignored by a compilation that runs out of registers, so
         // the stub compilation must ignore the flag so that all allocatable registers are saved.
-        this.options = new OptionValues(options, GraalOptions.TraceInlining, GraalOptions.TraceInliningForStubsAndSnippets.getValue(options), RegisterPressure, null);
+        this.options = new OptionValues(options, GraalOptions.TraceInlining, GraalOptions.TraceInliningForStubsAndSnippets.getValue(options), RegisterPressure, null,
+                        DebugOptions.OptimizationLog, null);
         this.providers = providers;
     }
 

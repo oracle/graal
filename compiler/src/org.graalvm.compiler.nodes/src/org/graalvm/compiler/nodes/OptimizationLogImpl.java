@@ -580,37 +580,38 @@ public class OptimizationLogImpl implements OptimizationLog {
     }
 
     @Override
-    public void inline(OptimizationLog calleeOptimizationLog, NodeSourcePosition invokePosition) {
+    public void inline(OptimizationLog calleeOptimizationLog, boolean updatePosition, NodeSourcePosition invokePosition) {
         if (calleeOptimizationLog.isOptimizationLogEnabled()) {
             assert calleeOptimizationLog instanceof OptimizationLogImpl;
-            inlineSubtree(((OptimizationLogImpl) calleeOptimizationLog).findRootPhase(), invokePosition);
+            inlineSubtree(((OptimizationLogImpl) calleeOptimizationLog).findRootPhase(), updatePosition, invokePosition);
         }
     }
 
     /**
      * Recursively inlines the optimization subtree given by the {@code node} to the current phase.
-     * The optimization subtree is copied and node source positions are updated using the provided
-     * position of the invoke that was inlined.
+     * The optimization subtree is copied and node source positions may be updated using the
+     * provided position of the invoke that was inlined.
      *
      * @param node the root of the optimization subtree to be inlined
-     * @param invokePosition the position of the inlined invoke
+     * @param updatePosition the node source positions should be updated
+     * @param invokePosition the position of the inlined invoke, ignored iff {@link !updatePosition}
      */
     @SuppressWarnings("try")
-    private void inlineSubtree(OptimizationTreeNode node, NodeSourcePosition invokePosition) {
+    private void inlineSubtree(OptimizationTreeNode node, boolean updatePosition, NodeSourcePosition invokePosition) {
         if (node instanceof OptimizationPhaseNode) {
             OptimizationPhaseNode phase = (OptimizationPhaseNode) node;
             try (DebugCloseable c = enterPhase(phase.phaseName)) {
                 if (phase.children != null) {
                     for (OptimizationTreeNode child : phase.children) {
-                        inlineSubtree(child, invokePosition);
+                        inlineSubtree(child, updatePosition, invokePosition);
                     }
                 }
             }
         } else {
             assert node instanceof OptimizationNode;
             OptimizationNode optimization = (OptimizationNode) node;
-            NodeSourcePosition position = invokePosition;
-            if (invokePosition != null && optimization.position != null) {
+            NodeSourcePosition position = updatePosition ? invokePosition : optimization.getPosition();
+            if (updatePosition && invokePosition != null && optimization.position != null) {
                 position = optimization.position.addCaller(invokePosition);
             }
             currentPhase.addChild(new OptimizationNode(optimization.properties, position, optimization.optimizationName, optimization.eventName));

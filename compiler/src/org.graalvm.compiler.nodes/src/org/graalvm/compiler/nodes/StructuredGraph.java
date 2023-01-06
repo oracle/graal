@@ -82,7 +82,6 @@ import jdk.vm.ci.runtime.JVMCICompiler;
  * node is the start of the control flow of the graph.
  */
 public final class StructuredGraph extends Graph implements JavaMethodContext {
-
     /**
      * Constants denoting whether or not {@link Assumption}s can be made while processing a graph.
      */
@@ -283,7 +282,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     private ScheduleResult lastSchedule;
 
-    private final InliningLog inliningLog;
+    private InliningLog inliningLog;
 
     /**
      * Call stack (context) leading to construction of this graph.
@@ -535,6 +534,17 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     /**
+     * Sets the inlining log associated with this graph. The new instance should be {@code null} iff
+     * it is expected to be {@code null} according to the {@link #getOptions() options}.
+     *
+     * @param newInliningLog the new inlining log instance
+     */
+    public void setInliningLog(InliningLog newInliningLog) {
+        assert (inliningLog == null) == (newInliningLog == null);
+        inliningLog = newInliningLog;
+    }
+
+    /**
      * Notifies this graph of an inlining decision for {@code invoke}.
      *
      * An inlining decision can be either positive or negative. A positive inlining decision must be
@@ -559,7 +569,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
         if (positive && calleeOptimizationLog != null && optimizationLog.isOptimizationLogEnabled()) {
             FixedNode invokeNode = invoke.asFixedNodeOrNull();
-            optimizationLog.inline(calleeOptimizationLog, invokeNode == null ? null : invokeNode.getNodeSourcePosition());
+            optimizationLog.inline(calleeOptimizationLog, true, invokeNode == null ? null : invokeNode.getNodeSourcePosition());
         }
         if (getDebug().hasCompilationListener()) {
             String message = String.format(reason, args);
@@ -1198,5 +1208,16 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      */
     public double getSelfTimePercent() {
         return globalProfileProvider.getGlobalSelfTimePercent();
+    }
+
+    /**
+     * Sets the optimization log associated with this graph. The new instance should be bound to
+     * this graph and be set up according to the {@link #getOptions() options}.
+     *
+     * @param newOptimizationLog the optimization log instance
+     */
+    public void setOptimizationLog(OptimizationLog newOptimizationLog) {
+        assert newOptimizationLog != null;
+        optimizationLog = newOptimizationLog;
     }
 }

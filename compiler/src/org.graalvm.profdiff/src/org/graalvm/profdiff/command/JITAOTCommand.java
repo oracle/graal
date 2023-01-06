@@ -89,7 +89,11 @@ public class JITAOTCommand implements Command {
             if (!jitUnit.isHot()) {
                 continue;
             }
-            aot.getMethodOrCreate(jitUnit.getMethod().getMethodName()).getCompilationUnits().forEach(aotUnit -> aotUnit.setHot(true));
+            jitUnit.loadTrees().getInliningTree().getRoot().forEach(node -> {
+                if (node.isPositive() && node.getName() != null) {
+                    aot.getMethodOrCreate(node.getName()).getCompilationUnits().forEach(aotUnit -> aotUnit.setHot(true));
+                }
+            });
         }
 
         ExperimentMatcher matcher = new ExperimentMatcher(writer);

@@ -91,9 +91,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class GraphDecoder {
 
-    private final InliningLogCodec inliningLogCodec;
-    private final OptimizationLogCodec optimizationLogCodec;
-
     /** Decoding state maintained for each encoded graph. */
     protected class MethodScope {
         /** The loop that contains the call. Only non-null during method inlining. */
@@ -130,9 +127,25 @@ public class GraphDecoder {
          */
         public MergeNode loopExplosionHead;
 
-        public final InliningLogCodec.EncodedInliningLog encodedInliningLog;
+        /**
+         * The decoded inlining log. If this is the root method scope, it
+         * {@link StructuredGraph#setInliningLog replaces} the inlining log of the graph. Otherwise,
+         * the inlining log is transferred to the callee.
+         */
+        public InliningLog inliningLog;
 
-        public final OptimizationLogCodec.EncodedOptimizationLog encodedOptimizationLog;
+        /**
+         * The decoded optimization log. If this is the root method scope, it
+         * {@link StructuredGraph#setOptimizationLog replaces} the optimization log of the graph.
+         * Otherwise, the optimization log is transferred to the callee.
+         */
+        public OptimizationLog optimizationLog;
+
+        /**
+         * The stateful decoder for the {@link #inliningLog}, which is needed to map order IDs back
+         * to decoded graph nodes.
+         */
+        public CompanionObjectCodec.Decoder<InliningLog> inliningLogDecoder = new InliningLogCodec().singleObjectDecoder();
 
         @SuppressWarnings("unchecked")
         protected MethodScope(LoopScope callerLoopScope, StructuredGraph graph, EncodedGraph encodedGraph, LoopExplosionKind loopExplosion) {
@@ -147,8 +160,9 @@ public class GraphDecoder {
                 maxFixedNodeOrderId = reader.getUVInt();
                 graph.getGraphState().setGuardsStage((GraphState.GuardsStage) readObject(this));
                 graph.getGraphState().getStageFlags().addAll((EnumSet<StageFlag>) readObject(this));
-                encodedInliningLog = (InliningLogCodec.EncodedInliningLog) readObject(this);
-                encodedOptimizationLog = (OptimizationLogCodec.EncodedOptimizationLog) readObject(this);
+                inliningLog = inliningLogDecoder.decode(graph, readObject(this));
+                optimizationLog = new OptimizationLogCodec().singleObjectDecoder().decode(graph, readObject(this));
+
                 int nodeCount = reader.getUVInt();
                 if (encodedGraph.nodeStartOffsets == null) {
                     int[] nodeStartOffsets = new int[nodeCount];
@@ -169,8 +183,6 @@ public class GraphDecoder {
                 reader = null;
                 maxFixedNodeOrderId = 0;
                 orderIdWidth = 0;
-                encodedInliningLog = null;
-                encodedOptimizationLog = null;
             }
 
             if (loopExplosion.useExplosion()) {
@@ -496,8 +508,6 @@ public class GraphDecoder {
         this.options = graph.getOptions();
         this.debug = graph.getDebug();
         reusableFloatingNodes = EconomicMap.create(Equivalence.IDENTITY);
-        inliningLogCodec = new InliningLogCodec();
-        optimizationLogCodec = new OptimizationLogCodec();
     }
 
     public final void decode(EncodedGraph encodedGraph) {
@@ -558,8 +568,8 @@ public class GraphDecoder {
 
     @SuppressWarnings("try")
     protected final void decode(LoopScope initialLoopScope) {
-        inliningLogCodec.decode(graph, initialLoopScope.methodScope.encodedInliningLog);
-        optimizationLogCodec.decode(graph, initialLoopScope.methodScope.encodedOptimizationLog);
+        graph.setInliningLog(initialLoopScope.methodScope.inliningLog);
+        graph.setOptimizationLog(initialLoopScope.methodScope.optimizationLog);
         try (InliningLog.UpdateScope updateScope = InliningLog.openDefaultUpdateScope(graph.getInliningLog())) {
             LoopScope loopScope = initialLoopScope;
             /* Process (inlined) methods. */
@@ -1676,7 +1686,7 @@ public class GraphDecoder {
         assert allowNull || node != null;
         assert allowOverwrite || lookupNode(loopScope, nodeOrderId) == null;
         loopScope.createdNodes[nodeOrderId] = node;
-        inliningLogCodec.registerNode(graph, node, nodeOrderId);
+        loopScope.methodScope.inliningLogDecoder.registerNode(loopScope.methodScope.inliningLog, node, nodeOrderId);
     }
 
     protected int readOrderId(MethodScope methodScope) {

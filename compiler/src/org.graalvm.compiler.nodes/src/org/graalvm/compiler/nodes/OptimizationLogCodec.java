@@ -79,13 +79,13 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
 
         private final String optimizationName;
 
-        private final String event;
+        private final String eventName;
 
-        private Optimization(EconomicMap<String, Object> properties, NodeSourcePosition position, String optimizationName, String event) {
+        private Optimization(EconomicMap<String, Object> properties, NodeSourcePosition position, String optimizationName, String eventName) {
             this.properties = properties;
             this.position = position;
             this.optimizationName = optimizationName;
-            this.event = event;
+            this.eventName = eventName;
         }
     }
 
@@ -132,22 +132,21 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
 
     private static final class OptimizationLogDecoder implements Decoder<OptimizationLog> {
         @Override
-        public boolean shouldBeDecoded(OptimizationLog emptyCompanionObject) {
-            return emptyCompanionObject.isOptimizationLogEnabled();
-        }
-
-        @Override
-        public void decode(OptimizationLog optimizationLog, Object encodedObject) {
-            assert shouldBeDecoded(optimizationLog);
-            assert encodedObject instanceof EncodedOptimizationLog;
-            EncodedOptimizationLog instance = (EncodedOptimizationLog) encodedObject;
-            assert instance.root != null && optimizationLog instanceof OptimizationLogImpl;
-            OptimizationLogImpl optimizationLogImpl = (OptimizationLogImpl) optimizationLog;
-            if (instance.root.children != null) {
-                for (OptimizationTreeNode child : instance.root.children) {
-                    decodeSubtreeInto(child, optimizationLogImpl);
+        public OptimizationLog decode(StructuredGraph graph, Object encodedObject) {
+            if (!graph.getOptimizationLog().isOptimizationLogEnabled()) {
+                return graph.getOptimizationLog();
+            }
+            OptimizationLogImpl optimizationLog = new OptimizationLogImpl(graph);
+            if (encodedObject != null) {
+                EncodedOptimizationLog instance = (EncodedOptimizationLog) encodedObject;
+                assert instance.root != null;
+                if (instance.root.children != null) {
+                    for (OptimizationTreeNode child : instance.root.children) {
+                        decodeSubtreeInto(child, optimizationLog);
+                    }
                 }
             }
+            return optimizationLog;
         }
 
         @Override
@@ -170,44 +169,54 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
                 assert node instanceof Optimization;
                 Optimization optimization = (Optimization) node;
                 optimizationLog.getCurrentPhase().addChild(new OptimizationLogImpl.OptimizationNode(optimization.properties,
-                                optimization.position, optimization.optimizationName, optimization.event));
+                                optimization.position, optimization.optimizationName, optimization.eventName));
             }
-        }
-
-        @Override
-        public boolean verify(OptimizationLog original, OptimizationLog decoded) {
-            assert original instanceof OptimizationLogImpl;
-            assert decoded instanceof OptimizationLogImpl;
-            return subtreesEqual(((OptimizationLogImpl) original).findRootPhase(), ((OptimizationLogImpl) decoded).findRootPhase());
-        }
-
-        private static boolean subtreesEqual(OptimizationLog.OptimizationTreeNode treeNode1, OptimizationLog.OptimizationTreeNode treeNode2) {
-            if (treeNode1 instanceof OptimizationLog.OptimizationEntry && treeNode2 instanceof OptimizationLog.OptimizationEntry) {
-                OptimizationLogImpl.OptimizationNode entry1 = (OptimizationLogImpl.OptimizationNode) treeNode1;
-                OptimizationLogImpl.OptimizationNode entry2 = (OptimizationLogImpl.OptimizationNode) treeNode2;
-                return entry1.getOptimizationName().equals(entry2.getOptimizationName()) && entry1.getEventName().equals(entry2.getEventName()) &&
-                                EconomicMapUtil.equals(entry1.getProperties(), entry2.getProperties());
-            } else if (treeNode1 instanceof OptimizationLogImpl.OptimizationPhaseNode && treeNode2 instanceof OptimizationLogImpl.OptimizationPhaseNode) {
-                OptimizationLogImpl.OptimizationPhaseNode phase1 = (OptimizationLogImpl.OptimizationPhaseNode) treeNode1;
-                OptimizationLogImpl.OptimizationPhaseNode phase2 = (OptimizationLogImpl.OptimizationPhaseNode) treeNode2;
-                if (!phase1.getPhaseName().equals(phase2.getPhaseName())) {
-                    return false;
-                }
-                if (phase1.getChildren() == null && phase2.getChildren() == null) {
-                    return true;
-                }
-                if (phase1.getChildren() == null || phase2.getChildren() == null) {
-                    return false;
-                }
-                Iterable<OptimizationLog.OptimizationTreeNode> children1 = () -> phase1.getChildren().stream().iterator();
-                Iterable<OptimizationLog.OptimizationTreeNode> children2 = () -> phase2.getChildren().stream().iterator();
-                return CollectionsUtil.allMatch(CollectionsUtil.zipLongest(children1, children2), (pair) -> subtreesEqual(pair.getLeft(), pair.getRight()));
-            }
-            return false;
         }
     }
 
     public OptimizationLogCodec() {
-        super(StructuredGraph::getOptimizationLog, new OptimizationLogEncoder(), new OptimizationLogDecoder());
+        super(StructuredGraph::getOptimizationLog, new OptimizationLogEncoder());
+    }
+
+    @Override
+    public Decoder<OptimizationLog> singleObjectDecoder() {
+        return new OptimizationLogDecoder();
+    }
+
+    @Override
+    public boolean verify(StructuredGraph originalGraph, StructuredGraph decodedGraph) {
+        OptimizationLog original = originalGraph.getOptimizationLog();
+        OptimizationLog decoded = decodedGraph.getOptimizationLog();
+        if (!original.isOptimizationLogEnabled() || !decoded.isOptimizationLogEnabled()) {
+            return true;
+        }
+        assert original instanceof OptimizationLogImpl;
+        assert decoded instanceof OptimizationLogImpl;
+        return subtreesEqual(((OptimizationLogImpl) original).findRootPhase(), ((OptimizationLogImpl) decoded).findRootPhase());
+    }
+
+    private static boolean subtreesEqual(OptimizationLog.OptimizationTreeNode treeNode1, OptimizationLog.OptimizationTreeNode treeNode2) {
+        if (treeNode1 instanceof OptimizationLogImpl.OptimizationNode && treeNode2 instanceof OptimizationLogImpl.OptimizationNode) {
+            OptimizationLogImpl.OptimizationNode entry1 = (OptimizationLogImpl.OptimizationNode) treeNode1;
+            OptimizationLogImpl.OptimizationNode entry2 = (OptimizationLogImpl.OptimizationNode) treeNode2;
+            return entry1.getOptimizationName().equals(entry2.getOptimizationName()) && entry1.getEventName().equals(entry2.getEventName()) &&
+                            EconomicMapUtil.equals(entry1.getProperties(), entry2.getProperties());
+        } else if (treeNode1 instanceof OptimizationLogImpl.OptimizationPhaseNode && treeNode2 instanceof OptimizationLogImpl.OptimizationPhaseNode) {
+            OptimizationLogImpl.OptimizationPhaseNode phase1 = (OptimizationLogImpl.OptimizationPhaseNode) treeNode1;
+            OptimizationLogImpl.OptimizationPhaseNode phase2 = (OptimizationLogImpl.OptimizationPhaseNode) treeNode2;
+            if (!phase1.getPhaseName().equals(phase2.getPhaseName())) {
+                return false;
+            }
+            if (phase1.getChildren() == null && phase2.getChildren() == null) {
+                return true;
+            }
+            if (phase1.getChildren() == null || phase2.getChildren() == null) {
+                return false;
+            }
+            Iterable<OptimizationLog.OptimizationTreeNode> children1 = () -> phase1.getChildren().stream().iterator();
+            Iterable<OptimizationLog.OptimizationTreeNode> children2 = () -> phase2.getChildren().stream().iterator();
+            return CollectionsUtil.allMatch(CollectionsUtil.zipLongest(children1, children2), (pair) -> subtreesEqual(pair.getLeft(), pair.getRight()));
+        }
+        return false;
     }
 }

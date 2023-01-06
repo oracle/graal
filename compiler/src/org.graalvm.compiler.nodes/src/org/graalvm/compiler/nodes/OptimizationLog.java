@@ -217,7 +217,7 @@ public interface OptimizationLog {
         }
 
         @Override
-        public void inline(OptimizationLog calleeOptimizationLog, NodeSourcePosition invokePosition) {
+        public void inline(OptimizationLog calleeOptimizationLog, boolean updatePosition, NodeSourcePosition invokePosition) {
 
         }
 
@@ -426,13 +426,15 @@ public interface OptimizationLog {
 
     /**
      * Inlines the optimization log of the callee into the current phase of this optimization log.
-     * The node source position of the inlined optimization log are updated using the position of
+     * The node source position of the inlined optimization log may be updated using the position of
      * the inlined invoke node.
      *
      * @param calleeOptimizationLog the optimization log of the inlined callee
-     * @param invokePosition the node source position of the inlined callee
+     * @param updatePosition the node source position of the callee should be updated
+     * @param invokePosition the node source position of the inlined callee, ignored iff
+     *            {@code !updatePosition}
      */
-    void inline(OptimizationLog calleeOptimizationLog, NodeSourcePosition invokePosition);
+    void inline(OptimizationLog calleeOptimizationLog, boolean updatePosition, NodeSourcePosition invokePosition);
 
     /**
      * Replaces this optimization log with a copy of the replacement log.

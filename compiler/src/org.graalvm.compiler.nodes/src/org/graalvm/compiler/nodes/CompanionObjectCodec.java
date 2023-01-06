@@ -52,17 +52,24 @@ import java.util.function.Function;
  *
  * The expected order of operations to decode a graph is:
  * <ol>
- * <li>{@link #decode} is called before graph decoding starts,</li>
- * <li>{@link #registerNode} is called for each created node.</li>
+ * <li>a {@link Decoder} instance is created for each encoded graph,</li>
+ * <li>{@link Decoder#decode} is called before graph decoding starts,</li>
+ * <li>{@link Decoder#registerNode} is called for each created node (using the decoder instance
+ * created for the encoded graph).</li>
  * </ol>
  *
- * The {@link #decode} method decodes the encoded representation into the companion object of the
- * newly-created {@link StructuredGraph}. Order IDs cannot be mapped to the nodes of the new graph
- * yet, because it is empty at this point. Restoring the companion object before the actual graph is
- * decoded makes it possible to use the companion object during decoding. This is necessary e.g. for
- * the inlining and optimization log, because a decoder may optimize during decoding. Whenever a
- * node is created, {@link #registerNode} should be called. The decoder can utilize this to map
- * order IDs back to graph nodes.
+ * The {@link Decoder#decode} method decodes the encoded representation into a new instance of the
+ * companion object. Each {@link Decoder} should be used to create only one instance of the
+ * companion object, because the decoder is stateful. A graph decoder which performs inlining should
+ * create a decoder for each decoded graph, even if all encoded graphs are decoded into one
+ * {@link StructuredGraph}.
+ *
+ * Order IDs cannot be mapped to the nodes of the graph at the time of decoding, because the graph
+ * is empty at this point. Restoring the companion object before the actual graph is decoded makes
+ * it possible to use the companion object during decoding. This is necessary e.g. for the inlining
+ * and optimization log, because a decoder may optimize during decoding. Whenever a node is created,
+ * {@link Decoder#registerNode} should be called. The decoder utilizes this to map order IDs back to
+ * graph nodes.
  *
  * @param <T> the type of the companion object
  * @param <E>the type of the encoded companion object
@@ -76,7 +83,8 @@ public abstract class CompanionObjectCodec<T, E extends CompanionObjectCodec.Enc
     }
 
     /**
-     * Encodes a companion object into its encoded representation.
+     * Encodes a companion object into its encoded representation. The encoder is stateless and can
+     * be reused for multiple encodings.
      *
      * @param <T> the type of the companion object
      * @param <E> the type of the encoded companion object
@@ -116,54 +124,33 @@ public abstract class CompanionObjectCodec<T, E extends CompanionObjectCodec.Enc
     }
 
     /**
-     * Decodes an encoded representation of a companion object into the companion of a newly-created
-     * graph.
+     * Decodes an encoded representation of a companion object. The decoder is stateful and should
+     * be used to decode only one instance of the companion object.
      *
      * @param <T> the type of the companion object
      */
     protected interface Decoder<T> {
         /**
-         * Returns {@code true} if an encoded companion object should be decoded into the provided
-         * companion object of a newly-created graph.
+         * Decodes the encoded companion object into an instance of the companion object. The
+         * returned instance is bound with the given graph. This method should be called only once
+         * per decoder, because it is stateful. The decoder should return a companion object
+         * instance satisfying the expectations of the provided graph.
          *
-         * As an example, when the companion object is a log and the new graph has logging disabled,
-         * the companion object should not be decoded.
-         *
-         * @param emptyCompanionObject the companion object of a newly-created graph
-         * @return {@code true} if a companion object should be decoded
-         */
-        boolean shouldBeDecoded(T emptyCompanionObject);
-
-        /**
-         * Decodes the provided encoded companion object into the empy companion object of a
-         * newly-created graph. The method is called iff the companion object of the new graph
-         * {@link #shouldBeDecoded}.
-         *
-         * @param emptyCompanionObject the companion object of a newly-created graph
+         * @param graph the graph to which the new instance is bound
          * @param encodedObject the encoded representation of a companion object
          */
-        void decode(T emptyCompanionObject, Object encodedObject);
+        T decode(StructuredGraph graph, Object encodedObject);
 
         /**
-         * Registers a newly-created node during decoding. If the companion object of the
-         * {@link #shouldBeDecoded}, this method is called for each created node after the companion
-         * object is {@link #decode decoded}. The decoder should use this method to map order IDs
-         * back to graph nodes.
+         * Registers a newly-created node during decoding. The decoder uses this method to map order
+         * IDs back to graph nodes. The provided companion object must be the companion object
+         * created by this instance of the decoder (in the {@link #decode} method).
          *
-         * @param companionObject the decoded companion object
+         * @param companionObject the decoded companion object created by this decoder
          * @param node the registered node
          * @param orderId the order ID of the registered node
          */
         void registerNode(T companionObject, Node node, int orderId);
-
-        /**
-         * Verifies the encoding of the companion object.
-         *
-         * @param original the original companion object that was encoded
-         * @param decoded the companion object created by decoding
-         * @return {@code true} iff the companion objects match
-         */
-        boolean verify(T original, T decoded);
     }
 
     /**
@@ -181,16 +168,10 @@ public abstract class CompanionObjectCodec<T, E extends CompanionObjectCodec.Enc
      */
     private final Encoder<T, E> encoder;
 
-    /**
-     * Decodes companion objects.
-     */
-    private final Decoder<T> decoder;
-
-    protected CompanionObjectCodec(Function<StructuredGraph, T> getter, Encoder<T, E> encoder, Decoder<T> decoder) {
+    protected CompanionObjectCodec(Function<StructuredGraph, T> getter, Encoder<T, E> encoder) {
         this.encodedObjects = EconomicMap.create();
         this.getter = getter;
         this.encoder = encoder;
-        this.decoder = decoder;
     }
 
     /**
@@ -236,51 +217,18 @@ public abstract class CompanionObjectCodec<T, E extends CompanionObjectCodec.Enc
     }
 
     /**
-     * Decodes an encoded representation of a companion object into the companion object of the
-     * provided newly-created graph. No decoding is performed if either the original companion
-     * object was not encoded or the companion object of the newly-created graph
-     * {@link Decoder#shouldBeDecoded should not be decoded}.
+     * Creates an instance of the decoder, which may be used to decode one encoded companion object.
      *
-     * @param emptyGraph the newly-created graph being decoded
-     * @param encodedObject the encoded representation of a companion object
+     * @return an instance of the decoder
      */
-    public void decode(StructuredGraph emptyGraph, Object encodedObject) {
-        T emptyCompanionObject = getter.apply(emptyGraph);
-        if (encodedObject == null || !decoder.shouldBeDecoded(emptyCompanionObject)) {
-            return;
-        }
-        decoder.decode(emptyCompanionObject, encodedObject);
-    }
+    public abstract Decoder<T> singleObjectDecoder();
 
     /**
-     * Register a newly-created node in the given graph during decoding. This gives the decoder an
-     * opportunity to map order ID back to graph nodes.
+     * Verifies the encoding of the companion object in a graph.
      *
-     * @param graph the graph being decoded
-     * @param node the created node
-     * @param orderId the order ID of the created node
-     */
-    public void registerNode(StructuredGraph graph, Node node, int orderId) {
-        T companionObject = getter.apply(graph);
-        if (decoder.shouldBeDecoded(companionObject)) {
-            decoder.registerNode(companionObject, node, orderId);
-        }
-    }
-
-    /**
-     * Verifies the encoding of the companion object. If either companion object
-     * {@link Encoder#shouldBeEncoded should not be encoded}, the method returns {@code true}.
-     *
-     * @param original the original graph that was encoded
-     * @param decoded the graph that was decoded from the encoded representation
+     * @param original the graph that was originally encoded
+     * @param decoded the graph obtained by decoding the original graph
      * @return {@code true} iff the companion objects of the graphs match
      */
-    public boolean verify(StructuredGraph original, StructuredGraph decoded) {
-        T originalObject = getter.apply(original);
-        T decodedObject = getter.apply(decoded);
-        if (encoder.shouldBeEncoded(originalObject) && encoder.shouldBeEncoded(decodedObject)) {
-            return decoder.verify(originalObject, decodedObject);
-        }
-        return true;
-    }
+    public abstract boolean verify(StructuredGraph original, StructuredGraph decoded);
 }

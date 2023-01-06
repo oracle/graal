@@ -778,4 +778,24 @@ public class InliningLog {
     public void setRootCallsite(Callsite root) {
         this.root = root;
     }
+
+    /**
+     * Adds a positive inlining decision and transfers the inlining log of the callee to this log.
+     * The inlining log of the callee must be associated with the same graph. The inlining log of
+     * the callee is cleared and should not be used anymore.
+     *
+     * @param invoke the inlined invoke
+     * @param calleeLog the inlining log of the callee
+     * @param phase the phase which performed the decision
+     * @param reason the reason for the inlining decision
+     */
+    public void inlineByTransfer(Invokable invoke, InliningLog calleeLog, String phase, String reason) {
+        Callsite caller = leaves.get(invoke);
+        caller.addDecision(new Decision(true, reason, phase, invoke.getTargetMethod()));
+        caller.children.addAll(calleeLog.getRootCallsite().children);
+        leaves.removeKey(invoke);
+        leaves.putAll(calleeLog.leaves);
+        calleeLog.root.children.clear();
+        calleeLog.leaves.clear();
+    }
 }
