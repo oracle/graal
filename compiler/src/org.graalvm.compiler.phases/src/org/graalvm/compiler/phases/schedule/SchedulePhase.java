@@ -682,6 +682,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                     currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, currentNodeMap.get(abstractBeginNode));
                 } else {
                     HIRBlock otherBlock = currentNodeMap.get(abstractBeginNode).getDominator();
+                    assert otherBlock != null : "Dominators not computed in the CFG?";
                     currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, otherBlock);
                 }
             } else {

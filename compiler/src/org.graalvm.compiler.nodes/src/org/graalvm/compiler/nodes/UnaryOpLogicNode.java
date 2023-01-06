@@ -28,8 +28,6 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
@@ -37,7 +35,7 @@ import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import jdk.vm.ci.meta.TriState;
 
 @NodeInfo
-public abstract class UnaryOpLogicNode extends LogicNode implements LIRLowerable, Canonicalizable.Unary<ValueNode>, Virtualizable {
+public abstract class UnaryOpLogicNode extends LIRLowerableLogicNode implements Canonicalizable.Unary<ValueNode>, Virtualizable {
 
     public static final NodeClass<UnaryOpLogicNode> TYPE = NodeClass.create(UnaryOpLogicNode.class);
     @Input protected ValueNode value;
@@ -60,10 +58,6 @@ public abstract class UnaryOpLogicNode extends LogicNode implements LIRLowerable
         if (fold != TriState.UNKNOWN) {
             tool.replaceWithValue(LogicConstantNode.forBoolean(fold.isTrue(), graph()));
         }
-    }
-
-    @Override
-    public void generate(NodeLIRBuilderTool gen) {
     }
 
     /**

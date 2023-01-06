@@ -32,6 +32,7 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
@@ -101,6 +102,10 @@ public abstract class LoopFragment {
 
     public boolean contains(Node n) {
         return nodes().isMarkedAndGrow(n);
+    }
+
+    public UnmodifiableEconomicMap<Node, Node> duplicationMap() {
+        return this.duplicationMap;
     }
 
     @SuppressWarnings("unchecked")

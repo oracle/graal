@@ -74,6 +74,14 @@ public abstract class Loop<T extends BasicBlock<T>> {
         return parent;
     }
 
+    public Loop<T> getOutmostLoop() {
+        if (parent == null) {
+            return this;
+        } else {
+            return parent.getOutmostLoop();
+        }
+    }
+
     public List<Loop<T>> getChildren() {
         return children;
     }

@@ -28,21 +28,29 @@ import java.util.BitSet;
 
 public class BasicBlockSet {
 
-    private final BitSet set;
+    private BitSet set;
+    private final AbstractControlFlowGraph<?> cfg;
     private int count;
 
     protected BasicBlockSet(AbstractControlFlowGraph<?> cfg) {
-        set = new BitSet(cfg.getBlocks().length);
+        this.cfg = cfg;
     }
 
     public boolean get(BasicBlock<?> b) {
-        return set.get(b.getId());
+        if (set == null) {
+            return false;
+        } else {
+            return set.get(b.getId());
+        }
     }
 
     public void set(BasicBlock<?> b) {
         if (!get(b)) {
-            set.set(b.getId());
+            if (set == null) {
+                set = new BitSet(cfg.getBlocks().length);
+            }
             count++;
+            set.set(b.getId());
         }
     }
 
