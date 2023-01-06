@@ -5600,17 +5600,68 @@ public class FlatNodeGenFactory {
         }
 
         if (!excludesSpecializations.isEmpty()) {
+            Set<String> clearedGroups = new HashSet<>();
+
             for (SpecializationData excludes : excludesSpecializations) {
                 if (useSpecializationClass(excludes)) {
                     builder.startStatement();
                     builder.tree(createSpecializationFieldAccess(frameState, excludes, true, true, null, CodeTreeBuilder.singleString("null")));
                     builder.end();
+                } else {
+                    for (CacheExpression cache : excludes.getCaches()) {
+                        if (cache.isEncodedEnum()) {
+                            // encoded enums do not need to be cleared
+                            continue;
+                        } else if (cache.getInlinedNode() != null) {
+                            // inlined nodes do not need to be clared
+                            continue;
+                        } else if (cache.isAlwaysInitialized()) {
+                            continue;
+                        } else if (cache.isMergedLibrary()) {
+                            continue;
+                        } else if (ElementUtils.isPrimitive(cache.getParameter().getType())) {
+                            // no need to clear primitives
+                            continue;
+                        }
+                        String sharedGroup = cache.getSharedGroup();
+                        if (sharedGroup != null) {
+                            if (clearedGroups.contains(sharedGroup)) {
+                                continue;
+                            }
+                            clearedGroups.add(sharedGroup);
+                            if (!isSharedExclusivelyIn(sharedGroup, excludesSpecializations)) {
+                                // do not clear a cache if other specializations use it.
+                                continue;
+                            }
+                        }
+                        builder.startStatement();
+                        builder.tree(createSpecializationFieldAccess(frameState, excludes, true, true, createFieldName(excludes, cache), CodeTreeBuilder.singleString("null")));
+                        builder.end();
+                    }
                 }
             }
             builder.tree((multiState.createSet(frameState, transaction, StateQuery.create(SpecializationActive.class, excludesSpecializations), false, false)));
         }
 
         return builder.build();
+    }
+
+    private boolean isSharedExclusivelyIn(String sharedKey, List<SpecializationData> specializations) {
+        Set<SpecializationData> specializationSet = new HashSet<>(specializations);
+        for (NodeData n : sharingNodes) {
+            for (SpecializationData otherSpecialization : n.getReachableSpecializations()) {
+                if (specializationSet.contains(otherSpecialization)) {
+                    // only interested in other specializations
+                    continue;
+                }
+                for (CacheExpression cache : otherSpecialization.getCaches()) {
+                    if (cache.getSharedGroup() != null && cache.getSharedGroup().equals(sharedKey)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
     }
 
     private List<IfTriple> persistAssumptions(FrameState frameState, SpecializationData specialization) {
