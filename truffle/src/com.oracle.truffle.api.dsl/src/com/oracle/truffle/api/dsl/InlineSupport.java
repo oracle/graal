@@ -345,12 +345,8 @@ public final class InlineSupport {
 
         final ReferenceField<Node> parentField;
 
-        InlinableField(Lookup tclass, String fieldName, Class<?> valueClass) {
-            this(tclass.lookupClass(), tclass.lookupClass(), tclass, fieldName, valueClass);
-        }
-
-        InlinableField(Class<?> receiverClass, Class<?> lookupClass, Lookup fieldClass, String fieldName, Class<?> valueClass) {
-            super(receiverClass, lookupClass, fieldClass, fieldName, valueClass);
+        InlinableField(Class<?> receiverClass, Class<?> declaringClass, Lookup declaringLookup, String fieldName, Class<?> valueClass) {
+            super(receiverClass, declaringClass, declaringLookup, fieldName, valueClass);
             this.parentField = null;
         }
 
@@ -434,8 +430,8 @@ public final class InlineSupport {
         final int bitLength;
         final int bitMask;
 
-        StateField(Lookup tclass, String fieldName, int offset, int length) {
-            super(tclass, fieldName, int.class);
+        StateField(Lookup declaringLookup, String fieldName, int offset, int length) {
+            super(declaringLookup.lookupClass(), declaringLookup.lookupClass(), declaringLookup, fieldName, int.class);
             this.bitOffset = offset;
             this.bitLength = length;
             this.bitMask = computeMask(offset, length);
@@ -542,8 +538,8 @@ public final class InlineSupport {
          *
          * @since 23.0
          */
-        public static StateField create(Lookup lookup, String field) {
-            return new StateField(lookup, field, 0, 32);
+        public static StateField create(Lookup declaringLookup, String field) {
+            return new StateField(declaringLookup, field, 0, 32);
         }
 
     }
@@ -555,8 +551,8 @@ public final class InlineSupport {
      */
     public static final class ReferenceField<T> extends InlinableField {
 
-        ReferenceField(Class<?> receiverClass, Class<?> lookupFieldClass, Lookup lookup, String fieldName, Class<T> valueClass) {
-            super(receiverClass, lookupFieldClass, lookup, fieldName, valueClass);
+        ReferenceField(Class<?> receiverClass, Class<?> lookupFieldClass, Lookup declaringLookup, String fieldName, Class<T> valueClass) {
+            super(receiverClass, lookupFieldClass, declaringLookup, fieldName, valueClass);
         }
 
         ReferenceField(ReferenceField<T> prev, Class<? extends Node> pclass) {
@@ -633,9 +629,9 @@ public final class InlineSupport {
          *
          * @since 23.0
          */
-        public static <T> ReferenceField<T> create(Lookup nodeClass, String field, Class<T> valueClass) {
-            Class<?> lookupClass = nodeClass.lookupClass();
-            return new ReferenceField<>(lookupClass, lookupClass, nodeClass, field, valueClass);
+        public static <T> ReferenceField<T> create(Lookup declaringLookup, String field, Class<T> valueClass) {
+            Class<?> lookupClass = declaringLookup.lookupClass();
+            return new ReferenceField<>(lookupClass, lookupClass, declaringLookup, field, valueClass);
         }
     }
 
@@ -646,8 +642,8 @@ public final class InlineSupport {
      */
     public static final class BooleanField extends InlinableField {
 
-        BooleanField(Lookup tclass, String fieldName) {
-            super(tclass, fieldName, boolean.class);
+        BooleanField(Lookup lookup, String fieldName) {
+            super(lookup.lookupClass(), lookup.lookupClass(), lookup, fieldName, boolean.class);
         }
 
         BooleanField(BooleanField prev, Class<? extends Node> parentClass) {
@@ -698,8 +694,8 @@ public final class InlineSupport {
          *
          * @since 23.0
          */
-        public static BooleanField create(Lookup nodeClass, String field) {
-            return new BooleanField(nodeClass, field);
+        public static BooleanField create(Lookup declaringLookup, String field) {
+            return new BooleanField(declaringLookup, field);
         }
     }
 
@@ -710,8 +706,8 @@ public final class InlineSupport {
      */
     public static final class ByteField extends InlinableField {
 
-        ByteField(Lookup tclass, String fieldName) {
-            super(tclass, fieldName, byte.class);
+        ByteField(Lookup declaringLookup, String fieldName) {
+            super(declaringLookup.lookupClass(), declaringLookup.lookupClass(), declaringLookup, fieldName, byte.class);
         }
 
         ByteField(ByteField prev, Class<? extends Node> parentClass) {
@@ -762,8 +758,8 @@ public final class InlineSupport {
          *
          * @since 23.0
          */
-        public static ByteField create(Lookup nodeClass, String field) {
-            return new ByteField(nodeClass, field);
+        public static ByteField create(Lookup declaringLookup, String field) {
+            return new ByteField(declaringLookup, field);
         }
     }
 
@@ -774,8 +770,8 @@ public final class InlineSupport {
      */
     public static final class ShortField extends InlinableField {
 
-        ShortField(Lookup tclass, String fieldName) {
-            super(tclass, fieldName, short.class);
+        ShortField(Lookup declaringLookup, String fieldName) {
+            super(declaringLookup.lookupClass(), declaringLookup.lookupClass(), declaringLookup, fieldName, short.class);
         }
 
         ShortField(ShortField prev, Class<? extends Node> parentClass) {
@@ -826,8 +822,8 @@ public final class InlineSupport {
          *
          * @since 23.0
          */
-        public static ShortField create(Lookup nodeClass, String field) {
-            return new ShortField(nodeClass, field);
+        public static ShortField create(Lookup declaringLookup, String field) {
+            return new ShortField(declaringLookup, field);
         }
     }
 
@@ -838,8 +834,8 @@ public final class InlineSupport {
      */
     public static final class CharField extends InlinableField {
 
-        CharField(Lookup tclass, String fieldName) {
-            super(tclass, fieldName, char.class);
+        CharField(Lookup declaringLookup, String fieldName) {
+            super(declaringLookup.lookupClass(), declaringLookup.lookupClass(), declaringLookup, fieldName, char.class);
         }
 
         CharField(CharField prev, Class<? extends Node> parentClass) {
@@ -890,8 +886,8 @@ public final class InlineSupport {
          *
          * @since 23.0
          */
-        public static CharField create(Lookup nodeClass, String field) {
-            return new CharField(nodeClass, field);
+        public static CharField create(Lookup declaringLookup, String field) {
+            return new CharField(declaringLookup, field);
         }
     }
 
@@ -902,8 +898,8 @@ public final class InlineSupport {
      */
     public static final class FloatField extends InlinableField {
 
-        FloatField(Lookup tclass, String fieldName) {
-            super(tclass, fieldName, float.class);
+        FloatField(Lookup declaringLookup, String fieldName) {
+            super(declaringLookup.lookupClass(), declaringLookup.lookupClass(), declaringLookup, fieldName, float.class);
         }
 
         FloatField(FloatField prev, Class<? extends Node> parentClass) {
@@ -954,8 +950,8 @@ public final class InlineSupport {
          *
          * @since 23.0
          */
-        public static FloatField create(Lookup nodeClass, String field) {
-            return new FloatField(nodeClass, field);
+        public static FloatField create(Lookup declaringLookup, String field) {
+            return new FloatField(declaringLookup, field);
         }
     }
 
@@ -966,8 +962,8 @@ public final class InlineSupport {
      */
     public static final class IntField extends InlinableField {
 
-        IntField(Lookup tclass, String fieldName) {
-            super(tclass, fieldName, int.class);
+        IntField(Lookup declaringLookup, String fieldName) {
+            super(declaringLookup.lookupClass(), declaringLookup.lookupClass(), declaringLookup, fieldName, int.class);
         }
 
         IntField(IntField prev, Class<? extends Node> parentClass) {
@@ -1018,8 +1014,8 @@ public final class InlineSupport {
          *
          * @since 23.0
          */
-        public static IntField create(Lookup nodeClass, String field) {
-            return new IntField(nodeClass, field);
+        public static IntField create(Lookup declaringLookup, String field) {
+            return new IntField(declaringLookup, field);
         }
     }
 
@@ -1030,8 +1026,8 @@ public final class InlineSupport {
      */
     public static final class LongField extends InlinableField {
 
-        LongField(Lookup tclass, String fieldName) {
-            super(tclass, fieldName, long.class);
+        LongField(Lookup declaringLookup, String fieldName) {
+            super(declaringLookup.lookupClass(), declaringLookup.lookupClass(), declaringLookup, fieldName, long.class);
         }
 
         LongField(LongField prev, Class<? extends Node> parentClass) {
@@ -1082,8 +1078,8 @@ public final class InlineSupport {
          *
          * @since 23.0
          */
-        public static LongField create(Lookup nodeClass, String field) {
-            return new LongField(nodeClass, field);
+        public static LongField create(Lookup declaringLookup, String field) {
+            return new LongField(declaringLookup, field);
         }
     }
 
@@ -1094,8 +1090,8 @@ public final class InlineSupport {
      */
     public static final class DoubleField extends InlinableField {
 
-        DoubleField(Lookup tclass, String fieldName) {
-            super(tclass, fieldName, double.class);
+        DoubleField(Lookup declaringLookup, String fieldName) {
+            super(declaringLookup.lookupClass(), declaringLookup.lookupClass(), declaringLookup, fieldName, double.class);
         }
 
         DoubleField(DoubleField prev, Class<? extends Node> parentClass) {
@@ -1146,8 +1142,8 @@ public final class InlineSupport {
          *
          * @since 23.0
          */
-        public static DoubleField create(Lookup nodeClass, String field) {
-            return new DoubleField(nodeClass, field);
+        public static DoubleField create(Lookup declaringLookup, String field) {
+            return new DoubleField(declaringLookup, field);
         }
     }
 
@@ -1453,10 +1449,10 @@ public final class InlineSupport {
         private final VarHandle handle;
 
         @SuppressWarnings("unused")
-        VarHandleField(Class<?> receiverClass, Class<?> lookupClass, Lookup fieldClass, String fieldName, Class<?> valueClass) {
+        VarHandleField(Class<?> receiverClass, Class<?> lookupClass, Lookup declaringLookup, String fieldName, Class<?> valueClass) {
             try {
                 this.receiverClass = receiverClass;
-                this.handle = fieldClass.findVarHandle(lookupClass, fieldName, valueClass);
+                this.handle = declaringLookup.findVarHandle(lookupClass, fieldName, valueClass);
             } catch (NoSuchFieldException | IllegalAccessException e) {
                 throw new IllegalArgumentException(e);
             }
