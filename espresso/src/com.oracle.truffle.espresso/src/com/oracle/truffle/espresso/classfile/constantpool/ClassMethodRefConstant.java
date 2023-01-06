@@ -178,7 +178,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
             Symbol<Name> name = getName(pool);
             Symbol<Signature> signature = getSignature(pool);
 
-            Method method = holderKlass.lookupMethod(name, signature, accessingKlass);
+            Method method = holderKlass.lookupMethod(name, signature);
             if (method == null) {
                 throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(holderKlass.getNameAsString() + "." + getName(pool) + signature));
             }

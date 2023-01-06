@@ -39,6 +39,7 @@ import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.CONSTANTS;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.CONSTANTS_BEFORE_16;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.LM_UNCONDITIONAL;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_CALLER_SENSITIVE;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_IS_CONSTRUCTOR;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_IS_FIELD;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_IS_METHOD;
@@ -50,6 +51,7 @@ import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -382,7 +384,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                         int lookupMode,
                         boolean speculativeResolve,
                         @Cached ResolveNode resolve) {
-            StaticObject result = StaticObject.NULL;
             EspressoException error = null;
             try {
                 return resolve.execute(self, caller, lookupMode);
@@ -390,16 +391,14 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 error = e;
             }
             Meta meta = getMeta();
-            if (StaticObject.isNull(result)) {
-                int refKind = getRefKind(meta.java_lang_invoke_MemberName_flags.getInt(self));
-                if (!isValidRefKind(refKind)) {
-                    throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "obsolete MemberName format");
-                }
-                if (!speculativeResolve && error != null) {
-                    throw error;
-                }
+            int refKind = getRefKind(meta.java_lang_invoke_MemberName_flags.getInt(self));
+            if (!isValidRefKind(refKind)) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "obsolete MemberName format");
             }
-            return result;
+            if (!speculativeResolve) {
+                throw error;
+            }
+            return StaticObject.NULL;
         }
     }
 
@@ -509,7 +508,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                         isSignaturePolymorphicIntrinsicProfile.enter();
                         assert (!mhMethodId.isStaticPolymorphicSignature()) : "Should have been handled by refKind == REF_invokeStatic";
                         EspressoError.guarantee(mhMethodId.isSignaturePolymorphicIntrinsic(), "Should never need to resolve invokeGeneric MemberName");
-                        plantInvokeBasic(memberName, resolutionKlass, methodName, sig, callerKlass, refKind, meta);
+                        plantInvokeBasic(memberName, resolutionKlass, methodName, sig, callerKlass, doAccessChecks, meta);
                     } else if (refKind == REF_invokeVirtual || refKind == REF_invokeSpecial) {
                         isInvokeVirtualOrSpecialProfile.enter();
                         plantMethodMemberName(memberName, resolutionKlass, methodName, sig, refKind, callerKlass, doAccessChecks, doConstraintsChecks, meta);
@@ -533,11 +532,14 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     // region MemberName planting
 
-    private static void plantInvokeBasic(StaticObject memberName, Klass resolutionKlass, Symbol<Name> name, Symbol<Signature> sig, Klass callerKlass, int refKind, Meta meta) {
+    private static void plantInvokeBasic(StaticObject memberName, Klass resolutionKlass, Symbol<Name> name, Symbol<Signature> sig, Klass callerKlass, boolean accessCheck, Meta meta) {
         assert (name == Name.invokeBasic);
-        Method target = resolutionKlass.lookupMethod(name, sig, callerKlass);
+        Method target = resolutionKlass.lookupMethod(name, sig);
+        if (accessCheck) {
+            MemberRefConstant.doAccessCheck(callerKlass, target.getDeclaringKlass(), target, meta);
+        }
         meta.HIDDEN_VMTARGET.setHiddenObject(memberName, target);
-        meta.java_lang_invoke_MemberName_flags.setInt(memberName, getMethodFlags(target, refKind));
+        meta.java_lang_invoke_MemberName_flags.setInt(memberName, getMethodFlags(target, REF_invokeSpecial));
     }
 
     private static void plantMethodMemberName(StaticObject memberName,
@@ -546,7 +548,13 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     Klass callerKlass,
                     boolean accessCheck, boolean constraintsChecks,
                     Meta meta) {
-        Method target = doMethodLookup(resolutionKlass, name, sig, callerKlass);
+        // TODO this needs to be the correct lookup (static, interface, virtual etc.)
+        Method target;
+        if (refKind == REF_invokeInterface || (refKind == REF_invokeSpecial && resolutionKlass.isInterface())) {
+            target = doInterfaceMethodLookup(resolutionKlass, name, sig, meta);
+        } else {
+            target = doMethodLookup(resolutionKlass, name, sig);
+        }
         if (target == null) {
             throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, cat("Failed lookup for method ", resolutionKlass.getName(), "#", name, ":", sig));
         }
@@ -598,9 +606,19 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     private static int getMethodFlags(Method target, int refKind) {
         int res = target.getMethodModifiers();
         if (refKind == REF_invokeInterface) {
-            res |= MN_IS_METHOD | (REF_invokeInterface << MN_REFERENCE_KIND_SHIFT);
+            if (target.isPrivate() || target.isFinalFlagSet() || target.getDeclaringKlass().isFinalFlagSet()) {
+                res |= MN_IS_METHOD | (REF_invokeSpecial << MN_REFERENCE_KIND_SHIFT);
+            } else {
+                assert target.getITableIndex() >= 0;
+                res |= MN_IS_METHOD | (REF_invokeInterface << MN_REFERENCE_KIND_SHIFT);
+            }
         } else if (refKind == REF_invokeVirtual) {
-            res |= MN_IS_METHOD | (REF_invokeVirtual << MN_REFERENCE_KIND_SHIFT);
+            if (target.isPrivate() || target.isFinalFlagSet() || target.getDeclaringKlass().isFinalFlagSet()) {
+                res |= MN_IS_METHOD | (REF_invokeSpecial << MN_REFERENCE_KIND_SHIFT);
+            } else {
+                assert target.getVTableIndex() >= 0;
+                res |= MN_IS_METHOD | (REF_invokeVirtual << MN_REFERENCE_KIND_SHIFT);
+            }
         } else {
             if (target.isStatic()) {
                 res |= MN_IS_METHOD | (REF_invokeStatic << MN_REFERENCE_KIND_SHIFT);
@@ -609,6 +627,9 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             } else {
                 res |= MN_IS_METHOD | (REF_invokeSpecial << MN_REFERENCE_KIND_SHIFT);
             }
+        }
+        if (target.isCallerSensitive()) {
+            res |= MN_CALLER_SENSITIVE;
         }
         return res;
     }
@@ -623,24 +644,29 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         return res;
     }
 
-    private static Method doMethodLookup(Klass resolutionKlass, Symbol<Name> name, Symbol<Signature> sig,
-                    Klass callerKlass) {
+    private static Method doMethodLookup(Klass resolutionKlass, Symbol<Name> name, Symbol<Signature> sig) {
         if (CompilerDirectives.isPartialEvaluationConstant(resolutionKlass)) {
-            return lookupMethod(resolutionKlass, name, sig, callerKlass);
+            return lookupMethod(resolutionKlass, name, sig);
         } else {
-            return lookupMethodBoundary(resolutionKlass, name, sig, callerKlass);
+            return lookupMethodBoundary(resolutionKlass, name, sig);
         }
     }
 
-    private static Method lookupMethod(Klass resolutionKlass, Symbol<Name> name, Symbol<Signature> sig,
-                    Klass callerKlass) {
-        return resolutionKlass.lookupMethod(name, sig, callerKlass);
+    @TruffleBoundary
+    private static Method doInterfaceMethodLookup(Klass resolutionKlass, Symbol<Name> name, Symbol<Signature> sig, Meta meta) {
+        if (!resolutionKlass.isInterface()) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, meta.toGuestString(name));
+        }
+        return ((ObjectKlass) resolutionKlass).resolveInterfaceMethod(name, sig);
+    }
+
+    private static Method lookupMethod(Klass resolutionKlass, Symbol<Name> name, Symbol<Signature> sig) {
+        return resolutionKlass.lookupMethod(name, sig);
     }
 
     @TruffleBoundary
-    private static Method lookupMethodBoundary(Klass resolutionKlass, Symbol<Name> name, Symbol<Signature> sig,
-                    Klass callerKlass) {
-        return lookupMethod(resolutionKlass, name, sig, callerKlass);
+    private static Method lookupMethodBoundary(Klass resolutionKlass, Symbol<Name> name, Symbol<Signature> sig) {
+        return lookupMethod(resolutionKlass, name, sig);
     }
 
     private static Field doFieldLookup(Klass resolutionKlass, Symbol<Name> name, Symbol<Type> sig) {

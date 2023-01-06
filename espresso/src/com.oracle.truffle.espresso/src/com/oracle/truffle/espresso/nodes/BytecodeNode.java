@@ -2246,7 +2246,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                                     declaringKlass.getSuperKlass() != null &&
                                     symbolicRef != declaringKlass.getSuperKlass() &&
                                     symbolicRef.isAssignableFrom(declaringKlass)) {
-                        resolved = declaringKlass.getSuperKlass().lookupMethod(resolved.getName(), resolved.getRawSignature(), declaringKlass, Klass.LookupMode.INSTANCE_ONLY);
+                        resolved = declaringKlass.getSuperKlass().lookupMethod(resolved.getName(), resolved.getRawSignature(), Klass.LookupMode.INSTANCE_ONLY);
                     }
                 }
                 break;

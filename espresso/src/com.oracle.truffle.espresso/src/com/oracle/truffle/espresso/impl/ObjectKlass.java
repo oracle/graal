@@ -1143,7 +1143,7 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
-    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass, LookupMode lookupMode) {
+    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, LookupMode lookupMode) {
         KLASS_LOOKUP_METHOD_COUNT.inc();
         Method method = lookupDeclaredMethod(methodName, signature, lookupMode);
         if (method == null) {
@@ -1156,7 +1156,7 @@ public final class ObjectKlass extends Klass {
             method = lookupPolysigMethod(methodName, signature, lookupMode);
         }
         if (method == null && getSuperKlass() != null) {
-            method = getSuperKlass().lookupMethod(methodName, signature, accessingKlass, lookupMode);
+            method = getSuperKlass().lookupMethod(methodName, signature, lookupMode);
         }
         return method;
     }
