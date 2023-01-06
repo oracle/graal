@@ -72,6 +72,7 @@ import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.MultiInstanceNode
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.NeverDefaultInt1NodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.NeverDefaultInt2NodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.NeverDefaultInt3NodeGen;
+import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.ObjectInitializationInCachedValueNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.ReplaceThisNoCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.ReplaceThisNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.SharedDefaultInlinedNodeNodeGen;
@@ -977,12 +978,52 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
 
     }
 
+    public abstract static class ObjectInitializationInCachedValue extends Node {
+        abstract boolean execute(Object obj1);
+
+        static final class Cache {
+            public /* not final! */ Integer value;
+
+            public boolean guard(int other) {
+                return value.intValue() == other;
+            }
+        }
+
+        static Cache getCache(int val) {
+            Cache c = new Cache();
+            c.value = val;
+            return c;
+        }
+
+        @Specialization(guards = "value == 0")
+        static boolean doItInt(int value,
+                        @Cached(value = "getCache(value)", neverDefault = true) Cache cache) {
+            assertNotNull(cache.value);
+            return value >= 0;
+        }
+
+        @Specialization(guards = "value == 1")
+        static boolean doItWithGuard(int value,
+                        @Cached(value = "getCache(value)", neverDefault = false) Cache cache) {
+            assertNotNull(cache.value);
+            return value >= 0;
+        }
+
+    }
+
+    @Test
+    public void testObjectInitializationInCachedValue() throws InterruptedException {
+        assertInParallel(ObjectInitializationInCachedValueNodeGen::create, (node, threadIndex, objectIndex) -> {
+            node.execute(threadIndex % 2);
+        });
+    }
+
     static final int NODES = 10;
     static final int THREADS = 10;
 
     private <T extends Node> void assertInParallel(Supplier<T> nodeFactory, ParallelObjectConsumer<T> assertions) throws InterruptedException {
         final int threads = THREADS;
-        final int threadPools = 2;
+        final int threadPools = 4;
         final int iterations = 1000;
         /*
          * We create multiple nodes and run the assertions in a loop to avoid implicit

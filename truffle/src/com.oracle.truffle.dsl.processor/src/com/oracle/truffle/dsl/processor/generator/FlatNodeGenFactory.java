@@ -753,7 +753,8 @@ public class FlatNodeGenFactory {
                 /*
                  * For specializations that bind cached values in guards that use instance fields we
                  * need to use specialization classes because the duplication check is not reliable
-                 * otherwise.
+                 * otherwise. E.g. NeverDefaultTest#testSingleInstancePrimitiveCacheNode fails
+                 * without this check.
                  */
                 return true;
             }
@@ -6344,6 +6345,31 @@ public class FlatNodeGenFactory {
             frameState.setBoolean(frameStateInitialized, true);
         }
 
+        CodeTree storeFence = null;
+
+        /*
+         * Make sure cached values are initialized before publishing it to other threads.
+         *
+         * This is needed for non-final fields in the cached value to be guaranteed to be
+         * initialized.
+         *
+         * We can avoid the storeStore fence if there is a duplication check performed. With a
+         * duplication check there is an implicit storeStore fence with the volatile write to
+         * publish the specialization class.
+         *
+         * With a specialization class that is not bound in guards we have an explicit storeStore
+         * fence already, so we do not do it for each cache.
+         */
+        if (!ElementUtils.isPrimitive(cache.getParameter().getType()) && //
+                        !needsDuplicationCheck(specialization) && //
+                        !useSpecializationClass(specialization)) {
+            CodeTreeBuilder storeFenceBuilder = CodeTreeBuilder.createBuilder();
+            storeFenceBuilder.startStatement();
+            storeFenceBuilder.startStaticCall(context.getType(VarHandle.class), "storeStoreFence").end();
+            storeFenceBuilder.end();
+            storeFence = storeFenceBuilder.build();
+        }
+
         CodeTreeBuilder builder = new CodeTreeBuilder(null);
         value = createInsertNode(frameState, specialization, cache, value);
 
@@ -6370,6 +6396,9 @@ public class FlatNodeGenFactory {
                     builder.end();
 
                     builder.startStatement();
+                    if (storeFence != null) {
+                        builder.tree(storeFence);
+                    }
                     builder.tree(createCacheAccess(frameState, specialization, cache, CodeTreeBuilder.singleString(localName)));
                     builder.end();
 
@@ -6397,6 +6426,9 @@ public class FlatNodeGenFactory {
                         checkSharedCacheNull(builder, localName, specialization, cache);
                     }
 
+                    if (storeFence != null) {
+                        builder.tree(storeFence);
+                    }
                     builder.startStatement();
                     builder.tree(createCacheAccess(frameState, specialization, cache, CodeTreeBuilder.singleString(localName)));
                     builder.end();
@@ -6433,6 +6465,9 @@ public class FlatNodeGenFactory {
                 }
 
                 builder.end();
+                if (storeFence != null) {
+                    builder.tree(storeFence);
+                }
                 builder.startStatement().tree(createCacheAccess(frameState, specialization, cache, CodeTreeBuilder.singleString(localName))).end();
             } else {
                 throw new AssertionError();
@@ -6440,6 +6475,9 @@ public class FlatNodeGenFactory {
             setCacheInitialized(frameState, specialization, cache, true);
 
         } else {
+            if (storeFence != null) {
+                builder.tree(storeFence);
+            }
             builder.startStatement().tree(createCacheAccess(frameState, specialization, cache, value)).end();
         }
 
