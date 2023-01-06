@@ -34,6 +34,7 @@ import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
+import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -193,6 +194,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         List<MarshalledParameter> binaryMarshalledParameters = new ArrayList<>();
         List<MarshalledParameter> allParameters = new ArrayList<>();
         boolean hasOutParameters = false;
+        MarshallerData firstOutMarshalledParameter = null;
         for (int i = nonReceiverParameterStart; i < formalParameters.size(); i++) {
             MarshallerData marshaller = methodData.getParameterMarshaller(i);
             TypeMirror parameterType = formalParameterTypes.get(i);
@@ -203,7 +205,12 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
                 binaryMarshalledParameters.add(marshalledParameter);
             }
             allParameters.add(marshalledParameter);
-            hasOutParameters |= isOutParameter(marshaller, parameterType, true);
+            if (isOutParameter(marshaller, parameterType, true)) {
+                hasOutParameters = true;
+                if (firstOutMarshalledParameter == null && marshaller.isCustom()) {
+                    firstOutMarshalledParameter = marshaller;
+                }
+            }
         }
         if (marshalledParametersOutput != null) {
             syntheticAppendParameters.add(new CodeBuilder(builder).invoke(marshalledParametersOutput, "getArray").build());
@@ -214,6 +221,9 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         boolean hasBinaryMarshalledResult = methodData.getReturnTypeMarshaller().isCustom();
         Map<String, CharSequence> overrides = new HashMap<>();
         if (cacheData != null) {
+            if (hasOutParameters) {
+                throw new IllegalStateException("Idempotent cannot be used with Out parameters.");
+            }
             String cacheFieldName = cacheData.cacheFieldName;
             String resFieldName = cacheFieldName + "Result";
             builder.lineStart().write(cacheData.cacheEntryType).space().write(resFieldName).write(" = ").write(cacheSnippets.readCache(builder, cacheFieldName, receiver)).lineEnd(";");
@@ -253,26 +263,38 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
             boolean needsPostMarshallParameters = generatePreMarshallParameters(builder, allParameters, marshalledParametersOutput, overrides);
             CharSequence nativeCall = generateMarshallParameters(builder, nativeMethodName, allParameters, marshalledParametersOutput, syntheticPrependParameters, syntheticAppendParameters,
                             overrides);
-            MarshallerSnippets marshallerSnippets = marshallerSnippets(methodData.getReturnTypeMarshaller());
-            PreUnmarshallResult preUnmarshallResult = generatePreUnmarshallResult(builder, marshallerSnippets, returnType, nativeCall, receiverNativeObject, hasBinaryMarshalledResult);
-            CharSequence resultVariable = null;
-            builder.lineStart();
+            MarshallerSnippets resultMarshallerSnippets = marshallerSnippets(methodData.getReturnTypeMarshaller());
             boolean voidReturnType = returnType.getKind() == TypeKind.VOID;
-            if (!voidReturnType) {
-                if (needsPostMarshallParameters) {
-                    if (preUnmarshallResult.unmarshalled) {
-                        resultVariable = preUnmarshallResult.result;
-                    } else {
-                        resultVariable = HOTSPOT_RESULT_VARIABLE;
-                        builder.write(returnType).space().write(resultVariable).write(" = ");
-                    }
-                } else {
-                    builder.write("return ");
+            CharSequence resultVariable = null;
+            PreUnmarshallResult preUnmarshallResult;
+            if (firstOutMarshalledParameter != null) {
+                MarshallerSnippets customMarshalledSnippets = marshallerSnippets(firstOutMarshalledParameter);
+                CharSequence resultInput = generateBinaryInputForResult(builder, customMarshalledSnippets, returnType, nativeCall);
+                preUnmarshallResult = new PreUnmarshallResult(HOTSPOT_RESULT_VARIABLE, resultInput, false);
+                if (!voidReturnType) {
+                    resultVariable = HOTSPOT_RESULT_VARIABLE;
+                    resultMarshallerSnippets.read(builder, returnType, resultVariable, preUnmarshallResult.binaryInput, null);
                 }
+                needsPostMarshallParameters = true;
+            } else {
+                preUnmarshallResult = generatePreUnmarshallResult(builder, resultMarshallerSnippets, returnType, nativeCall, receiverNativeObject, hasBinaryMarshalledResult);
+                builder.lineStart();
+                if (!voidReturnType) {
+                    if (needsPostMarshallParameters) {
+                        if (preUnmarshallResult.unmarshalled) {
+                            resultVariable = preUnmarshallResult.result;
+                        } else {
+                            resultVariable = HOTSPOT_RESULT_VARIABLE;
+                            builder.write(returnType).space().write(resultVariable).write(" = ");
+                        }
+                    } else {
+                        builder.write("return ");
+                    }
+                }
+                CharSequence value = resultMarshallerSnippets.unmarshallResult(builder, returnType, preUnmarshallResult.result, receiverNativeObject, preUnmarshallResult.binaryInput, null);
+                builder.write(value);
+                builder.lineEnd(";");
             }
-            CharSequence value = marshallerSnippets.unmarshallResult(builder, returnType, preUnmarshallResult.result, receiverNativeObject, preUnmarshallResult.binaryInput, null);
-            builder.write(value);
-            builder.lineEnd(";");
             if (needsPostMarshallParameters) {
                 generatePostMarshallParameters(builder, binaryMarshalledParameters, receiverNativeObject, marshalledParametersOutput, preUnmarshallResult.binaryInput, resultVariable,
                                 hasOutParameters);
@@ -345,17 +367,28 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
 
     private PreUnmarshallResult generatePreUnmarshallResult(CodeBuilder builder, MarshallerSnippets snippets, TypeMirror returnType, CharSequence nativeCall, CharSequence receiver,
                     boolean hasBinaryMarshalledResult) {
-        CharSequence result = nativeCall;
-        CharSequence endPointResultVariable = snippets.storeRawResult(builder, returnType, nativeCall, null);
-        result = endPointResultVariable != null ? endPointResultVariable : result;
-        CharSequence marshalledResultInput = null;
-        if (hasBinaryMarshalledResult) {
-            marshalledResultInput = "marshalledResultInput";
-            builder.lineStart().write(typeCache.binaryInput).space().write(marshalledResultInput).write(" = ").invokeStatic(typeCache.binaryInput, "create", result).lineEnd(";");
-        }
+        CharSequence result = generateStoreResult(builder, snippets, returnType, nativeCall);
+        CharSequence marshalledResultInput = hasBinaryMarshalledResult ? generateBinaryInputInitForByteArray(builder, result) : null;
         CharSequence resultVariable = snippets.preUnmarshallResult(builder, returnType, result, receiver, null);
         result = resultVariable != null ? resultVariable : result;
         return new PreUnmarshallResult(result, marshalledResultInput, resultVariable != null);
+    }
+
+    private CharSequence generateBinaryInputForResult(CodeBuilder builder, MarshallerSnippets snippets, TypeMirror returnType, CharSequence nativeCall) {
+        CharSequence result = generateStoreResult(builder, snippets, returnType, nativeCall);
+        return generateBinaryInputInitForByteArray(builder, result);
+    }
+
+    private static CharSequence generateStoreResult(CodeBuilder builder, MarshallerSnippets snippets, TypeMirror returnType, CharSequence nativeCall) {
+        CharSequence result = nativeCall;
+        CharSequence endPointResultVariable = snippets.storeRawResult(builder, returnType, nativeCall, null);
+        return endPointResultVariable != null ? endPointResultVariable : result;
+    }
+
+    private CharSequence generateBinaryInputInitForByteArray(CodeBuilder builder, CharSequence byteArray) {
+        CharSequence marshalledResultInput = "marshalledResultInput";
+        builder.lineStart().write(typeCache.binaryInput).space().write(marshalledResultInput).write(" = ").invokeStatic(typeCache.binaryInput, "create", byteArray).lineEnd(";");
+        return marshalledResultInput;
     }
 
     private void generateByteArrayBinaryOutputInit(CodeBuilder builder, CharSequence marshalledParametersOutputVar, List<MarshalledParameter> marshalledParameters) {
@@ -405,7 +438,6 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
     private void generateHSToNativeNativeMethod(CodeBuilder builder, MethodData methodData) {
         builder.line("");
         String nativeMethodName = jniMethodName(methodData.element);
-        TypeMirror nativeMethodReturnType = marshallerSnippets(methodData.getReturnTypeMarshaller()).getEndPointMethodParameterType(methodData.type.getReturnType());
         List<CodeBuilder.Parameter> nativeMethodParameters = new ArrayList<>();
         PrimitiveType longType = types.getPrimitiveType(TypeKind.LONG);
         nativeMethodParameters.add(CodeBuilder.newParameter(longType, "isolateThread"));
@@ -414,18 +446,25 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         List<? extends VariableElement> parameters = methodData.element.getParameters();
         List<? extends TypeMirror> parameterTypes = methodData.type.getParameterTypes();
         boolean hasMarshallerData = false;
+        boolean hasOutMarshalledParameter = false;
         for (int i = nonReceiverParameterStart; i < parameters.size(); i++) {
             MarshallerData marshallerData = methodData.getParameterMarshaller(i);
-            if (isBinaryMarshallable(marshallerData, parameterTypes.get(i), true)) {
+            TypeMirror parameterType = parameterTypes.get(i);
+            if (isBinaryMarshallable(marshallerData, parameterType, true)) {
                 hasMarshallerData = true;
+                if (marshallerData.isCustom() && isOutParameter(marshallerData, parameterType, true)) {
+                    hasOutMarshalledParameter = true;
+                }
             } else {
-                TypeMirror nativeMethodParameter = marshallerSnippets(marshallerData).getEndPointMethodParameterType(parameterTypes.get(i));
+                TypeMirror nativeMethodParameter = marshallerSnippets(marshallerData).getEndPointMethodParameterType(parameterType);
                 nativeMethodParameters.add(CodeBuilder.newParameter(nativeMethodParameter, parameters.get(i).getSimpleName()));
             }
         }
         if (hasMarshallerData) {
             nativeMethodParameters.add(CodeBuilder.newParameter(types.getArrayType(types.getPrimitiveType(TypeKind.BYTE)), MARSHALLED_DATA_PARAMETER));
         }
+        TypeMirror nativeMethodReturnType = hasOutMarshalledParameter ? types.getArrayType(types.getPrimitiveType(TypeKind.BYTE))
+                        : marshallerSnippets(methodData.getReturnTypeMarshaller()).getEndPointMethodParameterType(methodData.type.getReturnType());
         builder.methodStart(EnumSet.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.NATIVE),
                         nativeMethodName,
                         nativeMethodReturnType,
@@ -494,6 +533,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         params.add(CodeBuilder.newParameter(types.getPrimitiveType(TypeKind.LONG), "objectId"));
         int parameterStartIndex = definitionData.hasCustomDispatch() ? 1 : 0;
         int marshalledDataCount = 0;
+        Map.Entry<MarshallerData, TypeMirror> firstOutMarshalledParameter = null;
         List<MarshalledParameter> outParameters = new ArrayList<>();
         for (int i = parameterStartIndex; i < methodParameters.size(); i++) {
             MarshallerData marshallerData = methodData.getParameterMarshaller(i);
@@ -507,18 +547,25 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
             }
             if (isOutParameter(marshallerData, parameterType, true)) {
                 outParameters.add(new MarshalledParameter(parameterName, parameterType, marshallerData));
+                if (firstOutMarshalledParameter == null && marshallerData.isCustom()) {
+                    firstOutMarshalledParameter = new SimpleImmutableEntry<>(marshallerData, parameterType);
+                }
             }
         }
         if (marshalledDataCount > 0) {
             params.add(CodeBuilder.newParameter(typeCache.jByteArray, MARSHALLED_DATA_PARAMETER));
         }
         CharSequence methodName = methodData.element.getSimpleName();
-        HotSpotToNativeMarshallerSnippets returnTypeSnippets = marshallerSnippets(methodData.getReturnTypeMarshaller());
-        TypeMirror returnType = returnTypeSnippets.getEndPointMethodParameterType(methodData.type.getReturnType());
-        boolean voidReturnType = returnType.getKind() == TypeKind.VOID;
-        boolean primitiveReturnType = returnType.getKind().isPrimitive();
-        boolean objectReturnType = !(primitiveReturnType || voidReturnType);
-        builder.methodStart(EnumSet.of(Modifier.STATIC), methodName, jniTypeForJavaType(returnType, types, typeCache), params, Collections.emptyList());
+        MarshallerData receiverMethodReturnTypeMarshaller = methodData.getReturnTypeMarshaller();
+        TypeMirror receiverMethodReturnType = marshallerSnippets(receiverMethodReturnTypeMarshaller).getEndPointMethodParameterType(methodData.type.getReturnType());
+        TypeMirror endMethodReturnType = firstOutMarshalledParameter != null
+                        ? marshallerSnippets(firstOutMarshalledParameter.getKey()).getEndPointMethodParameterType(firstOutMarshalledParameter.getValue())
+                        : receiverMethodReturnType;
+        boolean voidReceiverMethod = receiverMethodReturnType.getKind() == TypeKind.VOID;
+        boolean voidEndMethod = endMethodReturnType.getKind() == TypeKind.VOID;
+        boolean primitiveEndMethod = endMethodReturnType.getKind().isPrimitive();
+        boolean objectReturnType = !(primitiveEndMethod || voidEndMethod);
+        builder.methodStart(EnumSet.of(Modifier.STATIC), methodName, jniTypeForJavaType(endMethodReturnType, types, typeCache), params, Collections.emptyList());
         builder.indent();
         String scopeName = targetClassSimpleName + "::" + methodName;
         String scopeInit = new CodeBuilder(builder).write(typeCache.jniMethodScope).write(" scope = ").newInstance(typeCache.jniMethodScope, "\"" + scopeName + "\"", jniEnvVariable).build();
@@ -605,7 +652,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
 
         CharSequence resultSnippet = new CodeBuilder(builder).invoke(resolvedDispatch, methodData.receiverMethod != null ? methodData.receiverMethod : methodName, actualParameters).build();
         CharSequence resultVariable = null;
-        if (voidReturnType) {
+        if (voidReceiverMethod) {
             builder.lineStart().write(resultSnippet).lineEnd(";");
         } else {
             resultVariable = "endPointResult";
@@ -613,10 +660,12 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         }
 
         CharSequence marshalledOutputVar = null;
-        boolean hasBinaryMarshalledResult = methodData.getReturnTypeMarshaller().isCustom();
+        boolean hasBinaryMarshalledResult = methodData.getReturnTypeMarshaller().isCustom() || firstOutMarshalledParameter != null;
         if (hasBinaryMarshalledResult) {
             List<MarshalledParameter> marshallers = new ArrayList<>();
-            marshallers.add(new MarshalledParameter(resultVariable, returnType, methodData.getReturnTypeMarshaller()));
+            if (!voidReceiverMethod) {
+                marshallers.add(new MarshalledParameter(resultVariable, receiverMethodReturnType, methodData.getReturnTypeMarshaller()));
+            }
             marshallers.addAll(outParameters);
             marshalledOutputVar = "marshalledResultOutput";
             CharSequence binaryOutputInit = generateCCharPointerBinaryOutputInit(builder, marshalledOutputVar, marshalledDataCount > 0,
@@ -626,12 +675,18 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         }
 
         // Do result marshalling for non-void methods
-        if (resultVariable != null) {
-            CharSequence resultOverride = returnTypeSnippets.preMarshallResult(builder, methodData.type.getReturnType(), resultVariable, marshalledOutputVar, jniEnvVariable);
+        if (firstOutMarshalledParameter != null) {
+            resultSnippet = marshallerSnippets(firstOutMarshalledParameter.getKey()).marshallResult(builder, null, null, marshalledOutputVar, null);
+            if (resultVariable != null) {
+                marshallerSnippets(methodData.getReturnTypeMarshaller()).write(builder, receiverMethodReturnType, resultVariable, marshalledOutputVar, null);
+            }
+        } else if (resultVariable != null) {
+            MarshallerSnippets receiverMethodReturnTypeSnippets = marshallerSnippets(receiverMethodReturnTypeMarshaller);
+            CharSequence resultOverride = receiverMethodReturnTypeSnippets.preMarshallResult(builder, methodData.type.getReturnType(), resultVariable, marshalledOutputVar, jniEnvVariable);
             if (resultOverride != null) {
                 resultVariable = resultOverride;
             }
-            resultSnippet = returnTypeSnippets.marshallResult(builder, methodData.type.getReturnType(), resultVariable, marshalledOutputVar, jniEnvVariable);
+            resultSnippet = receiverMethodReturnTypeSnippets.marshallResult(builder, methodData.type.getReturnType(), resultVariable, marshalledOutputVar, jniEnvVariable);
         }
 
         if (!outParameters.isEmpty() && marshalledOutputVar == null) {
@@ -669,9 +724,9 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         }
 
         // Generate return value
-        if (primitiveReturnType) {
+        if (primitiveEndMethod) {
             builder.lineStart("return ").write(resultSnippet).lineEnd(";");
-        } else if (!voidReturnType) {
+        } else if (!voidEndMethod) {
             builder.lineStart().invoke("scope", "setObjectResult", resultSnippet).lineEnd(";");
         }
 
@@ -701,8 +756,8 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         CharSequence newForeignException = new CodeBuilder(builder).invokeStatic(typeCache.foreignException, "forThrowable",
                         exceptionVariable, definitionData.getCustomMarshaller(typeCache.throwable, null, types).name).build();
         builder.lineStart().invoke(newForeignException, "throwUsingJNI", jniEnvVariable).lineEnd(";");
-        if (primitiveReturnType) {
-            builder.lineStart("return ").writeDefaultValue(returnType).lineEnd(";");
+        if (primitiveEndMethod) {
+            builder.lineStart("return ").writeDefaultValue(receiverMethodReturnType).lineEnd(";");
         } else if (objectReturnType) {
             String cnull = new CodeBuilder(builder).invokeStatic(typeCache.wordFactory, "nullPointer").build();
             builder.lineStart().invoke("scope", "setObjectResult", cnull).lineEnd(";");
@@ -1407,6 +1462,22 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
             @Override
             CharSequence unmarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledParametersInput, CharSequence jniEnvFieldName) {
                 return parameterName;
+            }
+
+            @Override
+            void postUnmarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledResultOutput, CharSequence jniEnvFieldName,
+                            CharSequence resultVariableName) {
+                if (marshallerData.out != null) {
+                    currentBuilder.lineStart().invoke(marshallerData.name, "write", marshalledResultOutput, parameterName).lineEnd(";");
+                }
+            }
+
+            @Override
+            void postMarshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence receiver, CharSequence marshalledParametersInput,
+                            CharSequence jniEnvFieldName, CharSequence resultVariableName) {
+                if (marshallerData.out != null) {
+                    currentBuilder.lineStart().invoke(marshallerData.name, "update", marshalledParametersInput, parameterName).lineEnd(";");
+                }
             }
 
             @Override

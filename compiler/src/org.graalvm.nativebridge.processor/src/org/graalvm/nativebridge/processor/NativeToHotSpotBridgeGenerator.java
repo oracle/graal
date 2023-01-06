@@ -24,7 +24,7 @@
  */
 package org.graalvm.nativebridge.processor;
 
-import java.util.AbstractMap;
+import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -416,7 +416,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
             CharSequence binaryOutputInit = generateCCharPointerBinaryOutputInit(builder, marshalledParametersOutputVar, methodData, binaryMarshalledParameters, staticBufferVar, staticBufferLength);
             builder.lineStart("try ").write("(").write(binaryOutputInit).lineEnd(") {");
             builder.indent();
-            return new AbstractMap.SimpleImmutableEntry<>(marshalledParametersVar, marshalledParametersOutputVar);
+            return new SimpleImmutableEntry<>(marshalledParametersVar, marshalledParametersOutputVar);
         }
         return null;
     }
@@ -444,7 +444,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         builder.lineStart().invokeStatic(typeCache.jniUtil, "GetByteArrayRegion", jniEnv, jByteArray, "0", marshalledDataLengthVar, marshallBufferVar).lineEnd(";");
         builder.lineStart().write(typeCache.binaryInput).space().write(marshalledResultInputVar).write(" = ").invokeStatic(typeCache.binaryInput, "create", marshallBufferVar,
                         marshalledDataLengthVar).lineEnd(";");
-        return new AbstractMap.SimpleImmutableEntry<>(marshallBufferVar, marshalledResultInputVar);
+        return new SimpleImmutableEntry<>(marshallBufferVar, marshalledResultInputVar);
     }
 
     private void generateCleanupBinaryInputForJByteArray(CodeBuilder builder, CharSequence marshallBufferVar, CharSequence staticMarshallBufferVar) {
@@ -702,7 +702,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
             if (isOutParameter(marshallerData, parameterType, false)) {
                 outParameters.add(new MarshalledParameter(parameterName, parameterType, marshallerData));
                 if (firstOutMarshalledParameter == null && marshallerData.isCustom()) {
-                    firstOutMarshalledParameter = new AbstractMap.SimpleImmutableEntry<>(marshallerData, parameterType);
+                    firstOutMarshalledParameter = new SimpleImmutableEntry<>(marshallerData, parameterType);
                 }
             }
         }
