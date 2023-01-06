@@ -67,6 +67,7 @@ import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 
+import java.awt.desktop.SystemEventListener;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.invoke.VarHandle;
@@ -4691,8 +4692,13 @@ public class FlatNodeGenFactory {
             BlockState innerIfCount = BlockState.NONE;
 
             if (useSpecializationClass) {
-                if (specialization.isGuardBindsCache()) {
-                    cachedTriples.add(new IfTriple(loadSpecializationClass(frameState, specialization, false), null, null));
+                outer: for (GuardExpression guard : specialization.getGuards()) {
+                    for (CacheExpression cache : specialization.getBoundCaches(guard.getExpression(), true)) {
+                        if (canCacheBeStoredInSpecialializationClass(cache)) {
+                            cachedTriples.add(new IfTriple(loadSpecializationClass(frameState, specialization, false), null, null));
+                            break outer;
+                        }
+                    }
                 }
             }
             cachedTriples.addAll(createMethodGuardChecks(frameState, group, remainingGuards, mode));
@@ -4707,8 +4713,11 @@ public class FlatNodeGenFactory {
                 }
                 if (singleCondition != null) {
                     int index = cachedTriples.indexOf(singleCondition);
-                    CodeTree stateCheck = multiState.createNotContains(frameState, StateQuery.create(SpecializationActive.class, specialization));
-                    cachedTriples.set(index, new IfTriple(singleCondition.prepare, combineTrees(" && ", stateCheck, singleCondition.condition), singleCondition.statements));
+                    CodeTreeBuilder b = new CodeTreeBuilder(parent);
+                    b.string("!(");
+                    b.tree(createSpecializationActiveCheck(frameState, Arrays.asList(specialization)));
+                    b.string(")");
+                    cachedTriples.set(index, new IfTriple(singleCondition.prepare, combineTrees(" && ", b.build(), singleCondition.condition), singleCondition.statements));
                     fallbackNeedsState = true;
                 }
             }
@@ -5635,6 +5644,7 @@ public class FlatNodeGenFactory {
             builder.string(typeName);
             builder.string(" ");
         }
+
         builder.string(localName);
         builder.string(" = ");
         if (useUpdater) {

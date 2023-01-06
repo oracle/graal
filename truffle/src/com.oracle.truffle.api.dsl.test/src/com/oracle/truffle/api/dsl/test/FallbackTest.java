@@ -45,6 +45,7 @@ import static com.oracle.truffle.api.dsl.test.TestHelper.assertRuns;
 import static com.oracle.truffle.api.dsl.test.TestHelper.createRoot;
 import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -72,6 +73,7 @@ import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback6Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback7Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback8NodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback9NodeGen;
+import com.oracle.truffle.api.dsl.test.FallbackTestFactory.FallbackGuardWithCachesNodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.FallbackWithAssumptionArrayNodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.FallbackWithAssumptionNodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.FallbackWithCachedNodeGen;
@@ -86,6 +88,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 @SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
@@ -841,4 +844,129 @@ public class FallbackTest extends AbstractPolyglotTest {
 
     }
 
+    abstract static class GuardIntNode extends Node {
+
+        public abstract boolean execute(int left, int comparison);
+
+        @Specialization
+        protected boolean s0(@SuppressWarnings("unused") int arg0, int comparison) {
+            return arg0 == comparison;
+        }
+
+    }
+
+    abstract static class FallbackGuardWithCachesNode extends SlowPathListenerNode {
+
+        abstract int execute(int left);
+
+        @Specialization(guards = {"guard0.execute(v, 0)"}, limit = "1")
+        int s0(int v,
+                        @Cached GuardIntNode guard0,
+                        @Cached GuardIntNode guard1) {
+            assertNotNull(guard1);
+            return 0;
+        }
+
+        @Specialization(guards = {"guard0.execute(v, 1)", "!guard1.execute(v, 2)"}, limit = "1")
+        int s1(int v,
+                        @Cached GuardIntNode guard0,
+                        @Cached GuardIntNode guard1,
+                        @Cached GuardIntNode guard2) {
+            assertNotNull(guard2);
+            return 1;
+        }
+
+        @Specialization(guards = {"guard0.execute(v, 3)", "!guard1.execute(v, 4)"}, limit = "1")
+        int s1(int v,
+                        @Cached GuardIntNode guard0,
+                        @Cached GuardIntNode guard1,
+                        @Cached GuardIntNode guard2,
+                        @Cached GuardIntNode guard3) {
+            assertNotNull(guard3);
+            return 2;
+        }
+
+        @SuppressWarnings("unused")
+        @Fallback
+        public static int doGeneric(int v) {
+            return -1;
+        }
+    }
+
+    /*
+     * Test for GR-33857.
+     */
+    @Test
+    public void testFallbackGuardWithCachesNode() {
+        FallbackGuardWithCachesNode node;
+
+        int[] values = new int[]{0, 1, 3};
+        int[] fallback = new int[]{2, 4, 5};
+
+        for (int f0 = 0; f0 < 3; f0++) {
+            for (int f1 = 0; f1 < 3; f1++) {
+                for (int v0 = 0; v0 < 3; v0++) {
+                    for (int v1 = 0; v1 < 3; v1++) {
+                        node = FallbackGuardWithCachesNodeGen.create();
+                        assertEquals(-1, node.execute(fallback[f0]));
+                        assertEquals(-1, node.execute(fallback[f1]));
+                        assertEquals(v0, node.execute(values[v0]));
+                        assertEquals(v1, node.execute(values[v1]));
+
+                        // must be stable now
+                        int slowPathCount = node.specializeCount;
+                        assertEquals(v1, node.execute(values[v1]));
+                        assertEquals(v0, node.execute(values[v0]));
+                        assertEquals(-1, node.execute(fallback[f1]));
+                        assertEquals(-1, node.execute(fallback[f0]));
+                        assertEquals(slowPathCount, node.specializeCount);
+
+                        node = FallbackGuardWithCachesNodeGen.create();
+                        assertEquals(-1, node.execute(fallback[f0]));
+                        assertEquals(v0, node.execute(values[v0]));
+                        assertEquals(-1, node.execute(fallback[f1]));
+                        assertEquals(v1, node.execute(values[v1]));
+
+                        // must be stable now
+                        slowPathCount = node.specializeCount;
+                        assertEquals(v1, node.execute(values[v1]));
+                        assertEquals(-1, node.execute(fallback[f1]));
+                        assertEquals(v0, node.execute(values[v0]));
+                        assertEquals(-1, node.execute(fallback[f0]));
+                        assertEquals(slowPathCount, node.specializeCount);
+
+                        node = FallbackGuardWithCachesNodeGen.create();
+                        assertEquals(v0, node.execute(values[v0]));
+                        assertEquals(-1, node.execute(fallback[f0]));
+                        assertEquals(-1, node.execute(fallback[f1]));
+                        assertEquals(v1, node.execute(values[v1]));
+
+                        // must be stable now
+                        slowPathCount = node.specializeCount;
+                        assertEquals(v1, node.execute(values[v1]));
+                        assertEquals(-1, node.execute(fallback[f1]));
+                        assertEquals(-1, node.execute(fallback[f0]));
+                        assertEquals(v0, node.execute(values[v0]));
+                        assertEquals(slowPathCount, node.specializeCount);
+
+                        node = FallbackGuardWithCachesNodeGen.create();
+                        assertEquals(v0, node.execute(values[v0]));
+                        assertEquals(v1, node.execute(values[v1]));
+                        assertEquals(-1, node.execute(fallback[f0]));
+                        assertEquals(-1, node.execute(fallback[f1]));
+
+                        // must be stable now
+                        slowPathCount = node.specializeCount;
+                        assertEquals(-1, node.execute(fallback[f1]));
+                        assertEquals(-1, node.execute(fallback[f0]));
+                        assertEquals(v1, node.execute(values[v1]));
+                        assertEquals(v0, node.execute(values[v0]));
+                        assertEquals(slowPathCount, node.specializeCount);
+
+                    }
+                }
+            }
+        }
+
+    }
 }
