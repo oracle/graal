@@ -239,7 +239,7 @@ Depending on the use case, it can hinder readability to repeat individual inlini
 
 Computing the overhead now becomes more tricky. We need to understand how many state bits each node requires to keep track of active specializations.
 That computation is generally implementation specific and subject to change. However, a good rule of thumb is that the DSL requires one bit per declared specialization.
-Implicit casts and `@Fallback` annotations may further increase that requirement.
+Implicit casts, replace rules, `@Fallback` and specializations with multiple instances may further increase the number of required state bits.
 
 For this example, each `AddAbsNode` requires 5 bits. 2 bits for each of the `AbsNode` usages and one bit for the `AddAbsNode` specializations.
 The `Add4AbsNode` uses three instances of `AddAbsNode`, has one specialization, and therefore needs `3 * 5 + 1` state bits in total.
