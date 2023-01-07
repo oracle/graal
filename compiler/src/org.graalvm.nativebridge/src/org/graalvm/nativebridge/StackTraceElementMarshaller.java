@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,33 +24,36 @@
  */
 package org.graalvm.nativebridge;
 
-final class DefaultStackTraceMarshaller implements BinaryMarshaller<StackTraceElement[]> {
+final class StackTraceElementMarshaller implements BinaryMarshaller<StackTraceElement> {
 
-    static final DefaultStackTraceMarshaller INSTANCE = new DefaultStackTraceMarshaller();
+    static final StackTraceElementMarshaller INSTANCE = new StackTraceElementMarshaller();
 
-    private DefaultStackTraceMarshaller() {
+    private StackTraceElementMarshaller() {
+    }
+
+    private static final int STACK_TRACE_ELEMENT_SIZE_ESTIMATE = 100;
+
+    @Override
+    public StackTraceElement read(BinaryInput in) {
+        String className = in.readUTF();
+        String methodName = in.readUTF();
+        String fileName = in.readUTF();
+        fileName = fileName.isEmpty() ? null : fileName;
+        int lineNumber = in.readInt();
+        return new StackTraceElement(className, methodName, fileName, lineNumber);
     }
 
     @Override
-    public StackTraceElement[] read(BinaryInput in) {
-        int len = in.readInt();
-        StackTraceElement[] res = new StackTraceElement[len];
-        for (int i = 0; i < len; i++) {
-            res[i] = StackTraceElementMarshaller.INSTANCE.read(in);
-        }
-        return res;
+    public void write(BinaryOutput out, StackTraceElement stackTraceElement) {
+        out.writeUTF(stackTraceElement.getClassName());
+        out.writeUTF(stackTraceElement.getMethodName());
+        String fileName = stackTraceElement.getFileName();
+        out.writeUTF(fileName == null ? "" : fileName);
+        out.writeInt(stackTraceElement.getLineNumber());
     }
 
     @Override
-    public void write(BinaryOutput out, StackTraceElement[] stack) {
-        out.writeInt(stack.length);
-        for (StackTraceElement stackTraceElement : stack) {
-            StackTraceElementMarshaller.INSTANCE.write(out, stackTraceElement);
-        }
-    }
-
-    @Override
-    public int inferSize(StackTraceElement[] object) {
-        return object.length == 0 ? 0 : object.length * StackTraceElementMarshaller.INSTANCE.inferSize(object[0]);
+    public int inferSize(StackTraceElement object) {
+        return STACK_TRACE_ELEMENT_SIZE_ESTIMATE;
     }
 }

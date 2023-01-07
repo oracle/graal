@@ -1113,8 +1113,12 @@ abstract class AbstractBridgeParser {
         }
 
         static MarshallerData marshalled(TypeMirror forType, DirectionData in, DirectionData out, List<? extends AnnotationMirror> annotations) {
-            String name = marshallerName(forType, annotations);
-            return new MarshallerData(Kind.CUSTOM, forType, name, false, false, true, in, out, annotations, null, null);
+            TypeMirror useType = forType;
+            while (useType.getKind() == TypeKind.ARRAY) {
+                useType = ((ArrayType) useType).getComponentType();
+            }
+            String name = marshallerName(useType, annotations);
+            return new MarshallerData(Kind.CUSTOM, useType, name, false, false, true, in, out, annotations, null, null);
         }
 
         static MarshallerData reference(DeclaredType startPointType, AnnotationMirror referenceRegistrationAnnotation, boolean useCustomReceiverAccessor,

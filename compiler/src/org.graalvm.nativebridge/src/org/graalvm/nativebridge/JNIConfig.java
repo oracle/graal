@@ -216,8 +216,9 @@ public final class JNIConfig {
             this.binaryMarshallers = new HashMap<>();
             this.annotationBinaryMarshallers = new HashMap<>();
             // Register default marshallers
+            this.binaryMarshallers.put(String.class, BinaryMarshaller.nullable(new StringMarshaller()));
             this.binaryMarshallers.put(Throwable.class, new DefaultThrowableMarshaller());
-            this.binaryMarshallers.put(StackTraceElement[].class, defaultStackTraceMarshaller());
+            this.binaryMarshallers.put(StackTraceElement.class, StackTraceElementMarshaller.INSTANCE);
         }
 
         /**

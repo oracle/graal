@@ -277,7 +277,22 @@ abstract class AbstractBridgeGenerator {
             }
             switch (e.marshallerData.kind) {
                 case CUSTOM:
-                    builder.invoke(e.marshallerData.name, "inferSize", e.parameterName);
+                    if (e.parameterType.getKind() == TypeKind.ARRAY) {
+                        TypeMirror componentType = ((ArrayType) e.parameterType).getComponentType();
+                        if (componentType.getKind() == TypeKind.ARRAY) {
+                            // For multidimensional arrays it's impossible to infer size in a
+                            // constant time, because any sub-array may be null.
+                            // We rather use a constant estimate.
+                            builder.write("128");
+                        } else {
+                            CharSequence firstElement = new CodeBuilder(builder).arrayElement(e.parameterName, "0").build();
+                            builder.memberSelect(types.boxedClass(types.getPrimitiveType(TypeKind.INT)).asType(), "BYTES", false).write(" + ").write("(").write(e.parameterName).write(
+                                            " != null && ").memberSelect(e.parameterName, "length", false).write(" > 0 ? ").memberSelect(e.parameterName, "length", false).write(" * ").invoke(
+                                                            e.marshallerData.name, "inferSize", firstElement).write(" : 0").write(")");
+                        }
+                    } else {
+                        builder.invoke(e.marshallerData.name, "inferSize", e.parameterName);
+                    }
                     break;
                 case REFERENCE:
                     if (e.parameterType.getKind() == TypeKind.ARRAY) {
@@ -440,7 +455,8 @@ abstract class AbstractBridgeGenerator {
         }
 
         @SuppressWarnings("unused")
-        CharSequence preUnmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence jniEnvFieldName) {
+        CharSequence preUnmarshallResult(CodeBuilder currentBuilder, TypeMirror resultType, CharSequence invocationSnippet, CharSequence receiver, CharSequence marshalledResultInput,
+                        CharSequence jniEnvFieldName) {
             return null;
         }
 
@@ -579,6 +595,102 @@ abstract class AbstractBridgeGenerator {
                         throw new IllegalArgumentException("Unsupported kind " + type.getKind());
                 }
             }
+        }
+
+        final void writeCustomObject(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledParametersOutput) {
+            if (parameterType.getKind() == TypeKind.ARRAY) {
+                writeCustomObjectArray(currentBuilder, (ArrayType) parameterType, parameterName, marshalledParametersOutput);
+            } else {
+                currentBuilder.lineStart().invoke(marshallerData.name, "write", marshalledParametersOutput, parameterName).lineEnd(";");
+            }
+        }
+
+        final void readCustomObject(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledParametersInput) {
+            if (parameterType.getKind() == TypeKind.ARRAY) {
+                readCustomObjectArray(currentBuilder, (ArrayType) parameterType, parameterName, marshalledParametersInput);
+            } else {
+                currentBuilder.lineStart().write(parameterType).space().write(parameterName).write(" = ").invoke(marshallerData.name, "read", marshalledParametersInput).lineEnd(";");
+            }
+        }
+
+        final void updateCustomObject(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledParametersInput, boolean inArray) {
+            if (parameterType.getKind() == TypeKind.ARRAY) {
+                updateCustomObjectArray(currentBuilder, (ArrayType) parameterType, parameterName, marshalledParametersInput);
+            } else {
+                if (inArray) {
+                    // For an array element, we cannot use BinaryInput#update, but we need to
+                    // re-read the whole element. Java array is a covariant type and the array
+                    // element may change its type.
+                    currentBuilder.lineStart().write(parameterName).write(" = ").invoke(marshallerData.name, "read", marshalledParametersInput).lineEnd(";");
+                } else {
+                    currentBuilder.lineStart().invoke(marshallerData.name, "update", marshalledParametersInput, parameterName).lineEnd(";");
+                }
+            }
+        }
+
+        private void writeCustomObjectArray(CodeBuilder currentBuilder, ArrayType parameterType, CharSequence parameterName, CharSequence marshalledParametersOutput) {
+            currentBuilder.lineStart().write("if (").write(parameterName).write(" != null)").lineEnd(" {");
+            currentBuilder.indent();
+            CharSequence len = new CodeBuilder(currentBuilder).memberSelect(parameterName, "length", false).build();
+            currentBuilder.lineStart().invoke(marshalledParametersOutput, "writeInt", len).lineEnd(";");
+            TypeMirror componentType = parameterType.getComponentType();
+            CharSequence componentVariable = parameterName + "Element";
+            currentBuilder.lineStart().forEachLoop(componentType, componentVariable, parameterName).lineEnd(" {");
+            currentBuilder.indent();
+            writeCustomObject(currentBuilder, componentType, componentVariable, marshalledParametersOutput);
+            currentBuilder.dedent();
+            currentBuilder.line("}");
+            currentBuilder.dedent();
+            currentBuilder.line("} else {");
+            currentBuilder.indent();
+            currentBuilder.lineStart().invoke(marshalledParametersOutput, "writeInt", "-1").lineEnd(";");
+            currentBuilder.dedent();
+            currentBuilder.line("}");
+        }
+
+        private void readCustomObjectArray(CodeBuilder currentBuilder, ArrayType parameterType, CharSequence parameterName, CharSequence marshalledParametersInput) {
+            CharSequence len = parameterName + "Length";
+            currentBuilder.lineStart().write(types.getPrimitiveType(TypeKind.INT)).space().write(len).write(" = ").invoke(marshalledParametersInput, "readInt").lineEnd(";");
+            currentBuilder.lineStart().write(parameterType).space().write(parameterName).lineEnd(";");
+            currentBuilder.lineStart().write("if (").write(len).write(" != -1)").lineEnd(" {");
+            currentBuilder.indent();
+            TypeMirror componentType = parameterType.getComponentType();
+            currentBuilder.lineStart(parameterName).write(" = ").newArray(componentType, len).lineEnd(";");
+            CharSequence index = parameterName + "Index";
+            List<CharSequence> init = List.of(new CodeBuilder(currentBuilder).write(types.getPrimitiveType(TypeKind.INT)).space().write(index).write(" = 0").build());
+            CharSequence test = new CodeBuilder(currentBuilder).write(index).write(" < ").write(len).build();
+            List<CharSequence> increment = List.of(new CodeBuilder(currentBuilder).write(index).write("++").build());
+            currentBuilder.lineStart().forLoop(init, test, increment).lineEnd(" {");
+            currentBuilder.indent();
+            CharSequence componentVariable = parameterName + "Element";
+            readCustomObject(currentBuilder, componentType, componentVariable, marshalledParametersInput);
+            currentBuilder.lineStart().arrayElement(parameterName, index).write(" = ").write(componentVariable).lineEnd(";");
+            currentBuilder.dedent();
+            currentBuilder.line("}");
+            currentBuilder.dedent();
+            currentBuilder.line("} else {");
+            currentBuilder.indent();
+            currentBuilder.lineStart(parameterName).write(" = null").lineEnd(";");
+            currentBuilder.dedent();
+            currentBuilder.line("}");
+        }
+
+        private void updateCustomObjectArray(CodeBuilder currentBuilder, ArrayType parameterType, CharSequence parameterName, CharSequence marshalledParametersInput) {
+            CharSequence len = parameterName + "Length";
+            currentBuilder.lineStart().write(types.getPrimitiveType(TypeKind.INT)).space().write(len).write(" = ").invoke(marshalledParametersInput, "readInt").lineEnd(";");
+            currentBuilder.lineStart().write("if (").write(len).write(" != -1)").lineEnd(" {");
+            currentBuilder.indent();
+            CharSequence index = parameterName + "Index";
+            List<CharSequence> init = List.of(new CodeBuilder(currentBuilder).write(types.getPrimitiveType(TypeKind.INT)).space().write(index).write(" = 0").build());
+            CharSequence test = new CodeBuilder(currentBuilder).write(index).write(" < ").write(len).build();
+            List<CharSequence> increment = List.of(new CodeBuilder(currentBuilder).write(index).write("++").build());
+            currentBuilder.lineStart().forLoop(init, test, increment).lineEnd(" {");
+            currentBuilder.indent();
+            updateCustomObject(currentBuilder, parameterType.getComponentType(), new CodeBuilder(currentBuilder).arrayElement(parameterName, index).build(), marshalledParametersInput, true);
+            currentBuilder.dedent();
+            currentBuilder.line("}");
+            currentBuilder.dedent();
+            currentBuilder.line("}");
         }
 
         private CharSequence createProxy(CodeBuilder builder, CharSequence commonFactoryMethod, CharSequence jniFactoryMethod, CharSequence nativeFactoryMethod, List<CharSequence> args) {
@@ -865,11 +977,13 @@ abstract class AbstractBridgeGenerator {
 
     static final class PreUnmarshallResult {
         final CharSequence result;
+        final CharSequence binaryInputResourcesToFree;
         final CharSequence binaryInput;
         final boolean unmarshalled;
 
-        PreUnmarshallResult(CharSequence result, CharSequence binaryInput, boolean unmarshalled) {
+        PreUnmarshallResult(CharSequence result, CharSequence binaryInputResourcesToFree, CharSequence binaryInput, boolean unmarshalled) {
             this.result = result;
+            this.binaryInputResourcesToFree = binaryInputResourcesToFree;
             this.binaryInput = binaryInput;
             this.unmarshalled = unmarshalled;
         }

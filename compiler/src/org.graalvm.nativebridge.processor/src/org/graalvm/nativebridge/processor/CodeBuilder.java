@@ -334,6 +334,11 @@ final class CodeBuilder {
         return write(")");
     }
 
+    CodeBuilder forEachLoop(TypeMirror componentType, CharSequence variable, CharSequence iterable) {
+        write("for (").write(componentType).space().write(variable).write(" : ").write(iterable).write(")");
+        return this;
+    }
+
     CodeBuilder arrayElement(CharSequence array, CharSequence index) {
         return write(array).write("[").write(index).write("]");
     }

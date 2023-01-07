@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.processor.test.nativetohs;
+package org.graalvm.nativebridge;
 
-import org.graalvm.jniutils.HSObject;
-import org.graalvm.jniutils.JNI.JNIEnv;
-import org.graalvm.jniutils.JNI.JObject;
-import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
-import org.graalvm.nativebridge.Idempotent;
-import org.graalvm.nativebridge.Out;
-import org.graalvm.nativebridge.processor.test.CustomMarshallerService;
-import org.graalvm.nativebridge.processor.test.TestJNIConfig;
+/**
+ * BinaryMarshaller used to marshall string array components.
+ */
+final class StringMarshaller implements BinaryMarshaller<String> {
 
-import java.time.Duration;
-import java.util.Map;
+    private static final int STRING_SIZE_ESTIMATE = 32;
 
-@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
-abstract class HSCustomMarshallerTest extends HSObject implements CustomMarshallerService {
-
-    HSCustomMarshallerTest(JNIEnv env, JObject handle) {
-        super(env, handle);
+    @Override
+    public String read(BinaryInput in) {
+        return in.readUTF();
     }
 
-    @Idempotent
     @Override
-    public abstract Map<String, String> getProperties();
+    public void write(BinaryOutput out, String str) {
+        out.writeUTF(str);
+    }
 
     @Override
-    public abstract void fillDurations(@Out Duration[] durations);
+    public int inferSize(String object) {
+        return STRING_SIZE_ESTIMATE;
+    }
 }
