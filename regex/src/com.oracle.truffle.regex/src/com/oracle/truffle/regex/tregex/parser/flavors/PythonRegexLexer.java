@@ -161,6 +161,12 @@ public final class PythonRegexLexer extends RegexLexer {
         this.mode = mode;
         this.globalFlags = new PythonFlags(source.getFlags());
         parseInlineGlobalFlags();
+        if (globalFlags.isVerbose() && source.getFlags().indexOf('x') == -1) {
+            // The global verbose flag was set inside the expression. Let's scan it for global
+            // flags again.
+            globalFlags = new PythonFlags(source.getFlags()).addFlag('x');
+            parseInlineGlobalFlags();
+        }
     }
 
     private static int lookupCharacterByName(String characterName) {
@@ -181,29 +187,81 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     private void parseInlineGlobalFlags() {
-        while (findChars('[', '(')) {
+        Deque<Boolean> groupVerbosityStack = new ArrayDeque<>();
+        groupVerbosityStack.push(globalFlags.isVerbose());
+        while (findChars('[', '(', ')', '#')) {
             if (lookbehind('\\')) {
                 advance();
-            } else if (consumeChar() == '[') {
-                // skip first char after '[' because a ']' directly after the opening bracket
-                // doesn't close the character class in python
-                advance();
-                // find end of character class
-                while (findChars(']')) {
-                    if (!lookbehind('\\')) {
-                        break;
-                    }
-                    advance();
-                }
             } else {
-                assert lookbehind('(');
-                if (consumingLookahead("?")) {
-                    int length = count(PythonFlags::isValidFlagChar);
-                    if (position + length < pattern.length() && pattern.charAt(position + length) == ')') {
-                        for (int i = 0; i < length; i++) {
-                            globalFlags = addFlag(globalFlags, consumeChar());
+                switch (consumeChar()) {
+                    case '[':
+                        // skip first char after '[' because a ']' directly after the opening
+                        // bracket doesn't close the character class in python
+                        advance();
+                        // find end of character class
+                        while (findChars(']')) {
+                            if (!lookbehind('\\')) {
+                                break;
+                            }
+                            advance();
                         }
-                    }
+                        break;
+                    case '(':
+                        if (consumingLookahead("?") && !atEnd()) {
+                            int ch = consumeChar();
+                            if (ch == '#') {
+                                while (findChars(')')) {
+                                    if (!lookbehind('\\')) {
+                                        break;
+                                    }
+                                    advance();
+                                }
+                            } else {
+                                PythonFlags positiveFlags = PythonFlags.EMPTY_INSTANCE;
+                                while (!atEnd() && PythonFlags.isValidFlagChar(ch)) {
+                                    positiveFlags = addFlag(positiveFlags, ch);
+                                    ch = consumeChar();
+                                }
+                                if (!positiveFlags.equals(PythonFlags.EMPTY_INSTANCE) || ch == '-') {
+                                    switch (ch) {
+                                        case ')':
+                                            globalFlags = globalFlags.addFlags(positiveFlags);
+                                            break;
+                                        case ':':
+                                            groupVerbosityStack.push(groupVerbosityStack.peek() || positiveFlags.isVerbose());
+                                            break;
+                                        case '-':
+                                            ch = consumeChar();
+                                            PythonFlags negativeFlags = PythonFlags.EMPTY_INSTANCE;
+                                            while (!atEnd() && PythonFlags.isValidFlagChar(ch)) {
+                                                negativeFlags = negativeFlags.addFlag(ch);
+                                                ch = consumeChar();
+                                            }
+                                            groupVerbosityStack.push((groupVerbosityStack.peek() || positiveFlags.isVerbose()) && !negativeFlags.isVerbose());
+                                            break;
+                                        default:
+                                            // malformed local flags
+                                            break;
+                                    }
+                                } else {
+                                    // not inline flags after all
+                                    groupVerbosityStack.push(groupVerbosityStack.peek());
+                                }
+                            }
+                        } else {
+                            groupVerbosityStack.push(groupVerbosityStack.peek());
+                        }
+                        break;
+                    case ')':
+                        if (groupVerbosityStack.size() > 1) {
+                            groupVerbosityStack.pop();
+                        }
+                        break;
+                    case '#':
+                        if (groupVerbosityStack.peek() && findChars('\n')) {
+                            advance();
+                        }
+                        break;
                 }
             }
         }

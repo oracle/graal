@@ -351,6 +351,40 @@ public class PythonTests extends RegexTestBase {
     }
 
     @Test
+    public void testInlineGlobalFlagsInComments() {
+        // Inline flags that are commented out should be ignored...
+        // ...when the verbose flag is passed to re.compile,
+        test("#(?i)\nfoo", "x", "foo", 0, true, 0, 3, -1);
+        test("#(?i)\nfoo", "x", "FOO", 0, false);
+        // when the verbose flag is set inline, either before or after,
+        test("(?x)#(?i)\nfoo", "", "foo", 0, true, 0, 3, -1);
+        test("(?x)#(?i)\nfoo", "", "FOO", 0, false);
+        test("#(?i)\n(?x)foo", "", "foo", 0, true, 0, 3, -1);
+        test("#(?i)\n(?x)foo", "", "FOO", 0, false);
+        // and when the verbose flag is set in a local group.
+        test("(?x:#(?i)\n)foo", "", "foo", 0, true, 0, 3, -1);
+        test("(?x:#(?i)\n)foo", "", "FOO", 0, false);
+        // The (?x) inline flag can be hidden in a comment.
+        test("#(?x)(?i)\nfoo", "", "foo", 0, true, 0, 3, -1);
+        test("#(?x)(?i)\nfoo", "", "FOO", 0, false);
+
+        // Comments should be disabled in (?-x:...) blocks, inline flags within should be respected.
+        test("(?x:(?-x:#(?i)\n))foo", "", "#\nfoo", 0, true, 0, 5, -1);
+        test("(?x:(?-x:#(?i)\n))foo", "", "#\nFOO", 0, true, 0, 5, -1);
+        // This throws an internal exception inside CPython's sre due to a bug, but it should work.
+        test("(?-x:#(?i)\n)foo", "x", "#\nfoo", 0, true, 0, 5, -1);
+        test("(?-x:#(?i)\n)foo", "x", "#\nFOO", 0, true, 0, 5, -1);
+        test("(?x)(?-x:#(?i)\n)foo", "", "#\nfoo", 0, true, 0, 5, -1);
+        test("(?x)(?-x:#(?i)\n)foo", "", "#\nFOO", 0, true, 0, 5, -1);
+
+        test("(?##)(?i)(?#\n)foo", "x", "foo", 0, true, 0, 3, -1);
+        test("(?##)(?i)(?#\n)foo", "x", "FOO", 0, true, 0, 3, -1);
+
+        test("(?#[)(?i)(?#])foo", "", "foo", 0, true, 0, 3, -1);
+        test("(?#[)(?i)(?#])foo", "", "FOO", 0, true, 0, 3, -1);
+    }
+
+    @Test
     public void testSyntaxErrors() {
         expectSyntaxError("()\\2", "", "invalid group reference 2", 3);
         expectSyntaxError("()\\378", "", "invalid group reference 37", 3);
