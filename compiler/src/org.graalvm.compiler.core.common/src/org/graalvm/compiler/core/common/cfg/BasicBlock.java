@@ -256,6 +256,14 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
         }
     }
 
+    public final boolean dominates(BasicBlock<?> other) {
+        return AbstractControlFlowGraph.dominates(this, other);
+    }
+
+    public final boolean strictlyDominates(BasicBlock<T> other) {
+        return AbstractControlFlowGraph.strictlyDominates(this, other);
+    }
+
     @Override
     public String toString() {
         return "B" + (int) id;

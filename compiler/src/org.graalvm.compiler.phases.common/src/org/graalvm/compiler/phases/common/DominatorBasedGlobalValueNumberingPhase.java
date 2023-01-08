@@ -29,7 +29,6 @@ import java.util.Arrays;
 import java.util.Optional;
 
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.CounterKey;
@@ -239,7 +238,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                     tryLICM = true;
                     for (LoopExitNode lex : ((LoopBeginNode) hirLoop.getHeader().getBeginNode()).loopExits()) {
                         HIRBlock lexBLock = cfg.blockFor(lex);
-                        tryLICM &= AbstractControlFlowGraph.strictlyDominates(b, lexBLock);
+                        tryLICM &= b.strictlyDominates(lexBLock);
                         if (!tryLICM) {
                             break checkLICM;
                         }
@@ -247,7 +246,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                     for (HIRBlock loopBlock : hirLoop.getBlocks()) {
                         // if(sth) deopt patterns are also exits
                         if (loopBlock.getEndNode() instanceof ControlSinkNode) {
-                            tryLICM &= AbstractControlFlowGraph.strictlyDominates(b, loopBlock);
+                            tryLICM &= b.strictlyDominates(loopBlock);
                             if (!tryLICM) {
                                 break checkLICM;
                             }
@@ -599,7 +598,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
 
                 if (invariantInLoop != null) {
                     HIRBlock loopDefBlock = cfg.blockFor(invariantInLoop.loopBegin()).getLoop().getHeader().getDominator();
-                    if (AbstractControlFlowGraph.strictlyDominates(loopDefBlock, defBlock)) {
+                    if (loopDefBlock.strictlyDominates(defBlock)) {
                         /*
                          * The LICM location strictly dominates the GVN location so it must be the
                          * final location. Move the GVN node to the LICM location and then perform
@@ -609,7 +608,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                             GraalError.shouldNotReachHere("tryPerformLICM must succeed for " + edgeDataEqual);
                         }
                     } else {
-                        GraalError.guarantee(AbstractControlFlowGraph.dominates(defBlock, loopDefBlock), "No dominance relation between GVN and LICM locations: %s and %s", defBlock, loopDefBlock);
+                        GraalError.guarantee(defBlock.dominates(loopDefBlock), "No dominance relation between GVN and LICM locations: %s and %s", defBlock, loopDefBlock);
                     }
                 }
 

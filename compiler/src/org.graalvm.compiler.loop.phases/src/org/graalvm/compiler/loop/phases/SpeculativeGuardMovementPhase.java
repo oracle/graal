@@ -28,7 +28,6 @@ import java.util.EnumSet;
 import java.util.Optional;
 
 import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -298,7 +297,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                     } else {
                         inputEarliest = earliestBlock(input);
                     }
-                    earliest = (earliest == null || AbstractControlFlowGraph.strictlyDominates(earliest, inputEarliest)) ? inputEarliest : earliest;
+                    earliest = (earliest == null || earliest.strictlyDominates(inputEarliest)) ? inputEarliest : earliest;
                 }
             }
             if (earliest == null) {
@@ -470,14 +469,14 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                  * block is outside the loop while the condition is still rooted inside the loop. We
                  * need to account for this case.
                  */
-                if (!AbstractControlFlowGraph.dominates(earliestBlock(iv.getLoop().counted().getBody()), guardAnchorBlock)) {
+                if (!earliestBlock(iv.getLoop().counted().getBody()).dominates(guardAnchorBlock)) {
                     // determine if the condition is inside the loop
                     if (!iv.getLoop().whole().contains(guard.getCondition())) {
                         return false;
                     }
                 }
             } else {
-                if (!AbstractControlFlowGraph.dominates(earliestBlock(iv.getLoop().counted().getBody()), guardAnchorBlock)) {
+                if (!earliestBlock(iv.getLoop().counted().getBody()).dominates(guardAnchorBlock)) {
                     debug.log("shouldOptimizeCompare(%s):guard is not inside loop", guard);
                     return false; // guard must come from inside the loop
                 }
@@ -544,9 +543,9 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
              * If the guard anchor is already outside the loop, the condition may still be inside
              * the loop, thus w still want to try hoisting the guard.
              */
-            if (!isInverted(iv.getLoop()) && !AbstractControlFlowGraph.dominates(guardAnchorBlock, iv.getLoop().loop().getHeader())) {
+            if (!isInverted(iv.getLoop()) && !guardAnchorBlock.dominates(iv.getLoop().loop().getHeader())) {
                 if (!ignoreProfiles && !shouldHoistBasedOnFrequency(guardAnchorBlock, ivLoop.getHeader().getDominator())) {
-                    debug.log("hoisting is not beneficial based on fequency", guard);
+                    debug.log("hoisting is not beneficial based on frequency", guard);
                     return false;
                 }
             }
@@ -599,7 +598,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 debug.log("shouldOptimizeInstanceOf(%s): condition loop is not a parent of anchor loop", guard);
                 return null;
             }
-            if (!AbstractControlFlowGraph.dominates(valueBlock, anchorBlock)) {
+            if (!valueBlock.dominates(anchorBlock)) {
                 // this can happen when the value comes from *after* the exit of the anchor loop
                 debug.log("shouldOptimizeInstanceOf(%s): value block does not dominate loop header", guard);
                 return null;
@@ -629,7 +628,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
 
             if (forcedHoisting != null) {
                 newAnchorEarliest = forcedHoisting.getHeader().getDominator();
-                if (AbstractControlFlowGraph.strictlyDominates(anchorEarliest, newAnchorEarliest)) {
+                if (anchorEarliest.strictlyDominates(newAnchorEarliest)) {
                     /*
                      * Special case strip mined inverted loops: if the original guard of a strip
                      * mined inverted loop is already anchored outside the outer strip mined loop,
@@ -646,7 +645,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
 
             double minFrequency = anchorEarliest.getRelativeFrequency();
 
-            while (AbstractControlFlowGraph.strictlyDominates(conditionEarliest, b)) {
+            while (conditionEarliest.strictlyDominates(b)) {
                 HIRBlock candidateAnchor = b.getDominatorSkipLoops();
                 assert candidateAnchor.getLoopDepth() <= anchorEarliest.getLoopDepth() : " candidate anchor block at begin node " + candidateAnchor.getBeginNode() + " earliest anchor block " +
                                 anchorEarliest.getBeginNode() + " loop depth is not smaller equal for guard " + guard;
@@ -683,7 +682,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 return earliest;
             } else {
                 debug.log("Keep normal anchor edge");
-                return AbstractControlFlowGraph.strictlyDominates(conditionEarliest, anchorEarliest) ? anchorEarliest : conditionEarliest;
+                return conditionEarliest.strictlyDominates(anchorEarliest) ? anchorEarliest : conditionEarliest;
             }
         }
 
