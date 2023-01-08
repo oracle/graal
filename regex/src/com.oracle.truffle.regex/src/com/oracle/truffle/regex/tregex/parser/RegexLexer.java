@@ -215,7 +215,7 @@ public abstract class RegexLexer {
     protected abstract void handleOctalOutOfRange();
 
     /**
-     * Handle unfinished escape (e.g. {@code \x1}).
+     * Handle unfinished escape (e.g. {@code \}).
      */
     protected abstract void handleUnfinishedEscape();
 
@@ -250,20 +250,20 @@ public abstract class RegexLexer {
     protected abstract int parseCodePointInGroupName() throws RegexSyntaxException;
 
     /**
-     * Parse any escape sequence starting with {@code \}.
+     * Parse any escape sequence starting with {@code \} and the argument {@code c}.
      */
     protected abstract Token parseCustomEscape(char c);
 
     /**
      * Parse an escape character sequence (inside character class, or other escapes have already
-     * been tried) starting with {@code \}.
+     * been tried) starting with {@code \} and the argument {code c}.
      */
     protected abstract int parseCustomEscapeChar(char c, boolean inCharClass);
 
     /**
      * Parse an escape character sequence (inside character class, or other escapes have already
-     * been tried) starting with {@code \}. This method is called after all other means of parsing
-     * the escape sequence have been exhausted.
+     * been tried) starting with {@code \} and the code point {@code c}.This method is called after
+     * all other means of parsing the escape sequence have been exhausted.
      */
     protected abstract int parseCustomEscapeCharFallback(int c, boolean inCharClass);
 
@@ -276,6 +276,8 @@ public abstract class RegexLexer {
      * Parse group starting with {@code (<}.
      */
     protected abstract Token parseGroupLt();
+
+    /* input string access */
 
     protected boolean findChars(char... chars) {
         if (atEnd()) {
@@ -1014,8 +1016,6 @@ public abstract class RegexLexer {
     protected static boolean isDecimalDigit(int c) {
         return '0' <= c && c <= '9';
     }
-
-    /* input string access */
 
     protected static boolean isOctalDigit(int c) {
         return '0' <= c && c <= '7';
