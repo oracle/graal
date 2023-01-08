@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.core.match;
 
-import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.dominates;
-import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.strictlyDominates;
 import static org.graalvm.compiler.debug.DebugOptions.LogVerbose;
 
 import java.util.ArrayList;
@@ -311,12 +309,12 @@ public class MatchContext {
         for (Node in : node.inputs()) {
             if (in instanceof PhiNode) {
                 HIRBlock b = schedule.getNodeToBlockMap().get(((PhiNode) in).merge());
-                if (dominates(b, emitBlock)) {
+                if (b.dominates(emitBlock)) {
                     continue;
                 }
             } else {
                 HIRBlock b = schedule.getNodeToBlockMap().get(in);
-                if (strictlyDominates(b, emitBlock) || (b == emitBlock && schedule.getBlockToNodesMap().get(emitBlock).indexOf(in) <= emitIndex)) {
+                if (b.strictlyDominates(emitBlock) || (b == emitBlock && schedule.getBlockToNodesMap().get(emitBlock).indexOf(in) <= emitIndex)) {
                     continue;
                 }
             }

@@ -159,10 +159,8 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
             } else if (iterations > maxIterations) {
                 throw GraalError.shouldNotReachHere();
             }
-            // Peel the outermost loop first
-            while (l.getParent() != null) {
-                l = l.getParent();
-            }
+
+            l = l.getOutmostLoop();
 
             LoopEx loop = loops.loop(l);
             loop.loopBegin().markOsrLoop();

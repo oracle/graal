@@ -39,7 +39,6 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
@@ -920,7 +919,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                             break;
                         }
                     }
-                } else if (AbstractControlFlowGraph.dominates(testBlock, targetBlock)) {
+                } else if (testBlock.dominates(targetBlock)) {
                     return true;
                 }
             }

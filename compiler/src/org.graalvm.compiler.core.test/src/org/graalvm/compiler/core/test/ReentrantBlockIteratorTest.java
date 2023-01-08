@@ -29,7 +29,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
-import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.cfg.HIRBlock;
@@ -232,11 +231,6 @@ public class ReentrantBlockIteratorTest extends GraalCompilerTest {
             @Override
             protected VoidState cloneState(VoidState oldState) {
                 return voidState;
-            }
-
-            @Override
-            protected List<VoidState> processLoop(Loop<HIRBlock> loop, VoidState initialState) {
-                return ReentrantBlockIterator.processLoop(this, loop, initialState).exitStates;
             }
         };
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, false);

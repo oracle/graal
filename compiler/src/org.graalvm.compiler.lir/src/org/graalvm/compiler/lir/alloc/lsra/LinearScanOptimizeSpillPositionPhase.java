@@ -25,7 +25,6 @@
 package org.graalvm.compiler.lir.alloc.lsra;
 
 import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.commonDominator;
-import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.dominates;
 import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 
 import java.util.Iterator;
@@ -97,7 +96,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
                     }
                     // iterate all blocks where the interval has use positions
                     for (BasicBlock<?> splitBlock : blocksForInterval(splitChild)) {
-                        if (dominates(defBlock, splitBlock)) {
+                        if (defBlock.dominates(splitBlock)) {
                             debug.log("Split interval %s, block %s", splitChild, splitBlock);
                             if (spillBlock == null) {
                                 spillBlock = splitBlock;
@@ -144,7 +143,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
                 interval.setSpillState(SpillState.StoreAtDefinition);
                 return;
             }
-            assert dominates(defBlock, spillBlock);
+            assert defBlock.dominates(spillBlock);
             betterSpillPos.increment(debug);
             if (debug.isLogEnabled()) {
                 debug.log("Better spill position found (Block %s)", spillBlock);

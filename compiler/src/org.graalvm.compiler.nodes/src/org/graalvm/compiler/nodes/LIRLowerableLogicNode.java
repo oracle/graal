@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.extended;
-
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
+package org.graalvm.compiler.nodes;
 
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.NodeWithIdentity;
-import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.LIRLowerableLogicNode;
-import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.spi.LIRLowerable;
+import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-@NodeInfo(cycles = CYCLES_0, size = SIZE_0, allowedUsageTypes = {InputType.Condition})
-public final class OpaqueLogicNode extends LIRLowerableLogicNode implements NodeWithIdentity {
-    public static final NodeClass<OpaqueLogicNode> TYPE = NodeClass.create(OpaqueLogicNode.class);
+import static org.graalvm.compiler.nodeinfo.InputType.Condition;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
-    @Input(InputType.Condition) protected LogicNode value;
+@NodeInfo(allowedUsageTypes = {Condition}, size = SIZE_1)
+public abstract class LIRLowerableLogicNode extends LogicNode implements LIRLowerable {
 
-    public OpaqueLogicNode(LogicNode value) {
-        super(TYPE);
-        this.value = value;
+    public static final NodeClass<LIRLowerableLogicNode> TYPE = NodeClass.create(LIRLowerableLogicNode.class);
+
+    public LIRLowerableLogicNode(NodeClass<? extends LIRLowerableLogicNode> c) {
+        super(c);
     }
 
-    public LogicNode value() {
-        return value;
+    @Override
+    public void generate(NodeLIRBuilderTool gen) {
+        // Nothing to generate here, because this is handled specially by the emitBranch method in
+        // the LIR builder.
     }
 }
