@@ -389,7 +389,7 @@ public final class PythonRegexLexer extends RegexLexer {
 
     @Override
     protected void handleUnfinishedGroupComment() {
-        throw syntaxError(PyErrorMessages.UNTERMINATED_SUBPATTERN);
+        throw syntaxError(PyErrorMessages.UNTERMINATED_COMMENT);
     }
 
     @Override

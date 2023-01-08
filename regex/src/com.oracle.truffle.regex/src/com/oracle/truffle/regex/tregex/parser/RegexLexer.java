@@ -306,7 +306,7 @@ public abstract class RegexLexer {
                 skipWhitespace();
                 if (consumingLookahead("#")) {
                     skipComment('\n');
-                } else if (featureEnabledGroupComments() && consumingLookahead("(#")) {
+                } else if (featureEnabledGroupComments() && consumingLookahead("(?#")) {
                     if (!skipComment(')')) {
                         handleUnfinishedGroupComment();
                     }
@@ -314,7 +314,7 @@ public abstract class RegexLexer {
             } while (p != position);
         }
         if (featureEnabledGroupComments()) {
-            while (consumingLookahead("(#")) {
+            while (consumingLookahead("(?#")) {
                 if (!skipComment(')')) {
                     handleUnfinishedGroupComment();
                 }

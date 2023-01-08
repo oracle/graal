@@ -389,7 +389,7 @@ public class PythonTests extends RegexTestBase {
         expectSyntaxError("(?P<>)", "", "missing group name", 4);
         expectSyntaxError("(?P<?>)", "", "bad character in group name '?'", 4);
         expectSyntaxError("(?P=a)", "", "unknown group name 'a'", 4);
-        expectSyntaxError("(#", "", "missing ), unterminated subpattern", 0);
+        expectSyntaxError("(?#", "", "missing ), unterminated comment", 0);
         expectSyntaxError("(", "", "missing ), unterminated subpattern", 0);
         expectSyntaxError("(?i", "", "missing -, : or )", 3);
         expectSyntaxError("(?L", "", "bad inline flags: cannot use 'L' flag with a str pattern", 3);

@@ -39,8 +39,6 @@
 # SOFTWARE.
 
 import re
-from string import Template
-
 
 patterns = [
     r'()\2',
@@ -80,7 +78,7 @@ patterns = [
     r'(?P<>)',
     r'(?P<?>)',
     r'(?P=a)',
-    r'(#',
+    r'(?#',
     r'(',
     r'(?i',
     r'(?L',
@@ -90,6 +88,11 @@ patterns = [
     r'(?ij:)',
     r'(?i-i:)',
 ]
+
+def escape_backslash(string):
+    return re.sub(r'\\', r'\\\\', string)
+    # Disable this method for IDEs which auto-escape pasted backslashes.
+    # return string
 
 print("    @Test")
 print("    public void testSyntaxErrors() {")
@@ -102,7 +105,7 @@ for pattern in patterns:
         i = msg.find(position_msg)
         error_msg = msg[:i]
         position = int(msg[i + len(position_msg):])
-        print('        expectSyntaxError("%s", "", "%s", %d);' % (pattern, error_msg, position))
+        print('        expectSyntaxError("%s", "", "%s", %d);' % (escape_backslash(pattern), escape_backslash(error_msg), position))
         continue
     raise RuntimeError("no exception was thrown " + pattern)
 
