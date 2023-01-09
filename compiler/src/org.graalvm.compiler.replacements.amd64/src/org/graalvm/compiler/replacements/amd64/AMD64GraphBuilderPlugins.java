@@ -90,6 +90,7 @@ import org.graalvm.compiler.replacements.nodes.CountTrailingZerosNode;
 import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
 import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
 import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
+import org.graalvm.compiler.replacements.nodes.ReverseBitsNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -182,6 +183,14 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode mask) {
                 b.push(kind, b.append(new ShuffleBitsNode(value, mask, EXPAND)));
+                return true;
+            }
+        });
+
+        r.register(new InvocationPlugin("reverse", type) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                b.addPush(kind, new ReverseBitsNode(arg).canonical(null));
                 return true;
             }
         });

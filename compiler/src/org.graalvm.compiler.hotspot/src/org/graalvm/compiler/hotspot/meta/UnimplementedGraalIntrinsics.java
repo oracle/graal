@@ -453,9 +453,7 @@ public final class UnimplementedGraalIntrinsics {
                             "java/lang/Float.float16ToFloat(S)F",
                             "java/lang/Float.floatToFloat16(F)S",
                             "java/lang/Integer.compareUnsigned(II)I",
-                            "java/lang/Integer.reverse(I)I",
                             "java/lang/Long.compareUnsigned(JJ)I",
-                            "java/lang/Long.reverse(J)J",
                             "java/lang/Thread.findScopedValueBindings()Ljava/lang/Object;",
                             "java/lang/Thread.scopedValueCache()[Ljava/lang/Object;",
                             "java/lang/Thread.setScopedValueCache([Ljava/lang/Object;)V",
@@ -468,6 +466,13 @@ public final class UnimplementedGraalIntrinsics {
             add(toBeInvestigated,
                             "java/lang/Double.isFinite(D)Z",
                             "java/lang/Float.isFinite(F)Z");
+
+            if (arch instanceof AArch64) {
+                // not implemented yet, watch https://bugs.openjdk.org/browse/JDK-8296999
+                add(toBeInvestigated,
+                                "java/lang/Integer.reverse(I)I",
+                                "java/lang/Long.reverse(J)J");
+            }
         }
 
         if (arch instanceof AArch64) {

@@ -57,6 +57,7 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.RCR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.ROR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRVMOp.MULX;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMIOp.RORXQ;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VGF2P8AFFINEQB;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.B0;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.Z0;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig.Z1;
@@ -1111,7 +1112,9 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         MASK_NULL_XMM_AVX512DQ(CPUFeature.AVX512DQ, CPUFeature.AVX512DQ, null, EVEXFeatureAssertion.AVX512F_DQ_ALL, MASK, null, XMM, null),
         MASK_XMM_XMM_AVX512F_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512F_VL, MASK, XMM, XMM, null),
         AVX1_128ONLY_CLMUL(CPUFeature.AVX, null, CPUFeature.CLMUL, null, XMM, XMM, XMM, XMM),
-        AVX1_128ONLY_AES(CPUFeature.AVX, null, CPUFeature.AES, null, XMM, XMM, XMM, XMM);
+        AVX1_128ONLY_AES(CPUFeature.AVX, null, CPUFeature.AES, null, XMM, XMM, XMM, XMM),
+
+        AVX1_GFNI_AVX512F_VL(CPUFeature.AVX, CPUFeature.AVX, CPUFeature.GFNI, EVEXFeatureAssertion.AVX512F_VL, XMM, XMM, XMM, null);
 
         private final CPUFeature l128feature;
         private final CPUFeature l256feature;
@@ -2252,6 +2255,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMIOp VPCMPUD      = new VexRVMIOp("VPCMPUD",      P_66, M_0F3A, W0,  0x1E, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL,  EVEXTuple.FVM,      W0);
         public static final VexRVMIOp VPCMPUQ      = new VexRVMIOp("VPCMPUQ",      P_66, M_0F3A, W1,  0x1E, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL,  EVEXTuple.FVM,      W1);
 
+        // Galois Field New Instructions
+        public static final VexRVMIOp VGF2P8AFFINEQB = new VexRVMIOp("VGF2P8AFFINEQB", P_66, M_0F3A, W1, 0xCE, VEXOpAssertion.AVX1_GFNI_AVX512F_VL,  EVEXTuple.FVM, W1);
         // @formatter:on
 
         private VexRVMIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
@@ -3634,6 +3639,20 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void pmovzxdq(Register dst, Register src) {
         pmovSZx(dst, src, 0x35);
+    }
+
+    public final void gf2p8affineqb(Register dst, Register src, int imm8) {
+        assert supports(CPUFeature.GFNI);
+        assert inRC(XMM, dst) && inRC(XMM, src);
+
+        if (supports(CPUFeature.AVX)) {
+            VGF2P8AFFINEQB.emit(this, AVXSize.XMM, dst, dst, src, imm8);
+        } else {
+            simdPrefix(dst, dst, src, PD, P_0F3A, false);
+            emitByte(0xCE);
+            emitModRM(dst, src);
+            emitByte(imm8);
+        }
     }
 
     public final void push(Register src) {

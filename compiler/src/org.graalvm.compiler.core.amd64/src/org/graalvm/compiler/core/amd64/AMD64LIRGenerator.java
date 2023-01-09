@@ -83,6 +83,7 @@ import org.graalvm.compiler.lir.amd64.AMD64BigIntegerMultiplyToLenOp;
 import org.graalvm.compiler.lir.amd64.AMD64BigIntegerSquareToLenOp;
 import org.graalvm.compiler.lir.amd64.AMD64Binary;
 import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer;
+import org.graalvm.compiler.lir.amd64.AMD64BitSwapOp;
 import org.graalvm.compiler.lir.amd64.AMD64ByteSwapOp;
 import org.graalvm.compiler.lir.amd64.AMD64CacheWritebackOp;
 import org.graalvm.compiler.lir.amd64.AMD64CacheWritebackPostSyncOp;
@@ -602,6 +603,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitByteSwap(Value input) {
         Variable result = newVariable(LIRKind.combine(input));
         append(new AMD64ByteSwapOp(result, input));
+        return result;
+    }
+
+    @Override
+    public Variable emitBitSwap(Value input) {
+        Variable result = newVariable(LIRKind.combine(input));
+        append(new AMD64BitSwapOp(this, result, input));
         return result;
     }
 
