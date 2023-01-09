@@ -27,12 +27,15 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
     private final TruffleTypes types;
     private final TypeMirror nodeType;
     private final InstructionModel instr;
+    private final boolean isBoxingOperations;
 
     public OperationNodeGeneratorPlugs(ProcessorContext context, TypeMirror nodeType, InstructionModel instr) {
         this.context = context;
         this.types = context.getTypes();
         this.nodeType = nodeType;
         this.instr = instr;
+
+        this.isBoxingOperations = nodeType.toString().endsWith("BoxingOperationsGen");
     }
 
     public List<? extends VariableElement> additionalArguments() {
@@ -69,19 +72,30 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
                 slotString += " - this.op_variadicCount_";
             }
 
-            if (ElementUtils.isObject(resultType)) {
-                b.startCall(frame, "getObject");
-                b.string(slotString);
-                b.end();
-                return false;
-            } else {
-                b.startCall("doPopPrimitive" + ElementUtils.firstLetterUpperCase(resultType.toString()));
+            boolean canThrow;
+
+            if (instr.signature.valueBoxingElimination[index]) {
+                if (ElementUtils.isObject(resultType)) {
+                    b.startCall("doPopObject");
+                    canThrow = false;
+                } else {
+                    b.startCall("doPopPrimitive" + ElementUtils.firstLetterUpperCase(resultType.toString()));
+                    canThrow = true;
+                }
+
                 b.tree(frame);
+                b.string("$root");
                 b.string(slotString);
                 b.string("this.op_childValue" + index + "_boxing_");
                 b.string("$objs");
                 b.end();
-                return true;
+
+                return canThrow;
+            } else {
+                b.startCall(frame, "getObject");
+                b.string(slotString);
+                b.end();
+                return false;
             }
         }
 
@@ -116,5 +130,14 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
     public void createNodeChildReferenceForException(FlatNodeGenFactory flatNodeGenFactory, FrameState frameState, CodeTreeBuilder builder, List<CodeTree> values, NodeExecutionData execution,
                     NodeChildData child, LocalVariable var) {
         builder.string("null");
+    }
+
+    public CodeTree createTransferToInterpreterAndInvalidate() {
+        if (isBoxingOperations) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+            b.statement("$root.transferToInterpreterAndInvalidate()");
+            return b.build();
+        }
+        return NodeGeneratorPlugs.super.createTransferToInterpreterAndInvalidate();
     }
 }

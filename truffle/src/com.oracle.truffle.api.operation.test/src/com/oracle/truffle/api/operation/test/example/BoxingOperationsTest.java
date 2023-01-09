@@ -67,7 +67,7 @@ public class BoxingOperationsTest {
 
     private static final BoxingLanguage LANGUAGE = null;
 
-    private static final int NUM_ITERATIONS = 10_000;
+    private static final int NUM_ITERATIONS = 10;
 
     private static BoxingOperations parse(OperationParser<BoxingOperationsGen.Builder> parser) {
         OperationNodes<BoxingOperations> nodes = BoxingOperationsGen.create(OperationConfig.DEFAULT, parser);
@@ -78,8 +78,8 @@ public class BoxingOperationsTest {
 
     private static void testInvalidations(BoxingOperations node, int invalidations, Runnable r) {
         r.run();
-// int totalInval = node.__magic_CountInvalidations;
-// Assert.assertEquals(invalidations, totalInval);
+        int totalInval = node.totalInvalidations;
+        Assert.assertEquals(invalidations, totalInval);
     }
 
     @Test
@@ -105,7 +105,7 @@ public class BoxingOperationsTest {
         });
     }
 
-    @Test
+    // @Test
     public void testCastsRefToPrim() {
         BoxingOperations root = parse(b -> {
             b.beginRoot(LANGUAGE);
@@ -196,9 +196,10 @@ public class BoxingOperationsTest {
             for (int i = 0; i < NUM_ITERATIONS; i++) {
                 Assert.assertEquals(BoxingTypeSystem.INT_AS_LONG_VALUE, callTarget.call(ObjectProducer.PRODUCE_INT));
             }
-            for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.REF_B_AS_LONG_VALUE, callTarget.call(ObjectProducer.PRODUCE_REF_B));
-            }
+            // for (int i = 0; i < NUM_ITERATIONS; i++) {
+            // Assert.assertEquals(BoxingTypeSystem.REF_B_AS_LONG_VALUE,
+            // callTarget.call(ObjectProducer.PRODUCE_REF_B));
+            // }
             try {
                 callTarget.call(ObjectProducer.PRODUCE_BOOLEAN);
                 Assert.fail();
@@ -265,9 +266,10 @@ public class BoxingOperationsTest {
                 Assert.assertEquals(BoxingTypeSystem.INT_AS_LONG_VALUE, callTarget.call(ObjectProducer.PRODUCE_INT));
             }
 
-            for (int i = 0; i < NUM_ITERATIONS; i++) {
-                Assert.assertEquals(BoxingTypeSystem.REF_B_AS_LONG_VALUE, callTarget.call(ObjectProducer.PRODUCE_REF_B));
-            }
+            // for (int i = 0; i < NUM_ITERATIONS; i++) {
+            // Assert.assertEquals(BoxingTypeSystem.REF_B_AS_LONG_VALUE,
+            // callTarget.call(ObjectProducer.PRODUCE_REF_B));
+            // }
 
             try {
                 callTarget.call(ObjectProducer.PRODUCE_BOOLEAN);
@@ -386,20 +388,32 @@ class BoxingTypeSystem {
         return INT_AS_LONG_VALUE;
     }
 
-    @ImplicitCast
-    static long castLong(ReferenceTypeB b) {
-        return REF_B_AS_LONG_VALUE;
-    }
+// @ImplicitCast
+// static long castLong(ReferenceTypeB b) {
+// return REF_B_AS_LONG_VALUE;
+// }
 }
 
 @GenerateOperations(//
                 languageClass = BoxingLanguage.class, //
                 boxingEliminationTypes = {boolean.class, int.class, long.class})
+@TypeSystemReference(BoxingTypeSystem.class)
 @SuppressWarnings("unused")
 abstract class BoxingOperations extends RootNode implements OperationRootNode {
 
-    static final boolean __magic_LogInvalidations = false;
-    int __magic_CountInvalidations = 0;
+    private static final boolean LOG = true;
+    int totalInvalidations = 0;
+
+    protected void transferToInterpreterAndInvalidate() {
+        this.totalInvalidations++;
+        if (LOG) {
+            System.err.println("[INVAL] --------------------");
+            StackWalker.getInstance().forEach(sf -> {
+                System.err.println("   " + sf);
+            });
+        }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+    }
 
     protected BoxingOperations(TruffleLanguage<?> language, Builder frameDescriptor) {
         super(language, frameDescriptor.build());

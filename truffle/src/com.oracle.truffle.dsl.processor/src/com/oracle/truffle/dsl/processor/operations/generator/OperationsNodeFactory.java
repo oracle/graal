@@ -43,7 +43,6 @@ package com.oracle.truffle.dsl.processor.operations.generator;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createConstructorUsingFields;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createNeverPartOfCompilation;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createShouldNotReachHere;
-import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createTransferToInterpreterAndInvalidate;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.boxType;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterUpperCase;
 import static javax.lang.model.element.Modifier.ABSTRACT;
@@ -383,7 +382,7 @@ public class OperationsNodeFactory {
         b.startIf().string("(state & 0xffff) == 0xffff").end().startBlock();
         b.statement("break");
         b.end().startElseBlock();
-        b.tree(createTransferToInterpreterAndInvalidate());
+        b.tree(createTransferToInterpreterAndInvalidate("this"));
         b.end();
         b.end();
 
@@ -517,6 +516,7 @@ public class OperationsNodeFactory {
     private CodeExecutableElement createDoPopObject() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), context.getType(Object.class), "doPopObject");
         ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+        ex.addParameter(new CodeVariableElement(operationNodeGen.asType(), "$this"));
         ex.addParameter(new CodeVariableElement(context.getType(int.class), "slot"));
         ex.addParameter(new CodeVariableElement(context.getType(int.class), "boxing"));
         ex.addParameter(new CodeVariableElement(context.getType(Object[].class), "objs"));
@@ -527,7 +527,7 @@ public class OperationsNodeFactory {
         b.startReturn().string("frame.getObject(slot)").end();
         b.end(); // }
 
-        b.tree(createTransferToInterpreterAndInvalidate());
+        b.tree(createTransferToInterpreterAndInvalidate("$this"));
         b.statement("((BoxableInterface) objs[boxing & 0xffff]).setBoxing((boxing >> 16) & 0xffff, (byte) -1)");
         b.startReturn().string("frame.getValue(slot)").end();
 
@@ -538,6 +538,7 @@ public class OperationsNodeFactory {
         String typeName = firstLetterUpperCase(resultType.toString());
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), resultType, "doPopPrimitive" + typeName);
         ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+        ex.addParameter(new CodeVariableElement(operationNodeGen.asType(), "$this"));
         ex.addParameter(new CodeVariableElement(context.getType(int.class), "slot"));
         ex.addParameter(new CodeVariableElement(context.getType(int.class), "boxing"));
         ex.addParameter(new CodeVariableElement(context.getType(Object[].class), "objs"));
@@ -552,7 +553,8 @@ public class OperationsNodeFactory {
         b.startIf().string("result").instanceOf(boxType(resultType)).end().startBlock(); // {
         b.startReturn().cast(resultType).string("result").end();
         b.end().startElseBlock(); // } {
-        b.tree(createTransferToInterpreterAndInvalidate());
+        b.tree(createTransferToInterpreterAndInvalidate("$this"));
+        b.statement("System.err.printf(\" [**] expected " + resultType + " but got %s %s [no BE]%n\", result == null ? \"null\" : result.getClass(), result)");
         b.startThrow().startNew(types.UnexpectedResultException).string("result").end(2);
         b.end(); // }
 
@@ -561,17 +563,21 @@ public class OperationsNodeFactory {
         b.startIf().string("frame.is" + typeName + "(slot)").end().startBlock();
         b.startReturn().string("frame.get" + typeName + "(slot)").end();
         b.end().startElseBlock();
-        b.tree(createTransferToInterpreterAndInvalidate());
+
+        b.tree(createTransferToInterpreterAndInvalidate("$this"));
+
+        b.statement("Object result = frame.getValue(slot)");
+
         b.startStatement();
         b.string("((BoxableInterface) objs[boxing & 0xffff]).setBoxing((boxing >> 16) & 0xffff, (byte) ").tree(boxingTypeToInt(resultType)).string(")");
         b.end();
 
-        b.statement("Object result = frame.getValue(slot)");
+        b.statement("System.err.printf(\" [**] expected " + resultType +
+                        " but got %s %s (%08x %s) [BE faul]%n\", result == null ? \"null\" : result.getClass(), result, boxing, objs[boxing & 0xffff].getClass())");
 
         b.startIf().string("result").instanceOf(boxType(resultType)).end().startBlock(); // {
         b.startReturn().cast(resultType).string("result").end();
         b.end().startElseBlock(); // } {
-        b.tree(createTransferToInterpreterAndInvalidate());
         b.startThrow().startNew(types.UnexpectedResultException).string("result").end(2);
         b.end();
 
@@ -666,6 +672,8 @@ public class OperationsNodeFactory {
 
         CodeTypeElement savedState = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "SavedState");
 
+        // this is per-function state that needs to be stored/restored when going into/out of
+        // functions
         CodeVariableElement[] builderState = new CodeVariableElement[]{
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(short[].class), "bc"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "bci"),
@@ -673,6 +681,7 @@ public class OperationsNodeFactory {
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "operationStack"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(Object[].class), "operationData"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "operationChildCount"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "opSeqNumStack"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "operationSp"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLocals"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "maxStack"),
@@ -685,6 +694,7 @@ public class OperationsNodeFactory {
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceIndexSp"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceLocationStack"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceLocationSp"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "opSeqNum"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceInfo"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceInfoIndex"),
 
@@ -741,6 +751,7 @@ public class OperationsNodeFactory {
             operationBuilder.add(createEmitInstruction());
             operationBuilder.add(createdoEmitSourceInfo());
             operationBuilder.add(createFinish());
+            operationBuilder.add(createDoEmitLeaves());
 
             return operationBuilder;
         }
@@ -773,7 +784,17 @@ public class OperationsNodeFactory {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.OperationLabel, "createLabel");
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.startReturn().startNew(operationLabelImpl.asType()).startNew(intRef.asType()).string("-1").end(3);
+            b.startIf().string(
+                            "operationSp == 0 || (",
+                            "operationStack[operationSp - 1] != " + model.blockOperation.id + " /* Block */ ",
+                            " && operationStack[operationSp - 1] != " + model.rootOperation.id + " /* Root */)").end().startBlock();
+            buildThrowIllegalStateException(b, "\"Labels must be created inside either Block or Root operations.\"");
+            b.end();
+
+            b.startReturn().startNew(operationLabelImpl.asType());
+            b.startNew(intRef.asType()).string("-1").end();
+            b.string("opSeqNumStack[operationSp - 1]");
+            b.end(2);
 
             return ex;
         }
@@ -788,7 +809,7 @@ public class OperationsNodeFactory {
             int i = 1;
             for (OperationModel op : model.getOperations()) {
                 if (op.id != i) {
-                    throw new AssertionError("e");
+                    throw new AssertionError();
                 }
 
                 i++;
@@ -826,11 +847,16 @@ public class OperationsNodeFactory {
             b.string("operationData");
             b.string("operationData.length * 2");
             b.end(2);
+            b.startAssign("opSeqNumStack").startStaticCall(context.getType(Arrays.class), "copyOf");
+            b.string("opSeqNumStack");
+            b.string("opSeqNumStack.length * 2");
+            b.end(2);
             b.end(); // }
 
             b.statement("operationStack[operationSp] = id");
             b.statement("operationChildCount[operationSp] = 0");
-            b.statement("operationData[operationSp++] = data");
+            b.statement("operationData[operationSp] = data");
+            b.statement("opSeqNumStack[operationSp++] = opSeqNum++");
 
             return ex;
         }
@@ -867,6 +893,8 @@ public class OperationsNodeFactory {
                 b.statement("operationStack = new int[8]");
                 b.statement("operationData = new Object[8]");
                 b.statement("operationChildCount = new int[8]");
+                b.statement("opSeqNumStack = new int[8]");
+                b.statement("opSeqNum = 0");
                 b.statement("operationSp = 0");
                 b.statement("numLocals = 0");
                 b.statement("curStack = 0");
@@ -941,6 +969,7 @@ public class OperationsNodeFactory {
                     b.statement("sourceLocationStack[sourceLocationSp++] = arg1");
 
                     b.statement("doEmitSourceInfo(sourceIndexStack[sourceIndexSp - 1], arg0, arg1)");
+                    break;
             }
 
             return ex;
@@ -1229,13 +1258,40 @@ public class OperationsNodeFactory {
             b.startStatement().startCall("beforeChild").end(2);
             b.startStatement().startCall("emitOperationBegin").end(2);
 
-            if (operation.kind == OperationKind.LABEL) {
-                // todo: scope check
-                b.startIf().string("((OperationLabelImpl) arg0).index.value != -1").end().startBlock();
-                buildThrowIllegalStateException(b, "\"OperationLabel already emitted. Each label must be emitted exactly once.\"");
-                b.end();
+            switch (operation.kind) {
+                case LABEL:
+                    b.startAssign("OperationLabelImpl lbl").string("(OperationLabelImpl) arg0").end();
 
-                b.statement("((OperationLabelImpl) arg0).index.value = bci");
+                    b.startIf().string("lbl.index.value != -1").end().startBlock();
+                    buildThrowIllegalStateException(b, "\"OperationLabel already emitted. Each label must be emitted exactly once.\"");
+                    b.end();
+
+                    b.startIf().string("lbl.declaringOp != opSeqNumStack[operationSp - 1]").end().startBlock();
+                    buildThrowIllegalStateException(b, "\"OperationLabel must be emitted inside the same operation it was created in.\"");
+                    b.end();
+
+                    b.statement("((OperationLabelImpl) arg0).index.value = bci");
+                    break;
+                case BRANCH:
+                    b.startAssign("OperationLabelImpl lbl").string("(OperationLabelImpl) arg0").end();
+
+                    b.statement("boolean isFound = false");
+                    b.startFor().string("int i = 0; i < operationSp; i++").end().startBlock();
+                    b.startIf().string("opSeqNumStack[i] == lbl.declaringOp").end().startBlock();
+                    b.statement("isFound = true");
+                    b.statement("break");
+                    b.end();
+                    b.end();
+
+                    b.startIf().string("!isFound").end().startBlock();
+                    buildThrowIllegalStateException(b, "\"Branch must be targeting a label that is declared in an enclosing operation. Jumps into other operations are not permitted.\"");
+                    b.end();
+
+                    b.statement("doEmitLeave(lbl.declaringOp)");
+                    break;
+                case RETURN:
+                    b.statement("doEmitLeave(-1)");
+                    break;
             }
 
             if (operation.instruction != null) {
@@ -1626,6 +1682,32 @@ public class OperationsNodeFactory {
             return ex;
         }
 
+        private CodeExecutableElement createDoEmitLeaves() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitLeaves");
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "targetSeq"));
+
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startFor().string("int i = operationSp - 1; i >= 0; i++").end().startBlock();
+
+            b.startIf().string("opSeqNumStack[i] == targetSeq").end().startBlock();
+            b.returnStatement();
+            b.end();
+
+            b.startSwitch().string("operationStack[i]").end().startBlock();
+
+            for (OperationModel op : model.getOperations()) {
+                switch (op.kind) {
+                }
+            }
+
+            b.end();
+
+            b.end();
+
+            return ex;
+        }
+
         private CodeExecutableElement createConstructor() {
             CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, "Builder");
             ctor.addParameter(new CodeVariableElement(operationNodes.asType(), "nodes"));
@@ -1782,7 +1864,7 @@ public class OperationsNodeFactory {
                             b.startIf().string("nextBci <= bci").end().startBlock();
 
                             b.startIf().string("uncachedExecuteCount-- <= 0").end().startBlock();
-                            b.tree(createTransferToInterpreterAndInvalidate());
+                            b.tree(createTransferToInterpreterAndInvalidate("$this"));
                             b.statement("$this.changeInterpreters(CACHED_INTERPRETER)");
                             b.statement("return (sp << 16) | nextBci");
                             b.end();
@@ -1855,8 +1937,8 @@ public class OperationsNodeFactory {
 
                             b.startCase().string("0").end().startCaseBlock();
                             // uninitialized
-                            b.tree(createTransferToInterpreterAndInvalidate());
-                            b.statement("doLoadLocalInitialize(frame, sp, curData, curIndex, true)");
+                            b.tree(createTransferToInterpreterAndInvalidate("$this"));
+                            b.statement("doLoadLocalInitialize(frame, sp, curData, curIndex, localBoxingState, true)");
                             b.statement("break");
                             b.end();
 
@@ -1865,8 +1947,10 @@ public class OperationsNodeFactory {
                             b.startIf().string("frame.isObject(curIndex)").end().startBlock();
                             b.statement("frame.copyObject(curIndex, sp)");
                             b.end().startElseBlock();
-                            b.tree(createTransferToInterpreterAndInvalidate());
-                            b.statement("frame.setObject(sp, frame.getValue(curIndex))");
+                            b.tree(createTransferToInterpreterAndInvalidate("$this"));
+                            b.statement("Object value = frame.getValue(curIndex)");
+                            b.statement("frame.setObject(curIndex, value)");
+                            b.statement("frame.setObject(sp, value)");
                             b.end();
                             b.statement("break");
                             b.end();
@@ -1878,8 +1962,8 @@ public class OperationsNodeFactory {
                                 b.startIf().string("frame.is" + frameName + "(curIndex)").end().startBlock();
                                 b.statement("frame.copyPrimitive(curIndex, sp)");
                                 b.end().startElseBlock();
-                                b.tree(createTransferToInterpreterAndInvalidate());
-                                b.statement("doLoadLocalInitialize(frame, sp, curData, curIndex, false)");
+                                b.tree(createTransferToInterpreterAndInvalidate("$this"));
+                                b.statement("doLoadLocalInitialize(frame, sp, curData, curIndex, localBoxingState, false)");
                                 b.end();
                                 b.statement("break");
                                 b.end();
@@ -1888,8 +1972,8 @@ public class OperationsNodeFactory {
                                 b.startIf().string("frame.is" + frameName + "(curIndex)").end().startBlock();
                                 b.statement("frame.setObject(sp, frame.get" + frameName + "(curIndex))");
                                 b.end().startElseBlock();
-                                b.tree(createTransferToInterpreterAndInvalidate());
-                                b.statement("doLoadLocalInitialize(frame, sp, curData, curIndex, false)");
+                                b.tree(createTransferToInterpreterAndInvalidate("$this"));
+                                b.statement("doLoadLocalInitialize(frame, sp, curData, curIndex, localBoxingState, false)");
                                 b.end();
                                 b.statement("break");
                                 b.end();
@@ -1914,7 +1998,7 @@ public class OperationsNodeFactory {
                     case RETURN:
                         if (isUncached) {
                             b.startIf().string("uncachedExecuteCount-- <= 0").end().startBlock();
-                            b.tree(createTransferToInterpreterAndInvalidate());
+                            b.tree(createTransferToInterpreterAndInvalidate("$this"));
                             b.statement("$this.changeInterpreters(CACHED_INTERPRETER)");
                             b.end().startElseBlock();
                             b.statement("$this.uncachedExecuteCount = uncachedExecuteCount");
@@ -1935,13 +2019,13 @@ public class OperationsNodeFactory {
                             b.startSwitch().string("localBoxingState[curIndex]").end().startBlock();
 
                             b.startCase().string("0").end().startBlock();
-                            b.tree(createTransferToInterpreterAndInvalidate());
+                            b.tree(createTransferToInterpreterAndInvalidate("$this"));
                             b.statement("doStoreLocalInitialize(frame, sp, localBoxingState, curIndex)");
                             b.statement("break");
                             b.end();
 
                             b.startCase().string("-1").end().startBlock();
-                            b.statement("frame.setObject(curIndex, doPopObject(frame, sp - 1, curData.s_childIndex, objs))");
+                            b.statement("frame.setObject(curIndex, doPopObject(frame, $this, sp - 1, curData.s_childIndex, objs))");
                             b.statement("break");
                             b.end();
 
@@ -1952,7 +2036,7 @@ public class OperationsNodeFactory {
                                 b.startCase().tree(boxingTypeToInt(mir)).end().startBlock();
 
                                 b.startTryBlock();
-                                b.statement("frame.set" + frameName + "(curIndex, doPopPrimitive" + frameName + "(frame, sp - 1, curData.s_childIndex, objs))");
+                                b.statement("frame.set" + frameName + "(curIndex, doPopPrimitive" + frameName + "(frame, $this, sp - 1, curData.s_childIndex, objs))");
                                 b.end().startCatchBlock(types.UnexpectedResultException, "ex");
                                 b.statement("localBoxingState[curIndex] = -1");
                                 b.statement("frame.setObject(curIndex, ex.getResult())");
@@ -2089,35 +2173,44 @@ public class OperationsNodeFactory {
                 b.statement("break");
                 b.end();
 
-                Set<TypeMirror> mirs = signature.possibleBoxingResults;
-                if (mirs == null) {
-                    mirs = model.boxingEliminatedTypes;
-                }
+                for (TypeMirror mir : model.boxingEliminatedTypes) {
+                    String frameName = firstLetterUpperCase(mir.toString());
 
-                for (TypeMirror mir : mirs) {
-                    if (ElementUtils.isObject(mir)) {
-                        continue;
+                    b.startCase().tree(boxingTypeToInt(mir)).end().startBlock();
+
+                    if (signature.possibleBoxingResults != null && signature.possibleBoxingResults.contains(mir)) {
+                        b.startTryBlock();
+
+                        b.startStatement().startCall("frame.set" + frameName);
+                        b.string("resultSp - 1");
+                        b.startCall("nObj.execute" + frameName);
+                        b.string("frame").string(extraArguments);
+                        b.end(3);
+
+                        b.end().startCatchBlock(types.UnexpectedResultException, "ex");
+
+                        b.tree(createTransferToInterpreterAndInvalidate("$this"));
+                        b.statement("nObj.op_resultType_ = -1");
+                        b.statement("frame.setObject(resultSp - 1, ex.getResult())");
+
+                        b.end();
+                    } else {
+                        b.statement("Object result = nObj.executeObject(frame, " + extraArguments + ")");
+
+                        b.startIf().string("result").instanceOf(boxType(mir)).end().startBlock();
+
+                        b.statement("frame.set" + frameName + "(resultSp - 1, (" + mir + ") result)");
+
+                        b.end().startElseBlock();
+
+                        b.tree(createTransferToInterpreterAndInvalidate("$this"));
+                        b.statement("nObj.op_resultType_ = -1");
+                        b.statement("frame.setObject(resultSp - 1, result)");
+
+                        b.end();
                     }
 
-                    b.startCase().tree(boxingTypeToInt(mir)).end().startCaseBlock();
-
-                    b.startTryBlock();
-                    b.startStatement().startCall("frame.set" + firstLetterUpperCase(mir.toString()));
-                    b.string("resultSp - 1");
-                    b.startCall("nObj.execute" + firstLetterUpperCase(mir.toString()));
-                    b.string("frame").string(extraArguments);
-                    b.end(3);
-
-                    b.end().startCatchBlock(types.UnexpectedResultException, "ex");
-
-                    b.tree(createTransferToInterpreterAndInvalidate());
-                    b.statement("nObj.op_resultType_ = -1");
-                    b.statement("frame.setObject(resultSp - 1, ex.getResult())");
-
-                    b.end();
-
                     b.statement("break");
-
                     b.end();
                 }
 
@@ -2152,17 +2245,24 @@ public class OperationsNodeFactory {
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "sp"));
             ex.addParameter(new CodeVariableElement(loadLocalData.asType(), "curData"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "curIndex"));
+            ex.addParameter(new CodeVariableElement(context.getType(byte[].class), "localBoxingState"));
             ex.addParameter(new CodeVariableElement(context.getType(boolean.class), "prim"));
             CodeTreeBuilder b = ex.createBuilder();
 
             b.statement("Object value = frame.getValue(curIndex)");
             b.statement("frame.setObject(sp, value)");
 
-            b.startIf().string("prim").end().startBlock();
+            b.statement("byte lbs = localBoxingState[curIndex]");
+
+            b.startIf().string("prim && lbs != -1").end().startBlock();
 
             for (TypeMirror mir : model.boxingEliminatedTypes) {
-                b.startIf().string("value").instanceOf(boxType(mir)).end().startBlock();
+                String frameName = firstLetterUpperCase(mir.toString());
+
+                b.startIf().string("(lbs == 0 || lbs == ").tree(boxingTypeToInt(mir)).string(") && value").instanceOf(boxType(mir)).end().startBlock();
                 b.startAssign("curData.v_kind").tree(boxingTypeToInt(mir)).string(" | 0x40 /* (boxed) */").end();
+                b.statement("frame.set" + frameName + "(curIndex, (" + mir + ") value)");
+                b.startAssign("localBoxingState[curIndex]").tree(boxingTypeToInt(mir)).end();
                 b.returnStatement();
                 b.end();
             }
@@ -2170,6 +2270,8 @@ public class OperationsNodeFactory {
             b.end();
 
             b.startAssign("curData.v_kind").string("-1").end();
+            b.statement("frame.setObject(curIndex, value)");
+            b.statement("localBoxingState[curIndex] = -1");
 
             return ex;
         }
@@ -2223,6 +2325,7 @@ public class OperationsNodeFactory {
             operationLabelImpl.setEnclosingElement(operationNodeGen);
 
             operationLabelImpl.add(new CodeVariableElement(intRef.asType(), "index"));
+            operationLabelImpl.add(new CodeVariableElement(context.getType(int.class), "declaringOp"));
 
             operationLabelImpl.add(createConstructorUsingFields(Set.of(), operationLabelImpl, null));
 
@@ -2260,20 +2363,9 @@ public class OperationsNodeFactory {
         private CodeExecutableElement createSetBoxing() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement((DeclaredType) boxableInterface.asType(), "setBoxing");
             CodeTreeBuilder b = ex.createBuilder();
-
             b.tree(createNeverPartOfCompilation());
-
             b.startAssert().string("index == 0").end();
-
-            b.startIf().string("v_kind == kind || v_kind == -1").end().startBlock();
-            b.returnStatement();
-            b.end();
-
-            b.startIf().string("v_kind == 0").end().startBlock();
             b.statement("v_kind = kind");
-            b.end();
-
-            b.statement("v_kind = -1");
             return ex;
         }
     }
@@ -2351,34 +2443,7 @@ public class OperationsNodeFactory {
             b.tree(createNeverPartOfCompilation());
 
             b.startAssert().string("index == 0").end();
-
-            b.startIf().string("this.op_resultType_ == kind").end().startBlock();
-            b.returnStatement();
-            b.end();
-
-            b.startIf().string("this.op_resultType_ == 0 && (");
-            Set<TypeMirror> mirs = instr.signature.possibleBoxingResults;
-            if (mirs == null) {
-                mirs = model.boxingEliminatedTypes;
-            }
-            boolean first = true;
-            for (TypeMirror mir : mirs) {
-                if (!ElementUtils.isPrimitive(mir)) {
-                    continue;
-                }
-                if (first) {
-                    first = false;
-                } else {
-                    b.string(" || ");
-                }
-                b.string("kind == ").tree(boxingTypeToInt(mir));
-            }
-            b.string(")").end().startBlock();
             b.statement("this.op_resultType_ = kind");
-            b.returnStatement();
-            b.end();
-
-            b.statement("this.op_resultType_ = -1");
             return setBoxing;
         }
     }
@@ -2425,5 +2490,15 @@ public class OperationsNodeFactory {
         }
         fld.addAnnotationMirror(mir);
         return fld;
+    }
+
+    private CodeTree createTransferToInterpreterAndInvalidate(String root) {
+        if (model.templateType.getSimpleName().toString().equals("BoxingOperations")) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+            b.statement(root + ".transferToInterpreterAndInvalidate()");
+            return b.build();
+        } else {
+            return GeneratorUtils.createTransferToInterpreterAndInvalidate();
+        }
     }
 }

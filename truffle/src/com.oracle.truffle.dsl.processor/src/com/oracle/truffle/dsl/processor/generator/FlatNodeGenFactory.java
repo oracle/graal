@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.dsl.processor.generator;
 
-import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createTransferToInterpreterAndInvalidate;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.boxType;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.executableEquals;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.findAnnotationMirror;
@@ -1974,7 +1973,7 @@ public class FlatNodeGenFactory {
             builder.startTryBlock();
             builder.tree(delegateBuilder.build());
             builder.end().startCatchBlock(types.UnexpectedResultException, "ex");
-            builder.tree(createTransferToInterpreterAndInvalidate());
+            builder.tree(plugs.createTransferToInterpreterAndInvalidate());
 
             if (isVoid(type.getReturnType())) {
                 builder.returnStatement();
@@ -2443,7 +2442,7 @@ public class FlatNodeGenFactory {
         builder.tree(visitSpecializationGroup(builder, null, group, currentType, frameState, allowedSpecializations));
 
         if (group.hasFallthrough()) {
-            builder.tree(createTransferToInterpreterAndInvalidate());
+            builder.tree(plugs.createTransferToInterpreterAndInvalidate());
             builder.tree(createCallExecuteAndSpecialize(currentType, originalFrameState));
         }
         generateTraceOnExceptionEnd(builder);
@@ -2627,7 +2626,7 @@ public class FlatNodeGenFactory {
         builder.end();
         if (executeChild.throwsUnexpectedResult) {
             builder.startCatchBlock(types.UnexpectedResultException, "ex");
-            builder.tree(createTransferToInterpreterAndInvalidate());
+            builder.tree(plugs.createTransferToInterpreterAndInvalidate());
             FrameState slowPathFrameState = originalFrameState.copy();
             slowPathFrameState.setValue(execution, targetValue.makeGeneric(context).accessWith(CodeTreeBuilder.singleString("ex.getResult()")));
 
@@ -2960,7 +2959,7 @@ public class FlatNodeGenFactory {
         return childField;
     }
 
-    private CodeTree callMethod(FrameState frameState, CodeTree receiver, ExecutableElement method, CodeTree... boundValues) {
+    private static CodeTree callMethod(FrameState frameState, CodeTree receiver, ExecutableElement method, CodeTree... boundValues) {
         if (frameState != null) {
             frameState.addThrownExceptions(method);
         }
@@ -3579,7 +3578,7 @@ public class FlatNodeGenFactory {
 
             if (specialization != null && !specialization.getAssumptionExpressions().isEmpty()) {
                 BlockState state = IfTriple.materialize(builder, createAssumptionCheck(frameState, specialization, NodeExecutionMode.FAST_PATH, false), false);
-                builder.tree(createTransferToInterpreterAndInvalidate());
+                builder.tree(plugs.createTransferToInterpreterAndInvalidate());
                 builder.tree(createRemoveThis(builder, frameState, forType, specialization));
                 builder.end(state.blockCount);
             }
@@ -4416,7 +4415,7 @@ public class FlatNodeGenFactory {
             exceptionTypes[i] = type;
         }
         builder.end().startCatchBlock(exceptionTypes, "ex");
-        builder.tree(createTransferToInterpreterAndInvalidate());
+        builder.tree(plugs.createTransferToInterpreterAndInvalidate());
         builder.tree(createExcludeThis(builder, frameState, forType, specialization));
 
         builder.end();

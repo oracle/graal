@@ -92,6 +92,9 @@ public class OperationsModel extends Template implements InfoDumpable {
     public TypeSystemData typeSystem;
     public Set<TypeMirror> boxingEliminatedTypes;
 
+    public OperationModel blockOperation;
+    public OperationModel rootOperation;
+
     public InstructionModel popInstruction;
     public InstructionModel branchInstruction;
     public InstructionModel branchFalseInstruction;
@@ -102,11 +105,11 @@ public class OperationsModel extends Template implements InfoDumpable {
         branchInstruction = instruction(InstructionKind.BRANCH, "branch");
         branchFalseInstruction = instruction(InstructionKind.BRANCH_FALSE, "branch.false");
 
-        operation(OperationKind.BLOCK, "Block") //
+        blockOperation = operation(OperationKind.BLOCK, "Block") //
                         .setTransparent(true) //
                         .setVariadic(0) //
                         .setChildrenMustBeValues(false);
-        operation(OperationKind.ROOT, "Root") //
+        rootOperation = operation(OperationKind.ROOT, "Root") //
                         .setVariadic(0) //
                         .setVoid(true) //
                         .setChildrenMustBeValues(false) //

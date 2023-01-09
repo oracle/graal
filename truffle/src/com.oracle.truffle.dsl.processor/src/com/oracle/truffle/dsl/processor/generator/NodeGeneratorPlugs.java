@@ -70,4 +70,8 @@ public interface NodeGeneratorPlugs {
         flatNodeGenFactory.createNodeChildReferenceForException(frameState, builder, values, execution, child, var);
     }
 
+    default CodeTree createTransferToInterpreterAndInvalidate() {
+        return GeneratorUtils.createTransferToInterpreterAndInvalidate();
+    }
+
 }
