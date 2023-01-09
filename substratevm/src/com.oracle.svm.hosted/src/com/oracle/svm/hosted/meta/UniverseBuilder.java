@@ -422,7 +422,7 @@ public class UniverseBuilder {
     private void layoutInstanceFields() {
         BitSet usedBytes = new BitSet();
         usedBytes.set(0, ConfigurationValues.getObjectLayout().getFirstFieldOffset());
-        layoutInstanceFields(hUniverse.getObjectClass(), new HostedField[0], false, usedBytes);
+        layoutInstanceFields(hUniverse.getObjectClass(), new HostedField[0], usedBytes);
     }
 
     private static boolean mustReserveLengthField(HostedInstanceClass clazz) {
@@ -448,14 +448,13 @@ public class UniverseBuilder {
         usedBytes.set(endOffset, endOffset + size);
     }
 
-    private void layoutInstanceFields(HostedInstanceClass clazz, HostedField[] superFields, boolean superFieldsContendedPadding, BitSet usedBytes) {
+    private void layoutInstanceFields(HostedInstanceClass clazz, HostedField[] superFields, BitSet usedBytes) {
         ArrayList<HostedField> rawFields = new ArrayList<>();
         ArrayList<HostedField> allFields = new ArrayList<>();
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
 
         HostedConfiguration.instance().findAllFieldsForLayout(hUniverse, hMetaAccess, hUniverse.fields, rawFields, allFields, clazz);
 
-        int superSize = usedBytes.length();
         if (clazz.getAnnotation(DeoptimizedFrame.ReserveDeoptScratchSpace.class) != null) {
             reserve(usedBytes, DeoptimizedFrame.getScratchSpaceOffset(), layout.getDeoptScratchSpace());
         }
@@ -473,22 +472,19 @@ public class UniverseBuilder {
             }
         }
 
-        boolean hasLeadingPadding = superFieldsContendedPadding;
-        boolean isClassContended = clazz.isAnnotationPresent(Contended.class);
-        if (!hasLeadingPadding && (isClassContended || (clazz.getSuperclass() != null && clazz.getSuperclass().isAnnotationPresent(Contended.class)))) {
-            reserveAtEnd(usedBytes, getContendedPadding());
-            hasLeadingPadding = true;
-        }
-
-        int sizeWithoutFields = usedBytes.length();
-
         /*
-         * Sort and group fields so that fields marked @Contended(tag) are grouped by their tag,
-         * placing unannotated fields first in the object, and so that within groups, a) all Object
-         * fields are consecutive, and b) bigger types come first.
+         * Group fields annotated @Contended(tag) by their tag, where a tag of "" implies a group
+         * for each individual field. Each group gets padded at the beginning and end to avoid false
+         * sharing. Unannotated fields are placed in a separate group which is not padded unless the
+         * class itself is annotated @Contended.
+         *
+         * Sort so that in each group, Object fields are consecutive, and bigger types come first.
          */
         Object uncontendedSentinel = new Object();
-        Function<HostedField, Object> getAnnotationGroup = field -> Optional.ofNullable(field.getAnnotation(Contended.class)).<Object> map(Contended::value).orElse(uncontendedSentinel);
+        Object unannotatedGroup = clazz.isAnnotationPresent(Contended.class) ? new Object() : uncontendedSentinel;
+        Function<HostedField, Object> getAnnotationGroup = field -> Optional.ofNullable(field.getAnnotation(Contended.class))
+                        .map(a -> "".equals(a.value()) ? new Object() : a.value())
+                        .orElse(unannotatedGroup);
         Map<Object, ArrayList<HostedField>> contentionGroups = rawFields.stream()
                         .sorted(HostedUniverse.FIELD_COMPARATOR_RELAXED)
                         .collect(Collectors.groupingBy(getAnnotationGroup, Collectors.toCollection(ArrayList::new)));
@@ -500,30 +496,22 @@ public class UniverseBuilder {
         }
 
         for (ArrayList<HostedField> groupFields : contentionGroups.values()) {
-            boolean placedFieldsBefore = (usedBytes.length() != sizeWithoutFields);
-            if (placedFieldsBefore || !hasLeadingPadding) {
-                reserveAtEnd(usedBytes, getContendedPadding());
-            }
+            reserveAtEnd(usedBytes, getContendedPadding());
             int firstOffset = usedBytes.length();
             placeFields(groupFields, usedBytes, firstOffset, layout);
             usedBytes.set(firstOffset, usedBytes.length()); // prevent subclass fields
         }
 
-        boolean fieldsTrailingPadding = !contentionGroups.isEmpty();
-        if (fieldsTrailingPadding) {
+        if (!contentionGroups.isEmpty()) {
             reserveAtEnd(usedBytes, getContendedPadding());
         }
 
-        if (isClassContended) { // prevent injection of any subclass fields
-            usedBytes.set(superSize, usedBytes.length());
-        }
         BitSet usedBytesInSubclasses = null;
         if (clazz.subTypes.length != 0) {
             usedBytesInSubclasses = (BitSet) usedBytes.clone();
         }
 
         // Reserve "synthetic" fields in this class (but not subclasses) below.
-        int sizeWithoutSyntheticFields = usedBytes.length();
 
         // A reference to a {@link java.util.concurrent.locks.ReentrantLock for "synchronized" or
         // Object.wait() and Object.notify() and friends.
@@ -536,11 +524,6 @@ public class UniverseBuilder {
             }
             reserve(usedBytes, offset, size);
             clazz.setMonitorFieldOffset(offset);
-        }
-
-        boolean appendedSyntheticFields = (sizeWithoutSyntheticFields != usedBytes.length());
-        if (isClassContended && (contentionGroups.isEmpty() || appendedSyntheticFields)) {
-            reserveAtEnd(usedBytes, getContendedPadding());
         }
 
         /*
@@ -567,7 +550,7 @@ public class UniverseBuilder {
 
         for (HostedType subClass : clazz.subTypes) {
             if (subClass.isInstanceClass()) {
-                layoutInstanceFields((HostedInstanceClass) subClass, clazz.instanceFieldsWithSuper, fieldsTrailingPadding, (BitSet) usedBytesInSubclasses.clone());
+                layoutInstanceFields((HostedInstanceClass) subClass, clazz.instanceFieldsWithSuper, (BitSet) usedBytesInSubclasses.clone());
             }
         }
     }
