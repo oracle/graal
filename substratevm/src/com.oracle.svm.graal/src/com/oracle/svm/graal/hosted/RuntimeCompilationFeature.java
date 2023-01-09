@@ -232,6 +232,9 @@ public abstract class RuntimeCompilationFeature {
     }
 
     protected final void duringSetupHelper(DuringSetupAccess c) {
+        if (SubstrateOptions.useLLVMBackend()) {
+            throw UserError.abort("Runtime compilation is currently unimplemented on the LLVM backend (GR-43073).");
+        }
         ImageSingletons.add(GraalSupport.class, new GraalSupport());
         if (!ImageSingletons.contains(SubstrateGraalCompilerSetup.class)) {
             ImageSingletons.add(SubstrateGraalCompilerSetup.class, new SubstrateGraalCompilerSetup());
