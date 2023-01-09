@@ -347,6 +347,12 @@ public class NativeImageGeneratorRunner {
                         }
                     } catch (ClassNotFoundException ex) {
                         throw UserError.abort(classLoader.getMainClassNotFoundErrorMessage(className));
+                    } catch (UnsupportedClassVersionError ex) {
+                        throw UserError.abort("Unable to load '%s' due to a Java version mismatch.%n" +
+                                        "Please take one of the following actions:%n" +
+                                        " 1) Recompile the source files for your application using Java %s, then try running native-image again%n" +
+                                        " 2) Use a version of native-image corresponding to the version of Java with which you compiled the source files for your application%n",
+                                        className, Runtime.version().feature());
                     }
                     String mainEntryPointName = SubstrateOptions.Method.getValue(parsedHostedOptions);
                     if (mainEntryPointName.isEmpty()) {
