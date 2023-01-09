@@ -163,8 +163,12 @@ public abstract class RegexTestBase {
     }
 
     void expectSyntaxError(String pattern, String flags, String expectedMessage, int expectedPosition) {
+        expectSyntaxError(pattern, flags, "", expectedMessage, expectedPosition);
+    }
+
+    void expectSyntaxError(String pattern, String flags, String options, String expectedMessage, int expectedPosition) {
         try {
-            compileRegex(pattern, flags);
+            compileRegex(pattern, flags, options);
         } catch (PolyglotException e) {
             String msg = e.getMessage();
             int pos = e.getSourceLocation().getCharIndex();

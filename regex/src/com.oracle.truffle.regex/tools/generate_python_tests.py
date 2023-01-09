@@ -39,6 +39,7 @@
 # SOFTWARE.
 
 import re
+import sys
 
 patterns = [
     r'()\2',
@@ -53,12 +54,15 @@ patterns = [
     r'[]',
     r'[a-',
     r'[b-a]',
+    r'[\d-e]',
     r'\x',
     r'\x1',
     r'\u111',
     r'\U1111',
     r'\U1111111',
     r'\U11111111',
+    rb'\u2B50',
+    rb'\U0001FA99',
     r'\N1',
     r'\N{1',
     r'\N{}',
@@ -89,15 +93,20 @@ patterns = [
     r'(?ij:)',
     r'(?i-i:)',
     r')',
+    "\\",
 ]
 
 def escape_backslash(string):
-    return re.sub(r'\\', r'\\\\', string)
+    if isinstance(string, str):
+        return re.sub(r'\\', r'\\\\', string)
+    else:
+        return re.sub(rb'\\', rb'\\\\', string)
     # Disable this method for IDEs which auto-escape pasted backslashes.
     # return string
 
 print("    @Test")
 print("    public void testSyntaxErrors() {")
+print("        // Generated using sre from CPython %d.%d.%d" % (sys.version_info.major, sys.version_info.minor, sys.version_info.micro))
 for pattern in patterns:
     try:
         re.compile(pattern)
@@ -107,7 +116,10 @@ for pattern in patterns:
         i = msg.find(position_msg)
         error_msg = msg[:i]
         position = int(msg[i + len(position_msg):])
-        print('        expectSyntaxError("%s", "", "%s", %d);' % (escape_backslash(pattern), escape_backslash(error_msg), position))
+        if isinstance(pattern, str):
+            print('        expectSyntaxError("%s", "", "%s", %d);' % (escape_backslash(pattern), escape_backslash(error_msg), position))
+        else:
+            print('        expectSyntaxError("%s", "", "Encoding=LATIN-1", "%s", %d);' % (escape_backslash(pattern).decode(), escape_backslash(error_msg), position))
         continue
     raise RuntimeError("no exception was thrown " + pattern)
 

@@ -43,7 +43,6 @@ package com.oracle.truffle.regex.tregex.test;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.regex.errors.PyErrorMessages;
@@ -395,11 +394,20 @@ public class PythonTests extends RegexTestBase {
         expectSyntaxError("", "u", "Encoding=LATIN-1", "cannot use UNICODE flag with a bytes pattern");
 
         Assert.assertTrue("expected str pattern to default to UNICODE flag",
-                compileRegex("", "").getMember("flags").getMember("UNICODE").asBoolean());
+                        compileRegex("", "").getMember("flags").getMember("UNICODE").asBoolean());
+    }
+
+    @Test
+    public void testIncompleteQuantifiers() {
+        test("{", "", "{", 0, true, 0, 1, -1);
+        test("{1", "", "{1", 0, true, 0, 2, -1);
+        test("{,", "", "{,", 0, true, 0, 2, -1);
+        test("{1,", "", "{1,", 0, true, 0, 3, -1);
     }
 
     @Test
     public void testSyntaxErrors() {
+        // Generated using sre from CPython 3.10.8
         expectSyntaxError("()\\2", "", "invalid group reference 2", 3);
         expectSyntaxError("()\\378", "", "invalid group reference 37", 3);
         expectSyntaxError("()\\777", "", "octal escape value \\777 outside of range 0-0o377", 2);
@@ -412,12 +420,15 @@ public class PythonTests extends RegexTestBase {
         expectSyntaxError("[]", "", "unterminated character set", 0);
         expectSyntaxError("[a-", "", "unterminated character set", 0);
         expectSyntaxError("[b-a]", "", "bad character range b-a", 1);
+        expectSyntaxError("[\\d-e]", "", "bad character range \\d-e", 1);
         expectSyntaxError("\\x", "", "incomplete escape \\x", 0);
         expectSyntaxError("\\x1", "", "incomplete escape \\x1", 0);
         expectSyntaxError("\\u111", "", "incomplete escape \\u111", 0);
         expectSyntaxError("\\U1111", "", "incomplete escape \\U1111", 0);
         expectSyntaxError("\\U1111111", "", "incomplete escape \\U1111111", 0);
         expectSyntaxError("\\U11111111", "", "bad escape \\U11111111", 0);
+        expectSyntaxError("\\u2B50", "", "Encoding=LATIN-1", "bad escape \\u", 0);
+        expectSyntaxError("\\U0001FA99", "", "Encoding=LATIN-1", "bad escape \\U", 0);
         expectSyntaxError("\\N1", "", "missing {", 2);
         expectSyntaxError("\\N{1", "", "missing }, unterminated name", 3);
         expectSyntaxError("\\N{}", "", "missing character name", 3);
@@ -448,5 +459,6 @@ public class PythonTests extends RegexTestBase {
         expectSyntaxError("(?ij:)", "", "unknown flag", 3);
         expectSyntaxError("(?i-i:)", "", "bad inline flags: flag turned on and off", 5);
         expectSyntaxError(")", "", "unbalanced parenthesis", 0);
+        expectSyntaxError("\\", "", "bad escape (end of pattern)", 0);
     }
 }

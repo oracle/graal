@@ -516,6 +516,10 @@ public abstract class RegexLexer {
         registerCaptureGroup();
     }
 
+    /**
+     * Only call this from languages which do not support comments. Currently, only being called
+     * from JS.
+     */
     private void identifyCaptureGroups() throws RegexSyntaxException {
         // We are counting capture groups, so we only care about '(' characters and special
         // characters which can cancel the meaning of '(' - those include '\' for escapes, '[' for

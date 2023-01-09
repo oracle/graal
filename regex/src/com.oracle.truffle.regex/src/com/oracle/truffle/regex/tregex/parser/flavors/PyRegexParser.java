@@ -126,7 +126,6 @@ public final class PyRegexParser implements RegexParser {
                             astBuilder.addCharClass(CodePointSet.create('\n'));
                             astBuilder.popGroup();
                             astBuilder.popGroup();
-
                         } else {
                             astBuilder.addPositionAssertion(token);
                         }
