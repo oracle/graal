@@ -408,6 +408,7 @@ public class PythonTests extends RegexTestBase {
         expectSyntaxError("()(?P=1)", "", "bad character in group name '1'", 6);
         expectSyntaxError("(?P<1)", "", "missing >, unterminated name", 4);
         expectSyntaxError("(?P<1>)", "", "bad character in group name '1'", 4);
+        expectSyntaxError("(?P<a>)(?P<a>})", "", "redefinition of group name 'a' as group 2; was group 1", 11);
         expectSyntaxError("[]", "", "unterminated character set", 0);
         expectSyntaxError("[a-", "", "unterminated character set", 0);
         expectSyntaxError("[b-a]", "", "bad character range b-a", 1);

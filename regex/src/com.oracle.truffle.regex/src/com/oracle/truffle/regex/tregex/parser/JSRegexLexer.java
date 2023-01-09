@@ -202,6 +202,11 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     @Override
+    protected RegexSyntaxException handleGroupRedefinition(String name, int newId, int oldId) {
+        return syntaxError(JsErrorMessages.MULTIPLE_GROUPS_SAME_NAME);
+    }
+
+    @Override
     protected void handleIncompleteEscapeX() {
         if (flags.isUnicode()) {
             throw syntaxError(JsErrorMessages.INVALID_ESCAPE);

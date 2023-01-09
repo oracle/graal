@@ -416,6 +416,11 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
+    protected RegexSyntaxException handleGroupRedefinition(String name, int newId, int oldId) {
+        return syntaxErrorAtRel(PyErrorMessages.redefinitionOfGroupName(name, newId, oldId), name.length() + 1);
+    }
+
+    @Override
     protected void handleIncompleteEscapeX() {
         throw syntaxError(PyErrorMessages.incompleteEscape(substring(2 + count(RegexLexer::isHexDigit))));
     }

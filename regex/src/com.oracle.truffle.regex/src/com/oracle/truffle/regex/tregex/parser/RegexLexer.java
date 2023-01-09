@@ -189,6 +189,8 @@ public abstract class RegexLexer {
      */
     protected abstract RegexSyntaxException handleEmptyGroupName();
 
+    protected abstract RegexSyntaxException handleGroupRedefinition(String name, int newId, int oldId);
+
     /**
      * Handle incomplete hex escapes, e.g. {@code \x1}.
      */
@@ -507,7 +509,7 @@ public abstract class RegexLexer {
                 namedCaptureGroups = new HashMap<>();
             }
             if (namedCaptureGroups.containsKey(name)) {
-                throw syntaxError(JsErrorMessages.MULTIPLE_GROUPS_SAME_NAME);
+                throw handleGroupRedefinition(name, nGroups, namedCaptureGroups.get(name));
             }
             namedCaptureGroups.put(name, nGroups);
         }
