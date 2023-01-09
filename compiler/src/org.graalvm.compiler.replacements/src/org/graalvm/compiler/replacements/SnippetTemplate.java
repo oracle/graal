@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1403,7 +1403,7 @@ public class SnippetTemplate {
             if (needsMergeStateMap) {
                 frameStateAssignment = new SnippetFrameStateAssignmentClosure(snippetCopy);
                 ReentrantNodeIterator.apply(frameStateAssignment, snippetCopy.start(), SnippetFrameStateAssignment.NodeStateAssignment.BEFORE_BCI);
-                assert frameStateAssignment.verify() : info;
+                GraalError.guarantee(frameStateAssignment.verify(), "snippet frame state verification failed: %s", info);
             } else {
                 frameStateAssignment = null;
             }
@@ -2425,7 +2425,7 @@ public class SnippetTemplate {
             GraalError.guarantee(stateAfter != null, "Statesplit with side-effect %s needs a framestate", replacee);
         } else {
             /*
-             * We dont have a state split as a replacee, thus we take the prev state as the state
+             * We don't have a state split as a replacee, thus we take the prev state as the state
              * after for the node in the snippet.
              */
             stateAfter = GraphUtil.findLastFrameState(replaceeGraphCFGPredecessor);
@@ -2443,6 +2443,7 @@ public class SnippetTemplate {
             exceptionObject = null;
         }
         NodeMap<NodeStateAssignment> assignedStateMappings = frameStateAssignment.getStateMapping();
+        FrameState stateAfterInvalidForDeoptimization = stateAfter.isValidForDeoptimization() ? null : stateAfter;
         MapCursor<Node, NodeStateAssignment> stateAssignments = assignedStateMappings.getEntries();
         while (stateAssignments.advance()) {
             Node nodeRequiringState = stateAssignments.getKey();
@@ -2457,6 +2458,13 @@ public class SnippetTemplate {
             switch (assignment) {
                 case AFTER_BCI:
                     setReplaceeGraphStateAfter(nodeRequiringState, replacee, duplicates, stateAfter);
+                    break;
+                case AFTER_BCI_INVALID_FOR_DEOPTIMIZATION:
+                    if (stateAfterInvalidForDeoptimization == null) {
+                        stateAfterInvalidForDeoptimization = stateAfter.duplicate();
+                        stateAfterInvalidForDeoptimization.invalidateForDeoptimization();
+                    }
+                    setReplaceeGraphStateAfter(nodeRequiringState, replacee, duplicates, stateAfterInvalidForDeoptimization);
                     break;
                 case AFTER_EXCEPTION_BCI:
                     if (nodeRequiringState instanceof ExceptionObjectNode) {
