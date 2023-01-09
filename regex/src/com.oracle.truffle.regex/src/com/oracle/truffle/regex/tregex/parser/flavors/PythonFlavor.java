@@ -85,6 +85,6 @@ public final class PythonFlavor extends RegexFlavor {
 
     @Override
     public RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
-        return new PyRegexParser(language, source, compilationBuffer);
+        return new PythonRegexParser(language, source, compilationBuffer);
     }
 }

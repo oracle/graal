@@ -314,12 +314,6 @@ public class PythonTests extends RegexTestBase {
         test("(?=a)|(?<=a)|:", "", "PythonMethod=match", "a:", 1, true, 1, 1);
     }
 
-    public void gr42252() {
-        // TODO
-        Assume.assumeTrue(false);
-        test("(?P<quote>)(?(quote))", "", "", 0, true, 0, 0, 0);
-    }
-
     @Test
     public void testQuantifierOverflow() {
         long max = Integer.MAX_VALUE;
