@@ -156,7 +156,20 @@ public abstract class InductionVariable {
     public abstract InductionVariable duplicate();
 
     /**
+     * Duplicate this IV with a new init node.
+     */
+    public abstract InductionVariable duplicateWithNewInit(ValueNode newInit);
+
+    /**
      * Return the value of this iv upon the first entry of the loop.
      */
     public abstract ValueNode entryTripValue();
+
+    public InductionVariable getBasic() {
+        if (this instanceof BasicInductionVariable) {
+            return this;
+        }
+        assert this instanceof DerivedInductionVariable;
+        return ((DerivedInductionVariable) this).getBase().getBasic();
+    }
 }

@@ -116,7 +116,7 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
      * @return {@code true} if this value is a constant
      */
     public final boolean isConstant() {
-        return this instanceof ConstantNode;
+        return this instanceof ConstantNode || this instanceof LogicConstantNode;
     }
 
     private static final NodePredicate IS_CONSTANT = new NodePredicate() {
@@ -154,6 +154,8 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
     public final Constant asConstant() {
         if (this instanceof ConstantNode) {
             return ((ConstantNode) this).getValue();
+        } else if (this instanceof LogicConstantNode) {
+            return JavaConstant.forBoolean(((LogicConstantNode) this).getValue());
         } else {
             return null;
         }
