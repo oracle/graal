@@ -44,7 +44,6 @@ import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
@@ -188,10 +187,10 @@ public class NativeImageOptions {
     // Inspired by HotSpot's hs_err_<pid>.log files and for build-time errors (err_b).
     private static final String DEFAULT_ERROR_FILE_NAME = "svm_err_b_%t_pid%p.md";
 
-    public static final Path getErrorFilePath() {
-        String errorFile = NativeImageOptions.ErrorFile.getValue();
+    public static final Path getErrorFilePath(OptionValues hostedOptionValues) {
+        String errorFile = NativeImageOptions.ErrorFile.getValue(hostedOptionValues);
         if (errorFile.isEmpty()) {
-            return NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve(expandErrorFile(DEFAULT_ERROR_FILE_NAME));
+            return NativeImageGenerator.generatedFiles(hostedOptionValues).resolve(expandErrorFile(DEFAULT_ERROR_FILE_NAME));
         } else {
             return Paths.get(expandErrorFile(errorFile));
         }

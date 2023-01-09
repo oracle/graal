@@ -464,7 +464,7 @@ public class NativeImageGeneratorRunner {
     }
 
     protected void reportEpilog(String imageName, ProgressReporter reporter, ImageClassLoader classLoader, Throwable vmError, OptionValues parsedHostedOptions) {
-        reporter.printEpilog(imageName, generator, generator.featureHandler, classLoader, vmError, parsedHostedOptions);
+        reporter.printEpilog(Optional.ofNullable(imageName), Optional.ofNullable(generator), classLoader, Optional.ofNullable(vmError), parsedHostedOptions);
     }
 
     protected NativeImageGenerator createImageGenerator(ImageClassLoader classLoader, HostedOptionParser optionParser, Pair<Method, CEntryPointData> mainEntryPointData, ProgressReporter reporter) {
