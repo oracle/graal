@@ -7,40 +7,39 @@ Each optimization should be reported just after the transformation using the `Op
 transformed `StructeredGraph` (i.e. `StructuredGraph#getOptimizationLog`). Use the
 method `report(Class<?> optimizationClass, String eventName, Node node)`, which accepts the following arguments:
 
-- the class that performed the transformation, preferably the optimization phase like `CanonicalizerPhase`,
+- the class that performed the transformation, preferably the optimization phase like `CanonicalizerPhase.class`,
 - a string in `PascalCase` that describes the transformation well in the context of the class, e.g. `CfgSimplification`,
 - the most relevant node in the transformation, i.e., a node that was just replaced/deleted/modified or
-  a `LoopBeginNode` in the context of loop transformations like unrolling.
+  the `LoopBeginNode` in the context of loop transformations like unrolling.
 
 The node is used to obtain the position of the transformation. The position is characterized by the byte code index (
 bci). However, in the presence of inlining, we need to collect the bci of each method in the inlined stack of methods.
 
 The `report` method handles the following use cases:
 
-| Concern                         | Option                    | Output                                                                       |
-|---------------------------------|---------------------------|------------------------------------------------------------------------------|
-| `log` using a `DebugContext`    | `-Dgraal.Log`             | log `Performed {optimizationName} {eventName} at bci {bci} {properties}`     |
-| `dump` using a `DebugContext`   | `-Dgraal.Dump`            | dump with caption `{optimizationName} {eventName} for node {nodeName}`       |
-| `CounterKey` increment          | `-Dgraal.Count`           | increment the counter `{optimizationName}_{eventName}`                       |
-| structured optimization logging | `-Dgraal.OptimizationLog` | optimization tree dumped to the standard output, a JSON file or an IGV graph |
+| Concern                          | Option                    | Output                                                                   |
+|----------------------------------|---------------------------|--------------------------------------------------------------------------|
+| `log` using a `DebugContext`     | `-Dgraal.Log`             | log `Performed {optimizationName} {eventName} at bci {bci} {properties}` |
+| `dump` using a `DebugContext`    | `-Dgraal.Dump`            | dump with caption `{optimizationName} {eventName} for node {nodeName}`   |
+| increment a `CounterKey`         | `-Dgraal.Count`           | increment the counter `{optimizationName}_{eventName}`                   |
+| structured optimization logging  | `-Dgraal.OptimizationLog` | optimization info dumped to stdout, a JSON file or an IGV graph          |
 
 The method logs and dumps at `DETAILED_LEVEL` by default. There is a variant of the method which allows the log level to
 be specified as the first argument.
 
-It suffices to insert a line like the one below (from `DeadCodeEliminationPhase`) to solve all of the above concerns.
-The `report` method creates an *optimization entry*.
+It suffices to insert a line like the one below (from `DeadCodeEliminationPhase`) to handle all the above concerns.
 
 ```java
 graph.getOptimizationLog().report(DeadCodeEliminationPhase.class, "NodeRemoved", node);
 ```
 
-## Compiler options
+## Command-line options
 
 Structured optimization logging is enabled by the `-Dgraal.OptimizationLog` option. It is recommended to enable the
 option jointly with node source position tracking (`-Dgraal.TrackNodeSourcePosition`) so that the bytecode position of
 nodes can be logged. Otherwise, a warning is emitted.
 
-Similarly, the options `-H:OptimizationLog` and `-H:OptimizationLogPath` can be used with `native-image`.
+Similarly, the equivalent options `-H:OptimizationLog` and `-H:OptimizationLogPath` can be used with Native Image.
 
 The value of the option `-Dgraal.OptimizationLog` specifies where the structured optimization log is printed.
 The accepted values are:
@@ -51,14 +50,15 @@ The accepted values are:
 - `Stdout` - print the structured optimization log to the standard output.
 - `Dump` - dump optimization trees for IdealGraphVisualizer according to the `-Dgraal.PrintGraph` option.
 
-It is possible to specify multiple comma-separated values (e.g., `-Dgraal.OptimizationLog=Stdout,Dump`).
+Multiple targets can be specified at once by separating them with a comma, e.g., `-Dgraal.OptimizationLog=Stdout,Dump`.
+The generated files are human-readable but verbose. Therefore, it is best to inspect them with `mx profdiff`. Read
+`Profdiff.md` for more information.
 
-It is best to inspect the generated files using `mx profdiff`. Read `Profdiff.md` for more information.
+## Additional key/value properties
 
-## Properties
-
-It is possible to provide additional key/value properties that are logged to the structured optimization log and in the
-regular log. Consider the example from `LoopTransformations#peel`.
+It is possible to provide additional key/value properties to the `report` method. The provided properties are included
+both in the optimization log and in the regular log messages (`-Dgraal.Log`). Consider the example
+from `LoopTransformations#peel`.
 
 ```java
 loop.loopBegin().graph().getOptimizationLog()
@@ -82,13 +82,13 @@ graph.getOptimizationLog().withLazyProperty("replacedNodeClass", nodeClass::shor
 ## Optimization tree
 
 The context of the optimizations is also collected when `-Dgraal.OptimizationLog` is enabled. This is achieved by
-setting the graph's `OptimizationLog` as the `CompilationListener`. We establish parent-child relationships between
-optimization phases and optimization entries. The result is a tree of optimizations.
+notifying the graph's `OptimizationLog` whenever an optimization phase is entered or exited. We establish parent-child
+relationships between optimization phases and optimizations. The result is an optimization tree.
 
-- We create an artificial `optimizationTree`, which is the root.
-- When a phase is entered (`CompilationListener#enterPhase`), the new phase is a child of the phase that entered this
-  phase.
-- When an optimization is logged via the `report` method, it is attributed to its parent phase.
+We create an artificial `RootPhase`, which is the root of the tree and initially is the *current phase*. When a phase is
+entered, the new phase is a child of the current phase and after that the current phase is set to the newly-entered
+phase. When an optimization is logged via the `report` method, it is attributed to the current phase. When a phase is
+exited, the current phase is updated to the parent of the just exited phase.
 
 The ASCII art below is a snippet of an optimization tree.
 
@@ -130,7 +130,7 @@ mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraa
   -Dgraal.OptimizationLogPath=$(pwd)/optimization_log
 ```
 
-An equivalent set of commands for `native-image` is:
+An equivalent set of commands for Native Image is:
 
 ```sh
 cd ../vm
@@ -163,6 +163,7 @@ compilation unit, after formatting, is the following:
     "callsiteBci": -1,
     "inlined": true,
     "reason": null,
+    "indirect": false,
     "invokes": [
       {
         "methodName": "java.lang.String.isLatin1()",
@@ -172,6 +173,7 @@ compilation unit, after formatting, is the following:
           "bytecode parser did not replace invoke",
           "trivial (relevance=1.000000, probability=0.618846, bonus=1.000000, nodes=9)"
         ],
+        "indirect": false,
         "invokes": null
       },
       {
@@ -182,6 +184,7 @@ compilation unit, after formatting, is the following:
           "bytecode parser did not replace invoke",
           "relevance-based (relevance=1.000000, probability=0.618846, bonus=1.000000, nodes=27 <= 300.000000)"
         ],
+        "indirect": false,
         "invokes": null
       }
     ]
@@ -189,7 +192,7 @@ compilation unit, after formatting, is the following:
   "optimizationTree": {
     "phaseName": "RootPhase",
     "optimizations": [
-      ...
+      "..."
     ]
   }
 }
@@ -203,6 +206,49 @@ compilation unit.
 reflected by the `inlined` property. Its value equals `true` if the method was inlined, otherwise it is `false`. The
 reasons for the decisions, in their original order, are listed in the `reason` property. Finally, `callsiteBci` is the
 byte code index of the invoke node in the callsite.
+
+The `indirect` property is `true` iff the call is known to be indirect, i.e., it is an invoke through an
+interface or a virtual method call. Indirect calls contain
+a [receiver-type profile](https://wiki.openjdk.org/display/HotSpot/TypeProfile) if it is available. Consider the
+indirect call to `Iterator.next()` below.
+
+```json
+{
+  "methodName": "java.util.Iterator.next()",
+  "callsiteBci": 19,
+  "inlined": false,
+  "reason": [
+    "bytecode parser did not replace invoke",
+    "call is indirect."
+  ],
+  "indirect": true,
+  "receiverTypeProfile": {
+    "mature": true,
+    "profiledTypes": [
+      {
+        "typeName": "java.util.HashMap$KeyIterator",
+        "probability": 0.90,
+        "concreteMethodName": "java.util.HashMap$KeyIterator.next()"
+      },
+      {
+        "typeName": "java.util.Arrays$ArrayItr",
+        "probability": 0.09,
+        "concreteMethodName": "java.util.Arrays$ArrayItr.next()"
+      },
+      {
+        "typeName": "java.util.Collections$1",
+        "probability": 0.01,
+        "concreteMethodName": "java.util.Collections$1.next()"
+      }
+    ]
+  }
+}
+```
+
+`mature` is `true` iff the receiver-type profile is mature. `profiledTypes` is an array, which contains an entry
+for each observed receiver type of the call. The exact type of the receiver is in the `typeName` property, `probability`
+is the fraction of calls when the receiver's type is `typeName`, and `concreteMethodName` is the concrete method invoked
+for this receiver type.
 
 `optimizationTree` contains the root of the optimization tree. Each node in the optimization tree is either:
 
@@ -262,7 +308,7 @@ which callsite is at bci 27 in the root method. Note that the order of keys is i
 
 ## IGV output
 
-Optimization trees can be printed to IdealGraphVisualizer. First, start an IGV instance. After that, run a benchmark
+Optimization trees can be printed to Ideal Graph Visualizer. First, start an IGV instance. After that, run a benchmark
 with the flag `-Dgraal.OptimizationLog=Dump`. Run it jointly with `-Dgraal.TrackNodeSourcePosition=true`, so
 that optimizations can be linked with a source position.
 

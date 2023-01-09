@@ -24,8 +24,8 @@
  */
 package org.graalvm.profdiff.core.optimization;
 
-import org.graalvm.profdiff.core.VerbosityLevel;
-import org.graalvm.profdiff.util.Writer;
+import org.graalvm.profdiff.core.OptionValues;
+import org.graalvm.profdiff.core.Writer;
 
 /**
  * An optimization tree of a compilation unit. The root phase is a dummy {@link OptimizationPhase},
@@ -104,15 +104,15 @@ public class OptimizationTree {
     }
 
     /**
-     * Preprocesses the optimization tree according to the provided verbosity level.
+     * Preprocesses the optimization tree according to the provided option values.
      *
-     * @param verbosityLevel the verbosity level
+     * @param optionValues the option values
      */
-    public void preprocess(VerbosityLevel verbosityLevel) {
-        if (verbosityLevel.shouldRemoveVeryDetailedPhases()) {
+    public void preprocess(OptionValues optionValues) {
+        if (optionValues.shouldRemoveVeryDetailedPhases()) {
             removeVeryDetailedPhases();
         }
-        if (verbosityLevel.shouldSortUnorderedPhases()) {
+        if (optionValues.shouldSortUnorderedPhases()) {
             sortUnorderedPhases();
         }
     }
