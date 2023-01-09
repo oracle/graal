@@ -274,7 +274,7 @@ public final class PyRegexParser implements RegexParser {
         parent = astBuilder.getCurGroup().getSubTreeParent();
         while (parent != null) {
             if (parent instanceof LookBehindAssertion && ((LookBehindAssertion) parent).getGroup().getEnclosedCaptureGroupsLow() <= groupNumber) {
-                throw syntaxError(PyErrorMessages.CANNOT_REFER_TO_GROUP_DEFINED_IN_THE_SAME_LOOKBEHIND_SUBPATTERN);
+                throw syntaxErrorHere(PyErrorMessages.CANNOT_REFER_TO_GROUP_DEFINED_IN_THE_SAME_LOOKBEHIND_SUBPATTERN);
             }
             parent = parent.getSubTreeParent();
         }
@@ -282,5 +282,9 @@ public final class PyRegexParser implements RegexParser {
 
     private RegexSyntaxException syntaxError(String msg) {
         return lexer.syntaxError(msg);
+    }
+
+    private RegexSyntaxException syntaxErrorHere(String msg) {
+        return lexer.syntaxErrorHere(msg);
     }
 }

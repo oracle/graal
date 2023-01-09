@@ -404,7 +404,7 @@ public class PythonTests extends RegexTestBase {
         expectSyntaxError("()\\378", "", "invalid group reference 37", 3);
         expectSyntaxError("()\\777", "", "octal escape value \\777 outside of range 0-0o377", 2);
         expectSyntaxError("(\\1)", "", "cannot refer to an open group", 1);
-        expectSyntaxError("(?<=()\\1)", "", "cannot refer to group defined in the same lookbehind subpattern", 6);
+        expectSyntaxError("(?<=()\\1)", "", "cannot refer to group defined in the same lookbehind subpattern", 8);
         expectSyntaxError("()(?P=1)", "", "bad character in group name '1'", 6);
         expectSyntaxError("(?P<1)", "", "missing >, unterminated name", 4);
         expectSyntaxError("(?P<1>)", "", "bad character in group name '1'", 4);

@@ -810,7 +810,7 @@ public final class PythonRegexLexer extends RegexLexer {
         return RegexSyntaxException.createPattern(source, msg, position - i);
     }
 
-    private RegexSyntaxException syntaxErrorHere(String msg) {
+    public RegexSyntaxException syntaxErrorHere(String msg) {
         return RegexSyntaxException.createPattern(source, msg, position);
     }
 }
