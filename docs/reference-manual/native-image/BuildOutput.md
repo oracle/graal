@@ -46,7 +46,7 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
 --------------------------------------------------------------------------------
 Top 10 origins of code area:            Top 10 object types in image heap:
    3.43MB java.base                        1.01MB byte[] for code metadata
- 760.98KB o.graalvm.nativeimage.builder 1000.72KB java.lang.String
+ 760.98KB svm.jar (Native Image)        1000.72KB java.lang.String
  102.06KB java.logging                   884.18KB byte[] for general heap data
   48.03KB org.graalvm.nativeimage.base   686.91KB byte[] for java.lang.String
   40.49KB jdk.proxy1                     659.87KB java.lang.Class

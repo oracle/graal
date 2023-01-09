@@ -495,6 +495,9 @@ public class ProgressReporter {
             Module module = javaClass.getModule();
             if (module.isNamed()) {
                 key = module.getName();
+                if ("org.graalvm.nativeimage.builder".equals(key)) {
+                    key = "svm.jar (Native Image)";
+                }
             } else {
                 key = findJARFile(javaClass);
                 if (key == null) {
