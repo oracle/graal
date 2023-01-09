@@ -446,5 +446,6 @@ public class PythonTests extends RegexTestBase {
         expectSyntaxError("(?-:)", "", "missing flag", 3);
         expectSyntaxError("(?ij:)", "", "unknown flag", 3);
         expectSyntaxError("(?i-i:)", "", "bad inline flags: flag turned on and off", 5);
+        expectSyntaxError(")", "", "unbalanced parenthesis", 0);
     }
 }

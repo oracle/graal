@@ -218,7 +218,7 @@ public final class PyRegexParser implements RegexParser {
                     break;
                 case groupEnd:
                     if (astBuilder.getCurGroup().getParent() instanceof RegexASTRootNode) {
-                        throw syntaxError(PyErrorMessages.UNTERMINATED_SUBPATTERN);
+                        throw syntaxError(PyErrorMessages.UNBALANCED_PARENTHESIS);
                     }
                     if (astBuilder.getCurGroup().isLocalFlags()) {
                         lexer.popLocalFlags();

@@ -87,6 +87,7 @@ patterns = [
     r'(?-:)',
     r'(?ij:)',
     r'(?i-i:)',
+    r')',
 ]
 
 def escape_backslash(string):
