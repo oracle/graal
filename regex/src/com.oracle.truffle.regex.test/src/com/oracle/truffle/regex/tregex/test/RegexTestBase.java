@@ -146,13 +146,20 @@ public abstract class RegexTestBase {
     }
 
     void expectSyntaxError(String pattern, String flags, String expectedMessage) {
+        expectSyntaxError(pattern, flags, "", expectedMessage);
+    }
+
+    void expectSyntaxError(String pattern, String flags, String options, String expectedMessage) {
         try {
-            compileRegex(pattern, flags);
+            compileRegex(pattern, flags, options);
         } catch (PolyglotException e) {
-            Assert.assertTrue(e.getMessage().contains(expectedMessage));
+            String msg = e.getMessage();
+            if (!msg.contains(expectedMessage)) {
+                Assert.fail(String.format("/%s/%s : expected syntax error message containing \"%s\", but was \"%s\"", pattern, flags, expectedMessage, msg));
+            }
             return;
         }
-        Assert.fail();
+        Assert.fail(String.format("/%s/%s : expected \"%s\", but no exception was thrown", pattern, flags, expectedMessage));
     }
 
     void expectSyntaxError(String pattern, String flags, String expectedMessage, int expectedPosition) {

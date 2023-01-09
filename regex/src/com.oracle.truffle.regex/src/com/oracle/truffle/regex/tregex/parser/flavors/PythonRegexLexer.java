@@ -167,6 +167,7 @@ public final class PythonRegexLexer extends RegexLexer {
             globalFlags = new PythonFlags(source.getFlags()).addFlag('x');
             parseInlineGlobalFlags();
         }
+        globalFlags = globalFlags.fixFlags(source, mode);
     }
 
     private static int lookupCharacterByName(String characterName) {

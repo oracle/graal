@@ -385,6 +385,20 @@ public class PythonTests extends RegexTestBase {
     }
 
     @Test
+    public void testPythonFlagChecks() {
+        expectSyntaxError("", "au", "ASCII and UNICODE flags are incompatible");
+        expectSyntaxError("(?a)", "u", "ASCII and UNICODE flags are incompatible");
+        expectSyntaxError("(?u)", "a", "ASCII and UNICODE flags are incompatible");
+        expectSyntaxError("(?a)(?u)", "", "ASCII and UNICODE flags are incompatible");
+
+        expectSyntaxError("", "L", "cannot use LOCALE flag with a str pattern");
+        expectSyntaxError("", "u", "Encoding=LATIN-1", "cannot use UNICODE flag with a bytes pattern");
+
+        Assert.assertTrue("expected str pattern to default to UNICODE flag",
+                compileRegex("", "").getMember("flags").getMember("UNICODE").asBoolean());
+    }
+
+    @Test
     public void testSyntaxErrors() {
         expectSyntaxError("()\\2", "", "invalid group reference 2", 3);
         expectSyntaxError("()\\378", "", "invalid group reference 37", 3);
