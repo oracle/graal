@@ -158,7 +158,6 @@ public class SubstrateOptions {
     public static final String IMAGE_MODULEPATH_PREFIX = "-imagemp";
     public static final String WATCHPID_PREFIX = "-watchpid";
     private static ValueUpdateHandler<OptimizationLevel> optimizeValueUpdateHandler;
-    private static ValueUpdateHandler<Integer> debugInfoValueUpdateHandler = SubstrateOptions::defaultDebugInfoValueUpdateHandler;
 
     @Fold
     public static boolean getSourceLevelDebug() {
@@ -262,10 +261,6 @@ public class SubstrateOptions {
 
     public static void setOptimizeValueUpdateHandler(ValueUpdateHandler<OptimizationLevel> updateHandler) {
         SubstrateOptions.optimizeValueUpdateHandler = updateHandler;
-    }
-
-    public static void setDebugInfoValueUpdateHandler(ValueUpdateHandler<Integer> updateHandler) {
-        SubstrateOptions.debugInfoValueUpdateHandler = updateHandler;
     }
 
     @Option(help = "Track NodeSourcePositions during runtime-compilation")//
@@ -640,16 +635,12 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
-            debugInfoValueUpdateHandler.onValueUpdate(values, newValue);
+            if (OS.WINDOWS.isCurrent()) {
+                /* Keep symbols on Windows. The symbol table is part of the pdb-file. */
+                DeleteLocalSymbols.update(values, newValue == 0);
+            }
         }
     };
-
-    public static void defaultDebugInfoValueUpdateHandler(EconomicMap<OptionKey<?>, Object> values, Integer newValue) {
-        if (OS.WINDOWS.isCurrent()) {
-            /* Keep symbols on Windows. The symbol table is part of the pdb-file. */
-            DeleteLocalSymbols.update(values, newValue == 0);
-        }
-    }
 
     @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DebugInfoSourceSearchPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
