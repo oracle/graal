@@ -24,6 +24,11 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -63,7 +68,9 @@ import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -435,9 +442,74 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 if (linkAtBuildTime) {
                     reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"));
                 } else {
-                    ExceptionSynthesizer.throwException(this, NoSuchMethodError.class, javaMethod.format("%H.%n(%P)"));
+                    ExceptionSynthesizer.throwException(this, findResolutionError((ResolvedJavaType) declaringClass, javaMethod), javaMethod.format("%H.%n(%P)"));
                 }
             }
+        }
+
+        /**
+         * Finding the correct exception that needs to be thrown at run time is a bit tricky, since
+         * JVMCI does not report that information back when method resolution fails. We need to look
+         * down the class hierarchy to see if there would be an appropriate method with a matching
+         * signature which is just not accessible.
+         *
+         * We do all the method lookups (to search for a method with the same signature as
+         * searchMethod) using reflection and not JVMCI because the lookup can throw all sorts of
+         * errors, and we want to ignore the errors without any possible side effect on AnalysisType
+         * and AnalysisMethod.
+         */
+        private static Class<? extends IncompatibleClassChangeError> findResolutionError(ResolvedJavaType declaringType, JavaMethod searchMethod) {
+            Class<?>[] searchSignature = signatureToClasses(searchMethod);
+            Class<?> searchReturnType = null;
+            if (searchMethod.getSignature().getReturnType(null) instanceof ResolvedJavaType) {
+                searchReturnType = OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), (ResolvedJavaType) searchMethod.getSignature().getReturnType(null));
+            }
+
+            Class<?> declaringClass = OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), declaringType);
+            for (Class<?> cur = declaringClass; cur != null; cur = cur.getSuperclass()) {
+                Executable[] methods = null;
+                try {
+                    if (searchMethod.getName().equals("<init>")) {
+                        methods = cur.getDeclaredConstructors();
+                    } else {
+                        methods = cur.getDeclaredMethods();
+                    }
+                } catch (Throwable ignored) {
+                    /*
+                     * A linkage error was thrown, or something else random is wrong with the class
+                     * files. Ignore this class.
+                     */
+                }
+                if (methods != null) {
+                    for (Executable method : methods) {
+                        if (Arrays.equals(searchSignature, method.getParameterTypes()) &&
+                                        (method instanceof Constructor || (searchMethod.getName().equals(method.getName()) && searchReturnType == ((Method) method).getReturnType()))) {
+                            if (Modifier.isAbstract(method.getModifiers())) {
+                                return AbstractMethodError.class;
+                            } else {
+                                return IllegalAccessError.class;
+                            }
+                        }
+                    }
+                }
+                if (searchMethod.getName().equals("<init>")) {
+                    /* For constructors, do not search in superclasses. */
+                    break;
+                }
+            }
+            return NoSuchMethodError.class;
+        }
+
+        private static Class<?>[] signatureToClasses(JavaMethod method) {
+            int paramCount = method.getSignature().getParameterCount(false);
+            Class<?>[] result = new Class<?>[paramCount];
+            for (int i = 0; i < paramCount; i++) {
+                JavaType parameterType = method.getSignature().getParameterType(0, null);
+                if (parameterType instanceof ResolvedJavaType) {
+                    result[i] = OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), (ResolvedJavaType) parameterType);
+                }
+            }
+            return result;
         }
 
         private void reportUnresolvedElement(String elementKind, String elementAsString) {
