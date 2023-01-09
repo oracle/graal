@@ -77,6 +77,7 @@ import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class HostedConfiguration {
 
@@ -194,7 +195,8 @@ public class HostedConfiguration {
     public void findAllFieldsForLayout(HostedUniverse universe, @SuppressWarnings("unused") HostedMetaAccess metaAccess,
                     @SuppressWarnings("unused") Map<AnalysisField, HostedField> universeFields,
                     ArrayList<HostedField> rawFields, ArrayList<HostedField> allFields, HostedInstanceClass clazz) {
-        for (AnalysisField aField : clazz.getWrapped().getInstanceFields(false)) {
+        for (ResolvedJavaField javaField : clazz.getWrapped().getInstanceFields(false)) {
+            AnalysisField aField = (AnalysisField) javaField;
             HostedField hField = universe.lookup(aField);
 
             /* Because of @Alias fields, the field lookup might not be declared in our class. */

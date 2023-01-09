@@ -1094,20 +1094,27 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     /*
-     * Cache is volatile to ensure that the final contents of AnalysisField[] are visible after the
-     * array gets visible.
+     * Cache is volatile to ensure that the final contents of ResolvedJavaField[] are visible after
+     * the array gets visible.
+     *
+     * Although all elements are of type AnalysisField, we set this array to be of type
+     * ResolvedJavaField so that runtime compilation does not need to convert the array itself.
      */
-    private volatile AnalysisField[] instanceFieldsWithSuper;
-    private volatile AnalysisField[] instanceFieldsWithoutSuper;
+    private volatile ResolvedJavaField[] instanceFieldsWithSuper;
+    private volatile ResolvedJavaField[] instanceFieldsWithoutSuper;
 
     public void clearInstanceFieldsCache() {
         instanceFieldsWithSuper = null;
         instanceFieldsWithoutSuper = null;
     }
 
+    /**
+     * Note that although this returns a ResolvedJavaField[], all instance fields are of type
+     * AnalysisField and can be casted to AnalysisField without problem.
+     */
     @Override
-    public AnalysisField[] getInstanceFields(boolean includeSuperclasses) {
-        AnalysisField[] result = includeSuperclasses ? instanceFieldsWithSuper : instanceFieldsWithoutSuper;
+    public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
+        ResolvedJavaField[] result = includeSuperclasses ? instanceFieldsWithSuper : instanceFieldsWithoutSuper;
         if (result != null) {
             return result;
         } else {
@@ -1115,12 +1122,12 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         }
     }
 
-    private AnalysisField[] initializeInstanceFields(boolean includeSuperclasses) {
-        List<AnalysisField> list = new ArrayList<>();
+    private ResolvedJavaField[] initializeInstanceFields(boolean includeSuperclasses) {
+        List<ResolvedJavaField> list = new ArrayList<>();
         if (includeSuperclasses && getSuperclass() != null) {
             list.addAll(Arrays.asList(getSuperclass().getInstanceFields(true)));
         }
-        AnalysisField[] result = convertFields(interceptInstanceFields(wrapped.getInstanceFields(false)), list, includeSuperclasses);
+        ResolvedJavaField[] result = convertFields(interceptInstanceFields(wrapped.getInstanceFields(false)), list, includeSuperclasses);
         if (includeSuperclasses) {
             instanceFieldsWithSuper = result;
         } else {
@@ -1129,7 +1136,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return result;
     }
 
-    private AnalysisField[] convertFields(ResolvedJavaField[] originals, List<AnalysisField> list, boolean listIncludesSuperClassesFields) {
+    private ResolvedJavaField[] convertFields(ResolvedJavaField[] originals, List<ResolvedJavaField> list, boolean listIncludesSuperClassesFields) {
         for (ResolvedJavaField original : originals) {
             if (!original.isInternal() && universe.hostVM.platformSupported(original)) {
                 try {
@@ -1148,11 +1155,15 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
                 }
             }
         }
-        return list.toArray(new AnalysisField[list.size()]);
+        return list.toArray(new ResolvedJavaField[list.size()]);
     }
 
+    /**
+     * Note that although this returns a ResolvedJavaField[], all instance fields are of type
+     * AnalysisField and can be casted to AnalysisField without problem.
+     */
     @Override
-    public AnalysisField[] getStaticFields() {
+    public ResolvedJavaField[] getStaticFields() {
         return convertFields(wrapped.getStaticFields(), new ArrayList<>(), false);
     }
 

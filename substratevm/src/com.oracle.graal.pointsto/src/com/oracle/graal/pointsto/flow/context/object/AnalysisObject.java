@@ -235,8 +235,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         checkField(bb, objectFlow, context, field);
 
         if (instanceFieldsTypeStore == null) {
-            AnalysisField[] fields = type.getInstanceFields(true);
-            INSTANCE_FIELD_TYPE_STORE_UPDATER.compareAndSet(this, null, new AtomicReferenceArray<>(fields.length));
+            INSTANCE_FIELD_TYPE_STORE_UPDATER.compareAndSet(this, null, new AtomicReferenceArray<>(type.getInstanceFields(true).length));
         }
 
         AnalysisError.guarantee(field.getPosition() >= 0 && field.getPosition() < instanceFieldsTypeStore.length());

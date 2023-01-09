@@ -62,6 +62,7 @@ import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * Scanning is triggered when:
@@ -154,9 +155,9 @@ public abstract class ImageHeapScanner {
          * reachability status. The field value is processed when a field is marked as reachable, in
          * onFieldValueReachable().
          */
-        AnalysisField[] staticFields = type.getStaticFields();
-        TypeData data = new TypeData(staticFields.length);
-        for (AnalysisField field : staticFields) {
+        TypeData data = new TypeData(type.getStaticFields().length);
+        for (ResolvedJavaField javaField : type.getStaticFields()) {
+            AnalysisField field = (AnalysisField) javaField;
             ValueSupplier<JavaConstant> rawFieldValue = readHostedFieldValue(field, null);
             data.setFieldTask(field, new AnalysisFuture<>(() -> {
                 JavaConstant value = onFieldValueReachable(field, rawFieldValue, new FieldScan(field));
@@ -255,7 +256,8 @@ public abstract class ImageHeapScanner {
             ImageHeapInstance instance = (ImageHeapInstance) object;
             /* We are about to query the type's fields, the type must be marked as reachable. */
             markTypeInstantiated(type, reason);
-            for (AnalysisField field : type.getInstanceFields(true)) {
+            for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
+                AnalysisField field = (AnalysisField) javaField;
                 if (field.isRead() && isValueAvailable(field)) {
                     final JavaConstant fieldValue = instance.readFieldValue(field);
                     /* If field is read scan its value immediately. */
@@ -277,10 +279,10 @@ public abstract class ImageHeapScanner {
                          * complete support for all use cases, it needs to be a complete replacement
                          * for JavaConstant. For example, it needs to be able to efficiently
                          * represent string values and be able to extract the String object.
-                         * 
+                         *
                          * So for now we just reinstall the original JavaConstant value when the
                          * future is completed.
-                         * 
+                         *
                          * More specifically, the long term plan is that after scanning
                          * instance.field will refer to the `scannedFieldValue`, so any future read
                          * of `instance.field` will return an ImageHeapInstance. Moreover,
@@ -361,9 +363,9 @@ public abstract class ImageHeapScanner {
              */
             /* We are about to query the type's fields, the type must be marked as reachable. */
             markTypeInstantiated(type, reason);
-            AnalysisField[] instanceFields = type.getInstanceFields(true);
-            newImageHeapConstant = new ImageHeapInstance(type, constant, instanceFields.length);
-            for (AnalysisField field : instanceFields) {
+            newImageHeapConstant = new ImageHeapInstance(type, constant, type.getInstanceFields(true).length);
+            for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
+                AnalysisField field = (AnalysisField) javaField;
                 ValueSupplier<JavaConstant> rawFieldValue;
                 try {
                     rawFieldValue = readHostedFieldValue(field, universe.toHosted(constant));
@@ -524,7 +526,8 @@ public abstract class ImageHeapScanner {
 
         if (imageHeapConstant instanceof ImageHeapInstance) {
             ImageHeapInstance imageHeapInstance = (ImageHeapInstance) imageHeapConstant;
-            for (AnalysisField field : objectType.getInstanceFields(true)) {
+            for (ResolvedJavaField javaField : objectType.getInstanceFields(true)) {
+                AnalysisField field = (AnalysisField) javaField;
                 if (field.isRead() && isValueAvailable(field)) {
                     snapshotFieldValue(field, imageHeapInstance.getFieldValue(field));
                 }
