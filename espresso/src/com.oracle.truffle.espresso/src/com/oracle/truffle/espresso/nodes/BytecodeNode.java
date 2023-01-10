@@ -2230,6 +2230,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     private BaseQuickNode dispatchQuickened(int top, int curBCI, char cpi, int opcode, int statementIndex, Method resolutionSeed, boolean allowBytecodeInlining) {
         InvokeQuickNode invoke;
         Method resolved = resolutionSeed;
+        int resolvedOpCode = opcode;
         switch (opcode) {
             case INVOKESTATIC:
                 // Otherwise, if the resolved method is an instance method, the invokestatic
@@ -2247,6 +2248,16 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                     enterLinkageExceptionProfile();
                     throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError);
                 }
+                if (resolved.getITableIndex() < 0) {
+                    if (resolved.isPrivate()) {
+                        assert getJavaVersion().java9OrLater();
+                        // Interface private methods do not appear in itables.
+                        resolvedOpCode = INVOKESPECIAL;
+                    } else {
+                        // Can happen in old classfiles that calls j.l.Object on interfaces.
+                        resolvedOpCode = INVOKEVIRTUAL;
+                    }
+                }
                 break;
             case INVOKEVIRTUAL:
                 // Otherwise, if the resolved method is a class (static) method, the invokevirtual
@@ -2254,6 +2265,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 if (resolved.isStatic()) {
                     enterLinkageExceptionProfile();
                     throw throwBoundary(getMeta().java_lang_IncompatibleClassChangeError);
+                }
+                if (resolved.isFinalFlagSet() || resolved.getDeclaringKlass().isFinalFlagSet() || resolved.isPrivate()) {
+                    resolvedOpCode = INVOKESPECIAL;
                 }
                 break;
             case INVOKESPECIAL:
@@ -2309,7 +2323,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         assert lockIsHeld();
         boolean tryBytecodeLevelInlining = this.instrumentation == null && allowBytecodeInlining;
         if (tryBytecodeLevelInlining) {
-            invoke = InlinedMethodNode.createFor(resolutionSeed, top, opcode, curBCI, statementIndex);
+            invoke = InlinedMethodNode.createFor(resolved, top, resolvedOpCode, curBCI, statementIndex);
             if (invoke != null) {
                 return invoke;
             }
@@ -2317,27 +2331,16 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
         if (resolved.isPolySignatureIntrinsic()) {
             invoke = new InvokeHandleNode(resolved, getDeclaringKlass(), top, curBCI);
-        } else if (opcode == INVOKEINTERFACE && resolved.getITableIndex() < 0) {
-            if (resolved.isPrivate()) {
-                assert getJavaVersion().java9OrLater();
-                // Interface private methods do not appear in itables.
-                invoke = new InvokeSpecialQuickNode(resolved, top, curBCI);
-            } else {
-                // Can happen in old classfiles that calls j.l.Object on interfaces.
-                invoke = new InvokeVirtualQuickNode(resolved, top, curBCI);
-            }
-        } else if (opcode == INVOKEVIRTUAL && (resolved.isFinalFlagSet() || resolved.getDeclaringKlass().isFinalFlagSet() || resolved.isPrivate())) {
-            invoke = new InvokeSpecialQuickNode(resolved, top, curBCI);
         } else {
             // @formatter:off
-            switch (opcode) {
+            switch (resolvedOpCode) {
                 case INVOKESTATIC    : invoke = new InvokeStaticQuickNode(resolved, top, curBCI);         break;
                 case INVOKEINTERFACE : invoke = new InvokeInterfaceQuickNode(resolved, top, curBCI); break;
                 case INVOKEVIRTUAL   : invoke = new InvokeVirtualQuickNode(resolved, top, curBCI);   break;
                 case INVOKESPECIAL   : invoke = new InvokeSpecialQuickNode(resolved, top, curBCI);        break;
                 default              :
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opcode));
+                    throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(resolvedOpCode));
             }
             // @formatter:on
         }

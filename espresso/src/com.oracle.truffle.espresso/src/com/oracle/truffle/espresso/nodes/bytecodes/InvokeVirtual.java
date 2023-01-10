@@ -66,6 +66,7 @@ public abstract class InvokeVirtual extends EspressoNode {
     final Method resolutionSeed;
 
     InvokeVirtual(Method resolutionSeed) {
+        assert resolutionSeed.getVTableIndex() >= 0;
         this.resolutionSeed = resolutionSeed;
     }
 
@@ -93,6 +94,7 @@ public abstract class InvokeVirtual extends EspressoNode {
         protected static final int LIMIT = 8;
 
         WithoutNullCheck(Method resolutionSeed) {
+            assert resolutionSeed.getVTableIndex() >= 0;
             this.resolutionSeed = resolutionSeed;
         }
 

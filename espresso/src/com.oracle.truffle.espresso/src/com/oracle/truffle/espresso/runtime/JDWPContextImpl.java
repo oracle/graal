@@ -379,7 +379,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public Object getThreadGroup(Object thread) {
-        return context.getMeta().java_lang_Thread_getThreadGroup.getMethodVersion().invokeMethod(thread, new Object[0]);
+        return context.getMeta().java_lang_Thread_getThreadGroup.invokeDirect(thread);
     }
 
     @Override
