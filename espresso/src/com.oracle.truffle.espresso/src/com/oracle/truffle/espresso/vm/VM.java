@@ -3748,28 +3748,41 @@ public final class VM extends NativeEnv {
         getMeta().java_lang_StackTraceElement_lineNumber.setInt(ste, m.bciToLineNumber(element.getBCI()));
     }
 
-    private void checkStackWalkArguments(EspressoLanguage language, int batchSize, int startIndex, @JavaType(Object[].class) StaticObject frames) {
+    private static void checkStackWalkArguments(EspressoLanguage language, int batchSize, int startIndex, @JavaType(Object[].class) StaticObject frames, Meta meta) {
         if (StaticObject.isNull(frames)) {
-            Meta meta = getMeta();
             throw meta.throwNullPointerException();
         }
         assert frames.isArray();
         int limit = startIndex + batchSize;
         if (frames.length(language) < limit) {
-            Meta meta = getMeta();
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Not enough space in buffers");
         }
     }
 
     @VmImpl(isJni = true)
-    @TruffleBoundary
     public @JavaType(Object.class) StaticObject JVM_CallStackWalk(
                     @JavaType(internalName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream, long mode, int skipframes,
                     int batchSize, int startIndex,
                     @JavaType(Object[].class) StaticObject frames,
                     @Inject EspressoLanguage language,
                     @Inject Meta meta) {
-        checkStackWalkArguments(language, batchSize, startIndex, frames);
+        return JVM_CallStackWalk19(stackStream, mode, skipframes, StaticObject.NULL, StaticObject.NULL, batchSize, startIndex, frames, language, meta);
+    }
+
+
+    @TruffleBoundary
+    public @JavaType(Object.class) StaticObject JVM_CallStackWalk19(
+                    @JavaType(internalName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream, long mode, int skipframes,
+                    @JavaType(internalName = "Ljdk/internal/vm/ContinuationScope;") StaticObject contScope,
+                    @JavaType(internalName = "Ljdk/internal/vm/Continuation;") StaticObject cont,
+                    int batchSize, int startIndex,
+                    @JavaType(Object[].class) StaticObject frames,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta) {
+        if (!StaticObject.isNull(contScope) && !StaticObject.isNull(cont)) {
+            throw EspressoError.unimplemented("virtual thread support");
+        }
+        checkStackWalkArguments(language, batchSize, startIndex, frames, meta);
         return getStackWalk().fetchFirstBatch(stackStream, mode, skipframes, batchSize, startIndex, frames, meta);
     }
 
@@ -3781,7 +3794,7 @@ public final class VM extends NativeEnv {
                     @JavaType(Object[].class) StaticObject frames,
                     @Inject EspressoLanguage language,
                     @Inject Meta meta) {
-        checkStackWalkArguments(language, batchSize, startIndex, frames);
+        checkStackWalkArguments(language, batchSize, startIndex, frames, meta);
         return getStackWalk().fetchNextBatch(stackStream, mode, anchor, batchSize, startIndex, frames, meta);
     }
 

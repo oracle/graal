@@ -582,8 +582,8 @@ public final class Meta extends ContextAccessImpl {
             jdk_internal_loader_ClassLoaders_platformClassLoader = jdk_internal_loader_ClassLoaders.requireDeclaredMethod(Name.platformClassLoader, Signature.ClassLoader);
             jdk_internal_loader_ClassLoaders$PlatformClassLoader = knownKlass(Type.jdk_internal_loader_ClassLoaders$PlatformClassLoader);
             java_lang_StackWalker = knownKlass(Type.java_lang_StackWalker);
-            java_lang_AbstractStackWalker = knownKlass(Type.java_lang_AbstractStackWalker);
-            java_lang_AbstractStackWalker_doStackWalk = java_lang_AbstractStackWalker.requireDeclaredMethod(Name.doStackWalk, Signature.Object_long_int_int_int_int);
+            java_lang_StackStreamFactory_AbstractStackWalker = knownKlass(Type.java_lang_StackStreamFactory_AbstractStackWalker);
+            java_lang_StackStreamFactory_AbstractStackWalker_doStackWalk = java_lang_StackStreamFactory_AbstractStackWalker.requireDeclaredMethod(Name.doStackWalk, Signature.Object_long_int_int_int_int);
 
             java_lang_StackStreamFactory = knownKlass(Type.java_lang_StackStreamFactory);
 
@@ -600,8 +600,8 @@ public final class Meta extends ContextAccessImpl {
             jdk_internal_loader_ClassLoaders_platformClassLoader = null;
             jdk_internal_loader_ClassLoaders$PlatformClassLoader = null;
             java_lang_StackWalker = null;
-            java_lang_AbstractStackWalker = null;
-            java_lang_AbstractStackWalker_doStackWalk = null;
+            java_lang_StackStreamFactory_AbstractStackWalker = null;
+            java_lang_StackStreamFactory_AbstractStackWalker_doStackWalk = null;
 
             java_lang_StackStreamFactory = null;
 
@@ -1376,9 +1376,9 @@ public final class Meta extends ContextAccessImpl {
     public final Method sun_reflect_Reflection_getCallerClass;
 
     public final ObjectKlass java_lang_StackWalker;
-    public final ObjectKlass java_lang_AbstractStackWalker;
+    public final ObjectKlass java_lang_StackStreamFactory_AbstractStackWalker;
     public final ObjectKlass java_lang_StackStreamFactory;
-    public final Method java_lang_AbstractStackWalker_doStackWalk;
+    public final Method java_lang_StackStreamFactory_AbstractStackWalker_doStackWalk;
 
     public final ObjectKlass java_lang_StackFrameInfo;
     public final Field java_lang_StackFrameInfo_memberName;

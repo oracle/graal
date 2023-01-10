@@ -704,6 +704,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> sun_misc_VM = StaticSymbols.putType("Lsun/misc/VM;");
         public static final Symbol<Type> jdk_internal_misc_VM = StaticSymbols.putType("Ljdk/internal/misc/VM;");
         public static final Symbol<Type> java_lang_Thread$State = StaticSymbols.putType("Ljava/lang/Thread$State;");
+        public static final Symbol<Type> jdk_internal_vm_ContinuationScope = StaticSymbols.putType("Ljdk/internal/vm/ContinuationScope;");
+        public static final Symbol<Type> jdk_internal_vm_Continuation = StaticSymbols.putType("Ljdk/internal/vm/Continuation;");
 
         public static final Symbol<Type> sun_misc_Signal = StaticSymbols.putType("Lsun/misc/Signal;");
         public static final Symbol<Type> jdk_internal_misc_Signal = StaticSymbols.putType("Ljdk/internal/misc/Signal;");
@@ -817,7 +819,7 @@ public final class Symbol<T> extends ByteSequence {
         // Stack walking API
         public static final Symbol<Type> java_lang_StackWalker = StaticSymbols.putType("Ljava/lang/StackWalker;");
         public static final Symbol<Type> java_lang_StackStreamFactory = StaticSymbols.putType("Ljava/lang/StackStreamFactory;");
-        public static final Symbol<Type> java_lang_AbstractStackWalker = StaticSymbols.putType("Ljava/lang/StackStreamFactory$AbstractStackWalker;");
+        public static final Symbol<Type> java_lang_StackStreamFactory_AbstractStackWalker = StaticSymbols.putType("Ljava/lang/StackStreamFactory$AbstractStackWalker;");
         public static final Symbol<Type> java_lang_StackFrameInfo = StaticSymbols.putType("Ljava/lang/StackFrameInfo;");
 
         // Special threads
@@ -954,6 +956,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _boolean_Object = StaticSymbols.putSignature(Type._boolean, Type.java_lang_Object);
         public static final Symbol<Signature> Object_long_int_int_int_int = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int, Type._int, Type._int, Type._int);
         public static final Symbol<Signature> Object_long_int_int_int_Object_array = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int, Type._int, Type._int,
+                        Type.java_lang_Object_array);
+        public static final Symbol<Signature> Object_long_int_ContinuationScope_Continuation_int_int_Object_array = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int,
+                        Type.jdk_internal_vm_ContinuationScope, Type.jdk_internal_vm_Continuation, Type._int, Type._int,
                         Type.java_lang_Object_array);
         public static final Symbol<Signature> _byte_array_String_Class_array_int = StaticSymbols.putSignature(Type._byte_array, Type.java_lang_String, Type.java_lang_Class_array, Type._int);
         public static final Symbol<Signature> _byte_array_ClassLoader_String_List_int = StaticSymbols.putSignature(Type._byte_array, Type.java_lang_ClassLoader, Type.java_lang_String,
