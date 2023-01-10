@@ -126,6 +126,7 @@ import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.extended.AbstractBoxingNode;
+import org.graalvm.compiler.nodes.extended.CaptureStateBeginNode;
 import org.graalvm.compiler.nodes.extended.GuardedNode;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
@@ -2054,6 +2055,8 @@ public class SnippetTemplate {
 
             rewireFrameStates(replacee, duplicates, replaceeGraphPredecessor);
 
+            captureLoopExitStates(replacee, duplicates);
+
             // Replace all usages of the replacee with the value returned by the snippet
             ValueNode returnValue = null;
             AbstractBeginNode originalWithExceptionNextNode = null;
@@ -2491,6 +2494,32 @@ public class SnippetTemplate {
                     throw GraalError.shouldNotReachHere("Unknown StateAssigment:" + assignment);
             }
             replacee.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, replacee.graph(), "After duplicating after state for node %s in snippet", duplicates.get(nodeRequiringState));
+        }
+    }
+
+    /**
+     * Before frame state assignment, if the inlined snippet contains a loop with side effects,
+     * place a {@link CaptureStateBeginNode} after every loop exit. This ensures that the correct
+     * loop exit states will be available for later frame state assignment even if the loop exits
+     * themselves disappear, e.g., through full unrolling. It also prevents later floating guards
+     * from moving too far upwards if their anchoring point is optimized away.
+     */
+    private static void captureLoopExitStates(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates) {
+        StructuredGraph replaceeGraph = replacee.graph();
+        if (replaceeGraph.getGuardsStage().areFrameStatesAtDeopts()) {
+            return;
+        }
+        for (Node duplicate : duplicates.getValues()) {
+            if (!(duplicate instanceof LoopExitNode)) {
+                continue;
+            }
+            LoopExitNode loopExit = (LoopExitNode) duplicate;
+            if (loopExit.stateAfter() != null && !(loopExit.next() instanceof StateSplit && ((StateSplit) loopExit.next()).stateAfter() != null)) {
+                CaptureStateBeginNode captureState = replaceeGraph.add(new CaptureStateBeginNode());
+                captureState.setStateAfter(loopExit.stateAfter());
+                replaceeGraph.addAfterFixed(loopExit, captureState);
+                replaceeGraph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, replaceeGraph, "After capturing state %s at %s after %s", loopExit.stateAfter(), captureState, loopExit);
+            }
         }
     }
 
