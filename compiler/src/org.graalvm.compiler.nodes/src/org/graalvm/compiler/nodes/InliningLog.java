@@ -782,16 +782,20 @@ public class InliningLog {
     /**
      * Adds a positive inlining decision and transfers the inlining log of the callee to this log.
      * The inlining log of the callee must be associated with the same graph. The inlining log of
-     * the callee is cleared and should not be used anymore.
+     * the callee is cleared and should not be used anymore. The target of the callsite is updated
+     * using the provided call target.
      *
      * @param invoke the inlined invoke
+     * @param callTargetNode the call target of the invoke
      * @param calleeLog the inlining log of the callee
      * @param phase the phase which performed the decision
      * @param reason the reason for the inlining decision
      */
-    public void inlineByTransfer(Invokable invoke, InliningLog calleeLog, String phase, String reason) {
+    public void inlineByTransfer(Invokable invoke, CallTargetNode callTargetNode, InliningLog calleeLog, String phase, String reason) {
         Callsite caller = leaves.get(invoke);
         caller.addDecision(new Decision(true, reason, phase, invoke.getTargetMethod()));
+        caller.target = callTargetNode.targetMethod;
+        caller.indirect = callTargetNode.invokeKind.isIndirect();
         caller.children.addAll(calleeLog.getRootCallsite().children);
         leaves.removeKey(invoke);
         leaves.putAll(calleeLog.leaves);

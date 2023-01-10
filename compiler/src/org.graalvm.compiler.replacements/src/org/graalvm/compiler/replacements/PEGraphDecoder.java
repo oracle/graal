@@ -79,7 +79,6 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
-import org.graalvm.compiler.nodes.Invokable;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -1238,18 +1237,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     @Override
     protected void afterMethodScope(MethodScope methodScope) {
-        MethodScope callerScope = ((PEMethodScope) methodScope).caller;
-        if (callerScope != null) {
-            if (callerScope.inliningLog != null) {
-                assert methodScope.inliningLog != null;
-                Invokable invoke = ((PEMethodScope) methodScope).invokeData.invoke;
-                callerScope.inliningLog.inlineByTransfer(invoke, methodScope.inliningLog, "PEGraphDecoder", "inlined during decoding");
-            }
-            if (callerScope.optimizationLog != null) {
-                assert methodScope.optimizationLog != null;
-                callerScope.optimizationLog.inline(methodScope.optimizationLog, false, null);
-            }
-        }
         /*
          * The graph should be in a valid state after a method scope was completed. Revisit this
          * assumption if there are any crashes during dumping.
@@ -1384,6 +1371,16 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         for (InlineInvokePlugin plugin : inlineInvokePlugins) {
             plugin.notifyAfterInline(inlineMethod);
+        }
+
+        if (methodScope.inliningLog != null) {
+            assert inlineScope.inliningLog != null;
+            methodScope.inliningLog.inlineByTransfer(invoke, invokeData.callTarget, inlineScope.inliningLog, "PEGraphDecoder",
+                            "inlined during decoding");
+        }
+        if (methodScope.optimizationLog != null) {
+            assert inlineScope.optimizationLog != null;
+            methodScope.optimizationLog.inline(inlineScope.optimizationLog, false, null);
         }
     }
 
