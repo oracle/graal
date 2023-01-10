@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,39 +38,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.polyglot;
+package com.oracle.truffle.api.strings;
 
-import java.lang.reflect.Type;
-
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
-
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
-import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
-import com.oracle.truffle.api.dsl.InlineSupport.ReferenceField;
-import com.oracle.truffle.api.dsl.InlineSupport.RequiredField;
-import com.oracle.truffle.api.dsl.InlineSupport.StateField;
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.GeneratePackagePrivate;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
-@GenerateInline
-@GenerateCached(false)
-abstract class PolyglotToHostNode extends Node {
-
-    abstract Object execute(Node node, PolyglotLanguageContext languageContext, Object value, Class<?> targetType, Type genericType);
-
-    @Specialization
-    static Object doDefault(Node node, PolyglotLanguageContext languageContext, Object value, Class<?> targetType, Type genericType,
-                    @Cached(value = "languageContext.context.engine.host", neverDefault = true) AbstractHostLanguageService host,
-                    @Cached(inlineMethod = "inlineToHost") Node toHostNode) {
-        return host.toHostType(toHostNode, node, languageContext.context.getHostContextImpl(), value, targetType, genericType);
-    }
-
-    static Node inlineToHost(
-                    @RequiredField(bits = 3, value = StateField.class) //
-                    @RequiredField(type = Node.class, value = ReferenceField.class) InlineTarget target) {
-        return EngineAccessor.HOST.inlineToHostNode(target);
-    }
+@ImportStatic({TStringGuards.class, Encoding.class, TStringAccessor.class, TruffleStringBuilder.class})
+@GenerateUncached(value = true, inherit = true)
+@GenerateInline(value = false, inherit = true)
+@GenerateCached(value = true, inherit = true)
+@GeneratePackagePrivate
+abstract class AbstractPublicNode extends Node {
 
 }

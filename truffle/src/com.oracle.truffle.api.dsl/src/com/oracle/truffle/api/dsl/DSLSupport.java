@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.api.dsl;
 
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeInterface;
+
 /**
  * APIs to support share code in generated code. APIs in this class are aggressively deprecated and
  * removed in this class.
@@ -71,6 +74,32 @@ public abstract class DSLSupport {
     @SuppressWarnings("unchecked")
     public static <T extends Enum<?>> T[] lookupEnumConstants(Class<T> c) {
         return (T[]) ENUM_CONSTANTS.get(c);
+    }
+
+    /**
+     * Inserts a node if a {@link NodeInterface} dynamically implements {@link Node}. Intended for
+     * generated code only.
+     *
+     * @since 23.0
+     */
+    public static <T extends NodeInterface> T maybeInsert(Node node, T o) {
+        if (o instanceof Node) {
+            node.insert((Node) o);
+        }
+        return o;
+    }
+
+    /**
+     * Inserts a node array if a {@link NodeInterface}[] dynamically implements {@link Node}[].
+     * Intended for generated code only.
+     *
+     * @since 23.0
+     */
+    public static <T extends NodeInterface> T[] maybeInsert(Node node, T[] o) {
+        if (o instanceof Node[]) {
+            node.insert((Node[]) o);
+        }
+        return o;
     }
 
 }

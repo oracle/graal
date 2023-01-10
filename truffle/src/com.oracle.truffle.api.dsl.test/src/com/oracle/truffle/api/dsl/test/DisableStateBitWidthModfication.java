@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,39 +38,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.polyglot;
+package com.oracle.truffle.api.dsl.test;
 
-import java.lang.reflect.Type;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
-
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateCached;
-import com.oracle.truffle.api.dsl.GenerateInline;
-import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
-import com.oracle.truffle.api.dsl.InlineSupport.ReferenceField;
-import com.oracle.truffle.api.dsl.InlineSupport.RequiredField;
-import com.oracle.truffle.api.dsl.InlineSupport.StateField;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
-
-@GenerateInline
-@GenerateCached(false)
-abstract class PolyglotToHostNode extends Node {
-
-    abstract Object execute(Node node, PolyglotLanguageContext languageContext, Object value, Class<?> targetType, Type genericType);
-
-    @Specialization
-    static Object doDefault(Node node, PolyglotLanguageContext languageContext, Object value, Class<?> targetType, Type genericType,
-                    @Cached(value = "languageContext.context.engine.host", neverDefault = true) AbstractHostLanguageService host,
-                    @Cached(inlineMethod = "inlineToHost") Node toHostNode) {
-        return host.toHostType(toHostNode, node, languageContext.context.getHostContextImpl(), value, targetType, genericType);
-    }
-
-    static Node inlineToHost(
-                    @RequiredField(bits = 3, value = StateField.class) //
-                    @RequiredField(type = Node.class, value = ReferenceField.class) InlineTarget target) {
-        return EngineAccessor.HOST.inlineToHostNode(target);
-    }
+/**
+ * Disables all state bit width modification in the DSL processor. This is useful if for example the
+ * internal state of a node needs to be asserted.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+public @interface DisableStateBitWidthModfication {
 
 }

@@ -254,7 +254,11 @@ public abstract class AbstractPolyglotTest {
                     int threads,
                     int iterations,
                     int objectCount) throws InterruptedException {
-        return assertInParallel(() -> adoptNode(objectFactory.get()).get(), assertions, threadPools, threads, iterations, objectCount);
+        return assertInParallel(() -> {
+            T node = objectFactory.get();
+            new TestRootNode(language, node).getCallTarget();
+            return node;
+        }, assertions, threadPools, threads, iterations, objectCount);
     }
 
     /**

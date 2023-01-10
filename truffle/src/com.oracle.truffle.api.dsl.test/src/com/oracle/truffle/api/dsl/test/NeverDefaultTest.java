@@ -43,14 +43,17 @@ package com.oracle.truffle.api.dsl.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.function.Supplier;
 
 import org.junit.Test;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -62,14 +65,17 @@ import com.oracle.truffle.api.dsl.Introspection.SpecializationInfo;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.CachedReachableFallbackTest.GuardNode;
+import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.CacheCleanupNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.CachedGuardAndFallbackNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.FallbackManyCachesNodeGen;
+import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.FallbackWithCacheClassNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.GuardCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.MultiInstanceCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.MultiInstanceNodeCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.NeverDefaultInt1NodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.NeverDefaultInt2NodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.NeverDefaultInt3NodeGen;
+import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.ObjectInitializationInCachedValueNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.ReplaceThisNoCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.ReplaceThisNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.SharedDefaultInlinedNodeNodeGen;
@@ -86,8 +92,11 @@ import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.SingleInstancePri
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.UseMultiInstanceNodeCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.UseSharedDefaultInlinedNodeNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.UseSharedNeverDefaultInlinedNodeNodeGen;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 /**
@@ -670,7 +679,7 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
         });
 
         SingleInstancePrimitiveCacheNode node = adoptNode(SingleInstancePrimitiveCacheNodeGen.create()).get();
-        assertFails(() -> node.execute(null, 0), IllegalStateException.class, (e) -> {
+        assertFails(() -> node.execute(null, 0), NullPointerException.class, (e) -> {
             assertEquals("Specialization 's0(int, int)' cache 'cachedValue' returned a '0' default value. The cache initializer must never return a default value for this cache. " +
                             "Use @Cached(neverDefault=false) to allow default values for this cached value or make sure the cache initializer never returns '0'.",
                             e.getMessage());
@@ -689,13 +698,13 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
 
         static volatile boolean returnNull = false;
 
+        @NeverDefault
         static GuardCacheNode create() {
             if (returnNull) {
                 return null;
             }
             return GuardCacheNodeGen.create();
         }
-
     }
 
     @GenerateInline
@@ -722,7 +731,7 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
 
         SingleInstanceNodeCacheNode returnNull = adoptNode(SingleInstanceNodeCacheNodeGen.create()).get();
         GuardCacheNode.returnNull = true;
-        assertFails(() -> returnNull.execute(null, 1), IllegalStateException.class, (e) -> {
+        assertFails(() -> returnNull.execute(null, 1), NullPointerException.class, (e) -> {
             assertEquals("Specialization 's0(int, GuardCacheNode)' cache 'cachedNode' returned a 'null' default value. " +
                             "The cache initializer must never return a default value for this cache. Use @Cached(neverDefault=false) to allow default values for this cached value or make sure the cache initializer never returns 'null'.",
                             e.getMessage());
@@ -820,6 +829,44 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
         });
     }
 
+    abstract static class FallbackWithCacheClass extends Node {
+        abstract boolean execute(Object obj);
+
+        static boolean myGuard(Object obj) {
+            return !(obj instanceof Integer);
+        }
+
+        @Specialization(guards = {"obj.getClass() == cachedClass", "myGuard(cachedClass)"}, limit = "1")
+        static boolean doItCached(@SuppressWarnings("unused") Object obj,
+                        @Cached("obj.getClass()") @SuppressWarnings("unused") Class<?> cachedClass) {
+            return myGuard(cachedClass);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        protected static boolean fromObjectGeneric(Object value) {
+            return true;
+        }
+    }
+
+    @Test
+    public void testFallbackWithCacheClass() throws InterruptedException {
+        assertInParallel(FallbackWithCacheClassNodeGen::create, (node, threadIndex, objectIndex) -> {
+            Object arg;
+            switch (threadIndex % 2) {
+                case 0:
+                    arg = "";
+                    break;
+                case 1:
+                    arg = 42;
+                    break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+            assertTrue(node.execute(arg));
+        });
+    }
+
     @SuppressWarnings("unused")
     public abstract static class InnerGuardNode extends Node {
 
@@ -882,12 +929,202 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
         });
     }
 
+    /*
+     * Compilation only test.
+     */
+    @SuppressWarnings({"unused", "truffle-unused"})
+    public abstract static class SharedWrapperWithBoundaryNode extends Node {
+
+        public abstract Object execute(Object arg0);
+
+        @Specialization
+        protected Object oneArg(int arg0,
+                        @Cached(neverDefault = false) @Shared("shared") GuardCacheNode sharedNode) {
+            return arg0;
+        }
+
+        /*
+         * This specialization forces a boundary method in combination with a shared wrapper.
+         */
+        @Specialization(limit = "3")
+        protected Object twoArgs(double arg0,
+                        @CachedLibrary("arg0") InteropLibrary interop,
+                        @Cached(neverDefault = false) @Shared("shared") GuardCacheNode sharedNode) {
+            return arg0;
+        }
+
+    }
+
+    @SuppressWarnings({"unused", "truffle-unused"})
+    public abstract static class SharedWrapperInFallbackNode extends Node {
+
+        public abstract Object execute(Object arg0);
+
+        @Specialization(guards = {"arg0 == 2", "guardNode.execute(arg0)"}, limit = "1")
+        protected Object oneArg(int arg0,
+                        @Shared("guard") @Cached(neverDefault = false) GuardCacheNode guardNode) {
+            return arg0;
+        }
+
+        @Specialization(guards = {"arg0 == 1", "guardNode.execute(arg0)"}, limit = "1")
+        protected Object twoArg(int arg0,
+                        @Shared("guard") @Cached(neverDefault = false) GuardCacheNode guardNode) {
+            return arg0;
+        }
+
+        /*
+         * This specialization forces a boundary method in combination with a shared wrapper.
+         */
+        @Fallback
+        protected Object twoArgs(Object arg0) {
+            return arg0;
+        }
+
+    }
+
+    public abstract static class ObjectInitializationInCachedValue extends Node {
+        abstract boolean execute(Object obj1);
+
+        static Cache getCache(int val) {
+            Cache c = new Cache();
+            c.value = val;
+            return c;
+        }
+
+        @Specialization(guards = "value == 0")
+        static boolean s0(int value,
+                        @Cached(value = "getCache(value)", neverDefault = true) Cache cache) {
+            assertNotNull(cache.value);
+            return value >= 0;
+        }
+
+        @Specialization(guards = "value == 1")
+        static boolean s1(int value,
+                        @Cached(value = "getCache(value)", neverDefault = false) Cache cache) {
+            assertNotNull(cache.value);
+            return value >= 0;
+        }
+
+    }
+
+    @Test
+    public void testObjectInitializationInCachedValue() throws InterruptedException {
+        assertInParallel(ObjectInitializationInCachedValueNodeGen::create, (node, threadIndex, objectIndex) -> {
+            node.execute(threadIndex % 2);
+        });
+    }
+
+    static final class Cache {
+        public /* not final! */ Integer value;
+
+        public boolean guard(int other) {
+            return value.intValue() == other;
+        }
+    }
+
+    public abstract static class CacheCleanupNode extends Node {
+        abstract boolean execute(int v);
+
+        static Cache getCache(int v) {
+            Cache c = new Cache();
+            c.value = v;
+            return c;
+        }
+
+        @Specialization(guards = "v == 0")
+        static boolean s0(int v,
+                        @Cached(value = "getCache(v)", neverDefault = true) Cache cache) {
+            assertNotNull(cache.value);
+            return v >= 0;
+        }
+
+        @Specialization(guards = "v == 1")
+        static boolean s1(int v,
+                        @Cached(value = "getCache(v)", neverDefault = false) Cache cache) {
+            assertNotNull(cache.value);
+            return v >= 0;
+        }
+
+        @Specialization(guards = "v == 2")
+        static boolean s2(int v,
+                        @Shared("cacheDefault") @Cached(value = "getCache(2)", neverDefault = false) Cache cache) {
+            assertNotNull(cache.value);
+            return v >= 0;
+        }
+
+        @Specialization(guards = "v == 3")
+        static boolean s3(int v,
+                        @Shared("cacheDefault") @Cached(value = "getCache(2)", neverDefault = false) Cache cache) {
+            assertNotNull(cache.value);
+            return v >= 0;
+        }
+
+        @Specialization(guards = "v == 4")
+        static boolean s4(int v,
+                        @Shared("cacheNeverDefault") @Cached(value = "getCache(3)", neverDefault = true) Cache cache) {
+            assertNotNull(cache.value);
+            return v >= 0;
+        }
+
+        @Specialization(guards = "v == 5")
+        static boolean s5(int v,
+                        @Shared("cacheNeverDefault") @Cached(value = "getCache(3)", neverDefault = true) Cache cache) {
+            assertNotNull(cache.value);
+            return v >= 0;
+        }
+
+        @Specialization(guards = "v == 6")
+        static boolean s6(int v,
+                        @Shared("cacheSharedNonReplaced") @Cached(value = "getCache(3)", neverDefault = true) Cache cache) {
+            assertNotNull(cache.value);
+            return v >= 0;
+        }
+
+        @Specialization(guards = "v == 7")
+        static boolean s7(int v,
+                        @Shared("cacheSharedNonReplaced") @Cached(value = "getCache(3)", neverDefault = true) Cache cache) {
+            assertNotNull(cache.value);
+            return v >= 0;
+        }
+
+        /*
+         * Deliberately not replacing s7 to test that shared are not cleaned in that case.
+         */
+        @Specialization(guards = "v == 8", replaces = {"s0", "s1", "s2", "s3", "s4", "s5", "s6"})
+        static boolean s8(int v) {
+            return v >= 0;
+        }
+
+    }
+
+    @Test
+    public void testCacheCleanupNode() throws IllegalArgumentException, IllegalAccessException {
+        CacheCleanupNode node = CacheCleanupNodeGen.create();
+        for (int i = 0; i < 9; i++) {
+            node.execute(i);
+        }
+
+        int fieldCount = 0;
+        for (Field f : node.getClass().getDeclaredFields()) {
+            ReflectionUtils.setAccessible(f, true);
+            if (f.getType() != int.class) {
+                fieldCount++;
+                if (f.getName().equals("cacheSharedNonReplaced")) {
+                    assertNotNull(f.get(node));
+                } else {
+                    assertNull(f.get(node));
+                }
+            }
+        }
+        assertEquals(5, fieldCount);
+    }
+
     static final int NODES = 10;
     static final int THREADS = 10;
 
     private <T extends Node> void assertInParallel(Supplier<T> nodeFactory, ParallelObjectConsumer<T> assertions) throws InterruptedException {
         final int threads = THREADS;
-        final int threadPools = 2;
+        final int threadPools = 4;
         final int iterations = 1000;
         /*
          * We create multiple nodes and run the assertions in a loop to avoid implicit

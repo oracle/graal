@@ -168,9 +168,6 @@ public final class OrganizedImports {
             }
         }
         if (raw) {
-            if (name.equals("com.oracle.truffle.api.dsl.test.Cached")) {
-                System.out.println();
-            }
             return name;
         }
 

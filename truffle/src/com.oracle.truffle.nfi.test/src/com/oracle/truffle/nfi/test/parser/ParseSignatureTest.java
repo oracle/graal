@@ -80,6 +80,7 @@ public class ParseSignatureTest {
         testSymbol = INTEROP.readMember(library, "testSymbol");
     }
 
+    @SuppressWarnings("truffle-inlining")
     abstract static class InlineCacheNode extends Node {
 
         abstract Object execute(CallTarget callTarget);

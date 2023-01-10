@@ -82,9 +82,16 @@ public final class CacheExpression extends MessageContainer {
     private LibraryData cachedlibrary;
     private boolean usedInGuard;
 
+    private AnnotationMirror sharedGroupMirror;
+    private AnnotationValue sharedGroupValue;
+    private String sharedGroup;
+
     public CacheExpression(Parameter sourceParameter, AnnotationMirror sourceAnnotationMirror) {
         this.sourceParameter = sourceParameter;
         this.sourceAnnotationMirror = sourceAnnotationMirror;
+        this.sharedGroupMirror = ElementUtils.findAnnotationMirror(sourceParameter.getVariableElement(), types.Cached_Shared);
+        this.sharedGroupValue = sharedGroupMirror != null ? getAnnotationValue(sharedGroupMirror, "value") : null;
+        this.sharedGroup = sharedGroupMirror != null ? getAnnotationValue(String.class, sharedGroupMirror, "value") : null;
     }
 
     public CacheExpression copy() {
@@ -147,8 +154,14 @@ public final class CacheExpression extends MessageContainer {
         this.eagerInitialize = alreadyInitialized;
     }
 
+    public void clearSharing() {
+        this.sharedGroup = null;
+        this.sharedGroupMirror = null;
+        this.sharedGroupValue = null;
+    }
+
     public AnnotationMirror getSharedGroupMirror() {
-        return ElementUtils.findAnnotationMirror(sourceParameter.getVariableElement(), types.Cached_Shared);
+        return sharedGroupMirror;
     }
 
     public boolean isEncodedEnum() {
@@ -159,19 +172,11 @@ public final class CacheExpression extends MessageContainer {
     }
 
     public AnnotationValue getSharedGroupValue() {
-        AnnotationMirror sharedAnnotation = getSharedGroupMirror();
-        if (sharedAnnotation != null) {
-            return getAnnotationValue(sharedAnnotation, "value");
-        }
-        return null;
+        return sharedGroupValue;
     }
 
     public String getSharedGroup() {
-        AnnotationMirror sharedAnnotation = getSharedGroupMirror();
-        if (sharedAnnotation != null) {
-            return getAnnotationValue(String.class, sharedAnnotation, "value");
-        }
-        return null;
+        return sharedGroup;
     }
 
     public void setDefaultExpression(DSLExpression expression) {

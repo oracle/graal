@@ -79,9 +79,9 @@ import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
@@ -302,6 +302,8 @@ public abstract class Accessor {
         public abstract boolean isGuestToHostRootNode(RootNode root);
 
         public abstract boolean isHostLanguage(Class<?> languageClass);
+
+        public abstract Node inlineToHostNode(Object target);
 
     }
 

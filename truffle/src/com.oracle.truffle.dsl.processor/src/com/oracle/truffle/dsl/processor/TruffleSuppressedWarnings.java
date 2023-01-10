@@ -98,25 +98,8 @@ public final class TruffleSuppressedWarnings {
     }
 
     public static boolean isSuppressed(Element element, String... warningKind) {
-        final TruffleTypes types = ProcessorContext.getInstance().getTypes();
         Element e = element;
         do {
-            if (types.DisableWarningSuppression != null) {
-                AnnotationMirror disabled = ElementUtils.findAnnotationMirror(e, types.DisableWarningSuppression);
-                if (disabled != null) {
-                    List<String> elements = ElementUtils.getAnnotationValueList(String.class, disabled, "value");
-                    if (elements.isEmpty()) {
-                        return false;
-                    } else {
-                        for (String warning : warningKind) {
-                            if (elements.contains(warning)) {
-                                return false;
-                            }
-                        }
-                    }
-                }
-            }
-
             Set<String> warnings = getWarnings(e);
             if (warnings.contains(ALL) || warnings.contains(TRUFFLE) || //
                             warnings.stream().anyMatch((s) -> (Arrays.asList(warningKind).contains(s)))) {

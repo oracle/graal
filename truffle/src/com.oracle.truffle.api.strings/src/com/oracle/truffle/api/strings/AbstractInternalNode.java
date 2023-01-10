@@ -38,14 +38,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.dsl.test;
+package com.oracle.truffle.api.strings;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
-@Retention(RetentionPolicy.RUNTIME)
-public @interface DisableWarningSuppression {
-
-    String[] value() default {};
+@ImportStatic({TStringGuards.class, Encoding.class})
+@GenerateUncached(value = true, inherit = true)
+@GenerateInline(value = true, inherit = true)
+@GenerateCached(value = false, inherit = true)
+abstract class AbstractInternalNode extends Node {
 
 }

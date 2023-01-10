@@ -109,11 +109,15 @@ import com.oracle.truffle.api.dsl.test.GenerateInlineTestFactory.UseUncachedEncu
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString.CompactionLevel;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
@@ -218,6 +222,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
     @GenerateInline
     @SuppressWarnings("unused")
+    @DisableStateBitWidthModfication
     public abstract static class Use32BitsNode extends UseStateNode {
 
         @Specialization
@@ -249,6 +254,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
     @GenerateInline
     @SuppressWarnings("unused")
+    @DisableStateBitWidthModfication
     public abstract static class Use128BitsNode extends UseStateNode {
 
         @Specialization
@@ -268,6 +274,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
     @GenerateInline
     @SuppressWarnings("unused")
+    @DisableStateBitWidthModfication
     public abstract static class Use512BitsNode extends UseStateNode {
 
         @Specialization
@@ -287,6 +294,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
     @GenerateInline
     @SuppressWarnings("unused")
+    @DisableStateBitWidthModfication
     public abstract static class Use2048BitsNode extends UseStateNode {
 
         @Specialization
@@ -618,6 +626,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
     @GenerateInline
     @GeneratePackagePrivate
+    @DisableStateBitWidthModfication
     public abstract static class CustomInline1Node extends Node {
 
         abstract int execute(Node node, int value);
@@ -640,6 +649,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
     @GenerateInline
     @GeneratePackagePrivate
+    @DisableStateBitWidthModfication
     public abstract static class CustomInline2Node extends Node {
 
         abstract int execute(Node node, int value);
@@ -661,6 +671,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
     }
 
     @SuppressWarnings({"truffle", "unused"})
+    @DisableStateBitWidthModfication
     public abstract static class UseCustomInlineNode extends Node {
 
         abstract Object execute(int value);
@@ -1629,7 +1640,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         abstract Object execute(Node node, Object arg);
 
-        @ExpectError("For @GenerateInline annotated nodes all specialization methods with inlined cached values must be static and declare the a 'Node node' parameter. %")
+        @ExpectError("For @GenerateInline annotated nodes all specialization methods with inlined cached values must be static%")
         @Specialization
         Object doInt(Node node, int arg,
                         @Cached SimpleNode simpleNode) {
@@ -1643,7 +1654,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         abstract Object execute(Node node, Object arg);
 
-        @ExpectError("For @GenerateInline annotated nodes all specialization methods with inlined cached values must be static and declare the a 'Node node' parameter. %")
+        @ExpectError("For @GenerateInline annotated nodes all specialization methods with inlined cached values must declare 'Node node' dynamic parameter.%")
         @Specialization
         static Object doInt(int arg,
                         @Cached SimpleNode simpleNode) {
@@ -1746,7 +1757,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization
         static int doDefault(Node node,
-                        @ExpectError("Message redirected from element GenerateInlineTest.ErrorIndirectRecursionNode2.doDefault(..., ErrorIndirectRecursionNode1 cachedNode):%")//
+                        @ExpectError("%")//
                         @Cached ErrorIndirectRecursionNode2 cachedNode) {
             return 42;
         }
@@ -1761,9 +1772,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
         @Specialization
         static int doDefault(Node node,
-                        @ExpectError("Message redirected from element GenerateInlineTest.ErrorIndirectRecursionNode1.doDefault(..., ErrorIndirectRecursionNode2 cachedNode):\n" +
-                                        "Detected recursive inlined cache with type 'ErrorIndirectRecursionNode2'. Recursive inlining cannot be supported. " +
-                                        "Remove the recursive declaration or disable inlining with @Cached(..., inline=false) to resolve this.") //
+                        @ExpectError("%") //
                         @Cached ErrorIndirectRecursionNode1 cachedNode) {
             return 42;
         }
@@ -2070,6 +2079,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
     @GenerateInline
     @GeneratePackagePrivate
+    @DisableStateBitWidthModfication
     public abstract static class ErrorNodeWithCustomInlineNode extends Node {
 
         abstract long execute(Node node, long value);
@@ -2095,6 +2105,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
     @GenerateInline
     @GeneratePackagePrivate
+    @DisableStateBitWidthModfication
     public abstract static class ErrorNodeWithCustomInline2Node extends Node {
 
         abstract long execute(Node node, long value);
@@ -2183,6 +2194,70 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
                         @ExpectError("Static inline method with name 'doesNotExist' and parameter type 'InlineTarget' could not be resolved. %") //
                         @Cached(inlineMethod = "doesNotExist") Node inlinedNnode) {
             return "s0";
+        }
+
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"static-method", "unused"})
+    static class ErrorUseBindParamterInLibraryExport1 implements TruffleObject {
+
+        @ExportMessage
+        final boolean isPointer() {
+            return false;
+        }
+
+        @ExpectError("For this specialization with inlined cache parameters a '@Bind(\"$node\") Node node' parameter must be declared.%")
+        @ExportMessage
+        long asPointer(@Cached InlinedBranchProfile profile) {
+            return 0L;
+        }
+
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"static-method", "unused"})
+    static class ErrorUseBindParamterInLibraryExport2 implements TruffleObject {
+
+        @ExportMessage
+        final boolean isPointer() {
+            return false;
+        }
+
+        @ExportMessage
+        static class AsPointer {
+            @ExpectError("For this specialization with inlined cache parameters a '@Bind(\"$node\") Node node' parameter must be declared.%")
+            @Specialization
+            static long asPointer(ErrorUseBindParamterInLibraryExport2 receiver, @Cached InlinedBranchProfile profile) {
+                return 0L;
+            }
+        }
+
+    }
+
+    /*
+     * Test this compiles correctly. The lookup field in the specialization data class may cause a
+     * code generation problem.
+     */
+    @SuppressWarnings({"truffle-inlining", "unused"})
+    public abstract static class MultiInstanceWithAssumptionNode extends Node {
+
+        public abstract Object execute(Object object);
+
+        @Specialization(guards = {"object.getClass() == cachedLayout"},
+                        // this test needs an assumption
+                        assumptions = "createAssumption()", //
+                        limit = "3")
+        protected static Object s0(final Object object,
+                        @Bind("this") Node node,
+                        @Cached("object.getClass()") final Class<?> cachedLayout,
+                        // need to have one node inlined
+                        @Cached InlinedConditionProfile weakRefProfile) {
+            return null;
+        }
+
+        static Assumption createAssumption() {
+            return Truffle.getRuntime().createAssumption();
         }
 
     }

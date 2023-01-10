@@ -135,7 +135,7 @@ public class GenerateInlineCompilationTest extends PartialEvaluationTest {
         @Override
         protected ExecutionSignature prepareForAOT() {
             AOTSupport.prepareForAOT(this);
-            return ExecutionSignature.create(Integer.class, new Class[0]);
+            return ExecutionSignature.create(Integer.class, new Class<?>[0]);
         }
 
         @Override

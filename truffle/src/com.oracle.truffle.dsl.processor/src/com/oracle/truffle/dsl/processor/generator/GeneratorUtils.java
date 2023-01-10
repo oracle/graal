@@ -77,6 +77,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 import com.oracle.truffle.dsl.processor.model.Template;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod;
 
@@ -163,6 +164,13 @@ public class GeneratorUtils {
         method.addAnnotationMirror(new CodeAnnotationMirror(override));
     }
 
+    public static void markUnsafeAccessed(CodeElement<?> element) {
+        DeclaredType unsafeAccessed = ProcessorContext.types().InlineSupport_UnsafeAccessedField;
+        if (ElementUtils.findAnnotationMirror(element, unsafeAccessed) == null) {
+            element.getAnnotationMirrors().add(new CodeAnnotationMirror(unsafeAccessed));
+        }
+    }
+
     public static void mergeSuppressWarnings(CodeElement<?> element, String... addWarnings) {
         List<String> mergedWarnings = Arrays.asList(addWarnings);
         AnnotationMirror currentWarnings = ElementUtils.findAnnotationMirror(element, SuppressWarnings.class);
@@ -222,6 +230,48 @@ public class GeneratorUtils {
             builder.string("this.");
             builder.string(fieldName);
             builder.string(" = ");
+            builder.string(fieldName);
+            builder.end(); // statement
+        }
+
+        return method;
+    }
+
+    public static CodeExecutableElement createCopyConstructorUsingFields(Set<Modifier> modifiers, CodeTypeElement clazz, Set<String> ignoreFields) {
+        TypeElement superClass = fromTypeMirror(clazz.getSuperclass());
+        ExecutableElement constructor = findConstructor(superClass);
+        return createCopyConstructorUsingFields(modifiers, clazz, constructor, ignoreFields);
+    }
+
+    public static CodeExecutableElement createCopyConstructorUsingFields(Set<Modifier> modifiers, CodeTypeElement clazz, ExecutableElement superConstructor,
+                    Set<String> ignoreFields) {
+        CodeExecutableElement method = new CodeExecutableElement(modifiers, null, clazz.getSimpleName().toString());
+        CodeTreeBuilder builder = method.createBuilder();
+        if (superConstructor != null && superConstructor.getParameters().size() > 0) {
+            builder.startStatement();
+            builder.startSuperCall();
+            for (VariableElement parameter : superConstructor.getParameters()) {
+                method.addParameter(CodeVariableElement.clone(parameter));
+                builder.string(parameter.getSimpleName().toString());
+            }
+            builder.end(); // super
+            builder.end(); // statement
+        }
+
+        GeneratedTypeMirror typeMirror = new GeneratedTypeMirror("", clazz.getSimpleName().toString(), clazz.asType());
+        method.addParameter(new CodeVariableElement(typeMirror, "delegate"));
+        for (VariableElement field : clazz.getFields()) {
+            if (field.getModifiers().contains(STATIC)) {
+                continue;
+            }
+            if (ignoreFields.contains(field.getSimpleName().toString())) {
+                continue;
+            }
+            String fieldName = field.getSimpleName().toString();
+            builder.startStatement();
+            builder.string("this.");
+            builder.string(fieldName);
+            builder.string(" = delegate.");
             builder.string(fieldName);
             builder.end(); // statement
         }

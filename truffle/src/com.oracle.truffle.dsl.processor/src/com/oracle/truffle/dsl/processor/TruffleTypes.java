@@ -55,7 +55,7 @@ public class TruffleTypes {
     // Testing API
     private static final String[] EXPECT_ERROR_TYPES = new String[]{TruffleTypes.EXPECT_ERROR_CLASS_NAME1, TruffleTypes.EXPECT_ERROR_CLASS_NAME2};
     public static final String ALWAYS_SLOW_PATH_MODE_NAME = "com.oracle.truffle.api.dsl.test.AlwaysGenerateOnlySlowPath";
-    public static final String DISABLE_WARNING_SUPRESSION = "com.oracle.truffle.api.dsl.test.DisableWarningSuppression";
+    public static final String DISABLE_STATE_BITWIDTH_MODIFICATION = "com.oracle.truffle.api.dsl.test.DisableStateBitWidthModfication";
     public static final String EXPECT_ERROR_CLASS_NAME1 = "com.oracle.truffle.api.dsl.test.ExpectError";
     public static final String EXPECT_ERROR_CLASS_NAME2 = "com.oracle.truffle.api.test.ExpectError";
     public static final List<String> TEST_PACKAGES = List.of("com.oracle.truffle.api.test", "com.oracle.truffle.api.instrumentation.test");
@@ -63,7 +63,7 @@ public class TruffleTypes {
     public static final String SlowPathListener_Name = "com.oracle.truffle.api.dsl.test.SlowPathListener";
     public final DeclaredType SlowPathListener = c.getDeclaredTypeOptional(SlowPathListener_Name);
     public final DeclaredType AlwaysSlowPath = c.getDeclaredTypeOptional(ALWAYS_SLOW_PATH_MODE_NAME);
-    public final DeclaredType DisableWarningSuppression = c.getDeclaredTypeOptional(DISABLE_WARNING_SUPRESSION);
+    public final DeclaredType DisableStateBitWidthModification = c.getDeclaredTypeOptional(DISABLE_STATE_BITWIDTH_MODIFICATION);
     public final List<DeclaredType> ExpectErrorTypes;
     {
         List<DeclaredType> types = new ArrayList<>(EXPECT_ERROR_TYPES.length);
@@ -114,6 +114,7 @@ public class TruffleTypes {
     public static final String Option_Group_Name = "com.oracle.truffle.api.Option.Group";
     public static final String Option_Name = "com.oracle.truffle.api.Option";
     public static final String Profile_Name = "com.oracle.truffle.api.profiles.Profile";
+    public static final String IndirectCallNode_Name = "com.oracle.truffle.api.nodes.IndirectCallNode";
     public static final String InlinedProfile_Name = "com.oracle.truffle.api.profiles.InlinedProfile";
     public static final String SlowPathException_Name = "com.oracle.truffle.api.nodes.SlowPathException";
     public static final String SourceSection_Name = "com.oracle.truffle.api.source.SourceSection";
@@ -148,6 +149,7 @@ public class TruffleTypes {
     public final DeclaredType NodeInterface = c.getDeclaredType(NodeInterface_Name);
     public final DeclaredType NodeUtil = c.getDeclaredType(NodeUtil_Name);
     public final DeclaredType Profile = c.getDeclaredTypeOptional(Profile_Name);
+    public final DeclaredType IndirectCallNode = c.getDeclaredType(IndirectCallNode_Name);
     public final DeclaredType InlinedProfile = c.getDeclaredTypeOptional(InlinedProfile_Name);
     public final DeclaredType SlowPathException = c.getDeclaredType(SlowPathException_Name);
     public final DeclaredType SourceSection = c.getDeclaredType(SourceSection_Name);
@@ -199,6 +201,7 @@ public class TruffleTypes {
     public static final String InlineSupport_LongField_Name = "com.oracle.truffle.api.dsl.InlineSupport.LongField";
     public static final String InlineSupport_DoubleField_Name = "com.oracle.truffle.api.dsl.InlineSupport.DoubleField";
     public static final String InlineSupport_ReferenceField_Name = "com.oracle.truffle.api.dsl.InlineSupport.ReferenceField";
+    public static final String InlineSupport_UnsafeAccessedField_Name = "com.oracle.truffle.api.dsl.InlineSupport.UnsafeAccessedField";
     public static final String NodeChild_Name = "com.oracle.truffle.api.dsl.NodeChild";
     public static final String NodeChildren_Name = "com.oracle.truffle.api.dsl.NodeChildren";
     public static final String NeverDefault_Name = "com.oracle.truffle.api.dsl.NeverDefault";
@@ -256,6 +259,7 @@ public class TruffleTypes {
     public final DeclaredType InlineSupport_IntField = c.getDeclaredType(InlineSupport_IntField_Name);
     public final DeclaredType InlineSupport_LongField = c.getDeclaredType(InlineSupport_LongField_Name);
     public final DeclaredType InlineSupport_DoubleField = c.getDeclaredType(InlineSupport_DoubleField_Name);
+    public final DeclaredType InlineSupport_UnsafeAccessedField = c.getDeclaredType(InlineSupport_UnsafeAccessedField_Name);
     public final DeclaredType NodeChild = c.getDeclaredType(NodeChild_Name);
     public final DeclaredType NodeChildren = c.getDeclaredType(NodeChildren_Name);
     public final DeclaredType NeverDefault = c.getDeclaredType(NeverDefault_Name);

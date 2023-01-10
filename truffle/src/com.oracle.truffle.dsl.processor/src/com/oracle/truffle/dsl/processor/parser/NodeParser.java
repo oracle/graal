@@ -79,6 +79,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -429,8 +430,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
         verifyConstructors(node);
         verifySpecializationThrows(node);
         verifyFrame(node);
+
         if (isGenerateSlowPathOnly(node)) {
-            removeFastPathSpecializations(node);
+            removeFastPathSpecializations(node, node.getSharedCaches());
         }
 
         verifyRecommendationWarnings(node, recommendInline);
@@ -565,23 +567,25 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
             }
             if (usesInlinedNodes) {
-                boolean firstParameterNode = false;
-                for (Parameter p : specialization.getSignatureParameters()) {
-                    firstParameterNode = p.isDeclared();
-                    break;
-                }
-
                 boolean isStatic = element.getModifiers().contains(Modifier.STATIC);
                 if (node.isGenerateInline()) {
-                    if (!isStatic || !firstParameterNode) {
-                        specialization.addError("For @%s annotated nodes all specialization methods with inlined cached values must be static and declare the a 'Node node' parameter. " +
-                                        "When using inlinable nodes it is a common mistake to pass the wrong inline target node to inlined cached values. " +
-                                        "Making the method static avoids this mistake as the invalid receiver node can no longer be accessed. " + //
-                                        "To resolve this add the static keyword and the 'Node node' parameter as first parameter to the specialization method. " + //
-                                        "Use the first node parameter and pass it along to inlined caches. ",
+                    boolean firstParameterNode = false;
+                    for (Parameter p : specialization.getSignatureParameters()) {
+                        firstParameterNode = p.isDeclared();
+                        break;
+                    }
+                    if (!firstParameterNode) {
+                        specialization.addError("For @%s annotated nodes all specialization methods with inlined cached values must declare 'Node node' dynamic parameter. " +
+                                        "This parameter must be passed along to inlined cached values. " +
+                                        "To resolve this add the 'Node node' parameter as first parameter to the specialization method and pass the value along to inlined cached values.",
+                                        getSimpleName(types.GenerateInline));
+                    } else if (!isStatic) {
+                        specialization.addError("For @%s annotated nodes all specialization methods with inlined cached values must be static. " +
+                                        "The method must be static to avoid accidently passing the wrong node parameter to inlined cached nodes. " +
+                                        "To resolve this add the static keyword to the specialization method. ",
                                         getSimpleName(types.GenerateInline));
                     }
-                } else if (FlatNodeGenFactory.useSpecializationClass(specialization)) {
+                } else if (FlatNodeGenFactory.useSpecializationClass(specialization) || mode == ParseMode.EXPORTED_MESSAGE) {
 
                     boolean hasNodeParameter = false;
                     for (CacheExpression cache : specialization.getCaches()) {
@@ -591,31 +595,34 @@ public final class NodeParser extends AbstractParser<NodeData> {
                         }
                     }
 
-                    if (!isStatic || !hasNodeParameter) {
-                        if (!hasNodeParameter) {
-                            String message = String.format(
-                                            "For this specialization with inlined cache parameters a '@%s(\"this\") Node node' parameter must be declared. " + //
-                                                            "With inlined caches it is a common mistake to pass the wrong inline target node to inlined cached nodes or profiles. " +
-                                                            "To resolve this add a '@%s(\"this\") Node node' parameter to the specialization method. " +
-                                                            "Use the new node parameter and pass it along to cached inlined nodes or profiles. ",
-                                            getSimpleName(types.Bind),
-                                            getSimpleName(types.Bind),
-                                            getSimpleName(types.Bind));
-
-                            specialization.addError(message);
+                    if (!hasNodeParameter) {
+                        String nodeParameter;
+                        if (mode == ParseMode.EXPORTED_MESSAGE) {
+                            nodeParameter = String.format("@%s(\"$node\") Node node", getSimpleName(types.Bind));
                         } else {
-                            String message = String.format(
-                                            "For this specialization with inlined cache parameters it is recommended to use the static modifier. " + //
-                                                            "With inlined caches it is a common mistake to pass the wrong inline target node to inlined cached nodes or profiles. " +
-                                                            "To resolve this add the static keyword to the method and fix potential misuses of the 'this' reference. " +
-                                                            "If a node needs to access instance fields it is recommended to suppress this warning.",
-                                            getSimpleName(types.Bind),
-                                            getSimpleName(types.Bind),
-                                            getSimpleName(types.Bind));
-
-                            specialization.addSuppressableWarning(TruffleSuppressedWarnings.STATIC_METHOD, message);
+                            nodeParameter = String.format("@%s(\"this\") Node node", getSimpleName(types.Bind));
                         }
+
+                        String message = String.format(
+                                        "For this specialization with inlined cache parameters a '%s' parameter must be declared. " + //
+                                                        "This parameter must be passed along to inlined cached values. " +
+                                                        "To resolve this add a '%s' parameter to the specialization method and pass the value along to inlined cached values.",
+                                        nodeParameter, nodeParameter);
+
+                        specialization.addError(message);
+
+                    } else if (!isStatic && mode != ParseMode.EXPORTED_MESSAGE) {
+                        // The static keyword does not make sense for exported messages, where the
+                        // receiver would be incompatible anyway.
+
+                        String message = String.format(
+                                        "For this specialization with inlined cache parameters it is recommended to use the static modifier. " + //
+                                                        "The method should be static to avoid accidently passing the wrong node parameter to inlined cached nodes. " +
+                                                        "To resolve this add the static keyword to the specialization method. ");
+
+                        specialization.addSuppressableWarning(TruffleSuppressedWarnings.STATIC_METHOD, message);
                     }
+
                 }
             }
 
@@ -657,7 +664,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
                                         getSimpleName(types.NeverDefault));
                     }
                 } else {
-                    if (!cache.isEagerInitialize() && (cache.getSharedGroup() != null || isLayoutBenefittingFromNeverDefault) && !isNeverDefaultImplied(cache)) {
+                    if (!cache.isEagerInitialize() && (cache.getSharedGroup() != null || isLayoutBenefittingFromNeverDefault) && !isNeverDefaultImplied(cache) &&
+                                    !isNeverDefaultEasilySupported(cache)) {
                         /*
                          * The exports parser adds a suppress warning when calling into the node
                          * parser for accepts messages. Normally suppression is calculated later,
@@ -2750,7 +2758,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
 
             // transitively resolve includes
-            Set<SpecializationData> foundSpecializations = new HashSet<>();
+            Set<SpecializationData> foundSpecializations = new LinkedHashSet<>();
             collectIncludes(specialization, foundSpecializations, new HashSet<SpecializationData>());
             specialization.getReplaces().addAll(foundSpecializations);
         }
@@ -2826,18 +2834,50 @@ public final class NodeParser extends AbstractParser<NodeData> {
         node.setReachableSpecializations(node.getReachableSpecializations());
     }
 
-    public static void removeFastPathSpecializations(NodeData node) {
+    public static void removeFastPathSpecializations(NodeData node, Map<CacheExpression, String> sharing) {
         List<SpecializationData> specializations = node.getSpecializations();
         List<SpecializationData> toRemove = new ArrayList<>();
         for (SpecializationData cur : specializations) {
-            for (SpecializationData contained : cur.getReplaces()) {
-                if (contained != cur && contained.getUncachedSpecialization() != cur) {
-                    toRemove.add(contained);
+            if (cur.getReplaces() != null) {
+                for (SpecializationData contained : cur.getReplaces()) {
+                    if (contained != cur && contained.getUncachedSpecialization() != cur) {
+                        toRemove.add(contained);
+
+                        for (CacheExpression cache : contained.getCaches()) {
+                            sharing.remove(cache);
+                        }
+                    }
                 }
             }
         }
+
+        // group sharing by key
+        Map<String, List<CacheExpression>> newCaches = new HashMap<>();
+        for (Entry<CacheExpression, String> entry : sharing.entrySet()) {
+            newCaches.computeIfAbsent(entry.getValue(), (s) -> new ArrayList<>()).add(entry.getKey());
+        }
+
+        // remove sharing with a single shared cache
+        for (Entry<String, List<CacheExpression>> entry : newCaches.entrySet()) {
+            if (entry.getValue().size() <= 1) {
+                for (CacheExpression cache : entry.getValue()) {
+                    sharing.remove(cache);
+                }
+            }
+        }
+
+        // clear sharing info in cache to be consistent in node generation
+        for (SpecializationData specialization : specializations) {
+            for (CacheExpression cache : specialization.getCaches()) {
+                if (cache.getSharedGroup() != null && !sharing.containsKey(cache)) {
+                    cache.clearSharing();
+                }
+            }
+        }
+
         specializations.removeAll(toRemove);
         node.getReachableSpecializations().removeAll(toRemove);
+
     }
 
     private static void initializeSpecializationIdsWithMethodNames(List<SpecializationData> specializations) {
@@ -3065,7 +3105,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
                     DSLExpressionResolver weakResolver = resolver.copy(Arrays.asList());
                     weakResolver.addVariable(weakName, weakVariable);
-                    specialization.addParameter(specialization.getParameters().size(), weakParameter);
+                    specialization.addParameter(weakParameter);
 
                     DSLExpression parsedDefaultExpression = parseCachedExpression(weakResolver, cache, parameter.getType(), weakName + ".get()");
                     cache.setDefaultExpression(parsedDefaultExpression);
@@ -3452,10 +3492,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (inlineMethod != null) {
                 fields = parseInlineMethod(cache, null, inlineMethod);
                 if (!cache.hasErrors() && !typeEquals(inlineMethod.getReturnType(), cache.getParameter().getType())) {
-                    cache.addError("Invalid return type %s found but expected %s. This is a common error if a different type is required for inlining. Signature %s.",
+                    cache.addError("Invalid return type %s found but expected %s. This is a common error if a different type is required for inlining.",
                                     getQualifiedName(inlineMethod.getReturnType()),
-                                    getQualifiedName(cache.getParameter().getType()),
-                                    ElementUtils.getReadableSignature(inlineMethod));
+                                    getQualifiedName(cache.getParameter().getType()));
                 }
             } else {
                 /*
@@ -3544,6 +3583,17 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     }
 
+    private static boolean isNeverDefaultEasilySupported(CacheExpression cache) {
+        if (cache.isEncodedEnum()) {
+            /*
+             * Encoded enums can just encode the never default state in a special bit so does not
+             * need to cause a warning for never default.
+             */
+            return true;
+        }
+        return false;
+    }
+
     private boolean isNeverDefaultImplied(CacheExpression cache) {
         /*
          * Never default is implied if there is no custom initializer expression set. Default
@@ -3566,15 +3616,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return true;
         }
 
-        String initializer = getAnnotationValue(String.class, cache.getMessageAnnotation(), "value", false);
-        if (initializer == null || initializer.equals("create()")) {
-            return true;
-        }
-
-        if (cache.isEncodedEnum()) {
-            return true;
-        }
-
         if (isNeverDefaultImpliedByAnnotation(cache)) {
             return true;
         }
@@ -3591,11 +3632,15 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
 
                 Element enclosing = executable.getEnclosingElement();
-                if (enclosing != null && typeEquals(enclosing.asType(), types.DirectCallNode)) {
-                    // cannot use NeverDefault annotation in certain TruffleTypes
-                    return true;
+                if (enclosing != null) {
+                    if (typeEquals(enclosing.asType(), types.DirectCallNode)) {
+                        // cannot use NeverDefault annotation in certain TruffleTypes
+                        return executable.getSimpleName().toString().equals("create");
+                    } else if (typeEquals(enclosing.asType(), types.IndirectCallNode)) {
+                        // cannot use NeverDefault annotation in certain TruffleTypes
+                        return executable.getSimpleName().toString().equals("create");
+                    }
                 }
-
             }
             VariableElement var = cache.getDefaultExpression().resolveVariable();
             if (var != null) {

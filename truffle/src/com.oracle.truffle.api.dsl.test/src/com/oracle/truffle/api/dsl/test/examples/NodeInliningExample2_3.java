@@ -53,10 +53,12 @@ import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.test.DisableStateBitWidthModfication;
 import com.oracle.truffle.api.dsl.test.ObjectSizeEstimate;
 import com.oracle.truffle.api.dsl.test.examples.NodeInliningExample2_3Factory.SumArrayNodeGen;
 import com.oracle.truffle.api.nodes.Node;
 
+@DisableStateBitWidthModfication
 public class NodeInliningExample2_3 {
 
     abstract static class AbstractArray {

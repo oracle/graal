@@ -44,7 +44,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -370,7 +369,7 @@ final class BitStateList {
 
     private static List<StateGroup> groupByDependentSpecializations(List<BitRangedState> states) {
         List<StateGroup> groups = new ArrayList<>();
-        Map<SpecializationData, StateGroup> specializationGroups = new HashMap<>();
+        Map<SpecializationData, StateGroup> specializationGroups = new LinkedHashMap<>();
 
         for (BitRangedState state : states) {
             SpecializationData dependentSpecialization = state.state.getDependentSpecialization();
@@ -389,6 +388,7 @@ final class BitStateList {
                             break;
                         }
                     }
+
                 }
                 if (group == null) {
                     group = new StateGroup(new ArrayList<>(), null, dependentSpecialization);
@@ -502,6 +502,11 @@ final class BitStateList {
             docBuilder.javadocLink(getDependentSpecialization().getMethod(), null);
         }
 
+        @Override
+        boolean isInlined() {
+            return false;
+        }
+
     }
 
     static final class SpecializationExcluded extends State<SpecializationData> {
@@ -532,6 +537,11 @@ final class BitStateList {
             docBuilder.javadocLink(getDependentSpecialization().getMethod(), null);
         }
 
+        @Override
+        boolean isInlined() {
+            return false;
+        }
+
     }
 
     static final class SpecializationCachesInitialized extends State<SpecializationData> {
@@ -558,6 +568,11 @@ final class BitStateList {
         void addStateDoc(CodeTreeBuilder docBuilder) {
             docBuilder.string("SpecializationCachesInitialized ");
             docBuilder.javadocLink(specialization.getMethod(), null);
+        }
+
+        @Override
+        boolean isInlined() {
+            return false;
         }
     }
 
@@ -594,6 +609,10 @@ final class BitStateList {
             docBuilder.javadocLink(getDependentSpecialization().getMethod(), null);
         }
 
+        @Override
+        boolean isInlined() {
+            return false;
+        }
     }
 
     static final class ImplicitCastState extends State<TypeGuard> {
@@ -617,6 +636,11 @@ final class BitStateList {
             return String.format("ImplicitCast[type=%s, index=%s]",
                             ElementUtils.getSimpleName(key.getType()),
                             key.getSignatureIndex());
+        }
+
+        @Override
+        boolean isInlined() {
+            return false;
         }
 
     }
@@ -648,6 +672,11 @@ final class BitStateList {
             return String.format("EncodedEnum[cache=%s]",
                             ElementUtils.getReadableReference(node.getMessageElement(), cache.getParameter().getVariableElement()));
 
+        }
+
+        @Override
+        boolean isInlined() {
+            return false;
         }
     }
 
@@ -684,6 +713,11 @@ final class BitStateList {
             FlatNodeGenFactory.addCacheInfo(docBuilder, "       ", getDependentSpecialization(), cache, key);
         }
 
+        @Override
+        boolean isInlined() {
+            return true;
+        }
+
     }
 
     static final class AOTPreparedState extends State<String> {
@@ -702,6 +736,10 @@ final class BitStateList {
             return "AOTPrepared";
         }
 
+        @Override
+        boolean isInlined() {
+            return false;
+        }
     }
 
     abstract static class State<T> {
@@ -747,6 +785,8 @@ final class BitStateList {
         void addStateDoc(CodeTreeBuilder docBuilder) {
             docBuilder.string(toString());
         }
+
+        abstract boolean isInlined();
     }
 
 }

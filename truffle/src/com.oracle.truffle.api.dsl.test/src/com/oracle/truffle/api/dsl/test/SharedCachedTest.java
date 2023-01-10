@@ -201,25 +201,6 @@ public class SharedCachedTest {
         AbstractPolyglotTest.assertFails(() -> node.execute(""), UnsupportedSpecializationException.class);
     }
 
-// abstract static class InlineCacheSharingNode extends Node {
-//
-// abstract Object execute(Object arg);
-//
-// @Specialization(guards = "cachedArg == arg")
-// Object s0(int arg,
-// @Cached("arg") int cachedArg,
-// @Shared("group") @Cached InlinedBranchProfile node) {
-// return arg;
-// }
-//
-// @Specialization(guards = "cachedArg == arg")
-// Object s1(int arg,
-// @Cached("arg") int cachedArg,
-// @Shared("group") @Cached InlinedBranchProfile node) {
-// return arg;
-// }
-// }
-
     abstract static class UnboundCachedNodeNode extends Node {
 
         abstract Object execute(Object arg);

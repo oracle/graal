@@ -55,15 +55,22 @@ import com.oracle.truffle.api.nodes.Node;
  * A node subclass must fullfill the following requirements in order to be inlinable:
  * <ul>
  * <li>All execute methods of a the node must have a {@link Node node} as first parameter type.
- * <li>The node has no instance fields.
+ * <li>The node has no instance fields and must not use {@link NodeChild} or {@link NodeField}.
  * <li>The cached node types must not be recursive.
  * </ul>
  *
+ * Truffle DSL emits warnings if the use of this annotation is recommended. In addition to inlining
+ * nodes automatically using this annotation, manually written nodes can also be written to become
+ * inlinable. See {@link InlineSupport} for details.
  *
+ * Please see the
+ * <a href="https://github.com/oracle/graal/blob/master/truffle/docs/DSLNodeObjectInlining.md">node
+ * object inlining tutorial</a> for details on how to use this annotation.
  *
  * @see GenerateCached
  * @see GenerateUncached
  * @see GenerateAOT
+ * @see InlineSupport
  * @since 23.0
  */
 @Retention(RetentionPolicy.CLASS)

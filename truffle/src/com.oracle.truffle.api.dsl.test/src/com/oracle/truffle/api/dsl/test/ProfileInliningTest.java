@@ -237,7 +237,7 @@ public class ProfileInliningTest extends AbstractPolyglotTest {
         // give a reasonable error that the branch profile type needs to be updated
         @Specialization
         int s0(@ExpectError("Invalid return type com.oracle.truffle.api.profiles.InlinedBranchProfile found but expected com.oracle.truffle.api.profiles.BranchProfile. " +
-                        "This is a common error if a different type is required for inlining. %") //
+                        "This is a common error if a different type is required for inlining.") //
         @Cached(inline = true) BranchProfile p0) {
             return 0;
         }
@@ -286,7 +286,7 @@ public class ProfileInliningTest extends AbstractPolyglotTest {
         @Specialization
         static int s0(
                         @ExpectError("Invalid return type com.oracle.truffle.api.profiles.InlinedBranchProfile found but expected com.oracle.truffle.api.profiles.BranchProfile. " +
-                                        "This is a common error if a different type is required for inlining. Signature inline(InlineTarget).") //
+                                        "This is a common error if a different type is required for inlining.") //
                         @Cached BranchProfile p0) {
             return 0;
         }

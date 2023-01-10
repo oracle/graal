@@ -48,6 +48,8 @@ intf java.lang.annotation.Annotation
 meth public abstract java.lang.String[] value()
 
 CLSS public abstract com.oracle.truffle.api.dsl.DSLSupport
+meth public static <%0 extends com.oracle.truffle.api.nodes.NodeInterface> {%%0} maybeInsert(com.oracle.truffle.api.nodes.Node,{%%0})
+meth public static <%0 extends com.oracle.truffle.api.nodes.NodeInterface> {%%0}[] maybeInsert(com.oracle.truffle.api.nodes.Node,{%%0}[])
 meth public static <%0 extends java.lang.Enum<?>> {%%0}[] lookupEnumConstants(java.lang.Class<{%%0}>)
 supr java.lang.Object
 hfds ENUM_CONSTANTS
@@ -142,6 +144,7 @@ meth public abstract java.lang.Class<?>[] value()
 CLSS public final com.oracle.truffle.api.dsl.InlineSupport
 innr public abstract interface static !annotation RequiredField
 innr public abstract interface static !annotation RequiredFields
+innr public abstract interface static !annotation UnsafeAccessedField
 innr public abstract static InlinableField
 innr public final static BooleanField
 innr public final static ByteField
@@ -277,6 +280,12 @@ meth public static com.oracle.truffle.api.dsl.InlineSupport$StateField create(ja
 meth public void set(com.oracle.truffle.api.nodes.Node,int)
 supr com.oracle.truffle.api.dsl.InlineSupport$InlinableField
 hfds bitLength,bitMask,bitOffset
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.dsl.InlineSupport$UnsafeAccessedField
+ outer com.oracle.truffle.api.dsl.InlineSupport
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[FIELD])
+intf java.lang.annotation.Annotation
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Introspectable
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)

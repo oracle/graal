@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.test.DisableStateBitWidthModfication;
 import com.oracle.truffle.api.dsl.test.ObjectSizeEstimate;
 import com.oracle.truffle.api.dsl.test.examples.NodeInliningExample1_3Factory.Add4AbsNodeGen;
 import com.oracle.truffle.api.nodes.Node;
@@ -56,6 +57,7 @@ import com.oracle.truffle.api.nodes.Node;
  * See the tutorial description <a href=
  * "https://github.com/oracle/graal/blob/master/truffle/docs/DSLNodeObjectInlining.md">here</a>.
  */
+@DisableStateBitWidthModfication
 public class NodeInliningExample1_3 {
 
     @GenerateInline

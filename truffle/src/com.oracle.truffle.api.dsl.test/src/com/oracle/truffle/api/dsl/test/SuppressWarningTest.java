@@ -43,7 +43,7 @@ package com.oracle.truffle.api.dsl.test;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 
-@DisableWarningSuppression
+@DisableStateBitWidthModfication
 public class SuppressWarningTest {
 
     @SuppressWarnings({"unused", "truffle-inlining"})

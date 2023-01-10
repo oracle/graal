@@ -337,7 +337,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
                 long bytes = HostClassLoadingTestClass3.countBytes(stream);
                 // weird behavior on osx that sometimes countBytes returns Integer.MAX_VALUE
                 if (bytes != Integer.MAX_VALUE) {
-                    assertEquals(HostClassLoadingTestClass3.countBytes(stream), result);
+                    assertEquals(bytes, result);
                 }
             }
         } finally {

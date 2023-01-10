@@ -53,7 +53,6 @@ import org.graalvm.polyglot.proxy.Proxy;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
@@ -118,11 +117,6 @@ public class HostLanguageService extends AbstractHostLanguageService {
             return null;
         }
         return HostObject.forStaticClass(found, context);
-    }
-
-    @Override
-    public Object inlineToHostTypeNode(Object inlineTarget) {
-        return HostToTypeNodeGen.inline((InlineTarget) inlineTarget);
     }
 
     @SuppressWarnings("unchecked")

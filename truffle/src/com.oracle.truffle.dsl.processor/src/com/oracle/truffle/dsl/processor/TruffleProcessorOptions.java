@@ -44,8 +44,12 @@ import java.util.HashSet;
 import java.util.Set;
 
 import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.Element;
+import javax.lang.model.type.DeclaredType;
 
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.model.NodeData;
 
 /**
  * Aggregates all options recognized by {@link TruffleProcessor}.
@@ -102,8 +106,20 @@ public class TruffleProcessorOptions {
         return Boolean.parseBoolean(s);
     }
 
-    public static int stateBitWidth(ProcessingEnvironment env) {
-        String value = env.getOptions().get(OptionsPrefix + StateBitWidth);
+    public static int stateBitWidth(NodeData node) {
+        ProcessorContext context = ProcessorContext.getInstance();
+        DeclaredType disableStateWidth = context.getTypes().DisableStateBitWidthModification;
+        if (disableStateWidth != null) {
+            Element element = node.getTemplateType();
+            while (element != null) {
+                if (ElementUtils.findAnnotationMirror(element, disableStateWidth) != null) {
+                    return FlatNodeGenFactory.DEFAULT_MAX_BIT_WIDTH;
+                }
+                element = element.getEnclosingElement();
+            }
+        }
+
+        String value = context.getEnvironment().getOptions().get(OptionsPrefix + StateBitWidth);
         if (value == null) {
             return FlatNodeGenFactory.DEFAULT_MAX_BIT_WIDTH;
         } else {
