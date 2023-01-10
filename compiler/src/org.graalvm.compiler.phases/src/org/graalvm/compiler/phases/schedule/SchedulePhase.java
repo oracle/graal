@@ -60,6 +60,7 @@ import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.GraphState.GuardsStage;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
@@ -330,7 +331,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         }
 
         private static void checkLatestEarliestRelation(Node currentNode, HIRBlock earliestBlock, HIRBlock latestBlock) {
-            GraalError.guarantee(earliestBlock.dominates(latestBlock) || (currentNode instanceof VirtualState && latestBlock == earliestBlock.getDominator()),
+            GraalError.guarantee(earliestBlock.dominates(latestBlock) || (currentNode instanceof FrameState && latestBlock == earliestBlock.getDominator()),
                             "%s %s (%s) %s (%s)", currentNode, earliestBlock, earliestBlock.getBeginNode(), latestBlock, latestBlock.getBeginNode());
         }
 
@@ -675,15 +676,6 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                         currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, otherBlock);
                     }
                 }
-            } else if (usage instanceof AbstractBeginNode) {
-                AbstractBeginNode abstractBeginNode = (AbstractBeginNode) usage;
-                if (abstractBeginNode instanceof StartNode) {
-                    currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, currentNodeMap.get(abstractBeginNode));
-                } else {
-                    HIRBlock otherBlock = currentNodeMap.get(abstractBeginNode).getDominator();
-                    GraalError.guarantee(otherBlock != null, "Dominators need to be computed in the CFG");
-                    currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, otherBlock);
-                }
             } else {
                 // All other types of usages: Put the input into the same block as the usage.
                 HIRBlock otherBlock = currentNodeMap.get(usage);
@@ -692,9 +684,29 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                     otherBlock = currentNodeMap.get(proxyNode.proxyPoint());
 
                 }
+
+                if (!(node instanceof VirtualState) && usage instanceof VirtualState) {
+                    currentBlock = checkFrameStateAtMerge((VirtualState) usage, currentNodeMap, currentBlock);
+                }
+
                 currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, otherBlock);
             }
             return currentBlock;
+        }
+
+        private static HIRBlock checkFrameStateAtMerge(VirtualState usage, NodeMap<HIRBlock> currentNodeMap, HIRBlock currentBlock) {
+            HIRBlock resultBlock = currentBlock;
+            for (Node n : usage.usages()) {
+                if (n instanceof VirtualState) {
+                    resultBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, checkFrameStateAtMerge((VirtualState) n, currentNodeMap, currentBlock));
+                } else if (n instanceof AbstractBeginNode && !(n instanceof StartNode)) {
+                    AbstractBeginNode abstractBeginNode = (AbstractBeginNode) n;
+                    HIRBlock otherBlockWithBegin = currentNodeMap.get(abstractBeginNode).getDominator();
+                    GraalError.guarantee(otherBlockWithBegin != null, "Dominators need to be computed in the CFG");
+                    resultBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, otherBlockWithBegin);
+                }
+            }
+            return resultBlock;
         }
 
         /**
