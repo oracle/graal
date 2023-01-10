@@ -85,7 +85,7 @@ final class NFIClosure implements TruffleObject {
             return ret;
         }
 
-        @Specialization(guards = {"receiver.signature.cachedState != null", "receiver.signature.cachedState == cachedState"})
+        @Specialization(guards = {"receiver.signature.cachedState != null", "receiver.signature.cachedState == cachedState"}, limit = "3")
         static Object doOptimizedDirect(NFIClosure receiver, Object[] args,
                         @Cached("receiver.signature.cachedState") SignatureCachedState cachedState,
                         @Cached("cachedState.createOptimizedClosureCall()") CallSignatureNode call) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {

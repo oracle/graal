@@ -70,6 +70,7 @@ abstract class NativeBuffer implements TruffleObject {
             this.content = content;
         }
 
+        @SuppressWarnings("static-method")
         @ExportMessage
         boolean isSerializable() {
             return true;
@@ -87,6 +88,7 @@ abstract class NativeBuffer implements TruffleObject {
             }
         }
 
+        @SuppressWarnings("static-method")
         @ExportMessage
         boolean hasBufferElements() {
             return true;
