@@ -83,6 +83,7 @@ public class JfrRecorderThread extends Thread {
                 }
             }
         } catch (Throwable e) {
+            System.out.println(e);
             VMError.shouldNotReachHere("No exception must by thrown in the JFR recorder thread as this could break file IO operations.");
         }
     }

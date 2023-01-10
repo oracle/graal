@@ -45,6 +45,7 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.jfr.JfrThrottlerSupport;
 
 import jdk.internal.event.Event;
 import jdk.jfr.Configuration;
@@ -78,6 +79,8 @@ public class SubstrateJVM {
     private final SamplerBufferPool samplerBufferPool;
     private final JfrUnlockedChunkWriter unlockedChunkWriter;
     private final JfrRecorderThread recorderThread;
+
+    private final JfrThrottlerSupport jfrThrottlerSupport;
 
     private final JfrLogging jfrLogging;
 
@@ -118,6 +121,8 @@ public class SubstrateJVM {
 
         initialized = false;
         recording = false;
+
+        jfrThrottlerSupport = new JfrThrottlerSupport();
     }
 
     @Fold
@@ -638,6 +643,21 @@ public class SubstrateJVM {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isEnabled(JfrEvent event) {
         return eventSettings[(int) event.getId()].isEnabled();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean shouldCommit(JfrEvent event) {
+        //find the right throttler for the event (each event should have its own)like in hotspot
+        //if none found, return true.
+        // call into throttler code
+        return jfrThrottlerSupport.shouldCommit(event.getId());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {
+        // find the right throttler for the event and set the new params there
+        return jfrThrottlerSupport.setThrottle(eventTypeId, eventSampleSize, periodMs);
+        //TODO: why would it ever return false? Maybe if the throttler doesn't exist?
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

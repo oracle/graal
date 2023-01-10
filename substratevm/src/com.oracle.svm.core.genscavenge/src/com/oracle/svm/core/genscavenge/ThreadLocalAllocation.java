@@ -75,6 +75,8 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.jfr.events.ObjectAllocationSampleEvent;
+import com.oracle.svm.core.jfr.JfrTicks;
 
 /**
  * Bump-pointer allocation from thread-local top and end Pointers. Many of these methods are called
@@ -238,6 +240,7 @@ public final class ThreadLocalAllocation {
             return allocateInstanceInNewTlab(hub, newTlab);
         } finally {
             ObjectAllocationInNewTLABEvent.emit(startTicks, hub, LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding()), HeapParameters.getAlignedHeapChunkSize());
+            ObjectAllocationSampleEvent.emit(startTicks, DynamicHub.toClass(hub), 0);
             DeoptTester.enableDeoptTesting();
         }
     }
@@ -317,6 +320,7 @@ public final class ThreadLocalAllocation {
             return array;
         } finally {
             ObjectAllocationInNewTLABEvent.emit(startTicks, hub, size, tlabSize);
+            ObjectAllocationSampleEvent.emit(startTicks, DynamicHub.toClass(hub), 0);
             DeoptTester.enableDeoptTesting();
         }
     }
