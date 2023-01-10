@@ -568,7 +568,7 @@ public abstract class PlatformThreads {
     static final Method FORK_JOIN_POOL_TRY_TERMINATE_METHOD;
 
     static {
-        VMError.guarantee(ImageInfo.inImageBuildtimeCode(), PlatformThreads.class.getSimpleName() + " must be initialized at build time.");
+        VMError.guarantee(ImageInfo.inImageBuildtimeCode(), "PlatformThreads must be initialized at build time.");
         FORK_JOIN_POOL_TRY_TERMINATE_METHOD = ReflectionUtil.lookupMethod(ForkJoinPool.class, "tryTerminate", boolean.class, boolean.class);
     }
 

@@ -1571,7 +1571,7 @@ final class BreakpointInterceptor {
             return null;
         }
         Breakpoint bp = new Breakpoint(br, clazz, method);
-        guarantee(map.put(method.rawValue(), bp) == null, "Duplicate breakpoint: " + bp);
+        guarantee(map.put(method.rawValue(), bp) == null, "Duplicate breakpoint: %s", bp);
         return bp;
     }
 

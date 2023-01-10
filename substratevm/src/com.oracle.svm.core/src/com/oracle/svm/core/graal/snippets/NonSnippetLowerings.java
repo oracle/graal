@@ -211,7 +211,7 @@ public abstract class NonSnippetLowerings {
             }
             outArguments.addAll(exceptionArguments);
         }
-        VMError.guarantee(descriptor != null, "No ForeignCallDescriptor for ByteCodeExceptionKind " + exceptionKind);
+        VMError.guarantee(descriptor != null, "No ForeignCallDescriptor for ByteCodeExceptionKind %s", exceptionKind);
         assert descriptor.getArgumentTypes().length == outArguments.size();
         return descriptor;
     }

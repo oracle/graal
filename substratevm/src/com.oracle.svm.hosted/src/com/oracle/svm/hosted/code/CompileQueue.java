@@ -1161,7 +1161,7 @@ public class CompileQueue {
         try {
             SubstrateBackend backend = config.lookupBackend(method);
 
-            VMError.guarantee(method.compilationInfo.getCompilationGraph() != null, "The following method is reachable during compilation, but was not seen during Bytecode parsing: " + method);
+            VMError.guarantee(method.compilationInfo.getCompilationGraph() != null, "The following method is reachable during compilation, but was not seen during Bytecode parsing: %s", method);
             StructuredGraph graph = method.compilationInfo.createGraph(debug, compilationIdentifier, true);
 
             GraalError.guarantee(graph.getGraphState().getGuardsStage() == GuardsStage.FIXED_DEOPTS,

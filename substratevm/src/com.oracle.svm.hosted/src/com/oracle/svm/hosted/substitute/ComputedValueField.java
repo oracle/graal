@@ -485,7 +485,7 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
                 long fieldOffset = Unsafe.getUnsafe().objectFieldOffset(f);
                 if (fieldOffset == searchOffset) {
                     HostedField sf = (HostedField) metaAccess.lookupJavaField(f);
-                    guarantee(sf.isAccessed() && sf.getLocation() > 0, "Field not marked as accessed: " + sf.format("%H.%n"));
+                    guarantee(sf.isAccessed() && sf.getLocation() > 0, "Field not marked as accessed: %s", sf);
                     return JavaConstant.forLong(sf.getLocation());
                 }
             }
