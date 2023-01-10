@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -3490,6 +3490,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             LoopBeginNode loopBegin = graph.add(new LoopBeginNode());
             if (disableLoopSafepoint()) {
                 loopBegin.disableSafepoint();
+                loopBegin.disableGuestSafepoint();
             }
             fixedWithNext.setNext(preLoopEnd);
             // Add the single non-loop predecessor of the loop header.
