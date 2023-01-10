@@ -3691,9 +3691,28 @@ public final class NodeParser extends AbstractParser<NodeData> {
         /*
          * Object.getClass() and Object.toString() always returns a non-null value.
          */
-        if (method != null && ElementUtils.typeEquals(ProcessorContext.getInstance().getType(Object.class), method.getEnclosingElement().asType()) &&
-                        (method.getSimpleName().toString().equals("getClass") || method.getSimpleName().toString().equals("toString"))) {
-            return true;
+        ProcessorContext context = ProcessorContext.getInstance();
+        TruffleTypes types = context.getTypes();
+        if (method != null) {
+            TypeMirror enlcosingType = method.getEnclosingElement().asType();
+            String simpleName = method.getSimpleName().toString();
+            if (ElementUtils.typeEquals(context.getType(Object.class), enlcosingType) &&
+                            (simpleName.equals("getClass") || simpleName.equals("toString"))) {
+                return true;
+            }
+
+            if ((ElementUtils.typeEquals(types.Frame, enlcosingType) || ElementUtils.typeEquals(types.VirtualFrame, enlcosingType) ||
+                            ElementUtils.typeEquals(types.MaterializedFrame, enlcosingType)) && //
+                            (simpleName.equals("getDescriptor") || //
+                                            simpleName.equals("getArguments") || //
+                                            simpleName.equals("materialize"))) {
+                return true;
+            }
+            if ((ElementUtils.typeEquals(types.FrameDescriptor, enlcosingType)) && //
+                            (simpleName.equals("getSlotKind") || //
+                                            simpleName.equals("getAuxiliarySlots"))) {
+                return true;
+            }
         }
 
         VariableElement var = cache.getDefaultExpression().resolveVariable();
