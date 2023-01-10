@@ -1205,8 +1205,8 @@ public final class InlineSupport {
             }
             if (!declaringClass.isAssignableFrom(receiverClass)) {
                 throw new AssertionError(String.format("Receiver class %s is not assignable to the declaring class %s.",
-                                declaringClass.getName(),
-                                receiverClass.getName()));
+                                receiverClass.getName(),
+                                declaringClass.getName()));
             }
 
             final int modifiers = field.getModifiers();
