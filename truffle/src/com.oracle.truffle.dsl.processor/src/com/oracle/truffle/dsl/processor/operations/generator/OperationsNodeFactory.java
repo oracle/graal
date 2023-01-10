@@ -1287,7 +1287,7 @@ public class OperationsNodeFactory {
                     buildThrowIllegalStateException(b, "\"Branch must be targeting a label that is declared in an enclosing operation. Jumps into other operations are not permitted.\"");
                     b.end();
 
-                    b.statement("doEmitLeave(lbl.declaringOp)");
+                    b.statement("doEmitLeaves(lbl.declaringOp)");
                     break;
                 case RETURN:
                     b.statement("doEmitLeave(-1)");
