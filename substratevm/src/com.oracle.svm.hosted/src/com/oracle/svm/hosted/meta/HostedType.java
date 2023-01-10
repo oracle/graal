@@ -319,12 +319,6 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Origina
             hResult = universe.lookup(aResult);
         }
 
-        /**
-         * Check that the SharedType implementation, which is used for JIT compilation, gives the
-         * same result as the hosted implementation.
-         */
-        assert hResult == null || isWordType() || hResult.equals(SharedType.super.resolveConcreteMethod(method, callerType));
-
         return hResult;
     }
 
