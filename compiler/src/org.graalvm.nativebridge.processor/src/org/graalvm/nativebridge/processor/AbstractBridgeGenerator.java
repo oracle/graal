@@ -103,8 +103,11 @@ abstract class AbstractBridgeGenerator {
     void configureMultipleDefinitions(@SuppressWarnings("unused") List<DefinitionData> otherDefinitions) {
     }
 
-    static int getStaticBufferSize(int marshalledParametersCount, boolean marshalledResult) {
+    static int getStaticBufferSize(int marshalledParametersCount, boolean marshalledResult, boolean hasOutParameter) {
         int slots = marshalledParametersCount != 0 ? marshalledParametersCount : marshalledResult ? 1 : 0;
+        if (hasOutParameter) {
+            slots++;
+        }
         return slots * BYTES_PER_PARAMETER;
     }
 
@@ -266,7 +269,7 @@ abstract class AbstractBridgeGenerator {
         }
     }
 
-    void generateSizeEstimate(CodeBuilder builder, CharSequence targetVar, List<MarshalledParameter> marshalledParameters, boolean addReferenceArrayLength) {
+    void generateSizeEstimate(CodeBuilder builder, CharSequence targetVar, List<MarshalledParameter> marshalledParameters, boolean addReferenceArrayLength, boolean isOutParametersUpdate) {
         builder.lineStart().write(types.getPrimitiveType(TypeKind.INT)).space().write(targetVar).write(" = ");
         boolean first = true;
         for (MarshalledParameter e : marshalledParameters) {
@@ -291,7 +294,8 @@ abstract class AbstractBridgeGenerator {
                                                             e.marshallerData.name, "inferSize", firstElement).write(" : 0").write(")");
                         }
                     } else {
-                        builder.invoke(e.marshallerData.name, "inferSize", e.parameterName);
+                        CharSequence inferMethodName = isOutParametersUpdate && !e.isResult ? "inferUpdateSize" : "inferSize";
+                        builder.invoke(e.marshallerData.name, inferMethodName, e.parameterName);
                     }
                     break;
                 case REFERENCE:
@@ -613,17 +617,28 @@ abstract class AbstractBridgeGenerator {
             }
         }
 
-        final void updateCustomObject(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledParametersInput, boolean inArray) {
+        final void writeCustomObjectUpdate(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledParametersOutput) {
+            if (parameterType.getKind() == TypeKind.ARRAY) {
+                // For an array element, we cannot use BinaryInput#writeUpdatepdate, but we need to
+                // re-read the whole element. Java array is a covariant type and the array
+                // element may change its type.
+                writeCustomObjectArray(currentBuilder, (ArrayType) parameterType, parameterName, marshalledParametersOutput);
+            } else {
+                currentBuilder.lineStart().invoke(marshallerData.name, "writeUpdate", marshalledParametersOutput, parameterName).lineEnd(";");
+            }
+        }
+
+        final void readCustomObjectUpdate(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence parameterName, CharSequence marshalledParametersInput, boolean inArray) {
             if (parameterType.getKind() == TypeKind.ARRAY) {
                 updateCustomObjectArray(currentBuilder, (ArrayType) parameterType, parameterName, marshalledParametersInput);
             } else {
                 if (inArray) {
-                    // For an array element, we cannot use BinaryInput#update, but we need to
+                    // For an array element, we cannot use BinaryInput#writeUpdate, but we need to
                     // re-read the whole element. Java array is a covariant type and the array
                     // element may change its type.
                     currentBuilder.lineStart().write(parameterName).write(" = ").invoke(marshallerData.name, "read", marshalledParametersInput).lineEnd(";");
                 } else {
-                    currentBuilder.lineStart().invoke(marshallerData.name, "update", marshalledParametersInput, parameterName).lineEnd(";");
+                    currentBuilder.lineStart().invoke(marshallerData.name, "readUpdate", marshalledParametersInput, parameterName).lineEnd(";");
                 }
             }
         }
@@ -686,7 +701,7 @@ abstract class AbstractBridgeGenerator {
             List<CharSequence> increment = List.of(new CodeBuilder(currentBuilder).write(index).write("++").build());
             currentBuilder.lineStart().forLoop(init, test, increment).lineEnd(" {");
             currentBuilder.indent();
-            updateCustomObject(currentBuilder, parameterType.getComponentType(), new CodeBuilder(currentBuilder).arrayElement(parameterName, index).build(), marshalledParametersInput, true);
+            readCustomObjectUpdate(currentBuilder, parameterType.getComponentType(), new CodeBuilder(currentBuilder).arrayElement(parameterName, index).build(), marshalledParametersInput, true);
             currentBuilder.dedent();
             currentBuilder.line("}");
             currentBuilder.dedent();
@@ -966,11 +981,13 @@ abstract class AbstractBridgeGenerator {
     static final class MarshalledParameter {
         final CharSequence parameterName;
         final TypeMirror parameterType;
+        final boolean isResult;
         final MarshallerData marshallerData;
 
-        MarshalledParameter(CharSequence parameterName, TypeMirror parameterType, MarshallerData marshallerData) {
+        MarshalledParameter(CharSequence parameterName, TypeMirror parameterType, boolean isResult, MarshallerData marshallerData) {
             this.parameterName = parameterName;
             this.parameterType = parameterType;
+            this.isResult = isResult;
             this.marshallerData = marshallerData;
         }
     }
