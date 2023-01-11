@@ -1387,7 +1387,7 @@ public class NativeImageGenerator {
             while (unwrapped instanceof WrappedJavaMethod) {
                 unwrapped = ((WrappedJavaMethod) unwrapped).getWrapped();
             }
-            if (method != unwrapped) {
+            if (!method.equals(unwrapped)) {
                 String runtimeDescriptor = method.getSignature().toMethodDescriptor();
                 String hostedDescriptor = unwrapped.getSignature().toMethodDescriptor();
                 if (!runtimeDescriptor.equals(hostedDescriptor)) {
@@ -1400,7 +1400,7 @@ public class NativeImageGenerator {
                                                     name, runtimeDescriptor, hostedDescriptor));
                 }
             }
-            assert method == unwrapped || method.getSignature().toMethodDescriptor().equals(unwrapped.getSignature().toMethodDescriptor());
+            assert method.equals(unwrapped) || method.getSignature().toMethodDescriptor().equals(unwrapped.getSignature().toMethodDescriptor());
         }
         return true;
     }
@@ -1814,7 +1814,7 @@ public class NativeImageGenerator {
             }
             if (type.isInterface()) {
                 for (HostedMethod method : hUniverse.getMethods()) {
-                    if (method.getDeclaringClass() == type) {
+                    if (method.getDeclaringClass().equals(type)) {
                         printMethod(method, -1);
                     }
                 }
@@ -1834,7 +1834,7 @@ public class NativeImageGenerator {
                     }
                 }
                 for (HostedMethod method : hUniverse.getMethods()) {
-                    if (method.getDeclaringClass() == type && !method.hasVTableIndex()) {
+                    if (method.getDeclaringClass().equals(type) && !method.hasVTableIndex()) {
                         printMethod(method, -1);
                     }
                 }
