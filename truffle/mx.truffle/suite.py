@@ -1159,7 +1159,8 @@ suite = {
         ],
         "requiresConcealed" : {
           "org.graalvm.truffle" : [
-            "com.oracle.truffle.api"
+            "com.oracle.truffle.api",
+            "com.oracle.truffle.api.library"
           ],
         }
       },
