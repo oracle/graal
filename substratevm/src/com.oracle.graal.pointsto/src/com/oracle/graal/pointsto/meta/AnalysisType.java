@@ -235,20 +235,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         superClass = universe.lookup(wrapped.getSuperclass());
         interfaces = convertTypes(wrapped.getInterfaces());
 
-        subTypes = ConcurrentHashMap.newKeySet();
-        addSubType(this);
-
-        /* Build subtypes. */
-        if (superClass != null) {
-            superClass.addSubType(this);
-        }
-        if (isInterface() && interfaces.length == 0) {
-            objectType.addSubType(this);
-        }
-        for (AnalysisType interf : interfaces) {
-            interf.addSubType(this);
-        }
-
         if (isArray()) {
             this.componentType = universe.lookup(wrapped.getComponentType());
             int dim = 0;
@@ -276,6 +262,24 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
         /* Set id after accessing super types, so that all these types get a lower id number. */
         this.id = universe.nextTypeId.getAndIncrement();
+        /*
+         * Only after setting the id, the hashCode and compareTo methods work properly. So only now
+         * it is allowed to put the type into a hashmap, e.g., invoke addSubType.
+         */
+        subTypes = ConcurrentHashMap.newKeySet();
+        addSubType(this);
+
+        /* Build subtypes. */
+        if (superClass != null) {
+            superClass.addSubType(this);
+        }
+        if (isInterface() && interfaces.length == 0) {
+            objectType.addSubType(this);
+        }
+        for (AnalysisType interf : interfaces) {
+            interf.addSubType(this);
+        }
+
         /* Set the context insensitive analysis object so that it has access to its type id. */
         this.contextInsensitiveAnalysisObject = new AnalysisObject(universe, this);
 
@@ -964,8 +968,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     private void addSubType(AnalysisType subType) {
-        assert !this.subTypes.contains(subType) : "Tried to add a " + subType + " which is already registered";
-        this.subTypes.add(subType);
+        boolean result = this.subTypes.add(subType);
+        assert result : "Tried to add a " + subType + " which is already registered";
     }
 
     /**
@@ -1261,6 +1265,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public int hashCode() {
+        assert id != 0 || isJavaLangObject() : "Type id not set yet";
         return id;
     }
 
