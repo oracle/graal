@@ -274,6 +274,7 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
                 return false;
             }
         }
+        GraalError.guarantee(isLoopPhi(), "Only loop phis may be degenerated %s", this);
         assert isLoopPhi();
         return true;
     }
