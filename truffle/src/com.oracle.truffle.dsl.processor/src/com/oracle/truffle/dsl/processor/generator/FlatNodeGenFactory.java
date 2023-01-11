@@ -86,7 +86,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
@@ -2519,10 +2518,8 @@ public class FlatNodeGenFactory {
         builder.tree(result);
         builder.returnTrue();
 
-        if (!accessesCachedState(specializations)) {
-            method.getModifiers().add(STATIC);
-        }
-
+        // really not worth finding out whether we need a static method here
+        GeneratorUtils.mergeSuppressWarnings(method, "static-method");
         return method;
     }
 
@@ -2634,73 +2631,6 @@ public class FlatNodeGenFactory {
                 return binary;
             }
         });
-    }
-
-    private static boolean accessesCachedState(List<SpecializationData> specializations) {
-        final AtomicBoolean needsState = new AtomicBoolean(false);
-        for (final SpecializationData specialization : specializations) {
-            if (!specialization.getAssumptionExpressions().isEmpty()) {
-                needsState.set(true);
-                break;
-            }
-            for (GuardExpression expression : specialization.getGuards()) {
-                expression.getExpression().accept(new AbstractDSLExpressionVisitor() {
-                    @Override
-                    public void visitVariable(Variable binary) {
-                        if (!needsState.get() && isVariableAccessMember(binary)) {
-                            needsState.set(true);
-                        }
-                    }
-
-                    private boolean isVariableAccessMember(Variable variable) {
-                        if (variable.getName().equals("null") && variable.getReceiver() == null) {
-                            return false;
-                        }
-                        Parameter p = specialization.findByVariable(variable.getResolvedVariable());
-                        if (p == null && !variable.getResolvedVariable().getModifiers().contains(STATIC)) {
-                            DSLExpression receiver = variable.getReceiver();
-                            if (receiver instanceof Variable) {
-                                return isVariableAccessMember((Variable) receiver);
-                            } else if (receiver instanceof Call) {
-                                return isMethodAccessMember((Call) receiver);
-                            }
-                            return true;
-                        } else if (p != null && p.getSpecification().isCached()) {
-                            CacheExpression cache = specialization.findCache(p);
-                            if (cache != null && cache.isAlwaysInitialized()) {
-                                // allowed access as is initialized in fast path.
-                                return false;
-                            }
-                            return true;
-                        }
-                        return false;
-                    }
-
-                    private boolean isMethodAccessMember(Call call) {
-                        if (!call.getResolvedMethod().getModifiers().contains(STATIC)) {
-                            DSLExpression receiver = call.getReceiver();
-                            if (receiver instanceof Variable) {
-                                return isVariableAccessMember((Variable) receiver);
-                            } else if (receiver instanceof Call) {
-                                return isMethodAccessMember((Call) receiver);
-                            }
-                            return true;
-                        }
-                        return false;
-                    }
-
-                    @Override
-                    public void visitCall(Call call) {
-                        if (!needsState.get() && isMethodAccessMember(call)) {
-                            needsState.set(true);
-                        }
-                    }
-
-                });
-            }
-        }
-        boolean needsStat = needsState.get();
-        return needsStat;
     }
 
     private CodeAnnotationMirror createExplodeLoop() {
