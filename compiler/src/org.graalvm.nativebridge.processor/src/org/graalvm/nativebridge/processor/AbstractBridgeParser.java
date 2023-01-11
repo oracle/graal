@@ -492,7 +492,7 @@ abstract class AbstractBridgeParser {
                                 "To fix this remove the `%s` annotation or change the return type.", Utilities.getTypeName(typeCache.idempotent));
                 cacheData = null;
             } else if (idempotentMirror != null && hasOutParameter) {
-                emitError(methodToGenerate, idempotentMirror, "A method with a cached return value cannot have an Out parameter.%n" +
+                emitError(methodToGenerate, idempotentMirror, "A method with a cached return value cannot have an `Out` parameter.%n" +
                                 "To fix this, remove the `%s` annotation.", Utilities.getTypeName(typeCache.idempotent));
                 cacheData = null;
             } else if (idempotentMirror != null || (enforceIdempotent && !noReturnType && !hasOutParameter)) {
