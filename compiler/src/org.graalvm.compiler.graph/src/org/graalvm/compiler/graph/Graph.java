@@ -1289,7 +1289,7 @@ public class Graph {
      * @param replacementsMap the replacement map (can be null if no replacement is to be performed)
      * @return a map which associates the original nodes from {@code nodes} to their duplicates
      */
-    public EconomicMap<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, EconomicMap<Node, Node> replacementsMap) {
+    public EconomicMap<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, UnmodifiableEconomicMap<Node, Node> replacementsMap) {
         DuplicationReplacement replacements;
         if (replacementsMap == null) {
             replacements = null;
@@ -1306,9 +1306,9 @@ public class Graph {
 
     private static final class MapReplacement implements DuplicationReplacement {
 
-        private final EconomicMap<Node, Node> map;
+        private final UnmodifiableEconomicMap<Node, Node> map;
 
-        MapReplacement(EconomicMap<Node, Node> map) {
+        MapReplacement(UnmodifiableEconomicMap<Node, Node> map) {
             this.map = map;
         }
 
