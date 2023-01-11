@@ -447,6 +447,13 @@ public final class EspressoContext {
                 } else {
                     assert getJavaVersion().java9OrLater();
                     meta.java_lang_System_initPhase1.invokeDirect(null);
+                    for (Symbol<Type> type : Arrays.asList(
+                            Type.java_lang_invoke_MethodHandle,
+                            // Type.java_lang_invoke_ResolvedMethodName, // not used in espresso atm
+                            Type.java_lang_invoke_MemberName,
+                            Type.java_lang_invoke_MethodHandleNatives)) {
+                        initializeKnownClass(type);
+                    }
                     int e = (int) meta.java_lang_System_initPhase2.invokeDirect(null, false, false);
                     if (e != 0) {
                         throw EspressoError.shouldNotReachHere();
