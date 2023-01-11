@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,11 +60,8 @@ import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.NewFrameNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameAccessFlags;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameAccessType;
-import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameAccessorNode;
-import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameClearNode;
-import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameCopyNode;
+import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameAccessVerificationNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameSetNode;
-import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameSwapNode;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -80,6 +77,39 @@ import jdk.vm.ci.meta.SpeculationLog.Speculation;
  * whenever this is necessary to produce matching types at merges.
  */
 public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierContext> {
+
+    private static final VirtualFrameAccessVerificationNode.VirtualFrameVerificationStateUpdater<byte[]> STATE_UPDATER = //
+                    new VirtualFrameAccessVerificationNode.VirtualFrameVerificationStateUpdater<>() {
+                        @Override
+                        public void set(byte[] entries, int slot, byte tag) {
+                            if (tag == NewFrameNode.FrameSlotKindObjectTag) {
+                                entries[slot] = cleared(NewFrameNode.FrameSlotKindLongTag);
+                            } else {
+                                entries[slot] = withValue(NewFrameNode.asStackTag(tag));
+                            }
+                        }
+
+                        @Override
+                        public void clear(byte[] entries, int slot) {
+                            entries[slot] = cleared(NewFrameNode.FrameSlotKindLongTag);
+                        }
+
+                        @Override
+                        public void copy(byte[] entries, int src, int dst) {
+                            if (inRange(entries, src)) {
+                                entries[dst] = entries[src];
+                            }
+                        }
+
+                        @Override
+                        public void swap(byte[] entries, int src, int dst) {
+                            if (inRange(entries, src)) {
+                                byte temp = entries[dst];
+                                entries[dst] = entries[src];
+                                entries[src] = temp;
+                            }
+                        }
+                    };
 
     private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
 
@@ -229,7 +259,7 @@ public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierCon
             indexedStates.put(frame, indexedEntries);
         }
 
-        public byte[] get(VirtualFrameAccessorNode accessor) {
+        public byte[] get(VirtualFrameAccessVerificationNode accessor) {
             return indexedStates.get(accessor.getFrame());
         }
 
@@ -264,42 +294,16 @@ public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierCon
         protected State processNode(FixedNode node, State currentState) {
             if (node instanceof NewFrameNode) {
                 currentState.add((NewFrameNode) node);
-            } else if (node instanceof VirtualFrameAccessorNode) {
-                VirtualFrameAccessorNode accessor = (VirtualFrameAccessorNode) node;
+            } else if (node instanceof VirtualFrameAccessVerificationNode) {
+                VirtualFrameAccessVerificationNode accessor = (VirtualFrameAccessVerificationNode) node;
                 VirtualFrameAccessType type = accessor.getType();
                 if (type != VirtualFrameAccessType.Auxiliary) {
                     /*
                      * Ignoring operations with invalid indexes - these will be handled during PEA.
                      */
                     byte[] entries = currentState.get(accessor);
-                    boolean isOSRStaticAccess = accessor.getFrame().isBytecodeOSRTransferTarget();
                     if (inRange(entries, accessor.getFrameSlotIndex())) {
-                        if (node instanceof VirtualFrameSetNode) {
-                            if (accessor.getAccessTag() == NewFrameNode.FrameSlotKindObjectTag) {
-                                entries[accessor.getFrameSlotIndex()] = cleared(NewFrameNode.FrameSlotKindLongTag);
-                            } else {
-                                if (isOSRStaticAccess) {
-                                    // Bytecode OSR PEA always uses long in the frame.
-                                    entries[accessor.getFrameSlotIndex()] = withValue(NewFrameNode.FrameSlotKindLongTag);
-                                } else {
-                                    entries[accessor.getFrameSlotIndex()] = withValue(NewFrameNode.asStackTag((byte) accessor.getAccessTag()));
-                                }
-                            }
-                        } else if (node instanceof VirtualFrameClearNode) {
-                            entries[accessor.getFrameSlotIndex()] = cleared(NewFrameNode.FrameSlotKindLongTag);
-                        } else if (node instanceof VirtualFrameCopyNode) {
-                            VirtualFrameCopyNode copy = (VirtualFrameCopyNode) node;
-                            if (inRange(entries, copy.getFrameSlotIndex())) {
-                                entries[copy.getTargetSlotIndex()] = entries[copy.getFrameSlotIndex()];
-                            }
-                        } else if (node instanceof VirtualFrameSwapNode) {
-                            VirtualFrameSwapNode swap = (VirtualFrameSwapNode) node;
-                            if (inRange(entries, swap.getFrameSlotIndex())) {
-                                byte temp = entries[swap.getTargetSlotIndex()];
-                                entries[swap.getTargetSlotIndex()] = entries[swap.getFrameSlotIndex()];
-                                entries[swap.getFrameSlotIndex()] = temp;
-                            }
-                        }
+                        accessor.updateVerificationState(STATE_UPDATER, entries);
                     }
                 }
             }

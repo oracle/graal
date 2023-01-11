@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -160,5 +160,15 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
 
     private boolean isOSRRawStaticAccess() {
         return ((accessFlags & VirtualFrameAccessFlags.STATIC_FLAG) != 0) && frame.isBytecodeOSRTransferTarget();
+    }
+
+    @Override
+    public <State> void updateVerificationState(VirtualFrameVerificationStateUpdater<State> updater, State state) {
+        if (isOSRRawStaticAccess()) {
+            // Static accesses to bytecode OSR frames are advertised as long.
+            updater.set(state, getFrameSlotIndex(), NewFrameNode.FrameSlotKindLongTag);
+        } else {
+            updater.set(state, getFrameSlotIndex(), (byte) getAccessTag());
+        }
     }
 }

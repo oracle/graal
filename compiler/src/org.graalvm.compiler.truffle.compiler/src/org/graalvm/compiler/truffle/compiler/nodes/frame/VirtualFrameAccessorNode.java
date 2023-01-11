@@ -47,7 +47,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public abstract class VirtualFrameAccessorNode extends FixedWithNextNode implements ControlFlowAnchored {
+public abstract class VirtualFrameAccessorNode extends FixedWithNextNode implements ControlFlowAnchored, VirtualFrameAccessVerificationNode {
     public static final NodeClass<VirtualFrameAccessorNode> TYPE = NodeClass.create(VirtualFrameAccessorNode.class);
 
     @Input protected NewFrameNode frame;
@@ -76,20 +76,23 @@ public abstract class VirtualFrameAccessorNode extends FixedWithNextNode impleme
         return frame.smallIntConstants.get(n | NewFrameNode.FrameSlotKindStaticTag);
     }
 
+    @Override
     public final NewFrameNode getFrame() {
         return frame;
     }
 
+    @Override
     public final int getFrameSlotIndex() {
         return frameSlotIndex;
     }
 
-    public final int getAccessTag() {
-        return accessTag;
-    }
-
+    @Override
     public final VirtualFrameAccessType getType() {
         return type;
+    }
+
+    public final int getAccessTag() {
+        return accessTag;
     }
 
     protected final void insertDeoptimization(VirtualizerTool tool) {
