@@ -25,6 +25,7 @@
 package com.oracle.svm.core;
 
 import static com.oracle.svm.core.Containers.Options.PreferContainerQuotaForCPUCount;
+import static com.oracle.svm.core.Containers.Options.UseContainerCpuShares;
 import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
 
 import org.graalvm.compiler.options.Option;
@@ -51,6 +52,9 @@ public class Containers {
     public static class Options {
         @Option(help = "Enable detection and runtime container configuration support.")//
         public static final HostedOptionKey<Boolean> UseContainerSupport = new HostedOptionKey<>(true);
+
+        @Option(help = "Include CPU shares in the CPU availability calculation.")//
+        public static final HostedOptionKey<Boolean> UseContainerCpuShares = new HostedOptionKey<>(false);
 
         @Option(help = "Calculate the container CPU availability based on the value of quotas (if set), when true. " +
                         "Otherwise, use the CPU shares value, provided it is less than quota.")//
@@ -125,7 +129,12 @@ public class Containers {
             if (info.isContainerized()) {
                 long quota = info.getCpuQuota();
                 long period = info.getCpuPeriod();
-                long shares = info.getCpuShares();
+
+                /*-
+                 * It's not a good idea to use CPU shares to limit the number
+                 * of CPUs used by the VM. See JDK-8281181.
+                 */
+                long shares = UseContainerCpuShares.getValue() ? info.getCpuShares() : -1;
 
                 int quotaCount = 0;
                 if (quota > -1 && period > 0) {
