@@ -182,34 +182,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             if (className.equals("module-info") || className.startsWith("META-INF.versions.")) {
                 return false;
             }
-            // @formatter:off
-                /*
-                 * Work around to prevent:
-                 *
-                 * org.graalvm.compiler.debug.GraalError: java.lang.IllegalAccessError: class org.graalvm.compiler.serviceprovider.GraalServices$Lazy (in module
-                 * jdk.internal.vm.compiler) cannot access class java.lang.management.ManagementFactory (in module java.management) because module
-                 * jdk.internal.vm.compiler does not read module java.management
-                 *     at jdk.internal.vm.compiler/org.graalvm.compiler.debug.GraalError.shouldNotReachHere(GraalError.java:55)
-                 *     at org.graalvm.compiler.core.test.CheckGraalInvariants$InvariantsTool.handleClassLoadingException(CheckGraalInvariants.java:149)
-                 *     at org.graalvm.compiler.core.test.CheckGraalInvariants.initializeClasses(CheckGraalInvariants.java:321)
-                 *     at org.graalvm.compiler.core.test.CheckGraalInvariants.runTest(CheckGraalInvariants.java:239)
-                 *
-                 * which occurs because JDK8 overlays are in modular jars. They are never used normally.
-                 */
-                // @formatter:on
-            if (className.equals("org.graalvm.compiler.serviceprovider.GraalServices$Lazy")) {
-                return false;
-            }
-
             return true;
-        }
-
-        protected void handleClassLoadingException(Throwable t) {
-            GraalError.shouldNotReachHere(t);
-        }
-
-        protected void handleParsingException(Throwable t) {
-            GraalError.shouldNotReachHere(t);
         }
 
         public boolean shouldVerifyFoldableMethods() {
@@ -402,7 +375,6 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         if (errors.isEmpty()) {
             // Order outer classes before the inner classes
             classNames.sort((String a, String b) -> a.compareTo(b));
-            // Initialize classes in single thread to avoid deadlocking issues during initialization
             List<Class<?>> classes = loadClasses(tool, classNames);
             for (Class<?> c : classes) {
                 String className = c.getName();
@@ -446,18 +418,12 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                                         checkGraph(verifiers, context, graph);
                                     } catch (VerificationError e) {
                                         errors.add(e.getMessage());
-                                    } catch (LinkageError e) {
-                                        // suppress linkages errors resulting from eager resolution
                                     } catch (BailoutException e) {
                                         // Graal bail outs on certain patterns in Java bytecode
                                         // (e.g.,
                                         // unbalanced monitors introduced by jacoco).
                                     } catch (Throwable e) {
-                                        try {
-                                            tool.handleParsingException(e);
-                                        } catch (Throwable t) {
-                                            errors.add(String.format("Error while checking %s:%n%s", methodName, printStackTraceToString(e)));
-                                        }
+                                        errors.add(String.format("Error while checking %s:%n%s", methodName, printStackTraceToString(e)));
                                     }
                                 }
                             });
@@ -579,16 +545,8 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                 classes.add(c);
             } catch (UnsupportedClassVersionError e) {
                 // graal-test.jar can contain classes compiled for different Java versions
-            } catch (NoClassDefFoundError e) {
-                if (!e.getMessage().contains("Could not initialize class")) {
-                    throw e;
-                } else {
-                    // A second or later attempt to initialize a class
-                    // results in this confusing error where the
-                    // original cause of initialization failure is lost
-                }
             } catch (Throwable t) {
-                tool.handleClassLoadingException(t);
+                GraalError.shouldNotReachHere(t);
             }
         }
         return classes;
