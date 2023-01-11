@@ -99,6 +99,14 @@ public abstract class BinaryInput {
         if ((b1 | b2) < 0) {
             throw new IndexOutOfBoundsException();
         }
+        return packShort(b1, b2);
+    }
+
+    /**
+     * Creates a Java {@code short} from given unsigned bytes, where {@code b1} is the most
+     * significant byte {@code byte} and {@code b2} is the least significant {@code byte}.
+     */
+    private static short packShort(int b1, int b2) {
         return (short) ((b1 << 8) + b2);
     }
 
@@ -113,6 +121,14 @@ public abstract class BinaryInput {
         if ((b1 | b2) < 0) {
             throw new IndexOutOfBoundsException();
         }
+        return packChar(b1, b2);
+    }
+
+    /**
+     * Creates a Java {@code char} from given unsigned bytes, where {@code b1} is the most
+     * significant byte {@code byte} and {@code b2} is the least significant {@code byte}.
+     */
+    private static char packChar(int b1, int b2) {
         return (char) ((b1 << 8) + b2);
     }
 
@@ -129,6 +145,14 @@ public abstract class BinaryInput {
         if ((b1 | b2 | b3 | b4) < 0) {
             throw new IndexOutOfBoundsException();
         }
+        return packInt(b1, b2, b3, b4);
+    }
+
+    /**
+     * Creates a Java {@code int} from given unsigned bytes, where {@code b1} is the most
+     * significant byte {@code byte} and {@code b4} is the least significant {@code byte}.
+     */
+    private static int packInt(int b1, int b2, int b3, int b4) {
         return (b1 << 24) + (b2 << 16) + (b3 << 8) + b4;
     }
 
@@ -149,6 +173,14 @@ public abstract class BinaryInput {
         if ((b1 | b2 | b3 | b4 | b5 | b6 | b7 | b8) < 0) {
             throw new IndexOutOfBoundsException();
         }
+        return packLong(b1, b2, b3, b4, b5, b6, b7, b8);
+    }
+
+    /**
+     * Creates a Java {@code long} from given unsigned bytes, where {@code b1} is the most
+     * significant byte {@code byte} and {@code b8} is the least significant {@code byte}.
+     */
+    private static long packLong(int b1, int b2, int b3, int b4, int b5, int b6, int b7, int b8) {
         return ((long) b1 << 56) + ((long) b2 << 48) + ((long) b3 << 40) + ((long) b4 << 32) +
                         ((long) b5 << 24) + ((long) b6 << 16) + ((long) b7 << 8) + b8;
     }
@@ -368,7 +400,7 @@ public abstract class BinaryInput {
         for (int i = off, j = 0; i < limit; i++) {
             int b1 = (byteBuffer[j++] & 0xff);
             int b2 = (byteBuffer[j++] & 0xff);
-            b[i] = (short) ((b1 << 8) + b2);
+            b[i] = packShort(b1, b2);
         }
     }
 
@@ -385,7 +417,7 @@ public abstract class BinaryInput {
         for (int i = off, j = 0; i < limit; i++) {
             int b1 = (byteBuffer[j++] & 0xff);
             int b2 = (byteBuffer[j++] & 0xff);
-            b[i] = (char) ((b1 << 8) + b2);
+            b[i] = packChar(b1, b2);
         }
     }
 
@@ -404,7 +436,7 @@ public abstract class BinaryInput {
             int b2 = (byteBuffer[j++] & 0xff);
             int b3 = (byteBuffer[j++] & 0xff);
             int b4 = (byteBuffer[j++] & 0xff);
-            b[i] = (b1 << 24) + (b2 << 16) + (b3 << 8) + b4;
+            b[i] = packInt(b1, b2, b3, b4);
         }
     }
 
@@ -427,8 +459,7 @@ public abstract class BinaryInput {
             int b6 = (byteBuffer[j++] & 0xff);
             int b7 = (byteBuffer[j++] & 0xff);
             int b8 = (byteBuffer[j++] & 0xff);
-            b[i] = ((long) b1 << 56) + ((long) b2 << 48) + ((long) b3 << 40) + ((long) b4 << 32) +
-                            ((long) b5 << 24) + ((long) b6 << 16) + ((long) b7 << 8) + b8;
+            b[i] = packLong(b1, b2, b3, b4, b5, b6, b7, b8);
         }
     }
 
@@ -447,7 +478,7 @@ public abstract class BinaryInput {
             int b2 = (byteBuffer[j++] & 0xff);
             int b3 = (byteBuffer[j++] & 0xff);
             int b4 = (byteBuffer[j++] & 0xff);
-            b[i] = Float.intBitsToFloat((b1 << 24) + (b2 << 16) + (b3 << 8) + b4);
+            b[i] = Float.intBitsToFloat(packInt(b1, b2, b3, b4));
         }
     }
 
@@ -470,8 +501,7 @@ public abstract class BinaryInput {
             int b6 = (byteBuffer[j++] & 0xff);
             int b7 = (byteBuffer[j++] & 0xff);
             int b8 = (byteBuffer[j++] & 0xff);
-            b[i] = Double.longBitsToDouble(((long) b1 << 56) + ((long) b2 << 48) + ((long) b3 << 40) + ((long) b4 << 32) +
-                            ((long) b5 << 24) + ((long) b6 << 16) + ((long) b7 << 8) + b8);
+            b[i] = Double.longBitsToDouble(packLong(b1, b2, b3, b4, b5, b6, b7, b8));
         }
     }
 

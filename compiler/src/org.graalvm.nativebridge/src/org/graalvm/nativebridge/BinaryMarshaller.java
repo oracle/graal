@@ -47,7 +47,10 @@ public interface BinaryMarshaller<T> {
 
     /**
      * Estimates a size in bytes needed to marshall given object. The returned value is used to
-     * pre-allocate the {@link BinaryOutput}'s buffer.
+     * pre-allocate the {@link BinaryOutput}'s buffer. The accuracy of the estimate affects the
+     * speed of marshalling. If the estimate is too small, the pre-allocated buffer must be
+     * re-allocated and the already marshalled data must be copied. Too large a value may cause the
+     * static buffer to be unused and the dynamic buffer to be unnecessarily allocated.
      */
     default int inferSize(@SuppressWarnings("unused") T object) {
         return Long.BYTES;
@@ -101,9 +104,12 @@ public interface BinaryMarshaller<T> {
 
     /**
      * Estimates a size in bytes needed to marshall {@link Out} parameter passed back to caller from
-     * an over the boundary call. Marshallers that do not support {@link Out} parameters do not need
-     * to implement this method. The default implementation throws
-     * {@link UnsupportedOperationException}. To support {@link Out} parameters the
+     * an over the boundary call. The accuracy of the estimate affects the speed of marshalling. If
+     * the estimate is too small, the pre-allocated buffer must be re-allocated and the already
+     * marshalled data must be copied. Too large a value may cause the static buffer to be unused
+     * and the dynamic buffer to be unnecessarily allocated. Marshallers that do not support
+     * {@link Out} parameters do not need to implement this method. The default implementation
+     * throws {@link UnsupportedOperationException}. To support {@link Out} parameters the
      * {@link BinaryMarshaller} must implement also {@link #writeUpdate(BinaryOutput, Object)} and
      * {@link #readUpdate(BinaryInput, Object)}.
      *
