@@ -1129,8 +1129,16 @@ public class NativeImage {
             updateArgumentEntryValue(imageBuilderArgs, imagePathEntry, imagePath.toString());
         }
         if (useBundle()) {
-            bundleSupport.bundleFile = imagePath.resolve(imageName + ".nib");
-            imagePath = bundleSupport.substituteAuxiliaryPath(imagePath, BundleMember.Role.Output);
+            if (bundleSupport.isBundleCreation()) {
+                /*
+                 * If we are in bundle creation mode, we are at the point where we know the final
+                 * imagePath and imageName that we can now use to derive the new bundle name from.
+                 */
+                bundleSupport.bundleFile = imagePath.resolve(imageName + ".nib");
+            }
+            /* In bundle mode the imagePath has to be redirected to be within the bundle */
+            imagePath = bundleSupport.substituteImagePath(imagePath);
+            /* and we need to adjust the argument that passes the imagePath to the builder */
             updateArgumentEntryValue(imageBuilderArgs, imagePathEntry, imagePath.toString());
         }
 

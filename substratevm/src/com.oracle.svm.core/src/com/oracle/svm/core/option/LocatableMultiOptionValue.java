@@ -27,6 +27,7 @@ package com.oracle.svm.core.option;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -89,10 +90,20 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
 
     @Override
     public List<T> values() {
+        return getValuesWithOrigins().map(Pair::getLeft).collect(Collectors.toList());
+    }
+
+    @Override
+    public Optional<T> lastValue() {
+        return lastValueWithOrigin().map(Pair::getLeft);
+    }
+
+    public Optional<Pair<T, OptionOrigin>> lastValueWithOrigin() {
         if (values.isEmpty()) {
-            return List.of();
+            return Optional.empty();
         }
-        return values.stream().map(Pair::getLeft).collect(Collectors.toList());
+        Pair<T, String> pair = values.get(values.size() - 1);
+        return Optional.of(Pair.create(pair.getLeft(), OptionOrigin.from(pair.getRight())));
     }
 
     public Stream<Pair<T, OptionOrigin>> getValuesWithOrigins() {

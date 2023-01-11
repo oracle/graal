@@ -195,8 +195,9 @@ public class ProgressReporter {
             builderIO = NativeImageSystemIOWrappers.singleton();
         }
 
-        if (SubstrateOptions.BuildOutputJSONFile.hasBeenSet(options)) {
-            jsonHelper = new ProgressReporterJsonHelper(SubstrateOptions.BuildOutputJSONFile.getValue(options));
+        Optional<Path> buildOutputJSONFile = SubstrateOptions.BuildOutputJSONFile.getValue(options).lastValue();
+        if (buildOutputJSONFile.isPresent()) {
+            jsonHelper = new ProgressReporterJsonHelper(buildOutputJSONFile.get());
         } else {
             jsonHelper = null;
         }

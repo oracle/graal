@@ -48,7 +48,6 @@ import java.util.stream.Stream;
 import org.graalvm.util.json.JSONParserException;
 
 import com.oracle.svm.core.OS;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.util.json.JsonPrinter;
@@ -87,6 +86,8 @@ final class BundleSupport {
     final Path modulePathDir;
     final Path auxiliaryDir;
     final Path outputDir;
+    final Path imagePathOutputDir;
+    final Path auxiliaryOutputDir;
 
     Map<Path, Path> pathCanonicalizations = new HashMap<>();
     Map<Path, Path> pathSubstitutions = new HashMap<>();
@@ -141,7 +142,6 @@ final class BundleSupport {
         } else {
             bundleSupport = new BundleSupport(nativeImage, bundleStatus);
         }
-        bundleSupport.bundleFile = nativeImage.config.getWorkingDirectory().resolve("unnamed.nib");
         return bundleSupport;
     }
 
@@ -159,6 +159,8 @@ final class BundleSupport {
             classPathDir = Files.createDirectories(classesDir.resolve("cp"));
             modulePathDir = Files.createDirectories(classesDir.resolve("p"));
             outputDir = Files.createDirectories(rootDir.resolve("output"));
+            imagePathOutputDir = Files.createDirectories(outputDir.resolve("default"));
+            auxiliaryOutputDir = Files.createDirectories(outputDir.resolve("other"));
         } catch (IOException e) {
             throw NativeImage.showError("Unable to create bundle directory layout", e);
         }
@@ -171,32 +173,32 @@ final class BundleSupport {
         this.nativeImage = nativeImage;
         this.status = status;
 
-        Path bundlePath = Path.of(bundleFilename);
-        if (!Files.isReadable(bundlePath)) {
+        bundleFile = Path.of(bundleFilename);
+        if (!Files.isReadable(bundleFile)) {
             throw NativeImage.showError("The given bundle file " + bundleFilename + " cannot be read");
         }
 
-        if (Files.isDirectory(bundlePath)) {
-            rootDir = bundlePath;
+        if (Files.isDirectory(bundleFile)) {
+            throw NativeImage.showError("The given bundle file " + bundleFilename + " is a directory and not a file");
         } else {
             try {
                 rootDir = Files.createTempDirectory(bundleTempDirPrefix);
-                try (JarFile archive = new JarFile(bundlePath.toFile())) {
+                try (JarFile archive = new JarFile(bundleFile.toFile())) {
                     archive.stream().forEach(jarEntry -> {
-                        Path bundleFile = rootDir.resolve(jarEntry.getName());
+                        Path bundleEntry = rootDir.resolve(jarEntry.getName());
                         try {
-                            Path bundleFileParent = bundleFile.getParent();
+                            Path bundleFileParent = bundleEntry.getParent();
                             if (bundleFileParent != null) {
                                 Files.createDirectories(bundleFileParent);
                             }
-                            Files.copy(archive.getInputStream(jarEntry), bundleFile);
+                            Files.copy(archive.getInputStream(jarEntry), bundleEntry);
                         } catch (IOException e) {
-                            throw NativeImage.showError("Unable to copy " + jarEntry.getName() + " from bundle " + bundlePath + " to " + bundleFile, e);
+                            throw NativeImage.showError("Unable to copy " + jarEntry.getName() + " from bundle " + bundleEntry + " to " + bundleEntry, e);
                         }
                     });
                 }
             } catch (IOException e) {
-                throw NativeImage.showError("Unable to create bundle directory layout from file " + bundlePath, e);
+                throw NativeImage.showError("Unable to create bundle directory layout from file " + bundleFile, e);
             }
         }
 
@@ -207,6 +209,8 @@ final class BundleSupport {
         classPathDir = classesDir.resolve("cp");
         modulePathDir = classesDir.resolve("p");
         outputDir = rootDir.resolve("output");
+        imagePathOutputDir = outputDir.resolve("default");
+        auxiliaryOutputDir = outputDir.resolve("other");
 
         Path pathCanonicalizationsFile = stageDir.resolve("path_canonicalizations.json");
         try (Reader reader = Files.newBufferedReader(pathCanonicalizationsFile)) {
@@ -228,6 +232,10 @@ final class BundleSupport {
         } catch (IOException e) {
             throw NativeImage.showError("Failed to read bundle-file " + pathSubstitutionsFile, e);
         }
+    }
+
+    public boolean isBundleCreation() {
+        return !status.loadBundle;
     }
 
     public List<String> getBuildArgs() {
@@ -266,12 +274,17 @@ final class BundleSupport {
                 destinationDir = auxiliaryDir;
                 break;
             case Output:
-                destinationDir = outputDir;
+                destinationDir = auxiliaryOutputDir;
                 break;
             default:
                 return origPath;
         }
         return substitutePath(origPath, destinationDir);
+    }
+
+    Path substituteImagePath(Path origPath) {
+        pathSubstitutions.put(origPath, imagePathOutputDir);
+        return imagePathOutputDir;
     }
 
     Path substituteClassPath(Path origPath) {
@@ -296,11 +309,6 @@ final class BundleSupport {
 
         BundlePathSubstitutionError(String message, Path origPath) {
             super(message);
-            this.origPath = origPath;
-        }
-
-        BundlePathSubstitutionError(String message, Path origPath, Throwable cause) {
-            super(message, cause);
             this.origPath = origPath;
         }
     }
@@ -367,23 +375,16 @@ final class BundleSupport {
             baseName = origFileName;
             extension = "";
         }
-        String substitutedPathFilename = baseName + "_" + SubstrateUtil.digest(origPath.toString()) + extension;
-        Path substitutedPath = destinationDir.resolve(substitutedPathFilename);
-        if (Files.exists(substitutedPath)) {
-            /* If we ever see this, we have to implement substitutedPath collision-handling */
-            throw new BundlePathSubstitutionError("Failed to create a unique path-name in " + destinationDir + ". " + substitutedPath + " already exists", origPath);
+
+        Path substitutedPath = destinationDir.resolve(baseName + extension);
+        int collisionIndex = 0;
+        while (Files.exists(substitutedPath)) {
+            collisionIndex += 1;
+            substitutedPath = destinationDir.resolve(baseName + "_" + collisionIndex + extension);
         }
 
         if (!destinationDir.startsWith(outputDir)) {
-            if (Files.isDirectory(origPath)) {
-                try (Stream<Path> walk = Files.walk(origPath)) {
-                    walk.forEach(sourcePath -> copyFile(sourcePath, substitutedPath.resolve(origPath.relativize(sourcePath))));
-                } catch (IOException e) {
-                    throw new BundlePathSubstitutionError("Failed to iterate through directory " + origPath, origPath, e);
-                }
-            } else {
-                copyFile(origPath, substitutedPath);
-            }
+            copyFiles(origPath, substitutedPath);
         }
 
         Path relativeSubstitutedPath = rootDir.relativize(substitutedPath);
@@ -394,25 +395,45 @@ final class BundleSupport {
         return substitutedPath;
     }
 
-    private void copyFile(Path source, Path target) {
-        try {
-            if (nativeImage.isVerbose()) {
-                System.out.println("> Copy to bundle: " + nativeImage.config.workDir.relativize(source));
+    private void copyFiles(Path source, Path target) {
+        if (Files.isDirectory(source)) {
+            try (Stream<Path> walk = Files.walk(source)) {
+                walk.forEach(sourcePath -> copyFile(sourcePath, target.resolve(source.relativize(sourcePath))));
+            } catch (IOException e) {
+                throw NativeImage.showError("Failed to iterate through directory " + source, e);
             }
-            Files.copy(source, target);
+        } else {
+            copyFile(source, target);
+        }
+    }
+
+    private void copyFile(Path sourceFile, Path target) {
+        try {
+            if (nativeImage.isVerbose() && target.startsWith(rootDir)) {
+                System.out.println("> Copy to bundle: " + nativeImage.config.workDir.relativize(sourceFile));
+            }
+            Files.copy(sourceFile, target);
         } catch (IOException e) {
-            throw NativeImage.showError("Failed to copy " + source + " to " + target, e);
+            throw NativeImage.showError("Failed to copy " + sourceFile + " to " + target, e);
         }
     }
 
     void shutdown() {
-        if (!status.loadBundle) {
-            writeBundle();
+        Path originalImagePath = bundleFile.getParent();
+        copyFiles(outputDir, originalImagePath.resolve(outputDir.getFileName()));
+
+        try {
+            if (isBundleCreation()) {
+                writeBundle();
+            }
+        } finally {
+            nativeImage.deleteAllFiles(rootDir);
         }
-        nativeImage.deleteAllFiles(rootDir);
     }
 
     void writeBundle() {
+        assert isBundleCreation();
+
         Path pathCanonicalizationsFile = stageDir.resolve("path_canonicalizations.json");
         try (JsonWriter writer = new JsonWriter(pathCanonicalizationsFile)) {
             /* Printing as list with defined sort-order ensures useful diffs are possible */
@@ -434,6 +455,15 @@ final class BundleSupport {
             JsonPrinter.printCollection(writer, buildArgs, null, BundleSupport::printBuildArg);
         } catch (IOException e) {
             throw NativeImage.showError("Failed to write bundle-file " + pathSubstitutionsFile, e);
+        }
+
+        /*
+         * Provide a fallback to ensure we even get a bundle if there are errors before we are able
+         * to determine the final bundle name (see use of BundleSupport.isBundleCreation() in
+         * NativeImage.completeImageBuild() to know where this happens).
+         */
+        if (bundleFile == null) {
+            bundleFile = nativeImage.config.getWorkingDirectory().resolve("unnamed.nib");
         }
 
         try (JarOutputStream jarOutStream = new JarOutputStream(Files.newOutputStream(bundleFile), new Manifest())) {

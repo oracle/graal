@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -51,7 +50,8 @@ public final class ConfigurationFiles {
 
     public static final class Options {
         @Option(help = "Directories directly containing configuration files for dynamic features at runtime.", type = OptionType.User)//
-        static final HostedOptionKey<LocatableMultiOptionValue.Strings> ConfigurationFileDirectories = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+        @BundleMember(role = BundleMember.Role.Input)//
+        static final HostedOptionKey<LocatableMultiOptionValue.Paths> ConfigurationFileDirectories = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
 
         @Option(help = "Resource path above configuration resources for dynamic features at runtime.", type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ConfigurationResourceRoots = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
@@ -106,11 +106,11 @@ public final class ConfigurationFiles {
 
     public static List<Path> findConfigurationFiles(String fileName) {
         List<Path> files = new ArrayList<>();
-        for (String directory : Options.ConfigurationFileDirectories.getValue().values()) {
-            if (Files.exists(Paths.get(directory, ConfigurationFile.LOCK_FILE_NAME))) {
-                throw foundLockFile("Configuration file directory '" + directory + "'");
+        for (Path configDir : Options.ConfigurationFileDirectories.getValue().values()) {
+            if (Files.exists(configDir.resolve(ConfigurationFile.LOCK_FILE_NAME))) {
+                throw foundLockFile("Configuration file directory '" + configDir + "'");
             }
-            Path path = Paths.get(directory, fileName);
+            Path path = configDir.resolve(fileName);
             if (Files.exists(path)) {
                 files.add(path);
             }

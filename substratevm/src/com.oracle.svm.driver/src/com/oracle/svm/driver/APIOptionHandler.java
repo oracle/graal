@@ -118,8 +118,8 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         if (NativeImage.IS_AOT) {
             APIOptionSupport support = ImageSingletons.lookup(APIOptionSupport.class);
             groupInfos = support.groupInfos;
-            apiOptions = support.options;
             pathOptions = support.pathOptions;
+            apiOptions = support.options;
         } else {
             groupInfos = new HashMap<>();
             pathOptions = new HashMap<>();
