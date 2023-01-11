@@ -26,6 +26,8 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.function.IntUnaryOperator;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -314,13 +316,25 @@ public final class HeapChunk {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static HeapChunk.Header<?> getEnclosingHeapChunk(Object obj) {
-        assert !HeapImpl.getHeapImpl().isInImageHeap(obj) || HeapImpl.usesImageHeapChunks() : "Must be checked before calling this method";
-        assert !ObjectHeaderImpl.isPointerToForwardedObject(Word.objectToUntrackedPointer(obj)) : "Forwarded objects must be a pointer and not an object";
+        if (!GraalDirectives.inIntrinsic()) {
+            // Cannot check in intrinsics due to late initialization of CommittedMemoryProvider
+            assert !HeapImpl.getHeapImpl().isInImageHeap(obj) || HeapImpl.usesImageHeapChunks() : "Must be checked before calling this method";
+        }
+        dynamicAssert(!ObjectHeaderImpl.isPointerToForwardedObject(Word.objectToUntrackedPointer(obj)), "Forwarded objects must be a pointer and not an object");
         if (ObjectHeaderImpl.isAlignedObject(obj)) {
             return AlignedHeapChunk.getEnclosingChunk(obj);
         } else {
-            assert ObjectHeaderImpl.isUnalignedObject(obj);
+            dynamicAssert(ObjectHeaderImpl.isUnalignedObject(obj), "Not aligned must mean unaligned");
             return UnalignedHeapChunk.getEnclosingChunk(obj);
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static void dynamicAssert(boolean condition, String msg) {
+        if (GraalDirectives.inIntrinsic()) {
+            ReplacementsUtil.dynamicAssert(condition, msg);
+        } else {
+            assert condition : msg;
         }
     }
 

@@ -26,10 +26,12 @@ package com.oracle.svm.core.identityhashcode;
 
 import java.util.SplittableRandom;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.IdentityHashCodeSnippets;
+import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
@@ -63,7 +65,7 @@ public final class IdentityHashCodeSupport {
     }
 
     public static IdentityHashCodeSnippets.Templates createSnippetTemplates(OptionValues options, Providers providers) {
-        return new IdentityHashCodeSnippets.Templates(new SubstrateIdentityHashCodeSnippets(), options, providers, IDENTITY_HASHCODE_LOCATION);
+        return SubstrateIdentityHashCodeSnippets.createTemplates(options, providers);
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
@@ -115,7 +117,11 @@ public final class IdentityHashCodeSupport {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int computeHashCodeFromAddress(Object obj, long salt) {
-        assert salt != 0;
+        if (GraalDirectives.inIntrinsic()) {
+            ReplacementsUtil.dynamicAssert(salt != 0, "must have salt");
+        } else {
+            assert salt != 0;
+        }
         Word address = Word.objectToUntrackedPointer(obj);
         SignedWord salted = WordFactory.signed(salt).xor(address);
         int hash = mix32(salted.rawValue()) >>> 1;

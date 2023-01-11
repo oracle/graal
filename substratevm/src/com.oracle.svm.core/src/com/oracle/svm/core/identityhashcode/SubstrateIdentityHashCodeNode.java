@@ -35,7 +35,7 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaConstant;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_8)
+@NodeInfo(cycles = NodeCycles.CYCLES_16, size = NodeSize.SIZE_64)
 public final class SubstrateIdentityHashCodeNode extends IdentityHashCodeNode {
 
     public static final NodeClass<SubstrateIdentityHashCodeNode> TYPE = NodeClass.create(SubstrateIdentityHashCodeNode.class);
@@ -54,7 +54,7 @@ public final class SubstrateIdentityHashCodeNode extends IdentityHashCodeNode {
 
     @Override
     public LocationIdentity getKilledLocationIdentity() {
-        return IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION;
+        return LocationIdentity.any();
     }
 
     @Override

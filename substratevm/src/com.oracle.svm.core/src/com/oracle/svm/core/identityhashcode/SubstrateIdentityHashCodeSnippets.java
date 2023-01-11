@@ -25,14 +25,18 @@
 package com.oracle.svm.core.identityhashcode;
 
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.IdentityHashCodeSnippets;
 import org.graalvm.compiler.word.ObjectAccess;
+import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
@@ -42,8 +46,11 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 
 final class SubstrateIdentityHashCodeSnippets extends IdentityHashCodeSnippets {
 
-    static final SubstrateForeignCallDescriptor GENERATE_IDENTITY_HASH_CODE = SnippetRuntime.findForeignCall(IdentityHashCodeSupport.class, "generateIdentityHashCode", true,
-                    IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
+    static final SubstrateForeignCallDescriptor GENERATE_IDENTITY_HASH_CODE = SnippetRuntime.findForeignCall(IdentityHashCodeSupport.class, "generateIdentityHashCode", true, LocationIdentity.any());
+
+    static Templates createTemplates(OptionValues options, Providers providers) {
+        return new Templates(new SubstrateIdentityHashCodeSnippets(), options, providers, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
+    }
 
     @Override
     protected int computeIdentityHashCode(Object obj) {
@@ -54,6 +61,8 @@ final class SubstrateIdentityHashCodeSnippets extends IdentityHashCodeSnippets {
             if (probability(FAST_PATH_PROBABILITY, identityHashCode != 0)) {
                 return identityHashCode;
             }
+        } else if (probability(LIKELY_PROBABILITY, objectHeader.hasIdentityHashFromAddress(obj))) {
+            return IdentityHashCodeSupport.computeHashCodeFromAddress(obj);
         }
         return generateIdentityHashCode(GENERATE_IDENTITY_HASH_CODE, obj);
     }
