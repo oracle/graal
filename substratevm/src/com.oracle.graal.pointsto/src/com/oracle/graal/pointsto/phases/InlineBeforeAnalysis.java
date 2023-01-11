@@ -158,7 +158,7 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
         super(AnalysisParsedGraph.HOST_ARCHITECTURE, graph, bb.getProviders(), null,
                         bb.getProviders().getGraphBuilderPlugins().getInvocationPlugins(),
                         new InlineInvokePlugin[]{new InlineBeforeAnalysisInlineInvokePlugin(policy)},
-                        null, null, null, null,
+                        null, policy.nodePlugins, null, null,
                         new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true, false);
         this.bb = bb;
         this.policy = policy;
