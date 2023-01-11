@@ -42,10 +42,10 @@ package com.oracle.truffle.nfi.backend.panama;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -56,9 +56,11 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.nfi.backend.panama.FunctionExecuteNode.SignatureExecuteNode;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureBuilderLibrary;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
+import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayBuilderFactory;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayFactory;
@@ -113,26 +115,38 @@ final class PanamaSignature {
             return functionExecute.execute(pointer, self, args);
         }
 
-        @Specialization(limit = "3", guards = {"args.length == 1", "cachedFunctionPointer == fnInterop.asPointer(functionPointer)"})
-        static Object doCached(PanamaSignature receiver, Object functionPointer, Object[] args,
-                        @CachedLibrary("functionPointer") InteropLibrary fnInterop,
-                        @Cached("fnInterop.asPointer(functionPointer)") long cachedFunctionPointer,
-                        @Cached("receiver.createDowncallHandle(cachedFunctionPointer)") MethodHandle downcallHandle,
-                        @CachedLibrary(limit = "1") InteropLibrary arg0Lib) throws UnsupportedMessageException {
-//            Object[] processedArgs = new Object[1];
-//            processedArgs[0] = arg0Lib.asInt(args[0]);
-            try {
-//                return downcallHandle.invokeExact(processedArgs);
-                return null;
-            } catch (Throwable t) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw new IllegalStateException(t);
+        @Specialization(limit = "3")
+        @GenerateAOT.Exclude
+        static Object callGeneric(PanamaSignature self, Object functionPointer, Object[] args,
+                        @CachedLibrary("functionPointer") InteropLibrary interop,
+                        @Cached BranchProfile isExecutable,
+                        @Cached BranchProfile toNative,
+                        @Cached BranchProfile error,
+                        @Cached.Exclusive @Cached FunctionExecuteNode functionExecute) throws ArityException, UnsupportedTypeException {
+            if (interop.isExecutable(functionPointer)) {
+                // This branch can be invoked when SignatureLibrary is used to invoke a function
+                // pointer without prior engaging the interop to execute executable function
+                // pointers. It may happen, for example, in SVM for function substitutes.
+                try {
+                    isExecutable.enter();
+                    return interop.execute(functionPointer, args);
+                } catch (UnsupportedMessageException e) {
+                    error.enter();
+                    throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer", e);
+                }
             }
-        }
-
-        @Specialization(replaces = "doCached")
-        static Object doGeneric(PanamaSignature receiver, Object functionPointer, Object[] args) {
-            throw CompilerDirectives.shouldNotReachHere(); // TODO
+            if (!interop.isPointer(functionPointer)) {
+                toNative.enter();
+                interop.toNative(functionPointer);
+            }
+            long pointer;
+            try {
+                pointer = interop.asPointer(functionPointer);
+            } catch (UnsupportedMessageException e) {
+                error.enter();
+                throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer", e);
+            }
+            return functionExecute.execute(pointer, self, args);
         }
     }
 
@@ -235,7 +249,7 @@ final class PanamaSignature {
 
             retType = type;
             downcallType = downcallType.changeReturnType(type.javaType);
-            upcallType = upcallType.changeReturnType(type.javaType);
+            upcallType = upcallType.changeReturnType(type.javaRetType);
         }
 
         @ExportMessage
@@ -341,8 +355,21 @@ final class PanamaSignature {
             CompilerAsserts.partialEvaluationConstant(retType);
 
             MethodHandle handle = signature.createDowncallHandle(functionPointer);
+
             try {
-                return handle.invokeExact(args);
+                if (retType.type == NativeSimpleType.STRING) {
+                    MemoryAddress stringAddress = (MemoryAddress) (Object) handle.invokeExact(args);
+                    return stringAddress.getUtf8String(0);
+                } else if (retType.type == NativeSimpleType.VOID) {
+                    Object result = handle.invokeExact(args);
+                    return NativePointer.NULL;
+                } else if (retType.type == NativeSimpleType.POINTER) {
+                    Object result = handle.invokeExact(args); // TODO
+                    return NativePointer.create(0);
+                } else {
+                    Object result = handle.invokeExact(args);
+                    return result;
+                }
             } catch (Throwable e) {
                 throw new RuntimeException(e);
             }

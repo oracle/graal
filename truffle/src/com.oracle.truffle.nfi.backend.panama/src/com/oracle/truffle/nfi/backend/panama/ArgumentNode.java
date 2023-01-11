@@ -1,6 +1,5 @@
 package com.oracle.truffle.nfi.backend.panama;
 
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -8,8 +7,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 
-import java.lang.foreign.Addressable;
-import java.lang.foreign.MemorySegment;
+import java.lang.foreign.MemoryAddress;
 import java.lang.foreign.MemorySession;
 
 abstract class ArgumentNode extends Node {
@@ -31,6 +29,10 @@ abstract class ArgumentNode extends Node {
         Object doConvert(Object value,
                          @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
             return null;
+        }
+
+        Object toJava() {
+            return NativePointer.NULL;
         }
     }
 
@@ -95,12 +97,7 @@ abstract class ArgumentNode extends Node {
         long doConvert(Object value,
                        @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
             try {
-                if (value instanceof PanamaSymbol) {
-                    PanamaSymbol val = (PanamaSymbol) value;
-                    return interop.asPointer(val);
-                } else {
-                    return interop.asLong(value);
-                }
+                return interop.asLong(value);
             } catch (UnsupportedMessageException ex) {
                 throw UnsupportedTypeException.create(new Object[]{value});
             }
@@ -113,6 +110,23 @@ abstract class ArgumentNode extends Node {
 //            }
 //            throw CompilerDirectives.shouldNotReachHere();
 //        }
+    }
+
+    static abstract class ToPointerNode extends ArgumentNode {
+
+        ToPointerNode(PanamaType type) {
+            super(type);
+        }
+
+        @Specialization(limit = "3") //, rewriteOn = UnsupportedTypeException.class)
+        long doConvert(Object value,
+                       @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
+            try {
+                return interop.asPointer(value);
+            } catch (UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     static abstract class ToFLOATNode extends ArgumentNode {
@@ -156,10 +170,10 @@ abstract class ArgumentNode extends Node {
         }
 
         @Specialization(limit = "3")
-        Addressable doConvert(Object value,
-                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
+        MemoryAddress doConvert(Object value,
+                                @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
             try {
-                return MemorySession.global().allocateUtf8String(interop.asString(value)); // TODO: remove global
+                return MemorySession.global().allocateUtf8String(interop.asString(value)).address(); // TODO: remove global
             } catch (UnsupportedMessageException ex) {
                 throw UnsupportedTypeException.create(new Object[]{value});
             }

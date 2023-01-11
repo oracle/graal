@@ -41,15 +41,11 @@
 package com.oracle.truffle.nfi.backend.panama;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
+
+import java.lang.foreign.Addressable;
+import java.lang.foreign.MemoryAddress;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.ValueLayout;
 
@@ -58,48 +54,57 @@ final class PanamaType {
 
     final MemoryLayout nativeLayout;
     final Class<?> javaType;
+    final Class<?> javaRetType;
     final NativeSimpleType type;
 
-    PanamaType(NativeSimpleType type) {
+    PanamaType(NativeSimpleType type) throws UnsupportedOperationException {
         this.type = type;
         switch(type) {
             case VOID:
                 nativeLayout = null;
                 javaType = void.class;
+                javaRetType = javaType;
                 break;
             case UINT8:
             case SINT8:
                 nativeLayout = ValueLayout.JAVA_BYTE;
                 javaType = byte.class;
-                break;
+                javaRetType = javaType;
+                throw new UnsupportedOperationException("INT8 has bug in jdk19");
             case UINT16:
             case SINT16:
                 nativeLayout = ValueLayout.JAVA_SHORT;
                 javaType = short.class;
+                javaRetType = javaType;
                 break;
             case UINT32:
             case SINT32:
                 nativeLayout = ValueLayout.JAVA_INT;
                 javaType = int.class;
+                javaRetType = javaType;
                 break;
             case UINT64:
             case SINT64:
             case POINTER:
                 nativeLayout = ValueLayout.JAVA_LONG;
                 javaType = long.class;
+                javaRetType = javaType;
                 break;
             case FP80:
-                throw new UnsupportedOperationException();
+                throw new UnsupportedOperationException("Did not impl FP80");
             case FLOAT:
                 nativeLayout = ValueLayout.JAVA_FLOAT;
                 javaType = float.class;
+                javaRetType = javaType;
                 break;
             case DOUBLE:
                 nativeLayout = ValueLayout.JAVA_DOUBLE;
                 javaType = double.class;
+                javaRetType = javaType;
                 break;
             case STRING:
-                javaType = String.class;
+                javaType = MemoryAddress.class;
+                javaRetType = Addressable.class;
                 nativeLayout = ValueLayout.ADDRESS;
                 break;
             case OBJECT:
@@ -120,25 +125,26 @@ final class PanamaType {
                 return ArgumentNodeFactory.ToVOIDNodeGen.create(this);
             case UINT8:
             case SINT8:
-                return  ArgumentNodeFactory.ToINT8NodeGen.create(this);
+                return ArgumentNodeFactory.ToINT8NodeGen.create(this);
             case UINT16:
             case SINT16:
-                return  ArgumentNodeFactory.ToINT16NodeGen.create(this);
+                return ArgumentNodeFactory.ToINT16NodeGen.create(this);
             case UINT32:
             case SINT32:
-                return  ArgumentNodeFactory.ToINT32NodeGen.create(this);
+                return ArgumentNodeFactory.ToINT32NodeGen.create(this);
             case UINT64:
             case SINT64:
+                return ArgumentNodeFactory.ToINT64NodeGen.create(this);
             case POINTER:
-                return  ArgumentNodeFactory.ToINT64NodeGen.create(this);
+                return ArgumentNodeFactory.ToPointerNodeGen.create(this);
             case FP80:
                 throw new UnsupportedOperationException();
             case FLOAT:
-                return  ArgumentNodeFactory.ToFLOATNodeGen.create(this);
+                return ArgumentNodeFactory.ToFLOATNodeGen.create(this);
             case DOUBLE:
-                return  ArgumentNodeFactory.ToDOUBLENodeGen.create(this);
+                return ArgumentNodeFactory.ToDOUBLENodeGen.create(this);
             case STRING:
-                return  ArgumentNodeFactory.ToSTRINGNodeGen.create(this);
+                return ArgumentNodeFactory.ToSTRINGNodeGen.create(this);
             case OBJECT:
                 // TODO
                 throw CompilerDirectives.shouldNotReachHere("OBJ not imple");
