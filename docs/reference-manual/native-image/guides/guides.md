@@ -1,8 +1,9 @@
 ---
-layout: ni-docs
+layout: ni-docs-landing
 toc_group: how-to-guides
 link_title: User Guides
-permalink: /reference-manual/native-image/guides/
+permalink: /native-image/guides/
+redirect_from: /reference-manual/native-image/guides/
 ---
 
 # Native Image User Guides
