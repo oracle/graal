@@ -4959,17 +4959,19 @@ public class FlatNodeGenFactory {
 
         CodeTree specializeElseBranch = null;
         if (needsDuplicationCheck && useSpecializationClass) {
-            DSLExpression limit = optimizeExpression(specialization.getLimitExpression());
-            Set<CacheExpression> caches = specialization.getBoundCaches(limit, true);
-            innerTripples.addAll(initializeCaches(innerFrameState, innerFrameState.getMode(), group, caches, true, false));
-            CodeTree limitExpression = writeExpression(innerFrameState, specialization, limit);
-            CodeTreeBuilder limitBuilder = CodeTreeBuilder.createBuilder();
-            limitBuilder.string(countName).string(" < ").tree(limitExpression);
-            if (specialization.hasUnroll() && !specialization.isUnrolled()) {
-                // subtract unrolled count from limit
-                limitBuilder.string(" - ").string(String.valueOf(specialization.getUnroll()));
+            if (multipleInstances) {
+                DSLExpression limit = optimizeExpression(specialization.getLimitExpression());
+                Set<CacheExpression> caches = specialization.getBoundCaches(limit, true);
+                innerTripples.addAll(initializeCaches(innerFrameState, innerFrameState.getMode(), group, caches, true, false));
+                CodeTree limitExpression = writeExpression(innerFrameState, specialization, limit);
+                CodeTreeBuilder limitBuilder = CodeTreeBuilder.createBuilder();
+                limitBuilder.string(countName).string(" < ").tree(limitExpression);
+                if (specialization.hasUnroll() && !specialization.isUnrolled()) {
+                    // subtract unrolled count from limit
+                    limitBuilder.string(" - ").string(String.valueOf(specialization.getUnroll()));
+                }
+                innerTripples.add(new IfTriple(null, limitBuilder.build(), null));
             }
-            innerTripples.add(new IfTriple(null, limitBuilder.build(), null));
         } else if (needsDuplicationCheck) {
             innerTripples.add(new IfTriple(null, multiState.createNotContains(innerFrameState, StateQuery.create(SpecializationActive.class, specialization)), null));
         }
