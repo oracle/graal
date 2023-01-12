@@ -12,7 +12,7 @@ redirect_from:
 To build a native executable for a Java application that uses Java reflection, dynamic proxy objects, JNI, or class path resources, you should either provide the `native-image` tool with JSON-formatted configuration files or pre-compute metadata in the code.
 
 You can create configuration file(s) by hand, but a more convenient approach is to generate the configuration using the Tracing agent (from now on, the agent). 
-This guide demonstrates how to configure the `native-image` builder with the agent. The agent generates the configuration for you automatically when you run an application on a JVM.
+This guide demonstrates how to configure `native-image` with the agent. The agent generates the configuration for you automatically when you run an application on a JVM.
 
 To learn how to build a native executable with the metadata pre-computed in the code, [follow this guide](use-reachability-metadata-repository-gradle.md).
 

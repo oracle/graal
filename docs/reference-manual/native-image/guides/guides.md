@@ -8,7 +8,7 @@ redirect_from: /reference-manual/native-image/guides/
 
 # Native Image User Guides
 
-These guides are to help developers get started with GraalVM Native Image, acquaint them with the available features, and describe potential usage scenarios. 
+These guides help developers get started with GraalVM Native Image, acquaint them with available features, and describe potential usage scenarios. 
 Here you will learn how to:
 
 - [Access Environment Variables](access-environment-variables.md)
