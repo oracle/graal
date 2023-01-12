@@ -89,29 +89,31 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
     }
 
     @Specialization(limit = "LIBRARY_LIMIT")
-    protected static Object readSLObject(SLObject receiver, Object name,
+    public static Object readSLObject(SLObject receiver, Object name,
                     @Bind("this") Node node,
                     @CachedLibrary("receiver") DynamicObjectLibrary objectLibrary,
-                    @Cached SLToTruffleStringNode toTruffleStringNode) {
+                    @Cached SLToTruffleStringNode toTruffleStringNode,
+                    @Bind("$bci") int bci) {
         TruffleString nameTS = toTruffleStringNode.execute(node, name);
         Object result = objectLibrary.getOrDefault(receiver, nameTS, null);
         if (result == null) {
             // read was not successful. In SL we only have basic support for errors.
-            throw SLUndefinedNameException.undefinedProperty(node, nameTS);
+            throw SLUndefinedNameException.undefinedProperty(node, bci, nameTS);
         }
         return result;
     }
 
     @Specialization(guards = {"!isSLObject(receiver)", "objects.hasMembers(receiver)"}, limit = "LIBRARY_LIMIT")
-    protected static Object readObject(Object receiver, Object name,
+    public static Object readObject(Object receiver, Object name,
                     @Bind("this") Node node,
                     @CachedLibrary("receiver") InteropLibrary objects,
-                    @Cached SLToMemberNode asMember) {
+                    @Cached SLToMemberNode asMember,
+                    @Bind("$bci") int bci) {
         try {
             return objects.readMember(receiver, asMember.execute(node, name));
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
             // read was not successful. In SL we only have basic support for errors.
-            throw SLUndefinedNameException.undefinedProperty(node, name);
+            throw SLUndefinedNameException.undefinedProperty(node, bci, name);
         }
     }
 

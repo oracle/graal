@@ -213,6 +213,8 @@ public class OperationsNodeFactory {
             el.setSuperClass(types.Node);
             factory.create(el);
             new CustomInstructionNodeFactory().processNodeType(el, instr);
+
+            nodeConsts.prependToClass(el);
             operationNodeGen.add(el);
         }
 
@@ -1690,7 +1692,7 @@ public class OperationsNodeFactory {
 
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.startFor().string("int i = operationSp - 1; i >= 0; i++").end().startBlock();
+            b.startFor().string("int i = operationSp - 1; i >= 0; i--").end().startBlock();
 
             b.startIf().string("opSeqNumStack[i] == targetSeq").end().startBlock();
             b.returnStatement();

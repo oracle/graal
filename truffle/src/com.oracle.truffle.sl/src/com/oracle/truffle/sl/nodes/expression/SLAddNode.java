@@ -117,7 +117,7 @@ public abstract class SLAddNode extends SLBinaryNode {
      */
     @Specialization(guards = "isString(left, right)")
     @TruffleBoundary
-    protected static TruffleString add(Object left, Object right,
+    public static TruffleString add(Object left, Object right,
                     @Bind("this") Node node,
                     @Cached SLToTruffleStringNode toTruffleStringNodeLeft,
                     @Cached SLToTruffleStringNode toTruffleStringNodeRight,
