@@ -22,7 +22,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package org.graalvm.component.installer.gds.rest;
 
 import org.graalvm.component.installer.CommandInput;
@@ -41,12 +40,15 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.util.Set;
 import static org.graalvm.component.installer.CommonConstants.PATH_USER_GU;
 import java.io.File;
+import java.util.Map;
+import org.graalvm.component.installer.CommonConstants;
 
 /**
  *
  * @author odouda
  */
 public class GDSTokenStorage {
+
     static final String GRAAL_EE_DOWNLOAD_TOKEN = "GRAAL_EE_DOWNLOAD_TOKEN";
     private final Feedback feedback;
     private final CommandInput input;
@@ -179,29 +181,94 @@ public class GDSTokenStorage {
                             Set.of(PosixFilePermission.OWNER_READ,
                                             PosixFilePermission.OWNER_WRITE));
         }
+        changed = false;
     }
 
     public static void printToken(Feedback feedback, CommandInput input) {
-        GDSTokenStorage storage = new GDSTokenStorage(feedback, input);
-        Feedback fb = storage.feedback;
-        String token = storage.getToken();
-        String msg = storage.tokenSource == Source.NON ? "MSG_EmptyToken" : "MSG_PrintToken";
+        new GDSTokenStorage(feedback, input).printToken();
+    }
+
+    public static void revokeToken(Feedback feedback, CommandInput input, String token) {
+        new GDSTokenStorage(feedback, input).revokeToken(token);
+    }
+
+    public static void revokeAllTokens(Feedback feedback, CommandInput input, String email) {
+        new GDSTokenStorage(feedback, input).revokeAllTokens(email);
+    }
+
+    public void revokeAllTokens(String email) {
+        GDSRESTConnector connector = makeConnector();
+        if (connector == null) {
+            return;
+        }
+        connector.revokeTokens(email);
+        feedback.message("MSG_AcceptRevoke");
+    }
+
+    public void revokeToken(String token) {
+        if (token == null || token.isEmpty()) {
+            token = getFileToken();
+            if (token == null || token.isEmpty()) {
+                return;
+            }
+            removeFileToken();
+        }
+        GDSRESTConnector connector = makeConnector();
+        if (connector == null) {
+            return;
+        }
+        connector.revokeToken(token);
+        feedback.message("MSG_AcceptRevoke");
+    }
+
+    private GDSRESTConnector makeConnector() {
+        Map<String, String> caps = input.getLocalRegistry().getGraalCapabilities();
+        String releaseCatalog = caps.get(CommonConstants.RELEASE_CATALOG_KEY);
+        if (releaseCatalog == null || releaseCatalog.isEmpty()) {
+            return null;
+        }
+        String[] catalogs = releaseCatalog.split("\\|");
+        String catalog = null;
+        for (String c : catalogs) {
+            if (c.contains("rest://")) {
+                catalog = "https" + c.substring(c.indexOf("rest://") + 4);
+            }
+        }
+        if (catalog == null || catalog.isEmpty()) {
+            return null;
+        }
+        return new GDSRESTConnector(catalog, feedback, caps.get(CommonConstants.RELEASE_GDS_PRODUCT_ID_KEY), input.getLocalRegistry().getGraalVersion());
+    }
+
+    public void removeFileToken() {
+        load().remove(GRAAL_EE_DOWNLOAD_TOKEN);
+        changed = true;
+        try {
+            save();
+        } catch (IOException ex) {
+            feedback.error("ERR_CouldNotRemoveToken", ex);
+        }
+    }
+
+    public void printToken() {
+        String token = getToken();
+        String msg = tokenSource == Source.NON ? "MSG_EmptyToken" : "MSG_PrintToken";
         String source = "";
-        switch (storage.tokenSource) {
+        switch (tokenSource) {
             case ENV:
-                source = fb.l10n("MSG_PrintTokenEnv", GRAAL_EE_DOWNLOAD_TOKEN);
+                source = feedback.l10n("MSG_PrintTokenEnv", GRAAL_EE_DOWNLOAD_TOKEN);
                 break;
             case CMD:
-                source = fb.l10n("MSG_PrintTokenCmdFile", storage.getCmdFile());
+                source = feedback.l10n("MSG_PrintTokenCmdFile", getCmdFile());
                 break;
             case FIL:
-                source = fb.l10n("MSG_PrintTokenFile", storage.propertiesPath);
+                source = feedback.l10n("MSG_PrintTokenFile", propertiesPath);
                 break;
             default:
                 // NOOP
                 break;
         }
-        fb.output(msg, token, source);
+        feedback.output(msg, token, source);
     }
 
     public enum Source {
