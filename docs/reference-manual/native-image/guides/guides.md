@@ -1,11 +1,12 @@
 ---
-layout: ni-docs
+layout: ni-docs-landing
 toc_group: how-to-guides
-link_title: How-to Guides
-permalink: /reference-manual/native-image/guides/
+link_title: User Guides
+permalink: /native-image/guides/
+redirect_from: /reference-manual/native-image/guides/
 ---
 
-# Native Image How-to Guides
+# Native Image User Guides
 
 These guides are to help developers get started with GraalVM Native Image, acquaint them with the available features, and describe potential usage scenarios. 
 Here you will learn how to:
