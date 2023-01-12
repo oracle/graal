@@ -96,6 +96,7 @@ final class LibFFIType {
                 return new SimpleType(simpleType, size, alignment);
             case FP80:
                 return new FP80Type(size, alignment);
+
             case POINTER:
                 return new PointerType(size, alignment);
             case STRING:
@@ -254,6 +255,8 @@ final class LibFFIType {
                     return buffer.getDouble();
                 case FP80:
                     return buffer.get(size);
+                case FP128:
+                    return buffer.get(size);
                 case POINTER:
                     return NativePointer.create(buffer.getPointer(size));
                 case STRING:
@@ -392,6 +395,23 @@ final class LibFFIType {
 
         private FP80Type(int size, int alignment) {
             super(NativeSimpleType.FP80, size, alignment, 0);
+        }
+
+        @Override
+        public SerializeArgumentNode createSerializeArgumentNode() {
+            return SerializeSerializableNodeGen.create(this);
+        }
+
+        @Override
+        public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
+            return BufferClosureArgumentNodeGen.create(this, arg);
+        }
+    }
+
+    static final class FP128Type extends BasicType {
+
+        private FP128Type(int size, int alignment) {
+            super(NativeSimpleType.FP128, size, alignment, 0);
         }
 
         @Override

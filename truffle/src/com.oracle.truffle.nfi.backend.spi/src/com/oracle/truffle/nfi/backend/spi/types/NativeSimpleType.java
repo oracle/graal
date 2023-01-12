@@ -53,6 +53,7 @@ public enum NativeSimpleType {
     FLOAT,
     DOUBLE,
     FP80,
+    FP128,
     POINTER,
     STRING,
     OBJECT,
