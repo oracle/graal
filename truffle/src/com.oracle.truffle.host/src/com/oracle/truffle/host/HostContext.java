@@ -65,7 +65,9 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -143,6 +145,7 @@ final class HostContext {
         return language.hostClassCache;
     }
 
+    @NeverDefault
     GuestToHostCodeCache getGuestToHostCache() {
         GuestToHostCodeCache cache = (GuestToHostCodeCache) HostAccessor.ENGINE.getGuestToHostCodeCache(internalContext);
         if (cache == null) {
@@ -350,9 +353,10 @@ final class HostContext {
     }
 
     @GenerateUncached
+    @GenerateInline
     abstract static class ToGuestValueNode extends Node {
 
-        abstract Object execute(HostContext context, Object receiver);
+        abstract Object execute(Node node, HostContext context, Object receiver);
 
         @Specialization(guards = "receiver == null")
         Object doNull(HostContext context, @SuppressWarnings("unused") Object receiver) {
@@ -423,7 +427,7 @@ final class HostContext {
             Object[] newArgs = needsCopy ? new Object[nodes.length] : args;
             for (int i = 0; i < nodes.length; i++) {
                 Object arg = args[i];
-                Object newArg = nodes[i].execute(context, arg);
+                Object newArg = nodes[i].execute(this, context, arg);
                 if (needsCopy) {
                     newArgs[i] = newArg;
                 } else if (arg != newArg) {
@@ -446,7 +450,7 @@ final class HostContext {
             Object[] newArgs = needsCopy ? new Object[args.length] : args;
             for (int i = 0; i < args.length; i++) {
                 Object arg = args[i];
-                Object newArg = node.execute(context, arg);
+                Object newArg = node.execute(this, context, arg);
                 if (needsCopy) {
                     newArgs[i] = newArg;
                 } else if (arg != newArg) {

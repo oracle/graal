@@ -202,7 +202,9 @@ final class TestUtil {
     static String formatErrorMessage(
                     final String errorMessage,
                     final TestRun testRun,
-                    final TestContext testContext) {
+                    final TestContext testContext,
+                    final Value resultValue,
+                    final PolyglotException exception) {
         final String language = testRun.getID();
         final Snippet snippet = testRun.getSnippet();
         final StringBuilder message = new StringBuilder();
@@ -226,12 +228,15 @@ final class TestUtil {
         message.append("failed:\n");
         message.append(errorMessage);
         message.append('\n');
+        message.append("Result: ").append(resultValue).append('\n');
+        message.append("Exception: ").append(exception).append('\n');
         message.append("Snippet: ").append(getSource(snippet.getExecutableValue())).append('\n');
         int i = 0;
         for (Map.Entry<String, ? extends Snippet> langAndparamSnippet : testRun.getActualParameterSnippets()) {
             final Snippet paramSnippet = langAndparamSnippet.getValue();
             message.append(String.format("Parameter %d Snippet: ", i++)).append(getSource(paramSnippet.getExecutableValue())).append('\n');
         }
+
         return message.toString();
     }
 

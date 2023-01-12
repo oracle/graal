@@ -48,6 +48,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -68,9 +70,12 @@ import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.TokenStream;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleSuppressedWarnings;
 import com.oracle.truffle.dsl.processor.generator.DSLExpressionGenerator;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
+import com.oracle.truffle.dsl.processor.model.MessageContainer;
+import com.oracle.truffle.dsl.processor.parser.NodeParser;
 
 public abstract class DSLExpression {
 
@@ -156,7 +161,7 @@ public abstract class DSLExpression {
                     if (resolvedVar != null && !resolvedVar.getModifiers().contains(Modifier.STATIC) &&
                                     (resolvedVar.getEnclosingElement() == null || resolvedVar.getEnclosingElement().getKind() != ElementKind.METHOD)) {
                         String name = resolvedVar.getSimpleName().toString();
-                        if (!name.equals("null") && !name.equals("this")) {
+                        if (!name.equals("null") && !name.equals("this") && !name.equals(NodeParser.NODE_KEYWORD)) {
                             bindsReceiver.set(true);
                         }
                     }
@@ -177,7 +182,47 @@ public abstract class DSLExpression {
         return bindsReceiver.get();
     }
 
-    public static DSLExpression parse(String input) {
+    public static DSLExpression resolve(DSLExpressionResolver resolver, MessageContainer container, String annotationValueName, DSLExpression expression, String originalString) {
+        try {
+            expression.accept(resolver);
+            List<Element> deprecatedElements = expression.findBoundDeprecatedElements();
+            if (!deprecatedElements.isEmpty() && !TruffleSuppressedWarnings.isSuppressed(container.getMessageElement(), "deprecated")) {
+                AnnotationMirror mirror = container.getMessageAnnotation();
+                AnnotationValue value = null;
+                if (mirror != null && annotationValueName != null) {
+                    value = ElementUtils.getAnnotationValue(mirror, annotationValueName);
+                }
+                StringBuilder b = new StringBuilder();
+                b.append(String.format("The expression '%s' binds the following deprecated elements and should be updated:", originalString));
+                for (Element deprecatedElement : deprecatedElements) {
+                    String relativeName = ElementUtils.getReadableReference(container.getMessageElement(), deprecatedElement);
+                    b.append(String.format("%n  - "));
+                    b.append(relativeName);
+                }
+                b.append(String.format("%nUpdate the usage of the elements or suppress the warning with @SuppressWarnings(\"deprecated\")."));
+                container.addWarning(value, b.toString());
+            }
+            return expression;
+        } catch (InvalidExpressionException e) {
+            AnnotationMirror mirror = container.getMessageAnnotation();
+            AnnotationValue value = null;
+            if (mirror != null && annotationValueName != null) {
+                value = ElementUtils.getAnnotationValue(mirror, annotationValueName);
+            }
+            container.addError(value, "Error parsing expression '%s': %s", originalString, e.getMessage());
+        }
+        return null;
+    }
+
+    public static DSLExpression parseAndResolve(DSLExpressionResolver resolver, MessageContainer container, String annotationValueName, String string) {
+        DSLExpression expression = DSLExpression.parse(container, annotationValueName, string);
+        if (expression == null) {
+            return null;
+        }
+        return resolve(resolver, container, annotationValueName, expression, string);
+    }
+
+    public static DSLExpression parse(MessageContainer container, String annotationValueName, String input) {
         ExpressionLexer lexer = new ExpressionLexer(CharStreams.fromString(input));
         TokenStream tokens = new CommonTokenStream(lexer);
         ExpressionParser parser = new ExpressionParser(tokens);
@@ -188,8 +233,14 @@ public abstract class DSLExpression {
         parser.addErrorListener(DSLErrorListener.INSTANCE);
         try {
             return parser.expression().result;
-        } catch (RecognitionException e) {
-            throw new InvalidExpressionException(e.getMessage());
+        } catch (InvalidExpressionException | RecognitionException e) {
+            AnnotationMirror mirror = container.getMessageAnnotation();
+            AnnotationValue value = null;
+            if (mirror != null && annotationValueName != null) {
+                value = ElementUtils.getAnnotationValue(mirror, annotationValueName);
+            }
+            container.addError(value, "Error parsing expression '%s': %s", input, e.getMessage());
+            return null;
         }
     }
 
@@ -238,7 +289,47 @@ public abstract class DSLExpression {
         return variables;
     }
 
+    private List<Element> findBoundDeprecatedElements() {
+        final List<Element> deprecatedElements = new ArrayList<>();
+        accept(new AbstractDSLExpressionVisitor() {
+            @Override
+            public void visitCall(Call n) {
+                visitElement(n.getResolvedMethod());
+            }
+
+            @Override
+            public void visitVariable(Variable n) {
+                visitElement(n.getResolvedVariable());
+            }
+
+            @Override
+            public void visitClassLiteral(ClassLiteral n) {
+                visitElement(ElementUtils.castTypeElement(n.getLiteral()));
+            }
+
+            @Override
+            public void visitCast(Cast n) {
+                visitElement(ElementUtils.castTypeElement(n.getCastType()));
+            }
+
+            private void visitElement(Element element) {
+                if (element != null && ElementUtils.isDeprecated(element)) {
+                    deprecatedElements.add(element);
+                }
+            }
+        });
+        return deprecatedElements;
+    }
+
     public Object resolveConstant() {
+        return null;
+    }
+
+    public ExecutableElement resolveExecutable() {
+        return null;
+    }
+
+    public VariableElement resolveVariable() {
         return null;
     }
 
@@ -299,6 +390,16 @@ public abstract class DSLExpression {
         }
 
         @Override
+        public ExecutableElement resolveExecutable() {
+            return receiver.resolveExecutable();
+        }
+
+        @Override
+        public VariableElement resolveVariable() {
+            return receiver.resolveVariable();
+        }
+
+        @Override
         public Object resolveConstant() {
             Object constant = receiver.resolveConstant();
             if (constant instanceof Integer) {
@@ -332,6 +433,7 @@ public abstract class DSLExpression {
         private final TypeMirror castType;
 
         public Cast(DSLExpression receiver, TypeMirror castType) {
+            Objects.requireNonNull(receiver);
             this.receiver = receiver;
             this.castType = castType;
         }
@@ -351,6 +453,16 @@ public abstract class DSLExpression {
                 negate.setResolvedTargetType(getResolvedTargetType());
             }
             return negate;
+        }
+
+        @Override
+        public ExecutableElement resolveExecutable() {
+            return receiver.resolveExecutable();
+        }
+
+        @Override
+        public VariableElement resolveVariable() {
+            return receiver.resolveVariable();
         }
 
         public TypeMirror getCastType() {
@@ -531,6 +643,14 @@ public abstract class DSLExpression {
             return false;
         }
 
+        public List<TypeMirror> getResolvedParameterTypes() {
+            List<TypeMirror> types = new ArrayList<>(parameters.size());
+            for (DSLExpression parameter : parameters) {
+                types.add(parameter.getResolvedType());
+            }
+            return types;
+        }
+
         @Override
         public int hashCode() {
             return Objects.hash(receiver, name, parameters);
@@ -585,6 +705,14 @@ public abstract class DSLExpression {
                 c.setResolvedTargetType(getResolvedTargetType());
             }
             return reducer.visitCall(c);
+        }
+
+        @Override
+        public ExecutableElement resolveExecutable() {
+            if (resolvedMethod != null) {
+                return resolvedMethod;
+            }
+            return null;
         }
 
         @Override
@@ -690,6 +818,23 @@ public abstract class DSLExpression {
                 c.setResolvedVariable(getResolvedVariable());
             }
             return reducer.visitVariable(c);
+        }
+
+        @Override
+        public Object resolveConstant() {
+            /*
+             * Unfortunately calling resolvedVariable.getConstantValue() here leads to bad
+             * compilation problems later, at least in the ECJ compiler.
+             */
+            return super.resolveConstant();
+        }
+
+        @Override
+        public VariableElement resolveVariable() {
+            if (resolvedVariable != null) {
+                return resolvedVariable;
+            }
+            return null;
         }
 
         @Override
@@ -860,33 +1005,35 @@ public abstract class DSLExpression {
     }
 
     public abstract static class AbstractDSLExpressionVisitor implements DSLExpressionVisitor {
-        @Override
-        public void visitBinary(Binary binary) {
-        }
 
         @Override
-        public void visitCall(Call binary) {
+        public void visitBinary(Binary n) {
         }
 
         @Override
-        public void visitIntLiteral(IntLiteral binary) {
-        }
-
-        public void visitClassLiteral(ClassLiteral classLiteral) {
+        public void visitCall(Call n) {
         }
 
         @Override
-        public void visitNegate(Negate negate) {
+        public void visitIntLiteral(IntLiteral n) {
+        }
+
+        public void visitClassLiteral(ClassLiteral n) {
         }
 
         @Override
-        public void visitVariable(Variable binary) {
+        public void visitNegate(Negate n) {
         }
 
-        public void visitBooleanLiteral(BooleanLiteral binary) {
+        @Override
+        public void visitVariable(Variable n) {
         }
 
-        public void visitCast(Cast binary) {
+        public void visitBooleanLiteral(BooleanLiteral n) {
+        }
+
+        public void visitCast(Cast n) {
+
         }
     }
 

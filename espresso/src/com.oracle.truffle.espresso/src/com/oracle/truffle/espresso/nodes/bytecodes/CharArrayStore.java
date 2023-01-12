@@ -57,7 +57,7 @@ public abstract class CharArrayStore extends EspressoNode {
     public abstract void execute(StaticObject receiver, int index, char value);
 
     @Specialization
-    void executeWithNullCheck(StaticObject array, int index, char value,
+    void doWithNullCheck(StaticObject array, int index, char value,
                     @Cached NullCheck nullCheck,
                     @Cached CharArrayStore.WithoutNullCheck charArrayStore) {
         charArrayStore.execute(nullCheck.execute(array), index, value);

@@ -41,6 +41,7 @@
 package org.graalvm.wasm.api;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -48,7 +49,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 
 @ExportLibrary(InteropLibrary.class)
 public class ByteArrayBuffer implements TruffleObject {
@@ -98,9 +100,10 @@ public class ByteArrayBuffer implements TruffleObject {
     @SuppressWarnings({"unused"})
     @ExportMessage
     public Object readArrayElement(long index,
-                    @Cached BranchProfile errorBranch) throws InvalidArrayIndexException {
+                    @Bind("$node") Node node,
+                    @Cached InlinedBranchProfile errorBranch) throws InvalidArrayIndexException {
         if (!isArrayElementReadable(index)) {
-            errorBranch.enter();
+            errorBranch.enter(node);
             throw InvalidArrayIndexException.create(index);
         }
         return data[offset + (int) index];

@@ -128,8 +128,7 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
             return false;
         }
 
-        ProcessorContext context = ProcessorContext.enter(processingEnv);
-        try {
+        try (ProcessorContext context = ProcessorContext.enter(processingEnv)) {
             TruffleTypes types = context.getTypes();
             TypeElement virtualFrameType = ElementUtils.castTypeElement(types.VirtualFrame);
             TypeElement frameType = ElementUtils.castTypeElement(types.Frame);
@@ -222,17 +221,15 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
             }
 
             return false;
-        } finally {
-            ProcessorContext.leave();
         }
     }
 
     void assertNoErrorExpected(Element element) {
-        ExpectError.assertNoErrorExpected(processingEnv, element);
+        ExpectError.assertNoErrorExpected(element);
     }
 
     void emitError(String message, Element element) {
-        if (ExpectError.isExpectedError(processingEnv, element, message)) {
+        if (ExpectError.isExpectedError(element, message)) {
             return;
         }
         processingEnv.getMessager().printMessage(Kind.ERROR, message, element);

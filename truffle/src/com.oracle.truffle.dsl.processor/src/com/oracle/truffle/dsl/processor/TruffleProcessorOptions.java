@@ -40,23 +40,41 @@
  */
 package com.oracle.truffle.dsl.processor;
 
-import javax.annotation.processing.ProcessingEnvironment;
-
-import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
-
 import java.util.HashSet;
 import java.util.Set;
 
+import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.Element;
+import javax.lang.model.type.DeclaredType;
+
+import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.model.NodeData;
+
 /**
  * Aggregates all options recognized by {@link TruffleProcessor}.
+ *
+ * Pass using javac:
+ *
+ * <pre>
+ * -Atruffle.dsl.SuppressAllWarnings=true
+ * </pre>
+ *
+ * Pass to mx build:
+ *
+ * <pre>
+ * mx build -A-Atruffle.dsl.SuppressAllWarnings=true
+ * </pre>
  */
 public class TruffleProcessorOptions {
     private static final String OptionsPrefix = "truffle.dsl.";
     private static final String GenerateSpecializationStatisticsOptionName = "GenerateSpecializationStatistics";
     private static final String GenerateSlowPathOnlyOptionName = "GenerateSlowPathOnly";
     private static final String GenerateSlowPathOnlyFilterOptionName = "GenerateSlowPathOnlyFilter";
+    private static final String SuppressAllWarnings = "SuppressAllWarnings";
     private static final String CacheSharingWarningsEnabledOptionName = "cacheSharingWarningsEnabled";
     private static final String StateBitWidth = "StateBitWidth";
+    private static final String PrintTimings = "PrintTimings";
 
     public static Boolean generateSpecializationStatistics(ProcessingEnvironment env) {
         String value = env.getOptions().get(OptionsPrefix + GenerateSpecializationStatisticsOptionName);
@@ -67,16 +85,41 @@ public class TruffleProcessorOptions {
         return Boolean.parseBoolean(env.getOptions().get(OptionsPrefix + GenerateSlowPathOnlyOptionName));
     }
 
+    public static boolean printTimings(ProcessingEnvironment env) {
+        return Boolean.parseBoolean(env.getOptions().get(OptionsPrefix + PrintTimings));
+    }
+
     public static String generateSlowPathOnlyFilter(ProcessingEnvironment env) {
         return env.getOptions().get(OptionsPrefix + GenerateSlowPathOnlyFilterOptionName);
     }
 
-    public static boolean cacheSharingWarningsEnabled(ProcessingEnvironment env) {
-        return Boolean.parseBoolean(env.getOptions().get(OptionsPrefix + CacheSharingWarningsEnabledOptionName));
+    public static boolean suppressAllWarnings(ProcessingEnvironment env) {
+        String v = env.getOptions().get(OptionsPrefix + SuppressAllWarnings);
+        return Boolean.parseBoolean(v);
     }
 
-    public static int stateBitWidth(ProcessingEnvironment env) {
-        String value = env.getOptions().get(OptionsPrefix + StateBitWidth);
+    public static boolean cacheSharingWarningsEnabled(ProcessingEnvironment env) {
+        String s = env.getOptions().get(OptionsPrefix + CacheSharingWarningsEnabledOptionName);
+        if (s == null) {
+            return !TruffleProcessorOptions.generateSlowPathOnly(env);
+        }
+        return Boolean.parseBoolean(s);
+    }
+
+    public static int stateBitWidth(NodeData node) {
+        ProcessorContext context = ProcessorContext.getInstance();
+        DeclaredType disableStateWidth = context.getTypes().DisableStateBitWidthModification;
+        if (disableStateWidth != null) {
+            Element element = node.getTemplateType();
+            while (element != null) {
+                if (ElementUtils.findAnnotationMirror(element, disableStateWidth) != null) {
+                    return FlatNodeGenFactory.DEFAULT_MAX_BIT_WIDTH;
+                }
+                element = element.getEnclosingElement();
+            }
+        }
+
+        String value = context.getEnvironment().getOptions().get(OptionsPrefix + StateBitWidth);
         if (value == null) {
             return FlatNodeGenFactory.DEFAULT_MAX_BIT_WIDTH;
         } else {
@@ -91,6 +134,8 @@ public class TruffleProcessorOptions {
         result.add(OptionsPrefix + GenerateSlowPathOnlyFilterOptionName);
         result.add(OptionsPrefix + CacheSharingWarningsEnabledOptionName);
         result.add(OptionsPrefix + StateBitWidth);
+        result.add(OptionsPrefix + SuppressAllWarnings);
+        result.add(OptionsPrefix + PrintTimings);
         return result;
     }
 }

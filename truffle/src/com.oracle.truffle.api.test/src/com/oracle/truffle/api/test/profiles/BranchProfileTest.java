@@ -40,38 +40,97 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.api.dsl.InlineSupport.InlinableField;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
-public class BranchProfileTest {
+public class BranchProfileTest extends AbstractProfileTest {
 
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
-    @Test
-    public void testEnter() {
-        BranchProfile profile = ReflectionUtils.newInstance(BranchProfile.class);
-        profile.enter();
-        profile.enter();
+    @Override
+    protected InlinableField[] getInlinedFields() {
+        return createInlinedFields(1, 0, 0, 0, 0);
     }
 
     @Test
-    public void testToString() {
-        BranchProfile profile = ReflectionUtils.newInstance(BranchProfile.class);
-        assertTrue(profile.toString().contains(BranchProfile.class.getSimpleName()));
-        assertTrue(profile.toString().contains("UNINITIALIZED"));
-        assertTrue(profile.toString().contains(Integer.toHexString(profile.hashCode())));
+    public void testEnter() {
+        BranchProfile profile = createEnabled(BranchProfile.class);
+
+        assertTrue(toString(profile).contains(BranchProfile.class.getSimpleName()));
+        assertTrue(toString(profile).contains("UNINITIALIZED"));
+        assertTrue(toString(profile).contains(Integer.toHexString(profile.hashCode())));
+
         profile.enter();
-        assertTrue(profile.toString().contains(BranchProfile.class.getSimpleName()));
-        assertTrue(profile.toString().contains("VISITED"));
-        assertTrue(profile.toString().contains(Integer.toHexString(profile.hashCode())));
+
+        assertTrue(toString(profile).contains(BranchProfile.class.getSimpleName()));
+        assertTrue(toString(profile).contains("VISITED"));
+        assertTrue(toString(profile).contains(Integer.toHexString(profile.hashCode())));
+    }
+
+    @Test
+    public void testEnterInlined() {
+        InlinedBranchProfile profile = createEnabled(InlinedBranchProfile.class);
+
+        assertTrue(toString(profile).contains(BranchProfile.class.getSimpleName()));
+        assertTrue(toString(profile).contains("UNINITIALIZED"));
+        assertTrue(toString(profile).contains(Integer.toHexString(profile.hashCode())));
+
+        if (isInlined(profile)) {
+            assertEquals(0, state.state0);
+        }
+
+        profile.enter(state);
+
+        assertTrue(toString(profile).contains(BranchProfile.class.getSimpleName()));
+        assertTrue(toString(profile).contains("VISITED"));
+        assertTrue(toString(profile).contains(Integer.toHexString(profile.hashCode())));
+
+        assertEquals(1, state.state0);
+    }
+
+    @Test
+    public void testNotCrashing() {
+        BranchProfile profile = createEnabled(BranchProfile.class);
+        profile.disable();
+        profile.reset();
+        assertEquals(profile, profile);
+        assertEquals(profile.hashCode(), profile.hashCode());
+        assertNotNull(profile.toString());
+    }
+
+    @Test
+    public void testNotCrashingInlined() {
+        InlinedBranchProfile profile = createEnabled(InlinedBranchProfile.class);
+        profile.disable(state);
+        profile.reset(state);
+        assertEquals(profile, profile);
+        assertEquals(profile.hashCode(), profile.hashCode());
+        assertNotNull(profile.toString());
+    }
+
+    @Test
+    public void testDisabled() {
+        BranchProfile p = BranchProfile.getUncached();
+        p.enter();
+        p.toString(); // test that it is not crashing
+    }
+
+    @Test
+    public void testDisabledInlined() {
+        InlinedBranchProfile p = InlinedBranchProfile.getUncached();
+        p.enter(state);
+        p.toString(); // test that it is not crashing
     }
 }

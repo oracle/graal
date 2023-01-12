@@ -46,6 +46,7 @@ import static org.junit.Assert.assertNotNull;
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.GuardNodeAdoptionTestFactory.UseCachedNodeGen;
 import com.oracle.truffle.api.dsl.test.GuardNodeAdoptionTestFactory.UseNoCacheNodeGen;
@@ -53,8 +54,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class GuardNodeAdoptionTest {
 
+    @GenerateInline(false)
     abstract static class GuardNode extends Node {
 
         abstract boolean execute(String argument);
@@ -71,7 +74,7 @@ public class GuardNodeAdoptionTest {
 
         abstract String execute(String argument);
 
-        @Specialization(guards = "guardNode.execute(argument)")
+        @Specialization(guards = "guardNode.execute(argument)", limit = "3")
         String s0(String argument, @Cached GuardNode guardNode) {
             assertNotNull(this.getRootNode());
             return "cached";

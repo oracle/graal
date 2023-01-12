@@ -48,7 +48,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 
 import sun.misc.Unsafe;
 
@@ -732,7 +732,7 @@ final class TStringOps {
         return runCalcStringAttributesBMP(location, stubArray, stubOffset, length, isNative);
     }
 
-    static long calcStringAttributesUTF8(Node location, Object array, int offset, int length, boolean assumeValid, boolean isAtEnd, ConditionProfile brokenProfile) {
+    static long calcStringAttributesUTF8(Node location, Object array, int offset, int length, boolean assumeValid, boolean isAtEnd, InlinedConditionProfile brokenProfile) {
         final boolean isNative = isNativePointer(array);
         final byte[] stubArray = stubArray(array, isNative);
         validateRegion(stubArray, offset, length, 0, isNative);
@@ -741,7 +741,7 @@ final class TStringOps {
             return runCalcStringAttributesUTF8(location, stubArray, stubOffset, length, isNative, true);
         } else {
             long attrs = runCalcStringAttributesUTF8(location, stubArray, stubOffset, length, isNative, false);
-            if (brokenProfile.profile(TStringGuards.isBrokenMultiByte(StringAttributes.getCodeRange(attrs)))) {
+            if (brokenProfile.profile(location, TStringGuards.isBrokenMultiByte(StringAttributes.getCodeRange(attrs)))) {
                 int codePointLength = 0;
                 for (int i = 0; i < length; i += Encodings.utf8GetCodePointLength(array, offset, length, i, TruffleString.ErrorHandling.BEST_EFFORT)) {
                     codePointLength++;

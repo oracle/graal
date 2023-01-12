@@ -65,7 +65,7 @@ public abstract class SLNewObjectBuiltin extends SLBuiltinNode {
     @Specialization
     @SuppressWarnings("unused")
     public Object newObject(SLNull o,
-                    @Cached("lookup()") AllocationReporter reporter) {
+                    @Cached(value = "lookup()", neverDefault = true) AllocationReporter reporter) {
         return SLLanguage.get(this).createObject(reporter);
     }
 

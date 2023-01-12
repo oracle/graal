@@ -44,6 +44,7 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.getQualifiedNam
 
 import java.io.IOException;
 import java.io.Writer;
+import java.lang.annotation.Repeatable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -51,7 +52,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 
 import javax.annotation.processing.FilerException;
 import javax.lang.model.element.AnnotationMirror;
@@ -71,6 +71,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.AbstractAnnotationValueVisitor8;
 import javax.lang.model.util.ElementFilter;
 
+import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeElementScanner;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -84,7 +85,7 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
 
     private static final int MAX_LINE_LENGTH = Integer.MAX_VALUE; // line wrapping disabled
     private static final int LINE_WRAP_INDENTS = 3;
-    private static final int MAX_JAVADOC_LINE_LENGTH = 100;
+    private static final int MAX_JAVADOC_LINE_LENGTH = 500;
     private static final String IDENT_STRING = "    ";
     private static final String LN = System.lineSeparator(); /* unix style */
 
@@ -145,7 +146,7 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
             writeEmptyLn();
         }
 
-        Set<CodeImport> generateImports = imports.generateImports();
+        Set<CodeImport> generateImports = getImports().generateImports();
         List<CodeImport> typeImports = new ArrayList<>();
         List<CodeImport> staticImports = new ArrayList<>();
 
@@ -184,10 +185,6 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
         } else {
             return ElementUtils.getSimpleName(type);
         }
-    }
-
-    static class Foobar<S extends Function<?, ?>, BiFunction> {
-
     }
 
     private void writeClassImpl(CodeTypeElement e) {
@@ -356,14 +353,19 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
     public Void visitVariable(VariableElement f, Void p) {
         Element parent = f.getEnclosingElement();
 
+        CodeTree init = null;
+        if (f instanceof CodeVariableElement) {
+            CodeVariableElement codeVar = ((CodeVariableElement) f);
+            init = codeVar.getInit();
+
+            if (codeVar.getDocTree() != null) {
+                visitTree(codeVar.getDocTree(), null, f);
+            }
+        }
+
         for (AnnotationMirror annotation : f.getAnnotationMirrors()) {
             visitAnnotation(f, annotation);
             write(" ");
-        }
-
-        CodeTree init = null;
-        if (f instanceof CodeVariableElement) {
-            init = ((CodeVariableElement) f).getInit();
         }
 
         if (parent != null && parent.getKind() == ElementKind.ENUM && f.getModifiers().contains(Modifier.STATIC)) {
@@ -406,13 +408,23 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
     }
 
     private void visitAnnotation(Element enclosedElement, AnnotationMirror e) {
-        write("@").write(useImport(enclosedElement, e.getAnnotationType(), true));
+        List<AnnotationMirror> repeatableAnnotations = unpackRepeatable(e);
+        if (repeatableAnnotations != null) {
+            for (AnnotationMirror annotationMirror : repeatableAnnotations) {
+                visitAnnotationImpl(enclosedElement, annotationMirror);
+            }
+        } else {
+            visitAnnotationImpl(enclosedElement, e);
+        }
+    }
 
+    private void visitAnnotationImpl(Element enclosedElement, AnnotationMirror e) {
+        final ExecutableElement defaultElement = findExecutableElement(e.getAnnotationType(), "value");
+        Map<? extends ExecutableElement, ? extends AnnotationValue> values = e.getElementValues();
+
+        write("@").write(useImport(enclosedElement, e.getAnnotationType(), true));
         if (!e.getElementValues().isEmpty()) {
             write("(");
-            final ExecutableElement defaultElement = findExecutableElement(e.getAnnotationType(), "value");
-
-            Map<? extends ExecutableElement, ? extends AnnotationValue> values = e.getElementValues();
             if (defaultElement != null && values.size() == 1 && values.get(defaultElement) != null) {
                 visitAnnotationValue(enclosedElement, values.get(defaultElement));
             } else {
@@ -424,7 +436,6 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
                     }
                     methodsList.add(method);
                 }
-
                 Collections.sort(methodsList, new Comparator<ExecutableElement>() {
 
                     @Override
@@ -448,6 +459,64 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
 
             write(")");
         }
+    }
+
+    /**
+     * This method checks whether an annotation can be written as a set of repeatable annotations
+     * instead. Returns a list of elements if it can or <code>null</code> if it can't.
+     */
+    static List<AnnotationMirror> unpackRepeatable(AnnotationMirror e) {
+        final ExecutableElement defaultElement = findExecutableElement(e.getAnnotationType(), "value");
+        if (defaultElement == null) {
+            return null;
+        }
+        TypeMirror returnType = defaultElement.getReturnType();
+        if (returnType.getKind() != TypeKind.ARRAY) {
+            /*
+             * Not an array. Not a repeatable annotation.
+             */
+            return null;
+        }
+
+        ArrayType arrayReturnType = (ArrayType) returnType;
+
+        TypeElement typeElement = ElementUtils.fromTypeMirror(arrayReturnType.getComponentType());
+        if (typeElement == null) {
+            // just to be robust against not referenced classes.
+            return null;
+        }
+
+        AnnotationMirror repeatable = ElementUtils.findAnnotationMirror(typeElement.getAnnotationMirrors(), ProcessorContext.getInstance().getType(Repeatable.class));
+        if (repeatable == null) {
+            /*
+             * Annotation type does not declare repeatable.
+             */
+            return null;
+        }
+
+        TypeMirror repeatableType = ElementUtils.getAnnotationValue(TypeMirror.class, repeatable, "value");
+        if (!ElementUtils.typeEquals(repeatableType, e.getAnnotationType())) {
+            /*
+             * Not the right repeatable type.
+             */
+            return null;
+        }
+
+        if (e.getElementValues().size() != 1) {
+            /*
+             * Repeating annotation has more than one attribute. We should not unpack repeatable
+             * annotations to not loose some attributes there.
+             */
+            return null;
+        }
+        if (!e.getElementValues().containsKey(defaultElement)) {
+            /*
+             * Does not contain the default element.
+             */
+            return null;
+        }
+
+        return ElementUtils.getAnnotationValueList(AnnotationMirror.class, e, "value");
     }
 
     private void visitAnnotationValue(Element enclosedElement, AnnotationValue e) {
@@ -541,15 +610,20 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
 
         @Override
         public Void visitArray(List<? extends AnnotationValue> vals, Void p) {
-            write("{");
-            for (int i = 0; i < vals.size(); i++) {
+            int size = vals.size();
+            if (size > 1) {
+                write("{");
+            }
+            for (int i = 0; i < size; i++) {
                 AnnotationValue value = vals.get(i);
                 AbstractCodeWriter.this.visitAnnotationValue(enclosedElement, value);
-                if (i < vals.size() - 1) {
+                if (i < size - 1) {
                     write(", ");
                 }
             }
-            write("}");
+            if (size > 1) {
+                write("}");
+            }
             return null;
         }
     }
@@ -668,6 +742,13 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
         return null;
     }
 
+    private OrganizedImports getImports() {
+        if (imports == null) {
+            return OrganizedImports.organize(null);
+        }
+        return imports;
+    }
+
     @Override
     public void visitTree(CodeTree e, Void p, Element enclosingElement) {
         CodeTreeKind kind = e.getCodeKind();
@@ -717,14 +798,14 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
                 break;
             case STATIC_FIELD_REFERENCE:
                 if (e.getString() != null) {
-                    write(imports.createStaticFieldReference(enclosingElement, e.getType(), e.getString()));
+                    write(getImports().createStaticFieldReference(enclosingElement, e.getType(), e.getString()));
                 } else {
                     write("null");
                 }
                 break;
             case STATIC_METHOD_REFERENCE:
                 if (e.getString() != null) {
-                    write(imports.createStaticMethodReference(enclosingElement, e.getType(), e.getString()));
+                    write(getImports().createStaticMethodReference(enclosingElement, e.getType(), e.getString()));
                 } else {
                     write("null");
                 }
@@ -734,7 +815,6 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
                 break;
             case TYPE_LITERAL:
                 write(useImport(enclosingElement, e.getType(), true));
-                write(".class");
                 break;
             case JAVA_DOC:
             case DOC:

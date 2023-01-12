@@ -41,6 +41,7 @@
 package com.oracle.truffle.polyglot;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -55,7 +56,7 @@ import com.oracle.truffle.api.library.ReflectionLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 
 /**
  * A guest TruffleObject that has been passed from one context to another.
@@ -104,33 +105,34 @@ final class OtherContextGuestObject implements TruffleObject {
 
         @Specialization(guards = "canCache(cachedLayer, receiver.receiverContext, receiver.delegateContext)", limit = "1")
         static Object doCached(OtherContextGuestObject receiver, Message message, Object[] args,
+                        @Bind("this") Node node,
                         @SuppressWarnings("unused") @CachedLibrary("receiver") ReflectionLibrary receiverLibrary,
-                        @Cached("getCachedLayer(receiverLibrary)") PolyglotSharingLayer cachedLayer,
+                        @Cached(value = "getCachedLayer(receiverLibrary)", neverDefault = true) PolyglotSharingLayer cachedLayer,
                         @CachedLibrary(limit = "CACHE_LIMIT") ReflectionLibrary delegateLibrary,
-                        @Cached BranchProfile seenOther,
-                        @Cached BranchProfile seenError) throws Exception {
+                        @Cached InlinedBranchProfile seenOther,
+                        @Cached InlinedBranchProfile seenError) throws Exception {
             assert cachedLayer != null;
-            return sendImpl(cachedLayer, receiver.delegate, message, args, receiver.receiverContext, receiver.delegateContext, delegateLibrary, seenOther, seenError);
+            return sendImpl(node, cachedLayer, receiver.delegate, message, args, receiver.receiverContext, receiver.delegateContext, delegateLibrary, seenOther, seenError);
         }
 
         @TruffleBoundary
         @Specialization(replaces = "doCached")
-        static Object doSlowPath(OtherContextGuestObject receiver, Message message, Object[] args) throws Exception {
-            return sendImpl(receiver.receiverContext.layer, receiver.delegate, message, args, receiver.receiverContext,
+        static Object doSlowPath(OtherContextGuestObject receiver, Message message, Object[] args, @Bind("this") Node node) throws Exception {
+            return sendImpl(node, receiver.receiverContext.layer, receiver.delegate, message, args, receiver.receiverContext,
                             receiver.delegateContext,
                             ReflectionLibrary.getUncached(receiver.delegate),
-                            BranchProfile.getUncached(), BranchProfile.getUncached());
+                            InlinedBranchProfile.getUncached(), InlinedBranchProfile.getUncached());
         }
 
     }
 
     private static final Message IDENTICAL = Message.resolve(InteropLibrary.class, "isIdentical");
 
-    static Object sendImpl(PolyglotSharingLayer layer, Object receiver, Message message, Object[] args, PolyglotContextImpl receiverContext,
+    static Object sendImpl(Node node, PolyglotSharingLayer layer, Object receiver, Message message, Object[] args, PolyglotContextImpl receiverContext,
                     PolyglotContextImpl delegateContext,
                     ReflectionLibrary delegateLibrary,
-                    BranchProfile seenOther,
-                    BranchProfile seenError) throws Exception {
+                    InlinedBranchProfile seenOther,
+                    InlinedBranchProfile seenError) throws Exception {
         if (message.getLibraryClass() == InteropLibrary.class) {
             try {
                 Object[] prev = layer.engine.enter(delegateContext);
@@ -156,17 +158,17 @@ final class OtherContextGuestObject implements TruffleObject {
                     }
                     return migrateReturn(returnValue, receiverContext, delegateContext);
                 } catch (Throwable e) {
-                    seenError.enter();
+                    seenError.enter(node);
                     throw migrateException(receiverContext, e, delegateContext);
                 } finally {
                     layer.engine.leave(prev, delegateContext);
                 }
             } catch (Throwable t) {
-                seenError.enter();
+                seenError.enter(node);
                 throw toHostOrInnerContextBoundaryException(receiverContext, t, delegateContext);
             }
         } else {
-            seenOther.enter();
+            seenOther.enter(node);
             return fallbackSend(message, args);
         }
     }
@@ -346,22 +348,24 @@ final class OtherContextGuestObject implements TruffleObject {
 
             @Specialization(guards = "canCache(cachedLayer, receiver.receiverContext, receiver.delegateContext)", limit = "1")
             static Object doCached(OtherContextException receiver, Message message, Object[] args,
+                            @Bind("this") Node node,
                             @SuppressWarnings("unused") @CachedLibrary("receiver") ReflectionLibrary receiverLibrary,
-                            @Cached("getCachedLayer(receiverLibrary)") PolyglotSharingLayer cachedLayer,
+                            @Cached(value = "getCachedLayer(receiverLibrary)", neverDefault = true) PolyglotSharingLayer cachedLayer,
                             @CachedLibrary(limit = "CACHE_LIMIT") ReflectionLibrary delegateLibrary,
-                            @Cached BranchProfile seenOther,
-                            @Cached BranchProfile seenError) throws Exception {
+                            @Cached InlinedBranchProfile seenOther,
+                            @Cached InlinedBranchProfile seenError) throws Exception {
                 assert cachedLayer != null;
-                return sendImpl(cachedLayer, receiver.delegate, message, args, receiver.receiverContext, receiver.delegateContext, delegateLibrary, seenOther, seenError);
+                return sendImpl(node, cachedLayer, receiver.delegate, message, args, receiver.receiverContext, receiver.delegateContext, delegateLibrary, seenOther, seenError);
             }
 
             @TruffleBoundary
             @Specialization(replaces = "doCached")
-            static Object doSlowPath(OtherContextException receiver, Message message, Object[] args) throws Exception {
-                return sendImpl(receiver.receiverContext.layer, receiver.delegate, message, args, receiver.receiverContext,
+            static Object doSlowPath(OtherContextException receiver, Message message, Object[] args,
+                            @Bind("this") Node node) throws Exception {
+                return sendImpl(node, receiver.receiverContext.layer, receiver.delegate, message, args, receiver.receiverContext,
                                 receiver.delegateContext,
                                 ReflectionLibrary.getUncached(receiver.delegate),
-                                BranchProfile.getUncached(), BranchProfile.getUncached());
+                                InlinedBranchProfile.getUncached(), InlinedBranchProfile.getUncached());
             }
 
         }
