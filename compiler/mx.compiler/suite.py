@@ -841,6 +841,7 @@ suite = {
       "requiresConcealed" : {
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.code",
+          "jdk.vm.ci.code.site",
         ],
       },
       "checkstyle" : "org.graalvm.compiler.graph",

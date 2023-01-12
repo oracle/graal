@@ -31,7 +31,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 
 import org.graalvm.compiler.core.common.cfg.BasicBlock;
-import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -414,7 +413,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
     }
 
     private void calcKillLocationsBetweenThisAndTarget(LocationSet result, HIRBlock stopBlock) {
-        assert AbstractControlFlowGraph.dominates(stopBlock, this);
+        assert stopBlock.dominates(this);
         if (stopBlock == this || result.isAny()) {
             // We reached the stop block => nothing to do.
             return;

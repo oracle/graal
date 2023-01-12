@@ -252,12 +252,12 @@ public class LocalizationFeature implements InternalFeature {
             defaultLocale = LocalizationSupport.parseLocaleFromTag(Options.DefaultLocale.getValue());
             UserError.guarantee(defaultLocale != null, "Invalid default locale %s", Options.DefaultLocale.getValue());
         }
+        String defaultCharsetOptionValue = Options.DefaultCharset.getValue();
         try {
-            defaultCharset = Charset.forName(Options.DefaultCharset.getValue());
-            VMError.guarantee(defaultCharset.name().equals(Options.DefaultCharset.getValue()),
-                            "Failed to locate charset " + Options.DefaultCharset.getValue() + ", instead " + defaultCharset.name() + " was provided");
+            defaultCharset = Charset.forName(defaultCharsetOptionValue);
+            VMError.guarantee(defaultCharset.name().equals(defaultCharsetOptionValue), "Failed to locate charset %s, instead %s was provided", defaultCharsetOptionValue, defaultCharset.name());
         } catch (IllegalCharsetNameException | UnsupportedCharsetException ex) {
-            throw UserError.abort(ex, "Invalid default charset %s", Options.DefaultCharset.getValue());
+            throw UserError.abort(ex, "Invalid default charset %s", defaultCharsetOptionValue);
         }
         allLocales.add(defaultLocale);
         support = selectLocalizationSupport();

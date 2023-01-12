@@ -117,6 +117,7 @@ import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString.CompactionLevel;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
@@ -2230,6 +2231,33 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
             static long asPointer(ErrorUseBindParamterInLibraryExport2 receiver, @Cached InlinedBranchProfile profile) {
                 return 0L;
             }
+        }
+
+    }
+
+    /*
+     * Test this compiles correctly. The lookup field in the specialization data class may cause a
+     * code generation problem.
+     */
+    @SuppressWarnings({"truffle-inlining", "unused"})
+    public abstract static class MultiInstanceWithAssumptionNode extends Node {
+
+        public abstract Object execute(Object object);
+
+        @Specialization(guards = {"object.getClass() == cachedLayout"},
+                        // this test needs an assumption
+                        assumptions = "createAssumption()", //
+                        limit = "3")
+        protected static Object s0(final Object object,
+                        @Bind("this") Node node,
+                        @Cached("object.getClass()") final Class<?> cachedLayout,
+                        // need to have one node inlined
+                        @Cached InlinedConditionProfile weakRefProfile) {
+            return null;
+        }
+
+        static Assumption createAssumption() {
+            return Truffle.getRuntime().createAssumption();
         }
 
     }

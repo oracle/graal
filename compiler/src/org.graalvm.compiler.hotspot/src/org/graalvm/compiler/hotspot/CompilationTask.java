@@ -193,7 +193,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                     installMethod(debug, graph, result);
                 }
                 // Installation is included in compilation time and memory usage reported by printer
-                printer.finish(result);
+                printer.finish(result, installedCode);
             }
             stats.finish(method, installedCode);
             if (result != null) {

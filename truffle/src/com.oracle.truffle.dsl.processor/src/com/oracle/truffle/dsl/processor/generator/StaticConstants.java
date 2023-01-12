@@ -46,7 +46,6 @@ import java.util.List;
 import java.util.Map;
 
 import javax.lang.model.element.Element;
-import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -67,16 +66,6 @@ public final class StaticConstants {
     public final Map<String, CodeExecutableElement> decodeConstants = new LinkedHashMap<>();
     public final Map<String, CodeExecutableElement> encodeConstants = new LinkedHashMap<>();
     public final Map<String, TypeMirror> reservedSymbols = new LinkedHashMap<>();
-
-    public final boolean ignoreEnclosingType;
-
-    public StaticConstants() {
-        this(false);
-    }
-
-    public StaticConstants(boolean ignoreEnclosingType) {
-        this.ignoreEnclosingType = ignoreEnclosingType;
-    }
 
     public void clear() {
         libraries.clear();
@@ -107,18 +96,6 @@ public final class StaticConstants {
         } else {
             return reserveSymbol(type, name + "_");
         }
-    }
-
-    public boolean contains(VariableElement ve) {
-        return libraries.containsValue(ve) || contextReferences.containsValue(ve) || languageReferences.containsValue(ve) || enumValues.containsValue(ve);
-    }
-
-    public List<CodeVariableElement> elements() {
-        List<CodeVariableElement> result = new ArrayList<>();
-        result.addAll(libraries.values());
-        result.addAll(contextReferences.values());
-        result.addAll(languageReferences.values());
-        return result;
     }
 
 }

@@ -93,7 +93,9 @@ public final class ReentrantBlockIterator {
             return oldState;
         }
 
-        protected abstract List<StateT> processLoop(Loop<HIRBlock> loop, StateT initialState);
+        protected List<StateT> processLoop(Loop<HIRBlock> loop, StateT initialState) {
+            return ReentrantBlockIterator.processLoop(this, loop, initialState).exitStates;
+        }
     }
 
     private ReentrantBlockIterator() {

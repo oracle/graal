@@ -66,7 +66,7 @@ public class GCCause {
             while (HostedGCCauseList.size() <= id) {
                 HostedGCCauseList.add(null);
             }
-            VMError.guarantee(HostedGCCauseList.get(id) == null, name + " and another GCCause have the same id.");
+            VMError.guarantee(HostedGCCauseList.get(id) == null, "%s and another GCCause have the same id.", name);
             HostedGCCauseList.set(id, this);
         }
     }

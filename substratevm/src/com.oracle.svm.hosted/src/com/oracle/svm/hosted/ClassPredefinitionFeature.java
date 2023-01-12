@@ -127,7 +127,7 @@ public class ClassPredefinitionFeature implements InternalFeature {
             }
             UserError.guarantee(!sealed, "Too late to add predefined classes. Registration must happen in a Feature before the analysis has started.");
 
-            VMError.guarantee(baseUri != null, "Cannot prepare class with hash " + providedHash + " for predefinition because its location is unknown");
+            VMError.guarantee(baseUri != null, "Cannot prepare class with hash %s for predefinition because its location is unknown", providedHash);
             try {
                 byte[] data;
                 try (InputStream in = PredefinedClassesConfigurationParser.openClassdataStream(baseUri, providedHash)) {

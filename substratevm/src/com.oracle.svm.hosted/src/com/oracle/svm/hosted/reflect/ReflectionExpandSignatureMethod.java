@@ -39,13 +39,13 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointer;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
-import com.oracle.svm.hosted.code.NonBytecodeStaticMethod;
+import com.oracle.svm.hosted.code.NonBytecodeMethod;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class ReflectionExpandSignatureMethod extends NonBytecodeStaticMethod {
+public class ReflectionExpandSignatureMethod extends NonBytecodeMethod {
 
     private final boolean isStatic;
     private final Class<?>[] argTypes;
@@ -53,7 +53,7 @@ public class ReflectionExpandSignatureMethod extends NonBytecodeStaticMethod {
     private final boolean callerSensitiveAdapter;
 
     public ReflectionExpandSignatureMethod(String name, ResolvedJavaMethod prototype, boolean isStatic, Class<?>[] argTypes, JavaKind returnKind, boolean callerSensitiveAdapter) {
-        super(name, prototype.getDeclaringClass(), prototype.getSignature(), prototype.getConstantPool());
+        super(name, true, prototype.getDeclaringClass(), prototype.getSignature(), prototype.getConstantPool());
         this.isStatic = isStatic;
         this.argTypes = argTypes;
         this.returnKind = returnKind;

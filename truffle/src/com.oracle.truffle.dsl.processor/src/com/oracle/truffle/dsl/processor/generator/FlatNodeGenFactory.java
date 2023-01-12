@@ -86,7 +86,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
@@ -206,8 +205,6 @@ public class FlatNodeGenFactory {
     private final StaticConstants constants;
     private NodeConstants nodeConstants;
 
-    private final NodeGeneratorPlugs plugs;
-
     private final GeneratorMode generatorMode;
     private final NodeStateResult state;
 
@@ -217,16 +214,15 @@ public class FlatNodeGenFactory {
     }
 
     public FlatNodeGenFactory(ProcessorContext context, GeneratorMode mode, NodeData node,
-                    StaticConstants constants, NodeConstants nodeConstants, NodeGeneratorPlugs plugs) {
-        this(context, mode, node, Arrays.asList(node), node.getSharedCaches(), constants, nodeConstants, plugs);
+                    StaticConstants constants, NodeConstants nodeConstants) {
+        this(context, mode, node, Arrays.asList(node), node.getSharedCaches(), constants, nodeConstants);
     }
 
     public FlatNodeGenFactory(ProcessorContext context, GeneratorMode mode, NodeData node,
                     Collection<NodeData> stateSharingNodes,
                     Map<CacheExpression, String> sharedCaches,
                     StaticConstants constants,
-                    NodeConstants nodeConstants,
-                    NodeGeneratorPlugs plugs) {
+                    NodeConstants nodeConstants) {
         Objects.requireNonNull(node);
         this.plugs = plugs;
         this.generatorMode = mode;
@@ -268,7 +264,7 @@ public class FlatNodeGenFactory {
     }
 
     public static List<InlineFieldData> createInlinedFields(NodeData node) {
-        FlatNodeGenFactory factory = new FlatNodeGenFactory(ProcessorContext.getInstance(), GeneratorMode.DEFAULT, node, new StaticConstants(), new NodeConstants(), NodeGeneratorPlugs.DEFAULT);
+        FlatNodeGenFactory factory = new FlatNodeGenFactory(ProcessorContext.getInstance(), GeneratorMode.DEFAULT, node, new StaticConstants(), new NodeConstants());
         return factory.createInlineFields(true);
     }
 
@@ -2118,8 +2114,10 @@ public class FlatNodeGenFactory {
 
             builder.declaration(referenceType, "copy", builder.create().startNew(referenceType).string("newNext").end());
             for (Element element : specializationClassElements) {
-                String name = element.getSimpleName().toString();
-                builder.startStatement().string("copy.", name, " = this.", name).end();
+                if (element instanceof VariableElement && !element.getModifiers().contains(Modifier.STATIC)) {
+                    String name = element.getSimpleName().toString();
+                    builder.startStatement().string("copy.", name, " = this.", name).end();
+                }
             }
             builder.startReturn().string("copy").end();
         }
@@ -2523,10 +2521,8 @@ public class FlatNodeGenFactory {
         builder.tree(result);
         builder.returnTrue();
 
-        if (!accessesCachedState(specializations)) {
-            method.getModifiers().add(STATIC);
-        }
-
+        // really not worth finding out whether we need a static method here
+        GeneratorUtils.mergeSuppressWarnings(method, "static-method");
         return method;
     }
 
@@ -2638,73 +2634,6 @@ public class FlatNodeGenFactory {
                 return binary;
             }
         });
-    }
-
-    private static boolean accessesCachedState(List<SpecializationData> specializations) {
-        final AtomicBoolean needsState = new AtomicBoolean(false);
-        for (final SpecializationData specialization : specializations) {
-            if (!specialization.getAssumptionExpressions().isEmpty()) {
-                needsState.set(true);
-                break;
-            }
-            for (GuardExpression expression : specialization.getGuards()) {
-                expression.getExpression().accept(new AbstractDSLExpressionVisitor() {
-                    @Override
-                    public void visitVariable(Variable binary) {
-                        if (!needsState.get() && isVariableAccessMember(binary)) {
-                            needsState.set(true);
-                        }
-                    }
-
-                    private boolean isVariableAccessMember(Variable variable) {
-                        if (variable.getName().equals("null") && variable.getReceiver() == null) {
-                            return false;
-                        }
-                        Parameter p = specialization.findByVariable(variable.getResolvedVariable());
-                        if (p == null && !variable.getResolvedVariable().getModifiers().contains(STATIC)) {
-                            DSLExpression receiver = variable.getReceiver();
-                            if (receiver instanceof Variable) {
-                                return isVariableAccessMember((Variable) receiver);
-                            } else if (receiver instanceof Call) {
-                                return isMethodAccessMember((Call) receiver);
-                            }
-                            return true;
-                        } else if (p != null && p.getSpecification().isCached()) {
-                            CacheExpression cache = specialization.findCache(p);
-                            if (cache != null && cache.isAlwaysInitialized()) {
-                                // allowed access as is initialized in fast path.
-                                return false;
-                            }
-                            return true;
-                        }
-                        return false;
-                    }
-
-                    private boolean isMethodAccessMember(Call call) {
-                        if (!call.getResolvedMethod().getModifiers().contains(STATIC)) {
-                            DSLExpression receiver = call.getReceiver();
-                            if (receiver instanceof Variable) {
-                                return isVariableAccessMember((Variable) receiver);
-                            } else if (receiver instanceof Call) {
-                                return isMethodAccessMember((Call) receiver);
-                            }
-                            return true;
-                        }
-                        return false;
-                    }
-
-                    @Override
-                    public void visitCall(Call call) {
-                        if (!needsState.get() && isMethodAccessMember(call)) {
-                            needsState.set(true);
-                        }
-                    }
-
-                });
-            }
-        }
-        boolean needsStat = needsState.get();
-        return needsStat;
     }
 
     private CodeAnnotationMirror createExplodeLoop() {
@@ -5043,17 +4972,19 @@ public class FlatNodeGenFactory {
 
         CodeTree specializeElseBranch = null;
         if (needsDuplicationCheck && useSpecializationClass) {
-            DSLExpression limit = optimizeExpression(specialization.getLimitExpression());
-            Set<CacheExpression> caches = specialization.getBoundCaches(limit, true);
-            innerTripples.addAll(initializeCaches(innerFrameState, innerFrameState.getMode(), group, caches, true, false));
-            CodeTree limitExpression = writeExpression(innerFrameState, specialization, limit);
-            CodeTreeBuilder limitBuilder = CodeTreeBuilder.createBuilder();
-            limitBuilder.string(countName).string(" < ").tree(limitExpression);
-            if (specialization.hasUnroll() && !specialization.isUnrolled()) {
-                // subtract unrolled count from limit
-                limitBuilder.string(" - ").string(String.valueOf(specialization.getUnroll()));
+            if (multipleInstances) {
+                DSLExpression limit = optimizeExpression(specialization.getLimitExpression());
+                Set<CacheExpression> caches = specialization.getBoundCaches(limit, true);
+                innerTripples.addAll(initializeCaches(innerFrameState, innerFrameState.getMode(), group, caches, true, false));
+                CodeTree limitExpression = writeExpression(innerFrameState, specialization, limit);
+                CodeTreeBuilder limitBuilder = CodeTreeBuilder.createBuilder();
+                limitBuilder.string(countName).string(" < ").tree(limitExpression);
+                if (specialization.hasUnroll() && !specialization.isUnrolled()) {
+                    // subtract unrolled count from limit
+                    limitBuilder.string(" - ").string(String.valueOf(specialization.getUnroll()));
+                }
+                innerTripples.add(new IfTriple(null, limitBuilder.build(), null));
             }
-            innerTripples.add(new IfTriple(null, limitBuilder.build(), null));
         } else if (needsDuplicationCheck) {
             innerTripples.add(new IfTriple(null, multiState.createNotContains(innerFrameState, StateQuery.create(SpecializationActive.class, specialization)), null));
         }
@@ -7859,7 +7790,7 @@ public class FlatNodeGenFactory {
 
     }
 
-    public static final class FrameState {
+    static final class FrameState {
 
         private final FlatNodeGenFactory factory;
         private final Map<String, LocalVariable> values = new HashMap<>();

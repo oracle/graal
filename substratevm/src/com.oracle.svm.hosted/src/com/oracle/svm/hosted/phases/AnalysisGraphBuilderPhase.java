@@ -121,7 +121,7 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
             for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
                 var result = plugin.convertInvokeDynamic(this, bootstrap);
                 if (result != null) {
-                    appendInvoke(InvokeKind.Static, result.getLeft(), result.getRight());
+                    appendInvoke(InvokeKind.Static, result.getLeft(), result.getRight(), null);
                     return true;
                 }
             }

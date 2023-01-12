@@ -29,7 +29,6 @@ import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.add;
 import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.sub;
 import static org.graalvm.compiler.nodes.loop.MathUtil.unsignedDivBefore;
 
-import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -288,7 +287,7 @@ public class CountedLoopInfo {
                 if (cfg.getNodeToBlock().isNew(ifCheck.falseSuccessor())) {
                     continue;
                 }
-                if (AbstractControlFlowGraph.dominates(cfg.blockFor(ifCheck.falseSuccessor()), loopBlock)) {
+                if (cfg.blockFor(ifCheck.falseSuccessor()).dominates(loopBlock)) {
                     return graph.addOrUniqueWithInputs(PiNode.create(div, positiveIntStamp.improveWith(div.stamp(NodeView.DEFAULT)), ifCheck.falseSuccessor()));
                 }
             }

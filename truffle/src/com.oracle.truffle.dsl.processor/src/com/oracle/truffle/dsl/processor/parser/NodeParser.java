@@ -311,9 +311,29 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
         NodeData node = parseNodeData(templateType, lookupTypes);
 
-        List<Element> members = loadMembers(templateType);
+        List<Element> declaredMembers = loadMembers(templateType);
         // ensure the processed element has at least one @Specialization annotation.
-        if (!containsSpecializations(members)) {
+        if (!containsSpecializations(declaredMembers)) {
+            return null;
+        }
+
+        AnnotationMirror generateAOT = findFirstAnnotation(lookupTypes, types.GenerateAOT);
+        if (generateAOT != null) {
+            node.setGenerateAOT(true);
+        }
+        AnnotationMirror generateCached = findGenerateAnnotation(templateType.asType(), types.GenerateCached);
+        if (generateCached != null) {
+            node.setGenerateCached(ElementUtils.getAnnotationValue(Boolean.class, generateCached, "value"));
+            node.setDefaultInlineCached(ElementUtils.getAnnotationValue(Boolean.class, generateCached, "alwaysInlineCached"));
+        } else {
+            node.setGenerateCached(true);
+            node.setDefaultInlineCached(false);
+        }
+        node.setGenerateUncached(isGenerateUncached(templateType));
+        node.setGenerateInline(isGenerateInline(templateType));
+
+        if (!node.isGenerateCached() && !node.isGenerateInline() && !node.isGenerateUncached()) {
+            // no generated code needed.
             return null;
         }
 
@@ -385,27 +405,29 @@ public final class NodeParser extends AbstractParser<NodeData> {
         if (reportPolymorphism != null && excludePolymorphism == null) {
             node.setReportPolymorphism(true);
         }
-        node.getFields().addAll(parseFields(lookupTypes, members));
-        node.getChildren().addAll(parseChildren(node, lookupTypes, members));
-        node.getChildExecutions().addAll(parseExecutions(node, node.getFields(), node.getChildren(), members));
-        node.getExecutableTypes().addAll(parseExecutableTypeData(node, members, node.getSignatureSize(), context.getFrameTypes(), false));
+        node.getFields().addAll(parseFields(lookupTypes, declaredMembers));
+        node.getChildren().addAll(parseChildren(node, lookupTypes, declaredMembers));
+        node.getChildExecutions().addAll(parseExecutions(node, node.getFields(), node.getChildren(), declaredMembers));
+        node.getExecutableTypes().addAll(parseExecutableTypeData(node, declaredMembers, node.getSignatureSize(), context.getFrameTypes(), false));
 
         initializeExecutableTypes(node);
-        initializeImportGuards(node, lookupTypes, members);
+
+        List<Element> allMembers = new ArrayList<>(declaredMembers);
+        initializeImportGuards(node, lookupTypes, allMembers);
         initializeChildren(node);
 
         if (node.hasErrors()) {
             return node; // error sync point
         }
 
-        node.getSpecializations().addAll(new SpecializationMethodParser(context, node, mode == ParseMode.EXPORTED_MESSAGE).parse(members));
-        node.getSpecializations().addAll(new FallbackParser(context, node).parse(members));
-        node.getCasts().addAll(new CreateCastParser(context, node).parse(members));
+        node.getSpecializations().addAll(new SpecializationMethodParser(context, node, mode == ParseMode.EXPORTED_MESSAGE).parse(declaredMembers));
+        node.getSpecializations().addAll(new FallbackParser(context, node).parse(declaredMembers));
+        node.getCasts().addAll(new CreateCastParser(context, node).parse(declaredMembers));
 
         if (node.hasErrors()) {
             return node;  // error sync point
         }
-        DSLExpressionResolver resolver = createBaseResolver(node, members);
+        DSLExpressionResolver resolver = createBaseResolver(node, allMembers);
 
         initializeSpecializations(resolver, node);
 
@@ -435,7 +457,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
         verifySpecializationSameLength(node);
         verifyVisibilities(node);
-        verifyMissingAbstractMethods(node, members);
+        verifyMissingAbstractMethods(node, declaredMembers);
         verifyConstructors(node);
         verifySpecializationThrows(node);
         verifyFrame(node);
@@ -1797,6 +1819,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (!importMember.getModifiers().contains(Modifier.STATIC)) {
                 continue;
             }
+
             ElementKind kind = importMember.getKind();
             if (kind.isField() || kind == ElementKind.METHOD) {
                 members.add(importMember);
@@ -3709,9 +3732,28 @@ public final class NodeParser extends AbstractParser<NodeData> {
         /*
          * Object.getClass() and Object.toString() always returns a non-null value.
          */
-        if (method != null && ElementUtils.typeEquals(ProcessorContext.getInstance().getType(Object.class), method.getEnclosingElement().asType()) &&
-                        (method.getSimpleName().toString().equals("getClass") || method.getSimpleName().toString().equals("toString"))) {
-            return true;
+        ProcessorContext context = ProcessorContext.getInstance();
+        TruffleTypes types = context.getTypes();
+        if (method != null) {
+            TypeMirror enlcosingType = method.getEnclosingElement().asType();
+            String simpleName = method.getSimpleName().toString();
+            if (ElementUtils.typeEquals(context.getType(Object.class), enlcosingType) &&
+                            (simpleName.equals("getClass") || simpleName.equals("toString"))) {
+                return true;
+            }
+
+            if ((ElementUtils.typeEquals(types.Frame, enlcosingType) || ElementUtils.typeEquals(types.VirtualFrame, enlcosingType) ||
+                            ElementUtils.typeEquals(types.MaterializedFrame, enlcosingType)) && //
+                            (simpleName.equals("getDescriptor") || //
+                                            simpleName.equals("getArguments") || //
+                                            simpleName.equals("materialize"))) {
+                return true;
+            }
+            if ((ElementUtils.typeEquals(types.FrameDescriptor, enlcosingType)) && //
+                            (simpleName.equals("getSlotKind") || //
+                                            simpleName.equals("getAuxiliarySlots"))) {
+                return true;
+            }
         }
 
         VariableElement var = cache.getDefaultExpression().resolveVariable();

@@ -379,14 +379,14 @@ def _test_libgraal_truffle(extra_vm_arguments):
             unittest_args = ["--blacklist", fp.name]
     else:
         unittest_args = []
-    unittest_args = unittest_args + ["--enable-timing", "--verbose"]
+    unittest_args += ["--enable-timing", "--verbose"]
     mx_unittest.unittest(unittest_args + extra_vm_arguments + [
         "-Dpolyglot.engine.AllowExperimentalOptions=true",
         "-Dpolyglot.engine.CompileImmediately=true",
         "-Dpolyglot.engine.BackgroundCompilation=false",
         "-Dpolyglot.engine.CompilationFailureAction=Throw",
         "-Dgraalvm.locatorDisabled=true",
-        "truffle"])
+        "truffle", "LibGraalCompilerTest"])
 
 def gate_body(args, tasks):
     with Task('Vm: GraalVM dist names', tasks, tags=['names']) as t:

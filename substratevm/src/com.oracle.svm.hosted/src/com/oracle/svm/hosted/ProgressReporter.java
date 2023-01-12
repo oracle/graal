@@ -33,6 +33,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
+import java.security.CodeSource;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -71,6 +72,7 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.OS;
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -94,6 +96,7 @@ import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.hosted.util.VMErrorReporter;
 import com.oracle.svm.util.ImageBuildStatistics;
@@ -108,8 +111,6 @@ public class ProgressReporter {
     private static final boolean IS_CI = System.console() == null || System.getenv("CI") != null;
     private static final boolean IS_DUMB_TERM = isDumbTerm();
     private static final int MAX_NUM_BREAKDOWN = 10;
-    private static final String CODE_BREAKDOWN_TITLE = String.format("Top %d packages in code area:", MAX_NUM_BREAKDOWN);
-    private static final String HEAP_BREAKDOWN_TITLE = String.format("Top %d object types in image heap:", MAX_NUM_BREAKDOWN);
     private static final String STAGE_DOCS_URL = "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md";
     private static final double EXCESSIVE_GC_MIN_THRESHOLD_MILLIS = 15_000;
     private static final double EXCESSIVE_GC_RATIO = 0.5;
@@ -298,7 +299,9 @@ public class ProgressReporter {
         recordJsonMetric(GeneralInfo.CC, cCompilerShort);
         String gcName = Heap.getHeap().getGC().getName();
         recordJsonMetric(GeneralInfo.GC, gcName);
-        l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(gcName).println();
+        long maxHeapSize = SubstrateGCOptions.MaxHeapSize.getValue();
+        String maxHeapValue = maxHeapSize == 0 ? "unlimited" : Utils.bytesToHuman(maxHeapSize);
+        l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(gcName).a(" (").doclink("max heap size", "#glossary-gc-max-heap-size").a(": ").a(maxHeapValue).a(")").println();
     }
 
     public void printFeatures(List<Feature> features) {
@@ -487,13 +490,43 @@ public class ProgressReporter {
 
     private void calculateCodeBreakdown(Collection<CompileTask> compilationTasks) {
         for (CompileTask task : compilationTasks) {
-            String classOrPackageName = task.method.format("%H");
-            int lastDotIndex = classOrPackageName.lastIndexOf('.');
-            if (lastDotIndex > 0) {
-                classOrPackageName = classOrPackageName.substring(0, lastDotIndex);
+            String key = null;
+            Class<?> javaClass = task.method.getDeclaringClass().getJavaClass();
+            Module module = javaClass.getModule();
+            if (module.isNamed()) {
+                key = module.getName();
+                if ("org.graalvm.nativeimage.builder".equals(key)) {
+                    key = "svm.jar (Native Image)";
+                }
+            } else {
+                key = findJARFile(javaClass);
+                if (key == null) {
+                    key = findPackageOrClassName(task.method);
+                }
             }
-            codeBreakdown.merge(classOrPackageName, (long) task.result.getTargetCodeSize(), Long::sum);
+            codeBreakdown.merge(key, (long) task.result.getTargetCodeSize(), Long::sum);
         }
+    }
+
+    private static String findJARFile(Class<?> javaClass) {
+        CodeSource codeSource = javaClass.getProtectionDomain().getCodeSource();
+        if (codeSource != null && codeSource.getLocation() != null) {
+            String path = codeSource.getLocation().getPath();
+            if (path.endsWith(".jar")) {
+                // Use String API to determine basename of path to handle both / and \.
+                return path.substring(Math.max(path.lastIndexOf('/') + 1, path.lastIndexOf('\\') + 1));
+            }
+        }
+        return null;
+    }
+
+    private static String findPackageOrClassName(HostedMethod method) {
+        String qualifier = method.format("%H");
+        int lastDotIndex = qualifier.lastIndexOf('.');
+        if (lastDotIndex > 0) {
+            qualifier = qualifier.substring(0, lastDotIndex);
+        }
+        return qualifier;
     }
 
     private void calculateHeapBreakdown(HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects) {
@@ -555,7 +588,9 @@ public class ProgressReporter {
                         .sorted(Entry.comparingByValue(Comparator.reverseOrder())).iterator();
 
         final TwoColumnPrinter p = new TwoColumnPrinter();
-        p.l().yellowBold().a(CODE_BREAKDOWN_TITLE).jumpToMiddle().a(HEAP_BREAKDOWN_TITLE).reset().flushln();
+        p.l().yellowBold().a(String.format("Top %d ", MAX_NUM_BREAKDOWN)).doclink("origins", "#glossary-code-area-origins").a(" of code area:")
+                        .jumpToMiddle()
+                        .a(String.format("Top %d object types in image heap:", MAX_NUM_BREAKDOWN)).reset().flushln();
 
         long printedCodeBytes = 0;
         long printedHeapBytes = 0;
@@ -593,7 +628,7 @@ public class ProgressReporter {
         int numHeapItems = heapBreakdown.size();
         long totalCodeBytes = codeBreakdown.values().stream().collect(Collectors.summingLong(Long::longValue));
         long totalHeapBytes = heapBreakdown.values().stream().collect(Collectors.summingLong(Long::longValue));
-        p.l().a(String.format("%9s for %s more packages", Utils.bytesToHuman(totalCodeBytes - printedCodeBytes), numCodeItems - printedCodeItems))
+        p.l().a(String.format("%9s for %s more ", Utils.bytesToHuman(totalCodeBytes - printedCodeBytes), numCodeItems - printedCodeItems)).doclink("origins", "#glossary-code-area-origins")
                         .jumpToMiddle()
                         .a(String.format("%9s for %s more object types", Utils.bytesToHuman(totalHeapBytes - printedHeapBytes), numHeapItems - printedHeapItems)).flushln();
     }

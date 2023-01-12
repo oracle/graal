@@ -76,8 +76,6 @@ public class TruffleProcessorOptions {
     private static final String StateBitWidth = "StateBitWidth";
     private static final String PrintTimings = "PrintTimings";
 
-    private static final String OperationsEnableTracingOptionName = "operations.EnableTracing";
-
     public static Boolean generateSpecializationStatistics(ProcessingEnvironment env) {
         String value = env.getOptions().get(OptionsPrefix + GenerateSpecializationStatisticsOptionName);
         return value == null ? null : Boolean.parseBoolean(value);

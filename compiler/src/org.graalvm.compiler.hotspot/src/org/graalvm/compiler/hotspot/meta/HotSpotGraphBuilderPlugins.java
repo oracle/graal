@@ -896,7 +896,7 @@ public class HotSpotGraphBuilderPlugins {
         });
         r = new Registration(plugins, "java.util.Base64$Decoder", replacements);
         if (config.base64DecodeBlock != 0L) {
-            if (JavaVersionUtil.JAVA_SPEC >= 18) {
+            if (GraalHotSpotVMConfig.base64DecodeBlockHasIsMIMEParameter()) {
                 // JDK-8268276 - added isMIME parameter
                 r.register(new InvocationPlugin("decodeBlock", Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class, boolean.class, boolean.class) {
                     @Override

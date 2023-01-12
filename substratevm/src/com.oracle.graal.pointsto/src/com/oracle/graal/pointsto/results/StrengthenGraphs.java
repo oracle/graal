@@ -74,6 +74,8 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.LimitedValueProxy;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase.CustomSimplification;
@@ -120,8 +122,16 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
+    public static class Options {
+        @Option(help = "Perform constant folding in StrengthenGraphs")//
+        public static final OptionKey<Boolean> StrengthenGraphWithConstants = new OptionKey<>(true);
+    }
+
+    private final boolean strengthenGraphWithConstants;
+
     public StrengthenGraphs(PointsToAnalysis bb, Universe converter) {
         super(bb, converter);
+        strengthenGraphWithConstants = Options.StrengthenGraphWithConstants.getValue(bb.getOptions());
     }
 
     private PointsToAnalysis getAnalysis() {
@@ -629,7 +639,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
             TypeState nodeTypeState = methodFlow.foldTypeFlow(pta, nodeFlow);
 
-            if (!nodeTypeState.canBeNull()) {
+            if (strengthenGraphWithConstants && !nodeTypeState.canBeNull()) {
                 JavaConstant constantValue = nodeTypeState.asConstant();
                 if (constantValue instanceof ImageHeapConstant) {
                     /*

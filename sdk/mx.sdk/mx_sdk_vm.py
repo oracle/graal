@@ -54,7 +54,7 @@ import types
 
 from os.path import join, exists, isfile, isdir, dirname, relpath
 from zipfile import ZipFile, ZIP_DEFLATED
-from binascii import b2a_hex
+from binascii import b2a_hex # pylint: disable=no-name-in-module
 from collections import OrderedDict
 from argparse import ArgumentParser
 

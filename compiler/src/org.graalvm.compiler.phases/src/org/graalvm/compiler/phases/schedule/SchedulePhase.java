@@ -27,7 +27,6 @@ package org.graalvm.compiler.phases.schedule;
 import static org.graalvm.collections.Equivalence.IDENTITY;
 import static org.graalvm.compiler.core.common.GraalOptions.GuardPriorities;
 import static org.graalvm.compiler.core.common.GraalOptions.OptScheduleOutOfLoops;
-import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.strictlyDominates;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -331,7 +330,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         }
 
         private static void checkLatestEarliestRelation(Node currentNode, HIRBlock earliestBlock, HIRBlock latestBlock) {
-            GraalError.guarantee(AbstractControlFlowGraph.dominates(earliestBlock, latestBlock) || (currentNode instanceof VirtualState && latestBlock == earliestBlock.getDominator()),
+            GraalError.guarantee(earliestBlock.dominates(latestBlock) || (currentNode instanceof VirtualState && latestBlock == earliestBlock.getDominator()),
                             "%s %s (%s) %s (%s)", currentNode, earliestBlock, earliestBlock.getBeginNode(), latestBlock, latestBlock.getBeginNode());
         }
 
@@ -351,7 +350,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         }
 
         public static HIRBlock checkKillsBetween(HIRBlock earliestBlock, HIRBlock latestBlock, LocationIdentity location) {
-            assert strictlyDominates(earliestBlock, latestBlock);
+            assert earliestBlock.strictlyDominates(latestBlock);
             HIRBlock current = latestBlock.getDominator();
 
             // Collect dominator chain that needs checking.
@@ -359,7 +358,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             dominatorChain.add(latestBlock);
             while (current != earliestBlock) {
                 // Current is an intermediate dominator between earliestBlock and latestBlock.
-                assert strictlyDominates(earliestBlock, current) && strictlyDominates(current, latestBlock);
+                assert earliestBlock.strictlyDominates(current) && current.strictlyDominates(latestBlock);
                 if (current.canKill(location)) {
                     dominatorChain.clear();
                 }
@@ -682,6 +681,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                     currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, currentNodeMap.get(abstractBeginNode));
                 } else {
                     HIRBlock otherBlock = currentNodeMap.get(abstractBeginNode).getDominator();
+                    GraalError.guarantee(otherBlock != null, "Dominators need to be computed in the CFG");
                     currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, otherBlock);
                 }
             } else {

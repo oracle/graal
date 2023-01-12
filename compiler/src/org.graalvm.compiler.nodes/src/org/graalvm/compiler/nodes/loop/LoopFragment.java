@@ -32,7 +32,7 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
@@ -101,6 +101,10 @@ public abstract class LoopFragment {
 
     public boolean contains(Node n) {
         return nodes().isMarkedAndGrow(n);
+    }
+
+    public UnmodifiableEconomicMap<Node, Node> duplicationMap() {
+        return this.duplicationMap;
     }
 
     @SuppressWarnings("unchecked")
@@ -456,7 +460,7 @@ public abstract class LoopFragment {
                                 // not happen while guards are floating.
                                 isLoopNode = true;
                             }
-                        } else if (AbstractControlFlowGraph.strictlyDominates(cfg.blockFor(anchor), cfg.blockFor(loopBeginNode))) {
+                        } else if (cfg.blockFor(anchor).strictlyDominates(cfg.blockFor(loopBeginNode))) {
                             // The anchor is above the loop. The no-usage guard can potentially be
                             // scheduled inside the loop.
                             isLoopNode = true;

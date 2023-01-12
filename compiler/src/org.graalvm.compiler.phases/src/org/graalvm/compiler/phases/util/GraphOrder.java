@@ -29,7 +29,6 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.GraalGraphError;
@@ -164,11 +163,6 @@ public final class GraphOrder {
             final ScheduleResult schedule = graph.getLastSchedule();
 
             BlockIteratorClosure<NodeBitMap> closure = new BlockIteratorClosure<>() {
-
-                @Override
-                protected List<NodeBitMap> processLoop(Loop<HIRBlock> loop, NodeBitMap initialState) {
-                    return ReentrantBlockIterator.processLoop(this, loop, initialState).exitStates;
-                }
 
                 @Override
                 protected NodeBitMap processBlock(final HIRBlock block, final NodeBitMap currentState) {

@@ -157,18 +157,6 @@ public class GeneratorUtils {
         return builder.build();
     }
 
-    public static CodeExecutableElement createSuperConstructor(TypeElement targetElement, ExecutableElement superConstructor) {
-        CodeExecutableElement ctor = new CodeExecutableElement(null, targetElement.getSimpleName().toString());
-        ctor.getParameters().addAll(superConstructor.getParameters());
-
-        CodeTreeBuilder b = ctor.createBuilder();
-        b.startStatement().startCall("super");
-        b.variables(ctor.getParameters());
-        b.end(2);
-
-        return ctor;
-    }
-
     public static CodeExecutableElement createConstructorUsingFields(Set<Modifier> modifiers, CodeTypeElement clazz) {
         TypeElement superClass = fromTypeMirror(clazz.getSuperclass());
         ExecutableElement constructor = findConstructor(superClass);

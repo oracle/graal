@@ -24,11 +24,13 @@
  */
 package com.oracle.graal.pointsto.phases;
 
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
+
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -44,7 +46,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @SuppressWarnings("unused")
 public class InlineBeforeAnalysisPolicy<S extends InlineBeforeAnalysisPolicy.Scope> {
 
-    public static final InlineBeforeAnalysisPolicy<Scope> NO_INLINING = new InlineBeforeAnalysisPolicy<>();
+    public static final InlineBeforeAnalysisPolicy<Scope> NO_INLINING = new InlineBeforeAnalysisPolicy<>(new NodePlugin[0]);
 
     /**
      * A place for policy implementations to store per-callee information like the number of nodes
@@ -53,7 +55,10 @@ public class InlineBeforeAnalysisPolicy<S extends InlineBeforeAnalysisPolicy.Sco
     public interface Scope {
     }
 
-    protected InlineBeforeAnalysisPolicy() {
+    protected final NodePlugin[] nodePlugins;
+
+    protected InlineBeforeAnalysisPolicy(NodePlugin[] nodePlugins) {
+        this.nodePlugins = nodePlugins;
     }
 
     protected boolean shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
