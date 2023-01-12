@@ -187,7 +187,7 @@ public class ServiceLoaderFeature implements InternalFeature {
         if (workDone) {
             DebugContext debugContext = access.getDebugContext();
             try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-                debugContext.log("Resources have been added by ServiceLoaderFeature. Automatic registration can be disabled with " +
+                debugContext.log("Resources have been added by ServiceLoaderFeature. Automatic registration can be disabled with %s",
                                 SubstrateOptionsParser.commandArgument(Options.UseServiceLoaderFeature, "-"));
             }
         }
@@ -355,7 +355,7 @@ public class ServiceLoaderFeature implements InternalFeature {
 
         DebugContext debugContext = access.getDebugContext();
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-            debugContext.log("ServiceLoaderFeature: registerResource: " + serviceResourceLocation);
+            debugContext.log("ServiceLoaderFeature: registerResource: %s", serviceResourceLocation);
         }
         Resources.registerResource(null, serviceResourceLocation, new ByteArrayInputStream(newResourceValue.toString().getBytes(StandardCharsets.UTF_8)), false);
 

@@ -579,7 +579,7 @@ class HostedMethodNameFactory implements InternalFeature {
         }
 
         boolean added = uniqueShortNames.add(result.getRight());
-        VMError.guarantee(added, "failed to generate uniqueShortName for HostedMethod: " + result.getRight());
+        VMError.guarantee(added, "failed to generate uniqueShortName for HostedMethod: %s", result.getRight());
 
         return result;
     }

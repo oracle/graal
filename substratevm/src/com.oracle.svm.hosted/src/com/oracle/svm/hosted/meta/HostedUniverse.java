@@ -374,7 +374,7 @@ public class HostedUniverse implements Universe {
     private static void ensureOriginalMethod(JavaMethod method) {
         if (method instanceof MultiMethod) {
             MultiMethod.MultiMethodKey key = ((MultiMethod) method).getMultiMethodKey();
-            VMError.guarantee(key == ORIGINAL_METHOD, "looking up method with wrong id: " + key);
+            VMError.guarantee(key == ORIGINAL_METHOD, "looking up method with wrong id: %s", key);
         }
     }
 
@@ -472,21 +472,21 @@ public class HostedUniverse implements Universe {
 
             if (!o1.getClass().equals(o2.getClass())) {
                 int result = Integer.compare(ordinal(o1), ordinal(o2));
-                VMError.guarantee(result != 0, "HostedType objects not distinguishable by ordinal number: " + o1 + ", " + o2);
+                VMError.guarantee(result != 0, "HostedType objects not distinguishable by ordinal number: %s, %s", o1, o2);
                 return result;
             }
 
             if (o1.isPrimitive() && o2.isPrimitive()) {
                 assert o1 instanceof HostedPrimitiveType && o2 instanceof HostedPrimitiveType;
                 int result = o1.getJavaKind().compareTo(o2.getJavaKind());
-                VMError.guarantee(result != 0, "HostedPrimitiveType objects not distinguishable by javaKind: " + o1 + ", " + o2);
+                VMError.guarantee(result != 0, "HostedPrimitiveType objects not distinguishable by javaKind: %s, %s", o1, o2);
                 return result;
             }
 
             if (o1.isArray() && o2.isArray()) {
                 assert o1 instanceof HostedArrayClass && o2 instanceof HostedArrayClass;
                 int result = compare(o1.getComponentType(), o2.getComponentType());
-                VMError.guarantee(result != 0, "HostedArrayClass objects not distinguishable by componentType: " + o1 + ", " + o2);
+                VMError.guarantee(result != 0, "HostedArrayClass objects not distinguishable by componentType: %s, %s", o1, o2);
                 return result;
             }
 
@@ -498,7 +498,7 @@ public class HostedUniverse implements Universe {
             ClassLoader l1 = Optional.ofNullable(o1.getJavaClass()).map(Class::getClassLoader).orElse(null);
             ClassLoader l2 = Optional.ofNullable(o2.getJavaClass()).map(Class::getClassLoader).orElse(null);
             result = SubstrateUtil.classLoaderNameAndId(l1).compareTo(SubstrateUtil.classLoaderNameAndId(l2));
-            VMError.guarantee(result != 0, "HostedType objects not distinguishable by name and classloader: " + o1 + ", " + o2);
+            VMError.guarantee(result != 0, "HostedType objects not distinguishable by name and classloader: %s, %s", o1, o2);
             return result;
         }
 

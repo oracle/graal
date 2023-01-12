@@ -178,7 +178,7 @@ class AdrpAddMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
             if (constant instanceof SubstrateMethodPointerConstant) {
                 MethodPointer pointer = ((SubstrateMethodPointerConstant) constant).pointer();
                 HostedMethod hMethod = (HostedMethod) pointer.getMethod();
-                VMError.guarantee(hMethod.isCompiled(), String.format("Method %s is not compiled although there is a method pointer constant created for it.", hMethod.format("%H.%n")));
+                VMError.guarantee(hMethod.isCompiled(), "Method %s is not compiled although there is a method pointer constant created for it.", hMethod);
                 relocVal = pointer;
             }
         }
