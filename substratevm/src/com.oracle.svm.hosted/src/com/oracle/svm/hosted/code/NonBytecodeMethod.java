@@ -48,7 +48,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * Abstract base class for methods with generated Graal IR, i.e., methods that do not originate from
  * bytecode.
  */
-public abstract class NonBytecodeStaticMethod implements GraphProvider, ResolvedJavaMethod, AnnotationWrapper {
+public abstract class NonBytecodeMethod implements GraphProvider, ResolvedJavaMethod, AnnotationWrapper {
 
     /**
      * Line numbers are bogus because this is generated code, but we need to include them in our
@@ -58,14 +58,16 @@ public abstract class NonBytecodeStaticMethod implements GraphProvider, Resolved
     private static final LineNumberTable lineNumberTable = new LineNumberTable(new int[]{1}, new int[]{0});
 
     private final String name;
+    private final boolean isStatic;
     private final ResolvedJavaType declaringClass;
     private final Signature signature;
     private final ConstantPool constantPool;
 
     private StackTraceElement stackTraceElement;
 
-    public NonBytecodeStaticMethod(String name, ResolvedJavaType declaringClass, Signature signature, ConstantPool constantPool) {
+    public NonBytecodeMethod(String name, boolean isStatic, ResolvedJavaType declaringClass, Signature signature, ConstantPool constantPool) {
         this.name = name;
+        this.isStatic = isStatic;
         this.declaringClass = declaringClass;
         this.signature = signature;
         this.constantPool = constantPool;
@@ -153,7 +155,7 @@ public abstract class NonBytecodeStaticMethod implements GraphProvider, Resolved
 
     @Override
     public boolean canBeStaticallyBound() {
-        return true;
+        return isStatic;
     }
 
     @Override
@@ -236,6 +238,6 @@ public abstract class NonBytecodeStaticMethod implements GraphProvider, Resolved
 
     @Override
     public int getModifiers() {
-        return Modifier.PUBLIC | Modifier.STATIC;
+        return Modifier.PUBLIC | (isStatic ? Modifier.STATIC : 0);
     }
 }

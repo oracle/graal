@@ -895,7 +895,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             return (ValueNode) tNode;
         }
 
-        private void transplantInvoke(FixedWithNextNode oNode, ResolvedJavaMethod tTargetMethod, InvokeKind invokeKind, ValueNode[] arguments, JavaKind invokeResultKind) {
+        private void transplantInvoke(InvokeNode oNode, ResolvedJavaMethod tTargetMethod, InvokeKind invokeKind, ValueNode[] arguments, JavaKind invokeResultKind) {
             maybeEmitClassInitialization(b, invokeKind == InvokeKind.Static, tTargetMethod.getDeclaringClass());
 
             if (invokeResultKind == JavaKind.Void) {
@@ -918,7 +918,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 }
             }
 
-            b.handleReplacedInvoke(invokeKind, tTargetMethod, arguments, false);
+            b.handleReplacedInvoke(invokeKind, tTargetMethod, arguments, false, lookup(oNode.callTarget().referencedType()));
 
             if (invokeResultKind != JavaKind.Void) {
                 /*

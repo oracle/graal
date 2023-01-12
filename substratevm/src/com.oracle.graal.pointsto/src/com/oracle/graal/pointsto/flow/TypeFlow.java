@@ -568,6 +568,28 @@ public abstract class TypeFlow<T> {
         return TypeState.forIntersection(bb, newState, declaredType.getAssignableTypes(true));
     }
 
+    /**
+     * In Java, interface types are not checked by the bytecode verifier. So even when, e.g., a
+     * method parameter has the declared type Comparable, any Object can be passed in. We therefore
+     * need to filter out interface types, as well as arrays of interface types, in many places
+     * where we use the declared type.
+     *
+     * Places where interface types need to be filtered: method parameters, method return values,
+     * and field loads (including unsafe memory loads).
+     * 
+     * Places where interface types need not be filtered: array element loads (because all array
+     * stores have an array store check).
+     */
+    public static AnalysisType filterUncheckedInterface(AnalysisType type) {
+        if (type != null) {
+            AnalysisType elementalType = type.getElementalType();
+            if (elementalType.isInterface()) {
+                return type.getUniverse().objectType().getArrayClass(type.getArrayDimension());
+            }
+        }
+        return type;
+    }
+
     public void update(PointsToAnalysis bb) {
         TypeState curState = getState();
         for (TypeFlow<?> use : getUses()) {

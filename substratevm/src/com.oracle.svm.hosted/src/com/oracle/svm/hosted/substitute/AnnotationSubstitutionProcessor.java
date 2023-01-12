@@ -75,6 +75,7 @@ import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.hosted.code.IncompatibleClassChangeFallbackMethod;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -299,14 +300,20 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
     @Override
     public ResolvedJavaMethod resolve(ResolvedJavaMethod method) {
-        if (method instanceof SubstitutionMethod) {
-            return ((SubstitutionMethod) method).getOriginal();
-        } else if (method instanceof CustomSubstitutionMethod) {
-            return ((CustomSubstitutionMethod) method).getOriginal();
-        } else if (method instanceof AnnotatedMethod) {
-            return ((AnnotatedMethod) method).getOriginal();
+        ResolvedJavaMethod cur = method;
+        while (true) {
+            if (cur instanceof SubstitutionMethod) {
+                cur = ((SubstitutionMethod) cur).getOriginal();
+            } else if (cur instanceof CustomSubstitutionMethod) {
+                cur = ((CustomSubstitutionMethod) cur).getOriginal();
+            } else if (cur instanceof AnnotatedMethod) {
+                cur = ((AnnotatedMethod) cur).getOriginal();
+            } else if (cur instanceof IncompatibleClassChangeFallbackMethod) {
+                cur = ((IncompatibleClassChangeFallbackMethod) cur).getOriginal();
+            } else {
+                return cur;
+            }
         }
-        return method;
     }
 
     /**

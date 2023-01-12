@@ -50,13 +50,13 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
-public final class FactoryMethod extends NonBytecodeStaticMethod {
+public final class FactoryMethod extends NonBytecodeMethod {
 
     private final ResolvedJavaMethod targetConstructor;
     private final boolean throwAllocatedObject;
 
     FactoryMethod(ResolvedJavaMethod targetConstructor, ResolvedJavaType declaringClass, Signature signature, ConstantPool constantPool, boolean throwAllocatedObject) {
-        super(SubstrateUtil.uniqueStubName(targetConstructor), declaringClass, signature, constantPool);
+        super(SubstrateUtil.uniqueStubName(targetConstructor), true, declaringClass, signature, constantPool);
         this.targetConstructor = targetConstructor;
         this.throwAllocatedObject = throwAllocatedObject;
 

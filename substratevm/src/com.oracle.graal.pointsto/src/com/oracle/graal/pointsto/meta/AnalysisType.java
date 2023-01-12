@@ -318,6 +318,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return result;
     }
 
+    public int getArrayDimension() {
+        return dimension;
+    }
+
     public void cleanupAfterAnalysis() {
         instantiatedTypes = null;
         instantiatedTypesNonNull = null;
@@ -1015,7 +1019,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     @Override
-    public ResolvedJavaType getElementalType() {
+    public AnalysisType getElementalType() {
         return elementalType;
     }
 
@@ -1046,6 +1050,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             ResolvedJavaType substCallerType = substMethod.getDeclaringClass();
 
             Object newResolvedMethod = universe.lookup(wrapped.resolveConcreteMethod(substMethod, substCallerType));
+            if (newResolvedMethod == null) {
+                newResolvedMethod = getUniverse().getBigbang().fallbackResolveConcreteMethod(this, (AnalysisMethod) method);
+            }
             if (newResolvedMethod == null) {
                 newResolvedMethod = NULL_METHOD;
             }
@@ -1254,7 +1261,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return universe.lookup(wrapped.getHostClass());
     }
 
-    AnalysisUniverse getUniverse() {
+    public AnalysisUniverse getUniverse() {
         return universe;
     }
 
