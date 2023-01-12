@@ -1,11 +1,11 @@
 ---
 layout: ni-docs
 toc_group: how-to-guides
-link_title: Use Shared Reachability Metadata with Native Image Gradle Plugin
+link_title: Configure Native Image Using Shared Reachability Metadata
 permalink: /reference-manual/native-image/guides/use-reachability-metadata-repository-gradle/
 ---
 
-# Use Shared Reachability Metadata with Native Image Gradle Plugin
+# Configure Native Image Using Shared Reachability Metadata
 
 With the Gradle plugin for GraalVM Native Image you can easily build a native executable from a Java application. The plugin is provided as part of the [Native Build Tools project](https://graalvm.github.io/native-build-tools/latest/index.html) and uses the [Gradle build tool](https://gradle.org/).
 If the application does not load dynamically any classes at run time, then your workflow is just one command: `./gradlew nativeRun`. 

@@ -59,8 +59,8 @@ native-image [options] -jar jarfile [imagename]
     ```shell
     jar --create --file App.jar --main-class com.example.App -C build .
     ```
-    It will generate a runnable JAR file, named `App.jar`, in the root directory: 
-    To view its contents, type `jar tf App.jar`.
+    It will generate a runnable JAR file, named _App.jar_, in the project root directory: 
+    To view its contents, run the command `jar tf App.jar`.
 
 4. Create a native executable:
 
@@ -74,7 +74,7 @@ native-image [options] -jar jarfile [imagename]
     ./App
     ```
 
-The `native-image` tool can provide the class path for all classes using the familiar option from the java launcher: `-cp`, followed by a list of directories or JAR files, separated by `:` on Linux and macOS platforms, or `;` on Windows. The name of the class containing the `main` method is the last argument, or you can use the `-jar` option and provide a JAR file that specifies the `main` method in its manifest.
+The `native-image` tool can provide the class path for all classes using the existing option from the java launcher: `-cp`, followed by a list of directories or JAR files, separated by `:` on Linux and macOS platforms, or `;` on Windows. The name of the class containing the `main` method is the last argument, or you can use the `-jar` option and provide a JAR file that specifies the `main` method in its manifest.
 
 ### Related Documentation
 
