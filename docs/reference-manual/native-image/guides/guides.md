@@ -18,7 +18,7 @@ Here you will learn how to:
 - [Build a Native Shared Library](build-native-shared-library.md)
 - [Build a Polyglot Native Executable (Java and JavaScript)](build-polyglot-native-executable.md)
 - [Build a Static or Mostly-Static Native Executable](build-static-and-mostly-static-executable.md)
-- [Build a Native Executable with Reflection](build-with-reflection.md)
+- [Configure Native Image with the Tracing Agent](build-with-reflection.md)
 - [Containerise a Native Executable and Run in a Docker Container](containerise-native-executable-with-docker.md)
 - [Create a Heap Dump from a Native Executable](create-heap-dump-from-native-executable.md)
 - [Debug Native Executables with GDB](debug-native-executables-with-gdb.md)
