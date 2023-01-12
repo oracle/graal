@@ -54,6 +54,7 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.ContinuationsNotSupported;
 import com.oracle.svm.core.jdk.ContinuationsSupported;
 import com.oracle.svm.core.jdk.HasSetExtentLocalCache;
+import com.oracle.svm.core.jdk.HasSetScopedValueCache;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
@@ -188,6 +189,10 @@ public final class Target_java_lang_Thread {
     @Inject @TargetElement(onlyWith = {HasSetExtentLocalCache.class, HasExtentLocalCache.class, LoomJDK.class}) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     Object[] extentLocalCache;
+
+    @Inject @TargetElement(onlyWith = {HasSetScopedValueCache.class, HasScopedValueCache.class, LoomJDK.class}) //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    Object[] scopedValueCache;
 
     @Alias
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
@@ -662,6 +667,18 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitute
+    @TargetElement(onlyWith = HasScopedValueCache.class)
+    static Object[] scopedValueCache() {
+        return JavaThreads.toTarget(currentCarrierThread()).scopedValueCache;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = HasSetScopedValueCache.class)
+    static void setScopedValueCache(Object[] cache) {
+        JavaThreads.toTarget(currentCarrierThread()).scopedValueCache = cache;
+    }
+
+    @Substitute
     static void blockedOn(Target_sun_nio_ch_Interruptible b) {
         JavaThreads.blockedOn(b);
     }
@@ -699,6 +716,13 @@ public final class Target_java_lang_Thread {
         @Override
         public boolean getAsBoolean() {
             return ReflectionUtil.lookupMethod(true, Thread.class, "extentLocalCache") != null;
+        }
+    }
+
+    public static class HasScopedValueCache implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return ReflectionUtil.lookupMethod(true, Thread.class, "scopedValueCache") != null;
         }
     }
 }
