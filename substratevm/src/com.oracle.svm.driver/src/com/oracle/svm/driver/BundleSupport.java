@@ -35,6 +35,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -61,16 +62,19 @@ final class BundleSupport {
     static final String BUNDLE_OPTION = "--bundle";
 
     enum BundleStatus {
-        prepare(false, false),
-        create(false, false),
-        apply(true, true);
+        prepare(false, false, true),
+        create(false, false, true),
+        update(false, true, true),
+        apply(true, true, false);
 
         final boolean hidden;
         final boolean loadBundle;
+        final boolean writeBundle;
 
-        BundleStatus(boolean hidden, boolean loadBundle) {
+        BundleStatus(boolean hidden, boolean loadBundle, boolean writeBundle) {
             this.hidden = hidden;
             this.loadBundle = loadBundle;
+            this.writeBundle = writeBundle;
         }
 
         boolean show() {
@@ -95,6 +99,7 @@ final class BundleSupport {
     Map<Path, Path> pathSubstitutions = new HashMap<>();
 
     private final List<String> buildArgs;
+    private Collection<String> updatedBuildArgs;
 
     private static final String bundleTempDirPrefix = "bundleRoot-";
     private static final String bundleFileExtension = ".nib";
@@ -130,26 +135,9 @@ final class BundleSupport {
             bundleSupport = new BundleSupport(nativeImage, bundleStatus, bundleFilename);
             List<String> buildArgs = bundleSupport.getBuildArgs();
             for (int i = buildArgs.size() - 1; i >= 0; i--) {
-                String buildArg = buildArgs.get(i);
-                if (buildArg.startsWith(BUNDLE_OPTION)) {
-                    assert !BundleStatus.valueOf(buildArg.substring(BUNDLE_OPTION.length() + 1)).loadBundle;
-                    continue;
-                }
-                if (buildArg.startsWith(nativeImage.oHPath)) {
-                    continue;
-                }
-                if (buildArg.equals(DefaultOptionHandler.verboseOption)) {
-                    continue;
-                }
-                if (buildArg.startsWith("-Dllvm.bin.dir=")) {
-                    Optional<String> existing = nativeImage.config.getBuildArgs().stream().filter(arg -> arg.startsWith("-Dllvm.bin.dir=")).findFirst();
-                    if (existing.isPresent() && !existing.get().equals(buildArg)) {
-                        throw NativeImage.showError("Bundle native-image argument '" + buildArg + "' conflicts with existing '" + existing.get() + "'.");
-                    }
-                    continue;
-                }
-                args.push(buildArg);
+                args.push(buildArgs.get(i));
             }
+            bundleSupport.updatedBuildArgs = args.snapshot();
         } else {
             bundleSupport = new BundleSupport(nativeImage, bundleStatus);
         }
@@ -259,10 +247,6 @@ final class BundleSupport {
         } catch (IOException e) {
             throw NativeImage.showError("Failed to read bundle-file " + pathSubstitutionsFile, e);
         }
-    }
-
-    public boolean isBundleCreation() {
-        return !status.loadBundle;
     }
 
     public List<String> getBuildArgs() {
@@ -455,9 +439,7 @@ final class BundleSupport {
         }
 
         try {
-            if (isBundleCreation()) {
-                writeBundle();
-            }
+            writeBundle();
         } finally {
             nativeImage.deleteAllFiles(rootDir);
         }
@@ -469,7 +451,19 @@ final class BundleSupport {
     }
 
     void writeBundle() {
-        assert isBundleCreation();
+        if (!status.writeBundle) {
+            return;
+        }
+
+        String originalOutputDirName = outputDir.getFileName().toString() + originalDirExtension;
+        Path originalOutputDir = rootDir.resolve(originalOutputDirName);
+        if (Files.exists(originalOutputDir)) {
+            nativeImage.deleteAllFiles(originalOutputDir);
+        }
+        Path metaInfDir = rootDir.resolve("META-INF");
+        if (Files.exists(metaInfDir)) {
+            nativeImage.deleteAllFiles(metaInfDir);
+        }
 
         Path pathCanonicalizationsFile = stageDir.resolve("path_canonicalizations.json");
         try (JsonWriter writer = new JsonWriter(pathCanonicalizationsFile)) {
@@ -488,8 +482,29 @@ final class BundleSupport {
 
         Path buildArgsFile = stageDir.resolve("build.json");
         try (JsonWriter writer = new JsonWriter(buildArgsFile)) {
+            ArrayList<String> cleanBuildArgs = new ArrayList<>();
+            for (String buildArg : updatedBuildArgs != null ? updatedBuildArgs : buildArgs) {
+                if (buildArg.startsWith(BUNDLE_OPTION)) {
+                    assert !BundleStatus.valueOf(buildArg.substring(BUNDLE_OPTION.length() + 1)).loadBundle;
+                    continue;
+                }
+                if (buildArg.startsWith(nativeImage.oHPath)) {
+                    continue;
+                }
+                if (buildArg.equals(DefaultOptionHandler.verboseOption)) {
+                    continue;
+                }
+                if (buildArg.startsWith("-Dllvm.bin.dir=")) {
+                    Optional<String> existing = nativeImage.config.getBuildArgs().stream().filter(arg -> arg.startsWith("-Dllvm.bin.dir=")).findFirst();
+                    if (existing.isPresent() && !existing.get().equals(buildArg)) {
+                        throw NativeImage.showError("Bundle native-image argument '" + buildArg + "' conflicts with existing '" + existing.get() + "'.");
+                    }
+                    continue;
+                }
+                cleanBuildArgs.add(buildArg);
+            }
             /* Printing as list with defined sort-order ensures useful diffs are possible */
-            JsonPrinter.printCollection(writer, buildArgs, null, BundleSupport::printBuildArg);
+            JsonPrinter.printCollection(writer, cleanBuildArgs, null, BundleSupport::printBuildArg);
         } catch (IOException e) {
             throw NativeImage.showError("Failed to write bundle-file " + pathSubstitutionsFile, e);
         }

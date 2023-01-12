@@ -176,6 +176,10 @@ public class NativeImage {
         public int size() {
             return queue.size();
         }
+
+        public List<String> snapshot() {
+            return new ArrayList<>(queue);
+        }
     }
 
     abstract static class OptionHandler<T extends NativeImage> {
