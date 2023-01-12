@@ -70,6 +70,7 @@ import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.io.MessageEndpoint;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.proxy.Proxy;
@@ -1255,6 +1256,11 @@ public abstract class TruffleInstrument {
                 throw engineToInstrumentException(t);
             }
         }
+
+        public SandboxPolicy getSandboxPolicy() {
+            return null;
+        }
+
     }
 
     /**
@@ -1327,10 +1333,12 @@ public abstract class TruffleInstrument {
          * <dd>the current GraalVM version in a format suitable for links to the GraalVM reference
          * manual. The exact format may change without notice.</dd>
          * </dl>
-         * 
+         *
          * @since 22.1.0
          */
         String website() default "";
+
+        SandboxPolicy sandboxPolicy() default SandboxPolicy.TRUSTED;
     }
 
     /**

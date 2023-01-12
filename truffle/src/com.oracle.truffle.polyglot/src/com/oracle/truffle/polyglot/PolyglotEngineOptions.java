@@ -50,6 +50,7 @@ import org.graalvm.options.OptionType;
 import com.oracle.truffle.api.Option;
 
 @Option.Group(PolyglotEngineImpl.OPTION_GROUP_ENGINE)
+// TODO mark all options for SandboxPolicy
 final class PolyglotEngineOptions {
     static final String PREINITIALIZE_CONTEXT_NAME = "PreinitializeContexts";
     private static final String INSTRUMENT_EXCEPTIONS_ARE_THROWN_NAME = "InstrumentExceptionsAreThrown";

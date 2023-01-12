@@ -36,6 +36,7 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.SandboxPolicy;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Option;
@@ -49,6 +50,7 @@ import com.oracle.truffle.api.Option;
  * org.graalvm.compiler.truffle.common.processor.Option
  */
 @Option.Group("engine")
+// TODO mark all options for SandboxPolicy
 public final class PolyglotCompilerOptions {
     public enum EngineModeEnum {
         DEFAULT,

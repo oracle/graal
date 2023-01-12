@@ -86,6 +86,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
@@ -501,6 +502,13 @@ public abstract class TruffleLanguage<C> {
          * @return URL for language website.
          */
         String website() default "";
+
+        /**
+         * Sets the minimal policy where this language is allowed to be used.
+         *
+         * @since 23.0
+         */
+        SandboxPolicy sandboxPolicy() default SandboxPolicy.TRUSTED;
     }
 
     /**
@@ -3500,6 +3508,10 @@ public abstract class TruffleLanguage<C> {
          */
         public void registerOnDispose(Closeable closeable) {
             LanguageAccessor.engineAccess().registerOnDispose(polyglotLanguageContext, closeable);
+        }
+
+        public SandboxPolicy getSandboxPolicy() {
+            return null;
         }
 
         /*

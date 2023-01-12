@@ -1058,6 +1058,7 @@ public final class Context implements AutoCloseable {
         private Path currentWorkingDirectory;
         private ClassLoader hostClassLoader;
         private boolean useSystemExit;
+        private SandboxPolicy sandboxPolicy;
 
         Builder(String... permittedLanguages) {
             Objects.requireNonNull(permittedLanguages);
@@ -1679,6 +1680,11 @@ public final class Context implements AutoCloseable {
             return this;
         }
 
+        public Builder sandbox(SandboxPolicy policy) {
+            this.sandboxPolicy = policy;
+            return this;
+        }
+
         /**
          * Allow environment access using the provided policy. If {@link #allowAllAccess(boolean)
          * all access} is {@code true} then the default environment access policy is
@@ -1778,6 +1784,21 @@ public final class Context implements AutoCloseable {
             return this;
         }
 
+        void validateSandbox() {
+            if (sandboxPolicy == null || sandboxPolicy == SandboxPolicy.TRUSTED) {
+                return;
+            }
+
+            // TODO permittedLanguages can maybe inferred with an explicit engine?
+            if (permittedLanguages == null || permittedLanguages.length == 0) {
+                throw new IllegalArgumentException(
+                                String.format("If sandbox policy %s is set, the number of languages needs to be set for a context. For example, Context.newBuilder(\"js\").", this.sandboxPolicy));
+            }
+
+            // TODO validate basic stuff that can be validated here
+
+        }
+
         /**
          * Creates a new context instance from the configuration provided in the builder. The same
          * context builder can be used to create multiple context instances.
@@ -1785,6 +1806,7 @@ public final class Context implements AutoCloseable {
          * @since 19.0
          */
         public Context build() {
+
             boolean nativeAccess = orAllAccess(allowNativeAccess);
             boolean createThread = orAllAccess(allowCreateThread);
             boolean hostClassLoading = orAllAccess(allowHostClassLoading);
@@ -1801,6 +1823,11 @@ public final class Context implements AutoCloseable {
                 throw new IllegalArgumentException("The method Context.Builder.allowIO(IOAccess) and the method Context.Builder.fileSystem(FileSystem) are mutually exclusive.");
             }
 
+            validateSandbox();
+
+            // TODO make sure when applying sandbox rules that fields in the builder are not
+            // modified!
+
             Predicate<String> localHostLookupFilter = this.hostClassFilter;
             HostAccess hostAccess = this.hostAccess;
 
@@ -1813,6 +1840,7 @@ public final class Context implements AutoCloseable {
                 hostAccess = HostAccess.ALL;
             }
             if (hostAccess == null) {
+                // TODO preset sandbox for host access
                 hostAccess = this.allowAllAccess ? HostAccess.ALL : HostAccess.EXPLICIT;
             }
 
@@ -1834,6 +1862,7 @@ public final class Context implements AutoCloseable {
             }
 
             boolean createProcess = orAllAccess(allowCreateProcess);
+            // TODO preset sandbox for environment access
             if (environmentAccess == null) {
                 environmentAccess = this.allowAllAccess ? EnvironmentAccess.INHERIT : EnvironmentAccess.NONE;
             }

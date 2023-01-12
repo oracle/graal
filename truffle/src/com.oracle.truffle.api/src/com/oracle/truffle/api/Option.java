@@ -51,6 +51,7 @@ import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
+import org.graalvm.polyglot.SandboxPolicy;
 
 /**
  * Describes the attributes of an option whose {@link OptionKey value} is in a static field
@@ -180,6 +181,13 @@ public @interface Option {
      * @since 22.1
      */
     String usageSyntax() default "";
+
+    /**
+     * Specifies the minimal sandbox policy required for this option to be used. Options
+     *
+     * @return
+     */
+    SandboxPolicy sandbox() default SandboxPolicy.TRUSTED;
 
     /**
      * Must be applied on classes containing {@link Option option} fields to specify a name prefix

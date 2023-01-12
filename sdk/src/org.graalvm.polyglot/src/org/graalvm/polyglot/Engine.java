@@ -77,6 +77,7 @@ import org.graalvm.home.HomeFinder;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
@@ -394,6 +395,18 @@ public final class Engine implements AutoCloseable {
         }
     }
 
+    static void validateSandboxPolicy(SandboxPolicy previous, SandboxPolicy policy) {
+        Objects.requireNonNull(policy, "The set policy must not be null.");
+        if (previous != null) {
+            if (previous.ordinal() < policy.ordinal()) {
+                throw new IllegalArgumentException(
+                                String.format("The sandbox policy %s was set for this builder and the newly set policy %s is less restrictive than the previous policy. " +
+                                                "Only equal or more strict policies are allowed. ",
+                                                previous, policy));
+            }
+        }
+    }
+
     private static final Engine EMPTY = new Engine(null, null);
 
     /**
@@ -413,6 +426,7 @@ public final class Engine implements AutoCloseable {
         private MessageTransport messageTransport;
         private Object customLogHandler;
         private String[] permittedLanguages;
+        private SandboxPolicy sandboxPolicy;
 
         Builder(String[] permittedLanguages) {
             Objects.requireNonNull(permittedLanguages);
@@ -523,6 +537,15 @@ public final class Engine implements AutoCloseable {
         }
 
         /**
+         * Sets the sandbox policy for a give context.
+         */
+        public Builder sandbox(SandboxPolicy policy) {
+            validateSandboxPolicy(this.sandboxPolicy, policy);
+            this.sandboxPolicy = policy;
+            return this;
+        }
+
+        /**
          * Shortcut for setting multiple {@link #option(String, String) options} using a map. All
          * values of the provided map must be non-null.
          *
@@ -613,6 +636,20 @@ public final class Engine implements AutoCloseable {
             return this;
         }
 
+        void validateSandbox() {
+            if (sandboxPolicy == null || sandboxPolicy == SandboxPolicy.TRUSTED) {
+                return;
+            }
+
+            if (permittedLanguages == null || permittedLanguages.length == 0) {
+                throw new IllegalArgumentException(
+                                String.format("If sandbox policy %s is set, the number of languages needs to be set for the engine. For example, Engine.newBuilder(\"js\").", this.sandboxPolicy));
+            }
+
+            // TODO validate basic stuff that can be validate
+
+        }
+
         /**
          * Creates a new engine instance from the configuration provided in the builder. The same
          * engine builder can be used to create multiple engine instances.
@@ -624,6 +661,8 @@ public final class Engine implements AutoCloseable {
             if (polyglot == null) {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
+            validateSandbox();
+
             LogHandler logHandler = customLogHandler != null ? polyglot.newLogHandler(customLogHandler) : null;
             Engine engine = polyglot.buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions,
                             boundEngine, messageTransport, logHandler, polyglot.createHostLanguage(polyglot.createHostAccess()), false, true, null);
