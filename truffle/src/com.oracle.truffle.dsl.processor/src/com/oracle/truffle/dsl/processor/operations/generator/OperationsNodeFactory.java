@@ -216,7 +216,7 @@ public class OperationsNodeFactory {
             operationNodeGen.add(el);
         }
 
-        operationNodeGen.addAll(consts.elements());
+        consts.addElementsTo(operationNodeGen);
 
         return operationNodeGen;
     }

@@ -71,6 +71,7 @@ public class TruffleProcessorOptions {
     private static final String GenerateSpecializationStatisticsOptionName = "GenerateSpecializationStatistics";
     private static final String GenerateSlowPathOnlyOptionName = "GenerateSlowPathOnly";
     private static final String GenerateSlowPathOnlyFilterOptionName = "GenerateSlowPathOnlyFilter";
+    private static final String OperationsEnableTracingOptionName = "OperationsEnableTracing";
     private static final String SuppressAllWarnings = "SuppressAllWarnings";
     private static final String CacheSharingWarningsEnabledOptionName = "cacheSharingWarningsEnabled";
     private static final String StateBitWidth = "StateBitWidth";

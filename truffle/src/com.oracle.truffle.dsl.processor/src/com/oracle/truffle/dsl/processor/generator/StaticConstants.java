@@ -40,9 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.generator;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 import javax.lang.model.element.Element;

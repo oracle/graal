@@ -230,6 +230,18 @@ public class GeneratorUtils {
         }
     }
 
+    public static CodeExecutableElement createSuperConstructor(CodeTypeElement clazz, ExecutableElement superConstructor) {
+        CodeExecutableElement method = new CodeExecutableElement(superConstructor.getModifiers(), null, clazz.getSimpleName().toString());
+
+        for (VariableElement parameter : superConstructor.getParameters()) {
+            method.addParameter(CodeVariableElement.clone(parameter));
+        }
+
+        method.createBuilder().startStatement().startCall("super").variables(method.getParameters()).end(2);
+
+        return method;
+    }
+
     public static CodeExecutableElement createConstructorUsingFields(Set<Modifier> modifiers, CodeTypeElement clazz, ExecutableElement superConstructor) {
         return createConstructorUsingFields(modifiers, clazz, superConstructor, Collections.emptySet());
     }

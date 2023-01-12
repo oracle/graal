@@ -337,26 +337,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return null;
         }
 
-        AnnotationMirror generateAOT = findFirstAnnotation(lookupTypes, types.GenerateAOT);
-        if (generateAOT != null) {
-            node.setGenerateAOT(true);
-        }
-        AnnotationMirror generateCached = findGenerateAnnotation(templateType.asType(), types.GenerateCached);
-        if (generateCached != null) {
-            node.setGenerateCached(ElementUtils.getAnnotationValue(Boolean.class, generateCached, "value"));
-            node.setDefaultInlineCached(ElementUtils.getAnnotationValue(Boolean.class, generateCached, "alwaysInlineCached"));
-        } else {
-            node.setGenerateCached(true);
-            node.setDefaultInlineCached(false);
-        }
-        node.setGenerateUncached(isGenerateUncached(templateType));
-        node.setGenerateInline(isGenerateInline(templateType));
-
-        if (!node.isGenerateCached() && !node.isGenerateInline() && !node.isGenerateUncached()) {
-            // no generated code needed.
-            return null;
-        }
-
         if (nodeOnly) {
             return node;
         }

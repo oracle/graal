@@ -204,6 +204,7 @@ public class FlatNodeGenFactory {
     private final Map<ExecutableElement, Function<Call, DSLExpression>> substitutions = new LinkedHashMap<>();
     private final StaticConstants constants;
     private NodeConstants nodeConstants;
+    private final NodeGeneratorPlugs plugs;
 
     private final GeneratorMode generatorMode;
     private final NodeStateResult state;
@@ -214,15 +215,16 @@ public class FlatNodeGenFactory {
     }
 
     public FlatNodeGenFactory(ProcessorContext context, GeneratorMode mode, NodeData node,
-                    StaticConstants constants, NodeConstants nodeConstants) {
-        this(context, mode, node, Arrays.asList(node), node.getSharedCaches(), constants, nodeConstants);
+                    StaticConstants constants, NodeConstants nodeConstants, NodeGeneratorPlugs plugs) {
+        this(context, mode, node, Arrays.asList(node), node.getSharedCaches(), constants, nodeConstants, plugs);
     }
 
     public FlatNodeGenFactory(ProcessorContext context, GeneratorMode mode, NodeData node,
                     Collection<NodeData> stateSharingNodes,
                     Map<CacheExpression, String> sharedCaches,
                     StaticConstants constants,
-                    NodeConstants nodeConstants) {
+                    NodeConstants nodeConstants,
+                    NodeGeneratorPlugs plugs) {
         Objects.requireNonNull(node);
         this.plugs = plugs;
         this.generatorMode = mode;
@@ -264,7 +266,7 @@ public class FlatNodeGenFactory {
     }
 
     public static List<InlineFieldData> createInlinedFields(NodeData node) {
-        FlatNodeGenFactory factory = new FlatNodeGenFactory(ProcessorContext.getInstance(), GeneratorMode.DEFAULT, node, new StaticConstants(), new NodeConstants());
+        FlatNodeGenFactory factory = new FlatNodeGenFactory(ProcessorContext.getInstance(), GeneratorMode.DEFAULT, node, new StaticConstants(), new NodeConstants(), NodeGeneratorPlugs.DEFAULT);
         return factory.createInlineFields(true);
     }
 
@@ -7790,7 +7792,7 @@ public class FlatNodeGenFactory {
 
     }
 
-    static final class FrameState {
+    public static final class FrameState {
 
         private final FlatNodeGenFactory factory;
         private final Map<String, LocalVariable> values = new HashMap<>();
