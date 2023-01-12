@@ -72,6 +72,7 @@ import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.GeneratorMode;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
+import com.oracle.truffle.dsl.processor.generator.NodeConstants;
 import com.oracle.truffle.dsl.processor.generator.StaticConstants;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
@@ -204,8 +205,9 @@ public class OperationsNodeFactory {
                 continue;
             }
 
+            NodeConstants nodeConsts = new NodeConstants();
             OperationNodeGeneratorPlugs plugs = new OperationNodeGeneratorPlugs(context, operationNodeGen.asType(), instr);
-            FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, instr.nodeData, consts, plugs);
+            FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, instr.nodeData, consts, nodeConsts, plugs);
 
             CodeTypeElement el = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, instr.getInternalName() + "Gen");
             el.setSuperClass(types.Node);
@@ -2390,12 +2392,12 @@ public class OperationsNodeFactory {
         private void processNodeType(CodeTypeElement el, InstructionModel instr) {
             for (VariableElement fld : ElementFilter.fieldsIn(el.getEnclosedElements())) {
                 if (ElementUtils.getQualifiedName(fld.asType()).equals("C")) {
-                    el.remove(fld);
+                    el.getEnclosedElements().remove(fld);
                 }
             }
 
             for (ExecutableElement ctor : ElementFilter.constructorsIn(el.getEnclosedElements())) {
-                el.remove(ctor);
+                el.getEnclosedElements().remove(ctor);
             }
 
             for (ExecutableElement met : ElementFilter.methodsIn(el.getEnclosedElements())) {

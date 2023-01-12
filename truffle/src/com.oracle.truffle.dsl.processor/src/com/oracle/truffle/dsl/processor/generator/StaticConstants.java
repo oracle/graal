@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 
 import javax.lang.model.element.Element;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -109,7 +110,7 @@ public final class StaticConstants {
     }
 
     public boolean contains(VariableElement ve) {
-        return libraries.containsValue(ve) || contextReferences.containsValue(ve) || languageReferences.containsValue(ve);
+        return libraries.containsValue(ve) || contextReferences.containsValue(ve) || languageReferences.containsValue(ve) || enumValues.containsValue(ve);
     }
 
     public List<CodeVariableElement> elements() {

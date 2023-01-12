@@ -64,6 +64,7 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.operations.model.OperationsModel;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
+import com.oracle.truffle.dsl.processor.parser.TypeSystemParser;
 
 public class OperationsParser extends AbstractParser<OperationsModel> {
 
@@ -144,7 +145,14 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
         AnnotationMirror typeSystemRefMirror = ElementUtils.findAnnotationMirror(typeElement, types.TypeSystemReference);
         if (typeSystemRefMirror != null) {
             TypeMirror typeSystemType = getAnnotationValue(TypeMirror.class, typeSystemRefMirror, "value");
-            TypeSystemData typeSystem = (TypeSystemData) context.getTemplate(typeSystemType, true);
+
+            TypeSystemData typeSystem = null;
+            if (typeSystemType instanceof DeclaredType) {
+                typeSystem = context.parseIfAbsent((TypeElement) ((DeclaredType) typeSystemType).asElement(), TypeSystemParser.class, (e) -> {
+                    TypeSystemParser parser = new TypeSystemParser();
+                    return parser.parse(e, false);
+                });
+            }
             if (typeSystem == null) {
                 model.addError("The used type system '%s' is invalid. Fix errors in the type system first.", getQualifiedName(typeSystemType));
                 return model;

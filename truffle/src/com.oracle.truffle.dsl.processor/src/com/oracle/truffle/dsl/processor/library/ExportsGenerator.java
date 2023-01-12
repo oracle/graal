@@ -87,6 +87,7 @@ import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.GeneratorMode;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.generator.NodeConstants;
+import com.oracle.truffle.dsl.processor.generator.NodeGeneratorPlugs;
 import com.oracle.truffle.dsl.processor.generator.StaticConstants;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
@@ -633,7 +634,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                     break;
                 }
                 FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.EXPORTED_MESSAGE, acceptsMessage.getSpecializedNode(),
-                                cachedSharedNodes, libraryExports.getSharedExpressions(), constants, nodeConstants);
+                                cachedSharedNodes, libraryExports.getSharedExpressions(), constants, nodeConstants, NodeGeneratorPlugs.DEFAULT);
                 List<CacheExpression> caches = new ArrayList<>();
                 for (CacheKey key : eagerCaches.keySet()) {
                     caches.add(key.cache);
@@ -813,7 +814,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 boolean shared = true;
                 if (dummyNodeClass == null) {
                     FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.EXPORTED_MESSAGE, cachedSpecializedNode, cachedSharedNodes, libraryExports.getSharedExpressions(),
-                                    constants, nodeConstants);
+                                    constants, nodeConstants, NodeGeneratorPlugs.DEFAULT);
                     dummyNodeClass = createClass(libraryExports, null, modifiers(), "Cached", types.Node);
                     factory.create(dummyNodeClass);
                     sharedNodes.put(cachedSpecializedNode, dummyNodeClass);
@@ -1311,7 +1312,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 }
             } else {
                 FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.EXPORTED_MESSAGE, uncachedSpecializedNode, uncachedSharedNodes, Collections.emptyMap(), constants,
-                                nodeConstants);
+                                nodeConstants, NodeGeneratorPlugs.DEFAULT);
                 CodeExecutableElement generatedUncached = factory.createUncached();
                 if (firstNode) {
                     uncachedClass.getEnclosedElements().addAll(factory.createUncachedFields());

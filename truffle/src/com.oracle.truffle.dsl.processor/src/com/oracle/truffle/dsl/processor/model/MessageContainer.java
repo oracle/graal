@@ -90,7 +90,7 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
     }
 
     public final void addWarning(Element enclosedElement, String text, Object... params) {
-        getMessages().add(new Message(null, null, enclosedElement, this, String.format(text, params), Kind.WARNING));
+        getMessages().add(new Message(null, null, enclosedElement, this, String.format(text, params), Kind.WARNING, null));
     }
 
     public final void addError(String text, Object... params) {
