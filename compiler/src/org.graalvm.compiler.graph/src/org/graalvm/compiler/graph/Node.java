@@ -1315,6 +1315,9 @@ public abstract class Node implements Cloneable, Formattable {
         if (getNodeSourcePosition() != null && (into == null || into.trackNodeSourcePosition())) {
             newNode.setNodeSourcePosition(getNodeSourcePosition());
         }
+        if (getInsertionPosition() != null) {
+            newNode.setInsertionPosition(getInsertionPosition());
+        }
         if (into != null) {
             into.register(newNode);
         }
