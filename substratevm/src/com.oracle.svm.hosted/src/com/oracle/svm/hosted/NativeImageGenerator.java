@@ -994,7 +994,7 @@ public class NativeImageGenerator {
     public static AnalysisUniverse createAnalysisUniverse(OptionValues options, TargetDescription target, ImageClassLoader loader, MetaAccessProvider originalMetaAccess,
                     SnippetReflectionProvider originalSnippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, SubstitutionProcessor cEnumProcessor,
                     ClassInitializationSupport classInitializationSupport, List<SubstitutionProcessor> additionalSubstitutions) {
-        UnsafeAutomaticSubstitutionProcessor automaticSubstitutions = createAutomaticUnsafeSubstitutions(originalSnippetReflection, annotationSubstitutions);
+        UnsafeAutomaticSubstitutionProcessor automaticSubstitutions = createAutomaticUnsafeSubstitutions(options, originalSnippetReflection, annotationSubstitutions);
         SubstitutionProcessor aSubstitutions = createAnalysisSubstitutionProcessor(originalMetaAccess, originalSnippetReflection, cEnumProcessor, automaticSubstitutions,
                         annotationSubstitutions, additionalSubstitutions);
 
@@ -1020,9 +1020,9 @@ public class NativeImageGenerator {
         return annotationSubstitutions;
     }
 
-    public static UnsafeAutomaticSubstitutionProcessor createAutomaticUnsafeSubstitutions(SnippetReflectionProvider originalSnippetReflection,
+    public static UnsafeAutomaticSubstitutionProcessor createAutomaticUnsafeSubstitutions(OptionValues options, SnippetReflectionProvider originalSnippetReflection,
                     AnnotationSubstitutionProcessor annotationSubstitutions) {
-        return new UnsafeAutomaticSubstitutionProcessor(annotationSubstitutions, originalSnippetReflection);
+        return new UnsafeAutomaticSubstitutionProcessor(options, annotationSubstitutions, originalSnippetReflection);
     }
 
     public static SubstitutionProcessor createAnalysisSubstitutionProcessor(MetaAccessProvider originalMetaAccess, SnippetReflectionProvider originalSnippetReflection,
