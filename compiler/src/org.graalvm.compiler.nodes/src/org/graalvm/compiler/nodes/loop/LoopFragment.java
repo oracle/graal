@@ -56,7 +56,7 @@ import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.VirtualState;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.java.MonitorEnterNode;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
@@ -475,12 +475,12 @@ public abstract class LoopFragment {
         }
     }
 
-    public static NodeIterable<AbstractBeginNode> toHirBlocks(final Iterable<Block> blocks) {
+    public static NodeIterable<AbstractBeginNode> toHirBlocks(final Iterable<HIRBlock> blocks) {
         return new NodeIterable<>() {
 
             @Override
             public Iterator<AbstractBeginNode> iterator() {
-                final Iterator<Block> it = blocks.iterator();
+                final Iterator<HIRBlock> it = blocks.iterator();
                 return new Iterator<>() {
 
                     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,6 +44,7 @@ import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.tests.Platform;
 import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
 import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 import com.oracle.truffle.tck.DebuggerTester;
@@ -137,9 +138,18 @@ public abstract class LLVMDebugTestBase {
         return loadSource(file);
     }
 
-    private Trace readTrace() {
-        final Path path = getTracePath().resolve(testName + TRACE_EXT);
+    public Path getTraceFilePath() {
+        Path path = getTracePath().resolve(testName + "." + Platform.getOS().toString() + TRACE_EXT);
+        if (path.toFile().exists()) {
+            return path;
+        }
+        path = getTracePath().resolve(testName + TRACE_EXT);
         Assert.assertTrue("Locate Trace " + path, path.toFile().exists());
+        return path;
+    }
+
+    private Trace readTrace() {
+        final Path path = getTraceFilePath();
         return Trace.parse(path);
     }
 

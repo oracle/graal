@@ -212,4 +212,17 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
     public double defaultProbability() {
         return 1.0d;
     }
+
+    /**
+     * Determine if the this guard will lead to an unconditional {@link DeoptimizeNode} because its
+     * condition is a constant.
+     */
+    public boolean willDeoptUnconditionally() {
+        if (getCondition() instanceof LogicConstantNode) {
+            LogicConstantNode c = (LogicConstantNode) getCondition();
+            return c.getValue() == negated;
+        }
+        return false;
+    }
+
 }

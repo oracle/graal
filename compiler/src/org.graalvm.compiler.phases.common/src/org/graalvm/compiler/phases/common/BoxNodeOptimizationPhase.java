@@ -30,7 +30,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
@@ -83,8 +83,8 @@ public class BoxNodeOptimizationPhase extends PostRunCanonicalizationPhase<CoreP
                             if (graph.isNew(before, boxUsageOnBoxedVal) || graph.isNew(before, box)) {
                                 continue boxedValUsageLoop;
                             }
-                            Block boxUsageOnBoxedValBlock = cfg.blockFor(boxUsageOnBoxedVal);
-                            Block originalBoxBlock = cfg.blockFor(box);
+                            HIRBlock boxUsageOnBoxedValBlock = cfg.blockFor(boxUsageOnBoxedVal);
+                            HIRBlock originalBoxBlock = cfg.blockFor(box);
                             if (boxUsageOnBoxedValBlock.getLoop() != null) {
                                 if (originalBoxBlock.getLoop() != boxUsageOnBoxedValBlock.getLoop()) {
                                     // avoid proxy creation for now

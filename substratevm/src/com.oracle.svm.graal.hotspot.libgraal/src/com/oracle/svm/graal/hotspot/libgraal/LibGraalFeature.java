@@ -508,7 +508,7 @@ public class LibGraalFeature implements InternalFeature {
         // Mark all the Node classes as allocated so they are available during graph decoding.
         EncodedSnippets encodedSnippets = HotSpotReplacementsImpl.getEncodedSnippets();
         for (NodeClass<?> nodeClass : encodedSnippets.getSnippetNodeClasses()) {
-            bb.markTypeInHeap(impl.getMetaAccess().lookupJavaType(nodeClass.getClazz()));
+            bb.registerTypeAsInHeap(impl.getMetaAccess().lookupJavaType(nodeClass.getClazz()), "All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
         }
     }
 
@@ -576,7 +576,7 @@ public class LibGraalFeature implements InternalFeature {
                 disallowedTypes.add(msg.toString());
             }
             for (InvokeInfo invoke : m.getInvokes()) {
-                for (AnalysisMethod callee : invoke.getCallees()) {
+                for (AnalysisMethod callee : invoke.getOriginalCallees()) {
                     if (seen.putIfAbsent(callee, m) == null) {
                         todo.add(callee);
                     }

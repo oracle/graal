@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.SIMD;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
@@ -34,8 +33,8 @@ import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
-import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.Stride;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -58,7 +57,7 @@ import jdk.vm.ci.meta.Value;
  * registerStringLatin1Plugins and registerStringUTF16Plugins for the arrangement of values.
  */
 @Opcode("ARRAY_COMPARE_TO")
-public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
+public final class AArch64ArrayCompareToOp extends AArch64ComplexVectorOp {
     public static final LIRInstructionClass<AArch64ArrayCompareToOp> TYPE = LIRInstructionClass.create(AArch64ArrayCompareToOp.class);
 
     private final boolean isLL;
@@ -75,29 +74,19 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
     @Temp({REG}) protected Value length1ValueTemp;
     @Temp({REG}) protected Value length2ValueTemp;
 
-    @Temp({REG}) protected Value temp1;
-    @Temp({REG}) protected Value temp2;
-    @Temp({REG}) protected Value temp3;
-    @Temp({REG}) protected Value temp4;
-    @Temp({REG}) protected Value temp5;
-    @Temp({REG}) protected Value temp6;
-
-    @Temp({REG}) protected AllocatableValue vectorTemp1;
-    @Temp({REG}) protected AllocatableValue vectorTemp2;
-    @Temp({REG}) protected AllocatableValue vectorTemp3;
-    @Temp({REG}) protected AllocatableValue vectorTemp4;
-    @Temp({REG}) protected AllocatableValue vectorTemp5;
+    @Temp({REG}) protected Value[] temp;
+    @Temp({REG}) protected AllocatableValue[] vectorTemp;
 
     public AArch64ArrayCompareToOp(LIRGeneratorTool tool, Stride strideA, Stride strideB, Value result,
                     Value arrayA, Value lengthA, Value arrayB, Value lengthB) {
         super(TYPE);
 
-        assert arrayA.getPlatformKind() == AArch64Kind.QWORD && arrayA.getPlatformKind() == arrayB.getPlatformKind();
-        assert lengthA.getPlatformKind() == AArch64Kind.DWORD && lengthA.getPlatformKind() == lengthB.getPlatformKind();
-        assert result.getPlatformKind() == AArch64Kind.DWORD;
+        GraalError.guarantee(arrayA.getPlatformKind() == AArch64Kind.QWORD && arrayA.getPlatformKind() == arrayB.getPlatformKind(), "pointer value expected");
+        GraalError.guarantee(lengthA.getPlatformKind() == AArch64Kind.DWORD && lengthA.getPlatformKind() == lengthB.getPlatformKind(), "int value expected");
+        GraalError.guarantee(result.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
 
-        assert strideA == Stride.S1 || strideA == Stride.S2;
-        assert strideB == Stride.S1 || strideB == Stride.S2;
+        GraalError.guarantee(strideA == Stride.S1 || strideA == Stride.S2, "strideA must be S1 or S2");
+        GraalError.guarantee(strideB == Stride.S1 || strideB == Stride.S2, "strideB must be S1 or S2");
 
         this.isLL = (strideA == strideB && strideA == Stride.S1);
         this.isUU = (strideA == strideB && strideA == Stride.S2);
@@ -116,19 +105,8 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
         this.length1Value = length1ValueTemp = lengthA;
         this.length2Value = length2ValueTemp = lengthB;
 
-        LIRKind archWordKind = LIRKind.unknownReference(tool.target().arch.getWordKind());
-        this.temp1 = tool.newVariable(archWordKind);
-        this.temp2 = tool.newVariable(archWordKind);
-        this.temp3 = tool.newVariable(archWordKind);
-        this.temp4 = tool.newVariable(archWordKind);
-        this.temp5 = tool.newVariable(archWordKind);
-        this.temp6 = tool.newVariable(archWordKind);
-        LIRKind vectorKind = LIRKind.value(tool.target().arch.getLargestStorableKind(SIMD));
-        vectorTemp1 = tool.newVariable(vectorKind);
-        vectorTemp2 = tool.newVariable(vectorKind);
-        vectorTemp3 = tool.newVariable(vectorKind);
-        vectorTemp4 = tool.newVariable(vectorKind);
-        vectorTemp5 = tool.newVariable(vectorKind);
+        temp = allocateTempRegisters(tool, 6);
+        vectorTemp = allocateVectorRegisters(tool, 5);
     }
 
     @Override
@@ -137,9 +115,9 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
         Register length1 = asRegister(length1Value);
         Register length2 = asRegister(length2Value);
 
-        Register array1 = asRegister(temp1);
-        Register array2 = asRegister(temp2);
-        Register length = asRegister(temp3);
+        Register array1 = asRegister(temp[0]);
+        Register array2 = asRegister(temp[1]);
+        Register length = asRegister(temp[2]);
 
         final Label done = new Label();
         final Label stringsEqualUptoLength = new Label();
@@ -207,12 +185,12 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
     private void emitScalarCode(AArch64MacroAssembler masm, Label stringsEqualUptoLength, Label done) {
         /* Retrieve registers pre-populated in emitCode() */
         Register result = asRegister(resultValue);
-        Register array1 = asRegister(temp1);
-        Register array2 = asRegister(temp2);
-        Register byteLength = asRegister(temp3);
+        Register array1 = asRegister(temp[0]);
+        Register array2 = asRegister(temp[1]);
+        Register byteLength = asRegister(temp[2]);
         /* Allocate new temporary registers */
-        Register temp = asRegister(temp4);
-        Register remainingBytes = asRegister(temp5);
+        Register tmp = asRegister(temp[3]);
+        Register remainingBytes = asRegister(temp[4]);
 
         final Label charSearchLoop = new Label();
 
@@ -225,16 +203,16 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
         masm.bind(charSearchLoop);
         if (isLU || isUL) {
             // first input is a byte array
-            masm.ldr(Byte.SIZE, temp, AArch64Address.createImmediateAddress(Byte.SIZE, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, array1, Byte.BYTES));
+            masm.ldr(Byte.SIZE, tmp, AArch64Address.createImmediateAddress(Byte.SIZE, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, array1, Byte.BYTES));
         } else {
-            masm.ldr(elementBitSize, temp, AArch64Address.createImmediateAddress(elementBitSize, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, array1, elementByteSize));
+            masm.ldr(elementBitSize, tmp, AArch64Address.createImmediateAddress(elementBitSize, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, array1, elementByteSize));
         }
         masm.ldr(elementBitSize, result, AArch64Address.createImmediateAddress(elementBitSize, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, array2, elementByteSize));
         if (isUL) {
             /* The inputs have been swapped. */
-            masm.subs(32, result, result, temp);
+            masm.subs(32, result, result, tmp);
         } else {
-            masm.subs(32, result, temp, result);
+            masm.subs(32, result, tmp, result);
         }
         masm.branchConditionally(ConditionFlag.NE, done);
         masm.subs(64, remainingBytes, remainingBytes, elementByteSize);
@@ -288,19 +266,19 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
 
         /* Retrieve registers pre-populated in emitCode() */
         Register result = asRegister(resultValue);
-        Register array1 = asRegister(temp1);
-        Register array2 = asRegister(temp2);
-        Register byteLength = asRegister(temp3);
+        Register array1 = asRegister(temp[0]);
+        Register array2 = asRegister(temp[1]);
+        Register byteLength = asRegister(temp[2]);
         /* Allocate new temporary registers */
-        Register endOfComparison = asRegister(temp4);
-        Register lastChunkAddress1 = asRegister(temp5);
-        Register lastChunkAddress2 = asRegister(temp6);
+        Register endOfComparison = asRegister(temp[3]);
+        Register lastChunkAddress1 = asRegister(temp[4]);
+        Register lastChunkAddress2 = asRegister(temp[5]);
 
-        Register array1LowV = asRegister(vectorTemp1);
-        Register array1HighV = asRegister(vectorTemp2);
-        Register array2LowV = asRegister(vectorTemp3);
-        Register array2HighV = asRegister(vectorTemp4);
-        Register tmpRegV1 = asRegister(vectorTemp5);
+        Register array1LowV = asRegister(vectorTemp[0]);
+        Register array1HighV = asRegister(vectorTemp[1]);
+        Register array2LowV = asRegister(vectorTemp[2]);
+        Register array2HighV = asRegister(vectorTemp[3]);
+        Register tmpRegV1 = asRegister(vectorTemp[4]);
 
         final Label simdLoop = new Label();
         final Label mismatchInChunk = new Label();
@@ -372,20 +350,10 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
          */
         masm.bind(mismatchInChunk);
         try (AArch64MacroAssembler.ScratchRegister scratchReg = masm.getScratchRegister()) {
-            int magicConstant = 0xc030_0c03;
-            Register magicConstantReg = scratchReg.getRegister();
-            masm.mov(magicConstantReg, magicConstant);
-            masm.neon.dupVG(AArch64ASIMDAssembler.ASIMDSize.FullReg, AArch64ASIMDAssembler.ElementSize.Word, tmpRegV1, magicConstantReg);
+            Register tmp = scratchReg.getRegister();
+            initCalcIndexOfFirstMatchMask(masm, tmpRegV1, tmp);
+            calcIndexOfFirstMatch(masm, result, array1LowV, array1HighV, tmpRegV1, true);
         }
-        masm.neon.bicVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, array1LowV, tmpRegV1, array1LowV);
-        masm.neon.bicVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, array1HighV, tmpRegV1, array1HighV);
-        /* Reduce from 256 -> 128 bits. */
-        masm.neon.addpVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, AArch64ASIMDAssembler.ElementSize.Byte, array1LowV, array1LowV, array1HighV);
-        /* Reduce from 128 -> 64 bits. */
-        masm.neon.addpVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, AArch64ASIMDAssembler.ElementSize.Byte, array1LowV, array1LowV, array1HighV);
-        masm.neon.moveFromIndex(AArch64ASIMDAssembler.ElementSize.DoubleWord, AArch64ASIMDAssembler.ElementSize.DoubleWord, result, array1LowV, 0);
-        masm.rbit(64, result, result);
-        masm.clz(64, result, result);
         masm.asr(64, result, result, 1);
         // subtract chunkSizeBytes to account for the post index of each of the array addresses
         masm.sub(64, result, result, chunkByteSize);

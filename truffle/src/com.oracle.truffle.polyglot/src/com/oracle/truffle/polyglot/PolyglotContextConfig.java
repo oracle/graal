@@ -54,13 +54,13 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.logging.Handler;
 import java.util.logging.Level;
 
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.ProcessHandler;
@@ -89,7 +89,7 @@ final class PolyglotContextConfig {
     private final Map<String, OptionValuesImpl> optionsById;
     @CompilationFinal FileSystemConfig fileSystemConfig;
     final Map<String, Level> logLevels;    // effectively final
-    final Handler logHandler;
+    final LogHandler logHandler;
     final PolyglotAccess polyglotAccess;
     final ProcessHandler processHandler;
     final EnvironmentAccess environmentAccess;
@@ -259,7 +259,7 @@ final class PolyglotContextConfig {
                     boolean createThreadAllowed, boolean hostClassLoadingAllowed,
                     boolean contextOptionsAllowed, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
-                    Set<String> onlyLanguages, Map<String, String> options, FileSystemConfig fileSystemConfig, Handler logHandler,
+                    Set<String> onlyLanguages, Map<String, String> options, FileSystemConfig fileSystemConfig, LogHandler logHandler,
                     boolean createProcessAllowed, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment,
                     ZoneId timeZone, PolyglotLimits limits, ClassLoader hostClassLoader, HostAccess hostAccess, boolean allowValueSharing, boolean useSystemExit,
                     Map<String, Object> creatorArguments, Runnable onCancelled, Consumer<Integer> onExited, Runnable onClosed) {

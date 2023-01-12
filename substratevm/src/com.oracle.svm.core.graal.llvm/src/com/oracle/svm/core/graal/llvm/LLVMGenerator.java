@@ -50,7 +50,7 @@ import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
@@ -77,7 +77,7 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.type.NarrowOopStamp;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -169,12 +169,12 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     private final boolean returnsEnum;
     private final boolean returnsCEnum;
 
-    private Block currentBlock;
+    private HIRBlock currentBlock;
     private final Map<AbstractBeginNode, LLVMBasicBlockRef> basicBlockMap = new HashMap<>();
-    private final Map<Block, LLVMBasicBlockRef> splitBlockEndMap = new HashMap<>();
-    private final Map<Block, LLVMValueRef[]> specialRegValues = new HashMap<>();
-    private final Map<Block, LLVMValueRef[]> initialSpecialRegValues = new HashMap<>();
-    private final Map<Block, LLVMValueRef[]> handlerSpecialRegValues = new HashMap<>();
+    private final Map<HIRBlock, LLVMBasicBlockRef> splitBlockEndMap = new HashMap<>();
+    private final Map<HIRBlock, LLVMValueRef[]> specialRegValues = new HashMap<>();
+    private final Map<HIRBlock, LLVMValueRef[]> initialSpecialRegValues = new HashMap<>();
+    private final Map<HIRBlock, LLVMValueRef[]> handlerSpecialRegValues = new HashMap<>();
 
     private final Map<Constant, String> constants = new HashMap<>();
 
@@ -311,32 +311,32 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     /* Basic blocks */
 
-    void appendBasicBlock(Block block) {
+    void appendBasicBlock(HIRBlock block) {
         LLVMBasicBlockRef basicBlock = builder.appendBasicBlock(block.toString());
         basicBlockMap.put(block.getBeginNode(), basicBlock);
     }
 
-    void beginBlock(Block block) {
+    void beginBlock(HIRBlock block) {
         currentBlock = block;
         builder.positionAtEnd(getBlock(block));
     }
 
-    void resumeBlock(Block block) {
+    void resumeBlock(HIRBlock block) {
         currentBlock = block;
         builder.positionAtEnd(getBlockEnd(block));
     }
 
-    void editBlock(Block block) {
+    void editBlock(HIRBlock block) {
         currentBlock = block;
         builder.positionBeforeTerminator(getBlockEnd(block));
     }
 
     @Override
-    public AbstractBlockBase<?> getCurrentBlock() {
+    public BasicBlock<?> getCurrentBlock() {
         return currentBlock;
     }
 
-    LLVMBasicBlockRef getBlock(Block block) {
+    LLVMBasicBlockRef getBlock(HIRBlock block) {
         return getBlock(block.getBeginNode());
     }
 
@@ -344,7 +344,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         return basicBlockMap.get(begin);
     }
 
-    LLVMBasicBlockRef getBlockEnd(Block block) {
+    LLVMBasicBlockRef getBlockEnd(HIRBlock block) {
         return (splitBlockEndMap.containsKey(block)) ? splitBlockEndMap.get(block) : getBlock(block);
     }
 
@@ -747,8 +747,8 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         LLVMTypeRef castedExpectedType = expectedType;
         if (convertResult) {
             LLVMTypeRef cmpxchgType = LLVMIRBuilder.isFloatType(expectedType) ? builder.intType() : builder.longType();
-            castedExpectedValue = builder.buildFPToSI(expectedValue, cmpxchgType);
-            castedNewValue = builder.buildFPToSI(newValue, cmpxchgType);
+            castedExpectedValue = builder.buildBitcast(expectedValue, cmpxchgType);
+            castedNewValue = builder.buildBitcast(newValue, cmpxchgType);
             castedExpectedType = LLVMIRBuilder.typeOf(castedExpectedValue);
         }
 
@@ -762,7 +762,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
         LLVMValueRef result = builder.buildCmpxchg(castedAddress, castedExpectedValue, castedNewValue, memoryOrder, returnValue);
         if (returnValue && convertResult) {
-            return builder.buildSIToFP(result, expectedType);
+            return builder.buildBitcast(result, expectedType);
         } else {
             return result;
         }
@@ -1106,7 +1106,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     @Override
     public void emitJump(LabelRef label) {
-        builder.buildBranch(getBlock((Block) label.getTargetBlock()));
+        builder.buildBranch(getBlock((HIRBlock) label.getTargetBlock()));
     }
 
     @Override
@@ -1179,18 +1179,18 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         return getSpecialRegisterValue(reg, currentBlock);
     }
 
-    LLVMValueRef getSpecialRegisterValue(SpecialRegister reg, Block block) {
+    LLVMValueRef getSpecialRegisterValue(SpecialRegister reg, HIRBlock block) {
         return specialRegValues.get(block)[reg.index];
     }
 
-    LLVMValueRef getInitialSpecialRegisterValue(SpecialRegister reg, Block block) {
+    LLVMValueRef getInitialSpecialRegisterValue(SpecialRegister reg, HIRBlock block) {
         if (!initialSpecialRegValues.containsKey(block)) {
             return null;
         }
         return initialSpecialRegValues.get(block)[reg.index];
     }
 
-    LLVMValueRef getHandlerSpecialRegisterValue(SpecialRegister reg, Block block) {
+    LLVMValueRef getHandlerSpecialRegisterValue(SpecialRegister reg, HIRBlock block) {
         return handlerSpecialRegValues.get(block)[reg.index];
     }
 
@@ -1841,7 +1841,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             }
         }
 
-        void printBlock(Block block) {
+        void printBlock(HIRBlock block) {
             if (debugLevel >= DebugLevel.Block.level) {
                 emitPrintf("In block " + block.toString());
             }

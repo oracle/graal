@@ -31,6 +31,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ThreadFactory;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
@@ -52,6 +54,7 @@ import com.oracle.svm.core.jdk.ContinuationsSupported;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
+import com.oracle.svm.core.jdk.JDK19OrEarlier;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.jdk.NotLoomJDK;
@@ -283,7 +286,11 @@ public final class Target_java_lang_Thread {
     @TargetElement(onlyWith = ContinuationsNotSupported.class)
     static Thread currentThread() {
         Thread thread = PlatformThreads.currentThread.get();
-        assert thread != null : "Thread has not been set yet";
+        if (GraalDirectives.inIntrinsic()) {
+            ReplacementsUtil.dynamicAssert(thread != null, "Thread has not been set yet");
+        } else {
+            assert thread != null : "Thread has not been set yet";
+        }
         return thread;
     }
 
@@ -295,7 +302,7 @@ public final class Target_java_lang_Thread {
         return thread;
     }
 
-    /** On HotSpot, a field of C++ class {@code JavaThread}. Loads and stores are unordered. */
+    /** On HotSpot, a field in C++ class {@code JavaThread}. Loads and stores are unordered. */
     @Inject @TargetElement(onlyWith = ContinuationsSupported.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     Thread vthread = null;
@@ -477,18 +484,21 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK19OrEarlier.class)
     @SuppressWarnings({"static-method"})
     private void stop0(Object o) {
         throw VMError.unsupportedFeature("The deprecated method Thread.stop is not supported");
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK19OrEarlier.class)
     @SuppressWarnings({"static-method"})
     private void suspend0() {
         throw VMError.unsupportedFeature("The deprecated method Thread.suspend is not supported");
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK19OrEarlier.class)
     @SuppressWarnings({"static-method"})
     private void resume0() {
         throw VMError.unsupportedFeature("The deprecated method Thread.resume is not supported");

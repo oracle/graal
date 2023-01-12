@@ -1,0 +1,3 @@
+# Disable CoS since it causes issues with MX projects. Enable if build/compile/run
+# actions are desirable in IGV
+#-org.netbeans.modules.java.j2seproject.J2SEActionProvider$Provider

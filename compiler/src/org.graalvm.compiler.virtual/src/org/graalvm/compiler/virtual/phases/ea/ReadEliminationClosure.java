@@ -51,7 +51,7 @@ import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.ValueProxyNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.GuardedNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
@@ -95,7 +95,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
     @Override
     protected boolean processNode(Node node, ReadEliminationBlockState state, GraphEffectList effects, FixedWithNextNode lastFixedNode) {
         boolean deleted = false;
-        if (MemoryKill.isMemoryKill(node)) {
+        if (node.getNodeClass().isMemoryKill() && MemoryKill.isMemoryKill(node)) {
             if (MemoryKill.isSingleMemoryKill(node)) {
                 LocationIdentity identity = ((SingleMemoryKill) node).getKilledLocationIdentity();
                 if (identity.isSingle() && (node instanceof WriteNode || node instanceof StoreFieldNode || node instanceof RawStoreNode)) {
@@ -245,7 +245,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
     }
 
     @Override
-    protected MergeProcessor createMergeProcessor(Block merge) {
+    protected MergeProcessor createMergeProcessor(HIRBlock merge) {
         return new ReadEliminationMergeProcessor(merge);
     }
 
@@ -253,7 +253,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
 
         private final EconomicMap<Object, ValuePhiNode> materializedPhis = EconomicMap.create(Equivalence.DEFAULT);
 
-        ReadEliminationMergeProcessor(Block mergeBlock) {
+        ReadEliminationMergeProcessor(HIRBlock mergeBlock) {
             super(mergeBlock);
         }
 
@@ -342,7 +342,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
     }
 
     @Override
-    protected void processKilledLoopLocations(Loop<Block> loop, ReadEliminationBlockState initialState, ReadEliminationBlockState mergedStates) {
+    protected void processKilledLoopLocations(Loop<HIRBlock> loop, ReadEliminationBlockState initialState, ReadEliminationBlockState mergedStates) {
         assert initialState != null;
         assert mergedStates != null;
         if (initialState.readCache.size() > 0) {
@@ -384,7 +384,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
     }
 
     @Override
-    protected ReadEliminationBlockState stripKilledLoopLocations(Loop<Block> loop, ReadEliminationBlockState originalInitialState) {
+    protected ReadEliminationBlockState stripKilledLoopLocations(Loop<HIRBlock> loop, ReadEliminationBlockState originalInitialState) {
         ReadEliminationBlockState initialState = super.stripKilledLoopLocations(loop, originalInitialState);
         LoopKillCache loopKilledLocations = loopLocationKillCache.get(loop);
         if (loopKilledLocations != null && loopKilledLocations.loopKillsLocations()) {

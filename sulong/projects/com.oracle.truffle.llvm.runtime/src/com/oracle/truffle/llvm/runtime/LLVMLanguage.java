@@ -171,9 +171,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     private final EconomicMap<String, LibraryCacheEntry> libraryCache = EconomicMap.create();
     private final ReferenceQueue<CallTarget> libraryCacheQueue = new ReferenceQueue<>();
     private final Object libraryCacheLock = new Object();
-
-    private final EconomicMap<String, Source> librarySources = EconomicMap.create();
-
     private final IDGenerater idGenerater = new IDGenerater();
     private final LLDBSupport lldbSupport = new LLDBSupport(this);
     private final Assumption noCommonHandleAssumption = Truffle.getRuntime().createAssumption("no common handle");
@@ -183,6 +180,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     private final ConcurrentHashMap<Class<?>, RootCallTarget> cachedCallTargets = new ConcurrentHashMap<>();
 
+    /**
+     * This cache ensures that the truffle cache maintains the default internal libraries, and that
+     * these default internal libraries are not parsed more than once.
+     */
+    private final EconomicMap<String, Source> defaultInternalLibraryCache = EconomicMap.create();
     private DataLayout defaultDataLayout;
     private TargetTriple defaultTargetTriple;
 
@@ -438,16 +440,20 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         internalFileScopes.put(libraryName, scope);
     }
 
-    public Source getLibrarySource(String path) {
-        return librarySources.get(path);
+    public boolean isDefaultInternalLibraryCacheEmpty() {
+        return defaultInternalLibraryCache.isEmpty();
     }
 
-    public void addLibrarySource(String path, Source source) {
-        librarySources.put(path, source);
+    public void setDefaultInternalLibraryCache(Source library) {
+        defaultInternalLibraryCache.put(library.getPath(), library);
     }
 
-    public boolean containsLibrarySource(String path) {
-        return librarySources.containsKey(path);
+    public Source getDefaultInternalLibraryCache(String path) {
+        return defaultInternalLibraryCache.get(path);
+    }
+
+    public boolean isDefaultInternalLibrary(String path) {
+        return defaultInternalLibraryCache.containsKey(path);
     }
 
     @Override

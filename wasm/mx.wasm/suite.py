@@ -69,7 +69,16 @@ suite = {
       },
     ],
   },
-
+  "libraries": {
+    "JOL": {
+      "sha1" : "553a2ba27f58b71e7efb545d7d3c657761f5b596",
+      "maven" : {
+        "groupId" : "org.openjdk.jol",
+        "artifactId" : "jol-core",
+        "version" : "0.16",
+      },
+    },
+  },
   "projects" : {
     "org.graalvm.wasm" : {
       "subDir" : "src",
@@ -195,6 +204,18 @@ suite = {
       "annotationProcessors" : ["mx:JMH_1_21"],
       "testProject" : True,
     },
+
+    "org.graalvm.wasm.memory" : {
+      "subDir": "src",
+      "sourceDirs" : ["src"],
+      "dependencies": [
+        "org.graalvm.wasm",
+        "JOL",
+      ],
+      "workingSets": "WebAssembly",
+      "javaCompliance": "11+",
+      "defaultBuild": False,
+    }
   },
 
   "externalProjects": {

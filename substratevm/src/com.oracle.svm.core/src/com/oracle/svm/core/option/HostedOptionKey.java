@@ -39,7 +39,7 @@ import java.util.function.Consumer;
  *
  * @see com.oracle.svm.core.option
  */
-public class HostedOptionKey<T> extends OptionKey<T> implements ValidatableOptionKey {
+public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionKey<T> {
     private final Consumer<HostedOptionKey<T>> validation;
 
     public HostedOptionKey(T defaultValue) {
@@ -58,6 +58,7 @@ public class HostedOptionKey<T> extends OptionKey<T> implements ValidatableOptio
      * {@link Fold} annotation.
      */
     @Fold
+    @Override
     public T getValue() {
         return getValue(HostedOptionValues.singleton());
     }

@@ -188,6 +188,7 @@ suite = {
             ],
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
+            "jacoco" : "include",
         },
 
         "com.oracle.svm.common": {
@@ -196,12 +197,18 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.util"
             ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.meta",
+                ]
+            },
             "javaCompliance": "11+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
+            "jacoco" : "include",
         },
 
         "com.oracle.svm.processor" : {
@@ -216,6 +223,7 @@ suite = {
             "javaCompliance": "11+",
             "checkstyle" : "com.oracle.svm.core",
             "workingSets" : "SVM",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.core": {
@@ -294,6 +302,7 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.core.containers": {
@@ -307,6 +316,7 @@ suite = {
             ],
             "workingSets": "SVM",
             "spotbugs": "false",
+            "jacoco" : "exclude",
         },
 
 
@@ -330,6 +340,7 @@ suite = {
             ],
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
+            "jacoco" : "exclude",
         },
 
 
@@ -362,6 +373,7 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.core.graal.amd64": {
@@ -382,6 +394,7 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco" : "exclude",
         },
         "com.oracle.svm.core.graal.aarch64": {
             "subDir": "src",
@@ -401,6 +414,7 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco" : "exclude",
         },
         "com.oracle.svm.core.graal.llvm": {
             "subDir": "src",
@@ -418,6 +432,7 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.core.posix": {
@@ -428,6 +443,9 @@ suite = {
                 "com.oracle.svm.core.graal.aarch64",
             ],
             "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.misc",
+                ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
                 ],
@@ -440,6 +458,7 @@ suite = {
             ],
             "workingSets": "SVM",
             "spotbugs": "false",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.core.windows": {
@@ -461,6 +480,7 @@ suite = {
             ],
             "workingSets": "SVM",
             "spotbugs": "false",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.graal.pointsto": {
@@ -480,6 +500,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco" : "include",
         },
 
         "com.oracle.graal.pointsto.standalone": {
@@ -505,6 +526,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.graal.pointsto.standalone.test": {
@@ -531,6 +553,7 @@ suite = {
             ],
             "javaCompliance": "11+",
             "spotbugs": "false",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.graal.reachability": {
@@ -545,6 +568,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco" : "include",
         },
 
         "com.oracle.svm.hosted": {
@@ -604,6 +628,7 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco" : "include",
         },
 
         "com.oracle.svm.hosted.jdk17": {
@@ -624,6 +649,7 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco" : "exclude",
         },
         # Native libraries below explicitly set _FORTIFY_SOURCE to 0. This constant controls how glibc handles some
         # functions that can cause a stack overflow like snprintf. If set to 1 or 2, it causes glibc to use internal
@@ -649,6 +675,7 @@ suite = {
                     },
                 },
             },
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.native.reporterchelper": {
@@ -669,6 +696,7 @@ suite = {
                     },
                 },
             },
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.native.darwin": {
@@ -686,6 +714,7 @@ suite = {
                     },
                 },
             },
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.native.jvm.posix": {
@@ -713,6 +742,7 @@ suite = {
             "dependencies": [
                 "svm-jvmfuncs-fallback-builder",
             ],
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.native.jvm.windows": {
@@ -735,6 +765,7 @@ suite = {
             "dependencies": [
                 "svm-jvmfuncs-fallback-builder",
             ],
+            "jacoco" : "exclude",
         },
 
         "svm-jvmfuncs-fallback-builder": {
@@ -761,6 +792,7 @@ suite = {
             ],
             "javaCompliance": "11+",
             "spotbugs": "false",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.junit": {
@@ -781,6 +813,7 @@ suite = {
             ],
             "javaCompliance": "11+",
             "spotbugs": "false",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.test": {
@@ -810,6 +843,7 @@ suite = {
             ],
             "javaCompliance": "11+",
             "spotbugs": "false",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.test.jdk17": {
@@ -829,6 +863,7 @@ suite = {
             "javaCompliance": "17+",
             "spotbugs": "false",
             "testProject": True,
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.configure.test": {
@@ -848,6 +883,7 @@ suite = {
             "javaCompliance": "11+",
             "spotbugs": "false",
             "testProject": True,
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.tutorial" : {
@@ -858,6 +894,7 @@ suite = {
             "javaCompliance": "11+",
             "workingSets" : "SVM",
             "spotbugs" : "false",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.objectfile" : {
@@ -884,6 +921,7 @@ suite = {
             ],
             "workingSets" : "SVM",
             "spotbugs" : "false",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.graal": {
@@ -908,6 +946,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.graal.test": {
@@ -927,6 +966,7 @@ suite = {
             "javaCompliance": "11+",
             "spotbugs": "false",
             "testProject": True,
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.thirdparty": {
@@ -945,6 +985,7 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.bench": {
@@ -960,6 +1001,7 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.truffle": {
@@ -974,6 +1016,7 @@ suite = {
                     "jdk.internal.misc",
                 ],
                 "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.aarch64",
                     "jdk.vm.ci.meta",
                 ]
             },
@@ -984,6 +1027,7 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.truffle.nfi": {
@@ -1000,6 +1044,7 @@ suite = {
                 "truffle:TRUFFLE_DSL_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.truffle.nfi.posix": {
@@ -1017,6 +1062,7 @@ suite = {
                 "truffle:TRUFFLE_DSL_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.truffle.nfi.windows": {
@@ -1034,6 +1080,7 @@ suite = {
                 "truffle:TRUFFLE_DSL_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.polyglot": {
@@ -1050,6 +1097,7 @@ suite = {
             ],
             "workingSets": "SVM",
             "spotbugs": "false",
+            "jacoco" : "exclude",
         },
 
         "org.graalvm.polyglot.nativeapi" : {
@@ -1070,6 +1118,7 @@ suite = {
             ],
             "workingSets" : "SVM",
             "spotbugs": "false",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.graal.hotspot.libgraal" : {
@@ -1091,6 +1140,7 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "defaultBuild": False,
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.configure": {
@@ -1108,6 +1158,7 @@ suite = {
             ],
             "javaCompliance": "11+",
             "spotbugs": "false",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.jvmtiagentbase": {
@@ -1126,6 +1177,7 @@ suite = {
             ],
             "javaCompliance": "11+",
             "spotbugs": "false",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.agent": {
@@ -1147,6 +1199,7 @@ suite = {
             ],
             "javaCompliance": "11+",
             "spotbugs": "false",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.diagnosticsagent": {
@@ -1172,6 +1225,7 @@ suite = {
             ],
             "javaCompliance": "11+",
             "spotbugs": "false",
+            "jacoco" : "exclude",
         },
 
         "com.oracle.svm.truffle.tck" : {
@@ -1190,6 +1244,7 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "javaCompliance": "11+",
+            "jacoco" : "exclude",
         },
     },
 

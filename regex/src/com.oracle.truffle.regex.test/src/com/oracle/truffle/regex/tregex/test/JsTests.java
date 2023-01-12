@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import com.oracle.truffle.regex.tregex.string.Encodings;
 import org.junit.Test;
 
 import com.oracle.truffle.regex.tregex.TRegexOptions;
@@ -49,6 +50,11 @@ public class JsTests extends RegexTestBase {
     @Override
     String getEngineOptions() {
         return "";
+    }
+
+    @Override
+    Encodings.Encoding getTRegexEncoding() {
+        return Encodings.UTF_16_RAW;
     }
 
     @Test
@@ -180,5 +186,13 @@ public class JsTests extends RegexTestBase {
         test("(?!(?!(?=\\b|\\D|\\s|$|\\1|(?!(.))){0})+?)", "yim", "\u009c\u511c\n\u009c\u511c\n", 0, true, 0, 0, -1, -1);
         test("(?!(\\1)?[\\s\\w\\D])+?", "", "", 0, true, 0, 0, -1, -1);
         test("(?!(?=((?:[n-\u0e32]*?o+?[^])))*?\\w)", "yim", "_", 0, false);
+    }
+
+    @Test
+    public void gr42266() {
+        // reduced
+        test("(?![^\\d\\D]$)[^]", "", "x", 0, true, 0, 1);
+        // original
+        test("((?:(?!([^\\d\\D\\W\\cU])\\b)(([^]\u11C2)))*?)", "gi", "x", 0, true, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1);
     }
 }

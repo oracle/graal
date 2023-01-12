@@ -116,7 +116,7 @@ final class NativeSignature {
                     ffi_type type = cif.arg_types().read(i);
                     primIdx = alignUp(primIdx, type.alignment());
                     argPtrs.write(i, prim.add(primIdx));
-                    primIdx += type.size().rawValue();
+                    primIdx += (int) type.size().rawValue();
                 }
 
                 for (int i = 0; i < patchCount; i++) {

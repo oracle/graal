@@ -33,11 +33,11 @@ public class BlockMap<T> {
         data = (T[]) new Object[cfg.getBlocks().length];
     }
 
-    public T get(AbstractBlockBase<?> block) {
+    public T get(BasicBlock<?> block) {
         return data[block.getId()];
     }
 
-    public void put(AbstractBlockBase<?> block, T value) {
+    public void put(BasicBlock<?> block, T value) {
         data[block.getId()] = value;
     }
 }

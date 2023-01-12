@@ -40,28 +40,23 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import com.oracle.truffle.regex.tregex.string.Encodings;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.errors.PyErrorMessages;
 
 public class PythonTests extends RegexTestBase {
 
     @Override
     String getEngineOptions() {
-        return "Flavor=PythonStr,Encoding=UTF-32";
+        return "Flavor=Python";
     }
 
     @Override
-    void test(String pattern, String flags, Object input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
-        super.test(pattern, flags, "", TruffleString.fromJavaStringUncached((String) input, TruffleString.Encoding.UTF_32), fromIndex, isMatch, captureGroupBoundsAndLastGroup);
-    }
-
-    @Override
-    void test(String pattern, String flags, String options, Object input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
-        super.test(pattern, flags, options, TruffleString.fromJavaStringUncached((String) input, TruffleString.Encoding.UTF_32), fromIndex, isMatch, captureGroupBoundsAndLastGroup);
+    Encodings.Encoding getTRegexEncoding() {
+        return Encodings.UTF_32;
     }
 
     @Test
@@ -309,5 +304,13 @@ public class PythonTests extends RegexTestBase {
         // not reflected in quantifier guards. In order for the traversal to find the needed path,
         // the group boundaries have to be checked when pruning.
         test("(?:|())(?:|())(?:|())(?:|())(?:|())(?:|())(?:|())(?:|())\\3\\5\\7", "", "", 0, true, 0, 0, -1, -1, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1, 7);
+    }
+
+    @Test
+    public void gr41215() {
+        test("(?<= )b|ab", "", "PythonMethod=match", " b", 1, true, 1, 2);
+        test("(?<= )b|abc", "", "PythonMethod=match", " b", 1, true, 1, 2);
+        test("(?<!\\.)b|ab", "", "PythonMethod=match", " b", 1, true, 1, 2);
+        test("(?=a)|(?<=a)|:", "", "PythonMethod=match", "a:", 1, true, 1, 1);
     }
 }

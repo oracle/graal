@@ -39,7 +39,7 @@ import java.util.EnumSet;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.framemap.FrameMap;
@@ -444,14 +444,14 @@ public class StandardOp {
         /**
          * The block in which this instruction is located.
          */
-        final AbstractBlockBase<?> block;
+        final BasicBlock<?> block;
 
         /**
          * The block index of this instruction.
          */
         final int index;
 
-        public NoOp(AbstractBlockBase<?> block, int index) {
+        public NoOp(BasicBlock<?> block, int index) {
             super(TYPE);
             this.block = block;
             this.index = index;

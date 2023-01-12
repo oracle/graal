@@ -191,7 +191,7 @@ def _sulong_gate_runner(args, tasks):
         if t: mx.command_function('clangformat')([])
     # Folders not containing tests: options, services, util
     _unittest('Benchmarks', 'SULONG_SHOOTOUT_TEST_SUITE', description="Language Benchmark game tests", testClasses=['ShootoutsSuite'], tags=['benchmarks', 'sulongMisc'])
-    _unittest('Types', 'SULONG_TEST', description="Test floating point arithmetic", testClasses=['com.oracle.truffle.llvm.tests.types.floating.'], tags=['type', 'sulongMisc'])
+    _unittest('Types', 'SULONG_TEST', description="Test floating point arithmetic", testClasses=['com.oracle.truffle.llvm.tests.types.floating.'], tags=['type', 'sulongMisc', 'sulongWinSupport'])
     _unittest('Pipe', 'SULONG_TEST', description="Test output capturing", testClasses=['CaptureOutputTest'], tags=['pipe', 'sulongMisc'])
     _unittest('LLVM', 'SULONG_LLVM_TEST_SUITE', description="LLVM 3.2 test suite", testClasses=['LLVMSuite'], tags=['llvm'])
     _unittest('NWCC', 'SULONG_NWCC_TEST_SUITE', description="Test suite of the NWCC compiler v0.8.3", testClasses=['NWCCSuite'], tags=['nwcc'])
@@ -200,18 +200,18 @@ def _sulong_gate_runner(args, tasks):
     _unittest('GCC_CPP', 'SULONG_GCC_CPP_TEST_SUITE', description="GCC 5.2 test suite (C++ tests)", testClasses=['GccCppSuite'], tags=['gcc_cpp'])
     _unittest('GCC_Fortran', 'SULONG_GCC_FORTRAN_TEST_SUITE', description="GCC 5.2 test suite (Fortran tests)", testClasses=['GccFortranSuite'], tags=['gcc_fortran'])
     _unittest('Sulong', 'SULONG_STANDALONE_TEST_SUITES', description="Sulong's internal tests", testClasses='SulongSuite', tags=['sulongStandalone', 'sulongBasic'])
-    _unittest('Interop', 'SULONG_EMBEDDED_TEST_SUITES', description="Truffle Language interoperability tests", testClasses=['com.oracle.truffle.llvm.tests.interop.'], tags=['interop', 'sulongBasic'])
-    _unittest('SulongNFI', 'SULONG_NFI_TESTS', description="Truffle NFI test suite with the Sulong NFI backend", testClasses=['com.oracle.truffle.nfi.test'], tags=['sulongNFI', 'sulongBasic'],
+    _unittest('Interop', 'SULONG_EMBEDDED_TEST_SUITES', description="Truffle Language interoperability tests", testClasses=['com.oracle.truffle.llvm.tests.interop.'], tags=['interop', 'sulongBasic', 'sulongWinSupport'])
+    _unittest('SulongNFI', 'SULONG_NFI_TESTS', description="Truffle NFI test suite with the Sulong NFI backend", testClasses=['com.oracle.truffle.nfi.test'], tags=['sulongNFI', 'sulongBasic', 'sulongWinSupport'],
             extraUnittestArgs=['-Dnative.test.backend=llvm', '-Dnative.test.path.llvm=<path:SULONG_NFI_TESTS>'])
     _unittest('Linker', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.linker.'], tags=['linker', 'sulongBasic'])
-    _unittest('Debug', 'SULONG_EMBEDDED_TEST_SUITES', description="Debug support test suite", testClasses=['com.oracle.truffle.llvm.tests.debug.LLVMDebugTest'], tags=['debug', 'sulongBasic'])
+    _unittest('Debug', 'SULONG_EMBEDDED_TEST_SUITES', description="Debug support test suite", testClasses=['com.oracle.truffle.llvm.tests.debug.LLVMDebugTest'], tags=['debug', 'sulongBasic', 'sulongWinSupport'])
     _unittest('IRDebug', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.debug.LLVMIRDebugTest'], tags=['irdebug', 'sulongBasic'])
     _unittest('BitcodeFormat', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.bitcodeformat.'], tags=['bitcodeFormat', 'sulongBasic'])
-    _unittest('DebugExpr', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.debug.LLVMDebugExprParserTest'], tags=['debugexpr', 'sulongBasic'])
-    _unittest('OtherTests', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.bitcode.', 'com.oracle.truffle.llvm.tests.other.', 'com.oracle.truffle.llvm.tests.runtime.'], tags=['otherTests', 'sulongBasic'])
-    _unittest('Args', 'SULONG_EMBEDDED_TEST_SUITES', description="Tests main args passing", testClasses=['com.oracle.truffle.llvm.tests.MainArgsTest'], tags=['args', 'sulongMisc'])
-    _unittest('Callback', 'SULONG_EMBEDDED_TEST_SUITES', description="Test calling native functions", testClasses=['com.oracle.truffle.llvm.tests.CallbackTest'], tags=['callback', 'sulongMisc'])
-    _unittest('Varargs', 'SULONG_EMBEDDED_TEST_SUITES', description="Varargs tests", testClasses=['com.oracle.truffle.llvm.tests.VAArgsTest'], tags=['vaargs', 'sulongMisc'])
+    _unittest('DebugExpr', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.debug.LLVMDebugExprParserTest'], tags=['debugexpr', 'sulongBasic', 'sulongWinSupport'])
+    _unittest('OtherTests', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.bitcode.', 'com.oracle.truffle.llvm.tests.other.', 'com.oracle.truffle.llvm.tests.runtime.'], tags=['otherTests', 'sulongBasic', 'sulongWinSupport'])
+    _unittest('Args', 'SULONG_EMBEDDED_TEST_SUITES', description="Tests main args passing", testClasses=['com.oracle.truffle.llvm.tests.MainArgsTest'], tags=['args', 'sulongMisc', 'sulongWinSupport'])
+    _unittest('Callback', 'SULONG_EMBEDDED_TEST_SUITES', description="Test calling native functions", testClasses=['com.oracle.truffle.llvm.tests.CallbackTest'], tags=['callback', 'sulongMisc', 'sulongWinSupport'])
+    _unittest('Varargs', 'SULONG_EMBEDDED_TEST_SUITES', description="Varargs tests", testClasses=['com.oracle.truffle.llvm.tests.VAArgsTest'], tags=['vaargs', 'sulongMisc', 'sulongWinSupport'])
     _unittest_task_factory.execute(tasks)
     with Task('TestToolchain', description="build toolchain-launchers-tests project", tags=['toolchain', 'sulongMisc'], tasks=tasks) as t:
         if t:

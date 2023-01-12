@@ -24,44 +24,51 @@
  */
 package com.oracle.svm.hosted.reflect;
 
-import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+
 public interface ReflectionHostedSupport {
     Map<Class<?>, Set<Class<?>>> getReflectionInnerClasses();
 
-    Set<Field> getReflectionFields();
+    Map<AnalysisField, Field> getReflectionFields();
 
-    Set<Executable> getReflectionExecutables();
+    Map<AnalysisMethod, Executable> getReflectionExecutables();
 
-    Object getAccessor(Executable method);
+    Object getAccessor(AnalysisMethod method);
 
-    /*
-     * Returns the methods and fields that shadow a superclass element registered for reflection, to
-     * be excluded from reflection queries.
+    /**
+     * Returns the fields that shadow a superclass element registered for reflection, to be excluded
+     * from reflection queries.
      */
     Set<?> getHidingReflectionFields();
 
+    /**
+     * Returns the methods that shadow a superclass element registered for reflection, to be
+     * excluded from reflection queries.
+     */
     Set<?> getHidingReflectionMethods();
 
     Object[] getRecordComponents(Class<?> type);
 
-    void registerHeapDynamicHub(Object hub);
+    void registerHeapDynamicHub(Object hub, ScanReason reason);
 
     Set<?> getHeapDynamicHubs();
 
-    void registerHeapReflectionObject(AccessibleObject object);
+    void registerHeapReflectionField(Field field, ScanReason reason);
 
-    Set<AccessibleObject> getHeapReflectionObjects();
+    void registerHeapReflectionExecutable(Executable executable, ScanReason reason);
 
-    int getReflectionClassesCount();
+    Map<AnalysisField, Field> getHeapReflectionFields();
+
+    Map<AnalysisMethod, Executable> getHeapReflectionExecutables();
 
     int getReflectionMethodsCount();
 
     int getReflectionFieldsCount();
-
-    boolean requiresProcessing();
 }

@@ -191,10 +191,8 @@ public final class LoadModulesNode extends LLVMRootNode {
                 initContext = this.insert(language.createInitializeContextNode());
                 hasInitialised = true;
             }
-
             LLVMScopeChain firstScopeChain = loadModule(frame, context);
-            context.addSourceForCache(bitcodeID, source);
-            context.addCalltargetForCache(libraryName, this.getCallTarget());
+            context.addCalltargetForLoadedLibrary(libraryName, this.getCallTarget());
 
             // Only the root library (not a dependency) will have a non-null scope.
             if (firstScopeChain != null) {

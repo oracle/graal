@@ -55,6 +55,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
@@ -100,7 +101,7 @@ public class AnalysisToHostedGraphTransplanter {
         OptionValues compileOptions = compileQueue.getCustomizedOptions(hMethod, debug);
         boolean trackNodeSourcePosition = GraalOptions.TrackNodeSourcePosition.getValue(compileOptions);
         assert aMethod.equals(aGraph.method());
-        StructuredGraph graph = aGraph.copy(getHostedMethod(universe, aMethod), compileOptions, debug, trackNodeSourcePosition);
+        StructuredGraph graph = aGraph.copy(hMethod, compileOptions, debug, trackNodeSourcePosition);
 
         transplantEscapeAnalysisState(graph);
 
@@ -202,6 +203,20 @@ public class AnalysisToHostedGraphTransplanter {
     }
 
     private static HostedMethod getHostedMethod(HostedUniverse universe, ResolvedJavaMethod method) {
+        if (method instanceof AnalysisMethod) {
+            AnalysisMethod aMethod = (AnalysisMethod) method;
+            if (!aMethod.isOriginalMethod()) {
+                /*
+                 * Queries to the HostedUniverse must be made on the original method.
+                 */
+                AnalysisMethod aOrig = aMethod.getMultiMethod(MultiMethod.ORIGINAL_METHOD);
+                assert aOrig != null;
+                HostedMethod hOrig = universe.lookup(aOrig);
+                HostedMethod hMethod = hOrig.getMultiMethod(aMethod.getMultiMethodKey());
+                assert hMethod != null;
+                return hMethod;
+            }
+        }
         return universe.lookup(method);
     }
 

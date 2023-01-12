@@ -54,7 +54,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
@@ -166,12 +166,12 @@ public final class GraphOrder {
             BlockIteratorClosure<NodeBitMap> closure = new BlockIteratorClosure<>() {
 
                 @Override
-                protected List<NodeBitMap> processLoop(Loop<Block> loop, NodeBitMap initialState) {
+                protected List<NodeBitMap> processLoop(Loop<HIRBlock> loop, NodeBitMap initialState) {
                     return ReentrantBlockIterator.processLoop(this, loop, initialState).exitStates;
                 }
 
                 @Override
-                protected NodeBitMap processBlock(final Block block, final NodeBitMap currentState) {
+                protected NodeBitMap processBlock(final HIRBlock block, final NodeBitMap currentState) {
                     final List<Node> list = graph.getLastSchedule().getBlockToNodesMap().get(block);
 
                     /*
@@ -278,7 +278,7 @@ public final class GraphOrder {
                 }
 
                 @Override
-                protected NodeBitMap merge(Block merge, List<NodeBitMap> states) {
+                protected NodeBitMap merge(HIRBlock merge, List<NodeBitMap> states) {
                     NodeBitMap result = states.get(0);
                     for (int i = 1; i < states.size(); i++) {
                         result.intersect(states.get(i));

@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 
+import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 
@@ -82,6 +83,7 @@ public final class ClassRedefinition {
 
     private final EspressoContext context;
     private final Ids<Object> ids;
+    private final DebuggerController controller;
     private final RedefineListener redefineListener;
     private volatile Assumption missingFieldAssumption = Truffle.getRuntime().createAssumption();
     private ArrayList<Field> currentDelegationFields;
@@ -110,10 +112,11 @@ public final class ClassRedefinition {
         INVALID;
     }
 
-    public ClassRedefinition(EspressoContext context, Ids<Object> ids, RedefineListener listener) {
+    public ClassRedefinition(EspressoContext context, Ids<Object> ids, RedefineListener listener, DebuggerController controller) {
         this.context = context;
         this.ids = ids;
         this.redefineListener = listener;
+        this.controller = controller;
     }
 
     public void begin() {
@@ -148,7 +151,7 @@ public final class ClassRedefinition {
     }
 
     public void runPostRedefintionListeners(ObjectKlass[] changedKlasses) {
-        redefineListener.postRedefinition(changedKlasses);
+        redefineListener.postRedefinition(changedKlasses, controller);
     }
 
     public void check() {
@@ -796,7 +799,7 @@ public final class ClassRedefinition {
         }
         oldKlass.redefineClass(packet, invalidatedClasses, ids);
         redefinedClasses.add(oldKlass);
-        if (redefineListener.shouldRerunClassInitializer(oldKlass, packet.detectedChange.clinitChanged())) {
+        if (redefineListener.shouldRerunClassInitializer(oldKlass, packet.detectedChange.clinitChanged(), controller)) {
             context.rerunclinit(oldKlass);
         }
     }
@@ -826,5 +829,9 @@ public final class ClassRedefinition {
 
     public int getNextAvailableFieldSlot() {
         return nextAvailableFieldSlot.getAndDecrement();
+    }
+
+    public DebuggerController getController() {
+        return controller;
     }
 }

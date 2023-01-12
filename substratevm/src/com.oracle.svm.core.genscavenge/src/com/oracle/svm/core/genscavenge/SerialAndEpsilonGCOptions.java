@@ -30,7 +30,6 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -81,8 +80,8 @@ public final class SerialAndEpsilonGCOptions {
 
     public static void serialOrEpsilonGCOnly(OptionKey<?> optionKey) {
         if (!SubstrateOptions.UseSerialGC.getValue() && !SubstrateOptions.UseEpsilonGC.getValue()) {
-            throw new InterruptImageBuilding("The option " + optionKey.getName() + " is garbage collector specific and cannot be specified if the " +
-                            Heap.getHeap().getGC().getName() + " is used at runtime.");
+            throw new InterruptImageBuilding(
+                            "The option '" + optionKey.getName() + "' can only be used together with the serial ('--gc=serial') or the epsilon garbage collector ('--gc=epsilon').");
         }
     }
 }

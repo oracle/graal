@@ -62,6 +62,9 @@ public final class Target_sun_reflect_annotation_AnnotationParser {
                     boolean exceptionOnMissingAnnotationClass,
                     Class<? extends Annotation>[] selectAnnotationClasses) {
         int typeIndex = buf.getInt();
+        if (typeIndex < 0) {
+            throw new AnnotationFormatError("Annotations could not be parsed at image build time");
+        }
         Class<? extends Annotation> annotationClass;
         try {
             annotationClass = (Class<? extends Annotation>) constPool.getClassAt(typeIndex);

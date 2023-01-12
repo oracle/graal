@@ -88,16 +88,7 @@ public class CompilationInfo {
 
     public boolean isDeoptEntry(int bci, boolean duringCall, boolean rethrowException) {
         return method.isDeoptTarget() && (method.getMultiMethod(MultiMethod.ORIGINAL_METHOD).compilationInfo.canDeoptForTesting ||
-                        SubstrateCompilationDirectives.singleton().isDeoptEntry(method, bci, duringCall, rethrowException));
-    }
-
-    /**
-     * Returns whether this bci was registered as a potential deoptimization entrypoint via
-     * {@link SubstrateCompilationDirectives#registerDeoptEntry}.
-     */
-    public boolean isRegisteredDeoptEntry(int bci, boolean duringCall, boolean rethrowException) {
-        return method.isDeoptTarget() && SubstrateCompilationDirectives.singleton().isDeoptTarget(method) &&
-                        SubstrateCompilationDirectives.singleton().isDeoptEntry(method, bci, duringCall, rethrowException);
+                        SubstrateCompilationDirectives.singleton().isRegisteredDeoptEntry(method, bci, duringCall, rethrowException));
     }
 
     public boolean canDeoptForTesting() {

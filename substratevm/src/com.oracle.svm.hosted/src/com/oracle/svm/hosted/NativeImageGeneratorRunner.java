@@ -90,6 +90,10 @@ public class NativeImageGeneratorRunner {
     public static final String IMAGE_BUILDER_ARG_FILE_OPTION = "--image-args-file=";
 
     public static void main(String[] args) {
+        new NativeImageGeneratorRunner().start(args);
+    }
+
+    protected void start(String[] args) {
         List<String> arguments = new ArrayList<>(Arrays.asList(args));
         arguments = extractDriverArguments(arguments);
         final String[] classPath = extractImagePathEntries(arguments, SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
@@ -126,7 +130,7 @@ public class NativeImageGeneratorRunner {
             if (!remainingArguments.isEmpty()) {
                 throw UserError.abort("Unknown options: %s", String.join(" ", remainingArguments));
             }
-            exitStatus = new NativeImageGeneratorRunner().build(imageClassLoader);
+            exitStatus = build(imageClassLoader);
         } catch (UserException e) {
             reportUserError(e.getMessage());
             exitStatus = ExitStatus.BUILDER_ERROR.getValue();
@@ -283,6 +287,7 @@ public class NativeImageGeneratorRunner {
         ForkJoinPool compilationExecutor = null;
 
         ProgressReporter reporter = new ProgressReporter(parsedHostedOptions);
+        Throwable vmError = null;
         boolean wasSuccessfulBuild = false;
         try (StopTimer ignored = totalTimer.start()) {
             Timer classlistTimer = timerCollection.get(TimerCollection.Registry.CLASSLIST);
@@ -381,25 +386,18 @@ public class NativeImageGeneratorRunner {
                         if (!Modifier.isPublic(mainMethodModifiers)) {
                             throw UserError.abort("Java main method '%s.%s(String[])' is not public.", mainClass.getName(), mainEntryPointName);
                         }
-                        javaMainSupport = new JavaMainSupport(javaMainMethod);
-                        mainEntryPoint = JavaMainWrapper.class.getDeclaredMethod("run", int.class, CCharPointerPointer.class);
+                        javaMainSupport = createJavaMainSupport(javaMainMethod, classLoader);
+                        mainEntryPoint = getMainEntryMethod(classLoader);
                     }
-                    CEntryPoint annotation = mainEntryPoint.getAnnotation(CEntryPoint.class);
-                    if (annotation == null) {
-                        throw UserError.abort("Entry point must have the '@%s' annotation", CEntryPoint.class.getSimpleName());
-                    }
+                    verifyMainEntryPoint(mainEntryPoint);
 
-                    Class<?>[] pt = mainEntryPoint.getParameterTypes();
-                    if (pt.length != 2 || pt[0] != int.class || pt[1] != CCharPointerPointer.class || mainEntryPoint.getReturnType() != int.class) {
-                        throw UserError.abort("Main entry point must have signature 'int main(int argc, CCharPointerPointer argv)'.");
-                    }
-                    mainEntryPointData = Pair.create(mainEntryPoint, CEntryPointData.create(mainEntryPoint, imageKind.mainEntryPointName));
+                    mainEntryPointData = createMainEntryPointData(imageKind, mainEntryPoint);
                 }
 
                 int maxConcurrentThreads = NativeImageOptions.getMaximumNumberOfConcurrentThreads(parsedHostedOptions);
                 analysisExecutor = NativeImagePointsToAnalysis.createExecutor(debug, NativeImageOptions.getMaximumNumberOfAnalysisThreads(parsedHostedOptions));
                 compilationExecutor = NativeImagePointsToAnalysis.createExecutor(debug, maxConcurrentThreads);
-                generator = new NativeImageGenerator(classLoader, optionParser, mainEntryPointData, reporter);
+                generator = createImageGenerator(classLoader, optionParser, mainEntryPointData, reporter);
                 generator.run(entryPoints, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY,
                                 compilationExecutor, analysisExecutor, optionParser.getRuntimeOptionNames(), timerCollection);
                 wasSuccessfulBuild = true;
@@ -455,16 +453,47 @@ public class NativeImageGeneratorRunner {
             }
             return ExitStatus.BUILDER_ERROR.getValue();
         } catch (Throwable e) {
-            NativeImageGeneratorRunner.reportFatalError(e);
+            vmError = e;
             return ExitStatus.BUILDER_ERROR.getValue();
         } finally {
-            if (imageName != null && generator != null) {
-                reporter.printEpilog(imageName, generator, wasSuccessfulBuild, parsedHostedOptions);
-            }
+            reportEpilog(imageName, reporter, classLoader, vmError, parsedHostedOptions);
             NativeImageGenerator.clearSystemPropertiesForImage();
             ImageSingletonsSupportImpl.HostedManagement.clear();
         }
         return ExitStatus.OK.getValue();
+    }
+
+    protected void reportEpilog(String imageName, ProgressReporter reporter, ImageClassLoader classLoader, Throwable vmError, OptionValues parsedHostedOptions) {
+        reporter.printEpilog(imageName, generator, generator.featureHandler, classLoader, vmError, parsedHostedOptions);
+    }
+
+    protected NativeImageGenerator createImageGenerator(ImageClassLoader classLoader, HostedOptionParser optionParser, Pair<Method, CEntryPointData> mainEntryPointData, ProgressReporter reporter) {
+        return new NativeImageGenerator(classLoader, optionParser, mainEntryPointData, reporter);
+    }
+
+    protected Pair<Method, CEntryPointData> createMainEntryPointData(NativeImageKind imageKind, Method mainEntryPoint) {
+        Pair<Method, CEntryPointData> mainEntryPointData;
+        Class<?>[] pt = mainEntryPoint.getParameterTypes();
+        if (pt.length != 2 || pt[0] != int.class || pt[1] != CCharPointerPointer.class || mainEntryPoint.getReturnType() != int.class) {
+            throw UserError.abort("Main entry point must have signature 'int main(int argc, CCharPointerPointer argv)'.");
+        }
+        mainEntryPointData = Pair.create(mainEntryPoint, CEntryPointData.create(mainEntryPoint, imageKind.mainEntryPointName));
+        return mainEntryPointData;
+    }
+
+    protected Method getMainEntryMethod(@SuppressWarnings("unused") ImageClassLoader classLoader) throws NoSuchMethodException {
+        return JavaMainWrapper.class.getDeclaredMethod("run", int.class, CCharPointerPointer.class);
+    }
+
+    protected JavaMainSupport createJavaMainSupport(Method javaMainMethod, @SuppressWarnings("unused") ImageClassLoader classLoader) throws IllegalAccessException {
+        return new JavaMainSupport(javaMainMethod);
+    }
+
+    protected void verifyMainEntryPoint(Method mainEntryPoint) {
+        CEntryPoint annotation = mainEntryPoint.getAnnotation(CEntryPoint.class);
+        if (annotation == null) {
+            throw UserError.abort("Entry point must have the '@%s' annotation", CEntryPoint.class.getSimpleName());
+        }
     }
 
     public static boolean verifyValidJavaVersionAndPlatform() {
@@ -590,6 +619,11 @@ public class NativeImageGeneratorRunner {
     public static class JDK9Plus {
 
         public static void main(String[] args) {
+            setModuleAccesses();
+            NativeImageGeneratorRunner.main(args);
+        }
+
+        public static void setModuleAccesses() {
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.sdk");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.truffle");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.internal.vm.ci");
@@ -607,7 +641,6 @@ public class NativeImageGeneratorRunner {
                 ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.security.jca");
                 ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.jdeps", "com.sun.tools.classfile");
             }
-            NativeImageGeneratorRunner.main(args);
         }
     }
 }

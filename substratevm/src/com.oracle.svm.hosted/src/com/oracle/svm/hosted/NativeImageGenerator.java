@@ -32,7 +32,6 @@ import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.regi
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
-import java.lang.ref.Reference;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
@@ -77,6 +76,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.java.BciBlockMapping;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -131,7 +131,6 @@ import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.SizeOfSupport;
-import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.graal.pointsto.AnalysisObjectScanningObserver;
@@ -142,7 +141,6 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
-import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.bytecode.BytecodeSensitiveAnalysisPolicy;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
@@ -221,8 +219,8 @@ import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeapLayouter;
+import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -293,7 +291,7 @@ import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.InjectedAccessorsPlugin;
 import com.oracle.svm.hosted.phases.IntrinsifyMethodHandlesInvocationPlugin;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
-import com.oracle.svm.hosted.phases.VerifyDeoptFrameStatesLIRPhase;
+import com.oracle.svm.hosted.phases.VerifyDeoptLIRFrameStatesPhase;
 import com.oracle.svm.hosted.phases.VerifyNoGuardsPhase;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
@@ -335,14 +333,9 @@ public class NativeImageGenerator {
     protected final Map<ArtifactType, List<Path>> buildArtifacts = new EnumMap<>(ArtifactType.class);
 
     public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint, ProgressReporter reporter) {
-        this(loader, optionProvider, mainEntryPoint, reporter, new FeatureHandler());
-    }
-
-    protected NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint, ProgressReporter reporter,
-                    FeatureHandler featureHandler) {
         this.loader = loader;
         this.mainEntryPoint = mainEntryPoint;
-        this.featureHandler = featureHandler;
+        this.featureHandler = new FeatureHandler();
         this.optionProvider = optionProvider;
         this.reporter = reporter;
         /*
@@ -351,6 +344,14 @@ public class NativeImageGenerator {
          */
         optionProvider.getHostedValues().put(GraalOptions.EagerSnippets, true);
         optionProvider.getRuntimeValues().put(GraalOptions.EagerSnippets, true);
+
+        if (!optionProvider.getHostedValues().containsKey(BciBlockMapping.Options.MaxDuplicationFactor)) {
+            /*
+             * Not being able to parse irreducible loops and jsr/ret structures means that image
+             * generation fails. We therefore allow a good bit of duplication.
+             */
+            optionProvider.getHostedValues().put(BciBlockMapping.Options.MaxDuplicationFactor, 10.0);
+        }
     }
 
     public static Platform loadPlatform(ClassLoader classLoader, String platformClassName) throws ClassNotFoundException {
@@ -660,13 +661,15 @@ public class NativeImageGenerator {
                 /* release memory taken by graphs for the image writing */
                 hUniverse.getMethods().forEach(HostedMethod::clear);
 
-                codeCache = NativeImageCodeCacheFactory.get().newCodeCache(compileQueue, heap, loader.platform,
-                                ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory());
-                codeCache.layoutConstants();
-                codeCache.layoutMethods(debug, bb, compilationExecutor);
+                try (ProgressReporter.ReporterClosable ac = reporter.printLayouting()) {
+                    codeCache = NativeImageCodeCacheFactory.get().newCodeCache(compileQueue, heap, loader.platform,
+                                    ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory());
+                    codeCache.layoutConstants();
+                    codeCache.layoutMethods(debug, bb, compilationExecutor);
+                }
 
                 BuildPhaseProvider.markCompilationFinished();
-                AfterCompilationAccessImpl config = new AfterCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, compileQueue.getCompilations(), heap, debug, runtime);
+                AfterCompilationAccessImpl config = new AfterCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, compileQueue.getCompilations(), codeCache, heap, debug, runtime);
                 featureHandler.forEachFeature(feature -> feature.afterCompilation(config));
             }
             CodeCacheProvider codeCacheProvider = runtime.getRuntimeConfig().getBackendForNormalMethod().getProviders().getCodeCache();
@@ -748,7 +751,9 @@ public class NativeImageGenerator {
         try (Indent ignored = debug.logAndIndent("run analysis")) {
             try (Indent ignored1 = debug.logAndIndent("process analysis initializers")) {
                 BeforeAnalysisAccessImpl config = new BeforeAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
+                ServiceCatalogSupport.singleton().enableServiceCatalogMapTransformer(config);
                 featureHandler.forEachFeature(feature -> feature.beforeAnalysis(config));
+                ServiceCatalogSupport.singleton().seal();
                 bb.getHostVM().getClassInitializationSupport().setConfigurationSealed(true);
             }
 
@@ -1041,17 +1046,17 @@ public class NativeImageGenerator {
          * good example.
          */
         try (Indent ignored = debug.logAndIndent("add initial classes/fields/methods")) {
-            bb.markTypeInHeap(bb.addRootClass(Object.class, false, false));
+            bb.registerTypeAsInHeap(bb.addRootClass(Object.class, false, false), "root class");
             bb.addRootField(DynamicHub.class, "vtable");
-            bb.markTypeInHeap(bb.addRootClass(String.class, false, false));
-            bb.markTypeInHeap(bb.addRootClass(String[].class, false, false));
-            bb.markTypeInHeap(bb.addRootField(String.class, "value"));
-            bb.markTypeInHeap(bb.addRootClass(long[].class, false, false));
-            bb.markTypeInHeap(bb.addRootClass(byte[].class, false, false));
-            bb.markTypeInHeap(bb.addRootClass(byte[][].class, false, false));
-            bb.markTypeInHeap(bb.addRootClass(Object[].class, false, false));
-            bb.markTypeInHeap(bb.addRootClass(CFunctionPointer[].class, false, false));
-            bb.markTypeInHeap(bb.addRootClass(PointerBase[].class, false, false));
+            bb.registerTypeAsInHeap(bb.addRootClass(String.class, false, false), "root class");
+            bb.registerTypeAsInHeap(bb.addRootClass(String[].class, false, false), "root class");
+            bb.registerTypeAsInHeap(bb.addRootField(String.class, "value"), "root class");
+            bb.registerTypeAsInHeap(bb.addRootClass(long[].class, false, false), "root class");
+            bb.registerTypeAsInHeap(bb.addRootClass(byte[].class, false, false), "root class");
+            bb.registerTypeAsInHeap(bb.addRootClass(byte[][].class, false, false), "root class");
+            bb.registerTypeAsInHeap(bb.addRootClass(Object[].class, false, false), "root class");
+            bb.registerTypeAsInHeap(bb.addRootClass(CFunctionPointer[].class, false, false), "root class");
+            bb.registerTypeAsInHeap(bb.addRootClass(PointerBase[].class, false, false), "root class");
 
             bb.addRootMethod(ReflectionUtil.lookupMethod(SubstrateArraycopySnippets.class, "doArraycopy", Object.class, int.class, Object.class, int.class, int.class), true);
             bb.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true);
@@ -1059,7 +1064,7 @@ public class NativeImageGenerator {
             for (JavaKind kind : JavaKind.values()) {
                 if (kind.isPrimitive() && kind != JavaKind.Void) {
                     bb.addRootClass(kind.toJavaClass(), false, true);
-                    bb.addRootClass(kind.toBoxedJavaClass(), false, true).registerAsInHeap();
+                    bb.addRootClass(kind.toBoxedJavaClass(), false, true).registerAsInHeap("root class");
                     bb.addRootField(kind.toBoxedJavaClass(), "value");
                     bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), "valueOf", kind.toJavaClass()), true);
                     bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), kind.getJavaName() + "Value"), true);
@@ -1069,14 +1074,14 @@ public class NativeImageGenerator {
                      */
                     Class<?>[] innerClasses = kind.toBoxedJavaClass().getDeclaredClasses();
                     if (innerClasses != null && innerClasses.length > 0) {
-                        bb.getMetaAccess().lookupJavaType(innerClasses[0]).registerAsReachable();
+                        bb.getMetaAccess().lookupJavaType(innerClasses[0]).registerAsReachable("inner class of root class");
                     }
                 }
             }
             /* SubstrateTemplates#toLocationIdentity accesses the Counter.value field. */
-            bb.getMetaAccess().lookupJavaType(JavaKind.Void.toJavaClass()).registerAsReachable();
-            bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.util.Counter.class).registerAsReachable();
-            bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.allocationprofile.AllocationCounter.class).registerAsReachable();
+            bb.getMetaAccess().lookupJavaType(JavaKind.Void.toJavaClass()).registerAsReachable("root class");
+            bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.util.Counter.class).registerAsReachable("root class");
+            bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.allocationprofile.AllocationCounter.class).registerAsReachable("root class");
 
             NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, null, aProviders, aMetaAccess, aUniverse, null, null, nativeLibraries, loader, ParsingReason.PointsToAnalysis,
                             bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, ConfigurationValues.getTarget());
@@ -1085,8 +1090,7 @@ public class NativeImageGenerator {
             Collection<StructuredGraph> snippetGraphs = aReplacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options);
             if (bb instanceof NativeImagePointsToAnalysis) {
                 for (StructuredGraph graph : snippetGraphs) {
-                    MethodTypeFlowBuilder methodTypeFlowBuilder = HostedConfiguration.instance().createMethodTypeFlowBuilder(((NativeImagePointsToAnalysis) bb), graph);
-                    methodTypeFlowBuilder.registerUsedElements(false);
+                    HostedConfiguration.instance().registerUsedElements((PointsToAnalysis) bb, graph, false);
                 }
             } else if (bb instanceof NativeImageReachabilityAnalysisEngine) {
                 NativeImageReachabilityAnalysisEngine reachabilityAnalysis = (NativeImageReachabilityAnalysisEngine) bb;
@@ -1104,13 +1108,11 @@ public class NativeImageGenerator {
                     SnippetReflectionProvider aSnippetReflection, AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ForeignCallsProvider aForeignCalls,
                     ClassInitializationSupport classInitializationSupport, Providers originalProviders, SubstratePlatformConfigurationProvider platformConfig) {
         assert aUniverse != null : "Analysis universe must be initialized.";
-        aMetaAccess.lookupJavaType(String.class).registerAsReachable();
         AnalysisConstantFieldProvider aConstantFieldProvider = new AnalysisConstantFieldProvider(aUniverse, aMetaAccess, aConstantReflection, classInitializationSupport);
         /*
          * Install all snippets so that the types, methods, and fields used in the snippets get
          * added to the universe.
          */
-        aMetaAccess.lookupJavaType(Reference.class).registerAsReachable();
         MetaAccessExtensionProvider aMetaAccessExtensionProvider = HostedConfiguration.instance().createAnalysisMetaAccessExtensionProvider();
         LoweringProvider aLoweringProvider = SubstrateLoweringProvider.createForHosted(aMetaAccess, null, platformConfig, aMetaAccessExtensionProvider);
         StampProvider aStampProvider = new SubstrateStampProvider(aMetaAccess);
@@ -1260,10 +1262,6 @@ public class NativeImageGenerator {
         plugins.appendNodePlugin(new IntrinsifyMethodHandlesInvocationPlugin(reason, providers, aUniverse, hUniverse));
         plugins.appendNodePlugin(new DeletedFieldsPlugin());
         plugins.appendNodePlugin(new InjectedAccessorsPlugin());
-        ResolvedJavaType resolvedJavaType = providers.getMetaAccess().lookupJavaType(ClassInitializationTracking.class);
-        if (resolvedJavaType instanceof AnalysisType) {
-            ((AnalysisType) resolvedJavaType).registerAsReachable();
-        }
         plugins.appendNodePlugin(new EarlyConstantFoldLoadFieldPlugin(providers.getMetaAccess(), providers.getSnippetReflection()));
         plugins.appendNodePlugin(new ConstantFoldLoadFieldPlugin(reason));
         plugins.appendNodePlugin(new CInterfaceInvocationPlugin(providers.getMetaAccess(), providers.getWordTypes(), nativeLibs));
@@ -1558,7 +1556,7 @@ public class NativeImageGenerator {
 
     private static boolean addAssertionLIRPhases(LIRSuites lirSuites, boolean hosted) {
         if (hosted) {
-            lirSuites.getFinalCodeAnalysisStage().appendPhase(new VerifyDeoptFrameStatesLIRPhase());
+            lirSuites.getFinalCodeAnalysisStage().appendPhase(new VerifyDeoptLIRFrameStatesPhase());
         }
         return true;
     }
@@ -1635,10 +1633,14 @@ public class NativeImageGenerator {
             }
         }
 
-        /*
-         * Entry points use a different calling convention (the native C ABI calling convention), so
-         * they must not be called from other Java methods.
-         */
+        checkForInvalidCallsToEntryPoints();
+    }
+
+    /**
+     * Entry points use a different calling convention (the native C ABI calling convention), so
+     * they must not be called from other Java methods.
+     */
+    protected void checkForInvalidCallsToEntryPoints() {
         for (AnalysisMethod method : aUniverse.getMethods()) {
             if (method.isEntryPoint()) {
                 Set<AnalysisMethod> invocations = method.getCallers();
@@ -1889,7 +1891,7 @@ public class NativeImageGenerator {
 
     private static <T extends Enum<T>> Set<T> parseCSVtoEnum(Class<T> enumType, List<String> csvEnumValues, T[] availValues) {
         EnumSet<T> result = EnumSet.noneOf(enumType);
-        for (String enumValue : OptionUtils.flatten(",", csvEnumValues)) {
+        for (String enumValue : csvEnumValues) {
             try {
                 result.add(Enum.valueOf(enumType, enumValue));
             } catch (IllegalArgumentException iae) {

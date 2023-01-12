@@ -80,13 +80,6 @@ public final class CodeVariableElement extends CodeElement<Element> implements V
         this.name = CodeNames.of(name);
     }
 
-    public CodeVariableElement(Set<Modifier> modifiers, TypeMirror type, String name, String init) {
-        this(modifiers, type, name);
-        if (init != null) {
-            this.init = new CodeTree(null, CodeTreeKind.STRING, null, init);
-        }
-    }
-
     public CodeTreeBuilder createInitBuilder() {
         CodeTreeBuilder builder = new CodeTreeBuilder(null);
         builder.setEnclosingElement(this);

@@ -57,7 +57,7 @@ public abstract class LongArrayLoad extends EspressoNode {
     public abstract long execute(StaticObject receiver, int index);
 
     @Specialization
-    long executeWithNullCheck(StaticObject array, int index,
+    long doWithNullCheck(StaticObject array, int index,
                     @Cached NullCheck nullCheck,
                     @Cached WithoutNullCheck longArrayLoad) {
         return longArrayLoad.execute(nullCheck.execute(array), index);

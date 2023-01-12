@@ -33,10 +33,10 @@ import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.stack.ParameterizedStackFrameVisitor;
 
-final class SamplerStackWalkVisitor extends ParameterizedStackFrameVisitor<Void> {
+final class SamplerStackWalkVisitor extends ParameterizedStackFrameVisitor {
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, Void voidData) {
+    @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
+    protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, Object data) {
         SamplerSampleWriterData writerData = SamplerThreadLocal.getWriterData();
         boolean shouldSkipFrame = shouldSkipFrame(writerData);
         boolean shouldContinueWalk = shouldContinueWalk(writerData);
@@ -71,8 +71,8 @@ final class SamplerStackWalkVisitor extends ParameterizedStackFrameVisitor<Void>
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected boolean unknownFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, Void data) {
+    @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
+    protected boolean unknownFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, Object data) {
         SamplerThreadLocal.increaseUnparseableStacks();
         return false;
     }

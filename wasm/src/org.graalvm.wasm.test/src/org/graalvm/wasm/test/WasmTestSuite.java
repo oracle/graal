@@ -40,13 +40,14 @@
  */
 package org.graalvm.wasm.test;
 
-import org.graalvm.wasm.test.suites.ExtraDataSuite;
 import org.graalvm.wasm.test.suites.WasmImplementationLimitationsSuite;
 import org.graalvm.wasm.test.suites.arithmetic.Float32Suite;
 import org.graalvm.wasm.test.suites.arithmetic.Float64Suite;
 import org.graalvm.wasm.test.suites.arithmetic.Integer32Suite;
 import org.graalvm.wasm.test.suites.arithmetic.Integer64Suite;
 import org.graalvm.wasm.test.suites.arithmetic.ReferenceTypeSuite;
+import org.graalvm.wasm.test.suites.bytecode.BytecodeSuite;
+import org.graalvm.wasm.test.suites.bytecode.MultiInstantiationSuite;
 import org.graalvm.wasm.test.suites.control.BlockWithLocalsSuite;
 import org.graalvm.wasm.test.suites.control.BranchBlockSuite;
 import org.graalvm.wasm.test.suites.control.IfThenElseSuite;
@@ -55,6 +56,7 @@ import org.graalvm.wasm.test.suites.control.MultiValueSuite;
 import org.graalvm.wasm.test.suites.control.MultipleFunctionsSuite;
 import org.graalvm.wasm.test.suites.control.SimpleBlockSuite;
 import org.graalvm.wasm.test.suites.linker.LinkerSuite;
+import org.graalvm.wasm.test.suites.memory.Memory64Suite;
 import org.graalvm.wasm.test.suites.memory.MemorySuite;
 import org.graalvm.wasm.test.suites.validation.ReferenceTypesValidationSuite;
 import org.graalvm.wasm.test.suites.table.TableSuite;
@@ -80,6 +82,7 @@ import org.junit.runners.Suite;
                 LoopBlockSuite.class,
                 IfThenElseSuite.class,
                 MemorySuite.class,
+                Memory64Suite.class,
                 TableSuite.class,
                 IssueSuite.class,
                 MultipleFunctionsSuite.class,
@@ -94,7 +97,8 @@ import org.junit.runners.Suite;
                 ReferenceTypesValidationSuite.class,
                 WasmLateLinkingSuite.class,
                 WasmImplementationLimitationsSuite.class,
-                ExtraDataSuite.class
+                BytecodeSuite.class,
+                MultiInstantiationSuite.class
 })
 
 public class WasmTestSuite {

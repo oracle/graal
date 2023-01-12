@@ -24,7 +24,9 @@
  */
 package com.oracle.svm.hosted;
 
+import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -50,7 +52,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -67,10 +68,10 @@ public class FeatureHandler {
     public static class Options {
         @APIOption(name = "features") //
         @Option(help = "A comma-separated list of fully qualified Feature implementation classes")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> Features = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> Features = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
 
         private static List<String> userEnabledFeatures() {
-            return OptionUtils.flatten(",", Options.Features.getValue());
+            return Options.Features.getValue().values();
         }
 
         @Option(help = "Allow using deprecated @AutomaticFeature annotation. If set to false, an error is shown instead of a warning.")//
@@ -179,14 +180,7 @@ public class FeatureHandler {
         if (NativeImageOptions.PrintFeatures.getValue()) {
             ReportUtils.report("feature information", SubstrateOptions.reportsPath(), "feature_info", "csv", out -> {
                 out.println("Feature, Required Features");
-                for (Feature featureInstance : featureInstances) {
-                    out.print(featureInstance.getClass().getTypeName());
-                    String requiredFeaturesString = featureInstance.getRequiredFeatures().stream()
-                                    .map(Class::getTypeName)
-                                    .collect(Collectors.joining(" ", "[", "]"));
-                    out.print(", ");
-                    out.println(requiredFeaturesString);
-                }
+                dumpAllFeatures(out);
             });
         }
     }
@@ -248,5 +242,16 @@ public class FeatureHandler {
                         .filter(f -> (!(f instanceof InternalFeature) || !((InternalFeature) f).isHidden()) &&
                                         (classLoaderSupport.isNativeImageClassLoader(f.getClass().getClassLoader()) || userEnabledFeatures.contains(f.getClass().getName())))
                         .collect(Collectors.toList());
+    }
+
+    public void dumpAllFeatures(PrintWriter out) {
+        featureInstances.stream().sorted(Comparator.comparing(f -> f.getClass().getTypeName())).forEachOrdered(f -> {
+            out.print(f.getClass().getTypeName());
+            String requiredFeaturesString = f.getRequiredFeatures().stream()
+                            .map(Class::getTypeName)
+                            .collect(Collectors.joining(" ", "[", "]"));
+            out.print(", ");
+            out.println(requiredFeaturesString);
+        });
     }
 }

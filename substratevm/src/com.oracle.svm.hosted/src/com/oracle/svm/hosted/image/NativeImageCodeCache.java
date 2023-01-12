@@ -268,41 +268,41 @@ public abstract class NativeImageCodeCache {
 
         Set<HostedField> includedFields = new HashSet<>();
         Set<HostedMethod> includedMethods = new HashSet<>();
-        Set<Field> configurationFields = reflectionSupport.getReflectionFields();
-        Set<Executable> configurationExecutables = reflectionSupport.getReflectionExecutables();
+        Map<AnalysisField, Field> configurationFields = reflectionSupport.getReflectionFields();
+        Map<AnalysisMethod, Executable> configurationExecutables = reflectionSupport.getReflectionExecutables();
 
-        for (AccessibleObject object : reflectionSupport.getHeapReflectionObjects()) {
-            if (object instanceof Field) {
-                HostedField hostedField = hMetaAccess.lookupJavaField((Field) object);
-                if (!includedFields.contains(hostedField)) {
-                    reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedField, object, configurationFields.contains(object));
-                    includedFields.add(hostedField);
-                }
-            } else if (object instanceof Executable) {
-                HostedMethod hostedMethod = hMetaAccess.lookupJavaMethod((Executable) object);
-                if (!includedMethods.contains(hostedMethod)) {
-                    reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedMethod, object, configurationExecutables.contains(object));
-                    includedMethods.add(hostedMethod);
-                }
+        reflectionSupport.getHeapReflectionFields().forEach(((analysisField, reflectField) -> {
+            HostedField hostedField = hUniverse.lookup(analysisField);
+            if (!includedFields.contains(hostedField)) {
+                reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedField, reflectField, configurationFields.containsKey(analysisField));
+                includedFields.add(hostedField);
             }
-        }
+        }));
 
-        for (Field reflectField : configurationFields) {
-            HostedField field = hMetaAccess.lookupJavaField(reflectField);
-            if (!includedFields.contains(field)) {
-                reflectionMetadataEncoder.addReflectionFieldMetadata(hMetaAccess, field, reflectField);
-                includedFields.add(field);
+        reflectionSupport.getHeapReflectionExecutables().forEach(((analysisMethod, reflectMethod) -> {
+            HostedMethod hostedMethod = hUniverse.lookup(analysisMethod);
+            if (!includedMethods.contains(hostedMethod)) {
+                reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedMethod, reflectMethod, configurationExecutables.containsKey(analysisMethod));
+                includedMethods.add(hostedMethod);
             }
-        }
+        }));
 
-        for (Executable reflectMethod : configurationExecutables) {
-            HostedMethod method = hMetaAccess.lookupJavaMethod(reflectMethod);
+        configurationFields.forEach(((analysisField, reflectField) -> {
+            HostedField hostedField = hUniverse.lookup(analysisField);
+            if (!includedFields.contains(hostedField)) {
+                reflectionMetadataEncoder.addReflectionFieldMetadata(hMetaAccess, hostedField, reflectField);
+                includedFields.add(hostedField);
+            }
+        }));
+
+        configurationExecutables.forEach(((analysisMethod, reflectMethod) -> {
+            HostedMethod method = hUniverse.lookup(analysisMethod);
             if (!includedMethods.contains(method)) {
-                Object accessor = reflectionSupport.getAccessor(reflectMethod);
+                Object accessor = reflectionSupport.getAccessor(analysisMethod);
                 reflectionMetadataEncoder.addReflectionExecutableMetadata(hMetaAccess, method, reflectMethod, accessor);
                 includedMethods.add(method);
             }
-        }
+        }));
 
         for (Object field : reflectionSupport.getHidingReflectionFields()) {
             AnalysisField hidingField = (AnalysisField) field;

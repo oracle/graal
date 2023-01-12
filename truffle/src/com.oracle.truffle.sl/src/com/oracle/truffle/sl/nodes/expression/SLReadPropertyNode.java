@@ -89,31 +89,29 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
     }
 
     @Specialization(limit = "LIBRARY_LIMIT")
-    public static Object readSLObject(SLObject receiver, Object name,
-                    @Bind("$root") Node node,
-                    @Bind("$bci") int bci,
+    protected static Object readSLObject(SLObject receiver, Object name,
+                    @Bind("this") Node node,
                     @CachedLibrary("receiver") DynamicObjectLibrary objectLibrary,
                     @Cached SLToTruffleStringNode toTruffleStringNode) {
-        TruffleString nameTS = toTruffleStringNode.execute(name);
+        TruffleString nameTS = toTruffleStringNode.execute(node, name);
         Object result = objectLibrary.getOrDefault(receiver, nameTS, null);
         if (result == null) {
             // read was not successful. In SL we only have basic support for errors.
-            throw SLUndefinedNameException.undefinedProperty(node, bci, nameTS);
+            throw SLUndefinedNameException.undefinedProperty(node, nameTS);
         }
         return result;
     }
 
     @Specialization(guards = {"!isSLObject(receiver)", "objects.hasMembers(receiver)"}, limit = "LIBRARY_LIMIT")
-    public static Object readObject(Object receiver, Object name,
-                    @Bind("$root") Node node,
-                    @Bind("$bci") int bci,
+    protected static Object readObject(Object receiver, Object name,
+                    @Bind("this") Node node,
                     @CachedLibrary("receiver") InteropLibrary objects,
                     @Cached SLToMemberNode asMember) {
         try {
-            return objects.readMember(receiver, asMember.execute(name));
+            return objects.readMember(receiver, asMember.execute(node, name));
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
             // read was not successful. In SL we only have basic support for errors.
-            throw SLUndefinedNameException.undefinedProperty(node, bci, name);
+            throw SLUndefinedNameException.undefinedProperty(node, name);
         }
     }
 

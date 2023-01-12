@@ -54,6 +54,7 @@ public class PrimitiveTypeEntry extends TypeEntry {
 
     @Override
     public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
+        super.addDebugInfo(debugInfoBase, debugTypeInfo, debugContext);
         DebugPrimitiveTypeInfo debugPrimitiveTypeInfo = (DebugPrimitiveTypeInfo) debugTypeInfo;
         flags = debugPrimitiveTypeInfo.flags();
         typeChar = debugPrimitiveTypeInfo.typeChar();

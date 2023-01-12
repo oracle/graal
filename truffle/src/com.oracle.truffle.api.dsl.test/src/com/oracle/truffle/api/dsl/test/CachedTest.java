@@ -106,7 +106,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.LoopConditionProfile;
 
-@SuppressWarnings("unused")
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing", "unused"})
 public class CachedTest {
 
     @Test
@@ -387,7 +387,7 @@ public class CachedTest {
     @NodeChildren({@NodeChild, @NodeChild})
     static class RegressionTestWarningInIsIdentical extends ValueNode {
 
-        @Specialization(guards = {"cachedName == name"})
+        @Specialization(guards = {"cachedName == name"}, limit = "3")
         protected Object directAccess(String receiver, String name, //
                         @Cached("name") String cachedName, //
                         @Cached("create(receiver, name)") Object callHandle) {
@@ -424,7 +424,7 @@ public class CachedTest {
     static class TestCachedWithProfile extends ValueNode {
 
         @Specialization
-        static int do1(int value, @Cached("create()") MySubClass mySubclass) {
+        static int do1(int value, @Cached MySubClass mySubclass) {
             return 42;
         }
     }
@@ -582,7 +582,7 @@ public class CachedTest {
 
         @Specialization
         static int do1(int value, //
-                        @Cached("createNode()") Node cachedValue) {
+                        @Cached(value = "createNode()", neverDefault = false) Node cachedValue) {
             return value;
         }
 
@@ -920,7 +920,7 @@ public class CachedTest {
 
         @Specialization
         static ConditionProfile do1(String value, //
-                        @Cached ConditionProfile conditionProfile) {
+                        @Cached(inline = false) ConditionProfile conditionProfile) {
             return conditionProfile;
         }
 
@@ -953,7 +953,7 @@ public class CachedTest {
     @NodeChild
     static class CacheDimensionsError1 extends ValueNode {
 
-        @Specialization(guards = "value == cachedValue")
+        @Specialization(guards = "value == cachedValue", limit = "3")
         static int[] do1(int[] value, //
                         @ExpectError("The cached dimensions attribute must be specified for array types.") @Cached("value") int[] cachedValue) {
             return cachedValue;

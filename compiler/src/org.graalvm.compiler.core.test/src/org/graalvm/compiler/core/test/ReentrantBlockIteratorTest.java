@@ -32,7 +32,7 @@ import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
@@ -144,31 +144,31 @@ public class ReentrantBlockIteratorTest extends GraalCompilerTest {
     @Test
 
     public void test01() {
-        List<Block> blocks = getVisitedBlocksInOrder("oneBlock");
+        List<HIRBlock> blocks = getVisitedBlocksInOrder("oneBlock");
         assertOrder(blocks, 0);
     }
 
     @Test
     public void test02() {
-        List<Block> blocks = getVisitedBlocksInOrder("fourBlock");
+        List<HIRBlock> blocks = getVisitedBlocksInOrder("fourBlock");
         assertOrder(blocks, 0, 1, 2, 3);
     }
 
     @Test
     public void test03() {
-        List<Block> blocks = getVisitedBlocksInOrder("loopBlocks");
+        List<HIRBlock> blocks = getVisitedBlocksInOrder("loopBlocks");
         assertOrder(blocks, 0, 1, 2, 3);
     }
 
     @Test
     public void test04() {
-        List<Block> blocks = getVisitedBlocksInOrder("loopBlocks2");
+        List<HIRBlock> blocks = getVisitedBlocksInOrder("loopBlocks2");
         assertOrder(blocks, 0, 1, 2, 3, 4, 5, 6);
     }
 
     @Test
     public void test05() {
-        List<Block> blocks = getVisitedBlocksInOrder("loopBlocks3");
+        List<HIRBlock> blocks = getVisitedBlocksInOrder("loopBlocks3");
         assertVisited(blocks, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32);
     }
 
@@ -177,7 +177,7 @@ public class ReentrantBlockIteratorTest extends GraalCompilerTest {
         getVisitedBlocksInOrder("loopBlocks4");
     }
 
-    private static void assertOrder(List<Block> blocks, int... ids) {
+    private static void assertOrder(List<HIRBlock> blocks, int... ids) {
         if (blocks.size() != ids.length) {
             Assert.fail("Different length of blocks " + Arrays.toString(blocks.toArray()) + " ids:" + Arrays.toString(ids));
         }
@@ -188,7 +188,7 @@ public class ReentrantBlockIteratorTest extends GraalCompilerTest {
         }
     }
 
-    private static void assertVisited(List<Block> blocks, int... ids) {
+    private static void assertVisited(List<HIRBlock> blocks, int... ids) {
         if (blocks.size() != ids.length) {
             Assert.fail("Different length of blocks " + Arrays.toString(blocks.toArray()) + " ids:" + Arrays.toString(ids));
         }
@@ -202,11 +202,11 @@ public class ReentrantBlockIteratorTest extends GraalCompilerTest {
         }
     }
 
-    private List<Block> getVisitedBlocksInOrder(String snippet) {
+    private List<HIRBlock> getVisitedBlocksInOrder(String snippet) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         // after FSA to ensure HIR loop data structure does not contain loop exits
         graph.getGraphState().setAfterFSA();
-        ArrayList<Block> blocks = new ArrayList<>();
+        ArrayList<HIRBlock> blocks = new ArrayList<>();
         class VoidState {
         }
         final VoidState voidState = new VoidState();
@@ -218,14 +218,14 @@ public class ReentrantBlockIteratorTest extends GraalCompilerTest {
             }
 
             @Override
-            protected VoidState processBlock(Block block, VoidState currentState) {
+            protected VoidState processBlock(HIRBlock block, VoidState currentState) {
                 // remember the visit order
                 blocks.add(block);
                 return currentState;
             }
 
             @Override
-            protected VoidState merge(Block merge, List<VoidState> states) {
+            protected VoidState merge(HIRBlock merge, List<VoidState> states) {
                 return voidState;
             }
 
@@ -235,7 +235,7 @@ public class ReentrantBlockIteratorTest extends GraalCompilerTest {
             }
 
             @Override
-            protected List<VoidState> processLoop(Loop<Block> loop, VoidState initialState) {
+            protected List<VoidState> processLoop(Loop<HIRBlock> loop, VoidState initialState) {
                 return ReentrantBlockIterator.processLoop(this, loop, initialState).exitStates;
             }
         };

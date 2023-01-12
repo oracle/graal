@@ -27,7 +27,6 @@ package com.oracle.svm.core.jdk;
 //Checkstyle: stop
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.AtomicFieldUpdaterOffset;
-import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FieldOffset;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
 
 import java.lang.ref.ReferenceQueue;
@@ -46,6 +45,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.StaticFieldsSupport;
@@ -58,8 +59,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -297,6 +298,7 @@ class AtomicFieldUpdaterFeature implements InternalFeature {
 }
 
 @AutomaticallyRegisteredFeature
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 class InnocuousForkJoinWorkerThreadFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -338,7 +340,6 @@ final class Target_java_util_concurrent_ForkJoinPool {
     private static Unsafe U;
 
     @Alias @TargetElement(onlyWith = JDK19OrLater.class) //
-    @RecomputeFieldValue(kind = FieldOffset, name = "poolIds") //
     private static long POOLIDS;
 
     @Substitute

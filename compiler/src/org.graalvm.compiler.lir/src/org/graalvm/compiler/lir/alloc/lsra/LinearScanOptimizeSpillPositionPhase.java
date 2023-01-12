@@ -30,7 +30,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 
 import java.util.Iterator;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -84,8 +84,8 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
         if (interval == null || !interval.isSplitParent() || interval.spillState() != SpillState.SpillInDominator) {
             return;
         }
-        AbstractBlockBase<?> defBlock = allocator.blockForId(interval.spillDefinitionPos());
-        AbstractBlockBase<?> spillBlock = null;
+        BasicBlock<?> defBlock = allocator.blockForId(interval.spillDefinitionPos());
+        BasicBlock<?> spillBlock = null;
         Interval firstSpillChild = null;
         try (Indent indent = debug.logAndIndent("interval %s (%s)", interval, defBlock)) {
             for (Interval splitChild : interval.getSplitChildren()) {
@@ -96,7 +96,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
                         assert firstSpillChild.from() < splitChild.from();
                     }
                     // iterate all blocks where the interval has use positions
-                    for (AbstractBlockBase<?> splitBlock : blocksForInterval(splitChild)) {
+                    for (BasicBlock<?> splitBlock : blocksForInterval(splitChild)) {
                         if (dominates(defBlock, splitBlock)) {
                             debug.log("Split interval %s, block %s", splitChild, splitBlock);
                             if (spillBlock == null) {
@@ -132,7 +132,7 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
              */
             assert firstSpillChild != null;
             if (!defBlock.equals(spillBlock) && spillBlock.equals(allocator.blockForId(firstSpillChild.from()))) {
-                AbstractBlockBase<?> dom = spillBlock.getDominator();
+                BasicBlock<?> dom = spillBlock.getDominator();
                 if (debug.isLogEnabled()) {
                     debug.log("Spill block (%s) is the beginning of a spill child -> use dominator (%s)", spillBlock, dom);
                 }
@@ -183,12 +183,12 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
     }
 
     /**
-     * Iterate over all {@link AbstractBlockBase blocks} of an interval.
+     * Iterate over all {@link BasicBlock blocks} of an interval.
      */
-    private class IntervalBlockIterator implements Iterator<AbstractBlockBase<?>> {
+    private class IntervalBlockIterator implements Iterator<BasicBlock<?>> {
 
         Range range;
-        AbstractBlockBase<?> block;
+        BasicBlock<?> block;
 
         IntervalBlockIterator(Interval interval) {
             range = interval.first();
@@ -196,11 +196,11 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
         }
 
         @Override
-        public AbstractBlockBase<?> next() {
-            AbstractBlockBase<?> currentBlock = block;
+        public BasicBlock<?> next() {
+            BasicBlock<?> currentBlock = block;
             int nextBlockIndex = block.getLinearScanNumber() + 1;
             if (nextBlockIndex < allocator.sortedBlocks().length) {
-                block = allocator.sortedBlocks()[nextBlockIndex];
+                block = allocator.getLIR().getBlockById(allocator.sortedBlocks()[nextBlockIndex]);
                 if (range.to <= allocator.getFirstLirInstructionId(block)) {
                     range = range.next;
                     if (range.isEndMarker()) {
@@ -221,18 +221,18 @@ public final class LinearScanOptimizeSpillPositionPhase extends LinearScanAlloca
         }
     }
 
-    private Iterable<AbstractBlockBase<?>> blocksForInterval(Interval interval) {
+    private Iterable<BasicBlock<?>> blocksForInterval(Interval interval) {
         return new Iterable<>() {
             @Override
-            public Iterator<AbstractBlockBase<?>> iterator() {
+            public Iterator<BasicBlock<?>> iterator() {
                 return new IntervalBlockIterator(interval);
             }
         };
     }
 
-    private static AbstractBlockBase<?> moveSpillOutOfLoop(AbstractBlockBase<?> defBlock, AbstractBlockBase<?> spillBlock) {
+    private static BasicBlock<?> moveSpillOutOfLoop(BasicBlock<?> defBlock, BasicBlock<?> spillBlock) {
         int defLoopDepth = defBlock.getLoopDepth();
-        for (AbstractBlockBase<?> block = spillBlock.getDominator(); !defBlock.equals(block); block = block.getDominator()) {
+        for (BasicBlock<?> block = spillBlock.getDominator(); !defBlock.equals(block); block = block.getDominator()) {
             assert block != null : "spill block not dominated by definition block?";
             if (block.getLoopDepth() <= defLoopDepth) {
                 assert block.getLoopDepth() == defLoopDepth : "Cannot spill an interval outside of the loop where it is defined!";

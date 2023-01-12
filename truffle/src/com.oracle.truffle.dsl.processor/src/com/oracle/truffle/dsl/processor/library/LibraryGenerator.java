@@ -97,7 +97,6 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
     class MessageObjects {
         final LibraryMessage model;
         final int messageIndex;
-        int cacheIndex;
         CodeVariableElement messageField;
 
         MessageObjects(LibraryMessage message, int messageIndex) {
@@ -127,7 +126,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         TypeMirror classLiteral = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(Class.class),
                         Arrays.asList(libraryTypeMirror));
         CodeExecutableElement loadLibraryClass = genClass.add(new CodeExecutableElement(modifiers(PRIVATE, STATIC), classLiteral, "lazyLibraryClass"));
-        GeneratorUtils.mergeSupressWarnings(loadLibraryClass, "unchecked");
+        GeneratorUtils.mergeSuppressWarnings(loadLibraryClass, "unchecked");
         builder = loadLibraryClass.createBuilder();
         builder.startTryBlock();
         builder.startStatement().string("return ");
@@ -335,7 +334,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
                 }
             }
             if (uncheckedCast) {
-                GeneratorUtils.mergeSupressWarnings(executeImpl, "unchecked");
+                GeneratorUtils.mergeSuppressWarnings(executeImpl, "unchecked");
             }
         }
 
@@ -439,7 +438,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
                 builder.end(); // else block
             }
             if (uncheckedCast) {
-                GeneratorUtils.mergeSupressWarnings(executeImpl, "unchecked");
+                GeneratorUtils.mergeSuppressWarnings(executeImpl, "unchecked");
             }
         }
 
@@ -470,7 +469,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
                 boolean pushEncapsulating = model.isPushEncapsulatingNode();
 
                 if (pushEncapsulating) {
-                    GeneratorUtils.pushEncapsulatingNode(builder, "getParent()");
+                    GeneratorUtils.pushEncapsulatingNode(builder, CodeTreeBuilder.singleString("getParent()"));
                     builder.startTryBlock();
                 }
                 builder.startReturn().startCall("INSTANCE.getUncached(receiver_)", execute.getSimpleName().toString());
@@ -761,9 +760,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         builder.end(); // superCall
         builder.end(); // statement
 
-        genClass.addAll(constants.libraries.values());
-        genClass.addAll(constants.contextReferences.values());
-        genClass.addAll(constants.languageReferences.values());
+        constants.addElementsTo(genClass);
         return Arrays.asList(genClass);
     }
 
@@ -937,7 +934,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         builder.startThrow().startNew(context.getType(AbstractMethodError.class)).string("message.toString()").end().end();
 
         if (uncheckedCast) {
-            GeneratorUtils.mergeSupressWarnings(reflectionGenericDispatch, "unchecked");
+            GeneratorUtils.mergeSuppressWarnings(reflectionGenericDispatch, "unchecked");
         }
 
         return reflectionGenericDispatch;

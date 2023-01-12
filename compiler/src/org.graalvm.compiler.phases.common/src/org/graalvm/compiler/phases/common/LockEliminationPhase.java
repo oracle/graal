@@ -36,7 +36,7 @@ import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
@@ -111,8 +111,8 @@ public class LockEliminationPhase extends Phase {
              * If the monitor operations operate on the same unproxified object, ensure any pi nodes
              * in the proxy chain are safe to re-order when moving monitor operations.
              */
-            Block lowestBlockA = lowestGuardedInputBlock(b, cfg);
-            Block lowestBlockB = null;
+            HIRBlock lowestBlockA = lowestGuardedInputBlock(b, cfg);
+            HIRBlock lowestBlockB = null;
             /*
              * If the object nodes are the same and there is no object or data guard for one of the
              * monitor operations it can only mean that one of them did not have to skip any pi
@@ -135,16 +135,16 @@ public class LockEliminationPhase extends Phase {
     }
 
     /**
-     * Get the lowest (by dominance relation) {@link Block} for the (potentially hidden behind
+     * Get the lowest (by dominance relation) {@link HIRBlock} for the (potentially hidden behind
      * {@link ProxyNode}s) inputs of the {@link AccessMonitorNode}.
      */
-    public static Block lowestGuardedInputBlock(AccessMonitorNode monitorNode, ControlFlowGraph cfg) {
+    public static HIRBlock lowestGuardedInputBlock(AccessMonitorNode monitorNode, ControlFlowGraph cfg) {
         return lowestGuardedInputBlock(unproxifyHighestGuard(monitorNode.object()), unproxifyHighestGuard(monitorNode.getObjectData()), cfg);
     }
 
-    public static Block lowestGuardedInputBlock(GuardingNode g1, GuardingNode g2, ControlFlowGraph cfg) {
-        Block b1 = getGuardingBlock(g1, cfg);
-        Block b2 = getGuardingBlock(g2, cfg);
+    public static HIRBlock lowestGuardedInputBlock(GuardingNode g1, GuardingNode g2, ControlFlowGraph cfg) {
+        HIRBlock b1 = getGuardingBlock(g1, cfg);
+        HIRBlock b2 = getGuardingBlock(g2, cfg);
         if (b1 == null) {
             return b2;
         }
@@ -160,8 +160,8 @@ public class LockEliminationPhase extends Phase {
     /**
      * Get the basic block of the {@link GuardingNode}. Handles fixed and floating guarded nodes.
      */
-    public static Block getGuardingBlock(GuardingNode g1, ControlFlowGraph cfg) {
-        Block b1 = null;
+    public static HIRBlock getGuardingBlock(GuardingNode g1, ControlFlowGraph cfg) {
+        HIRBlock b1 = null;
         if (g1 != null) {
             if (g1 instanceof FixedNode) {
                 b1 = cfg.blockFor((Node) g1);

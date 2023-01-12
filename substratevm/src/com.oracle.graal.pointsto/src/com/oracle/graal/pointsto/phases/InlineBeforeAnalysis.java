@@ -28,7 +28,6 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
@@ -52,6 +51,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.util.ClassUtil;
@@ -85,7 +85,7 @@ public class InlineBeforeAnalysis {
         DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getId());
         DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getProviders().getSnippetReflection())).description(description).build();
 
-        StructuredGraph result = new StructuredGraph.Builder(bb.getOptions(), debug)
+        StructuredGraph result = new StructuredGraph.Builder(bb.getOptions(), debug, bb.getHostVM().allowAssumptions(method))
                         .method(method)
                         .recordInlinedMethods(false)
                         .trackNodeSourcePosition(analysisParsedGraph.getEncodedGraph().trackNodeSourcePosition())
@@ -94,7 +94,7 @@ public class InlineBeforeAnalysis {
         try (DebugContext.Scope s = debug.scope("InlineBeforeAnalysis", result)) {
 
             if (bb.strengthenGraalGraphs() && Options.InlineBeforeAnalysis.getValue(bb.getOptions())) {
-                InlineBeforeAnalysisGraphDecoder<?> decoder = new InlineBeforeAnalysisGraphDecoder<>(bb, bb.getHostVM().inlineBeforeAnalysisPolicy(), result);
+                InlineBeforeAnalysisGraphDecoder<?> decoder = new InlineBeforeAnalysisGraphDecoder<>(bb, bb.getHostVM().inlineBeforeAnalysisPolicy(method.getMultiMethodKey()), result);
                 decoder.decode(method);
             } else {
                 /*
@@ -278,7 +278,9 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
         if (callerScope.policyScope != null) {
             policy.commitCalleeScope(callerScope.policyScope, inlineScope.policyScope);
         }
-        ((AnalysisMethod) invokeData.callTarget.targetMethod()).registerAsInlined();
+        Object reason = graph.currentNodeSourcePosition() != null ? graph.currentNodeSourcePosition() : graph.method();
+
+        ((AnalysisMethod) invokeData.callTarget.targetMethod()).registerAsInlined(reason);
 
         super.finishInlining(inlineScope);
     }

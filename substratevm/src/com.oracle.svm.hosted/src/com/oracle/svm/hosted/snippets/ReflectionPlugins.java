@@ -362,7 +362,7 @@ public final class ReflectionPlugins {
         if (PredefinedClassesSupport.isPredefined(clazz)) {
             return false;
         }
-        return pushConstant(b, targetMethod, () -> clazz.getName(), JavaKind.Object, clazz.getClassLoader(), true) != null;
+        return pushConstant(b, targetMethod, clazz::getName, JavaKind.Object, clazz.getClassLoader(), true) != null;
     }
 
     /**
@@ -442,7 +442,7 @@ public final class ReflectionPlugins {
         }
 
         /* String representation of the parameters for debug printing. */
-        Supplier<String> targetParameters = () -> (receiverValue == null ? "" : receiverValue.toString() + "; ") +
+        Supplier<String> targetParameters = () -> (receiverValue == null ? "" : receiverValue + "; ") +
                         Stream.of(argValues).map(arg -> arg instanceof Object[] ? Arrays.toString((Object[]) arg) : Objects.toString(arg)).collect(Collectors.joining(", "));
 
         Object returnValue;
@@ -597,10 +597,7 @@ public final class ReflectionPlugins {
          * If ReportUnsupportedElementsAtRuntime is set looking up a @Delete-ed element will return
          * a substitution method that has the @Delete annotation.
          */
-        if (annotated != null && annotated.isAnnotationPresent(Delete.class)) {
-            return true;
-        }
-        return false;
+        return annotated != null && annotated.isAnnotationPresent(Delete.class);
     }
 
     private JavaConstant pushConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Supplier<String> targetParameters, JavaKind returnKind, Object returnValue,

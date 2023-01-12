@@ -42,7 +42,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.util.BitMap2D;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.DebugContext;
@@ -118,7 +118,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
 
         // Assign IDs to LIR nodes and build a mapping, lirOps, from ID to LIRInstruction node.
         int numInstructions = 0;
-        for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
+        for (int blockId : allocator.sortedBlocks()) {
+            BasicBlock<?> block = allocator.getLIR().getBlockById(blockId);
             numInstructions += allocator.getLIR().getLIRforBlock(block).size();
         }
 
@@ -127,7 +128,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
 
         int opId = 0;
         int index = 0;
-        for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
+        for (int blockId : allocator.sortedBlocks()) {
+            BasicBlock<?> block = allocator.getLIR().getBlockById(blockId);
             allocator.initBlockData(block);
 
             ArrayList<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
@@ -174,7 +176,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
             final BitSet liveGenScratch = new BitSet(liveSize);
             final BitSet liveKillScratch = new BitSet(liveSize);
             // iterate all blocks
-            for (final AbstractBlockBase<?> block : allocator.sortedBlocks()) {
+            for (int blockId : allocator.sortedBlocks()) {
+                BasicBlock<?> block = allocator.getLIR().getBlockById(blockId);
                 try (Indent indent = debug.logAndIndent("compute local live sets for block %s", block)) {
 
                     liveGenScratch.clear();
@@ -282,7 +285,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
         }
     }
 
-    private void verifyInput(AbstractBlockBase<?> block, BitSet liveKill, Value operand) {
+    private void verifyInput(BasicBlock<?> block, BitSet liveKill, Value operand) {
         /*
          * Fixed intervals are never live at block boundaries, so they need not be processed in live
          * sets. This is checked by these assertions to be sure about it. The entry block may have
@@ -323,7 +326,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
 
                     // iterate all blocks in reverse order
                     for (int i = numBlocks - 1; i >= 0; i--) {
-                        AbstractBlockBase<?> block = allocator.blockAt(i);
+                        BasicBlock<?> block = allocator.blockAt(i);
                         BlockData blockSets = allocator.getBlockData(block);
 
                         changeOccurredInBlock = false;
@@ -336,7 +339,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                             scratch.clear();
                             // block has successors
                             if (n > 0) {
-                                for (AbstractBlockBase<?> successor : block.getSuccessors()) {
+                                for (int j = 0; j < block.getSuccessorCount(); j++) {
+                                    BasicBlock<?> successor = block.getSuccessorAt(j);
                                     scratch.or(allocator.getBlockData(successor).liveIn);
                                 }
                             }
@@ -392,7 +396,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
             }
 
             // check that the liveIn set of the first block is empty
-            AbstractBlockBase<?> startBlock = allocator.getLIR().getControlFlowGraph().getStartBlock();
+            BasicBlock<?> startBlock = allocator.getLIR().getControlFlowGraph().getStartBlock();
             if (allocator.getBlockData(startBlock).liveIn.cardinality() != 0) {
                 if (Assertions.detailedAssertionsEnabled(allocator.getOptions())) {
                     reportFailure(numBlocks);
@@ -460,9 +464,10 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                     }
                     try (Indent indent2 = debug.logAndIndent("---- Detailed information for var %d; operand=%s; node=%s ----", operandNum, operand, valueForOperandFromDebugContext)) {
 
-                        ArrayDeque<AbstractBlockBase<?>> definedIn = new ArrayDeque<>();
-                        EconomicSet<AbstractBlockBase<?>> usedIn = EconomicSet.create(Equivalence.IDENTITY);
-                        for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
+                        ArrayDeque<BasicBlock<?>> definedIn = new ArrayDeque<>();
+                        EconomicSet<BasicBlock<?>> usedIn = EconomicSet.create(Equivalence.IDENTITY);
+                        for (int blockId : allocator.sortedBlocks()) {
+                            BasicBlock<?> block = allocator.getLIR().getBlockById(blockId);
                             if (allocator.getBlockData(block).liveGen.get(operandNum)) {
                                 usedIn.add(block);
                                 try (Indent indent3 = debug.logAndIndent("used in block B%d", block.getId())) {
@@ -489,9 +494,10 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                         int[] hitCount = new int[numBlocks];
 
                         while (!definedIn.isEmpty()) {
-                            AbstractBlockBase<?> block = definedIn.removeFirst();
+                            BasicBlock<?> block = definedIn.removeFirst();
                             usedIn.remove(block);
-                            for (AbstractBlockBase<?> successor : block.getSuccessors()) {
+                            for (int i = 0; i < block.getSuccessorCount(); i++) {
+                                BasicBlock<?> successor = block.getSuccessorAt(i);
                                 if (successor.isLoopHeader()) {
                                     if (!block.isLoopEnd()) {
                                         definedIn.add(successor);
@@ -504,7 +510,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                             }
                         }
                         try (Indent indent3 = debug.logAndIndent("**** offending usages are in: ")) {
-                            for (AbstractBlockBase<?> block : usedIn) {
+                            for (BasicBlock<?> block : usedIn) {
                                 debug.log("B%d", block.getId());
                             }
                         }
@@ -521,7 +527,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
          * Check that fixed intervals are not live at block boundaries (live set must be empty at
          * fixed intervals).
          */
-        for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
+        for (int blockId : allocator.sortedBlocks()) {
+            BasicBlock<?> block = allocator.getLIR().getBlockById(blockId);
             for (int j = 0; j <= allocator.maxRegisterNumber(); j++) {
                 assert !allocator.getBlockData(block).liveIn.get(j) : "liveIn  set of fixed register must be empty";
                 assert !allocator.getBlockData(block).liveOut.get(j) : "liveOut set of fixed register must be empty";
@@ -808,7 +815,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
             // iterate all blocks in reverse order
             for (int i = allocator.blockCount() - 1; i >= 0; i--) {
 
-                AbstractBlockBase<?> block = allocator.blockAt(i);
+                BasicBlock<?> block = allocator.blockAt(i);
                 try (Indent indent2 = debug.logAndIndent("handle block %d", block.getId())) {
 
                     ArrayList<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);

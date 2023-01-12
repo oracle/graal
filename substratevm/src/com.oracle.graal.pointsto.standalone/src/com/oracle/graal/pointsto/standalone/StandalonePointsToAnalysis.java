@@ -26,6 +26,12 @@
 
 package com.oracle.graal.pointsto.standalone;
 
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ForkJoinPool;
+
+import org.graalvm.compiler.options.OptionValues;
+
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -34,11 +40,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.util.TimerCollection;
-import org.graalvm.compiler.options.OptionValues;
-
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ForkJoinPool;
 
 public class StandalonePointsToAnalysis extends PointsToAnalysis {
     private Set<AnalysisMethod> addedClinits = ConcurrentHashMap.newKeySet();
@@ -69,7 +70,7 @@ public class StandalonePointsToAnalysis extends PointsToAnalysis {
     public void onTypeInitialized(AnalysisType type) {
         AnalysisMethod clinitMethod = type.getClassInitializer();
         if (clinitMethod != null && !addedClinits.contains(clinitMethod)) {
-            addRootMethod(clinitMethod, true).registerAsImplementationInvoked();
+            addRootMethod(clinitMethod, true).registerAsImplementationInvoked(type);
             addedClinits.add(clinitMethod);
         }
     }

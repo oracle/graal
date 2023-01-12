@@ -28,10 +28,6 @@ public class UnresolvedElementException extends UnsupportedFeatureException {
 
     private static final long serialVersionUID = -7029051172196271488L;
 
-    public UnresolvedElementException(String message) {
-        super(message);
-    }
-
     public UnresolvedElementException(String message, Throwable cause) {
         super(message, cause);
     }

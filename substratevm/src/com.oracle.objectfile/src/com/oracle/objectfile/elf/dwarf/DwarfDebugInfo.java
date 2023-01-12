@@ -27,7 +27,6 @@
 package com.oracle.objectfile.elf.dwarf;
 
 import java.nio.ByteOrder;
-import java.util.HashMap;
 
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.DebugInfoBase;
@@ -38,6 +37,7 @@ import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.elf.ELFMachine;
+import org.graalvm.collections.EconomicMap;
 
 /**
  * A class that models the debug info in an organization that facilitates generation of the required
@@ -98,6 +98,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_ABBREV_CODE_field_declaration2 = 24;
     public static final int DW_ABBREV_CODE_field_declaration3 = 25;
     public static final int DW_ABBREV_CODE_field_declaration4 = 26;
+    public static final int DW_ABBREV_CODE_class_constant = 42;
     public static final int DW_ABBREV_CODE_header_field = 27;
     public static final int DW_ABBREV_CODE_array_data_type = 28;
     public static final int DW_ABBREV_CODE_super_reference = 29;
@@ -130,6 +131,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_TAG_union_type = 0x17;
     public static final int DW_TAG_inheritance = 0x1c;
     public static final int DW_TAG_base_type = 0x24;
+    public static final int DW_TAG_constant = 0x27;
     public static final int DW_TAG_subprogram = 0x2e;
     public static final int DW_TAG_variable = 0x34;
     public static final int DW_TAG_namespace = 0x39;
@@ -334,12 +336,12 @@ public class DwarfDebugInfo extends DebugInfoBase {
      * n.b. this collection includes entries for the structure types used to define the object and
      * array headers which do not have an associated TypeEntry.
      */
-    private HashMap<TypeEntry, DwarfTypeProperties> typePropertiesIndex;
+    private EconomicMap<TypeEntry, DwarfTypeProperties> typePropertiesIndex;
 
     /**
      * A collection of method properties associated with each generated method record.
      */
-    private HashMap<MethodEntry, DwarfMethodProperties> methodPropertiesIndex;
+    private EconomicMap<MethodEntry, DwarfMethodProperties> methodPropertiesIndex;
 
     /**
      * A collection of local variable properties associated with a generated method record,
@@ -347,12 +349,12 @@ public class DwarfDebugInfo extends DebugInfoBase {
      * range).
      */
 
-    private HashMap<MethodEntry, DwarfLocalProperties> methodLocalPropertiesIndex;
+    private EconomicMap<MethodEntry, DwarfLocalProperties> methodLocalPropertiesIndex;
 
     /**
      * A collection of local variable properties associated with an inlined subrange.
      */
-    private HashMap<Range, DwarfLocalProperties> rangeLocalPropertiesIndex;
+    private EconomicMap<Range, DwarfLocalProperties> rangeLocalPropertiesIndex;
 
     public DwarfDebugInfo(ELFMachine elfMachine, ByteOrder byteOrder) {
         super(byteOrder);
@@ -373,10 +375,10 @@ public class DwarfDebugInfo extends DebugInfoBase {
             this.heapbaseRegister = rheapbase_x86;
             this.threadRegister = rthread_x86;
         }
-        typePropertiesIndex = new HashMap<>();
-        methodPropertiesIndex = new HashMap<>();
-        methodLocalPropertiesIndex = new HashMap<>();
-        rangeLocalPropertiesIndex = new HashMap<>();
+        typePropertiesIndex = EconomicMap.create();
+        methodPropertiesIndex = EconomicMap.create();
+        methodLocalPropertiesIndex = EconomicMap.create();
+        rangeLocalPropertiesIndex = EconomicMap.create();
     }
 
     public DwarfStrSectionImpl getStrSectionImpl() {
@@ -505,16 +507,16 @@ public class DwarfDebugInfo extends DebugInfoBase {
         /**
          * Map from field names to info section index for the field declaration.
          */
-        private HashMap<String, Integer> fieldDeclarationIndex;
+        private EconomicMap<String, Integer> fieldDeclarationIndex;
         /**
          * Map from method entries to associated abstract inline method index.
          */
-        private HashMap<MethodEntry, Integer> abstractInlineMethodIndex;
+        private EconomicMap<MethodEntry, Integer> abstractInlineMethodIndex;
 
         /**
          * Map from method entries to associated method local properties index.
          */
-        private HashMap<MethodEntry, DwarfLocalProperties> methodLocalPropertiesIndex;
+        private EconomicMap<MethodEntry, DwarfLocalProperties> methodLocalPropertiesIndex;
 
         DwarfClassProperties(StructureTypeEntry entry) {
             super(entry);
@@ -769,9 +771,9 @@ public class DwarfDebugInfo extends DebugInfoBase {
         DwarfClassProperties classProperties;
         classProperties = lookupClassProperties(entry);
         assert classProperties.getTypeEntry() == entry;
-        HashMap<String, Integer> fieldDeclarationIndex = classProperties.fieldDeclarationIndex;
+        EconomicMap<String, Integer> fieldDeclarationIndex = classProperties.fieldDeclarationIndex;
         if (fieldDeclarationIndex == null) {
-            classProperties.fieldDeclarationIndex = fieldDeclarationIndex = new HashMap<>();
+            classProperties.fieldDeclarationIndex = fieldDeclarationIndex = EconomicMap.create();
         }
         if (fieldDeclarationIndex.get(fieldName) != null) {
             assert fieldDeclarationIndex.get(fieldName) == pos : entry.getTypeName() + fieldName;
@@ -784,7 +786,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
         DwarfClassProperties classProperties;
         classProperties = lookupClassProperties(entry);
         assert classProperties.getTypeEntry() == entry;
-        HashMap<String, Integer> fieldDeclarationIndex = classProperties.fieldDeclarationIndex;
+        EconomicMap<String, Integer> fieldDeclarationIndex = classProperties.fieldDeclarationIndex;
         assert fieldDeclarationIndex != null : fieldName;
         assert fieldDeclarationIndex.get(fieldName) != null : entry.getTypeName() + fieldName;
         return fieldDeclarationIndex.get(fieldName);
@@ -803,9 +805,9 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public void setAbstractInlineMethodIndex(ClassEntry classEntry, MethodEntry methodEntry, int pos) {
         DwarfClassProperties classProperties = lookupClassProperties(classEntry);
         assert classProperties.getTypeEntry() == classEntry;
-        HashMap<MethodEntry, Integer> abstractInlineMethodIndex = classProperties.abstractInlineMethodIndex;
+        EconomicMap<MethodEntry, Integer> abstractInlineMethodIndex = classProperties.abstractInlineMethodIndex;
         if (abstractInlineMethodIndex == null) {
-            classProperties.abstractInlineMethodIndex = abstractInlineMethodIndex = new HashMap<>();
+            classProperties.abstractInlineMethodIndex = abstractInlineMethodIndex = EconomicMap.create();
         }
         if (abstractInlineMethodIndex.get(methodEntry) != null) {
             assert abstractInlineMethodIndex.get(methodEntry) == pos : classEntry.getTypeName() + " & " + methodEntry.getSymbolName();
@@ -817,7 +819,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public int getAbstractInlineMethodIndex(ClassEntry classEntry, MethodEntry methodEntry) {
         DwarfClassProperties classProperties = lookupClassProperties(classEntry);
         assert classProperties.getTypeEntry() == classEntry;
-        HashMap<MethodEntry, Integer> abstractInlineMethodIndex = classProperties.abstractInlineMethodIndex;
+        EconomicMap<MethodEntry, Integer> abstractInlineMethodIndex = classProperties.abstractInlineMethodIndex;
         assert abstractInlineMethodIndex != null : classEntry.getTypeName() + " & " + methodEntry.getSymbolName();
         assert abstractInlineMethodIndex.get(methodEntry) != null : classEntry.getTypeName() + " & " + methodEntry.getSymbolName();
         return abstractInlineMethodIndex.get(methodEntry);
@@ -829,10 +831,10 @@ public class DwarfDebugInfo extends DebugInfoBase {
      */
 
     static final class DwarfLocalProperties {
-        private HashMap<DebugLocalInfo, Integer> locals;
+        private EconomicMap<DebugLocalInfo, Integer> locals;
 
         private DwarfLocalProperties() {
-            locals = new HashMap<>();
+            locals = EconomicMap.create();
         }
 
         int getIndex(DebugLocalInfo localInfo) {
@@ -855,7 +857,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     }
 
     public DwarfLocalProperties lookupLocalProperties(ClassEntry classEntry, MethodEntry methodEntry) {
-        HashMap<MethodEntry, DwarfLocalProperties> map;
+        EconomicMap<MethodEntry, DwarfLocalProperties> map;
         if (classEntry == null) {
             map = methodLocalPropertiesIndex;
         } else {
@@ -863,7 +865,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
             assert classProperties != null;
             map = classProperties.methodLocalPropertiesIndex;
             if (map == null) {
-                map = classProperties.methodLocalPropertiesIndex = new HashMap<>();
+                map = classProperties.methodLocalPropertiesIndex = EconomicMap.create();
             }
         }
         DwarfLocalProperties localProperties = map.get(methodEntry);

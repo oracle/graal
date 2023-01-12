@@ -53,9 +53,7 @@
         return ret;                                                                                                                                  \
     }                                                                                                                                                \
                                                                                                                                                      \
-    EXPORT void store_##name(type *arr, uint32_t idx, type value) {                                                                                  \
-        arr[idx] = value;                                                                                                                            \
-    }                                                                                                                                                \
+    EXPORT void store_##name(type *arr, uint32_t idx, type value) { arr[idx] = value; }                                                              \
                                                                                                                                                      \
     EXPORT char *null_array_##name(type *arr) {                                                                                                      \
         if (arr == NULL) {                                                                                                                           \

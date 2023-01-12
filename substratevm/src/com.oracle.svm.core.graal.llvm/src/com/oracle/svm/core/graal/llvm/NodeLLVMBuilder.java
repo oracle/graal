@@ -38,7 +38,7 @@ import java.util.Set;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -78,7 +78,7 @@ import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerTestNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
@@ -133,7 +133,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
     private final DebugInfoBuilder debugInfoBuilder;
 
     private Map<Node, LLVMValueWrapper> valueMap = new HashMap<>();
-    private final Set<AbstractBlockBase<?>> processedBlocks = new HashSet<>();
+    private final Set<BasicBlock<?>> processedBlocks = new HashSet<>();
     private Map<ValuePhiNode, LLVMValueRef> backwardsPhi = new HashMap<>();
     private long nextCGlobalId = 0L;
 
@@ -143,7 +143,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         this.debugInfoBuilder = new SubstrateDebugInfoBuilder(graph, gen.getProviders().getMetaAccessExtensionProvider(), this);
         setCompilationResultMethod(gen.getCompilationResult(), graph);
 
-        for (Block block : graph.getLastSchedule().getCFG().getBlocks()) {
+        for (HIRBlock block : graph.getLastSchedule().getCFG().getBlocks()) {
             gen.appendBasicBlock(block);
         }
     }
@@ -172,7 +172,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
     }
 
     @Override
-    public void doBlock(Block block, StructuredGraph graph, BlockMap<List<Node>> blockMap) {
+    public void doBlock(HIRBlock block, StructuredGraph graph, BlockMap<List<Node>> blockMap) {
         assert !processedBlocks.contains(block) : "Block already processed " + block;
         assert verifyPredecessors(block);
 
@@ -205,7 +205,8 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
                 for (SpecialRegister reg : SpecialRegister.registers()) {
                     List<LLVMValueRef> forwardPredValues = new ArrayList<>();
                     List<LLVMBasicBlockRef> forwardBlocks = new ArrayList<>();
-                    for (Block predecessor : block.getPredecessors()) {
+                    for (int i = 0; i < block.getPredecessorCount(); i++) {
+                        HIRBlock predecessor = block.getPredecessorAt(i);
                         if (processedBlocks.contains(predecessor)) {
                             forwardPredValues.add(block.isExceptionEntry() ? gen.getHandlerSpecialRegisterValue(reg, predecessor) : gen.getSpecialRegisterValue(reg, predecessor));
                             forwardBlocks.add(gen.getBlockEnd(predecessor));
@@ -221,7 +222,8 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
                     LLVMTypeRef phiType = getLLVMType(phiNode);
 
                     boolean hasBackwardIncomingEdges = false;
-                    for (Block predecessor : block.getPredecessors()) {
+                    for (int i = 0; i < block.getPredecessorCount(); i++) {
+                        HIRBlock predecessor = block.getPredecessorAt(i);
                         if (processedBlocks.contains(predecessor)) {
                             ValueNode phiValue = phiNode.valueAt((AbstractEndNode) predecessor.getEndNode());
                             LLVMValueRef value;
@@ -230,7 +232,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
                                  * The pending read may need to perform instructions to load the
                                  * value, so we put them at the end of the predecessor block
                                  */
-                                Block currentBlock = (Block) gen.getCurrentBlock();
+                                HIRBlock currentBlock = (HIRBlock) gen.getCurrentBlock();
                                 gen.editBlock(predecessor);
                                 value = llvmOperand(phiValue);
                                 gen.resumeBlock(currentBlock);
@@ -258,7 +260,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
                 }
             } else {
                 assert block.getPredecessorCount() == 1;
-                Block predecessor = block.getFirstPredecessor();
+                HIRBlock predecessor = block.getFirstPredecessor();
                 for (SpecialRegister reg : SpecialRegister.registers()) {
                     gen.setInitialSpecialRegisterValue(reg, block.isExceptionEntry() ? gen.getHandlerSpecialRegisterValue(reg, predecessor) : gen.getSpecialRegisterValue(reg, predecessor));
                 }
@@ -303,8 +305,9 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         processedBlocks.add(block);
     }
 
-    private boolean verifyPredecessors(Block block) {
-        for (Block pred : block.getPredecessors()) {
+    private boolean verifyPredecessors(HIRBlock block) {
+        for (int i = 0; i < block.getPredecessorCount(); i++) {
+            HIRBlock pred = block.getPredecessorAt(i);
             assert block.isLoopHeader() && pred.isLoopEnd() || processedBlocks.contains(pred) : "Predecessor not yet processed " + pred;
         }
         return true;
@@ -460,11 +463,11 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
     @Override
     public void visitLoopEnd(LoopEndNode i) {
-        LLVMBasicBlockRef[] basicBlocks = new LLVMBasicBlockRef[]{gen.getBlockEnd((Block) gen.getCurrentBlock())};
+        LLVMBasicBlockRef[] basicBlocks = new LLVMBasicBlockRef[]{gen.getBlockEnd((HIRBlock) gen.getCurrentBlock())};
 
         assert gen.getCurrentBlock().getSuccessorCount() == 1;
         for (SpecialRegister reg : SpecialRegister.registers()) {
-            Block successor = ((Block) gen.getCurrentBlock()).getFirstSuccessor();
+            HIRBlock successor = ((HIRBlock) gen.getCurrentBlock()).getFirstSuccessor();
             LLVMValueRef phi = gen.getInitialSpecialRegisterValue(reg, successor);
             assert LLVM.LLVMGetInstructionOpcode(phi) == LLVM.LLVMPHI;
             builder.addIncoming(phi, new LLVMValueRef[]{gen.getSpecialRegisterValue(reg)}, basicBlocks);

@@ -41,7 +41,7 @@ import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 
 public final class ReentrantBlockIterator {
@@ -71,17 +71,17 @@ public final class ReentrantBlockIterator {
         /**
          * Process the current block with the current state during reverse post order iteration.
          */
-        protected abstract StateT processBlock(Block block, StateT currentState);
+        protected abstract StateT processBlock(HIRBlock block, StateT currentState);
 
         /**
-         * Merge multiple states when processing {@link Block} starting with a
+         * Merge multiple states when processing {@link HIRBlock} starting with a
          * {@link AbstractMergeNode}.
          */
-        protected abstract StateT merge(Block merge, List<StateT> states);
+        protected abstract StateT merge(HIRBlock merge, List<StateT> states);
 
         /**
          * Clone a state for a successor invocation of
-         * {@link BlockIteratorClosure#processBlock(Block, Object)}.
+         * {@link BlockIteratorClosure#processBlock(HIRBlock, Object)}.
          */
         protected abstract StateT cloneState(StateT oldState);
 
@@ -89,28 +89,29 @@ public final class ReentrantBlockIterator {
          * Hook for subclasses to apply additional operations after
          * {@link BlockIteratorClosure#cloneState(Object)} for successor blocks.
          */
-        protected StateT afterSplit(@SuppressWarnings("unused") Block successor, StateT oldState) {
+        protected StateT afterSplit(@SuppressWarnings("unused") HIRBlock successor, StateT oldState) {
             return oldState;
         }
 
-        protected abstract List<StateT> processLoop(Loop<Block> loop, StateT initialState);
+        protected abstract List<StateT> processLoop(Loop<HIRBlock> loop, StateT initialState);
     }
 
     private ReentrantBlockIterator() {
         // no instances allowed
     }
 
-    public static <StateT> LoopInfo<StateT> processLoop(BlockIteratorClosure<StateT> closure, Loop<Block> loop, StateT initialState) {
+    public static <StateT> LoopInfo<StateT> processLoop(BlockIteratorClosure<StateT> closure, Loop<HIRBlock> loop, StateT initialState) {
         EconomicMap<FixedNode, StateT> blockEndStates = apply(closure, loop.getHeader(), initialState, block -> !(block.getLoop() == loop || block.isLoopHeader()));
 
-        Block[] predecessors = loop.getHeader().getPredecessors();
-        LoopInfo<StateT> info = new LoopInfo<>(predecessors.length - 1, loop.getLoopExits().size());
-        for (int i = 1; i < predecessors.length; i++) {
-            StateT endState = blockEndStates.get(predecessors[i].getEndNode());
+        HIRBlock lh = loop.getHeader();
+        final int predCount = lh.getPredecessorCount();
+        LoopInfo<StateT> info = new LoopInfo<>(predCount - 1, loop.getLoopExits().size());
+        for (int i = 1; i < predCount; i++) {
+            StateT endState = blockEndStates.get(lh.getPredecessorAt(i).getEndNode());
             // make sure all end states are unique objects
             info.endStates.add(closure.cloneState(endState));
         }
-        for (Block loopExit : loop.getLoopExits()) {
+        for (HIRBlock loopExit : loop.getLoopExits()) {
             assert loopExit.getPredecessorCount() == 1;
             assert blockEndStates.containsKey(loopExit.getBeginNode()) : loopExit.getBeginNode() + " " + blockEndStates;
             StateT exitState = blockEndStates.get(loopExit.getBeginNode());
@@ -120,19 +121,19 @@ public final class ReentrantBlockIterator {
         return info;
     }
 
-    public static <StateT> void apply(BlockIteratorClosure<StateT> closure, Block start) {
+    public static <StateT> void apply(BlockIteratorClosure<StateT> closure, HIRBlock start) {
         apply(closure, start, closure.getInitialState(), null);
     }
 
-    public static <StateT> EconomicMap<FixedNode, StateT> apply(BlockIteratorClosure<StateT> closure, Block start, StateT initialState, Predicate<Block> stopAtBlock) {
-        Deque<Block> blockQueue = new ArrayDeque<>();
+    public static <StateT> EconomicMap<FixedNode, StateT> apply(BlockIteratorClosure<StateT> closure, HIRBlock start, StateT initialState, Predicate<HIRBlock> stopAtBlock) {
+        Deque<HIRBlock> blockQueue = new ArrayDeque<>();
         /*
          * States are stored on EndNodes before merges, and on BeginNodes after ControlSplitNodes.
          */
         EconomicMap<FixedNode, StateT> states = EconomicMap.create(Equivalence.IDENTITY);
 
         StateT state = initialState;
-        Block current = start;
+        HIRBlock current = start;
 
         StructuredGraph graph = start.getBeginNode().graph();
         CompilationAlarm compilationAlarm = CompilationAlarm.current();
@@ -145,17 +146,16 @@ public final class ReentrantBlockIterator {
                     throw new RetryableBailoutException("Compilation exceeded %d seconds during CFG traversal", period);
                 }
             }
-            Block next = null;
+            HIRBlock next = null;
             if (stopAtBlock != null && stopAtBlock.test(current)) {
                 states.put(current.getBeginNode(), state);
             } else {
                 state = closure.processBlock(current, state);
 
-                Block[] successors = current.getSuccessors();
-                if (successors.length == 0) {
+                if (current.getSuccessorCount() == 0) {
                     // nothing to do...
-                } else if (successors.length == 1) {
-                    Block successor = successors[0];
+                } else if (current.getSuccessorCount() == 1) {
+                    HIRBlock successor = current.getSuccessorAt(0);
                     if (successor.isLoopHeader()) {
                         if (current.isLoopEnd()) {
                             // nothing to do... loop ends only lead to loop begins we've already
@@ -181,7 +181,7 @@ public final class ReentrantBlockIterator {
                         next = successor;
                     }
                 } else {
-                    next = processMultipleSuccessors(closure, blockQueue, states, state, successors);
+                    next = processMultipleSuccessors(closure, blockQueue, states, state, current);
                 }
             }
 
@@ -199,7 +199,7 @@ public final class ReentrantBlockIterator {
         }
     }
 
-    private static <StateT> boolean allEndsVisited(EconomicMap<FixedNode, StateT> states, Block current, AbstractMergeNode merge) {
+    private static <StateT> boolean allEndsVisited(EconomicMap<FixedNode, StateT> states, HIRBlock current, AbstractMergeNode merge) {
         for (AbstractEndNode forwardEnd : merge.forwardEnds()) {
             if (forwardEnd != current.getEndNode() && !states.containsKey(forwardEnd)) {
                 return false;
@@ -208,19 +208,21 @@ public final class ReentrantBlockIterator {
         return true;
     }
 
-    private static <StateT> Block processMultipleSuccessors(BlockIteratorClosure<StateT> closure, Deque<Block> blockQueue, EconomicMap<FixedNode, StateT> states, StateT state, Block[] successors) {
-        assert successors.length > 1;
-        for (int i = 1; i < successors.length; i++) {
-            Block successor = successors[i];
+    private static <StateT> HIRBlock processMultipleSuccessors(BlockIteratorClosure<StateT> closure, Deque<HIRBlock> blockQueue, EconomicMap<FixedNode, StateT> states, StateT state,
+                    HIRBlock current) {
+        assert current.getSuccessorCount() > 1;
+        for (int i = 1; i < current.getSuccessorCount(); i++) {
+            HIRBlock successor = current.getSuccessorAt(i);
             blockQueue.addFirst(successor);
             states.put(successor.getBeginNode(), closure.afterSplit(successor, closure.cloneState(state)));
         }
-        return successors[0];
+        return current.getSuccessorAt(0);
     }
 
-    private static <StateT> ArrayList<StateT> mergeStates(EconomicMap<FixedNode, StateT> states, StateT state, Block current, Block successor, AbstractMergeNode merge) {
+    private static <StateT> ArrayList<StateT> mergeStates(EconomicMap<FixedNode, StateT> states, StateT state, HIRBlock current, HIRBlock successor, AbstractMergeNode merge) {
         ArrayList<StateT> mergedStates = new ArrayList<>(merge.forwardEndCount());
-        for (Block predecessor : successor.getPredecessors()) {
+        for (int i = 0; i < successor.getPredecessorCount(); i++) {
+            HIRBlock predecessor = successor.getPredecessorAt(i);
             assert predecessor == current || states.containsKey(predecessor.getEndNode());
             StateT endState = predecessor == current ? state : states.removeKey(predecessor.getEndNode());
             mergedStates.add(endState);
@@ -228,9 +230,9 @@ public final class ReentrantBlockIterator {
         return mergedStates;
     }
 
-    private static <StateT> void recurseIntoLoop(BlockIteratorClosure<StateT> closure, Deque<Block> blockQueue, EconomicMap<FixedNode, StateT> states, StateT state, Block successor) {
+    private static <StateT> void recurseIntoLoop(BlockIteratorClosure<StateT> closure, Deque<HIRBlock> blockQueue, EconomicMap<FixedNode, StateT> states, StateT state, HIRBlock successor) {
         // recurse into the loop
-        Loop<Block> loop = successor.getLoop();
+        Loop<HIRBlock> loop = successor.getLoop();
         LoopBeginNode loopBegin = (LoopBeginNode) loop.getHeader().getBeginNode();
         assert successor.getBeginNode() == loopBegin;
 
@@ -238,7 +240,7 @@ public final class ReentrantBlockIterator {
 
         int i = 0;
         assert loop.getLoopExits().size() == exitStates.size();
-        for (Block exit : loop.getLoopExits()) {
+        for (HIRBlock exit : loop.getLoopExits()) {
             states.put(exit.getBeginNode(), exitStates.get(i++));
             blockQueue.addFirst(exit);
         }

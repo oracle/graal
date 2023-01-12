@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,6 @@ import jdk.vm.ci.code.TargetDescription;
 
 public class LIRPhaseSuite<C> extends LIRPhase<C> implements PhasePlan<LIRPhase<C>> {
     private List<LIRPhase<C>> phases;
-    private boolean immutable;
 
     public LIRPhaseSuite() {
         phases = new ArrayList<>();
@@ -109,17 +108,6 @@ public class LIRPhaseSuite<C> extends LIRPhase<C> implements PhasePlan<LIRPhase<
         LIRPhaseSuite<C> suite = new LIRPhaseSuite<>();
         suite.phases.addAll(phases);
         return suite;
-    }
-
-    public boolean isImmutable() {
-        return immutable;
-    }
-
-    public synchronized void setImmutable() {
-        if (!immutable) {
-            phases = Collections.unmodifiableList(phases);
-            immutable = true;
-        }
     }
 
     @Override

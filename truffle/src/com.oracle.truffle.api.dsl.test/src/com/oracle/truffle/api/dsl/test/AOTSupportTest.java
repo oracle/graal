@@ -54,6 +54,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.AOTSupport;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.GenerateAOT;
@@ -89,8 +90,17 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ByteValueProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.api.profiles.DoubleValueProfile;
 import com.oracle.truffle.api.profiles.FloatValueProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedByteValueProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedDoubleValueProfile;
+import com.oracle.truffle.api.profiles.InlinedFloatValueProfile;
+import com.oracle.truffle.api.profiles.InlinedIntValueProfile;
+import com.oracle.truffle.api.profiles.InlinedLongValueProfile;
 import com.oracle.truffle.api.profiles.IntValueProfile;
 import com.oracle.truffle.api.profiles.LongValueProfile;
 import com.oracle.truffle.api.profiles.LoopConditionProfile;
@@ -101,7 +111,7 @@ import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 /**
  * Note that this test is also used in AOTSupportCompilationTest.
  */
-@SuppressWarnings("deprecation")
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing", "deprecation"})
 public class AOTSupportTest extends AbstractPolyglotTest {
 
     public static final String LANGUAGE_ID = "AOTSupportTest_TestLanguage";
@@ -339,7 +349,7 @@ public class AOTSupportTest extends AbstractPolyglotTest {
             return (int) arg;
         }
 
-        @Specialization(guards = {"arg == 8", "arg == cachedArg"})
+        @Specialization(guards = {"arg == 8", "arg == cachedArg"}, limit = "3")
         int ignoredCache(int arg, @Cached("arg") int cachedArg) {
             return arg;
         }
@@ -360,18 +370,28 @@ public class AOTSupportTest extends AbstractPolyglotTest {
         }
 
         @Specialization(guards = {"arg == 10"})
-        int profiles(int arg, @Cached BranchProfile branch,
-                        @Cached("createBinaryProfile()") ConditionProfile binaryCondition,
-                        @Cached("createCountingProfile()") ConditionProfile countingCondition,
-                        @Cached("createCountingProfile()") LoopConditionProfile loopCondition,
-                        @Cached("createIdentityProfile()") ByteValueProfile byteValue,
-                        @Cached("createIdentityProfile()") IntValueProfile intValue,
-                        @Cached("createIdentityProfile()") LongValueProfile longValue,
-                        @Cached("createRawIdentityProfile()") FloatValueProfile floatValue,
-                        @Cached("createRawIdentityProfile()") DoubleValueProfile doubleValue,
+        static int profiles(int arg,
+                        @Bind("$node") Node node,
+                        @Cached(inline = false) BranchProfile branch,
+                        @Cached(inline = false) ConditionProfile binaryCondition,
+                        @Cached(inline = false) CountingConditionProfile countingCondition,
+                        @Cached LoopConditionProfile loopCondition,
+                        @Cached(inline = false) ByteValueProfile byteValue,
+                        @Cached(inline = false) IntValueProfile intValue,
+                        @Cached(inline = false) LongValueProfile longValue,
+                        @Cached(inline = false) FloatValueProfile floatValue,
+                        @Cached(inline = false) DoubleValueProfile doubleValue,
                         @Cached("createEqualityProfile()") PrimitiveValueProfile primitiveValue,
                         @Cached("createClassProfile()") ValueProfile classValue,
-                        @Cached("createIdentityProfile()") ValueProfile identityValue) {
+                        @Cached("createIdentityProfile()") ValueProfile identityValue,
+                        @Cached InlinedBranchProfile inlinedbranch,
+                        @Cached InlinedConditionProfile inlinedConditionProfile,
+                        @Cached InlinedCountingConditionProfile inlinedCountingCondition,
+                        @Cached InlinedByteValueProfile inlinedByteValue,
+                        @Cached InlinedIntValueProfile inlinedIntValue,
+                        @Cached InlinedLongValueProfile inlinedLongValue,
+                        @Cached InlinedFloatValueProfile inlinedFloatValue,
+                        @Cached InlinedDoubleValueProfile inlinedDoubleValue) {
 
             branch.enter();
             binaryCondition.profile(true);
@@ -412,7 +432,23 @@ public class AOTSupportTest extends AbstractPolyglotTest {
             primitiveValue.profile(Integer.valueOf(2));
 
             classValue.profile(Integer.class);
-            identityValue.profile(this);
+            identityValue.profile(node);
+
+            inlinedbranch.enter(node);
+            inlinedConditionProfile.profile(node, true);
+            inlinedConditionProfile.profile(node, false);
+            inlinedCountingCondition.profile(node, true);
+            inlinedCountingCondition.profile(node, false);
+//
+            inlinedByteValue.profile(node, (byte) 1);
+            inlinedByteValue.profile(node, (byte) 2);
+            inlinedIntValue.profile(node, 1);
+            inlinedIntValue.profile(node, 2);
+            inlinedLongValue.profile(node, 1);
+            inlinedLongValue.profile(node, 2);
+            inlinedFloatValue.profile(node, 1);
+            inlinedFloatValue.profile(node, 2);
+            inlinedDoubleValue.profile(node, 1);
 
             return arg;
         }
@@ -531,7 +567,7 @@ public class AOTSupportTest extends AbstractPolyglotTest {
                 return Truffle.getRuntime().createAssumption();
             }
 
-            @Specialization(guards = {"arg == 7", "arg == cachedArg"})
+            @Specialization(guards = {"arg == 7", "arg == cachedArg"}, limit = "3")
             static int ignoredCache(AOTInitializable receiver, int arg, @Cached("arg") int cachedArg) {
                 return arg;
             }
@@ -542,18 +578,28 @@ public class AOTSupportTest extends AbstractPolyglotTest {
             }
 
             @Specialization(guards = {"arg == 8"})
-            static int profiles(AOTInitializable receiver, int arg, @Cached BranchProfile branch,
-                            @Cached("createBinaryProfile()") ConditionProfile binaryCondition,
-                            @Cached("createCountingProfile()") ConditionProfile countingCondition,
-                            @Cached("createCountingProfile()") LoopConditionProfile loopCondition,
-                            @Cached("createIdentityProfile()") ByteValueProfile byteValue,
-                            @Cached("createIdentityProfile()") IntValueProfile intValue,
-                            @Cached("createIdentityProfile()") LongValueProfile longValue,
-                            @Cached("createRawIdentityProfile()") FloatValueProfile floatValue,
-                            @Cached("createRawIdentityProfile()") DoubleValueProfile doubleValue,
+            static int profiles(AOTInitializable receiver, int arg,
+                            @Bind("this") Node node,
+                            @Cached(inline = false) BranchProfile branch,
+                            @Cached(inline = false) ConditionProfile binaryCondition,
+                            @Cached(inline = false) CountingConditionProfile countingCondition,
+                            @Cached LoopConditionProfile loopCondition,
+                            @Cached(inline = false) ByteValueProfile byteValue,
+                            @Cached(inline = false) IntValueProfile intValue,
+                            @Cached(inline = false) LongValueProfile longValue,
+                            @Cached(inline = false) FloatValueProfile floatValue,
+                            @Cached(inline = false) DoubleValueProfile doubleValue,
                             @Cached("createEqualityProfile()") PrimitiveValueProfile primitiveValue,
                             @Cached("createClassProfile()") ValueProfile classValue,
-                            @Cached("createIdentityProfile()") ValueProfile identityValue) {
+                            @Cached("createIdentityProfile()") ValueProfile identityValue,
+                            @Cached InlinedBranchProfile inlinedbranch,
+                            @Cached InlinedConditionProfile inlinedConditionProfile,
+                            @Cached InlinedCountingConditionProfile inlinedCountingCondition,
+                            @Cached InlinedByteValueProfile inlinedByteValue,
+                            @Cached InlinedIntValueProfile inlinedIntValue,
+                            @Cached InlinedLongValueProfile inlinedLongValue,
+                            @Cached InlinedFloatValueProfile inlinedFloatValue,
+                            @Cached InlinedDoubleValueProfile inlinedDoubleValue) {
 
                 branch.enter();
                 binaryCondition.profile(true);
@@ -595,6 +641,23 @@ public class AOTSupportTest extends AbstractPolyglotTest {
 
                 classValue.profile(Integer.class);
                 identityValue.profile(receiver);
+
+                inlinedbranch.enter(node);
+                inlinedConditionProfile.profile(node, true);
+                inlinedCountingCondition.profile(node, false);
+                inlinedCountingCondition.profile(node, true);
+                inlinedCountingCondition.profile(node, false);
+
+                inlinedByteValue.profile(node, (byte) 1);
+                inlinedByteValue.profile(node, (byte) 2);
+                inlinedIntValue.profile(node, 1);
+                inlinedIntValue.profile(node, 2);
+                inlinedLongValue.profile(node, 1);
+                inlinedLongValue.profile(node, 2);
+                inlinedFloatValue.profile(node, 1);
+                inlinedFloatValue.profile(node, 2);
+                inlinedDoubleValue.profile(node, 1);
+                inlinedDoubleValue.profile(node, 2);
 
                 return arg;
             }
@@ -846,6 +909,7 @@ public class AOTSupportTest extends AbstractPolyglotTest {
         int s0(int arg) {
             return arg;
         }
+
     }
 
     @GenerateAOT

@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.StringJoiner;
 import java.util.stream.Stream;
 
+import com.oracle.truffle.regex.UnsupportedRegexException;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
@@ -55,7 +56,6 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
@@ -446,23 +446,10 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
             wrappedRoot = root;
             return;
         }
-        int prefixLength = 0;
-        for (RegexASTSubtreeRootNode subtreeRootNode : subtrees) {
-            if (!subtreeRootNode.isLookBehindAssertion()) {
-                continue;
-            }
-            LookBehindAssertion lb = subtreeRootNode.asLookBehindAssertion();
-            int minPath = lb.getMinPath();
-            RegexASTSubtreeRootNode laParent = lb.getSubTreeParent();
-            while (!(laParent instanceof RegexASTRootNode)) {
-                if (laParent instanceof LookBehindAssertion) {
-                    throw new UnsupportedRegexException("nested look-behind assertions");
-                }
-                minPath += laParent.getMinPath();
-                laParent = laParent.getSubTreeParent();
-            }
-            prefixLength = Math.max(prefixLength, lb.getLiteralLength() - minPath);
+        if (properties.hasNestedLookBehindAssertions()) {
+            throw new UnsupportedRegexException("nested look-behind assertions");
         }
+        final int prefixLength = root.getPrefixLengthMax();
         if (prefixLength == 0) {
             wrappedRoot = root;
             return;

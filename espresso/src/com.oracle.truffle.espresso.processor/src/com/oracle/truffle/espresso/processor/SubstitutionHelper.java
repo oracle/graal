@@ -45,7 +45,7 @@ public class SubstitutionHelper {
     final boolean hasProfileInjection;
     final boolean skipSafepoint;
 
-    // Target of the substitution, cab be a public static method or a node.
+    // Target of the substitution, can be a public static method or a node.
     private final Element target;
 
     private final TypeElement implAnnotation;

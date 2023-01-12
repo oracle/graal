@@ -115,8 +115,16 @@ public abstract class TypeState {
         return false;
     }
 
-    public boolean isConstant() {
-        return false;
+    /**
+     * Returns a non-null value when this type state represents a single constant value, or null if
+     * this type state is not a single constant.
+     *
+     * Note that the {@link #canBeNull()} flag still applies when a constant is returned. A type
+     * state that is a "constant or null" both returns a non-null result for {@link #asConstant()}}
+     * and true for {@link #canBeNull()}.
+     */
+    public JavaConstant asConstant() {
+        return null;
     }
 
     public boolean isEmpty() {

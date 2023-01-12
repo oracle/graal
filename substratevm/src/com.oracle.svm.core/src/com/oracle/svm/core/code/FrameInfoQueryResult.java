@@ -179,6 +179,7 @@ public class FrameInfoQueryResult {
         init();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void init() {
         caller = null;
         deoptMethod = null;

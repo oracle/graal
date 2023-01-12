@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -165,6 +165,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     private final boolean isSimplifiable;
     private final boolean isLeafNode;
     private final boolean isNodeWithIdentity;
+    private final boolean isMemoryKill;
 
     private final int leafId;
 
@@ -183,6 +184,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         this.isCommutative = BinaryCommutativeMarker.class.isAssignableFrom(clazz);
         this.isSimplifiable = SimplifiableMarker.class.isAssignableFrom(clazz);
         this.isNodeWithIdentity = NodeWithIdentity.class.isAssignableFrom(clazz);
+        this.isMemoryKill = MemoryKillMarker.class.isAssignableFrom(clazz);
 
         NodeFieldsScanner fs = new NodeFieldsScanner(calcOffset, superNodeClass, debug);
         try (DebugCloseable t = Init_FieldScanning.start(debug)) {
@@ -974,12 +976,15 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         return this.leafId;
     }
 
-    public NodeClass<? super T> getSuperNodeClass() {
-        return superNodeClass;
+    /**
+     * @return {@code true} if the node implements {@link MemoryKillMarker}
+     */
+    public boolean isMemoryKill() {
+        return isMemoryKill;
     }
 
-    public long inputsIteration() {
-        return inputsIteration;
+    public NodeClass<? super T> getSuperNodeClass() {
+        return superNodeClass;
     }
 
     /**

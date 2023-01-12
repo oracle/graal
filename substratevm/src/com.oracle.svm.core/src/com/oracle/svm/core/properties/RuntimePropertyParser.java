@@ -26,7 +26,8 @@ package com.oracle.svm.core.properties;
 
 import java.util.Arrays;
 
-import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 
@@ -42,15 +43,20 @@ public final class RuntimePropertyParser {
      */
     public static String[] parse(String[] args) {
         int newIdx = 0;
+        EconomicMap<String, String> properties = EconomicMap.create();
         for (int oldIdx = 0; oldIdx < args.length; oldIdx++) {
             String arg = args[oldIdx];
-            if (arg.startsWith(PROPERTY_PREFIX) && parseProperty(arg.substring(PROPERTY_PREFIX.length()))) {
+            if (arg.startsWith(PROPERTY_PREFIX) && parseProperty(arg.substring(PROPERTY_PREFIX.length()), properties)) {
                 // Option consumed
             } else {
                 assert newIdx <= oldIdx;
                 args[newIdx] = arg;
                 newIdx++;
             }
+        }
+        MapCursor<String, String> cursor = properties.getEntries();
+        while (cursor.advance()) {
+            SystemPropertiesSupport.singleton().initializeProperty(cursor.getKey(), cursor.getValue());
         }
         if (newIdx == args.length) {
             /* We can be allocation free and just return the original arguments. */
@@ -60,7 +66,7 @@ public final class RuntimePropertyParser {
         }
     }
 
-    private static boolean parseProperty(String property) {
+    private static boolean parseProperty(String property, EconomicMap<String, String> parsedProperties) {
         int splitIndex = property.indexOf('=');
         if (splitIndex == -1) {
             return false;
@@ -69,7 +75,7 @@ public final class RuntimePropertyParser {
         String key = property.substring(0, splitIndex);
         String value = property.substring(splitIndex + 1);
 
-        ImageSingletons.lookup(SystemPropertiesSupport.class).initializeProperty(key, value);
+        parsedProperties.put(key, value);
 
         return true;
     }

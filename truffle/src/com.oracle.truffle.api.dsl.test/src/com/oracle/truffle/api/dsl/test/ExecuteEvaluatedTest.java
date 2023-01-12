@@ -40,14 +40,13 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import static com.oracle.truffle.api.dsl.test.TestHelper.getSlowPathCount;
-import static com.oracle.truffle.api.dsl.test.TestHelper.instrumentSlowPath;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
@@ -77,6 +76,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class ExecuteEvaluatedTest {
 
     @Test
@@ -323,6 +323,7 @@ public class ExecuteEvaluatedTest {
      * Failed test where execute parameter Object[] was cased using (Object) which led to a compile
      * error.
      */
+
     abstract static class TestExecuteWithObjectArg extends Node {
 
         public abstract Object execute(VirtualFrame frame, Object[] args);
@@ -336,17 +337,16 @@ public class ExecuteEvaluatedTest {
     @Test
     public void testEvaluatedImplicitCast0() {
         TestEvaluatedImplicitCast0Node node = TestEvaluatedImplicitCast0NodeGen.create();
-        instrumentSlowPath(node);
 
-        assertEquals(0, getSlowPathCount(node));
+        assertEquals(0, node.specializeCount);
         node.execute("a", 0);
-        assertEquals(1, getSlowPathCount(node));
+        assertEquals(1, node.specializeCount);
         node.execute("b", 0);
-        assertEquals(1, getSlowPathCount(node));
+        assertEquals(1, node.specializeCount);
         node.execute(42, 0);
-        assertEquals(2, getSlowPathCount(node));
+        assertEquals(2, node.specializeCount);
         node.execute(43, 0);
-        assertEquals(2, getSlowPathCount(node));
+        assertEquals(2, node.specializeCount);
     }
 
     @TypeSystem
@@ -361,7 +361,8 @@ public class ExecuteEvaluatedTest {
 
     @TypeSystemReference(TestEvaluatedImplicitCast0TypeSystem.class)
     @SuppressWarnings("unused")
-    abstract static class TestEvaluatedImplicitCast0Node extends Node {
+
+    abstract static class TestEvaluatedImplicitCast0Node extends SlowPathListenerNode {
 
         public abstract Object execute(Object receiver, int intValue);
 
@@ -379,7 +380,9 @@ public class ExecuteEvaluatedTest {
          * Avoid locking optimization to trigger.
          */
         @Specialization(replaces = "doInt")
-        public double doInt2(Void receiver, int intValue) {
+        public double doInt2(Void receiver, int intValue,
+                        // forces locking behavior
+                        @Cached("intValue") int cachedValue) {
             return 42;
         }
 
@@ -388,21 +391,20 @@ public class ExecuteEvaluatedTest {
     @Test
     public void testEvaluatedImplicitCast1() {
         TestEvaluatedImplicitCast1Node node = TestEvaluatedImplicitCast1NodeGen.create();
-        instrumentSlowPath(node);
 
-        assertEquals(0, getSlowPathCount(node));
+        assertEquals(0, node.specializeCount);
         node.execute("a", (short) 0);
         node.execute("a", (short) 0);
-        assertEquals(1, getSlowPathCount(node));
+        assertEquals(1, node.specializeCount);
         node.execute("b", 0);
         node.execute("b", 0);
-        assertEquals(2, getSlowPathCount(node));
+        assertEquals(2, node.specializeCount);
         node.execute(42, (short) 0);
         node.execute(42, (short) 0);
-        assertEquals(3, getSlowPathCount(node));
+        assertEquals(3, node.specializeCount);
         node.execute(43, 0);
         node.execute(43, 0);
-        assertEquals(3, getSlowPathCount(node));
+        assertEquals(3, node.specializeCount);
     }
 
     @TypeSystem
@@ -417,7 +419,8 @@ public class ExecuteEvaluatedTest {
 
     @TypeSystemReference(TestEvaluatedImplicitCast1TypeSystem.class)
     @SuppressWarnings("unused")
-    abstract static class TestEvaluatedImplicitCast1Node extends Node {
+
+    abstract static class TestEvaluatedImplicitCast1Node extends SlowPathListenerNode {
 
         public abstract Object execute(Object receiver, Object intValue);
 
@@ -435,7 +438,9 @@ public class ExecuteEvaluatedTest {
          * Avoid locking optimization to trigger.
          */
         @Specialization(replaces = "doInt")
-        public double doInt2(Void receiver, int intValue) {
+        public double doInt2(Void receiver, int intValue,
+                        // forces locking behavior
+                        @Cached("intValue") int cachedValue) {
             return 42;
         }
 
@@ -444,21 +449,20 @@ public class ExecuteEvaluatedTest {
     @Test
     public void testEvaluatedImplicitCast2() {
         TestEvaluatedImplicitCast2Node node = TestEvaluatedImplicitCast2NodeGen.create();
-        instrumentSlowPath(node);
 
-        assertEquals(0, getSlowPathCount(node));
+        assertEquals(0, node.specializeCount);
         node.execute("a", (short) 0);
         node.execute("a", (short) 0);
-        assertEquals(1, getSlowPathCount(node));
+        assertEquals(1, node.specializeCount);
         node.execute("b", 0);
         node.execute("b", 0);
-        assertEquals(2, getSlowPathCount(node));
+        assertEquals(2, node.specializeCount);
         node.execute(42, (short) 0);
         node.execute(42, (short) 0);
-        assertEquals(3, getSlowPathCount(node));
+        assertEquals(3, node.specializeCount);
         node.execute("c", 0);
         node.execute("c", 0);
-        assertEquals(3, getSlowPathCount(node));
+        assertEquals(3, node.specializeCount);
     }
 
     @TypeSystem
@@ -473,7 +477,7 @@ public class ExecuteEvaluatedTest {
 
     @TypeSystemReference(TestEvaluatedImplicitCast2TypeSystem.class)
     @SuppressWarnings("unused")
-    abstract static class TestEvaluatedImplicitCast2Node extends Node {
+    abstract static class TestEvaluatedImplicitCast2Node extends SlowPathListenerNode {
 
         public abstract Object execute(Object receiver, short intValue);
 
@@ -493,7 +497,9 @@ public class ExecuteEvaluatedTest {
          * Avoid locking optimization to trigger.
          */
         @Specialization(replaces = "doInt")
-        public double doInt2(Void receiver, int intValue) {
+        public double doInt2(Void receiver, int intValue,
+                        // forces locking behavior
+                        @Cached("intValue") int cachedValue) {
             return 42;
         }
     }

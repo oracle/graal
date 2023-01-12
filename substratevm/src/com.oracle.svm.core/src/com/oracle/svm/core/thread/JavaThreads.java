@@ -30,8 +30,10 @@ import java.security.AccessController;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.Pointer;
@@ -106,7 +108,7 @@ public final class JavaThreads {
      * overridden with code that does locking or performs other actions that are unsafe especially
      * in VM-internal contexts.
      */
-    static boolean isInterrupted(Thread thread) {
+    public static boolean isInterrupted(Thread thread) {
         return getInterruptedFlag(thread);
     }
 
@@ -382,5 +384,20 @@ public final class JavaThreads {
         } else {
             PlatformThreads.blockedOn(b);
         }
+    }
+
+    /**
+     * Returns the result of calling {@link #getThreadId} on {@link Thread#currentThread}, but from
+     * a thread-local cache with potentially fewer accesses.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long getCurrentThreadId() {
+        long id = PlatformThreads.currentVThreadId.get();
+        if (GraalDirectives.inIntrinsic()) {
+            ReplacementsUtil.dynamicAssert(id == getThreadId(Thread.currentThread()), "ids must match");
+        } else {
+            assert id == getThreadId(Thread.currentThread());
+        }
+        return id;
     }
 }

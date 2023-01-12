@@ -48,7 +48,9 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -62,7 +64,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
 import com.oracle.truffle.api.test.ExpectError;
 
-@SuppressWarnings({"unused", "static-method"})
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing", "unused", "static-method"})
 public class ExportMethodTest extends AbstractLibraryTest {
 
     @GenerateLibrary
@@ -184,6 +186,7 @@ public class ExportMethodTest extends AbstractLibraryTest {
     }
 
     @GenerateUncached
+    @GenerateInline(false)
     abstract static class CachedTestNode extends Node {
 
         abstract String execute();
@@ -363,16 +366,17 @@ public class ExportMethodTest extends AbstractLibraryTest {
             return "foo";
         }
 
+        @NeverDefault
         String boundMethod() {
             return "boundMethod";
         }
     }
 
     @ExportLibrary(ExportsTestLibrary1.class)
-    @ExpectError("Class 'com.oracle.truffle.api.library.test.ExportMethodTest.NoLibrary' is not a library annotated with @GenerateLibrary.")
     static final class ExportsTestObjectError2 {
 
         @ExportMessage(library = NoLibrary.class)
+        @ExpectError("Class 'com.oracle.truffle.api.library.test.ExportMethodTest.NoLibrary' is not a library annotated with @GenerateLibrary.")
         String foo() {
             return "foo";
         }
@@ -380,10 +384,10 @@ public class ExportMethodTest extends AbstractLibraryTest {
     }
 
     @ExportLibrary(ExportsTestLibrary1.class)
-    @ExpectError("No message 'invalidName' found for library ExportsTestLibrary1.")
     static class ExportsTestObjectError3 {
 
         @ExportMessage
+        @ExpectError("No message 'invalidName' found for library ExportsTestLibrary1.")
         String invalidName() {
             return "foo";
         }
@@ -391,10 +395,10 @@ public class ExportMethodTest extends AbstractLibraryTest {
     }
 
     @ExportLibrary(ExportsTestLibrary1.class)
-    @ExpectError("No message 'invalidName' found for library ExportsTestLibrary1.")
     static class ExportsTestObjectError4 {
 
         @ExportMessage(name = "invalidName")
+        @ExpectError("No message 'invalidName' found for library ExportsTestLibrary1.")
         String foo() {
             return "foo";
         }
@@ -410,11 +414,11 @@ public class ExportMethodTest extends AbstractLibraryTest {
 
     @ExportLibrary(ExportsTestLibrary1.class)
     @ExportLibrary(ExportsTestLibrary2.class)
-    @ExpectError({"The message name 'foo' is ambiguous for libraries ExportsTestLibrary1 and ExportsTestLibrary2. Disambiguate the library by specifying the library explicitely using " +
-                    "@ExportMessage(library=Library.class)."})
     static class ExportsTestObjectError6 {
 
         @ExportMessage
+        @ExpectError({"The message name 'foo' is ambiguous for libraries ExportsTestLibrary1 and ExportsTestLibrary2. Disambiguate the library by specifying the library explicitely using " +
+                        "@ExportMessage(library=Library.class)."})
         String foo() {
             return "foo";
         }
@@ -430,20 +434,20 @@ public class ExportMethodTest extends AbstractLibraryTest {
     }
 
     @ExportLibrary(ExportsTestLibrary3.class)
-    @ExpectError("No message 'foo' found for library ExportsTestLibrary3. Did you mean 'foo1', 'foo2', 'foo3'?")
     static class ExportsTestObjectError8 {
         @ExportMessage
+        @ExpectError("No message 'foo' found for library ExportsTestLibrary3. Did you mean 'foo1', 'foo2', 'foo3'?")
         String foo() {
             return "foo";
         }
     }
 
+    @SuppressWarnings("truffle")
     @ExportLibrary(ExportsTestLibrary3.class)
-    @ExpectError({"The method has the same name 'foo1' as a message in the exported library ExportsTestLibrary3. Did you forget to export it? Use @ExportMessage to export the message, @Ignore to " +
-                    "ignore this warning, rename the method or reduce the visibility of the method to private to resolve this warning.",
-                    "Exported library ExportsTestLibrary3 does not export any messages and therefore has no effect. Remove the export declaration to resolve this."})
     static class ExportsTestObjectError9 {
 
+        @ExpectError({"The method has the same name 'foo1' as a message in the exported library ExportsTestLibrary3. Did you forget to export it? Use @ExportMessage to export the message, @Ignore to " +
+                        "ignore this warning, rename the method or reduce the visibility of the method to private to resolve this warning."})
         String foo1() {
             return "foo1";
         }
@@ -464,15 +468,13 @@ public class ExportMethodTest extends AbstractLibraryTest {
 
         // wrong primitive type
         @ExportMessage
-        @ExpectError("Invalid parameter type. Expected 'int' but was 'double'.%")
-        public int intArg(double arg) {
+        public int intArg(@ExpectError("Invalid parameter type. Expected 'int' but was 'double'.%") double arg) {
             return 42;
         }
 
         // wront class type
         @ExportMessage
-        @ExpectError("Invalid parameter type. Expected 'TestClass' but was 'Object'.%")
-        public TestClass classArg(Object arg) {
+        public TestClass classArg(@ExpectError("Invalid parameter type. Expected 'TestClass' but was 'Object'.%") Object arg) {
             return (TestClass) arg;
         }
 
@@ -485,8 +487,7 @@ public class ExportMethodTest extends AbstractLibraryTest {
 
         // wrong multiple types
         @ExportMessage
-        @ExpectError({"Invalid parameter type. Expected 'int' but was 'byte'.%"})
-        public int multiArg(byte intArg, String arg) {
+        public int multiArg(@ExpectError({"Invalid parameter type. Expected 'int' but was 'byte'.%"}) byte intArg, String arg) {
             return intArg;
         }
 
@@ -510,16 +511,6 @@ public class ExportMethodTest extends AbstractLibraryTest {
 
     @ExportLibrary(ExportsTestLibrary1.class)
     static class ExportTestObjectError13 {
-        @ExportMessage
-        public String foo(int arg,
-                        @ExpectError("Error parsing expression 'create()': The method create is undefined for the enclosing scope.")//
-                        @Cached Node node) {
-            return "42";
-        }
-    }
-
-    @ExportLibrary(ExportsTestLibrary1.class)
-    static class ExportTestObjectError14 {
         @ExportMessage
         public String foo(int arg,
                         @ExpectError("Invalid library type Node. Library is not a subclass of Library.")//
@@ -606,6 +597,25 @@ public class ExportMethodTest extends AbstractLibraryTest {
         @ExportMessage
         public int intArg(int arg) {
             return 42;
+        }
+
+    }
+
+    @ExportLibrary(ExportsTestLibrary3.class)
+    static class WarningSharedTest {
+
+        private final Object storage = new Object();
+
+        @ExportMessage
+        String foo1(@ExpectError("The cached parameter may be shared with%") //
+        @CachedLibrary(limit = "1") ExportsTestLibrary3 shared) {
+            return "foo1";
+        }
+
+        @ExportMessage
+        String foo2(@ExpectError("The cached parameter may be shared with%") //
+        @CachedLibrary(limit = "1") ExportsTestLibrary3 shared) {
+            return "foo1";
         }
 
     }

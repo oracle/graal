@@ -733,21 +733,6 @@ public final class DebugContext implements AutoCloseable {
     }
 
     /**
-     * Determines if verification is enabled for any {@link JavaMethod} in the current scope.
-     *
-     * @see DebugContext#verify(Object, String)
-     */
-    public boolean isVerifyEnabledForMethod() {
-        if (currentScope == null) {
-            return false;
-        }
-        if (currentConfig == null) {
-            return false;
-        }
-        return currentConfig.isVerifyEnabledForMethod(currentScope);
-    }
-
-    /**
      * Determines if verification is enabled in the current scope.
      *
      * @see DebugContext#verify(Object, String)

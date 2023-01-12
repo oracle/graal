@@ -119,6 +119,7 @@ import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadInstanceFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadStaticFieldTypeFlow;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraph.GraphKind;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.LoadIndexedTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.UnsafeLoadTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.UnsafePartitionLoadTypeFlow;
@@ -140,11 +141,13 @@ import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.VMConstant;
 
 public class MethodTypeFlowBuilder {
@@ -160,29 +163,33 @@ public class MethodTypeFlowBuilder {
     protected StructuredGraph graph;
     private NodeBitMap processedNodes;
     private Map<PhiNode, TypeFlowBuilder<?>> loopPhiFlows;
+    private final MethodFlowsGraph.GraphKind graphKind;
+    private boolean processed = false;
+    private final boolean newFlowsGraph;
 
     protected final TypeFlowGraphBuilder typeFlowGraphBuilder;
 
-    public MethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method) {
+    public MethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, GraphKind graphKind) {
         this.bb = bb;
         this.method = method;
-        flowsGraph = new MethodFlowsGraph(method);
+        this.graphKind = graphKind;
+        if (flowsGraph == null) {
+            this.flowsGraph = new MethodFlowsGraph(method, graphKind);
+            newFlowsGraph = true;
+        } else {
+            this.flowsGraph = flowsGraph;
+            newFlowsGraph = false;
+            assert graphKind == GraphKind.FULL;
+        }
         typeFlowGraphBuilder = new TypeFlowGraphBuilder(bb);
     }
 
-    public MethodTypeFlowBuilder(PointsToAnalysis bb, StructuredGraph graph) {
-        this.bb = bb;
-        this.graph = graph;
-        this.method = (PointsToAnalysisMethod) graph.method();
-        flowsGraph = null;
-        typeFlowGraphBuilder = null;
-    }
-
     @SuppressWarnings("try")
-    private boolean parse() {
-        AnalysisParsedGraph analysisParsedGraph = method.ensureGraphParsed(bb);
+    private boolean parse(Object reason, boolean forceReparse) {
+        AnalysisParsedGraph analysisParsedGraph = forceReparse ? method.reparseGraph(bb) : method.ensureGraphParsed(bb);
+
         if (analysisParsedGraph.isIntrinsic()) {
-            method.registerAsIntrinsicMethod();
+            method.registerAsIntrinsicMethod(reason);
         }
 
         if (analysisParsedGraph.getEncodedGraph() == null) {
@@ -197,7 +204,7 @@ public class MethodTypeFlowBuilder {
                  * parsing graphs again for compilation, we need to have all types, methods, fields
                  * of the original graph registered properly.
                  */
-                registerUsedElements(false);
+                registerUsedElements(bb, graph, false);
             }
             CanonicalizerPhase canonicalizerPhase = CanonicalizerPhase.create();
             canonicalizerPhase.apply(graph, bb.getProviders());
@@ -211,13 +218,23 @@ public class MethodTypeFlowBuilder {
                 new IterativeConditionalEliminationPhase(canonicalizerPhase, false).apply(graph, bb.getProviders());
 
                 if (Options.PEABeforeAnalysis.getValue(bb.getOptions())) {
-                    new BoxNodeIdentityPhase().apply(graph, bb.getProviders());
-                    new PartialEscapePhase(false, canonicalizerPhase, bb.getOptions()).apply(graph, bb.getProviders());
+                    if (!method.isDeoptTarget()) {
+                        /*
+                         * Deoptimization Targets cannot have virtual objects in framestates.
+                         */
+                        new BoxNodeIdentityPhase().apply(graph, bb.getProviders());
+                        new PartialEscapePhase(false, canonicalizerPhase, bb.getOptions()).apply(graph, bb.getProviders());
+                    }
                 }
             }
 
+            if (!bb.getUniverse().hostVM().validateGraph(bb, graph)) {
+                graph = null;
+                return false;
+            }
+
             // Do it again after canonicalization changed type checks and field accesses.
-            registerUsedElements(true);
+            registerUsedElements(bb, graph, true);
 
             return true;
         } catch (Throwable ex) {
@@ -225,24 +242,25 @@ public class MethodTypeFlowBuilder {
         }
     }
 
-    public void registerUsedElements(boolean registerEmbeddedRoots) {
+    protected static void registerUsedElements(PointsToAnalysis bb, StructuredGraph graph, boolean registerEmbeddedRoots) {
+        PointsToAnalysisMethod method = (PointsToAnalysisMethod) graph.method();
         for (Node n : graph.getNodes()) {
             if (n instanceof InstanceOfNode) {
                 InstanceOfNode node = (InstanceOfNode) n;
                 AnalysisType type = (AnalysisType) node.type().getType();
-                if (!ignoreInstanceOfType(type)) {
-                    type.registerAsReachable();
+                if (!ignoreInstanceOfType(bb, type)) {
+                    type.registerAsReachable(AbstractAnalysisEngine.sourcePosition(node));
                 }
 
             } else if (n instanceof NewInstanceNode) {
                 NewInstanceNode node = (NewInstanceNode) n;
                 AnalysisType type = (AnalysisType) node.instanceClass();
-                type.registerAsAllocated(node);
+                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof VirtualObjectNode) {
                 VirtualObjectNode node = (VirtualObjectNode) n;
                 AnalysisType type = (AnalysisType) node.type();
-                type.registerAsAllocated(node);
+                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof CommitAllocationNode) {
                 CommitAllocationNode node = (CommitAllocationNode) n;
@@ -255,7 +273,7 @@ public class MethodTypeFlowBuilder {
                             ValueNode value = values.get(objectStartIndex + i);
                             if (!value.isJavaConstant() || !value.asJavaConstant().isDefaultForKind()) {
                                 AnalysisField field = (AnalysisField) ((VirtualInstanceNode) virtualObject).field(i);
-                                field.registerAsWritten(method);
+                                field.registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
                             }
                         }
                     }
@@ -265,20 +283,20 @@ public class MethodTypeFlowBuilder {
             } else if (n instanceof NewArrayNode) {
                 NewArrayNode node = (NewArrayNode) n;
                 AnalysisType type = ((AnalysisType) node.elementType()).getArrayClass();
-                type.registerAsAllocated(node);
+                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof NewMultiArrayNode) {
                 NewMultiArrayNode node = (NewMultiArrayNode) n;
                 AnalysisType type = ((AnalysisType) node.type());
                 for (int i = 0; i < node.dimensionCount(); i++) {
-                    type.registerAsAllocated(node);
+                    type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
                     type = type.getComponentType();
                 }
 
             } else if (n instanceof BoxNode) {
                 BoxNode node = (BoxNode) n;
                 AnalysisType type = (AnalysisType) StampTool.typeOrNull(node);
-                type.registerAsAllocated(node);
+                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof LoadFieldNode) {
                 LoadFieldNode node = (LoadFieldNode) n;
@@ -288,16 +306,16 @@ public class MethodTypeFlowBuilder {
             } else if (n instanceof StoreFieldNode) {
                 StoreFieldNode node = (StoreFieldNode) n;
                 AnalysisField field = (AnalysisField) node.field();
-                field.registerAsWritten(method);
+                field.registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof ConstantNode) {
                 ConstantNode cn = (ConstantNode) n;
                 if (cn.hasUsages() && cn.isJavaConstant() && cn.asJavaConstant().getJavaKind() == JavaKind.Object && cn.asJavaConstant().isNonNull()) {
                     assert StampTool.isExactType(cn);
                     AnalysisType type = (AnalysisType) StampTool.typeOrNull(cn);
-                    type.registerAsInHeap();
-                    if (registerEmbeddedRoots && !ignoreConstant(cn)) {
-                        registerEmbeddedRoot(cn);
+                    type.registerAsInHeap(AbstractAnalysisEngine.sourcePosition(cn));
+                    if (registerEmbeddedRoots && !ignoreConstant(bb, cn)) {
+                        registerEmbeddedRoot(bb, cn);
                     }
                 }
 
@@ -311,7 +329,7 @@ public class MethodTypeFlowBuilder {
                      * metadata is only constructed after AOT compilation, so the image heap
                      * scanning during static analysis does not see these classes.
                      */
-                    frameStateMethod.getDeclaringClass().registerAsReachable();
+                    frameStateMethod.getDeclaringClass().registerAsReachable(AbstractAnalysisEngine.syntheticSourcePosition(node, method));
                 }
 
             } else if (n instanceof ForeignCall) {
@@ -344,8 +362,8 @@ public class MethodTypeFlowBuilder {
      * re-write the Class constant to a String constant, i.e., only embed the class name and not the
      * full java.lang.Class object in the image.
      */
-    protected boolean ignoreConstant(ConstantNode cn) {
-        if (!ignoreInstanceOfType((AnalysisType) bb.getProviders().getConstantReflection().asJavaType(cn.asConstant()))) {
+    protected static boolean ignoreConstant(PointsToAnalysis bb, ConstantNode cn) {
+        if (!ignoreInstanceOfType(bb, (AnalysisType) bb.getProviders().getConstantReflection().asJavaType(cn.asConstant()))) {
             return false;
         }
         for (var usage : cn.usages()) {
@@ -367,7 +385,10 @@ public class MethodTypeFlowBuilder {
         return true;
     }
 
-    protected boolean ignoreInstanceOfType(AnalysisType type) {
+    protected static boolean ignoreInstanceOfType(PointsToAnalysis bb, AnalysisType type) {
+        if (bb.getHostVM().ignoreInstanceOfTypeDisallowed()) {
+            return false;
+        }
         if (type == null || !bb.strengthenGraalGraphs()) {
             return false;
         }
@@ -382,7 +403,7 @@ public class MethodTypeFlowBuilder {
         return true;
     }
 
-    private void registerEmbeddedRoot(ConstantNode cn) {
+    private static void registerEmbeddedRoot(PointsToAnalysis bb, ConstantNode cn) {
         JavaConstant root = cn.asJavaConstant();
         if (bb.scanningPolicy().trackConstant(bb, root)) {
             bb.getUniverse().registerEmbeddedRoot(root, AbstractAnalysisEngine.sourcePosition(cn));
@@ -394,8 +415,7 @@ public class MethodTypeFlowBuilder {
         targetMethod.ifPresent(analysisMethod -> bb.addRootMethod(analysisMethod, true));
     }
 
-    protected void apply() {
-        // assert method.getAnnotation(Fold.class) == null : method;
+    private boolean handleNodeIntrinsic() {
         if (AnnotationAccess.isAnnotationPresent(method, NodeIntrinsic.class)) {
             graph.getDebug().log("apply MethodTypeFlow on node intrinsic %s", method);
             AnalysisType returnType = (AnalysisType) method.getSignature().getReturnType(method.getDeclaringClass());
@@ -414,15 +434,45 @@ public class MethodTypeFlowBuilder {
                 flowsGraph.addMiscEntryFlow(returnTypeFlow);
                 flowsGraph.setReturnFlow(resultFlow);
             }
-            return;
+            return true;
         }
 
-        if (!parse()) {
-            return;
+        return false;
+    }
+
+    /**
+     * Placeholder flows are placed in the graph for any missing flows.
+     */
+    private void insertPlaceholderParamAndReturnFlows() {
+        boolean isStatic = Modifier.isStatic(method.getModifiers());
+        JavaType[] paramTypes = method.getSignature().toParameterTypes(isStatic ? null : method.getDeclaringClass());
+        BytecodePosition position = new BytecodePosition(null, method, 0);
+        for (int index = 0; index < paramTypes.length; index++) {
+            if (flowsGraph.getParameter(index) == null) {
+                if (paramTypes[index].getJavaKind().isObject()) {
+                    AnalysisType paramType = (AnalysisType) paramTypes[index];
+                    FormalParamTypeFlow parameter;
+                    if (!isStatic && index == 0) {
+                        assert paramType == method.getDeclaringClass();
+                        parameter = new FormalReceiverTypeFlow(position, paramType);
+                    } else {
+                        parameter = new FormalParamTypeFlow(position, paramType, index);
+                    }
+                    flowsGraph.setParameter(index, parameter);
+                }
+            }
         }
 
-        bb.getHostVM().methodBeforeTypeFlowCreationHook(bb, method, graph);
+        if (flowsGraph.getReturnFlow() == null) {
+            AnalysisType returnType = (AnalysisType) method.getSignature().getReturnType(method.getDeclaringClass());
+            if (returnType.getJavaKind().isObject()) {
+                flowsGraph.setReturnFlow(new FormalReturnTypeFlow(position, returnType));
+            }
+        }
 
+    }
+
+    private void createTypeFlow() {
         processedNodes = new NodeBitMap(graph);
 
         TypeFlowsOfNodes typeFlows = new TypeFlowsOfNodes();
@@ -433,16 +483,22 @@ public class MethodTypeFlowBuilder {
                     TypeFlowBuilder<?> paramBuilder = TypeFlowBuilder.create(bb, node, FormalParamTypeFlow.class, () -> {
                         boolean isStatic = Modifier.isStatic(method.getModifiers());
                         int index = node.index();
-                        FormalParamTypeFlow parameter;
-                        if (!isStatic && index == 0) {
-                            AnalysisType paramType = method.getDeclaringClass();
-                            parameter = new FormalReceiverTypeFlow(AbstractAnalysisEngine.sourcePosition(node), paramType);
+                        FormalParamTypeFlow parameter = flowsGraph.getParameter(index);
+                        if (parameter != null) {
+                            // updating source to reflect position in new parsing of code
+                            parameter.updateSource(AbstractAnalysisEngine.sourcePosition(node));
                         } else {
-                            int offset = isStatic ? 0 : 1;
-                            AnalysisType paramType = (AnalysisType) method.getSignature().getParameterType(index - offset, method.getDeclaringClass());
-                            parameter = new FormalParamTypeFlow(AbstractAnalysisEngine.sourcePosition(node), paramType, index);
+                            assert newFlowsGraph : "missing flow from original graph " + parameter;
+                            if (!isStatic && index == 0) {
+                                AnalysisType paramType = method.getDeclaringClass();
+                                parameter = new FormalReceiverTypeFlow(AbstractAnalysisEngine.sourcePosition(node), paramType);
+                            } else {
+                                int offset = isStatic ? 0 : 1;
+                                AnalysisType paramType = (AnalysisType) method.getSignature().getParameterType(index - offset, method.getDeclaringClass());
+                                parameter = new FormalParamTypeFlow(AbstractAnalysisEngine.sourcePosition(node), paramType, index);
+                            }
+                            flowsGraph.setParameter(index, parameter);
                         }
-                        flowsGraph.setParameter(index, parameter);
                         return parameter;
                     });
                     typeFlowGraphBuilder.checkFormalParameterBuilder(paramBuilder);
@@ -521,6 +577,35 @@ public class MethodTypeFlowBuilder {
                 markFieldsUsedInComparison(compareNode.getX());
                 markFieldsUsedInComparison(compareNode.getY());
             }
+        }
+    }
+
+    protected void apply(boolean forceReparse, Object reason) {
+        assert !processed : "can only call apply once per MethodTypeFlowBuilder";
+        processed = true;
+
+        // assert method.getAnnotation(Fold.class) == null : method;
+        if (handleNodeIntrinsic()) {
+            return;
+        }
+
+        boolean insertPlaceholderFlows = bb.getHostVM().getMultiMethodAnalysisPolicy().insertPlaceholderParamAndReturnFlows(method.getMultiMethodKey());
+        if (graphKind == MethodFlowsGraph.GraphKind.STUB) {
+            AnalysisError.guarantee(insertPlaceholderFlows, "placeholder flows must be enabled for STUB graphkinds.");
+            insertPlaceholderParamAndReturnFlows();
+            return;
+        }
+
+        if (!parse(reason, forceReparse)) {
+            return;
+        }
+
+        bb.getHostVM().methodBeforeTypeFlowCreationHook(bb, method, graph);
+
+        createTypeFlow();
+
+        if (insertPlaceholderFlows) {
+            insertPlaceholderParamAndReturnFlows();
         }
 
         /*
@@ -692,9 +777,16 @@ public class MethodTypeFlowBuilder {
                 AnalysisType returnType = (AnalysisType) method.getSignature().getReturnType(method.getDeclaringClass());
                 if (returnType.getJavaKind() == JavaKind.Object) {
                     returnBuilder = TypeFlowBuilder.create(bb, node, FormalReturnTypeFlow.class, () -> {
-                        FormalReturnTypeFlow resultFlow = new FormalReturnTypeFlow(AbstractAnalysisEngine.sourcePosition(node), returnType);
-                        flowsGraph.setReturnFlow(resultFlow);
-                        return resultFlow;
+                        FormalReturnTypeFlow returnFlow = flowsGraph.getReturnFlow();
+                        if (returnFlow != null) {
+                            // updating source to reflect position in new parsing of code
+                            returnFlow.updateSource(AbstractAnalysisEngine.sourcePosition(node));
+                        } else {
+                            assert newFlowsGraph : "missing flow from original graph " + returnFlow;
+                            returnFlow = new FormalReturnTypeFlow(AbstractAnalysisEngine.sourcePosition(node), returnType);
+                            flowsGraph.setReturnFlow(returnFlow);
+                        }
+                        return returnFlow;
                     });
                     /*
                      * Formal return must not be removed. It is linked when the callee is analyzed,
@@ -1478,17 +1570,18 @@ public class MethodTypeFlowBuilder {
                 }
             }
 
+            MultiMethod.MultiMethodKey multiMethodKey = method.getMultiMethodKey();
             InvokeTypeFlow invokeFlow;
             switch (invokeKind) {
                 case Static:
-                    invokeFlow = bb.analysisPolicy().createStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
+                    invokeFlow = bb.analysisPolicy().createStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
                     break;
                 case Special:
-                    invokeFlow = bb.analysisPolicy().createSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
+                    invokeFlow = bb.analysisPolicy().createSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
                     break;
                 case Virtual:
                 case Interface:
-                    invokeFlow = bb.analysisPolicy().createVirtualInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
+                    invokeFlow = bb.analysisPolicy().createVirtualInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
                     break;
                 default:
                     throw shouldNotReachHere();
@@ -1674,5 +1767,4 @@ public class MethodTypeFlowBuilder {
     /** Hook for unsafe offset value checks. */
     protected void checkUnsafeOffset(@SuppressWarnings("unused") ValueNode base, @SuppressWarnings("unused") ValueNode offset) {
     }
-
 }

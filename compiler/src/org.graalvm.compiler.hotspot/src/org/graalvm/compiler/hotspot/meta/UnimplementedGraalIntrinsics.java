@@ -433,6 +433,8 @@ public final class UnimplementedGraalIntrinsics {
 
         if (JAVA_SPEC >= 20) {
             add(toBeInvestigated,
+                            "com/sun/crypto/provider/ChaCha20Cipher.implChaCha20Block([I[B)I",
+                            "com/sun/crypto/provider/Poly1305.processMultipleBlocks([BII[J[J)V",
                             "java/lang/Double.isFinite(D)Z",
                             "java/lang/Float.float16ToFloat(S)F",
                             "java/lang/Float.floatToFloat16(F)S",
@@ -449,9 +451,7 @@ public final class UnimplementedGraalIntrinsics {
 
         if (arch instanceof AArch64) {
             add(toBeInvestigated,
-                            "java/lang/StringCoding.hasNegatives([BII)Z",
-                            "java/lang/Thread.onSpinWait()V",
-                            "jdk/internal/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I");
+                            "java/lang/Thread.onSpinWait()V");
         }
 
         // These are known to be implemented down stream

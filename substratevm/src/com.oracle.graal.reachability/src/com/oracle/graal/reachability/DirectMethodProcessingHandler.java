@@ -27,6 +27,7 @@ package com.oracle.graal.reachability;
 import java.lang.reflect.Modifier;
 import java.util.Optional;
 
+import jdk.vm.ci.code.BytecodePosition;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.graph.Node;
@@ -79,32 +80,33 @@ public class DirectMethodProcessingHandler implements ReachabilityMethodProcessi
             int parameterCount = method.getSignature().getParameterCount(!isStatic);
             int offset = isStatic ? 0 : 1;
             for (int i = offset; i < parameterCount; i++) {
-                bb.markTypeReachable((ReachabilityAnalysisType) method.getSignature().getParameterType(i - offset, method.getDeclaringClass()));
+                bb.registerTypeAsReachable((ReachabilityAnalysisType) method.getSignature().getParameterType(i - offset, method.getDeclaringClass()),
+                                "Parameter type for " + method.format("%H.%n(%p)"));
             }
 
-            bb.markTypeReachable((ReachabilityAnalysisType) method.getSignature().getReturnType(method.getDeclaringClass()));
+            bb.registerTypeAsReachable((ReachabilityAnalysisType) method.getSignature().getReturnType(method.getDeclaringClass()), "Return type for " + method.format("%H.%n(%p)"));
         }
 
         for (Node n : graph.getNodes()) {
             if (n instanceof NewInstanceNode) {
                 NewInstanceNode node = (NewInstanceNode) n;
-                bb.markTypeInstantiated((ReachabilityAnalysisType) node.instanceClass());
+                bb.registerTypeAsAllocated((ReachabilityAnalysisType) node.instanceClass(), AbstractAnalysisEngine.sourcePosition(node));
             } else if (n instanceof NewArrayNode) {
                 NewArrayNode node = (NewArrayNode) n;
-                bb.markTypeInstantiated(((ReachabilityAnalysisType) node.elementType()).getArrayClass());
+                bb.registerTypeAsAllocated(((ReachabilityAnalysisType) node.elementType()).getArrayClass(), AbstractAnalysisEngine.sourcePosition(node));
             } else if (n instanceof NewMultiArrayNode) {
                 NewMultiArrayNode node = (NewMultiArrayNode) n;
                 ResolvedJavaType type = node.type();
                 for (int i = 0; i < node.dimensionCount(); i++) {
-                    bb.markTypeInstantiated((ReachabilityAnalysisType) type);
+                    bb.registerTypeAsAllocated((ReachabilityAnalysisType) type, AbstractAnalysisEngine.sourcePosition(node));
                     type = type.getComponentType();
                 }
             } else if (n instanceof VirtualInstanceNode) {
                 VirtualInstanceNode node = (VirtualInstanceNode) n;
-                bb.markTypeInstantiated((ReachabilityAnalysisType) node.type());
+                bb.registerTypeAsAllocated((ReachabilityAnalysisType) node.type(), AbstractAnalysisEngine.sourcePosition(node));
             } else if (n instanceof VirtualArrayNode) {
                 VirtualArrayNode node = (VirtualArrayNode) n;
-                bb.markTypeInstantiated(((ReachabilityAnalysisType) node.componentType()).getArrayClass());
+                bb.registerTypeAsAllocated(((ReachabilityAnalysisType) node.componentType()).getArrayClass(), AbstractAnalysisEngine.sourcePosition(node));
             } else if (n instanceof ConstantNode) {
                 ConstantNode node = (ConstantNode) n;
                 if (!(node.getValue() instanceof JavaConstant)) {
@@ -117,16 +119,16 @@ public class DirectMethodProcessingHandler implements ReachabilityMethodProcessi
                     continue;
                 }
                 JavaConstant constant = (JavaConstant) node.getValue();
-                bb.handleEmbeddedConstant(method, constant);
+                bb.handleEmbeddedConstant(method, constant, AbstractAnalysisEngine.sourcePosition(node));
             } else if (n instanceof InstanceOfNode) {
                 InstanceOfNode node = (InstanceOfNode) n;
-                bb.markTypeReachable((ReachabilityAnalysisType) node.type().getType());
+                bb.registerTypeAsReachable((ReachabilityAnalysisType) node.type().getType(), AbstractAnalysisEngine.sourcePosition(node));
             } else if (n instanceof LoadFieldNode) {
                 LoadFieldNode node = (LoadFieldNode) n;
                 bb.markFieldRead((ReachabilityAnalysisField) node.field(), AbstractAnalysisEngine.sourcePosition(node));
             } else if (n instanceof StoreFieldNode) {
                 StoreFieldNode node = (StoreFieldNode) n;
-                bb.markFieldWritten((ReachabilityAnalysisField) node.field());
+                bb.markFieldWritten((ReachabilityAnalysisField) node.field(), AbstractAnalysisEngine.sourcePosition(node));
             } else if (n instanceof Invoke) {
                 Invoke node = (Invoke) n;
                 CallTargetNode.InvokeKind kind = node.getInvokeKind();
@@ -134,13 +136,14 @@ public class DirectMethodProcessingHandler implements ReachabilityMethodProcessi
                 if (targetMethod == null || AnnotationAccess.isAnnotationPresent(targetMethod, Node.NodeIntrinsic.class)) {
                     continue;
                 }
+                BytecodePosition reason = AbstractAnalysisEngine.sourcePosition(node.asNode());
                 if (method != null) {
-                    method.addInvoke(new ReachabilityInvokeInfo(targetMethod, ReachabilityAnalysisMethod.sourcePosition(node, method), kind.isDirect()));
+                    method.addInvoke(new ReachabilityInvokeInfo(targetMethod, reason, kind.isDirect()));
                 }
                 if (kind.isDirect()) {
-                    bb.markMethodImplementationInvoked(targetMethod);
+                    bb.markMethodImplementationInvoked(targetMethod, reason);
                 } else {
-                    bb.markMethodInvoked(targetMethod);
+                    bb.markMethodInvoked(targetMethod, reason);
                 }
             } else if (n instanceof FrameState) {
                 FrameState node = (FrameState) n;
@@ -153,15 +156,16 @@ public class DirectMethodProcessingHandler implements ReachabilityMethodProcessi
                      * scanning during static analysis does not see these classes.
                      */
                     ReachabilityAnalysisMethod analysisMethod = (ReachabilityAnalysisMethod) frameMethod;
-                    bb.markTypeReachable(analysisMethod.getDeclaringClass());
+                    bb.registerTypeAsReachable(analysisMethod.getDeclaringClass(), AbstractAnalysisEngine.syntheticSourcePosition(node, method));
                 }
             } else if (n instanceof MacroInvokable) {
                 MacroInvokable node = (MacroInvokable) n;
                 ReachabilityAnalysisMethod targetMethod = (ReachabilityAnalysisMethod) node.getTargetMethod();
+                BytecodePosition reason = AbstractAnalysisEngine.syntheticSourcePosition(node.asNode(), method);
                 if (node.getInvokeKind().isDirect()) {
-                    bb.markMethodImplementationInvoked(targetMethod);
+                    bb.markMethodImplementationInvoked(targetMethod, reason);
                 } else {
-                    bb.markMethodInvoked(targetMethod);
+                    bb.markMethodInvoked(targetMethod, reason);
                 }
             } else if (n instanceof ForeignCall) {
                 handleForeignCall(bb, ((ForeignCall) n).getDescriptor());

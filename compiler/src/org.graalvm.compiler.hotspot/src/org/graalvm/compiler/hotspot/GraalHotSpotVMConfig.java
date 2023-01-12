@@ -691,6 +691,29 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long monitorexitAddress = getAddress("JVMCIRuntime::monitorexit");
     public final long notifyAddress = getAddress("JVMCIRuntime::object_notify");
     public final long notifyAllAddress = getAddress("JVMCIRuntime::object_notifyAll");
+
+    // Tracking of the number of monitors held by the current thread. This is used by loom but in
+    // JDK 20 was enabled by default to ensure it was correctly implemented.
+    public final int threadHeldMonitorCountOffset;
+    public final boolean threadHeldMonitorCountIsWord;
+
+    {
+        int offset = -1;
+        boolean isWord = false;
+        if (JDK == 19) {
+            offset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, "int");
+            isWord = false;
+        } else if (JDK >= 20) {
+            offset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, "int64_t");
+            isWord = true;
+        }
+        threadHeldMonitorCountOffset = offset;
+        threadHeldMonitorCountIsWord = isWord;
+    }
+
+    // This should be true when loom is enabled on 19 but that still needs to be exposed by JVMCI
+    public final boolean updateHeldMonitorCount = JDK >= 20;
+
     public final long throwAndPostJvmtiExceptionAddress = getAddress("JVMCIRuntime::throw_and_post_jvmti_exception");
     public final long throwKlassExternalNameExceptionAddress = getAddress("JVMCIRuntime::throw_klass_external_name_exception");
     public final long throwClassCastExceptionAddress = getAddress("JVMCIRuntime::throw_class_cast_exception");

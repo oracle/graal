@@ -175,16 +175,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             }
             return true;
         }
-        String optimizeOption = "-O";
-        if (headArg.startsWith(optimizeOption)) {
-            args.poll();
-            if (headArg.equals(optimizeOption)) {
-                NativeImage.showError("The " + optimizeOption + " option should not be followed by a space");
-            } else {
-                nativeImage.addPlainImageBuilderArg(nativeImage.oHOptimize + headArg.substring(2));
-            }
-            return true;
-        }
         if (headArg.startsWith(addModulesOption + "=")) {
             args.poll();
             String addModulesArgs = headArg.substring(addModulesOption.length() + 1);

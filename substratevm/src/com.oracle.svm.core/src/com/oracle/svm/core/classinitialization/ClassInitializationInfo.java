@@ -27,15 +27,20 @@ package com.oracle.svm.core.classinitialization;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
@@ -97,9 +102,17 @@ public final class ClassInitializationInfo {
      */
     private InitState initState;
     /**
-     * The thread that is currently initializing the class.
+     * The thread that is currently initializing the class. We use the platform thread instead of a
+     * potential virtual thread because initializers like that of {@code sun.nio.ch.Poller} can
+     * switch to the carrier thread and encounter the class that is being initialized again and
+     * would wait for its initialization in the virtual thread to complete and therefore deadlock.
+     *
+     * We also pin the virtual thread because it must not continue initialization on a different
+     * platform thread, and also because if the platform thread switches to a different virtual
+     * thread which encounters the class being initialized, it would wrongly be considered reentrant
+     * initialization and enable use of the incompletely initialized class.
      */
-    private Thread initThread;
+    private IsolateThread initThread;
 
     /**
      * The lock held during initialization of the class. Allocated during image building, otherwise
@@ -156,8 +169,8 @@ public final class ClassInitializationInfo {
         return initState == InitState.InitializationError;
     }
 
-    private boolean isReentrantInitialization(Thread thread) {
-        return thread == initThread;
+    private boolean isReentrantInitialization(IsolateThread thread) {
+        return thread.equal(initThread);
     }
 
     /**
@@ -169,7 +182,7 @@ public final class ClassInitializationInfo {
      */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void initialize(ClassInitializationInfo info, DynamicHub hub) {
-        Thread self = Thread.currentThread();
+        IsolateThread self = CurrentIsolate.getCurrentThread();
 
         /*
          * Step 1: Synchronize on the initialization lock, LC, for C. This involves waiting until
@@ -232,6 +245,22 @@ public final class ClassInitializationInfo {
             info.initLock.unlock();
         }
 
+        boolean pinned = false;
+        if (VirtualThreads.isSupported() && JavaThreads.isCurrentThreadVirtual()) {
+            // See comment on field `initThread`
+            VirtualThreads.singleton().pinCurrent();
+            pinned = true;
+        }
+        try {
+            doInitialize(info, hub);
+        } finally {
+            if (pinned) {
+                VirtualThreads.singleton().unpinCurrent();
+            }
+        }
+    }
+
+    private static void doInitialize(ClassInitializationInfo info, DynamicHub hub) {
         /*
          * Step 7: Next, if C is a class rather than an interface, initialize its super class and
          * super interfaces.
@@ -339,7 +368,7 @@ public final class ClassInitializationInfo {
         initLock.lock();
         try {
             this.initState = state;
-            this.initThread = null;
+            this.initThread = WordFactory.nullPointer();
             /* Make sure previous stores are all done, notably the initState. */
             Unsafe.getUnsafe().storeFence();
 

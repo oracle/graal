@@ -58,7 +58,7 @@ import org.graalvm.compiler.nodes.calc.MulNode;
 import org.graalvm.compiler.nodes.calc.NotNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.calc.RemNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.debug.DynamicCounterNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
@@ -112,7 +112,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
     protected void run(StructuredGraph graph) {
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
         SchedulePhase.runWithoutContextOptimizations(graph, SchedulePhase.getDefaultStrategy(graph.getOptions()), cfg, true);
-        for (Loop<Block> loop : cfg.getLoops()) {
+        for (Loop<HIRBlock> loop : cfg.getLoops()) {
             double loopProbability = cfg.blockFor(loop.getHeader().getBeginNode()).getRelativeFrequency();
             if (loopProbability > (1D / Integer.MAX_VALUE)) {
                 addSectionCounters(loop.getHeader().getBeginNode(), loop.getBlocks(), loop.getChildren(), graph.getLastSchedule(), cfg);
@@ -136,9 +136,9 @@ public class ProfileCompiledMethodsPhase extends Phase {
         }
     }
 
-    private static void addSectionCounters(FixedWithNextNode start, Collection<Block> sectionBlocks, Collection<Loop<Block>> childLoops, ScheduleResult schedule, ControlFlowGraph cfg) {
-        HashSet<Block> blocks = new HashSet<>(sectionBlocks);
-        for (Loop<Block> loop : childLoops) {
+    private static void addSectionCounters(FixedWithNextNode start, Collection<HIRBlock> sectionBlocks, Collection<Loop<HIRBlock>> childLoops, ScheduleResult schedule, ControlFlowGraph cfg) {
+        HashSet<HIRBlock> blocks = new HashSet<>(sectionBlocks);
+        for (Loop<HIRBlock> loop : childLoops) {
             blocks.removeAll(loop.getBlocks());
         }
         long increment = DynamicCounterNode.clampIncrement((long) (getSectionWeight(schedule, blocks) / cfg.blockFor(start).getRelativeFrequency()));
@@ -156,9 +156,9 @@ public class ProfileCompiledMethodsPhase extends Phase {
         }
     }
 
-    private static double getSectionWeight(ScheduleResult schedule, Collection<Block> blocks) {
+    private static double getSectionWeight(ScheduleResult schedule, Collection<HIRBlock> blocks) {
         double count = 0;
-        for (Block block : blocks) {
+        for (HIRBlock block : blocks) {
             double blockProbability = block.getRelativeFrequency();
             for (Node node : schedule.getBlockToNodesMap().get(block)) {
                 count += blockProbability * getNodeWeight(node);
@@ -199,9 +199,9 @@ public class ProfileCompiledMethodsPhase extends Phase {
         return 2;
     }
 
-    private static boolean hasInvoke(Collection<Block> blocks) {
+    private static boolean hasInvoke(Collection<HIRBlock> blocks) {
         boolean hasInvoke = false;
-        for (Block block : blocks) {
+        for (HIRBlock block : blocks) {
             for (FixedNode fixed : block.getNodes()) {
                 if (fixed instanceof Invoke) {
                     hasInvoke = true;

@@ -26,17 +26,16 @@
 package com.oracle.svm.hosted;
 
 import java.io.File;
-import java.io.PrintWriter;
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
 import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.function.Consumer;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.util.json.JsonWriter;
 
 class ProgressReporterJsonHelper {
     protected static final long UNAVAILABLE_METRIC = -1;
@@ -108,51 +107,13 @@ class ProgressReporterJsonHelper {
         recordSystemFixedValues();
         final File file = new File(jsonOutputFile);
         String description = "image statistics in json";
-        return ReportUtils.report(description, file.getAbsoluteFile().toPath(), getReporter(), false);
-    }
-
-    private Consumer<PrintWriter> getReporter() {
-        return out -> {
-            out.println(toJson());
-        };
-    }
-
-    private String toJson() {
-        return mapToJson(statsHolder);
-    }
-
-    private String mapToJson(Map<String, Object> map) {
-        // base case
-        if (map.isEmpty()) {
-            return "{}";
-        }
-        StringBuilder builder = new StringBuilder();
-        builder.append("{");
-        Iterator<String> keySetIter = map.keySet().iterator();
-        while (keySetIter.hasNext()) {
-            String key = keySetIter.next();
-            Object value = map.get(key);
-            builder.append("\"" + key + "\":");
-            if (value == null) {
-                builder.append("null"); // null string
-            } else if (value instanceof Map) {
-                // Always a <String, Object> map
-                @SuppressWarnings("unchecked")
-                Map<String, Object> subMap = (Map<String, Object>) value;
-                builder.append(mapToJson(subMap));
-            } else if (value instanceof String) {
-                builder.append("\"" + value + "\"");
-            } else {
-                assert value instanceof Number;
-                // Numeric value
-                builder.append(value);
+        return ReportUtils.report(description, file.getAbsoluteFile().toPath(), out -> {
+            try {
+                new JsonWriter(out).print(statsHolder);
+            } catch (IOException e) {
+                throw VMError.shouldNotReachHere("Failed to create " + jsonOutputFile, e);
             }
-            if (keySetIter.hasNext()) {
-                builder.append(",");
-            }
-        }
-        builder.append("}");
-        return builder.toString();
+        }, false);
     }
 
     interface JsonMetric {

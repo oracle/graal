@@ -44,7 +44,9 @@ import java.lang.reflect.Type;
 import java.util.function.Predicate;
 
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
 import org.graalvm.polyglot.proxy.Proxy;
 
@@ -53,6 +55,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.host.HostAdapterFactory.AdapterResult;
 import com.oracle.truffle.host.HostLanguage.HostLanguageException;
 import com.oracle.truffle.host.HostMethodDesc.SingleMethod;
@@ -62,9 +65,11 @@ import com.oracle.truffle.host.HostObject.GuestToHostCalls;
 public class HostLanguageService extends AbstractHostLanguageService {
 
     final HostLanguage language;
+    private final APIAccess api;
 
     HostLanguageService(AbstractPolyglotImpl polyglot, HostLanguage language) {
         super(polyglot);
+        api = polyglot.getAPIAccess();
         this.language = language;
     }
 
@@ -80,7 +85,7 @@ public class HostLanguageService extends AbstractHostLanguageService {
             useCl = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
         }
         language.initializeHostAccess(hostAccess, useCl);
-        context.initialize(internalContext, useCl, clFilter, hostCLAllowed, hostLookupAllowed);
+        context.initialize(internalContext, useCl, clFilter, hostCLAllowed, hostLookupAllowed, hostAccess != null ? api.getMutableTargetMappings(hostAccess) : new MutableTargetMapping[0]);
     }
 
     @Override
@@ -114,20 +119,15 @@ public class HostLanguageService extends AbstractHostLanguageService {
         return HostObject.forStaticClass(found, context);
     }
 
-    @Override
-    public Object createToHostTypeNode() {
-        return HostToTypeNodeGen.create();
-    }
-
     @SuppressWarnings("unchecked")
     @Override
-    public <T> T toHostType(Object hostNode, Object hostContext, Object value, Class<T> targetType, Type genericType) {
+    public <T> T toHostType(Object hostNode, Object targetNode, Object hostContext, Object value, Class<T> targetType, Type genericType) {
         HostContext context = (HostContext) hostContext;
         HostToTypeNode node = (HostToTypeNode) hostNode;
         if (node == null) {
             node = HostToTypeNodeGen.getUncached();
         }
-        return (T) node.execute(context, value, targetType, genericType, true);
+        return (T) node.execute((Node) targetNode, context, value, targetType, genericType, true);
     }
 
     @Override

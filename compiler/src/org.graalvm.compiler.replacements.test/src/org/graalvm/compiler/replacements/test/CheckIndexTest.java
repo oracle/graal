@@ -28,6 +28,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.List;
 import java.util.Objects;
 
 import org.graalvm.compiler.nodes.ValueNode;
@@ -39,12 +40,12 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class CheckIndexTest extends MethodSubstitutionTest {
 
@@ -59,6 +60,7 @@ public class CheckIndexTest extends MethodSubstitutionTest {
     static final VarHandle byteArrayByteView = MethodHandles.arrayElementVarHandle(byte[].class);
 
     private boolean withExceptions;
+    private List<ResolvedJavaType> withSkippedExceptionTypes = List.of();
 
     public static int objectsCheckIndex() {
         return array[Objects.checkIndex(someIndex, array.length)];
@@ -163,11 +165,23 @@ public class CheckIndexTest extends MethodSubstitutionTest {
 
     @Test
     public void testByteBufferViewVarHandleGetInt() {
-        Assume.assumeTrue("GR-23778", JavaVersionUtil.JAVA_SPEC == 11);
-        testGraph("byteBufferViewVarHandleGetInt");
+        try {
+            withSkippedExceptionTypes = List.of(getMetaAccess().lookupJavaType(Class.forName("jdk.internal.misc.ScopedMemoryAccess$ScopedAccessError")));
+        } catch (ClassNotFoundException e) {
+            Assume.assumeNoException(e);
+        }
+        if (Runtime.version().feature() == 20) {
+            try {
+                Class.forName("jdk.internal.foreign.Scoped");
+                Assume.assumeFalse("Requires Foreign Function and Memory API (Second Preview)", true);
+            } catch (ClassNotFoundException e) {
+            }
+        }
+
         test("byteBufferViewVarHandleGetInt");
-        testGraph("byteBufferViewVarHandleGetIntConstIndex");
+        testGraph("byteBufferViewVarHandleGetInt");
         test("byteBufferViewVarHandleGetIntConstIndex");
+        testGraph("byteBufferViewVarHandleGetIntConstIndex");
     }
 
     @Test
@@ -206,7 +220,8 @@ public class CheckIndexTest extends MethodSubstitutionTest {
 
     @Override
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
-        return super.editGraphBuilderConfiguration(conf).withBytecodeExceptionMode(withExceptions ? BytecodeExceptionMode.CheckAll : BytecodeExceptionMode.OmitAll);
+        return super.editGraphBuilderConfiguration(conf).withBytecodeExceptionMode(withExceptions ? BytecodeExceptionMode.CheckAll : BytecodeExceptionMode.OmitAll).withSkippedExceptionTypes(
+                        withSkippedExceptionTypes.toArray(new ResolvedJavaType[0]));
     }
 
     @Override

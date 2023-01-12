@@ -60,6 +60,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 
 import sun.misc.Unsafe;
 
+@SuppressWarnings("truffle-inlining")
 public class TRegexTStringVirtualizationTest extends PartialEvaluationTest {
 
     @Before

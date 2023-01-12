@@ -42,7 +42,7 @@ package com.oracle.truffle.sl.nodes.expression;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 
@@ -60,7 +60,7 @@ public abstract class SLShortCircuitNode extends SLExpressionNode {
      * Short circuits might be used just like a conditional statement it makes sense to profile the
      * branch probability.
      */
-    private final ConditionProfile evaluateRightProfile = ConditionProfile.createCountingProfile();
+    private final CountingConditionProfile evaluateRightProfile = CountingConditionProfile.create();
 
     public SLShortCircuitNode(SLExpressionNode left, SLExpressionNode right) {
         this.left = left;

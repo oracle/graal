@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.util;
 
+/** Exit status codes to be used at build time (in driver and builder). */
 public enum ExitStatus {
     OK(0),
     BUILDER_ERROR(1),
@@ -31,7 +32,8 @@ public enum ExitStatus {
     BUILDER_INTERRUPT_WITHOUT_REASON(3),
     DRIVER_ERROR(20),
     DRIVER_TO_BUILDER_ERROR(21),
-    WATCHDOG_EXIT(30);
+    WATCHDOG_EXIT(30),
+    MISSING_METADATA(172);
 
     public static ExitStatus of(int status) {
         for (ExitStatus s : values()) {

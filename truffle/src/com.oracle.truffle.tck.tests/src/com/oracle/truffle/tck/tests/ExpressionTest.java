@@ -95,14 +95,17 @@ public class ExpressionTest {
     public void testExpression() {
         Assume.assumeThat(testRun, TEST_RESULT_MATCHER);
         boolean success = false;
+        Value result = null;
+        PolyglotException ex = null;
         try {
-            Value result = null;
             try {
                 result = testRun.getSnippet().getExecutableValue().execute(testRun.getActualParameters().toArray());
             } catch (IllegalArgumentException e) {
-                TestUtil.validateResult(testRun, context.getContext().asValue(e).as(PolyglotException.class));
+                ex = context.getContext().asValue(e).as(PolyglotException.class);
+                TestUtil.validateResult(testRun, ex);
                 success = true;
             } catch (PolyglotException e) {
+                ex = e;
                 TestUtil.validateResult(testRun, e);
                 success = true;
             }
@@ -115,7 +118,7 @@ public class ExpressionTest {
                             TestUtil.formatErrorMessage(
                                             "Unexpected Exception: " + e.getMessage(),
                                             testRun,
-                                            context),
+                                            context, result, ex),
                             e);
         } finally {
             TEST_RESULT_MATCHER.accept(new AbstractMap.SimpleImmutableEntry<>(testRun, success));

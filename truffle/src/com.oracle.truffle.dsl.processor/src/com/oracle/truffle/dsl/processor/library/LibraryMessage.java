@@ -54,7 +54,6 @@ public final class LibraryMessage extends MessageContainer {
     private final LibraryData library;
     private final String name;
     private final ExecutableElement executable;
-    private String cacheName;
     private boolean isAbstract;
     private final Set<LibraryMessage> abstractIfExported = new LinkedHashSet<>();
 
@@ -74,14 +73,6 @@ public final class LibraryMessage extends MessageContainer {
 
     public String getSimpleName() {
         return library.getMessageElement().getSimpleName().toString() + "." + name;
-    }
-
-    public String getCacheName() {
-        return cacheName;
-    }
-
-    void setCacheName(String cacheName) {
-        this.cacheName = cacheName;
     }
 
     public ExecutableElement getExecutable() {

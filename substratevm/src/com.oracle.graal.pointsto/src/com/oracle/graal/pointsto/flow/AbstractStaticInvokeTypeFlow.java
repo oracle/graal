@@ -27,13 +27,14 @@ package com.oracle.graal.pointsto.flow;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
 
 import jdk.vm.ci.code.BytecodePosition;
 
 public abstract class AbstractStaticInvokeTypeFlow extends DirectInvokeTypeFlow {
     protected AbstractStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
     }
 
     protected AbstractStaticInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, AbstractStaticInvokeTypeFlow original) {

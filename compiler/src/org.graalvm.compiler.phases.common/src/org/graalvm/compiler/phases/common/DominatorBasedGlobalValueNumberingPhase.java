@@ -52,7 +52,7 @@ import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.FixedBinaryNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.cfg.LocationSet;
@@ -106,9 +106,9 @@ import org.graalvm.word.LocationIdentity;
  * loop as it is loop-invariant.
  *
  * The algorithm is based on a dominator tree traversal of the {@link ControlFlowGraph} where
- * dominated blocks are visited before post dominated blocks. This means if a {@link Block} starts
- * with a {@link MergeNode} all its predecessor blocks have already been visited. This is important
- * to properly track {@link MemoryKill} nodes.
+ * dominated blocks are visited before post dominated blocks. This means if a {@link HIRBlock}
+ * starts with a {@link MergeNode} all its predecessor blocks have already been visited. This is
+ * important to properly track {@link MemoryKill} nodes.
  *
  * The algorithm uses {@link MemoryKill} and {@link MemoryAccess} to reason about memory effects.
  *
@@ -142,9 +142,8 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
     }
 
     private static void runFixedNodeGVN(StructuredGraph graph, CoreProviders context) {
-        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
         LoopsData ld = context.getLoopsDataProvider().getLoopsData(graph);
-        cfg.visitDominatorTreeDefault(new GVNVisitor(cfg, ld));
+        ld.getCFG().visitDominatorTreeDefault(new GVNVisitor(ld.getCFG(), ld));
     }
 
     private static boolean verifyGVN(StructuredGraph graph) {
@@ -170,7 +169,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
             this.graph = cfg.graph;
             this.licmNodes = graph.createNodeBitMap();
             this.blockMaps = new BlockMap<>(cfg);
-            this.considerLICM = GraalOptions.EarlyLICM.getValue(graph.getOptions());
+            this.considerLICM = GraalOptions.EarlyLICM.getValue(graph.getOptions()) && graph.hasLoops();
         }
 
         /**
@@ -193,11 +192,11 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
          * @formatter:on
          */
         @Override
-        public ValueMap enter(Block b) {
+        public ValueMap enter(HIRBlock b) {
             ValueMap blockMap = blockMaps.get(b);
 
             assert blockMap == null;
-            Block dominator = b.getDominator();
+            HIRBlock dominator = b.getDominator();
             if (dominator == null) {
                 blockMap = new ValueMap();
             } else {
@@ -208,15 +207,16 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
             // preserve for dominated and successors
             blockMaps.put(b, blockMap);
 
-            Loop<Block> hirLoop = b.getLoop();
+            Loop<HIRBlock> hirLoop = b.getLoop();
             LocationSet thisLoopKilledLocations = hirLoop == null ? null : ((HIRLoop) hirLoop).getKillLocations();
 
             if (!b.isLoopHeader()) {
                 // apply kill effects of dominator tree siblings (not the dominator itself)
-                for (Block predecessor : b.getPredecessors()) {
+                for (int i = 0; i < b.getPredecessorCount(); i++) {
+                    HIRBlock predecessor = b.getPredecessorAt(i);
                     if (b.getDominator() == predecessor) {
-                        // dominator already handled when creating the map, don't re-kill everything
-                        // already killed there.
+                        // dominator already handled when creating the map, don't re-kill
+                        // everything already killed there.
                         continue;
                     }
                     ValueMap predMap = blockMaps.get(predecessor);
@@ -228,22 +228,30 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                 killLoopLocations(thisLoopKilledLocations, blockMap);
             }
 
-            boolean tryLICM = false;
             LoopEx loopCandidate = null;
+            boolean tryLICM = false;
             if (hirLoop != null && considerLICM) {
-                /*
-                 * Check if LICM can be applied because we are in a tail counted loop or have code
-                 * dominating the exit conditions.
-                 */
-                tryLICM = true;
-                for (LoopExitNode lex : ((LoopBeginNode) hirLoop.getHeader().getBeginNode()).loopExits()) {
-                    Block lexBLock = cfg.blockFor(lex);
-                    tryLICM &= AbstractControlFlowGraph.strictlyDominates(b, lexBLock);
-                }
-                for (Block loopBlock : hirLoop.getBlocks()) {
-                    // if(sth) deopt patterns are also exits
-                    if (loopBlock.getEndNode() instanceof ControlSinkNode) {
-                        tryLICM &= AbstractControlFlowGraph.strictlyDominates(b, loopBlock);
+                checkLICM: {
+                    /*
+                     * Check if LICM can be applied because we are in a tail counted loop or have
+                     * code dominating the exit conditions.
+                     */
+                    tryLICM = true;
+                    for (LoopExitNode lex : ((LoopBeginNode) hirLoop.getHeader().getBeginNode()).loopExits()) {
+                        HIRBlock lexBLock = cfg.blockFor(lex);
+                        tryLICM &= AbstractControlFlowGraph.strictlyDominates(b, lexBLock);
+                        if (!tryLICM) {
+                            break checkLICM;
+                        }
+                    }
+                    for (HIRBlock loopBlock : hirLoop.getBlocks()) {
+                        // if(sth) deopt patterns are also exits
+                        if (loopBlock.getEndNode() instanceof ControlSinkNode) {
+                            tryLICM &= AbstractControlFlowGraph.strictlyDominates(b, loopBlock);
+                            if (!tryLICM) {
+                                break checkLICM;
+                            }
+                        }
                     }
                 }
                 if (tryLICM) {
@@ -290,7 +298,6 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
 
         private static void procesNode(FixedWithNextNode cur, LocationSet thisLoopKilledLocations,
                         LoopEx loopCandidate, ValueMap blockMap, NodeBitMap licmNodes, ControlFlowGraph cfg) {
-
             if (cur instanceof LoopExitNode) {
                 /*
                  * We exit a loop down this path, we have to account for the effects of the loop
@@ -317,8 +324,8 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                 MemoryAccess access = (MemoryAccess) cur;
                 if (loopKillsLocation(thisLoopKilledLocations, access.getLocationIdentity())) {
                     if (canSubsitute) {
-                        // loop kills this location, do not bother trying to figure out if parts can
-                        // be GVNed, let floating reads later handle that
+                        // loop kills this location, do not bother trying to figure out if parts
+                        // can be GVNed, let floating reads later handle that
                         return;
                     }
                     canLICM = false;
@@ -347,7 +354,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
         }
 
         @Override
-        public void exit(Block b, ValueMap oldMap) {
+        public void exit(HIRBlock b, ValueMap oldMap) {
 
         }
 
@@ -400,6 +407,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
             return true;
         }
         return false;
+
     }
 
     public static boolean nodeCanBeLifted(Node n, LoopEx loop, NodeBitMap liftedNodes) {
@@ -578,7 +586,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                 assert edgeDataEqual instanceof FixedNode : "Only process fixed nodes";
                 StructuredGraph graph = (StructuredGraph) edgeDataEqual.graph();
 
-                Block defBlock = cfg.blockFor(edgeDataEqual);
+                HIRBlock defBlock = cfg.blockFor(edgeDataEqual);
 
                 if (licmNodes.contains(edgeDataEqual)) {
                     /*
@@ -590,7 +598,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                 }
 
                 if (invariantInLoop != null) {
-                    Block loopDefBlock = cfg.blockFor(invariantInLoop.loopBegin()).getLoop().getHeader().getDominator();
+                    HIRBlock loopDefBlock = cfg.blockFor(invariantInLoop.loopBegin()).getLoop().getHeader().getDominator();
                     if (AbstractControlFlowGraph.strictlyDominates(loopDefBlock, defBlock)) {
                         /*
                          * The LICM location strictly dominates the GVN location so it must be the
@@ -605,9 +613,9 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                     }
                 }
 
-                Block useBlock = cfg.blockFor(n);
-                Loop<Block> defLoop = defBlock.getLoop();
-                Loop<Block> useLoop = useBlock.getLoop();
+                HIRBlock useBlock = cfg.blockFor(n);
+                Loop<HIRBlock> defLoop = defBlock.getLoop();
+                Loop<HIRBlock> useLoop = useBlock.getLoop();
 
                 if (defLoop != null) {
                     // the def is inside a loop, either a parent or a disjunct loop

@@ -46,7 +46,6 @@ import org.graalvm.compiler.core.LIRGenerationPhase.LIRGenerationContext;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.alloc.LinearScanOrder;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.cfg.CodeEmissionOrder;
 import org.graalvm.compiler.core.gen.LIRCompilerBackend;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
@@ -67,7 +66,7 @@ import org.graalvm.compiler.microbenchmarks.graal.util.GraalUtil;
 import org.graalvm.compiler.microbenchmarks.graal.util.MethodSpec;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -310,7 +309,7 @@ public abstract class GraalCompilerState {
     private RegisterConfig registerConfig;
     private ScheduleResult schedule;
     private CodeEmissionOrder<?> blockOrder;
-    private AbstractBlockBase<?>[] linearScanOrder;
+    private char[] linearScanOrder;
 
     /**
      * Copies the {@link #originalGraph original graph} and prepares the {@link #request}.
@@ -369,8 +368,8 @@ public abstract class GraalCompilerState {
         Object stub = null;
         schedule = request.graph.getLastSchedule();
         ControlFlowGraph cfg = deepCopy(schedule.getCFG());
-        Block[] blocks = cfg.getBlocks();
-        Block startBlock = cfg.getStartBlock();
+        HIRBlock[] blocks = cfg.getBlocks();
+        HIRBlock startBlock = cfg.getStartBlock();
         assert startBlock != null;
         assert startBlock.getPredecessorCount() == 0;
 

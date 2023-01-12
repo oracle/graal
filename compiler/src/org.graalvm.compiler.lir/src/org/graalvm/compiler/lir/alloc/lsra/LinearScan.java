@@ -37,12 +37,11 @@ import static org.graalvm.compiler.lir.phases.LIRPhase.Options.LIROptimization;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.EnumSet;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.DebugContext;
@@ -50,12 +49,9 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
-import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
-import org.graalvm.compiler.lir.ValueConsumer;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
-import org.graalvm.compiler.lir.alloc.lsra.Interval.RegisterBinding;
 import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.MoveFactory;
@@ -142,7 +138,7 @@ public class LinearScan {
     /**
      * List of blocks in linear-scan order. This is only correct as long as the CFG does not change.
      */
-    private final AbstractBlockBase<?>[] sortedBlocks;
+    private final char[] sortedBlocks;
 
     /**
      * @see #intervals()
@@ -173,11 +169,11 @@ public class LinearScan {
     private LIRInstruction[] opIdToInstructionMap;
 
     /**
-     * Map from an instruction {@linkplain LIRInstruction#id id} to the
-     * {@linkplain AbstractBlockBase block} containing the instruction. Entries should be retrieved
-     * with {@link #blockForId(int)} as the id is not simply an index into this array.
+     * Map from an instruction {@linkplain LIRInstruction#id id} to the {@linkplain BasicBlock
+     * block} containing the instruction. Entries should be retrieved with {@link #blockForId(int)}
+     * as the id is not simply an index into this array.
      */
-    private AbstractBlockBase<?>[] opIdToBlockMap;
+    private BasicBlock<?>[] opIdToBlockMap;
 
     /**
      * The {@linkplain #operandNumber(Value) number} of the first variable operand allocated.
@@ -197,7 +193,7 @@ public class LinearScan {
     public final boolean detailedAsserts;
     private final LIRGenerationResult res;
 
-    protected LinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, AbstractBlockBase<?>[] sortedBlocks,
+    protected LinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, char[] sortedBlocks,
                     boolean neverSpillConstants) {
         this.ir = res.getLIR();
         this.res = res;
@@ -239,10 +235,6 @@ public class LinearScan {
         return res;
     }
 
-    public Interval intervalEndMarker() {
-        return intervalEndMarker;
-    }
-
     public OptionValues getOptions() {
         return ir.getOptions();
     }
@@ -251,13 +243,13 @@ public class LinearScan {
         return debug;
     }
 
-    public int getFirstLirInstructionId(AbstractBlockBase<?> block) {
+    public int getFirstLirInstructionId(BasicBlock<?> block) {
         int result = ir.getLIRforBlock(block).get(0).id();
         assert result >= 0;
         return result;
     }
 
-    public int getLastLirInstructionId(AbstractBlockBase<?> block) {
+    public int getLastLirInstructionId(BasicBlock<?> block) {
         ArrayList<LIRInstruction> instructions = ir.getLIRforBlock(block);
         int result = instructions.get(instructions.size() - 1).id();
         assert result >= 0;
@@ -308,11 +300,11 @@ public class LinearScan {
         return firstVariableNumber - 1;
     }
 
-    public BlockData getBlockData(AbstractBlockBase<?> block) {
+    public BlockData getBlockData(BasicBlock<?> block) {
         return blockData.get(block);
     }
 
-    void initBlockData(AbstractBlockBase<?> block) {
+    void initBlockData(BasicBlock<?> block) {
         blockData.put(block, new BlockData());
     }
 
@@ -329,14 +321,6 @@ public class LinearScan {
         @Override
         public boolean apply(Interval i) {
             return isVariable(i.operand);
-        }
-    };
-
-    static final IntervalPredicate IS_STACK_INTERVAL = new IntervalPredicate() {
-
-        @Override
-        public boolean apply(Interval i) {
-            return !isRegister(i.operand);
         }
     };
 
@@ -423,8 +407,8 @@ public class LinearScan {
         return sortedBlocks.length;
     }
 
-    public AbstractBlockBase<?> blockAt(int index) {
-        return sortedBlocks[index];
+    public BasicBlock<?> blockAt(int index) {
+        return ir.getBlockById(sortedBlocks[index]);
     }
 
     /**
@@ -461,10 +445,10 @@ public class LinearScan {
 
     void initOpIdMaps(int numInstructions) {
         opIdToInstructionMap = new LIRInstruction[numInstructions];
-        opIdToBlockMap = new AbstractBlockBase<?>[numInstructions];
+        opIdToBlockMap = new BasicBlock<?>[numInstructions];
     }
 
-    void putOpIdMaps(int index, LIRInstruction op, AbstractBlockBase<?> block) {
+    void putOpIdMaps(int index, LIRInstruction op, BasicBlock<?> block) {
         opIdToInstructionMap[index] = op;
         opIdToBlockMap[index] = block;
     }
@@ -505,17 +489,13 @@ public class LinearScan {
      * @param opId an instruction {@linkplain LIRInstruction#id id}
      * @return the block containing the instruction denoted by {@code opId}
      */
-    public AbstractBlockBase<?> blockForId(int opId) {
+    public BasicBlock<?> blockForId(int opId) {
         assert opIdToBlockMap.length > 0 && opId >= 0 && opId <= maxOpId() + 1 : "opId out of range";
         return opIdToBlockMap[opIdToIndex(opId)];
     }
 
     boolean isBlockBegin(int opId) {
         return opId == 0 || blockForId(opId) != blockForId(opId - 1);
-    }
-
-    boolean coversBlockBegin(int opId1, int opId2) {
-        return blockForId(opId1) != blockForId(opId2);
     }
 
     /**
@@ -816,7 +796,7 @@ public class LinearScan {
 
                 try (Indent indent2 = debug.logAndIndent("Basic Blocks")) {
                     for (int i = 0; i < blockCount(); i++) {
-                        AbstractBlockBase<?> block = blockAt(i);
+                        BasicBlock<?> block = blockAt(i);
                         debug.log("B%d [%d, %d, %s] ", block.getId(), getFirstLirInstructionId(block), getLastLirInstructionId(block), block.getLoop());
                     }
                 }
@@ -915,75 +895,6 @@ public class LinearScan {
         }
     }
 
-    class CheckConsumer implements ValueConsumer {
-
-        boolean ok;
-        Interval curInterval;
-
-        @Override
-        public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-            if (isRegister(operand)) {
-                if (intervalFor(operand) == curInterval) {
-                    ok = true;
-                }
-            }
-        }
-    }
-
-    @SuppressWarnings("try")
-    void verifyNoOopsInFixedIntervals() {
-        try (Indent indent = debug.logAndIndent("verifying that no oops are in fixed intervals *")) {
-            CheckConsumer checkConsumer = new CheckConsumer();
-
-            Interval fixedIntervals;
-            Interval otherIntervals;
-            fixedIntervals = createUnhandledLists(IS_PRECOLORED_INTERVAL, null).getLeft();
-            // to ensure a walking until the last instruction id, add a dummy interval
-            // with a high operation id
-            otherIntervals = new Interval(Value.ILLEGAL, -1, intervalEndMarker, rangeEndMarker);
-            otherIntervals.addRange(Integer.MAX_VALUE - 2, Integer.MAX_VALUE - 1);
-            IntervalWalker iw = new IntervalWalker(this, fixedIntervals, otherIntervals);
-
-            for (AbstractBlockBase<?> block : sortedBlocks) {
-                ArrayList<LIRInstruction> instructions = ir.getLIRforBlock(block);
-
-                for (int j = 0; j < instructions.size(); j++) {
-                    LIRInstruction op = instructions.get(j);
-
-                    if (op.hasState()) {
-                        iw.walkBefore(op.id());
-                        boolean checkLive = true;
-
-                        /*
-                         * Make sure none of the fixed registers is live across an oopmap since we
-                         * can't handle that correctly.
-                         */
-                        if (checkLive) {
-                            for (Interval interval = iw.activeLists.get(RegisterBinding.Fixed); !interval.isEndMarker(); interval = interval.next) {
-                                if (interval.currentTo() > op.id() + 1) {
-                                    /*
-                                     * This interval is live out of this op so make sure that this
-                                     * interval represents some value that's referenced by this op
-                                     * either as an input or output.
-                                     */
-                                    checkConsumer.curInterval = interval;
-                                    checkConsumer.ok = false;
-
-                                    op.visitEachInput(checkConsumer);
-                                    op.visitEachAlive(checkConsumer);
-                                    op.visitEachTemp(checkConsumer);
-                                    op.visitEachOutput(checkConsumer);
-
-                                    assert checkConsumer.ok : "fixed intervals should never be live across an oopmap point";
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     public LIR getLIR() {
         return ir;
     }
@@ -992,7 +903,7 @@ public class LinearScan {
         return frameMapBuilder;
     }
 
-    public AbstractBlockBase<?>[] sortedBlocks() {
+    public char[] sortedBlocks() {
         return sortedBlocks;
     }
 

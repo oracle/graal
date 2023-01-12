@@ -93,24 +93,24 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
     }
 
     @Specialization(limit = "LIBRARY_LIMIT")
-    public static Object writeSLObject(SLObject receiver, Object name, Object value,
+    protected static Object writeSLObject(SLObject receiver, Object name, Object value,
+                    @Bind("this") Node node,
                     @CachedLibrary("receiver") DynamicObjectLibrary objectLibrary,
                     @Cached SLToTruffleStringNode toTruffleStringNode) {
-        objectLibrary.put(receiver, toTruffleStringNode.execute(name), value);
+        objectLibrary.put(receiver, toTruffleStringNode.execute(node, name), value);
         return value;
     }
 
     @Specialization(guards = "!isSLObject(receiver)", limit = "LIBRARY_LIMIT")
-    public static Object writeObject(Object receiver, Object name, Object value,
-                    @Bind("$root") Node node,
-                    @Bind("$bci") int bci,
+    protected static Object writeObject(Object receiver, Object name, Object value,
+                    @Bind("this") Node node,
                     @CachedLibrary("receiver") InteropLibrary objectLibrary,
                     @Cached SLToMemberNode asMember) {
         try {
-            objectLibrary.writeMember(receiver, asMember.execute(name), value);
+            objectLibrary.writeMember(receiver, asMember.execute(node, name), value);
         } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
             // write was not successful. In SL we only have basic support for errors.
-            throw SLUndefinedNameException.undefinedProperty(node, bci, name);
+            throw SLUndefinedNameException.undefinedProperty(node, name);
         }
         return value;
     }

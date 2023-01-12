@@ -103,7 +103,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.StructuredGraph.Builder;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -556,13 +556,14 @@ public abstract class GraalCompilerTest extends GraalTest {
         List<String> constantsLines = new ArrayList<>();
 
         StringBuilder result = new StringBuilder();
-        for (Block block : scheduleResult.getCFG().getBlocks()) {
+        for (HIRBlock block : scheduleResult.getCFG().getBlocks()) {
             result.append("Block ").append(block).append(' ');
             if (block == scheduleResult.getCFG().getStartBlock()) {
                 result.append("* ");
             }
             result.append("-> ");
-            for (Block succ : block.getSuccessors()) {
+            for (int i = 0; i < block.getSuccessorCount(); i++) {
+                HIRBlock succ = block.getSuccessorAt(i);
                 result.append(succ).append(' ');
             }
             result.append('\n');
@@ -629,14 +630,15 @@ public abstract class GraalCompilerTest extends GraalTest {
         ScheduleResult scheduleResult = graph.getLastSchedule();
 
         StringBuilder result = new StringBuilder();
-        Block[] blocks = scheduleResult.getCFG().getBlocks();
-        for (Block block : blocks) {
+        HIRBlock[] blocks = scheduleResult.getCFG().getBlocks();
+        for (HIRBlock block : blocks) {
             result.append("Block ").append(block).append(' ');
             if (block == scheduleResult.getCFG().getStartBlock()) {
                 result.append("* ");
             }
             result.append("-> ");
-            for (Block succ : block.getSuccessors()) {
+            for (int i = 0; i < block.getSuccessorCount(); i++) {
+                HIRBlock succ = block.getSuccessorAt(i);
                 result.append(succ).append(' ');
             }
             result.append('\n');

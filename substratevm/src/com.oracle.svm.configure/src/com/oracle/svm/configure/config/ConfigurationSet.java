@@ -32,8 +32,8 @@ import java.util.function.Function;
 
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.config.conditional.ConditionalConfigurationPredicate;
-import com.oracle.svm.configure.json.JsonPrintable;
-import com.oracle.svm.configure.json.JsonWriter;
+import com.oracle.svm.core.util.json.JsonPrintable;
+import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.util.VMError;
 

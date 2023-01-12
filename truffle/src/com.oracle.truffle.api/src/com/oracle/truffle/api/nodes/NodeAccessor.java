@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.nodes;
 
+import java.lang.invoke.MethodHandles.Lookup;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
@@ -69,6 +70,11 @@ final class NodeAccessor extends Accessor {
     }
 
     static final class AccessNodes extends NodeSupport {
+
+        @Override
+        public Lookup nodeLookup() {
+            return Node.lookup();
+        }
 
         @Override
         public boolean isInstrumentable(RootNode rootNode) {

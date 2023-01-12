@@ -147,6 +147,9 @@ public class Pthread {
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_mutex_init(pthread_mutex_t mutex, pthread_mutexattr_t mutexattr);
 
+    @CFunction(value = "pthread_mutex_trylock", transition = Transition.NO_TRANSITION)
+    public static native int pthread_mutex_trylock_no_transition(pthread_mutex_t mutex);
+
     @CFunction(transition = Transition.TO_NATIVE)
     public static native int pthread_mutex_lock(pthread_mutex_t mutex);
 

@@ -40,8 +40,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.cpufeature.Stubs;
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -79,7 +79,7 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
 
         private SnippetRuntime.SubstrateForeignCallDescriptor[] mapStubs(Class<?> stubsHolder) {
             EnumSet<?> buildtimeCPUFeatures = getBuildtimeFeatures();
-            boolean isJITCompilationEnabled = DeoptimizationSupport.enabled();
+            boolean isJITCompilationEnabled = RuntimeCompilation.isEnabled();
             // If JIT is enabled, we compile a variant with the intrinsic's minimal CPU feature set
             // as well as a version with the preferred runtime checked features, even if both
             // variants are not supported by the build time feature set. This way, intrinsics

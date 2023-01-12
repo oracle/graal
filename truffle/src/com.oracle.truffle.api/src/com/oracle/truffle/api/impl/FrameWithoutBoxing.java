@@ -124,10 +124,14 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         assert BYTE_TAG == FrameSlotKind.Byte.tag;
         assert STATIC_TAG == FrameSlotKind.Static.tag;
 
-        // Check if assertions are enabled
+        ASSERTIONS_ENABLED = areAssertionsEnabled();
+    }
+
+    @SuppressWarnings("all")
+    private static boolean areAssertionsEnabled() {
         boolean enabled = false;
         assert enabled = true;
-        ASSERTIONS_ENABLED = enabled;
+        return enabled;
     }
 
     private static Unsafe initUnsafe() {

@@ -46,7 +46,7 @@ public class AnalysisConstantFieldProvider extends SharedConstantFieldProvider {
 
     public AnalysisConstantFieldProvider(AnalysisUniverse universe, AnalysisMetaAccess metaAccess, AnalysisConstantReflectionProvider constantReflection,
                     ClassInitializationSupport classInitializationSupport) {
-        super(metaAccess, classInitializationSupport);
+        super(metaAccess, classInitializationSupport, (SVMHost) universe.hostVM());
         this.universe = universe;
         this.constantReflection = constantReflection;
     }
@@ -72,9 +72,14 @@ public class AnalysisConstantFieldProvider extends SharedConstantFieldProvider {
 
         if (foldedValue != null) {
             if (!BuildPhaseProvider.isAnalysisFinished()) {
-                f.markFolded();
+                f.registerAsFolded(nonNullReason(analysisTool.getReason()));
             }
         }
         return foldedValue;
     }
+
+    public static Object nonNullReason(Object reason) {
+        return reason == null ? "Unknown constant fold location." : reason;
+    }
+
 }

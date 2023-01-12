@@ -44,7 +44,6 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
-import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -292,7 +291,7 @@ public final class InnerClassRedefiner {
             classLoaderRules = new HashMap<>(4);
             renamingRules.put(classLoader, classLoaderRules);
         }
-        JDWP.LOGGER.fine(() -> "Renaming inner class: " + originalName + " to: " + newName);
+        context.getClassRedefinition().getController().fine(() -> "Renaming inner class: " + originalName + " to: " + newName);
         // add simple class names
         classLoaderRules.put(originalName, newName);
         // add type names

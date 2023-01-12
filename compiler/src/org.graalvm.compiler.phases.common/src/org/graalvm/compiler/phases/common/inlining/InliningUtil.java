@@ -746,9 +746,8 @@ public class InliningUtil extends ValueMergeUtil {
         StructuredGraph invokeGraph = invokeNode.graph();
         if (invokeGraph.trackNodeSourcePosition() && invoke.stateAfter() != null) {
             boolean isSubstitution = isSub || inlineGraph.isSubstitution();
-            assert !invokeGraph.trackNodeSourcePosition() || inlineGraph.trackNodeSourcePosition() ||
-                            isSubstitution : String.format("trackNodeSourcePosition mismatch %s %s != %s %s", invokeGraph, invokeGraph.trackNodeSourcePosition(), inlineGraph,
-                                            inlineGraph.trackNodeSourcePosition());
+            assert !invokeGraph.trackNodeSourcePosition() || inlineGraph.trackNodeSourcePosition() || isSubstitution : String.format("trackNodeSourcePosition mismatch %s %s != %s %s", invokeGraph,
+                            invokeGraph.trackNodeSourcePosition(), inlineGraph, inlineGraph.trackNodeSourcePosition());
             final NodeSourcePosition invokePos = invoke.asNode().getNodeSourcePosition();
             updateSourcePosition(invokeGraph, duplicates, mark, invokePos, isSubstitution);
         }

@@ -49,8 +49,10 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 final class HostAccessor extends Accessor {
@@ -157,6 +159,11 @@ final class HostAccessor extends Accessor {
         @Override
         public boolean isHostLanguage(Class<?> languageClass) {
             return languageClass == HostLanguage.class;
+        }
+
+        @Override
+        public Node inlineToHostNode(Object target) {
+            return HostToTypeNodeGen.inline((InlineTarget) target);
         }
     }
 

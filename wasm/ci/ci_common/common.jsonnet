@@ -6,9 +6,9 @@ local graal_suite_root = root_ci.graal_suite_root;
 
 {
   local mx = (import "../../../common.json").mx_version,
-  local common = (import "../../../common.jsonnet"),
+  local common = (import "../../../ci/ci_common/common.jsonnet"),
   local common_json = (import "../../../common.json"),
-  local utils = (import "../../../common-utils.libsonnet"),
+  local utils = (import "../../../ci/ci_common/common-utils.libsonnet"),
 
   devkits: utils.composable(common_json.devkits),
 
@@ -184,6 +184,4 @@ local graal_suite_root = root_ci.graal_suite_root;
   jdk17_bench_linux_wabt_emsdk              : common.labsjdk17 + self.bench + self.linux   + self.wabt    + self.emsdk,
   jdk17_bench_linux_wabt_emsdk_nodejs       : common.labsjdk17 + self.bench + self.linux   + self.wabt    + self.emsdk + self.nodejs,
   jdk17_gate_windows_wabt                   : common.labsjdk17 + self.gate  + self.windows + self.wabt,
-
-  jdk11_gate_linux_wabt                     : common.labsjdk11 + self.gate  + self.linux   + self.wabt,
 }

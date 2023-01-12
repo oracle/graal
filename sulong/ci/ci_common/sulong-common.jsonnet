@@ -1,7 +1,7 @@
 # File is formatted with
 # `jsonnetfmt --indent 2 --max-blank-lines 2 --sort-imports --string-style d --comment-style h -i ci.jsonnet`
-local common = import "../../../common.jsonnet";
-local composable = (import "../../../common-utils.libsonnet").composable;
+local common = import "../../../ci/ci_common/common.jsonnet";
+local composable = (import "../../../ci/ci_common/common-utils.libsonnet").composable;
 local sulong_deps = composable((import "../../../common.json").sulong.deps);
 
 {
@@ -266,6 +266,6 @@ local sulong_deps = composable((import "../../../common.json").sulong.deps);
     jdk: "jdk" + self.jdk_version,
   }
   for name in std.objectFieldsAll(common)
-  if std.startsWith(name, "labsjdk-")
+  if std.startsWith(name, "labsjdk")
 
 }

@@ -48,6 +48,7 @@ import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraphClone;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraphInfo;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.ProxyTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
@@ -73,6 +74,7 @@ import com.oracle.graal.pointsto.typestore.UnifiedFieldTypeStore;
 import com.oracle.graal.pointsto.util.ListUtils;
 import com.oracle.graal.pointsto.util.ListUtils.UnsafeArrayList;
 import com.oracle.graal.pointsto.util.ListUtils.UnsafeArrayListClosable;
+import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
@@ -320,25 +322,25 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
     @Override
     public AbstractVirtualInvokeTypeFlow createVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
-        return new BytecodeSensitiveVirtualInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey) {
+        return new BytecodeSensitiveVirtualInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
     }
 
     @Override
     public AbstractSpecialInvokeTypeFlow createSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
-        return new BytecodeSensitiveSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey) {
+        return new BytecodeSensitiveSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
     }
 
     @Override
     public AbstractStaticInvokeTypeFlow createStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
-        return new BytecodeSensitiveStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey) {
+        return new BytecodeSensitiveStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
     }
 
     @Override
-    public MethodFlowsGraph staticRootMethodGraph(PointsToAnalysis bb, PointsToAnalysisMethod pointsToMethod) {
-        return ((CallSiteSensitiveMethodTypeFlow) pointsToMethod.getTypeFlow()).addContext(bb, contextPolicy.emptyContext());
+    public MethodFlowsGraphInfo staticRootMethodGraph(PointsToAnalysis bb, PointsToAnalysisMethod method) {
+        return ((CallSiteSensitiveMethodTypeFlow) method.getTypeFlow()).addContext(bb, contextPolicy.emptyContext(), null);
     }
 
     @Override
@@ -369,11 +371,11 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
-    public void registerAsImplementationInvoked(InvokeTypeFlow invoke, MethodFlowsGraph calleeFlows) {
+    public void registerAsImplementationInvoked(InvokeTypeFlow invoke, PointsToAnalysisMethod method) {
         if (invoke.isContextInsensitive()) {
-            calleeFlows.getMethod().registerAsImplementationInvoked(invoke);
+            method.registerAsImplementationInvoked(invoke);
         } else {
-            calleeFlows.getMethod().registerAsImplementationInvoked(invoke.getOriginalInvoke());
+            method.registerAsImplementationInvoked(invoke.getOriginalInvoke());
         }
     }
 

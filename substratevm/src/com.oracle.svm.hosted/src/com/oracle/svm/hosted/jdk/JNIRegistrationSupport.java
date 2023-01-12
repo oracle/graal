@@ -223,7 +223,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
                 try {
                     Path libraryPath = accessImpl.getImagePath().resolveSibling(library);
                     Files.copy(jdkLibDir.resolve(library), libraryPath, REPLACE_EXISTING);
-                    BuildArtifacts.singleton().add(ArtifactType.JDK_LIB, libraryPath);
+                    BuildArtifacts.singleton().add(ArtifactType.JDK_LIBRARY, libraryPath);
                     debug.log("%s: OK", library);
                 } catch (NoSuchFileException e) {
                     /* Ignore libraries that are not present in the JDK. */
@@ -272,7 +272,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
             if (FileUtils.executeCommand(linkerCommand) != 0) {
                 VMError.shouldNotReachHere();
             }
-            BuildArtifacts.singleton().add(ArtifactType.JDK_LIB_SHIM, shimDLL);
+            BuildArtifacts.singleton().add(ArtifactType.JDK_LIBRARY_SHIM, shimDLL);
             debug.log("%s.dll: OK", shimName);
         } catch (InterruptedException e) {
             throw new InterruptImageBuilding();

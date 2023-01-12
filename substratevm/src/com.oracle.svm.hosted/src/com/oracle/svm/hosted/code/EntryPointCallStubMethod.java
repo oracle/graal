@@ -42,8 +42,8 @@ public abstract class EntryPointCallStubMethod extends NonBytecodeStaticMethod {
 
     /**
      * Defines the {@link Uninterruptible} annotation returned for all call stub methods. The
-     * synthetic graphs set up the the fixed registers used for safepoint and stack overflow checks,
-     * so they must be uninterruptible. The method then called by the stub does not need to be
+     * synthetic graphs set up the fixed registers used for safepoint and stack overflow checks, so
+     * they must be uninterruptible. The method then called by the stub does not need to be
      * uninterruptible itself.
      */
     @Uninterruptible(reason = "Entry point", calleeMustBe = false)

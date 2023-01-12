@@ -4,6 +4,7 @@ toc_group: graalvm-extension
 link_title: VisualVM and VS Code Integration
 permalink: /tools/vscode/graalvm-extension/visualvm-integration/
 ---
+
 # VisualVM and VS Code Integration
 
 GraalVM Tools for Java extension provides integration with [VisualVM](https://visualvm.github.io), which is the all-in-one Java (and polyglot) monitoring and troubleshooting tool.
@@ -251,3 +252,8 @@ Start a flight recording session for the process selected for monitoring, if not
 Process selection will be requested if no process has been selected for monitoring yet.
 If the process selected for monitoring is not running any more, invoking the **Start flight recording** action just clears the process selection and shows a notification.
 Subsequent action invocation will request another process selection.
+
+### Related Documentation
+
+- [VisualVM](https://visualvm.github.io)
+- [Get started with VisualVM](../../visualvm.md)

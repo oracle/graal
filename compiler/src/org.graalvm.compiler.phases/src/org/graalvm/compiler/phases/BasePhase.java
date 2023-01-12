@@ -309,7 +309,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
      *         to {@link Optional#empty} if the phase can be applied
      */
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
-        return Optional.of(new NotApplicable("BasePhase's canApply should be implemented by each phase"));
+        return Optional.of(new NotApplicable("BasePhase's notApplicableTo should be implemented by each phase"));
     }
 
     /**

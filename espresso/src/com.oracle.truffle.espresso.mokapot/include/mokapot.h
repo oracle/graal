@@ -343,7 +343,15 @@ typedef uint64_t julong;
     V(JVM_PhantomReferenceRefersTo) \
     V(JVM_ReferenceClear) \
     V(JVM_ReferenceRefersTo) \
-    V(JVM_RegisterLambdaProxyClassForArchiving)
+    V(JVM_RegisterLambdaProxyClassForArchiving) \
+    /* Java 19 VM methods */ \
+    V(JVM_CurrentCarrierThread) \
+    V(JVM_SetCurrentThread) \
+    V(JVM_GetStackTrace) \
+    V(JVM_ExtentLocalCache) \
+    V(JVM_SetExtentLocalCache) \
+    V(JVM_GetNextThreadIdOffset) \
+    V(JVM_RegisterContinuationMethods)
 
 #ifdef __cplusplus
 extern "C" {
@@ -932,6 +940,29 @@ jboolean (*JVM_ReferenceRefersTo)(JNIEnv *env, jobject ref, jobject o);
 
 void (*JVM_ReferenceClear)(JNIEnv *env, jobject ref);
 
+jobject (*JVM_CurrentCarrierThread)(JNIEnv *env, jclass threadClass);
+
+void (*JVM_SetCurrentThread)(JNIEnv *env, jobject thisThread, jobject theThread);
+
+jobject (*JVM_GetStackTrace)(JNIEnv *env, jobject thread);
+
+jobject (*JVM_ExtentLocalCache)(JNIEnv *env, jclass threadClass);
+
+void (*JVM_SetExtentLocalCache)(JNIEnv *env, jclass threadClass, jobject theCache);
+
+jlong (*JVM_GetNextThreadIdOffset)(JNIEnv *env, jclass threadClass);
+
+void (*JVM_RegisterContinuationMethods)(JNIEnv *env, jclass cls);
+
+jboolean (*JVM_IsPreviewEnabled)();
+
+jboolean (*JVM_IsContinuationsSupported)();
+
+void (*JVM_SetStackWalkContinuation)(JNIEnv *env, jobject stackStream, jlong anchor, jobjectArray frames, jobject cont);
+
+void (*JVM_ReportFinalizationComplete)(JNIEnv *env, jobject finalizee);
+
+jboolean (*JVM_IsFinalizationEnabled)(JNIEnv *env);
 
 };
 

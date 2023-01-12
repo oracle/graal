@@ -140,6 +140,7 @@ The currently supported features include:
   - access through object networks via path expressions
   - reference by name to methods and static field data
   - reference by name to values bound to parameter and local vars
+  - reference by name to class constants
 
 Note that single stepping within a compiled method includes file and line number info for inlined code, including inlined GraalVM methods.
 So, GDB may switch files even though you are still in the same compiled method.
@@ -392,6 +393,46 @@ end
 
 (gdb) hubname $1
 0x8779c8:	"[Ljava.lang.String;"
+```
+
+The native image heap contains a unique hub object (i.e. instance of
+`java.lang.Class`) for every Java type that is included in the
+image. It is possible to refer to these class constants using the
+standard Java class literal syntax:
+
+```
+(gdb) print 'Hello.class'
+$6 = {
+  <java.lang.Object> = {
+    <_objhdr> = {
+      hub = 0xaabd00,
+      idHash = 1589947226
+    }, <No data fields>}, 
+  members of java.lang.Class:
+  typeCheckStart = 13,
+  name = 0xbd57f0,
+  ...
+```
+
+Unfortunately it is necessary to quote the class constant literal to
+avoid gdb interpreting the embedded `.` character as a field access.
+
+Note that the type of a class constant literal is `java.lang.Class`
+rather than `java.lang.Class *`.
+
+Class constants exist for Java instance classes, interfaces, array
+classes and arrays, including primitive arrays:
+
+```
+(gdb)  print 'java.util.List.class'.name
+$7 = (java.lang.String *) 0xb1f698
+(gdb) print 'java.lang.String[].class'.name->value->data
+$8 = 0x8e6d78 "[Ljava.lang.String;"
+(gdb) print 'long.class'.name->value->data
+$9 = 0xc87b78 "long"
+(gdb) x/s  'byte[].class'.name->value->data
+0x925a00:	"[B"
+(gdb) 
 ```
 
 Interface layouts are modelled as C++ union types.
@@ -787,10 +828,6 @@ For example, calling the method below prints high-level information about the Na
 (gdb) call svm_dbg_print_fatalErrorDiagnostics($r15, $rsp, $rip)
 ```
 
-### Further Reading
-
-- [Debugging Native Image in VS Code](Debugging.md)
-
 ## Special Considerations for using perf and valgrind
 
 Debug info includes details of address ranges for top level and
@@ -953,3 +990,7 @@ When `callgrind` is used in combination with a viewer like
 `kcachegrind` it is possible to identify a great deal of valuable
 information about native image execution aand relate it back to
 specific source code lines.
+
+### Related Documentation
+
+- [Debug Native Executables with GDB](guides/debug-native-executables-with-gdb.md)

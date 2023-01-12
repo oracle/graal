@@ -512,6 +512,10 @@ public class GraphDecoder {
                     nodeReference.orderId = EncodedNodeReference.DECODED;
                 }
             }
+
+            if (encodedGraph.hasUnsafeAccess()) {
+                graph.markUnsafeAccess();
+            }
         } catch (Throwable ex) {
             debug.handle(ex);
         }
