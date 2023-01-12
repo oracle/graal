@@ -39,6 +39,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.AbstractCollection;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -66,6 +67,7 @@ import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
+import org.graalvm.compiler.core.riscv64.RISCV64ReflectionUtil;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
@@ -218,6 +220,7 @@ import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.riscv64.RISCV64CPUFeatureAccess;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
@@ -491,6 +494,28 @@ public class NativeImageGenerator {
             // runtime checked features are the same as static features on AArch64 for now
             EnumSet<AArch64.CPUFeature> runtimeCheckedFeatures = ((AArch64) architecture).getFeatures().clone();
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers: r0 and v0.
+            return new SubstrateTargetDescription(architecture, true, 16, 0, deoptScratchSpace, runtimeCheckedFeatures);
+        } else if (includedIn(platform, Platform.RISCV64.class)) {
+            Class<?> riscv64CPUFeature = RISCV64ReflectionUtil.lookupClass(false, RISCV64ReflectionUtil.featureClass);
+            Architecture architecture;
+            if (NativeImageOptions.NativeArchitecture.getValue()) {
+                architecture = GraalAccess.getOriginalTarget().arch;
+            } else {
+                Method noneOf = RISCV64ReflectionUtil.lookupMethod(EnumSet.class, "noneOf", Class.class);
+                EnumSet<?> features = (EnumSet<?>) RISCV64ReflectionUtil.invokeMethod(noneOf, null, riscv64CPUFeature);
+                Method parseCSVtoEnum = RISCV64ReflectionUtil.lookupMethod(NativeImageGenerator.class, "parseCSVtoEnum", Class.class, List.class, Enum[].class);
+                parseCSVtoEnum.setAccessible(true);
+                Method addAll = RISCV64ReflectionUtil.lookupMethod(AbstractCollection.class, "addAll", Collection.class);
+
+                RISCV64ReflectionUtil.invokeMethod(addAll, features,
+                                RISCV64ReflectionUtil.invokeMethod(parseCSVtoEnum, null, riscv64CPUFeature, NativeImageOptions.CPUFeatures.getValue().values(), riscv64CPUFeature.getEnumConstants()));
+
+                architecture = (Architecture) ReflectionUtil.newInstance(ReflectionUtil.lookupConstructor(RISCV64ReflectionUtil.getArch(false), EnumSet.class, EnumSet.class), features,
+                                RISCV64CPUFeatureAccess.enabledRISCV64Flags());
+            }
+            Method getFeatures = RISCV64ReflectionUtil.lookupMethod(Architecture.class, "getFeatures");
+            EnumSet<?> runtimeCheckedFeatures = ((EnumSet<?>) RISCV64ReflectionUtil.invokeMethod(getFeatures, architecture)).clone();
+            int deoptScratchSpace = 2 * 8;
             return new SubstrateTargetDescription(architecture, true, 16, 0, deoptScratchSpace, runtimeCheckedFeatures);
         } else {
             throw UserError.abort("Architecture specified by platform is not supported: %s", platform.getClass().getTypeName());

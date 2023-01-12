@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.IndirectCallTargetNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -44,6 +45,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
+import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.word.WordTypes;
@@ -60,6 +62,7 @@ import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
 import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
+import com.oracle.svm.core.graal.nodes.VaListInitializationNode;
 import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.jni.JNIJavaCallVariantWrapperHolder;
@@ -114,6 +117,8 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
                 JavaKind kind = callWrapperSignature.getParameterKind(i);
                 if (kind.isObject()) {
                     args.add(wordKind); // handle
+                } else if (Platform.includedIn(Platform.RISCV64.class) && (kind == JavaKind.Float || kind == JavaKind.Double)) {
+                    args.add(JavaKind.Long);
                 } else if (kind == JavaKind.Float) {
                     // C varargs promote float to double (C99, 6.5.2.2-6)
                     args.add(JavaKind.Double);
@@ -256,10 +261,15 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
                 JavaKind kind = invokeSignature.getParameterKind(i);
                 assert kind == kind.getStackKind() : "sub-int conversions and bit masking must happen in JNIJavaCallWrapperMethod";
                 JavaKind loadKind = kind;
-                if (loadKind == JavaKind.Float) {
+                if (Platform.includedIn(Platform.RISCV64.class) && (kind == JavaKind.Double || kind == JavaKind.Float)) {
+                    loadKind = JavaKind.Long;
+                } else if (loadKind == JavaKind.Float) {
                     loadKind = JavaKind.Double; // C varargs promote float to double (C99 6.5.2.2-6)
                 }
                 ValueNode value = kit.loadLocal(slotIndex, loadKind);
+                if (Platform.includedIn(Platform.RISCV64.class) && (kind == JavaKind.Double || kind == JavaKind.Float)) {
+                    value = kit.unique(new ReinterpretNode(JavaKind.Double, value));
+                }
                 if (kind == JavaKind.Float) {
                     value = kit.unique(new FloatConvertNode(FloatConvert.D2F, value));
                 }
@@ -267,14 +277,15 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
                 slotIndex += loadKind.getSlotCount();
             }
         } else if (callVariant == CallVariant.VA_LIST) {
-            ValueNode valist = kit.loadLocal(slotIndex, wordKind);
+            ValueNode vaList = kit.loadLocal(slotIndex, wordKind);
+            FixedWithNextNode vaListInitialized = kit.append(new VaListInitializationNode(vaList));
             for (int i = firstParamIndex; i < count; i++) {
                 JavaKind kind = invokeSignature.getParameterKind(i);
                 if (kind.isObject()) {
                     kind = wordKind;
                 }
                 assert kind == kind.getStackKind() : "sub-int conversions and bit masking must happen in JNIJavaCallWrapperMethod";
-                ValueNode value = kit.append(new VaListNextArgNode(kind, valist));
+                ValueNode value = kit.append(new VaListNextArgNode(kind, vaListInitialized));
                 args.add(value);
             }
         } else {

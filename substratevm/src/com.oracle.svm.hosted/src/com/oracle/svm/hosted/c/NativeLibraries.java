@@ -326,6 +326,17 @@ public final class NativeLibraries {
                 String libraryLocationHint = System.lineSeparator() + "(search path: " + jdkLibDir + ")";
                 hint = defaultBuiltInLibraries.stream().filter(hasStaticLibrary.negate()).collect(Collectors.joining(", ", "Missing libraries: ", libraryLocationHint));
             }
+
+            /* Probe for static JDK libraries in user-specified CLibraryPath directory */
+            if (staticLibsDir == null) {
+                for (String clibPathComponent : SubstrateOptions.CLibraryPath.getValue().values()) {
+                    Path path = Paths.get(clibPathComponent);
+                    Predicate<String> hasStaticLibraryCLibraryPath = s -> Files.isRegularFile(path.resolve(getStaticLibraryName(s)));
+                    if (defaultBuiltInLibraries.stream().allMatch(hasStaticLibraryCLibraryPath)) {
+                        return libraryPaths;
+                    }
+                }
+            }
         } catch (IOException e) {
             /* Fallthrough to next strategy */
             hint = e.getMessage();

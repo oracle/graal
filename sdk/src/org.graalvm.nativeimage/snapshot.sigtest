@@ -245,12 +245,14 @@ innr public abstract interface static LINUX
 innr public abstract interface static LINUX_AARCH64_BASE
 innr public abstract interface static LINUX_AMD64_BASE
 innr public abstract interface static MACOS
+innr public abstract interface static RISCV64
 innr public abstract interface static WINDOWS
 innr public final static ANDROID_AARCH64
 innr public final static HOSTED_ONLY
 innr public final static IOS_AARCH64
 innr public final static IOS_AMD64
 innr public final static LINUX_AARCH64
+innr public final static LINUX_RISCV64
 innr public final static MACOS_AARCH64
 innr public final static MACOS_AMD64
 innr public final static WINDOWS_AARCH64
@@ -353,6 +355,13 @@ CLSS public abstract interface static org.graalvm.nativeimage.Platform$LINUX_AMD
 intf org.graalvm.nativeimage.Platform$AMD64
 intf org.graalvm.nativeimage.Platform$LINUX
 
+CLSS public final static org.graalvm.nativeimage.Platform$LINUX_RISCV64
+ outer org.graalvm.nativeimage.Platform
+cons public init()
+intf org.graalvm.nativeimage.Platform$LINUX
+intf org.graalvm.nativeimage.Platform$RISCV64
+supr java.lang.Object
+
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$MACOS
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.Platform$DARWIN
@@ -371,6 +380,11 @@ cons public init()
 intf org.graalvm.nativeimage.Platform$DARWIN_AMD64
 intf org.graalvm.nativeimage.Platform$MACOS
 supr java.lang.Object
+
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$RISCV64
+ outer org.graalvm.nativeimage.Platform
+intf org.graalvm.nativeimage.Platform
+meth public java.lang.String getArchitecture()
 
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$WINDOWS
  outer org.graalvm.nativeimage.Platform

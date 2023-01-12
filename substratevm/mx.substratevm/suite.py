@@ -108,6 +108,11 @@ suite = {
                         "urls": ["{urlbase}/llvm-shadowed-13.0.1-1.5.7_1-linux-arm64.jar"],
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.linux.arm64"
                     },
+                    "riscv64": {
+                        "sha1": "51762767783b9997474397cfac1e5d1a0ad59e2f",
+                        "urls": ["{urlbase}/llvm-shadowed-13.0.1-1.5.7-linux-riscv64.jar"],
+                        "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.linux.riscv64"
+                    },
                     "<others>": {
                         "optional": True,
                     },
@@ -143,6 +148,11 @@ suite = {
                         "digest": "sha512:e8638d24b59f223f3a394d27ea13f393c6a263add1b3eefde9895eb2913cc1b317d813023100c3303266f0de9773f5ba49b9326159a091fb5916296b5113b1cb",
                         "urls": ["{urlbase}/javacpp-shadowed-1.5.7_1-linux-arm64.jar"],
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.javacpp.linux.arm64"
+                    },
+                    "riscv64": {
+                        "sha1": "b00dee62b202898ec899cb7bc03604247d648ceb",
+                        "urls": ["{urlbase}/javacpp-shadowed-1.5.7-linux-riscv64.jar"],
+                        "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.javacpp.linux.riscv64"
                     },
                     "<others>": {
                         "optional": True,
@@ -416,6 +426,25 @@ suite = {
             "workingSets": "SVM",
             "jacoco" : "exclude",
         },
+        "com.oracle.svm.core.graal.riscv64": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.core",
+            ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.code.site",
+                ],
+            },
+            "checkstyle": "com.oracle.svm.core",
+            "javaCompliance": "11+",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "SVM_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
         "com.oracle.svm.core.graal.llvm": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -441,6 +470,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.core.graal.aarch64",
+                "com.oracle.svm.core.graal.riscv64",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -1275,6 +1305,7 @@ suite = {
                 "com.oracle.svm.core.jdk17",
                 "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.core.graal.aarch64",
+                "com.oracle.svm.core.graal.riscv64",
                 "com.oracle.svm.core.posix",
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",

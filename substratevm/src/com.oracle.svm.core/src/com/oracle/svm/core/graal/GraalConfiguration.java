@@ -36,6 +36,8 @@ import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.gen.NodeMatchRules;
 import org.graalvm.compiler.core.match.MatchRuleRegistry;
 import org.graalvm.compiler.core.match.MatchStatement;
+import org.graalvm.compiler.core.riscv64.RISCV64NodeMatchRules;
+import org.graalvm.compiler.core.riscv64.RISCV64ReflectionUtil;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.CommunityCompilerConfigurationFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
@@ -137,6 +139,8 @@ public class GraalConfiguration {
             matchRuleClass = AMD64NodeMatchRules.class;
         } else if (hostedArchitecture instanceof AArch64) {
             matchRuleClass = AArch64NodeMatchRules.class;
+        } else if (RISCV64ReflectionUtil.getArch(false).isInstance(hostedArchitecture)) {
+            matchRuleClass = RISCV64NodeMatchRules.class;
         } else {
             throw VMError.shouldNotReachHere("Can not instantiate NodeMatchRules for architecture " + hostedArchitecture.getName());
         }
