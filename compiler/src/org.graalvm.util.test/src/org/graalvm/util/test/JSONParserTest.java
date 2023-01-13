@@ -62,7 +62,7 @@ public class JSONParserTest {
     }
 
     @SuppressWarnings("unchecked")
-    private void testSimpleIntl(JSONParser parser) {
+    private static void testSimpleIntl(JSONParser parser) {
         Object result = parser.parse();
 
         Assert.assertTrue(result != null);
@@ -120,7 +120,7 @@ public class JSONParserTest {
 
         testErrorIntl("{} something else", "eof");
 
-        testErrorIntl("{ , }", "Trailing comma is not allowed in JSON");
+        testErrorIntl("{,}", "Trailing comma is not allowed in JSON");
         testErrorIntl("{ \"a\": true, }", "Trailing comma is not allowed in JSON");
         testErrorIntl("{ \"a\": true false}", ", or }");
 
@@ -153,7 +153,7 @@ public class JSONParserTest {
         // Assert.assertTrue(result.contains("\\u09af")); //unicode used, no quoting
     }
 
-    private void testErrorIntl(String json, String expectedMessage) {
+    private static void testErrorIntl(String json, String expectedMessage) {
         JSONParser parser = new JSONParser(json);
         try {
             parser.parse();
@@ -164,12 +164,12 @@ public class JSONParserTest {
     }
 
     @SuppressWarnings("unchecked")
-    private EconomicMap<String, Object> getMap(EconomicMap<String, Object> map, String key) {
+    private static EconomicMap<String, Object> getMap(EconomicMap<String, Object> map, String key) {
         return (EconomicMap<String, Object>) map.get(key);
     }
 
     @SuppressWarnings("unchecked")
-    private List<Object> getList(EconomicMap<String, Object> map, String key) {
+    private static List<Object> getList(EconomicMap<String, Object> map, String key) {
         return (List<Object>) map.get(key);
     }
 }

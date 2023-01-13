@@ -73,7 +73,7 @@ public class OptionsEncoderTest {
         testValueIntl("integer", 1);
         testValueIntl("long", (long) 1);
         testValueIntl("float", (float) 1.5);
-        testValueIntl("double", (double) 1.5);
+        testValueIntl("double", 1.5);
     }
 
     @Test
@@ -82,7 +82,7 @@ public class OptionsEncoderTest {
         testValueIntl("boolFalse", false);
     }
 
-    private void testValueIntl(String name, Object value) {
+    private static void testValueIntl(String name, Object value) {
         Map<String, Object> options = Collections.singletonMap(name, value);
         assertEquals(options, decode(encode(options)));
     }
