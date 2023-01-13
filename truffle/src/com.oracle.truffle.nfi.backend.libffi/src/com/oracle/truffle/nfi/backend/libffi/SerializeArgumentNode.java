@@ -76,7 +76,7 @@ import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.GetLon
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.GetShortArrayTagNodeGen;
 
 //TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing"})
+@SuppressWarnings({"truffle-inlining"})
 abstract class SerializeArgumentNode extends Node {
 
     final CachedTypeInfo type;

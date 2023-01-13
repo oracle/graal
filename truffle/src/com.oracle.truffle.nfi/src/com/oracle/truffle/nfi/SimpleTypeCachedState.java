@@ -77,7 +77,7 @@ import com.oracle.truffle.nfi.backend.spi.BackendNativePointerLibrary;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
 //TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing"})
+@SuppressWarnings({"truffle-inlining"})
 final class SimpleTypeCachedState {
 
     private static final TypeCachedState nopCachedState;
@@ -252,13 +252,11 @@ final class SimpleTypeCachedState {
         @Specialization(limit = "3", guards = "interop.isBoolean(arg)")
         @GenerateAOT.Exclude
         byte doBoolean(@SuppressWarnings("unused") NFIType type, Object arg,
-                        @CachedLibrary("arg") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @CachedLibrary("arg") InteropLibrary interop) {
             try {
                 return interop.asBoolean(arg) ? (byte) 1 : 0;
             } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                throw UnsupportedTypeException.create(new Object[]{arg});
+                throw CompilerDirectives.shouldNotReachHere(ex);
             }
         }
 
@@ -326,13 +324,11 @@ final class SimpleTypeCachedState {
         @Specialization(limit = "3", guards = "interop.isBoolean(arg)")
         @GenerateAOT.Exclude
         short doBoolean(@SuppressWarnings("unused") NFIType type, Object arg,
-                        @CachedLibrary("arg") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @CachedLibrary("arg") InteropLibrary interop) {
             try {
                 return interop.asBoolean(arg) ? (short) 1 : 0;
             } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                throw UnsupportedTypeException.create(new Object[]{arg});
+                throw CompilerDirectives.shouldNotReachHere(ex);
             }
         }
 
@@ -400,13 +396,11 @@ final class SimpleTypeCachedState {
         @Specialization(limit = "3", guards = "interop.isBoolean(arg)")
         @GenerateAOT.Exclude
         int doBoolean(@SuppressWarnings("unused") NFIType type, Object arg,
-                        @CachedLibrary("arg") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @CachedLibrary("arg") InteropLibrary interop) {
             try {
                 return interop.asBoolean(arg) ? 1 : 0;
             } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                throw UnsupportedTypeException.create(new Object[]{arg});
+                throw CompilerDirectives.shouldNotReachHere(ex);
             }
         }
 
@@ -468,13 +462,11 @@ final class SimpleTypeCachedState {
         @Specialization(limit = "3", guards = "interop.isBoolean(arg)")
         @GenerateAOT.Exclude
         long doBoolean(@SuppressWarnings("unused") NFIType type, Object arg,
-                        @CachedLibrary("arg") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @CachedLibrary("arg") InteropLibrary interop) {
             try {
                 return interop.asBoolean(arg) ? 1L : 0L;
             } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                throw UnsupportedTypeException.create(new Object[]{arg});
+                throw CompilerDirectives.shouldNotReachHere(ex);
             }
         }
 
@@ -525,13 +517,11 @@ final class SimpleTypeCachedState {
         @Specialization(limit = "3", guards = "interop.isBoolean(arg)")
         @GenerateAOT.Exclude
         float doBoolean(@SuppressWarnings("unused") NFIType type, Object arg,
-                        @CachedLibrary("arg") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @CachedLibrary("arg") InteropLibrary interop) {
             try {
                 return interop.asBoolean(arg) ? 1.0f : 0.0f;
             } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                throw UnsupportedTypeException.create(new Object[]{arg});
+                throw CompilerDirectives.shouldNotReachHere(ex);
             }
         }
 
@@ -577,13 +567,11 @@ final class SimpleTypeCachedState {
         @Specialization(limit = "3", guards = "interop.isBoolean(arg)")
         @GenerateAOT.Exclude
         double doBoolean(@SuppressWarnings("unused") NFIType type, Object arg,
-                        @CachedLibrary("arg") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @CachedLibrary("arg") InteropLibrary interop) {
             try {
                 return interop.asBoolean(arg) ? 1.0 : 0.0;
             } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                throw UnsupportedTypeException.create(new Object[]{arg});
+                throw CompilerDirectives.shouldNotReachHere(ex);
             }
         }
 

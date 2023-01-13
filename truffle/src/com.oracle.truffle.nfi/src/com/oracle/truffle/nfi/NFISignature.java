@@ -70,7 +70,7 @@ import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder;
 
 //TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing"})
+@SuppressWarnings({"truffle-inlining"})
 @ExportLibrary(InteropLibrary.class)
 @ExportLibrary(value = SignatureLibrary.class, useForAOT = true, useForAOTPriority = 1)
 final class NFISignature implements TruffleObject {

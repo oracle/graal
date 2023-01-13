@@ -49,7 +49,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.NFIType.TypeCachedState;
 
 //TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing"})
+@SuppressWarnings({"truffle-inlining"})
 @GenerateAOT
 abstract class ConvertTypeNode extends Node {
 

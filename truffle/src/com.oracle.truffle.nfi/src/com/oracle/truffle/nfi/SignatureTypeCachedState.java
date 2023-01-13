@@ -53,7 +53,7 @@ import com.oracle.truffle.nfi.SignatureTypeCachedStateFactory.FunctionPtrFromNat
 import com.oracle.truffle.nfi.api.SignatureLibrary;
 
 //TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing"})
+@SuppressWarnings({"truffle-inlining"})
 final class SignatureTypeCachedState {
 
     static final TypeCachedState INSTANCE = new TypeCachedState(1, ClosureToNativeFactory.getInstance(), FunctionPtrFromNativeFactory.getInstance());

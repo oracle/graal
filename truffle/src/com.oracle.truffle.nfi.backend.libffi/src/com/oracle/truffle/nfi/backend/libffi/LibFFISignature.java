@@ -85,7 +85,7 @@ import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayFactory
  * {@link CachedSignatureInfo} are guaranteed to behave the same semantically.
  */
 // TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing"})
+@SuppressWarnings({"truffle-inlining"})
 @ExportLibrary(value = NFIBackendSignatureLibrary.class, useForAOT = true, useForAOTPriority = 1)
 final class LibFFISignature {
 
