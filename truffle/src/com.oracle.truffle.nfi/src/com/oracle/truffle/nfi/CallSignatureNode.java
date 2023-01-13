@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -121,10 +122,12 @@ abstract class CallSignatureNode extends Node {
 
     }
 
+    @NeverDefault
     static CallSignatureNode createOptimizedCall(TypeCachedState retType, ArgsCachedState argsState) {
         return OptimizedCallSignatureNodeGen.create(retType, argsState);
     }
 
+    @NeverDefault
     static CallSignatureNode createOptimizedClosure(TypeCachedState retType, ArgsCachedState argsState) {
         return OptimizedCallClosureNodeGen.create(retType, argsState);
     }

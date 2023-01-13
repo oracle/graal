@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -60,7 +61,7 @@ import com.oracle.truffle.nfi.backend.libffi.LibFFISignature.CachedSignatureInfo
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.CachedTypeInfo;
 
 //TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
+@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-limit"})
 @GenerateUncached
 @ImportStatic(LibFFILanguage.class)
 @GenerateAOT
@@ -84,6 +85,7 @@ abstract class FunctionExecuteNode extends Node {
         }
     }
 
+    @NeverDefault
     protected static DirectCallNode createCachedSignatureCall(CachedSignatureInfo signature) {
         DirectCallNode callNode = DirectCallNode.create(signature.callTarget);
         callNode.forceInlining();

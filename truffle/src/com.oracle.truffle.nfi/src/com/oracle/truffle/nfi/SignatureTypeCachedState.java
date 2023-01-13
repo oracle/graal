@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,7 @@ import com.oracle.truffle.nfi.SignatureTypeCachedStateFactory.FunctionPtrFromNat
 import com.oracle.truffle.nfi.api.SignatureLibrary;
 
 //TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
+@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-limit"})
 final class SignatureTypeCachedState {
 
     static final TypeCachedState INSTANCE = new TypeCachedState(1, ClosureToNativeFactory.getInstance(), FunctionPtrFromNativeFactory.getInstance());

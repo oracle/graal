@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,7 @@ import com.oracle.truffle.nfi.api.NativePointerLibrary;
 import com.oracle.truffle.nfi.backend.spi.BackendNativePointerLibrary;
 
 //TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
+@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-limit"})
 @ExportLibrary(InteropLibrary.class)
 @ExportLibrary(value = NativePointerLibrary.class, useForAOT = true, useForAOTPriority = 1)
 final class NFISymbol implements TruffleObject {

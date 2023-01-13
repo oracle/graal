@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -69,7 +70,7 @@ import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder;
 
 //TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
+@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-limit"})
 @ExportLibrary(InteropLibrary.class)
 @ExportLibrary(value = SignatureLibrary.class, useForAOT = true, useForAOTPriority = 1)
 final class NFISignature implements TruffleObject {
@@ -119,6 +120,7 @@ final class NFISignature implements TruffleObject {
     @ImportStatic(NFILanguage.class)
     static class CreateClosure {
 
+        @NeverDefault
         static NFIClosure createClosure(Object executable, NFISignature signature) {
             return new NFIClosure(executable, signature);
         }
@@ -254,6 +256,7 @@ final class NFISignature implements TruffleObject {
             this.prev = prev;
         }
 
+        @NeverDefault
         ArgsCachedState addArg(TypeCachedState type) {
             return new ArgsCachedState(nativeArgCount + 1, managedArgCount + type.managedArgCount, type, this);
         }
@@ -272,15 +275,18 @@ final class NFISignature implements TruffleObject {
             this.args = args;
         }
 
+        @NeverDefault
         static SignatureCachedState create(SignatureBuilder builder) {
             return new SignatureCachedState(builder.retTypeState, builder.argsState);
         }
 
+        @NeverDefault
         CallSignatureNode createOptimizedSignatureCall() {
             CompilerAsserts.neverPartOfCompilation("createOptimizedSignatureCall");
             return CallSignatureNode.createOptimizedCall(retType, args);
         }
 
+        @NeverDefault
         CallSignatureNode createOptimizedClosureCall() {
             CompilerAsserts.neverPartOfCompilation("createOptimizedClosureCall");
             return CallSignatureNode.createOptimizedClosure(retType, args);
@@ -295,6 +301,7 @@ final class NFISignature implements TruffleObject {
             }
         }
 
+        @NeverDefault
         CallTarget getPolymorphicSignatureCall() {
             if (polymorphicSignatureCall == null) {
                 initPolymorphicSignatureCall();
@@ -312,6 +319,7 @@ final class NFISignature implements TruffleObject {
             }
         }
 
+        @NeverDefault
         CallTarget getPolymorphicClosureCall() {
             if (polymorphicClosureCall == null) {
                 initPolymorphicClosureCall();
@@ -331,7 +339,7 @@ final class NFISignature implements TruffleObject {
         ProfiledArrayBuilder<NFIType> argTypes;
 
         TypeCachedState retTypeState;
-        ArgsCachedState argsState;
+        @NeverDefault ArgsCachedState argsState;
 
         SignatureBuilder(String backendId, Object backendBuilder, ProfiledArrayBuilder<NFIType> argTypes) {
             this.backendId = backendId;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -84,11 +85,12 @@ import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayFactory
  * {@link CachedSignatureInfo} are guaranteed to behave the same semantically.
  */
 // TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
+@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-limit"})
 @ExportLibrary(value = NFIBackendSignatureLibrary.class, useForAOT = true, useForAOTPriority = 1)
 final class LibFFISignature {
 
     @TruffleBoundary
+    @NeverDefault
     public static LibFFISignature create(LibFFIContext context, CachedSignatureInfo info, LibFFIType retType, int argCount, int fixedArgCount, LibFFIType[] argTypes) {
         LibFFIType realRetType = retType;
         if (retType == null) {
@@ -198,6 +200,7 @@ final class LibFFISignature {
     }
 
     @TruffleBoundary
+    @NeverDefault
     public static CachedSignatureInfo prepareSignatureInfo(CachedTypeInfo retTypeInfo, ArgsState state) {
         if (retTypeInfo instanceof ArrayType) {
             throw new IllegalArgumentException("array type as return value is not supported");
@@ -325,6 +328,7 @@ final class LibFFISignature {
             }
         }
 
+        @NeverDefault
         PolymorphicClosureInfo getCachedClosureInfo() {
             if (cachedClosureInfo == null) {
                 initCachedClosureInfo();
@@ -359,6 +363,7 @@ final class LibFFISignature {
             this.prev = prev;
         }
 
+        @NeverDefault
         ArgsState addArg(CachedTypeInfo typeInfo) {
             if (typeInfo instanceof LibFFIType.VoidType) {
                 throw new IllegalArgumentException("void is not a valid argument type");
@@ -393,7 +398,7 @@ final class LibFFISignature {
 
         static final int NOT_VARARGS = -1;
 
-        ArgsState state;
+        @NeverDefault ArgsState state;
         CachedTypeInfo retTypeInfo;
 
         LibFFIType retType;
