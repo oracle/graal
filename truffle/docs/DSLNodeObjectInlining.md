@@ -1,3 +1,10 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Truffle DSL Node Object Inlining
+permalink: /graalvm-as-a-platform/language-implementation-framework/DSLNodeObjectInlining/
+---
+
 In 23.0, we have introduced a new annotation called `@GenerateInline`. This annotation instructs the Truffle DSL annotation processor to generate an inlinable version of a node. This works analogously to `@GenerateCached` and `@GenerateUncached`, which generate a cached or uncached node version.
 By default, the DSL does not generate an inlined version of a node.
 Node inlining provides a simple way to reduce the memory footprint of nodes but often also improves interpreter execution speed. 

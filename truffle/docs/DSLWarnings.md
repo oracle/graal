@@ -1,9 +1,10 @@
 ---
 layout: docs
 toc_group: truffle
-link_title: Truffle DSL Node Object Inlining
-permalink: /graalvm-as-a-platform/language-implementation-framework/NodeObjectInlining/
+link_title: Truffle DSL Warnings
+permalink: /graalvm-as-a-platform/language-implementation-framework/DSLWarnings/
 ---
+
 # Truffle DSL Warnings 
 
 Since version 23.0, Truffle DSL now produces significantly more warnings. 
