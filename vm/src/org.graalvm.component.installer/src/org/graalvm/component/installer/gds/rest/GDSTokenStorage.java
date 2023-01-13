@@ -206,9 +206,10 @@ public class GDSTokenStorage {
     }
 
     public void revokeToken(String token) {
-        if (token == null || token.isEmpty()) {
-            token = getFileToken();
-            if (token == null || token.isEmpty()) {
+        String t = token;
+        if (t == null || t.isEmpty()) {
+            t = getFileToken();
+            if (t == null || t.isEmpty()) {
                 return;
             }
             removeFileToken();
@@ -217,7 +218,7 @@ public class GDSTokenStorage {
         if (connector == null) {
             return;
         }
-        connector.revokeToken(token);
+        connector.revokeToken(t);
         feedback.message("MSG_AcceptRevoke");
     }
 
