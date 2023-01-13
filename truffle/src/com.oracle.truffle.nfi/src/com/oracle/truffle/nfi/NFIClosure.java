@@ -41,6 +41,7 @@
 package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -53,13 +54,12 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.nfi.ConvertTypeNode.ConvertFromNativeNode;
 import com.oracle.truffle.nfi.ConvertTypeNode.ConvertToNativeNode;
 import com.oracle.truffle.nfi.NFISignature.SignatureCachedState;
 
-//TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining"})
 @ExportLibrary(InteropLibrary.class)
 final class NFIClosure implements TruffleObject {
 
@@ -101,13 +101,14 @@ final class NFIClosure implements TruffleObject {
 
         @Specialization(guards = "receiver.signature.cachedState == null")
         static Object doSlowPath(NFIClosure receiver, Object[] args,
-                        @Cached BranchProfile exception,
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile exception,
                         @Cached ConvertFromNativeNode convertArg,
                         @Cached ConvertToNativeNode convertRet,
                         @CachedLibrary("receiver.executable") InteropLibrary interop) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
             NFISignature signature = receiver.signature;
             if (args.length != signature.nativeArgCount) {
-                exception.enter();
+                exception.enter(node);
                 throw ArityException.create(signature.nativeArgCount, signature.nativeArgCount, args.length);
             }
 

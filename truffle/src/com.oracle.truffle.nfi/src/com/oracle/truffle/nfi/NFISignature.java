@@ -43,6 +43,7 @@ package com.oracle.truffle.nfi;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -60,7 +61,8 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.nfi.CallSignatureNode.CachedCallSignatureNode;
 import com.oracle.truffle.nfi.CallSignatureNode.CallSignatureRootNode;
 import com.oracle.truffle.nfi.NFIType.TypeCachedState;
@@ -69,8 +71,6 @@ import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureBuilderLibrary;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder;
 
-//TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining"})
 @ExportLibrary(InteropLibrary.class)
 @ExportLibrary(value = SignatureLibrary.class, useForAOT = true, useForAOTPriority = 1)
 final class NFISignature implements TruffleObject {
@@ -102,8 +102,8 @@ final class NFISignature implements TruffleObject {
         return call.execute(this, function, args);
     }
 
-    @ExportMessage
-    static class Bind {
+    @ExportMessage(name = "bind")
+    static class BindMsg {
 
         @Specialization
         static Object doSymbol(NFISignature signature, NFISymbol function) {
@@ -175,13 +175,14 @@ final class NFISignature implements TruffleObject {
 
         @ExportMessage
         Object readArrayElement(long index,
-                        @Cached BranchProfile ioob) throws InvalidArrayIndexException {
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile ioob) throws InvalidArrayIndexException {
             if (index == 0) {
                 return "bind";
             } else if (index == 1) {
                 return "createClosure";
             } else {
-                ioob.enter();
+                ioob.enter(node);
                 throw InvalidArrayIndexException.create(index);
             }
         }
@@ -208,10 +209,11 @@ final class NFISignature implements TruffleObject {
 
         @Specialization(guards = "isBind(member)")
         static Object doBind(NFISignature signature, @SuppressWarnings("unused") String member, Object[] args,
+                        @Bind("$node") Node node,
                         @CachedLibrary("signature") SignatureLibrary signatureLibrary,
-                        @Shared("invokeException") @Cached BranchProfile exception) throws ArityException {
+                        @Shared("invokeException") @Cached InlinedBranchProfile exception) throws ArityException {
             if (args.length != 1) {
-                exception.enter();
+                exception.enter(node);
                 throw ArityException.create(1, 1, args.length);
             }
             return signatureLibrary.bind(signature, args[0]);
@@ -219,10 +221,11 @@ final class NFISignature implements TruffleObject {
 
         @Specialization(guards = "isCreateClosure(member)")
         static Object doCreateClosure(NFISignature signature, @SuppressWarnings("unused") String member, Object[] args,
+                        @Bind("$node") Node node,
                         @CachedLibrary("signature") SignatureLibrary signatureLibrary,
-                        @Shared("invokeException") @Cached BranchProfile exception) throws ArityException {
+                        @Shared("invokeException") @Cached InlinedBranchProfile exception) throws ArityException {
             if (args.length != 1) {
-                exception.enter();
+                exception.enter(node);
                 throw ArityException.create(1, 1, args.length);
             }
             return signatureLibrary.createClosure(signature, args[0]);

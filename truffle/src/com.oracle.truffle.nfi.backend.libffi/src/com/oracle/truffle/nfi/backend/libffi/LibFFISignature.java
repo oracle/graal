@@ -61,7 +61,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.nfi.backend.libffi.FunctionExecuteNode.SignatureExecuteNode;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIClosure.MonomorphicClosureInfo;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIClosure.PolymorphicClosureInfo;
@@ -84,8 +84,6 @@ import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayFactory
  * {@link CachedSignatureInfo}. Two {@link LibFFISignature} objects that have the same
  * {@link CachedSignatureInfo} are guaranteed to behave the same semantically.
  */
-// TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining"})
 @ExportLibrary(value = NFIBackendSignatureLibrary.class, useForAOT = true, useForAOTPriority = 1)
 final class LibFFISignature {
 
@@ -131,31 +129,32 @@ final class LibFFISignature {
         @GenerateAOT.Exclude
         static Object callGeneric(LibFFISignature self, Object functionPointer, Object[] args,
                         @CachedLibrary("functionPointer") InteropLibrary interop,
-                        @Cached BranchProfile isExecutable,
-                        @Cached BranchProfile toNative,
-                        @Cached BranchProfile error,
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile isExecutable,
+                        @Cached InlinedBranchProfile toNative,
+                        @Cached InlinedBranchProfile error,
                         @Cached.Exclusive @Cached FunctionExecuteNode functionExecute) throws ArityException, UnsupportedTypeException {
             if (interop.isExecutable(functionPointer)) {
                 // This branch can be invoked when SignatureLibrary is used to invoke a function
                 // pointer without prior engaging the interop to execute executable function
                 // pointers. It may happen, for example, in SVM for function substitutes.
                 try {
-                    isExecutable.enter();
+                    isExecutable.enter(node);
                     return interop.execute(functionPointer, args);
                 } catch (UnsupportedMessageException e) {
-                    error.enter();
+                    error.enter(node);
                     throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer", e);
                 }
             }
             if (!interop.isPointer(functionPointer)) {
-                toNative.enter();
+                toNative.enter(node);
                 interop.toNative(functionPointer);
             }
             long pointer;
             try {
                 pointer = interop.asPointer(functionPointer);
             } catch (UnsupportedMessageException e) {
-                error.enter();
+                error.enter(node);
                 throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer", e);
             }
             return functionExecute.execute(pointer, self, args);

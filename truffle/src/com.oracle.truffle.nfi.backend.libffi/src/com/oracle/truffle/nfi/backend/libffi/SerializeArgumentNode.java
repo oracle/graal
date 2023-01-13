@@ -58,7 +58,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.nfi.api.SerializableLibrary;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.ArrayType;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.BasicType;
@@ -432,7 +432,8 @@ abstract class SerializeArgumentNode extends Node {
         @Specialization(limit = "3", replaces = {"putPointer", "putNull"})
         void putGeneric(Object arg, NativeArgumentBuffer buffer,
                         @CachedLibrary("arg") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
                 if (!interop.isPointer(arg)) {
                     interop.toNative(arg);
@@ -444,7 +445,7 @@ abstract class SerializeArgumentNode extends Node {
             } catch (UnsupportedMessageException ex) {
                 // fallthrough
             }
-            exception.enter();
+            exception.enter(node);
             if (interop.isNull(arg)) {
                 buffer.putPointer(0, type.size);
                 return;
@@ -497,7 +498,8 @@ abstract class SerializeArgumentNode extends Node {
         @Specialization(limit = "3", replaces = {"putPointer", "putString", "putNull"})
         void putGeneric(Object value, NativeArgumentBuffer buffer,
                         @CachedLibrary("value") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
                 if (interop.isPointer(value)) {
                     buffer.putPointerKeepalive(value, interop.asPointer(value), type.size);
@@ -514,7 +516,7 @@ abstract class SerializeArgumentNode extends Node {
             } catch (UnsupportedMessageException ex) {
                 // fallthrough
             }
-            exception.enter();
+            exception.enter(node);
             if (interop.isNull(value)) {
                 buffer.putPointer(0, type.size);
             } else {
