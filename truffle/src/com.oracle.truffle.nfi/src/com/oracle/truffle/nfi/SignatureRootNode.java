@@ -55,7 +55,7 @@ import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayBuilder
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayFactory;
 
 //TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-limit"})
+@SuppressWarnings({"truffle-inlining", "truffle-sharing"})
 final class SignatureRootNode extends RootNode {
 
     final String backendId;

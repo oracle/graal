@@ -85,7 +85,7 @@ import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayFactory
  * {@link CachedSignatureInfo} are guaranteed to behave the same semantically.
  */
 // TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-limit"})
+@SuppressWarnings({"truffle-inlining", "truffle-sharing"})
 @ExportLibrary(value = NFIBackendSignatureLibrary.class, useForAOT = true, useForAOTPriority = 1)
 final class LibFFISignature {
 
@@ -166,7 +166,7 @@ final class LibFFISignature {
     @ImportStatic(LibFFILanguage.class)
     static class CreateClosure {
 
-        @Specialization(guards = {"signature.signatureInfo == cachedSignatureInfo", "executable == cachedExecutable"}, assumptions = "getSingleContextAssumption()")
+        @Specialization(guards = {"signature.signatureInfo == cachedSignatureInfo", "executable == cachedExecutable"}, assumptions = "getSingleContextAssumption()", limit = "3")
         static LibFFIClosure doCachedExecutable(LibFFISignature signature, Object executable,
                         @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
                         @Cached("executable") Object cachedExecutable,
@@ -179,7 +179,7 @@ final class LibFFISignature {
             return LibFFIClosure.newClosureWrapper(nativePointer);
         }
 
-        @Specialization(replaces = "doCachedExecutable", guards = "signature.signatureInfo == cachedSignatureInfo")
+        @Specialization(replaces = "doCachedExecutable", guards = "signature.signatureInfo == cachedSignatureInfo", limit = "3")
         static LibFFIClosure doCachedSignature(LibFFISignature signature, Object executable,
                         @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
                         @CachedLibrary("signature") NFIBackendSignatureLibrary self,
@@ -451,7 +451,7 @@ final class LibFFISignature {
                 return v0 == v1;
             }
 
-            @Specialization(guards = {"builder.state == oldState", "isSame(promotedType.typeInfo, cachedTypeInfo)"})
+            @Specialization(guards = {"builder.state == oldState", "isSame(promotedType.typeInfo, cachedTypeInfo)"}, limit = "1")
             static void doCached(SignatureBuilder builder, @SuppressWarnings("unused") LibFFIType argType,
                             @SuppressWarnings("unused") @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self,
                             @Bind("builder.maybePromote(self, argType)") LibFFIType promotedType,
@@ -480,7 +480,7 @@ final class LibFFISignature {
         @ImportStatic(LibFFISignature.class)
         static class Build {
 
-            @Specialization(guards = {"builder.state == cachedState", "builder.retTypeInfo == cachedRetType"})
+            @Specialization(guards = {"builder.state == cachedState", "builder.retTypeInfo == cachedRetType"}, limit = "1")
             static Object doCached(SignatureBuilder builder,
                             @Cached("builder.state") ArgsState cachedState,
                             @SuppressWarnings("unused") @Cached("builder.retType.typeInfo") CachedTypeInfo cachedRetType,

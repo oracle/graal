@@ -70,7 +70,7 @@ import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder;
 
 //TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-limit"})
+@SuppressWarnings({"truffle-inlining", "truffle-sharing"})
 @ExportLibrary(InteropLibrary.class)
 @ExportLibrary(value = SignatureLibrary.class, useForAOT = true, useForAOTPriority = 1)
 final class NFISignature implements TruffleObject {
@@ -125,7 +125,7 @@ final class NFISignature implements TruffleObject {
             return new NFIClosure(executable, signature);
         }
 
-        @Specialization(guards = {"executable == cachedClosure.executable", "signature == cachedClosure.signature"}, assumptions = "getSingleContextAssumption()")
+        @Specialization(guards = {"executable == cachedClosure.executable", "signature == cachedClosure.signature"}, assumptions = "getSingleContextAssumption()", limit = "3")
         @SuppressWarnings("unused")
         @GenerateAOT.Exclude
         static Object doCached(NFISignature signature, Object executable,
@@ -361,7 +361,7 @@ final class NFISignature implements TruffleObject {
         @ExportMessage
         static class AddArgument {
 
-            @Specialization(guards = {"builder.argsState == prevArgsState", "type.cachedState == argState"})
+            @Specialization(guards = {"builder.argsState == prevArgsState", "type.cachedState == argState"}, limit = "1")
             static void doCached(SignatureBuilder builder, NFIType type,
                             @Cached("builder.argsState") ArgsCachedState prevArgsState,
                             @Cached("type.cachedState") TypeCachedState argState,
@@ -399,7 +399,7 @@ final class NFISignature implements TruffleObject {
         @ExportMessage
         static class Build {
 
-            @Specialization(guards = {"builder.argsState == cachedState.args", "builder.retTypeState == cachedState.retType"})
+            @Specialization(guards = {"builder.argsState == cachedState.args", "builder.retTypeState == cachedState.retType"}, limit = "1")
             static NFISignature doCached(SignatureBuilder builder,
                             @Cached("create(builder)") SignatureCachedState cachedState,
                             @CachedLibrary("builder.backendBuilder") NFIBackendSignatureBuilderLibrary backendLibrary) {

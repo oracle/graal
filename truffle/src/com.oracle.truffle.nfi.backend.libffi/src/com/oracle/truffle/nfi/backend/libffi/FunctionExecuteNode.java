@@ -61,7 +61,7 @@ import com.oracle.truffle.nfi.backend.libffi.LibFFISignature.CachedSignatureInfo
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.CachedTypeInfo;
 
 //TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-limit"})
+@SuppressWarnings({"truffle-inlining", "truffle-sharing"})
 @GenerateUncached
 @ImportStatic(LibFFILanguage.class)
 @GenerateAOT
@@ -69,7 +69,7 @@ abstract class FunctionExecuteNode extends Node {
 
     public abstract Object execute(long receiver, LibFFISignature signature, Object[] args) throws ArityException, UnsupportedTypeException;
 
-    @Specialization(guards = "signature.signatureInfo == cachedInfo")
+    @Specialization(guards = "signature.signatureInfo == cachedInfo", limit = "3")
     @GenerateAOT.Exclude
     protected Object cachedSignature(long receiver, LibFFISignature signature, Object[] args,
                     @Cached("signature.signatureInfo") @SuppressWarnings("unused") CachedSignatureInfo cachedInfo,
