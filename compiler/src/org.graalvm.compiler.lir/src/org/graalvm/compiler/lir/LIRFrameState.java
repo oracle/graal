@@ -192,11 +192,8 @@ public class LIRFrameState {
 
     /**
      * Called by the register allocator to initialize the frame state.
-     *
-     * @param frameMap The frame map.
-     * @param canHaveRegisters True if there can be any register map entries.
      */
-    public void initDebugInfo(FrameMap frameMap, boolean canHaveRegisters) {
+    public void initDebugInfo() {
         debugInfo = new DebugInfo(topFrame, virtualObjects);
     }
 

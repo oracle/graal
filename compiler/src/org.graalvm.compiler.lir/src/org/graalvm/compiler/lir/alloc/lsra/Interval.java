@@ -601,10 +601,6 @@ public final class Interval {
         return cachedTo;
     }
 
-    int numUsePositions() {
-        return usePosList.size();
-    }
-
     public void setLocationHint(Interval interval) {
         locationHint = interval;
     }
@@ -685,10 +681,6 @@ public final class Interval {
     // test intersection
     boolean intersects(Interval i) {
         return first.intersects(i.first);
-    }
-
-    int intersectsAt(Interval i) {
-        return first.intersectsAt(i.first);
     }
 
     // range iteration
