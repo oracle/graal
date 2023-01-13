@@ -321,17 +321,6 @@ public final class JNIConfig {
         }
 
         /**
-         * Registers a callback used by the {@link NativeIsolate} to tear down the isolate.
-         *
-         * @param action a {@link LongUnaryOperator} that takes an isolate thread address as a
-         *            parameter and returns {@code 0} on success or non-zero in case of an error.
-         */
-        public Builder setShutDownIsolateAction(LongUnaryOperator action) {
-            Objects.requireNonNull(action, "Action must be non null.");
-            return setShutDownIsolateAction((isolateId, isolateThreadId) -> action.applyAsLong(isolateThreadId));
-        }
-
-        /**
          * Registers a callback used by the {@link NativeObject} to free an object in a native image
          * heap referenced by the garbage-collected handle. At some point after a
          * {@link NativeObject} is garbage collected, a call to the {@code action} is made to
