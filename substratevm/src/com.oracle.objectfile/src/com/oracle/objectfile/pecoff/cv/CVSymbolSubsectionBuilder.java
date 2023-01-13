@@ -31,12 +31,15 @@ import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.FieldEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.Range;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import org.graalvm.compiler.debug.GraalError;
 
 import java.lang.reflect.Modifier;
 
+import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo.FLAG_INTEGRAL;
+import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo.FLAG_NUMERIC;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_CL;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_CX;
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_DI;
@@ -72,8 +75,6 @@ import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM3_0;
 import static com.oracle.objectfile.pecoff.cv.CVSymbolSubrecord.CVSymbolFrameProcRecord.FRAME_ASYNC_EH;
 import static com.oracle.objectfile.pecoff.cv.CVSymbolSubrecord.CVSymbolFrameProcRecord.FRAME_LOCAL_BP;
 import static com.oracle.objectfile.pecoff.cv.CVSymbolSubrecord.CVSymbolFrameProcRecord.FRAME_PARAM_BP;
-import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_REAL32;
-import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_REAL64;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.MAX_PRIMITIVE;
 
 final class CVSymbolSubsectionBuilder {
@@ -216,21 +217,23 @@ final class CVSymbolSubsectionBuilder {
             final TypeEntry paramType = method.getParamType(i);
             final int typeIndex = cvDebugInfo.getCVTypeSection().addTypeRecords(paramType).getSequenceNumber();
             final String paramName = "p" + (i + 1);
-            if (typeIndex == T_REAL64 || typeIndex == T_REAL32) {
-                /* floating point primitive */
-                if (fpRegisterIndex < javaFP64registers.length) {
-                    final short register = typeIndex == T_REAL64 ? javaFP64registers[fpRegisterIndex] : javaFP32registers[fpRegisterIndex];
-                    addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, paramName, typeIndex, 1));
-                    addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, register, externalName, 0, 8));
-                    addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRelFullScope(cvDebugInfo, 0));
-                    fpRegisterIndex++;
-                } else {
-                    /* TODO: handle stack parameter; keep track of stack offset, etc. */
-                    break;
-                }
-            } else if (paramType.isPrimitive()) {
+            if (paramType.isPrimitive()) {
                 /* simple primitive */
-                if (gpRegisterIndex < javaGP64registers.length) {
+                final PrimitiveTypeEntry primitiveTypeEntry = (PrimitiveTypeEntry) paramType;
+                final boolean isFloatingPoint = ((primitiveTypeEntry.getFlags() & FLAG_NUMERIC) != 0 && (primitiveTypeEntry.getFlags() & FLAG_INTEGRAL) == 0);
+                if (isFloatingPoint) {
+                    /* floating point primitive */
+                    if (fpRegisterIndex < javaFP64registers.length) {
+                        final short register = paramType.getSize() == Double.BYTES ? javaFP64registers[fpRegisterIndex] : javaFP32registers[fpRegisterIndex];
+                        addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, paramName, typeIndex, 1));
+                        addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, register, externalName, 0, 8));
+                        addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRelFullScope(cvDebugInfo, 0));
+                        fpRegisterIndex++;
+                    } else {
+                        /* TODO: handle stack parameter; keep track of stack offset, etc. */
+                        break;
+                    }
+                } else if (gpRegisterIndex < javaGP64registers.length) {
                     final short register;
                     if (paramType.getSize() == 8) {
                         register = javaGP64registers[gpRegisterIndex];
@@ -271,13 +274,13 @@ final class CVSymbolSubsectionBuilder {
     }
 
     private void addLineNumberRecords(CompiledMethodEntry compiledEntry) {
-        CVLineRecord record = lineRecordBuilder.build(compiledEntry);
+        CVLineRecord lineRecord = lineRecordBuilder.build(compiledEntry);
         /*
          * If there are no file entries (perhaps for a synthetic function?), we don't add this
          * record.
          */
-        if (!record.isEmpty()) {
-            cvDebugInfo.getCVSymbolSection().addRecord(record);
+        if (!lineRecord.isEmpty()) {
+            cvDebugInfo.getCVSymbolSection().addRecord(lineRecord);
         }
     }
 
