@@ -102,10 +102,6 @@ public class NumUtil {
         return s == (s & 0xFFFF);
     }
 
-    public static boolean isUShort(long s) {
-        return s == (s & 0xFFFF);
-    }
-
     public static boolean is32bit(long x) {
         return -0x80000000L <= x && x < 0x80000000L;
     }
@@ -143,30 +139,8 @@ public class NumUtil {
         return ((number + mod - 1L) / mod) * mod;
     }
 
-    public static int roundDown(int number, int mod) {
-        return number / mod * mod;
-    }
-
-    public static long roundDown(long number, long mod) {
-        return number / mod * mod;
-    }
-
     public static int divideAndRoundUp(int number, int divisor) {
         return (number + divisor - 1) / divisor;
-    }
-
-    public static long divideAndRoundUp(long number, long divisor) {
-        return (number + divisor - 1L) / divisor;
-    }
-
-    public static int log2Ceil(int val) {
-        int x = 1;
-        int log2 = 0;
-        while (x < val) {
-            log2++;
-            x *= 2;
-        }
-        return log2;
     }
 
     public static boolean isUnsignedNbit(int n, int value) {

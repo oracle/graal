@@ -82,16 +82,7 @@ public interface PhasePlan<T> {
 
         final Map<String, String> abbreviations = new HashMap<>();
 
-        /**
-         * Prints {@code plan} to {@code buf}.
-         *
-         * @return {@code buf}
-         */
-        public <T> Formatter printTo(PhasePlan<T> plan, Formatter buf) {
-            return printPlan("", plan, buf);
-        }
-
-        /**
+         /**
          * Prints {@code plan} to a string and returns it.
          */
         public <T> String toString(PhasePlan<T> plan) {
