@@ -42,6 +42,7 @@ import static org.graalvm.component.installer.CommonConstants.PATH_USER_GU;
 import java.io.File;
 import java.util.Map;
 import org.graalvm.component.installer.CommonConstants;
+import org.graalvm.component.installer.gds.MailStorage;
 
 /**
  *
@@ -64,8 +65,8 @@ public class GDSTokenStorage {
         propertiesPath = Path.of(System.getProperty(SYSPROP_USER_HOME), PATH_USER_GU, PATH_GDS_CONFIG);
     }
 
-    public String getPropertiesPath() {
-        return propertiesPath.toString();
+    public Path getPropertiesPath() {
+        return propertiesPath;
     }
 
     public Source getConfSource() {
@@ -76,7 +77,7 @@ public class GDSTokenStorage {
         if (properties != null) {
             return properties;
         }
-        return properties = load(propertiesPath, feedback);
+        return properties = load(getPropertiesPath(), feedback);
     }
 
     private static Properties load(Path propertiesPath, Feedback feedback) {
@@ -84,7 +85,7 @@ public class GDSTokenStorage {
         if (Files.exists(propertiesPath)) {
             try (InputStream is = Files.newInputStream(propertiesPath)) {
                 properties.load(is);
-            } catch (IOException ex) {
+            } catch (IllegalArgumentException | IOException ex) {
                 feedback.error("ERR_CouldNotLoadToken", ex, propertiesPath, ex.getLocalizedMessage());
             }
         }
@@ -144,10 +145,11 @@ public class GDSTokenStorage {
     }
 
     public void save() throws IOException {
-        if (!changed || properties == null || propertiesPath == null) {
+        Path propsPath = getPropertiesPath();
+        if (!changed || properties == null || propsPath == null) {
             return;
         }
-        Path parent = propertiesPath.getParent();
+        Path parent = propsPath.getParent();
         if (parent == null) {
             // cannot happen, but Spotbugs keeps yelling
             return;
@@ -166,18 +168,18 @@ public class GDSTokenStorage {
                             PosixFilePermission.OWNER_WRITE,
                             PosixFilePermission.OWNER_EXECUTE));
         }
-        try (OutputStream os = Files.newOutputStream(propertiesPath)) {
+        try (OutputStream os = Files.newOutputStream(propsPath)) {
             properties.store(os, null);
         }
         if (SystemUtils.isWindows()) {
-            File file = propertiesPath.toFile();
+            File file = propsPath.toFile();
             file.setReadable(false, false);
             file.setExecutable(false, false);
             file.setWritable(false, false);
             file.setReadable(true);
             file.setWritable(true);
         } else {
-            Files.setPosixFilePermissions(propertiesPath,
+            Files.setPosixFilePermissions(propsPath,
                             Set.of(PosixFilePermission.OWNER_READ,
                                             PosixFilePermission.OWNER_WRITE));
         }
@@ -197,6 +199,10 @@ public class GDSTokenStorage {
     }
 
     public void revokeAllTokens(String email) {
+        email = MailStorage.checkEmailAddress(email, feedback);
+        if (email == null || email.isEmpty()) {
+            return;
+        }
         GDSRESTConnector connector = makeConnector();
         if (connector == null) {
             return;
@@ -222,7 +228,7 @@ public class GDSTokenStorage {
         feedback.message("MSG_AcceptRevoke");
     }
 
-    private GDSRESTConnector makeConnector() {
+    GDSRESTConnector makeConnector() {
         Map<String, String> caps = input.getLocalRegistry().getGraalCapabilities();
         String releaseCatalog = caps.get(CommonConstants.RELEASE_CATALOG_KEY);
         if (releaseCatalog == null || releaseCatalog.isEmpty()) {
@@ -263,7 +269,7 @@ public class GDSTokenStorage {
                 source = feedback.l10n("MSG_PrintTokenCmdFile", getCmdFile());
                 break;
             case FIL:
-                source = feedback.l10n("MSG_PrintTokenFile", propertiesPath);
+                source = feedback.l10n("MSG_PrintTokenFile", getPropertiesPath().toString());
                 break;
             default:
                 // NOOP
