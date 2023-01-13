@@ -95,8 +95,11 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
      */
     private static final boolean ADAPTIVE_SIZE_USE_COST_ESTIMATORS = true;
     private static final int ADAPTIVE_SIZE_POLICY_INITIALIZING_STEPS = ADAPTIVE_SIZE_POLICY_READY_THRESHOLD;
-    /** The minimum increase in throughput in percent for expanding a space by 1% of its size. */
-    private static final double ADAPTIVE_SIZE_ESTIMATOR_MIN_SIZE_COST_TRADEOFF = 0.5;
+    /**
+     * The minimum estimated decrease in {@link #gcCost()} in percent to decide in favor of
+     * expanding a space by 1% of the combined size of {@link #edenSize} and {@link #promoSize}.
+     */
+    private static final double ADAPTIVE_SIZE_ESTIMATOR_MIN_TOTAL_SIZE_COST_TRADEOFF = 0.5;
     /** The effective number of most recent data points used by estimator (exponential decay). */
     private static final int ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH = 12;
     /** Threshold for triggering a complete collection after repeated minor collections. */
@@ -240,7 +243,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     protected void computeEdenSpaceSize(@SuppressWarnings("unused") boolean completeCollection, @SuppressWarnings("unused") GCCause cause) {
         boolean expansionReducesCost = true; // general assumption
         if (shouldUseEstimator(youngGenChangeForMinorThroughput, minorGcCost())) {
-            expansionReducesCost = expansionSignificantlyReducesCost(minorCostEstimator, edenSize);
+            expansionReducesCost = expansionSignificantlyReducesTotalCost(minorCostEstimator, edenSize, majorGcCost(), promoSize);
             /*
              * Note that if the estimator thinks expanding does not lead to significant improvement,
              * shrink so to not get stuck in a supposed optimum and to keep collecting data points.
@@ -282,15 +285,17 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         return ADAPTIVE_SIZE_USE_COST_ESTIMATORS && genChangeForThroughput > ADAPTIVE_SIZE_POLICY_INITIALIZING_STEPS && cost <= ADAPTIVE_SIZE_COST_ESTIMATOR_GC_COST_LIMIT;
     }
 
-    private static boolean expansionSignificantlyReducesCost(ReciprocalLeastSquareFit estimator, UnsignedWord size) {
+    private static boolean expansionSignificantlyReducesTotalCost(ReciprocalLeastSquareFit estimator, UnsignedWord size, double otherCost, UnsignedWord otherSize) {
+        double totalSize = UnsignedUtils.toDouble(size.add(otherSize));
         double x0 = UnsignedUtils.toDouble(size);
         double deltax = (1.01 - 1) * x0;
-        if (deltax == 0) { // division by zero below
-            return false;
+        if (deltax == 0 || totalSize == 0) { // division by zero below
+            return true; // general assumption for space expansion
         }
-        double y0 = estimator.estimate(x0);
-        double y1 = y0 * (1 - 0.01 * ADAPTIVE_SIZE_ESTIMATOR_MIN_SIZE_COST_TRADEOFF);
+        double y0 = estimator.estimate(x0) + otherCost;
+        double y1 = y0 * (1 - deltax / totalSize * ADAPTIVE_SIZE_ESTIMATOR_MIN_TOTAL_SIZE_COST_TRADEOFF);
         double minSlope = (y1 - y0) / deltax;
+
         double estimatedSlope = estimator.getSlope(x0);
         return estimatedSlope <= minSlope;
     }
@@ -452,7 +457,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
         boolean expansionReducesCost = true; // general assumption
         if (shouldUseEstimator(oldGenChangeForMajorThroughput, majorGcCost())) {
-            expansionReducesCost = expansionSignificantlyReducesCost(majorCostEstimator, promoSize);
+            expansionReducesCost = expansionSignificantlyReducesTotalCost(majorCostEstimator, promoSize, minorGcCost(), edenSize);
             /*
              * Note that if the estimator thinks expanding does not lead to significant improvement,
              * shrink so to not get stuck in a supposed optimum and to keep collecting data points.
