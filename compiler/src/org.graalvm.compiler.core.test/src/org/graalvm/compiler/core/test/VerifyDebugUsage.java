@@ -26,40 +26,28 @@ package org.graalvm.compiler.core.test;
 
 import static org.graalvm.compiler.debug.DebugContext.BASIC_LEVEL;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
-import org.graalvm.compiler.core.common.type.PrimitiveStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.OptimizationLogImpl;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.util.GraphUtil;
 
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
 
 /**
  * Verifies that call sites calling one of the methods in {@link DebugContext} use them correctly.
@@ -91,141 +79,24 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
             String calleeName = callee.getName();
             if (callee.getDeclaringClass().equals(debugType)) {
                 boolean isDump = calleeName.equals("dump");
-                if (calleeName.equals("log") || calleeName.equals("logAndIndent")) {
-                    verifyLogPrintfFormats(t);
-                }
                 if (calleeName.equals("log") || calleeName.equals("logAndIndent") || calleeName.equals("verify") || isDump) {
-                    verifyParameters(t, graph, t.arguments(), stringType, isDump ? 2 : 1);
+                    verifyParameters(metaAccess, t, graph, t.arguments(), stringType, isDump ? 2 : 1);
                 }
             }
             if (callee.getDeclaringClass().isAssignableFrom(nodeType)) {
                 if (calleeName.equals("assertTrue") || calleeName.equals("assertFalse")) {
-                    verifyParameters(t, graph, t.arguments(), stringType, 1);
+                    verifyParameters(metaAccess, t, graph, t.arguments(), stringType, 1);
                 }
             }
             if (callee.getDeclaringClass().isAssignableFrom(graalErrorType) && !graph.method().getDeclaringClass().isAssignableFrom(graalErrorType)) {
                 if (calleeName.equals("guarantee")) {
-                    verifyParameters(t, graph, t.arguments(), stringType, 0);
+                    verifyParameters(metaAccess, t, graph, t.arguments(), stringType, 0);
                 }
                 if (calleeName.equals("<init>") && callee.getSignature().getParameterCount(false) == 2) {
-                    verifyParameters(t, graph, t.arguments(), stringType, 1);
+                    verifyParameters(metaAccess, t, graph, t.arguments(), stringType, 1);
                 }
             }
         }
-    }
-
-    protected SnippetReflectionProvider getSnippetReflection() {
-        return Graal.getRequiredCapability(SnippetReflectionProvider.class);
-    }
-
-    /**
-     * Verify that calls of any form to {@code DebugContext.log(String format, ...)} use correct
-     * format specifiers with respect to the argument types.
-     */
-    private void verifyLogPrintfFormats(MethodCallTargetNode t) {
-        EconomicMap<ResolvedJavaType, JavaKind> boxingTypes = EconomicMap.create();
-        boxingTypes.put(metaAccess.lookupJavaType(Integer.class), JavaKind.Int);
-        boxingTypes.put(metaAccess.lookupJavaType(Byte.class), JavaKind.Byte);
-        boxingTypes.put(metaAccess.lookupJavaType(Character.class), JavaKind.Char);
-        boxingTypes.put(metaAccess.lookupJavaType(Boolean.class), JavaKind.Boolean);
-        boxingTypes.put(metaAccess.lookupJavaType(Double.class), JavaKind.Double);
-        boxingTypes.put(metaAccess.lookupJavaType(Float.class), JavaKind.Float);
-        boxingTypes.put(metaAccess.lookupJavaType(Long.class), JavaKind.Long);
-        boxingTypes.put(metaAccess.lookupJavaType(Short.class), JavaKind.Short);
-        ResolvedJavaMethod callee = t.targetMethod();
-        Signature s = callee.getSignature();
-        int parameterCount = s.getParameterCount(true);
-        ResolvedJavaType stringType = metaAccess.lookupJavaType(String.class);
-        ResolvedJavaType intType = metaAccess.lookupJavaType(int.class);
-
-        /*
-         * The first log parameter can have the static type int for the log level, ignore this
-         */
-        int argIndex = 1;
-        ResolvedJavaType firstArgumentType = typeFromArgument(argIndex, t);
-        if (firstArgumentType.equals(intType)) {
-            argIndex++;
-            firstArgumentType = typeFromArgument(argIndex, t);
-        }
-        ValueNode formatString = t.arguments().get(argIndex);
-        if (!firstArgumentType.equals(stringType)) {
-            return;
-        }
-        // we can only do something useful if the argument string is a constant
-        if (formatString.isConstant()) {
-            ArrayList<ValueNode> printfArgs = new ArrayList<>();
-            for (int i = argIndex + 1; i < parameterCount; i++) {
-                printfArgs.add(t.arguments().get(i));
-            }
-            ArrayList<Object> argsBoxed = new ArrayList<>();
-            ArrayList<ResolvedJavaType> argTypes = new ArrayList<>();
-            for (ValueNode arg : printfArgs) {
-                Stamp argStamp = arg.stamp(NodeView.DEFAULT);
-                ResolvedJavaType argType = argStamp.javaType(metaAccess);
-                argTypes.add(argType);
-                if (argStamp.isPointerStamp()) {
-                    /**
-                     * For object stamps the only value usages are unboxed/boxed primitive classes,
-                     * everything else can only map to {@code %s} since its an object that can be
-                     * used as string. So for boxing we use boxed default values for the rest we use
-                     * null.
-                     */
-                    if (boxingTypes.containsKey(argType)) {
-                        argsBoxed.add(getBoxedDefaultForKind(boxingTypes.get(argType)));
-                    } else {
-                        argsBoxed.add(null);
-                    }
-                } else {
-                    /*
-                     * For primitive values we can just easily test with a default value.
-                     */
-                    GraalError.guarantee(argStamp instanceof PrimitiveStamp, "Must be primitive");
-                    JavaKind stackKind = argStamp.getStackKind();
-                    argsBoxed.add(getBoxedDefaultForKind(stackKind));
-                }
-            }
-            final String formatStringVal = getSnippetReflection().asObject(String.class, formatString.asJavaConstant());
-            try {
-                String.format(formatStringVal, argsBoxed.toArray());
-            } catch (Throwable th) {
-                throw new VerificationError(String.format("Printf call %s (%s) in %s violates printf format specifiers, argument types %s", t.targetMethod().format("%H.%n(%p)"),
-                                approximateLineNumber(t), t.graph().method().format("%H.%n(%p)"), Arrays.toString(argTypes.toArray())), th);
-            }
-        }
-    }
-
-    private static String approximateLineNumber(CallTargetNode c) {
-        FrameState stateBefore = GraphUtil.findLastFrameState((FixedNode) c.invoke().predecessor());
-        String stateAfterLineNumber = c.invoke().stateAfter().getCode().asStackTraceElement(c.invoke().stateAfter().bci).toString();
-        String stateBeforeLineNumber = stateBefore.getCode().asStackTraceElement(stateBefore.bci).toString();
-        return "Between " + stateBeforeLineNumber + " and " + stateAfterLineNumber;
-    }
-
-    private static Object getBoxedDefaultForKind(JavaKind stackKind) {
-        switch (stackKind) {
-            case Boolean:
-                return false;
-            case Byte:
-                return (byte) 0;
-            case Char:
-                return (char) 0;
-            case Short:
-                return (short) 0;
-            case Int:
-                return 0;
-            case Double:
-                return 0D;
-            case Float:
-                return 0F;
-            case Long:
-                return 0L;
-            default:
-                throw GraalError.shouldNotReachHere();
-        }
-    }
-
-    private ResolvedJavaType typeFromArgument(int index, MethodCallTargetNode t) {
-        return t.arguments().get(index).stamp(NodeView.DEFAULT).javaType(metaAccess);
     }
 
     private static final Set<Integer> DebugLevels = new HashSet<>(
@@ -271,8 +142,9 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
                     "org.graalvm.compiler.truffle.compiler.phases.inlining.CallTree.dumpInfo"));
 
     @Override
-    protected void verifyParameters(StructuredGraph callerGraph, MethodCallTargetNode debugCallTarget, List<? extends ValueNode> args, ResolvedJavaType stringType, int startArgIdx, int varArgsIndex) {
-        super.verifyParameters(callerGraph, debugCallTarget, args, stringType, startArgIdx, varArgsIndex);
+    protected void verifyParameters(MetaAccessProvider metaAccess1, StructuredGraph callerGraph, MethodCallTargetNode debugCallTarget, List<? extends ValueNode> args, ResolvedJavaType stringType,
+                    int startArgIdx, int varArgsIndex) {
+        super.verifyParameters(metaAccess1, callerGraph, debugCallTarget, args, stringType, startArgIdx, varArgsIndex);
 
         ResolvedJavaMethod verifiedCallee = debugCallTarget.targetMethod();
         if (verifiedCallee.getName().equals("dump")) {

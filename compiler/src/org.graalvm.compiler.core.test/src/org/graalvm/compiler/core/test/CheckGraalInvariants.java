@@ -98,12 +98,12 @@ import org.graalvm.compiler.phases.contract.VerifyNodeCosts;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.runtime.RuntimeProvider;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
-import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.Register.RegisterCategory;
@@ -549,7 +549,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                      * initialize them anyway, and doing it here eagerly while being single-threaded
                      * avoids race conditions.
                      */
-                    Unsafe.getUnsafe().ensureClassInitialized(c);
+                    GraalUnsafeAccess.getUnsafe().ensureClassInitialized(c);
                 }
                 classes.add(c);
             } catch (UnsupportedClassVersionError e) {
