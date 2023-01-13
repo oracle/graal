@@ -42,7 +42,6 @@ package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.nfi.ConvertTypeNode.OptimizedConvertTypeNode;
 
 final class NFIType {
 
@@ -76,13 +75,13 @@ final class NFIType {
         }
 
         @NeverDefault
-        OptimizedConvertTypeNode createToNative() {
-            return new OptimizedConvertTypeNode(this, toNativeFactory.createNode());
+        ConvertTypeNode createToNative() {
+            return toNativeFactory.createNode();
         }
 
         @NeverDefault
-        OptimizedConvertTypeNode createFromNative() {
-            return new OptimizedConvertTypeNode(this, fromNativeFactory.createNode());
+        ConvertTypeNode createFromNative() {
+            return fromNativeFactory.createNode();
         }
     }
 }

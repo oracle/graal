@@ -116,12 +116,12 @@ final class NFIClosure implements TruffleObject {
             int argIdx = 0;
             for (int i = 0; i < signature.nativeArgCount; i++) {
                 if (signature.argTypes[i].cachedState.managedArgCount == 1) {
-                    preparedArgs[argIdx++] = convertArg.execute(signature.argTypes[i], args[i]);
+                    preparedArgs[argIdx++] = convertArg.executeInlined(node, signature.argTypes[i], args[i]);
                 }
             }
 
             Object ret = interop.execute(receiver.executable, preparedArgs);
-            return convertRet.execute(signature.retType, ret);
+            return convertRet.executeInlined(node, signature.retType, ret);
         }
     }
 }
