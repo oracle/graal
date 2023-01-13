@@ -60,15 +60,16 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
     }
 
     /**
-     * Checks whether for the given node a phi can be created in the graph based on its allowed usage types.
+     * Checks whether for the given node a phi can be created in the graph based on its allowed
+     * usage types.
      */
     public static boolean canCreatePhi(ValueNode node) {
         return node.isAllowedUsageType(InputType.Value) || node.isAllowedUsageType(InputType.Guard);
     }
 
     /**
-     * Creates a phi in the graph for the given nodes. Provided values must be allowed as inputs to phis as checked by
-     * {@link #canCreatePhi(ValueNode)}.
+     * Creates a phi in the graph for the given nodes. Provided values must be allowed as inputs to
+     * phis as checked by {@link #canCreatePhi(ValueNode)}.
      */
     public static PhiNode create(AbstractMergeNode merge, ValueNode... values) {
         if (values[0].isAllowedUsageType(InputType.Value)) {
