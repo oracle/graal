@@ -278,15 +278,11 @@ final class LongDoubleUtil {
                     int doubleExponent = Math.getExponent(number);
                     int biasedExponent = doubleExponent + EXPONENT_BIAS;
                     long doubleFraction = rawValue & DoubleHelper.FRACTION_MASK;
-                    long shiftAmount = FRACTION_BIT_WIDTH - DOUBLE_FRACTION_BIT_WIDTH; // 112 - 52 =
-                                                                                       // 60
+                    // 112 - 52 = 60
+                    long shiftAmount = FRACTION_BIT_WIDTH - DOUBLE_FRACTION_BIT_WIDTH;
                     long fraction = doubleFraction << (shiftAmount);
-                    long biasedExponentFraction = ((long) biasedExponent << EXPONENT_POSITION) | (doubleFraction >> (Long.SIZE - shiftAmount)); // 64
-                                                                                                                                                // -
-                                                                                                                                                // 60
-                                                                                                                                                // =
-                                                                                                                                                // 4
-
+                    // 64 - 60 = 4
+                    long biasedExponentFraction = ((long) biasedExponent << EXPONENT_POSITION) | (doubleFraction >> (Long.SIZE - shiftAmount));
                     bufferInterop.writeBufferLong(buffer, ByteOrder.nativeOrder(), 0, fraction);
                     bufferInterop.writeBufferLong(buffer, ByteOrder.nativeOrder(), 8, (sign | biasedExponentFraction));
                 } catch (UnsupportedMessageException | InvalidBufferOffsetException ex) {

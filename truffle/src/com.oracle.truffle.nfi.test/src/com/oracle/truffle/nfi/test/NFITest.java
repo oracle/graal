@@ -80,6 +80,8 @@ public class NFITest {
 
     static final boolean IS_AMD64 = System.getProperty("os.arch").equals("amd64");
 
+    static final boolean IS_AARCH64 = System.getProperty("os.arch").equals("aarch64");
+
     protected static String getLibPath(String lib) {
         String filename;
         if (IS_LINUX) {

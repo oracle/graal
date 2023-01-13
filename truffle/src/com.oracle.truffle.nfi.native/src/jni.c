@@ -155,7 +155,13 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext
      * support FP80, it treats the `long double` type as double precision.
      */
     cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "FP80", &ffi_type_longdouble);
+
+#elif defined(__aarch64__) || defined(_M_ARM64)
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "FP128", &ffi_type_longdouble);
+
 #endif
+
+      
 
     cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "STRING", &ffi_type_pointer);
     cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "OBJECT", &ffi_type_pointer);

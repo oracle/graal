@@ -89,6 +89,8 @@ public class NumericNFITest extends NFITest {
         }
         if (IS_AMD64 && !IS_WINDOWS) {
             ret.add(new Object[]{NativeSimpleType.FP80});
+        } else if (IS_AARCH64 && !IS_WINDOWS) {
+            ret.add(new Object[]{NativeSimpleType.FP128});
         }
         return ret;
     }
@@ -166,12 +168,13 @@ public class NumericNFITest extends NFITest {
                         case DOUBLE:
                             return UNCACHED_INTEROP.fitsInDouble(item);
                         case FP80:
+                        case FP128:
                             /*
                              * Nothing concrete to check here, since FP80 potentially doesn't fit in
                              * any numeric interop type.
                              */
                             return true;
-                    }
+                        }
                 }
             } catch (UnsupportedMessageException ex) {
             }
