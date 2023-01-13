@@ -103,6 +103,7 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.Register.RegisterCategory;
@@ -542,6 +543,14 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             }
             try {
                 Class<?> c = Class.forName(className, false, CheckGraalInvariants.class.getClassLoader());
+                if (Node.class.isAssignableFrom(c)) {
+                    /*
+                     * Eagerly initialize Node classes because the VerifyNodeCosts checker will
+                     * initialize them anyway, and doing it here eagerly while being single-threaded
+                     * avoids race conditions.
+                     */
+                    Unsafe.getUnsafe().ensureClassInitialized(c);
+                }
                 classes.add(c);
             } catch (UnsupportedClassVersionError e) {
                 // graal-test.jar can contain classes compiled for different Java versions
