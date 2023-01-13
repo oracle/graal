@@ -67,8 +67,8 @@ public class GDSRESTConnectorTest extends TestBase {
     static final String TEST_TOKEN_RESPONSE = "{\n" + "  \"token\": \"" + TEST_TOKEN + "\",\n" + "  \"status\": \"UNVERIFIED\"\n" + "}";
     static final String TEST_JAVA = "11";
     static final String TEST_JDK = "jdk" + TEST_JAVA;
-    static final String TEST_TOKEN_REQUEST_ACCEPT = "{\"token\":\"" + TEST_TOKEN_OLD + "\",\"licenseId\":\"gdsreleases.json\",\"type\":\"" + GDSRequester.ACCEPT_LICENSE + "\"}";
-    static final String TEST_TOKEN_REQUEST_GENERATE = "{\"email\":\"" + TEST_EMAIL + "\",\"licenseId\":\"gdsreleases.json\",\"type\":\"" + GDSRequester.GENERATE_CONFIG + "\"}";
+    static final String TEST_TOKEN_REQUEST_ACCEPT = "{\"type\":\"" + GDSRequester.ACCEPT_LICENSE + "\",\"token\":\"" + TEST_TOKEN_OLD + "\",\"licenseId\":\"gdsreleases.json\"}";
+    static final String TEST_TOKEN_REQUEST_GENERATE = "{\"type\":\"" + GDSRequester.GENERATE_CONFIG + "\",\"email\":\"" + TEST_EMAIL + "\",\"licenseId\":\"gdsreleases.json\"}";
     static final String TEST_GDS_AGENT = String.format("GVM/%s (arch:%s; os:%s; java:%s)",
                     TEST_VERSION.toString(),
                     SystemUtils.ARCH.sysName(),
