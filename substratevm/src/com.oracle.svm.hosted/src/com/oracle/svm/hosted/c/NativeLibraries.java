@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -463,10 +463,6 @@ public final class NativeLibraries {
             staticLibs.add(libraryPath);
         }
         return staticLibs;
-    }
-
-    public Path getStaticLibraryPath(String staticLibraryName) {
-        return getStaticLibraryPath(getAllStaticLibs(), staticLibraryName);
     }
 
     private static Path getStaticLibraryPath(Map<Path, Path> allStaticLibs, String staticLibraryName) {
