@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.errors.RbErrorMessages;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public class RubyTests extends RegexTestBase {
 
@@ -534,5 +536,14 @@ public class RubyTests extends RegexTestBase {
     @Test
     public void gr41489() {
         testUnsupported("\\((?>[^)(]+|\\g<0>)*\\)", "");
+    }
+
+    @Test
+    public void quantifierOverflow() {
+        long max = Integer.MAX_VALUE;
+        test(String.format("x{%d,%d}", max, max + 1), "", "x", 0, false);
+        test(String.format("x{%d,}", max), "", "x", 0, false);
+        test(String.format("x{%d,}", max + 1), "", "x", 0, false);
+        expectSyntaxError(String.format("x{%d,%d}", max + 1, max), "", RbErrorMessages.MIN_REPEAT_GREATER_THAN_MAX_REPEAT);
     }
 }

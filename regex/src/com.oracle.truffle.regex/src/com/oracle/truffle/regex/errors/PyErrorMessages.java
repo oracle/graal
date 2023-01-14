@@ -88,13 +88,8 @@ public interface PyErrorMessages {
     }
 
     @TruffleBoundary
-    static String incompleteEscapeU(char chr, String code) {
-        return "incomplete escape \\" + chr + code;
-    }
-
-    @TruffleBoundary
-    static String incompleteEscapeX(String code) {
-        return "incomplete escape \\x" + code;
+    static String incompleteEscape(String code) {
+        return "incomplete escape " + code;
     }
 
     @TruffleBoundary
@@ -104,12 +99,12 @@ public interface PyErrorMessages {
 
     @TruffleBoundary
     static String invalidOctalEscape(String code) {
-        return "octal escape value \\" + code + " outside of range 0-0o377";
+        return "octal escape value " + code + " outside of range 0-0o377";
     }
 
     @TruffleBoundary
-    static String invalidUnicodeEscape(char chr, String code) {
-        return "bad escape \\" + chr + code;
+    static String invalidUnicodeEscape(String code) {
+        return "bad escape " + code;
     }
 
     @TruffleBoundary

@@ -80,11 +80,11 @@ public final class PythonFlavor extends RegexFlavor {
 
     @Override
     public RegexValidator createValidator(RegexSource source) {
-        return PythonRegexParser.createValidator(source);
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
-        return PythonRegexParser.createParser(language, source, compilationBuffer);
+        return new PythonRegexParser(language, source, compilationBuffer);
     }
 }

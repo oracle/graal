@@ -52,6 +52,8 @@ import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 
+import org.graalvm.collections.Pair;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexFlags;
@@ -73,7 +75,6 @@ import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TBitSet;
-import org.graalvm.collections.Pair;
 
 /**
  * Implements the parsing and validation of Ruby regular expressions.
@@ -378,7 +379,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     }
 
     public static RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
-        return new RubyRegexParser(source, new RegexASTBuilder(language, source, makeTRegexFlags(false), compilationBuffer));
+        return new RubyRegexParser(source, new RegexASTBuilder(language, source, makeTRegexFlags(false), false, compilationBuffer));
     }
 
     @Override
@@ -546,7 +547,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
 
     private void addCharClass(CodePointSet charSet) {
         if (!silent) {
-            astBuilder.addCharClass(charSet);
+            astBuilder.addCharClass(charSet, false);
         }
     }
 
@@ -1189,57 +1190,16 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     // character is dependent on whether the Ruby regular expression is set to use the ASCII range
     // only.
     private void buildWordBoundaryAssertion(CodePointSet wordChars, CodePointSet nonWordChars) {
-        // (?:(?:^|(?<=\W))(?=\w)|(?<=\w)(?:(?=\W)|$))
-        pushGroup(); // (?:
-        pushGroup(); // (?:
-        addCaret(); // ^
-        nextSequence(); // |
-        pushLookBehindAssertion(false); // (?<=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        popGroup(); // )
-        pushLookAheadAssertion(false); // (?=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        nextSequence(); // |
-        pushLookBehindAssertion(false); // (?<=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        pushGroup(); // (?:
-        pushLookAheadAssertion(false); // (?=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        nextSequence(); // |
-        addDollar(); // $
-        popGroup(); // )
-        popGroup(); // )
+        if (!silent) {
+            astBuilder.addWordBoundaryAssertion(wordChars, nonWordChars);
+        }
     }
 
     private void buildWordNonBoundaryAssertion(CodePointSet wordChars, CodePointSet nonWordChars) {
         // (?:(?:^|(?<=\W))(?:(?=\W)|$)|(?<=\w)(?=\w))
-        pushGroup(); // (?:
-        pushGroup(); // (?:
-        addCaret(); // ^
-        nextSequence(); // |
-        pushLookBehindAssertion(false); // (?<=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        popGroup(); // )
-        pushGroup(); // (?:
-        pushLookAheadAssertion(false); // (?=
-        addCharClass(nonWordChars); // \W
-        popGroup(); // )
-        nextSequence(); // |
-        addDollar(); // $
-        popGroup(); // )
-        nextSequence(); // |
-        pushLookBehindAssertion(false); // (?<=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        pushLookAheadAssertion(false); // (?=
-        addCharClass(wordChars); // \w
-        popGroup(); // )
-        popGroup(); // )
+        if (!silent) {
+            astBuilder.addWordNonBoundaryAssertion(wordChars, nonWordChars);
+        }
     }
 
     /**
@@ -2169,8 +2129,8 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 if (canBeNonGreedy && match("?")) {
                     greedy = false;
                 }
-                return new Quantifier(lowerBound.orElse(BigInteger.ZERO).intValue(),
-                                upperBound.orElse(BigInteger.valueOf(Quantifier.INFINITY)).intValue(),
+                return new Quantifier(quantifierBoundsToIntValue(lowerBound.orElse(BigInteger.ZERO)),
+                                quantifierBoundsToIntValue(upperBound.orElse(BigInteger.valueOf(Quantifier.INFINITY))),
                                 greedy, false);
             }
         } else {
@@ -2201,6 +2161,13 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             }
             return new Quantifier(lower, upper, greedy, possessive);
         }
+    }
+
+    private static int quantifierBoundsToIntValue(BigInteger i) {
+        if (i.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) > 0) {
+            return Quantifier.INFINITY;
+        }
+        return i.intValue();
     }
 
     /**
