@@ -426,7 +426,7 @@ public class NativeImage {
             return getImageProvidedJars();
         }
 
-        private List<Path> getImageProvidedJars() {
+        protected List<Path> getImageProvidedJars() {
             return getJars(rootDir.resolve(Paths.get("lib", "svm")));
         }
 
@@ -1772,7 +1772,7 @@ public class NativeImage {
         printFunc.accept(message);
     }
 
-    static List<Path> getJars(Path dir, String... jarBaseNames) {
+    protected static List<Path> getJars(Path dir, String... jarBaseNames) {
         try {
             List<String> baseNameList = Arrays.asList(jarBaseNames);
             return Files.list(dir)
