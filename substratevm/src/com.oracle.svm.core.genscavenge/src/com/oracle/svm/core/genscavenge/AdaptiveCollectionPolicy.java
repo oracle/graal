@@ -94,14 +94,15 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
      * (disabled by default) which uses linear least-square fitting without discounting.
      */
     private static final boolean ADAPTIVE_SIZE_USE_COST_ESTIMATORS = true;
-    private static final int ADAPTIVE_SIZE_POLICY_INITIALIZING_STEPS = ADAPTIVE_SIZE_POLICY_READY_THRESHOLD;
+    private static final int ADAPTIVE_SIZE_POLICY_INITIALIZING_STEPS // HotSpot default: 20
+                    = ADAPTIVE_SIZE_POLICY_READY_THRESHOLD;
     /**
      * The minimum estimated decrease in {@link #gcCost()} in percent to decide in favor of
      * expanding a space by 1% of the combined size of {@link #edenSize} and {@link #promoSize}.
      */
     private static final double ADAPTIVE_SIZE_ESTIMATOR_MIN_TOTAL_SIZE_COST_TRADEOFF = 0.5;
     /** The effective number of most recent data points used by estimator (exponential decay). */
-    private static final int ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH = 12;
+    private static final double ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH = 12;
     /** Threshold for triggering a complete collection after repeated minor collections. */
     private static final int CONSECUTIVE_MINOR_TO_MAJOR_COLLECTION_PAUSE_TIME_RATIO = 2;
     /**
