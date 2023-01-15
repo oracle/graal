@@ -597,7 +597,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             return false;
         } else {
             Node canonical = newCanonical;
-            tool.debug.log("Canonicalizer: replacing %1s with %1s", node, canonical);
+            tool.debug.log(DebugContext.VERBOSE_LEVEL, "Canonicalizer: replacing %1s with %1s", node, canonical);
             COUNTER_CANONICALIZED_NODES.increment(tool.debug);
             StructuredGraph graph = (StructuredGraph) node.graph();
             if (canonical != null && !canonical.isAlive()) {

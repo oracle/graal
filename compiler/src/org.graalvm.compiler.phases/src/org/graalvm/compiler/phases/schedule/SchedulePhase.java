@@ -60,6 +60,7 @@ import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.GraphState.GuardsStage;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
@@ -253,6 +254,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                         BlockMap<List<Node>> latestBlockToNodesMap, boolean immutableGraph) {
             BlockMap<ArrayList<FloatingReadNode>> watchListMap = new BlockMap<>(cfg);
             HIRBlock[] reversePostOrder = cfg.reversePostOrder();
+            NodeBitMap moveInputsIntoDominator = cfg.graph.createNodeBitMap();
             for (int j = reversePostOrder.length - 1; j >= 0; --j) {
                 HIRBlock currentBlock = reversePostOrder[j];
                 List<Node> blockToNodes = earliestBlockToNodesMap.get(currentBlock);
@@ -301,7 +303,8 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                         if (latestBlock == null) {
                             // We are not constraint within earliest block => calculate optimized
                             // schedule.
-                            calcLatestBlock(currentBlock, strategy, currentNode, currentNodeMap, constrainingLocation, watchListMap, latestBlockToNodesMap, visited, immutableGraph);
+                            calcLatestBlock(currentBlock, strategy, currentNode, currentNodeMap, constrainingLocation, watchListMap, latestBlockToNodesMap, visited, immutableGraph,
+                                            moveInputsIntoDominator);
                         } else {
                             selectLatestBlock(currentNode, currentBlock, latestBlock, currentNodeMap, watchListMap, constrainingLocation, latestBlockToNodesMap);
                         }
@@ -330,8 +333,8 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         }
 
         private static void checkLatestEarliestRelation(Node currentNode, HIRBlock earliestBlock, HIRBlock latestBlock) {
-            GraalError.guarantee(earliestBlock.dominates(latestBlock) || (currentNode instanceof VirtualState && latestBlock == earliestBlock.getDominator()),
-                            "%s %s (%s) %s (%s)", currentNode, earliestBlock, earliestBlock.getBeginNode(), latestBlock, latestBlock.getBeginNode());
+            GraalError.guarantee(earliestBlock.dominates(latestBlock) || (currentNode instanceof FrameState && latestBlock == earliestBlock.getDominator()),
+                            "%s earliest block %s (%s) does not dominate latest block %s (%s)", currentNode, earliestBlock, earliestBlock.getBeginNode(), latestBlock, latestBlock.getBeginNode());
         }
 
         private static boolean verifySchedule(ControlFlowGraph cfg, BlockMap<List<Node>> blockToNodesMap, NodeMap<HIRBlock> nodeMap) {
@@ -558,7 +561,8 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         }
 
         protected void calcLatestBlock(HIRBlock earliestBlock, SchedulingStrategy strategy, Node currentNode, NodeMap<HIRBlock> currentNodeMap, LocationIdentity constrainingLocation,
-                        BlockMap<ArrayList<FloatingReadNode>> watchListMap, BlockMap<List<Node>> latestBlockToNodesMap, NodeBitMap visited, boolean immutableGraph) {
+                        BlockMap<ArrayList<FloatingReadNode>> watchListMap, BlockMap<List<Node>> latestBlockToNodesMap, NodeBitMap visited, boolean immutableGraph,
+                        NodeBitMap moveInputsIntoDominator) {
             HIRBlock latestBlock = null;
             if (!currentNode.hasUsages()) {
                 assert currentNode instanceof GuardNode;
@@ -574,7 +578,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                          */
                         continue;
                     }
-                    latestBlock = calcBlockForUsage(currentNode, usage, latestBlock, currentNodeMap);
+                    latestBlock = calcBlockForUsage(currentNode, usage, latestBlock, currentNodeMap, moveInputsIntoDominator);
                 }
 
                 assert latestBlock != null : currentNode;
@@ -603,6 +607,20 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             if (latestBlock != earliestBlock && strategy.considerImplicitNullChecks() && isImplicitNullOpportunity(currentNode, earliestBlock, supportsImplicitNullChecks) &&
                             earliestBlock.getRelativeFrequency() < latestBlock.getRelativeFrequency() * IMPLICIT_NULL_CHECK_OPPORTUNITY_PROBABILITY_FACTOR) {
                 latestBlock = earliestBlock;
+            }
+
+            // Check if inputs of this virtual state node need to be scheduled in the dominator of
+            // the node's latest block. This can happen when the node or any of its usages
+            // transitively is an input to the abstract begin node of the selected latest block.
+            if (currentNode instanceof VirtualState) {
+                for (Node usage : currentNode.usages()) {
+                    if ((!moveInputsIntoDominator.isNew(usage) && moveInputsIntoDominator.isMarked(usage)) || (usage instanceof AbstractBeginNode && !(usage instanceof StartNode))) {
+                        if (currentNodeMap.get(usage) == latestBlock) {
+                            moveInputsIntoDominator.mark(currentNode);
+                            break;
+                        }
+                    }
+                }
             }
 
             selectLatestBlock(currentNode, earliestBlock, latestBlock, currentNodeMap, watchListMap, constrainingLocation, latestBlockToNodesMap);
@@ -660,7 +678,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             return result;
         }
 
-        private static HIRBlock calcBlockForUsage(Node node, Node usage, HIRBlock startBlock, NodeMap<HIRBlock> currentNodeMap) {
+        private static HIRBlock calcBlockForUsage(Node node, Node usage, HIRBlock startBlock, NodeMap<HIRBlock> currentNodeMap, NodeBitMap moveInputsToDominator) {
             assert !(node instanceof PhiNode);
             HIRBlock currentBlock = startBlock;
             if (usage instanceof PhiNode) {
@@ -675,23 +693,19 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                         currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, otherBlock);
                     }
                 }
-            } else if (usage instanceof AbstractBeginNode) {
-                AbstractBeginNode abstractBeginNode = (AbstractBeginNode) usage;
-                if (abstractBeginNode instanceof StartNode) {
-                    currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, currentNodeMap.get(abstractBeginNode));
-                } else {
-                    HIRBlock otherBlock = currentNodeMap.get(abstractBeginNode).getDominator();
-                    GraalError.guarantee(otherBlock != null, "Dominators need to be computed in the CFG");
-                    currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, otherBlock);
-                }
             } else {
                 // All other types of usages: Put the input into the same block as the usage.
                 HIRBlock otherBlock = currentNodeMap.get(usage);
                 if (usage instanceof ProxyNode) {
                     ProxyNode proxyNode = (ProxyNode) usage;
                     otherBlock = currentNodeMap.get(proxyNode.proxyPoint());
-
                 }
+
+                if (!(node instanceof VirtualState) && !moveInputsToDominator.isNew(usage) && moveInputsToDominator.isMarked(usage)) {
+                    otherBlock = otherBlock.getDominator();
+                    GraalError.guarantee(otherBlock != null, "Dominators need to be computed in the CFG");
+                }
+
                 currentBlock = AbstractControlFlowGraph.commonDominatorTyped(currentBlock, otherBlock);
             }
             return currentBlock;
