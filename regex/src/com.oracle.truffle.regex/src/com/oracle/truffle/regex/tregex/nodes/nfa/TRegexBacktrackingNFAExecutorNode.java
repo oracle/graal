@@ -186,7 +186,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         flags = setFlag(flags, FLAG_UNICODE, ast.getFlags().isUnicode());
         flags = setFlag(flags, FLAG_BACKREF_WITH_NULL_TARGET_FAILS, ast.getOptions().getFlavor().backreferencesToUnmatchedGroupsFail());
         flags = setFlag(flags, FLAG_MONITOR_CAPTURE_GROUPS_IN_EMPTY_CHECK, ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups());
-        flags = setFlag(flags, FLAG_TRANSITION_MATCHES_STEP_BY_STEP, ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups());
+        flags = setFlag(flags, FLAG_TRANSITION_MATCHES_STEP_BY_STEP, ast.getOptions().getFlavor().matchesTransitionsStepByStep());
         flags = setFlag(flags, FLAG_TRACK_LAST_GROUP, ast.getOptions().getFlavor().usesLastGroupResultField());
         flags = setFlag(flags, FLAG_RETURNS_FIRST_GROUP, !isFlagSet(flags, FLAG_FORWARD) && ast.getOptions().getFlavor().lookBehindsRunLeftToRight());
         flags = setFlag(flags, FLAG_MUST_ADVANCE, mustAdvance);
@@ -752,6 +752,16 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                         return false;
                     }
                     break;
+                case checkGroupMatched:
+                    if (getBackRefBoundary(locals, transition, guard.getIndex() * 2, index) == -1 || getBackRefBoundary(locals, transition, guard.getIndex() * 2, index) == -1) {
+                        return false;
+                    }
+                    break;
+                case checkGroupNotMatched:
+                    if (getBackRefBoundary(locals, transition, guard.getIndex() * 2, index) != -1 && getBackRefBoundary(locals, transition, guard.getIndex() * 2, index) != -1) {
+                        return false;
+                    }
+                    break;
                 default:
                     break;
             }
@@ -927,6 +937,9 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                     break;
                 case updateCG:
                     locals.setCaptureGroupBoundary(guard.getIndex(), index);
+                    if (isTrackLastGroup() && guard.getIndex() % 2 == 1 && guard.getIndex() > 1) {
+                        locals.setLastGroup(guard.getIndex() / 2);
+                    }
                     break;
                 case enterZeroWidth:
                     locals.setZeroWidthQuantifierGuardIndex(q);
@@ -954,6 +967,16 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                         locals.setQuantifierCount(q, q.getMin());
                     } else {
                         locals.incQuantifierCount(q);
+                    }
+                    break;
+                case checkGroupMatched:
+                    if (locals.getCaptureGroupStart(guard.getIndex()) == -1 || locals.getCaptureGroupEnd(guard.getIndex()) == -1) {
+                        return false;
+                    }
+                    break;
+                case checkGroupNotMatched:
+                    if (locals.getCaptureGroupStart(guard.getIndex()) != -1 && locals.getCaptureGroupEnd(guard.getIndex()) != -1) {
+                        return false;
                     }
                     break;
                 default:

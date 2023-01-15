@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -195,13 +195,10 @@ public final class PythonRegexParser implements RegexParser {
                     astBuilder.addQuantifier((Token.Quantifier) token);
                     break;
                 case alternation:
+                    if (astBuilder.getCurGroup().isConditionalBackReferenceGroup() && astBuilder.getCurGroup().getAlternatives().size() == 2) {
+                        throw syntaxError(PyErrorMessages.CONDITIONAL_BACKREF_WITH_MORE_THAN_TWO_BRANCHES);
+                    }
                     astBuilder.nextSequence();
-                    // TODO:
-                    // if (astBuilder.getCurGroup().isConditionalBackReference() &&
-                    // astBuilder.getCurGroup().getAlternatives().size() == 2) {
-                    // throw
-                    // syntaxError(PyErrorMessages.CONDITIONAL_BACKREF_WITH_MORE_THAN_TWO_BRANCHES);
-                    // }
                     break;
                 case captureGroupBegin:
                     astBuilder.pushCaptureGroup(token);
@@ -222,18 +219,24 @@ public final class PythonRegexParser implements RegexParser {
                     if (astBuilder.getCurGroup().isLocalFlags()) {
                         lexer.popLocalFlags();
                     }
+                    if (astBuilder.getCurGroup().isConditionalBackReferenceGroup() && astBuilder.getCurGroup().getAlternatives().size() == 1) {
+                        // generate the implicit empty else branch
+                        astBuilder.nextSequence();
+                    }
                     astBuilder.popGroup(token);
                     break;
                 case charClass:
                     astBuilder.addCharClass((Token.CharacterClass) token);
                     break;
                 case conditionalBackreference:
-                    bailOut("conditional backreference groups not supported");
+                    int referencedGroupNumber = ((Token.BackReference) token).getGroupNr();
+                    verifyGroupReference(referencedGroupNumber);
+                    astBuilder.pushConditionalBackReferenceGroup(token, referencedGroupNumber);
                     break;
                 case inlineFlags:
                     // flagStack push is handled in the lexer
                     if (!((Token.InlineFlags) token).isGlobal()) {
-                        astBuilder.pushGroup();
+                        astBuilder.pushGroup(token);
                         astBuilder.getCurGroup().setLocalFlags(true);
                     }
                     break;
@@ -244,7 +247,7 @@ public final class PythonRegexParser implements RegexParser {
             astBuilder.addDollar();
         }
         if (!astBuilder.curGroupIsRoot()) {
-            throw syntaxError(PyErrorMessages.UNTERMINATED_SUBPATTERN);
+            throw syntaxErrorAtAbs(PyErrorMessages.UNTERMINATED_SUBPATTERN, astBuilder.getCurGroupStartPosition());
         }
         return astBuilder.popRootGroup();
     }
@@ -285,5 +288,9 @@ public final class PythonRegexParser implements RegexParser {
 
     private RegexSyntaxException syntaxErrorHere(String msg) {
         return lexer.syntaxErrorHere(msg);
+    }
+
+    private RegexSyntaxException syntaxErrorAtAbs(String msg, int i) {
+        return lexer.syntaxErrorAtAbs(msg, i);
     }
 }

@@ -178,6 +178,10 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void visit(Group group) {
+        if (group.isConditionalBackReferenceGroup()) {
+            assert group.size() == 2;
+            ast.getProperties().setConditionalBackReferences();
+        }
         if (group.getParent().isSequence() || group.getParent().isAtomicGroup()) {
             group.setMinPath(group.getParent().getMinPath());
             group.setMaxPath(group.getParent().getMaxPath());

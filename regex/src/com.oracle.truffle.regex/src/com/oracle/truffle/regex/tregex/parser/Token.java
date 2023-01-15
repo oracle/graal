@@ -170,9 +170,18 @@ public class Token implements JsonConvertible {
 
     public final Kind kind;
     private SourceSection sourceSection;
+    private int position;
 
     public Token(Kind kind) {
         this.kind = kind;
+    }
+
+    public int getPosition() {
+        return position;
+    }
+
+    public void setPosition(int position) {
+        this.position = position;
     }
 
     public SourceSection getSourceSection() {

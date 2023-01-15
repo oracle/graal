@@ -400,6 +400,34 @@ public class PythonTests extends RegexTestBase {
     }
 
     @Test
+    public void testConditionalBackReferences() {
+        test("(foo)(?(1)bar|baz)", "", "foobar", 0, true, 0, 6, 0, 3, 1);
+        test("(foo)(?(1)bar|baz)", "", "foobaz", 0, false);
+
+        test("(foo)?(?(1)bar|baz)", "", "foobar", 0, true, 0, 6, 0, 3, 1);
+        test("(foo)?(?(1)bar|baz)", "", "foobaz", 0, true, 3, 6, -1, -1, -1);
+        test("(foo)?(?(1)bar|baz)", "", "foxbar", 0, false);
+        test("(foo)?(?(1)bar|baz)", "", "foxbaz", 0, true, 3, 6, -1, -1, -1);
+
+        // GR-42254
+        test("(?P<a>x)(?P=a)(?(a)y)", "", "xxy", 0, true, 0, 3, 0, 1, 1);
+        test("(?P<a1>x)(?P=a1)(?(a1)y)", "", "xxy", 0, true, 0, 3, 0, 1, 1);
+        test("(?P<a1>x)\\1(?(1)y)", "", "xxy", 0, true, 0, 3, 0, 1, 1);
+        // GR-42255
+        test("(?:(a)|(x))b(?<=(?(2)x|c))c", "", "abc", 0, false);
+        // GR-42256
+        test("(a)b(?<=(?(1)c|x))(c)", "", "abc", 0, false);
+
+        // test_re_groupref_exists
+        test("^(\\()?([^()]+)(?(1)\\))$", "", "a", 0, true, 0, 1, -1, -1, 0, 1, 2);
+        // test_re_lookahead
+        test("(?:(a)|(x))b(?=(?(2)x|c))c", "", "abc", 0, true, 0, 3, 0, 1, -1, -1, 1);
+        // test_re_lookbehind
+        test("(?:(a)|(x))b(?<=(?(2)x|b))c", "", "abc", 0, true, 0, 3, 0, 1, -1, -1, 1);
+        expectSyntaxError("(a)b(?<=(?(2)b|x))(c)", "", "invalid group reference 2");
+    }
+
+    @Test
     public void testSyntaxErrors() {
         // Generated using sre from CPython 3.10.8
         expectSyntaxError("()\\2", "", "invalid group reference 2", 3);
@@ -454,5 +482,11 @@ public class PythonTests extends RegexTestBase {
         expectSyntaxError("(?i-i:)", "", "bad inline flags: flag turned on and off", 5);
         expectSyntaxError(")", "", "unbalanced parenthesis", 0);
         expectSyntaxError("\\", "", "bad escape (end of pattern)", 0);
+        expectSyntaxError("(?P<a>)(?(0)a|b)", "", "bad group number", 10);
+        expectSyntaxError("()(?(1", "", "missing ), unterminated name", 5);
+        expectSyntaxError("()(?(1)a", "", "missing ), unterminated subpattern", 2);
+        expectSyntaxError("()(?(1)a|b", "", "missing ), unterminated subpattern", 2);
+        expectSyntaxError("()(?(2)a)", "", "invalid group reference 2", 5);
+        expectSyntaxError("(?(a))", "", "unknown group name 'a'", 3);
     }
 }

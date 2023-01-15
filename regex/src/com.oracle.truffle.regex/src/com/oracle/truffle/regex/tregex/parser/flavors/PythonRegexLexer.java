@@ -636,12 +636,17 @@ public final class PythonRegexLexer extends RegexLexer {
             case empty:
                 throw syntaxErrorHere(PyErrorMessages.MISSING_GROUP_NAME);
             case unterminated:
-                throw syntaxErrorHere(PyErrorMessages.UNTERMINATED_NAME);
+                throw syntaxErrorAtRel(PyErrorMessages.UNTERMINATED_NAME, result.groupName.length());
             case invalidStart:
             case invalidRest:
                 if (isDecimalDigit(result.groupName.charAt(0))) {
                     try {
                         groupNumber = Integer.parseInt(result.groupName);
+                        if (groupNumber == 0) {
+                            throw syntaxErrorAtRel(PyErrorMessages.BAD_GROUP_NUMBER, result.groupName.length() + 1);
+                        } else if (groupNumber >= nGroups) {
+                            throw syntaxErrorAtRel(PyErrorMessages.invalidGroupReference(result.groupName), result.groupName.length() + 1);
+                        }
                         break;
                     } catch (NumberFormatException e) {
                         // fallthrough
@@ -653,7 +658,7 @@ public final class PythonRegexLexer extends RegexLexer {
                 if (namedCaptureGroups != null && namedCaptureGroups.containsKey(result.groupName)) {
                     groupNumber = namedCaptureGroups.get(result.groupName);
                 } else {
-                    throw syntaxError(PyErrorMessages.unknownGroupName(result.groupName));
+                    throw syntaxErrorAtRel(PyErrorMessages.unknownGroupName(result.groupName), result.groupName.length() + 1);
                 }
                 break;
             default:
@@ -802,7 +807,7 @@ public final class PythonRegexLexer extends RegexLexer {
         return pattern.substring(getLastTokenPosition(), getLastTokenPosition() + length);
     }
 
-    private RegexSyntaxException syntaxErrorAtAbs(String msg, int i) {
+    public RegexSyntaxException syntaxErrorAtAbs(String msg, int i) {
         return RegexSyntaxException.createPattern(source, msg, i);
     }
 

@@ -74,7 +74,7 @@ public abstract class RegexLexer {
     protected int position = 0;
     protected Map<String, Integer> namedCaptureGroups = null;
     private int curStartIndex = 0;
-    private int nGroups = 1;
+    protected int nGroups = 1;
     private boolean identifiedAllGroups = false;
 
     public RegexLexer(RegexSource source) {
@@ -351,6 +351,7 @@ public abstract class RegexLexer {
     public Token next() throws RegexSyntaxException {
         curStartIndex = position;
         Token t = getNext();
+        t.setPosition(curStartIndex);
         setSourceSection(t, curStartIndex, position);
         return t;
     }

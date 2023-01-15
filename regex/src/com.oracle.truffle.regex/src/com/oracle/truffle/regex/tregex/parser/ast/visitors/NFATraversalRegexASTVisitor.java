@@ -772,17 +772,36 @@ public abstract class NFATraversalRegexASTVisitor {
                     pushQuantifierGuard(QuantifierGuard.createEnterZeroWidth(quantifier));
                 }
             }
-            if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && group.isCapturing()) {
+            if (ast.getOptions().getFlavor().matchesTransitionsStepByStep() && group.isCapturing()) {
                 pushQuantifierGuard(QuantifierGuard.createUpdateCG(group.getBoundaryIndexStart()));
+            }
+            if (group.isConditionalBackReferenceGroup()) {
+                int referencedGroupNumber = group.asConditionalBackReferenceGroup().getReferencedGroupNumber();
+                if (groupAltIndex == 1) {
+                    pushQuantifierGuard(QuantifierGuard.createCheckGroupMatched(referencedGroupNumber));
+                } else {
+                    assert groupAltIndex == 2;
+                    pushQuantifierGuard(QuantifierGuard.createCheckGroupNotMatched(referencedGroupNumber));
+                }
             }
         }
     }
 
     private int popGroupEnter(Group group) {
         assert pathIsGroupEnter(curPath.peek());
+        int groupAltIndex = pathGetGroupAltIndex(curPath.peek());
         // Quantifier guards
         if (useQuantifierGuards()) {
-            if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && group.isCapturing()) {
+            if (group.isConditionalBackReferenceGroup()) {
+                int referencedGroupNumber = group.asConditionalBackReferenceGroup().getReferencedGroupNumber();
+                if (groupAltIndex == 1) {
+                    popQuantifierGuard(QuantifierGuard.createCheckGroupMatched(referencedGroupNumber));
+                } else {
+                    assert groupAltIndex == 2;
+                    popQuantifierGuard(QuantifierGuard.createCheckGroupNotMatched(referencedGroupNumber));
+                }
+            }
+            if (ast.getOptions().getFlavor().matchesTransitionsStepByStep() && group.isCapturing()) {
                 popQuantifierGuard(QuantifierGuard.createUpdateCG(group.getBoundaryIndexStart()));
             }
             if (group.hasQuantifier()) {
@@ -842,7 +861,7 @@ public abstract class NFATraversalRegexASTVisitor {
                     }
                 }
             }
-            if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && group.isCapturing()) {
+            if (ast.getOptions().getFlavor().matchesTransitionsStepByStep() && group.isCapturing()) {
                 pushQuantifierGuard(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
             }
         }
@@ -852,7 +871,7 @@ public abstract class NFATraversalRegexASTVisitor {
         assert pathIsGroupExit(curPath.peek());
         // Quantifier guards
         if (useQuantifierGuards()) {
-            if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && group.isCapturing()) {
+            if (ast.getOptions().getFlavor().matchesTransitionsStepByStep() && group.isCapturing()) {
                 popQuantifierGuard(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
             }
             if (group.hasQuantifier()) {
@@ -891,17 +910,36 @@ public abstract class NFATraversalRegexASTVisitor {
                     }
                 }
             }
-            if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && group.isCapturing()) {
+            if (ast.getOptions().getFlavor().matchesTransitionsStepByStep() && group.isCapturing()) {
                 pushQuantifierGuard(QuantifierGuard.createUpdateCG(group.getBoundaryIndexStart()));
                 pushQuantifierGuard(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
+            }
+            if (group.isConditionalBackReferenceGroup()) {
+                int referencedGroupNumber = group.asConditionalBackReferenceGroup().getReferencedGroupNumber();
+                if (groupAltIndex == 1) {
+                    pushQuantifierGuard(QuantifierGuard.createCheckGroupMatched(referencedGroupNumber));
+                } else {
+                    assert groupAltIndex == 2;
+                    pushQuantifierGuard(QuantifierGuard.createCheckGroupNotMatched(referencedGroupNumber));
+                }
             }
         }
     }
 
     private int popGroupPassThrough(Group group) {
         assert pathIsGroupPassThrough(curPath.peek());
+        int groupAltIndex = pathGetGroupAltIndex(curPath.peek());
         if (useQuantifierGuards()) {
-            if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && group.isCapturing()) {
+            if (group.isConditionalBackReferenceGroup()) {
+                int referencedGroupNumber = group.asConditionalBackReferenceGroup().getReferencedGroupNumber();
+                if (groupAltIndex == 1) {
+                    popQuantifierGuard(QuantifierGuard.createCheckGroupMatched(referencedGroupNumber));
+                } else {
+                    assert groupAltIndex == 2;
+                    popQuantifierGuard(QuantifierGuard.createCheckGroupNotMatched(referencedGroupNumber));
+                }
+            }
+            if (ast.getOptions().getFlavor().matchesTransitionsStepByStep() && group.isCapturing()) {
                 popQuantifierGuard(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
                 popQuantifierGuard(QuantifierGuard.createUpdateCG(group.getBoundaryIndexStart()));
             }
@@ -943,7 +981,7 @@ public abstract class NFATraversalRegexASTVisitor {
                     pushQuantifierGuard(QuantifierGuard.createEscapeZeroWidth(quantifier));
                 }
             }
-            if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && group.isCapturing()) {
+            if (ast.getOptions().getFlavor().matchesTransitionsStepByStep() && group.isCapturing()) {
                 pushQuantifierGuard(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
             }
         }
@@ -953,7 +991,7 @@ public abstract class NFATraversalRegexASTVisitor {
         assert pathIsGroupEscape(curPath.peek());
         // Quantifier guards
         if (useQuantifierGuards()) {
-            if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && group.isCapturing()) {
+            if (ast.getOptions().getFlavor().matchesTransitionsStepByStep() && group.isCapturing()) {
                 popQuantifierGuard(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
             }
             if (group.hasQuantifier()) {

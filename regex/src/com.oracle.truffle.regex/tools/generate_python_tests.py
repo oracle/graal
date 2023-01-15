@@ -94,6 +94,12 @@ patterns = [
     r'(?i-i:)',
     r')',
     "\\",
+    r'(?P<a>)(?(0)a|b)',
+    r'()(?(1',
+    r'()(?(1)a',
+    r'()(?(1)a|b',
+    r'()(?(2)a)',
+    r'(?(a))',
 ]
 
 def escape_backslash(string):

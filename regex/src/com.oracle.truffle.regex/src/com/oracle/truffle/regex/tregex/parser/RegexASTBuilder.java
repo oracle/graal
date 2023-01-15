@@ -73,6 +73,8 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRe
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NodeCountVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.SetSourceSectionVisitor;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 
 /**
  * This class is used to generate regex ASTs. The provided methods append nodes to the AST.
@@ -94,6 +96,8 @@ public final class RegexASTBuilder {
     private Sequence curSequence;
     private Term curTerm;
 
+    private final EconomicMap<Group, Integer> groupStartPositions;
+
     @TruffleBoundary
     public RegexASTBuilder(RegexLanguage language, RegexSource source, RegexFlags flags, boolean explodeUTF16, CompilationBuffer compilationBuffer) {
         this.globals = language.parserGlobals;
@@ -106,6 +110,7 @@ public final class RegexASTBuilder {
         this.countVisitor = new NodeCountVisitor();
         this.setSourceSectionVisitor = options.isDumpAutomataWithSourceSections() ? new SetSourceSectionVisitor(ast) : null;
         this.compilationBuffer = compilationBuffer;
+        this.groupStartPositions = source.getOptions().getFlavor().needsGroupStartPositions() ? EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE) : null;
     }
 
     /**
@@ -131,6 +136,22 @@ public final class RegexASTBuilder {
         return curTerm;
     }
 
+    public int getCurGroupStartPosition() {
+        return groupStartPositions.get(curGroup, 0);
+    }
+
+    private void setGroupStartPosition(Group group, Token token) {
+        if (token != null) {
+            setGroupStartPosition(group, token.getPosition());
+        }
+    }
+
+    private void setGroupStartPosition(Group group, int startPosition) {
+        if (options.getFlavor().needsGroupStartPositions()) {
+            groupStartPositions.putIfAbsent(group, startPosition);
+        }
+    }
+
     /**
      * Indicates whether the builder is currently in the root group or in some nested group.
      * 
@@ -154,7 +175,8 @@ public final class RegexASTBuilder {
      */
     public void pushRootGroup(boolean rootCapture) {
         RegexASTRootNode rootParent = ast.createRootNode();
-        ast.setRoot(pushGroup(null, rootCapture, rootParent));
+        ast.setRoot(pushGroup(null, rootCapture ? ast.createCaptureGroup(groupCount.inc()) : ast.createGroup(), rootParent));
+        setGroupStartPosition(ast.getRoot(), 0);
         if (options.isDumpAutomataWithSourceSections()) {
             // set leading and trailing '/' as source sections of root
             ast.addSourceSections(ast.getRoot(),
@@ -182,7 +204,7 @@ public final class RegexASTBuilder {
      *            sections, or {@code null} if none
      */
     public void pushGroup(Token token) {
-        pushGroup(token, false, null);
+        pushGroup(token, ast.createGroup(), null);
     }
 
     public void pushGroup() {
@@ -197,7 +219,7 @@ public final class RegexASTBuilder {
      *            sections, or {@code null} if none
      */
     public void pushCaptureGroup(Token token) {
-        pushGroup(token, true, null);
+        pushGroup(token, ast.createCaptureGroup(groupCount.inc()), null);
     }
 
     public void pushCaptureGroup() {
@@ -216,7 +238,7 @@ public final class RegexASTBuilder {
         LookAheadAssertion lookAhead = ast.createLookAheadAssertion(negate);
         ast.addSourceSection(lookAhead, token);
         addTerm(lookAhead);
-        pushGroup(token, false, lookAhead);
+        pushGroup(token, ast.createGroup(), lookAhead);
     }
 
     public void pushLookAheadAssertion(boolean negate) {
@@ -235,7 +257,7 @@ public final class RegexASTBuilder {
         LookBehindAssertion lookBehind = ast.createLookBehindAssertion(negate);
         ast.addSourceSection(lookBehind, token);
         addTerm(lookBehind);
-        pushGroup(token, false, lookBehind);
+        pushGroup(token, ast.createGroup(), lookBehind);
     }
 
     public void pushLookBehindAssertion(boolean negate) {
@@ -246,21 +268,29 @@ public final class RegexASTBuilder {
         AtomicGroup atomicGroup = ast.createAtomicGroup();
         ast.addSourceSection(atomicGroup, token);
         addTerm(atomicGroup);
-        pushGroup(token, false, atomicGroup);
+        pushGroup(token, ast.createGroup(), atomicGroup);
     }
 
     public void pushAtomicGroup() {
         pushAtomicGroup(null);
     }
 
-    private Group pushGroup(Token token, boolean capture, RegexASTSubtreeRootNode parent) {
-        Group group = capture ? ast.createCaptureGroup(groupCount.inc()) : ast.createGroup();
+    public void pushConditionalBackReferenceGroup(Token token, int referencedGroupNumber) {
+        pushGroup(token, ast.createConditionalBackReferenceGroup(referencedGroupNumber), null);
+    }
+
+    public void pushConditionalBackReferenceGroup(int referencedGroupNumber) {
+        pushConditionalBackReferenceGroup(null, referencedGroupNumber);
+    }
+
+    private Group pushGroup(Token token, Group group, RegexASTSubtreeRootNode parent) {
         if (parent != null) {
             parent.setGroup(group);
         } else {
             addTerm(group);
         }
         ast.addSourceSection(group, token);
+        setGroupStartPosition(group, token);
         curGroup = group;
         curGroup.setEnclosedCaptureGroupsLow(groupCount.getCount());
         nextSequence();
@@ -789,6 +819,9 @@ public final class RegexASTBuilder {
     /* optimizations */
 
     private void optimizeGroup() {
+        if (curGroup.isConditionalBackReferenceGroup()) {
+            return;
+        }
         sortAlternatives(curGroup);
         mergeCommonPrefixes(curGroup);
     }
@@ -804,7 +837,7 @@ public final class RegexASTBuilder {
      *         the {@link CharacterClass} in the last Sequence.
      */
     private boolean tryMergeSingleCharClassAlternations() {
-        if (curGroup.size() > 1 && curSequence.isSingleCharClass()) {
+        if (curGroup.size() > 1 && curSequence.isSingleCharClass() && !curGroup.isConditionalBackReferenceGroup()) {
             assert curSequence == curGroup.getAlternatives().get(curGroup.size() - 1);
             Sequence prevSequence = curGroup.getAlternatives().get(curGroup.size() - 2);
             if (prevSequence.isSingleCharClass()) {

@@ -61,10 +61,6 @@ import com.oracle.truffle.regex.tregex.parser.RegexValidator;
  * expression is compiled with the {@code re.LOCALE} flag, some of its elements should depend on the
  * locale set during matching time. This is not compatible with compiling regular expressions
  * ahead-of-time into automata.</li>
- * <li>conditional backreferences, i.e. {@code (?(groupId)ifPart|elsePart)}: These do not have a
- * direct counterpart in ECMAScript. It should be theoretically feasible to translate Python regular
- * expressions using these into ECMAScript regular expressions, however the translation would have
- * to use much more complex global rewriting rules than the current approach.</li>
  * </ul>
  *
  * @see PythonREMode
@@ -75,7 +71,7 @@ public final class PythonFlavor extends RegexFlavor {
 
     private PythonFlavor() {
         super(BACKREFERENCES_TO_UNMATCHED_GROUPS_FAIL | NESTED_CAPTURE_GROUPS_KEPT_ON_LOOP_REENTRY | FAILING_EMPTY_CHECKS_DONT_BACKTRACK | USES_LAST_GROUP_RESULT_FIELD |
-                        LOOKBEHINDS_RUN_LEFT_TO_RIGHT);
+                        LOOKBEHINDS_RUN_LEFT_TO_RIGHT | NEEDS_GROUP_START_POSITIONS);
     }
 
     @Override

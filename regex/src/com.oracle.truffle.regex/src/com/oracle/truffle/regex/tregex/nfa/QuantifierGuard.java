@@ -114,7 +114,9 @@ public final class QuantifierGuard {
          * also needs to monitor the state of capture groups in between {@link #enterZeroWidth} and
          * {@link #exitZeroWidth}.
          */
-        updateCG
+        updateCG,
+        checkGroupMatched,
+        checkGroupNotMatched
     }
 
     public static final QuantifierGuard[] NO_GUARDS = {};
@@ -179,6 +181,14 @@ public final class QuantifierGuard {
         return new QuantifierGuard(Kind.updateCG, index);
     }
 
+    public static QuantifierGuard createCheckGroupMatched(int groupNumber) {
+        return new QuantifierGuard(Kind.checkGroupMatched, groupNumber);
+    }
+
+    public static QuantifierGuard createCheckGroupNotMatched(int groupNumber) {
+        return new QuantifierGuard(Kind.checkGroupNotMatched, groupNumber);
+    }
+
     public Kind getKind() {
         return kind;
     }
@@ -207,6 +217,10 @@ public final class QuantifierGuard {
                 return Kind.enterEmptyMatch;
             case updateCG:
                 return Kind.updateCG;
+            case checkGroupMatched:
+                return Kind.checkGroupMatched;
+            case checkGroupNotMatched:
+                return Kind.checkGroupNotMatched;
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
