@@ -81,6 +81,7 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
         }
     }
 
+    public abstract InputType valueInputType();
     public abstract NodeInputList<ValueNode> values();
 
     public AbstractMergeNode merge() {
