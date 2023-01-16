@@ -39,6 +39,46 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /**
  * Encodes and decodes the {@link InliningLog}.
  *
+ * <h2>Encoding an inlining log</h2>
+ *
+ * The call-tree graph is converted to an intermediate representation. Each
+ * {@link InliningLog.Callsite} is converted into an {@link EncodedCallsite}. {@link Invokable}
+ * nodes are replaced with the order ID of the encoded {@link StructuredGraph} nodes. It is
+ * sufficient to remember the root encoded callsite; we do not have to store the leaves. Leaf
+ * callsites are reconstructed at the time of {@link InliningLogDecoder#registerNode node
+ * registration}.
+ *
+ * If the graph does not track inlining, we decode the {@link InliningLog} as {@code null}.
+ *
+ * <h2>Decoding an inlining log</h2>
+ *
+ * The inlining log must be decoded in multiple steps. We have to decode the log first, before the
+ * encoded graph is decoded. This allows logging inlining decisions when the graph is getting
+ * decoded. The downside is that we cannot map order IDs back to decoded graph nodes, because the
+ * decoded graph nodes are not constructed at that point.
+ *
+ * The {@link InliningLogDecoder} decodes the call tree without any invokes first. It creates a
+ * mapping from order IDs to the created call-tree nodes. Whenever an invoke node is created, the
+ * decoder may set the invoke of a decoded callsite. This is facilitated by the
+ * {@link InliningLogDecoder#registerNode registerNode} method. As a consequence, the decoder is
+ * stateful, and we need a decoder instance per each encoded graph.
+ *
+ * When an invoke is decoded, {@link InliningLog} does not know whether it is a decoded invoke or a
+ * new invoke. Therefore, the responsibility of tracking new callsites is passed to the decoder
+ * instance. The decoder creates a new callsite when the order ID of the decoded invoke is not in
+ * the decoder's mapping. This is further complicated by the fact that a single node may be mapped
+ * to multiple order IDs when the decoder performs optimization.
+ *
+ * It is possible that the original graph did not track inlining (its {@link InliningLog} was
+ * encoded as {@code null}), but the decoded {@link StructuredGraph} instance tracks inlining. In
+ * that situation, we have to create and {@link InliningLog} instance and register all callsites.
+ *
+ * The decoder may perform inlining. In this scenario, multiple graphs are decoded into one
+ * {@link StructuredGraph}. One decoder instance is necessary for each encoded graph. When the
+ * decoding of an inlining log is finished, it may be {@link InliningLog#inlineByTransfer
+ * transferred} to the callee's inlining log or {@link StructuredGraph#setInliningLog set} as the
+ * inlining log of the final decoded {@link StructuredGraph}.
+ *
  * @see CompanionObjectCodec
  */
 public class InliningLogCodec extends CompanionObjectCodec<InliningLog, InliningLogCodec.EncodedInliningLog> {
@@ -147,11 +187,14 @@ public class InliningLogCodec extends CompanionObjectCodec<InliningLog, Inlining
             }
             assert orderIdToCallsite != null;
             Invokable invokable = (Invokable) node;
+            if (inliningLog.containsLeafCallsite(invokable)) {
+                return;
+            }
             if (orderIdToCallsite.containsKey(orderId)) {
                 InliningLog.Callsite callsite = orderIdToCallsite.get(orderId);
                 callsite.setInvoke(invokable);
                 inliningLog.addLeafCallsite(invokable, callsite);
-            } else if (!inliningLog.containsLeafCallsite(invokable)) {
+            } else {
                 inliningLog.trackNewCallsite(invokable);
             }
         }
