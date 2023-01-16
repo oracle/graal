@@ -2500,13 +2500,57 @@ public class SnippetTemplate {
     /**
      * Before frame state assignment, if the inlined snippet contains a loop with side effects,
      * place a {@link CaptureStateBeginNode} after every loop exit. This ensures that the correct
-     * loop exit states will be available for later frame state assignment even if the loop exits
-     * themselves disappear, e.g., through full unrolling. It also prevents later floating guards
-     * from moving too far upwards if their anchoring point is optimized away.
+     * loop exit states will be available for later frame state assignment.
+     * <p/>
+     *
+     * In general, a loop with a side effect inlined from a snippet will look like this, after
+     * inserting this node:
+     *
+     * <pre>
+     *                                  State(AFTER_BCI)
+     *                                  /
+     *  +--------------------> LoopBegin
+     *  |                         |
+     *  |                         If
+     *  |                        /  \
+     *  |  State(INVALID)       /    \      State(AFTER_BCI)
+     *  |                 \    /      \      / |
+     *  |             SideEffect     LoopExit  |
+     *  |                   |          |       |
+     *  +--------------- LoopEnd   CaptureStateBegin
+     *                                 |
+     *                                ...
+     * </pre>
+     *
+     * Even if the loop exit disappears (for example, through full unrolling), the
+     * {@code CaptureStateBegin} will have a valid frame state that can be propagated to its
+     * successors. Without the captured state, a fully unrolled version of the loop would only
+     * contain the side effect's invalid frame state, and frame state assignment would propagate
+     * this.
+     * <p/>
+     *
+     * If the code following the {@code CaptureStateBegin} contains an {@link AbstractBeginNode}
+     * with floating guards hanging off it:
+     *
+     * <pre>
+     *     LoopExit
+     *        |
+     *   CaptureStateBegin
+     *        |
+     *       ...
+     *   AbstractBegin
+     *        |     \
+     *       ...    Guard
+     * </pre>
+     *
+     * and that {@code AbstractBegin} is optimized out, its
+     * {@link AbstractBeginNode#prevBegin(FixedNode)} will be the {@code CaptureStateBegin}, so the
+     * guard will be floated there. The guard will not float upwards to the loop exit, where again
+     * it would eventually get an invalid frame state if the loop is fully unrolled.
      */
     private static void captureLoopExitStates(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates) {
         StructuredGraph replaceeGraph = replacee.graph();
-        if (replaceeGraph.getGuardsStage().areFrameStatesAtDeopts()) {
+        if (replaceeGraph.getGuardsStage().areFrameStatesAtDeopts() && !replaceeGraph.getGuardsStage().allowsFloatingGuards()) {
             return;
         }
         for (Node duplicate : duplicates.getValues()) {

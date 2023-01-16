@@ -38,10 +38,10 @@ import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 
 /**
- * A kind of {@linkplain AbstractBeginNode begin node} that can capture the state at a certain
- * program point. This is similar to {@link StateSplitProxyNode} but (a) it does not proxy a value,
- * and (b) as a begin node, it is a valid anchor point for floating guards.
- * </p>
+ * An {@linkplain AbstractBeginNode begin node} that can capture the state at a certain program
+ * point. This is similar to {@link StateSplitProxyNode} but (a) it does not proxy a value, and (b)
+ * as a begin node, it is a valid anchor point for floating guards.
+ * <p/>
  *
  * This node is canonicalized away if it no longer has a state (i.e., after frame state assignment).
  */
