@@ -329,9 +329,8 @@ public final class NativeLibraries {
 
             /* Probe for static JDK libraries in user-specified CLibraryPath directory */
             if (staticLibsDir == null) {
-                for (String clibPathComponent : SubstrateOptions.CLibraryPath.getValue().values()) {
-                    Path path = Paths.get(clibPathComponent);
-                    Predicate<String> hasStaticLibraryCLibraryPath = s -> Files.isRegularFile(path.resolve(getStaticLibraryName(s)));
+                for (Path clibPathComponent : SubstrateOptions.CLibraryPath.getValue().values()) {
+                    Predicate<String> hasStaticLibraryCLibraryPath = s -> Files.isRegularFile(clibPathComponent.resolve(getStaticLibraryName(s)));
                     if (defaultBuiltInLibraries.stream().allMatch(hasStaticLibraryCLibraryPath)) {
                         return libraryPaths;
                     }
