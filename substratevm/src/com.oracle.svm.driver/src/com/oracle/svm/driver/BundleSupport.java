@@ -146,7 +146,7 @@ final class BundleSupport {
             Path classesDir = inputDir.resolve("classes");
             classPathDir = Files.createDirectories(classesDir.resolve("cp"));
             modulePathDir = Files.createDirectories(classesDir.resolve("p"));
-            outputDir = Files.createDirectories(rootDir.resolve("output"));
+            outputDir = rootDir.resolve("output");
             imagePathOutputDir = Files.createDirectories(outputDir.resolve("default"));
             auxiliaryOutputDir = Files.createDirectories(outputDir.resolve("other"));
         } catch (IOException e) {
@@ -207,14 +207,18 @@ final class BundleSupport {
         bundlePath = bundleFile.getParent();
         bundleName = bundleFileName;
 
-        Path inputDir = rootDir.resolve("input");
-        stageDir = inputDir.resolve("stage");
-        auxiliaryDir = inputDir.resolve("auxiliary");
-        Path classesDir = inputDir.resolve("classes");
-        classPathDir = classesDir.resolve("cp");
-        modulePathDir = classesDir.resolve("p");
-        imagePathOutputDir = outputDir.resolve("default");
-        auxiliaryOutputDir = outputDir.resolve("other");
+        try {
+            Path inputDir = rootDir.resolve("input");
+            stageDir = Files.createDirectories(inputDir.resolve("stage"));
+            auxiliaryDir = Files.createDirectories(inputDir.resolve("auxiliary"));
+            Path classesDir = inputDir.resolve("classes");
+            classPathDir = Files.createDirectories(classesDir.resolve("cp"));
+            modulePathDir = Files.createDirectories(classesDir.resolve("p"));
+            imagePathOutputDir = Files.createDirectories(outputDir.resolve("default"));
+            auxiliaryOutputDir = Files.createDirectories(outputDir.resolve("other"));
+        } catch (IOException e) {
+            throw NativeImage.showError("Unable to create bundle directory layout", e);
+        }
 
         Path pathCanonicalizationsFile = stageDir.resolve("path_canonicalizations.json");
         try (Reader reader = Files.newBufferedReader(pathCanonicalizationsFile)) {
