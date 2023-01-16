@@ -38,6 +38,7 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -132,7 +133,7 @@ public abstract class MacroWithExceptionNode extends WithExceptionNode implement
     @Override
     @SuppressWarnings("try")
     public Invoke replaceWithInvoke() {
-        try (DebugCloseable context = withNodeSourcePosition()) {
+        try (DebugCloseable context = withNodeSourcePosition(); InliningLog.UpdateScope updateScope = InliningLog.openUpdateScopeTrackingReplacement(graph().getInliningLog(), this)) {
             InvokeWithExceptionNode invoke = createInvoke(this);
             graph().replaceWithExceptionSplit(this, invoke);
             assert invoke.verify();

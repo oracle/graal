@@ -39,6 +39,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -204,7 +205,7 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
     @Override
     @SuppressWarnings("try")
     public Invoke replaceWithInvoke() {
-        try (DebugCloseable context = withNodeSourcePosition()) {
+        try (DebugCloseable context = withNodeSourcePosition(); InliningLog.UpdateScope updateScope = InliningLog.openUpdateScopeTrackingReplacement(graph().getInliningLog(), this)) {
             InvokeNode invoke = createInvoke(true);
             graph().replaceFixedWithFixed(this, invoke);
             assert invoke.verify();

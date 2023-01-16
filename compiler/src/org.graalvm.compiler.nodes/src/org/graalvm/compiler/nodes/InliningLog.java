@@ -187,7 +187,7 @@ public class InliningLog {
         private void addDecision(Decision decision) {
             decisions.add(decision);
             target = invoke.getTargetMethod();
-            indirect = invokeIsIndirect(invoke);
+            indirect = !decision.positive && invokeIsIndirect(invoke);
             bci = invoke.bci();
         }
 
@@ -575,6 +575,32 @@ public class InliningLog {
                 Callsite callsite = parentCallsite.addChild(newInvoke, siblingCallsite);
                 inliningLog.leaves.put(newInvoke, callsite);
             }
+        });
+    }
+
+    /**
+     * Opens a new update scope tracking the replacement of an invoke. Exactly one invoke must be
+     * registered when this scope is active, which becomes the replacement invoke. The method
+     * associates the {@link Callsite} of the replaced invoke with the replacement invoke,
+     * preserving all inlining decisions. It is a responsibility of the caller to delete the
+     * replaced invoke.
+     *
+     * @param inliningLog the inlining log or {@code null} if it disabled
+     * @param replacedInvoke the invoke that is getting replaced
+     *
+     * @return a bound {@link UpdateScope} or {@code null} if the log is disabled
+     */
+    public static UpdateScope openUpdateScopeTrackingReplacement(InliningLog inliningLog, Invokable replacedInvoke) {
+        if (inliningLog == null) {
+            return null;
+        }
+        return inliningLog.openUpdateScope((nullInvoke, replacementInvoke) -> {
+            assert nullInvoke == null;
+            assert !inliningLog.leaves.containsKey(replacementInvoke);
+            Callsite callsite = inliningLog.leaves.get(replacedInvoke);
+            callsite.invoke = replacementInvoke;
+            inliningLog.leaves.removeKey(replacedInvoke);
+            inliningLog.leaves.put(replacementInvoke, callsite);
         });
     }
 
