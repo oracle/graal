@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -185,7 +185,6 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         if (address == 0) {
             LLVMMemory memory = LLVMLanguage.get(null).getLLVMMemory();
             LLVMNativePointer pointer = memory.allocateMemory(null, 8);
-            address = pointer.asNative();
             long value;
             Object global = getFallback();
             if (global instanceof Number) {
@@ -194,6 +193,8 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
                 value = LLVMNativePointerSupportFactory.ToNativePointerNodeGen.getUncached().execute(global).asNative();
             }
             memory.putI64(LLVMNativePointerSupportFactory.ToNativePointerNodeGen.getUncached(), pointer, value);
+            // only set the address once the container has been prepared
+            address = pointer.asNative();
         }
     }
 
