@@ -45,6 +45,8 @@ import java.lang.ref.Reference;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
@@ -60,14 +62,14 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.backend.libffi.LibFFISignature.CachedSignatureInfo;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.CachedTypeInfo;
 
-//TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining"})
 @GenerateUncached
+@GenerateCached(false)
+@GenerateInline(true)
 @ImportStatic(LibFFILanguage.class)
 @GenerateAOT
 abstract class FunctionExecuteNode extends Node {
 
-    public abstract Object execute(long receiver, LibFFISignature signature, Object[] args) throws ArityException, UnsupportedTypeException;
+    public abstract Object execute(Node node, long receiver, LibFFISignature signature, Object[] args) throws ArityException, UnsupportedTypeException;
 
     @Specialization(guards = "signature.signatureInfo == cachedInfo", limit = "3")
     @GenerateAOT.Exclude
@@ -94,7 +96,7 @@ abstract class FunctionExecuteNode extends Node {
 
     @Specialization(replaces = "cachedSignature")
     static Object genericExecute(long receiver, LibFFISignature signature, Object[] args,
-                    @Cached IndirectCallNode execute) {
+                    @Cached(inline = false) IndirectCallNode execute) {
         try {
             return execute.call(signature.signatureInfo.callTarget, receiver, args, signature);
         } finally {

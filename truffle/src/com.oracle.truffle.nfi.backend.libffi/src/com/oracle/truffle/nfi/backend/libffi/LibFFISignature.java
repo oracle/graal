@@ -120,9 +120,10 @@ final class LibFFISignature {
 
         @Specialization
         static Object callLibFFI(LibFFISignature self, LibFFISymbol functionPointer, Object[] args,
+                        @Bind("$node") Node node,
                         @Cached.Exclusive @Cached FunctionExecuteNode functionExecute) throws ArityException, UnsupportedTypeException {
             long pointer = functionPointer.asPointer();
-            return functionExecute.execute(pointer, self, args);
+            return functionExecute.execute(node, pointer, self, args);
         }
 
         @Specialization(limit = "3")
@@ -157,7 +158,7 @@ final class LibFFISignature {
                 error.enter(node);
                 throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer", e);
             }
-            return functionExecute.execute(pointer, self, args);
+            return functionExecute.execute(node, pointer, self, args);
         }
     }
 
