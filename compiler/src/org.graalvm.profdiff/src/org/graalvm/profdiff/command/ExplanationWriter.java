@@ -155,7 +155,8 @@ public class ExplanationWriter {
         if (!singleExperiment && writer.getOptionValues().shouldDiffCompilations()) {
             writer.writeln("the inlining trees of two paired compilations are diffed");
             writer.increaseIndent();
-            writer.writeln("the tree also includes negative decisions, i.e., a callsite may be considered for inlining but is ultimately not inlined");
+            writer.writeln("the tree also includes negative decisions, i.e., a callsite may be evaluated by the inlining algorithm but ultimately not inlined");
+            writer.writeln("a callsite may be inlined/not inlined in one compilation but not present at all in another compilation");
             writer.writeln("a list of operations to transform the first inlining tree to the second with minimal cost is computed");
             writer.writeln("the operations include subtree deletion, subtree insertion and relabeling (changing one node to another node)");
             writer.writeln("the diff is printed in the form of a tree");
@@ -165,15 +166,15 @@ public class ExplanationWriter {
             writer.writeln("each node's prefix shows the type of operation it took part in, for example");
             writer.increaseIndent();
             writer.writeln("`" + EditScript.RELABEL_PREFIX +
-                            "(inlined -> not inlined) someMethod()` - the callsite was inlined in the first compilation unit but not inlined in the second compilation");
-            writer.writeln("`" + EditScript.IDENTITY_PREFIX + "someMethod()` - the callsite was inlined in both compilations");
-            writer.writeln("`" + EditScript.IDENTITY_PREFIX + InliningTreeNode.NOT_INLINED_PREFIX + "someMethod()` - the callsite was considered and not inlined in both compilations");
-            writer.writeln("`" + EditScript.DELETE_PREFIX + "someMethod()` - the callsite was inlined in the first compilation unit but not considered at all in the second compilation");
-            writer.writeln("`" + EditScript.INSERT_PREFIX + "someMethod()` - the callsite was not considered at all in the first compilation unit but inlined in the second compilation");
+                            "(inlined -> not inlined) someMethod()` - the callsite is inlined in the first compilation but not inlined in the second compilation");
+            writer.writeln("`" + EditScript.IDENTITY_PREFIX + "someMethod()` - the callsite is present and inlined in both compilations");
+            writer.writeln("`" + EditScript.IDENTITY_PREFIX + InliningTreeNode.NOT_INLINED_PREFIX + "someMethod()` - the callsite is present in both compilations but not inlined");
+            writer.writeln("`" + EditScript.DELETE_PREFIX + "someMethod()` - the callsite is inlined in the first compilation but not present in the second compilation");
+            writer.writeln("`" + EditScript.INSERT_PREFIX + "someMethod()` - the callsite is not present in the first compilation but inlined in the second compilation");
             writer.writeln("`" + EditScript.DELETE_PREFIX + InliningTreeNode.NOT_INLINED_PREFIX +
-                            "someMethod()` - the callsite was not inlined in the first compilation unit and not considered at all in the second compilation");
+                            "someMethod()` - the callsite is not inlined in the first compilation and not present in the second compilation");
             writer.writeln("`" + EditScript.INSERT_PREFIX + InliningTreeNode.NOT_INLINED_PREFIX +
-                            "(not inlined) someMethod()` - the callsite was not considered at all in the first compilation unit and not inlined in the second compilation");
+                            "(not inlined) someMethod()` - the callsite is not present in the first compilation and not inlined in the second compilation");
             writer.decreaseIndent();
             writer.decreaseIndent();
         }

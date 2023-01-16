@@ -68,7 +68,7 @@ loop.loopBegin().graph().getOptimizationLog()
 
 The `withProperty` and `withLazyProperty` methods return an optimization entry that holds the provided named properties.
 The returned optimization entry can be further extended with more properties, and its `report` method should be called
-afterwards. The value of the property can be any `String`-convertible object. Property keys should be in `camelCase`.
+afterward. The value of the property can be any `String`-convertible object. Property keys should be in `camelCase`.
 
 If the computation of the value is costly, use the `withLazyProperty` method, which accepts a `Supplier<Object>`
 instead. If logging is enabled, the supplier is evaluated immediately. Otherwise, it is never evaluated.
@@ -90,7 +90,7 @@ entered, the new phase is a child of the current phase and after that the curren
 phase. When an optimization is logged via the `report` method, it is attributed to the current phase. When a phase is
 exited, the current phase is updated to the parent of the just exited phase.
 
-The ASCII art below is a snippet of an optimization tree.
+The diagram below is a snippet of an optimization tree.
 
 ```
                                   RootPhase
@@ -130,22 +130,20 @@ a real tree. The sections below explain the format of a serialized optimization 
 
 ## Inlining tree
 
-`-Dgraal.OptimizationLog` also collects inlining trees. The inlining tree represents the call tree of methods considered
-for inlining in a compilation. The root of the tree is the root-compiled method. Each node of the tree corresponds to
-one method, which may have been inlined or not. We store the result of the decision (i.e., inlined or not) and also the
-reason for this decision. There may be several negative decisions until a method is finally inlined. The children of a
-node are the methods invoked in the method which were considered for inlining. The bci of the callsite is also stored
-for each method in the tree.
+`-Dgraal.OptimizationLog` also collects inlining trees. The inlining tree of a compilation is a call tree with inlining
+decisions. The root of the tree is the root-compiled method. Each node of the tree corresponds to one method, which may
+have been inlined to the caller or not. We store the result of the decision (i.e., inlined or not) and also the reason
+for this decision. There may be several negative decisions until a method is finally inlined. The children of a node are
+the methods invoked in the method. The bci of the callsite is also stored for each method in the tree.
 
 ## Example: optimization log of a benchmark
 
 Run a benchmark with the flag `-Dgraal.OptimizationLog=Directory` to produce an output and save it to the directory
-specified by the `-Dgraal.OptimizationLogPath` option. Run it jointly with `-Dgraal.TrackNodeSourcePosition=true`, so
-that optimizations can be linked with a source position.
+specified by the `-Dgraal.OptimizationLogPath` option. The command `mx benchmark` implicitly
+adds `-Dgraal.TrackNodeSourcePosition=true`, so that optimizations can be linked with a source position.
 
 ```sh
-mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraal.OptimizationLog=Directory \
-  -Dgraal.OptimizationLogPath=$(pwd)/optimization_log
+mx benchmark renaissance:scrabble -- -Dgraal.OptimizationLog=Directory -Dgraal.OptimizationLogPath=$(pwd)/optimization_log
 ```
 
 An equivalent set of commands for Native Image is:
@@ -327,12 +325,10 @@ which callsite is at bci 27 in the root method. Note that the order of keys is i
 ## IGV output
 
 Optimization trees can be printed to Ideal Graph Visualizer. First, start an IGV instance. After that, run a benchmark
-with the flag `-Dgraal.OptimizationLog=Dump`. Run it jointly with `-Dgraal.TrackNodeSourcePosition=true`, so
-that optimizations can be linked with a source position.
+with the flag `-Dgraal.OptimizationLog=Dump`.
 
 ```sh
-mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraal.OptimizationLog=Dump \
-  -Dgraal.PrintGraph=Network
+mx benchmark renaissance:scrabble -- -Dgraal.OptimizationLog=Dump -Dgraal.PrintGraph=Network
 ```
 
 Optimization trees for each compilation should now be available in IGV.

@@ -25,7 +25,7 @@ These use cases are facilitated by the commands `mx profdiff report`, `mx profdi
 and `mx profdiff jit-vs-aot` respectively. Run `mx profdiff help` to show the general help or `mx profdiff help COMMAND`
 to show help for a command.
 
-## Example: benchmark without profile
+## Example: benchmark without a profile
 
 Run a benchmark with the optimization log and node source positions enabled. Node source positions allow the
 optimization log to correlate individual optimizations with a position in the bytecode.
@@ -46,7 +46,7 @@ mx profdiff report scrabble_log
 The output always starts with a short explanation of the concepts and formats. Compilation units are grouped by root
 method names and the inlining and optimization trees are printed for each compilation.
 
-## Example: benchmark with profile
+## Example: benchmark with a profile
 
 To focus only on the most important compilation units, i.e. the most frequently executed compilations, it is possible to
 make use of a profile collected by proftool.
@@ -174,10 +174,10 @@ If `--inliner-reasoning` is enabled, reasons for all inlining decisions are prin
 
 ## Hot compilation units
 
-Proftool collects samples the number of cycles spent executing each compilation unit. The tool marks some of
-the compilation units with the highest timeshare as *hot*. This is a different term than "hot" in the context of
-HotSpot. More precisely, the tool marks some *compilations units* as hot, whereas all the available methods (rather than
-their compilations) are considered hot in HotSpot's terminology.
+Proftool samples the number of cycles spent executing each compilation unit. The tool marks some of the compilation
+units with the highest timeshare as *hot*. This is a different term than "hot" in the context of HotSpot. More
+precisely, the tool marks some *compilations units* as hot, whereas all the available methods (rather than their
+compilations) are considered hot in HotSpot's terminology.
 
 The algorithm to mark hot methods works as follows:
 
@@ -422,29 +422,31 @@ Provided that there 2 kinds of inlining tree nodes with respect to the inlining 
 there are 2 * 4 cases to be interpreted.
 
 For instance, consider a non-root method in a compilation like `java.lang.String.equals(Object) at bci 44`. After being
-evaluated by the inlining algorithm, it would appear in the inlining tree either as
-`java.lang.String.equals(Object) at bci 44` (after being inlined)
-or `(not inlined) java.lang.String.equals(Object) at bci 44`. It is also possible that it would not be evaluated at all,
-which is the case when its caller is not expanded by the inlining algorithm. In that situation, there is no node for
-the method in the inlining tree.
+evaluated by the inlining algorithm, it would appear in the inlining tree either
+as`java.lang.String.equals(Object) at bci 44` (after being inlined)
+or `(not inlined) java.lang.String.equals(Object) at bci 44`, depending on the outcome of the inlining decision. It is
+also possible that the call would not be present in a different compilation of the same root method.
+This is the case when the caller of `java.lang.String.equals(Object)` is not inlined. If a call is present in one of the
+compilations but not the other, the matching algorithm reports a difference with the prefix `-` or `+`. If a call is
+present in both compilations, the prefix is `.` if the final inlining decision has the same outcome or `*` otherwise.
 
 Therefore, all possible combinations in the delta tree are:
 
-- `. java.lang.String.equals(Object) at bci 44` = the method was evaluated and inlined in both compilations
-- `. (not inlined) java.lang.String.equals(Object) at bci 44` = the method was evaluated and not inlined in both
+- `. java.lang.String.equals(Object) at bci 44` = the call is present and inlined in both compilations
+- `. (not inlined) java.lang.String.equals(Object) at bci 44` = the call is present but not inlined in both
   compilations
-- `- java.lang.String.equals(Object) at bci 44` = the method was inlined in the 1st compilation but not evaluated in the
-  2nd compilation
-- `- (not inlined) java.lang.String.equals(Object) at bci 44` = the method was evaluated but not inlined in the 1st
-  compilation and not evaluated in the 2nd compilation
-- `+ java.lang.String.equals(Object) at bci 44` = the method was not evaluated in the 1st compilation but inlined in the
-  2nd compilation
-- `+ (not inlined) java.lang.String.equals(Object) at bci 44` = the method was not evaluated in the 1st compilation
-  but evaluated and not inlined in the 2nd compilation
-- `* (inlined -> not inlined) java.lang.String.equals(Object) at bci 44` = the method was evaluated in both
-  compilations, inlined the 1st compilation but not inlined in the 2nd compilation
-- `* (not inlined -> inlined) java.lang.String.equals(Object) at bci 44` = the method was evaluated in both
-  compilations, not inlined the 1st compilation but inlined in the 2nd compilation
+- `- java.lang.String.equals(Object) at bci 44` = the method was inlined in the 1st compilation, but the call is not
+  present in the 2nd compilation
+- `- (not inlined) java.lang.String.equals(Object) at bci 44` = the call is present but not inlined in the 1st
+  compilation, and not present in the 2nd compilation
+- `+ java.lang.String.equals(Object) at bci 44` = the call is not present in the 1st compilation, but present and
+  inlined in the 2nd compilation
+- `+ (not inlined) java.lang.String.equals(Object) at bci 44` = the call is not present in the 1st compilation,
+  but present and not inlined in the 2nd compilation
+- `* (inlined -> not inlined) java.lang.String.equals(Object) at bci 44` = the call is present in both
+  compilations, and inlined the 1st compilation but not inlined in the 2nd compilation
+- `* (not inlined -> inlined) java.lang.String.equals(Object) at bci 44` = the call is present in both
+  compilations, and not inlined the 1st compilation but inlined in the 2nd compilation
 
 ### Compilation fragments
 
