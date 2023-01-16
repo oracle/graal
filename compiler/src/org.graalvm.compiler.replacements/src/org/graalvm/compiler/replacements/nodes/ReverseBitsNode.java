@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_32;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_32;
 
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -44,7 +44,7 @@ import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
 
-@NodeInfo(cycles = CYCLES_1, size = SIZE_1)
+@NodeInfo(cycles = CYCLES_32, size = SIZE_32)
 public final class ReverseBitsNode extends UnaryNode implements LIRLowerable {
 
     public static final NodeClass<ReverseBitsNode> TYPE = NodeClass.create(ReverseBitsNode.class);

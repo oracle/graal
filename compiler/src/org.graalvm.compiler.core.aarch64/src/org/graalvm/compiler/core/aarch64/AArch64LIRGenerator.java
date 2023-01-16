@@ -88,6 +88,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64PauseOp;
 import org.graalvm.compiler.lir.aarch64.AArch64SpeculativeBarrier;
 import org.graalvm.compiler.lir.aarch64.AArch64StringLatin1InflateOp;
 import org.graalvm.compiler.lir.aarch64.AArch64StringUTF16CompressOp;
+import org.graalvm.compiler.lir.aarch64.AArch64UnsignedCompareOp;
 import org.graalvm.compiler.lir.aarch64.AArch64VectorizedMismatchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ZapRegistersOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ZapStackOp;
@@ -536,6 +537,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     public Variable emitByteSwap(Value input) {
         Variable result = newVariable(LIRKind.combine(input));
         append(new AArch64ByteSwap.ByteSwapOp(result, asAllocatable(input)));
+        return result;
+    }
+
+    @Override
+    public Variable emitUnsignedCompare(Value x, Value y) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64UnsignedCompareOp(result, asAllocatable(x), asAllocatable(y)));
         return result;
     }
 

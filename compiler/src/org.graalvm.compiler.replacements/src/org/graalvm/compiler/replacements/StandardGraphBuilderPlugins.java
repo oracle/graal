@@ -175,6 +175,7 @@ import org.graalvm.compiler.replacements.nodes.LogNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.replacements.nodes.ProfileBooleanNode;
 import org.graalvm.compiler.replacements.nodes.ReverseBytesNode;
+import org.graalvm.compiler.replacements.nodes.UnsignedCompareNode;
 import org.graalvm.compiler.replacements.nodes.VirtualizableInvokeMacroNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerAddExactNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerAddExactOverflowNode;
@@ -229,8 +230,8 @@ public class StandardGraphBuilderPlugins {
         registerCharacterPlugins(plugins);
         registerCharacterDataLatin1Plugins(plugins);
         registerShortPlugins(plugins);
-        registerIntegerLongPlugins(plugins, JavaKind.Int);
-        registerIntegerLongPlugins(plugins, JavaKind.Long);
+        registerIntegerLongPlugins(plugins, JavaKind.Int, lowerer.getTarget().arch);
+        registerIntegerLongPlugins(plugins, JavaKind.Long, lowerer.getTarget().arch);
         registerFloatPlugins(plugins);
         registerDoublePlugins(plugins);
         registerArrayPlugins(plugins, replacements);
@@ -780,7 +781,7 @@ public class StandardGraphBuilderPlugins {
         return false;
     }
 
-    private static void registerIntegerLongPlugins(InvocationPlugins plugins, JavaKind kind) {
+    private static void registerIntegerLongPlugins(InvocationPlugins plugins, JavaKind kind, Architecture arch) {
         Class<?> declaringClass = kind.toBoxedJavaClass();
         Class<?> type = kind.toJavaClass();
         Registration r = new Registration(plugins, declaringClass);
@@ -807,6 +808,27 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+
+        if (UnsignedCompareNode.reuseCompareInBackend(arch)) {
+            r.register(new InvocationPlugin("compareUnsigned", type, type) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                    b.addPush(JavaKind.Int, new UnsignedCompareNode(x, y));
+                    return true;
+                }
+            });
+        } else {
+            r.register(new InvocationPlugin("compareUnsigned", type, type) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                    LogicNode equal = b.add(IntegerEqualsNode.create(x, y, NodeView.DEFAULT));
+                    ValueNode equalOrAbove = b.add(ConditionalNode.create(equal, ConstantNode.forInt(0), ConstantNode.forInt(1), NodeView.DEFAULT));
+                    LogicNode below = b.add(IntegerBelowNode.create(x, y, NodeView.DEFAULT));
+                    b.addPush(JavaKind.Int, ConditionalNode.create(below, ConstantNode.forInt(-1), equalOrAbove, NodeView.DEFAULT));
+                    return true;
+                }
+            });
+        }
     }
 
     private static void registerCharacterPlugins(InvocationPlugins plugins) {

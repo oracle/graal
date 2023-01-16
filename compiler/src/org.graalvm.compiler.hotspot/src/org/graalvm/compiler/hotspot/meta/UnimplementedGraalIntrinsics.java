@@ -452,8 +452,6 @@ public final class UnimplementedGraalIntrinsics {
                             "com/sun/crypto/provider/Poly1305.processMultipleBlocks([BII[J[J)V",
                             "java/lang/Float.float16ToFloat(S)F",
                             "java/lang/Float.floatToFloat16(F)S",
-                            "java/lang/Integer.compareUnsigned(II)I",
-                            "java/lang/Long.compareUnsigned(JJ)I",
                             "java/lang/Thread.findScopedValueBindings()Ljava/lang/Object;",
                             "java/lang/Thread.scopedValueCache()[Ljava/lang/Object;",
                             "java/lang/Thread.setScopedValueCache([Ljava/lang/Object;)V",
