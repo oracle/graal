@@ -937,7 +937,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                     break;
                 case updateCG:
                     locals.setCaptureGroupBoundary(guard.getIndex(), index);
-                    if (isTrackLastGroup() && guard.getIndex() % 2 == 1 && guard.getIndex() > 1) {
+                    if (isTrackLastGroup() && guard.getIndex() % 2 != 0 && guard.getIndex() > 1) {
                         locals.setLastGroup(guard.getIndex() / 2);
                     }
                     break;
