@@ -455,14 +455,6 @@ public final class TruffleBaseFeature implements InternalFeature {
         if (needsAllEncodings) {
             ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$");
         }
-
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(ArrayBasedShapeGeneratorOffsetTransformer.SHAPE_GENERATOR, "byteArrayOffset"),
-                        new ArrayBasedShapeGeneratorOffsetTransformer("primitive"));
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(ArrayBasedShapeGeneratorOffsetTransformer.SHAPE_GENERATOR, "objectArrayOffset"),
-                        new ArrayBasedShapeGeneratorOffsetTransformer("object"));
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(ArrayBasedShapeGeneratorOffsetTransformer.SHAPE_GENERATOR, "shapeOffset"),
-                        new ArrayBasedShapeGeneratorOffsetTransformer("shape"));
-
     }
 
     @Override
@@ -797,6 +789,13 @@ public final class TruffleBaseFeature implements InternalFeature {
 
             static void beforeAnalysis(BeforeAnalysisAccess access) {
                 beforeAnalysisAccess = access;
+
+                access.registerFieldValueTransformer(ReflectionUtil.lookupField(ArrayBasedShapeGeneratorOffsetTransformer.SHAPE_GENERATOR, "byteArrayOffset"),
+                                new ArrayBasedShapeGeneratorOffsetTransformer("primitive"));
+                access.registerFieldValueTransformer(ReflectionUtil.lookupField(ArrayBasedShapeGeneratorOffsetTransformer.SHAPE_GENERATOR, "objectArrayOffset"),
+                                new ArrayBasedShapeGeneratorOffsetTransformer("object"));
+                access.registerFieldValueTransformer(ReflectionUtil.lookupField(ArrayBasedShapeGeneratorOffsetTransformer.SHAPE_GENERATOR, "shapeOffset"),
+                                new ArrayBasedShapeGeneratorOffsetTransformer("shape"));
             }
 
             static void onBuildInvocation(Class<?> storageSuperClass, Class<?> factoryInterface) {
