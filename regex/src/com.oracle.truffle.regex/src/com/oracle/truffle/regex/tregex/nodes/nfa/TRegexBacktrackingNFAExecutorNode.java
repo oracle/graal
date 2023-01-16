@@ -753,12 +753,12 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                     }
                     break;
                 case checkGroupMatched:
-                    if (getBackRefBoundary(locals, transition, guard.getIndex() * 2, index) == -1 || getBackRefBoundary(locals, transition, guard.getIndex() * 2, index) == -1) {
+                    if (getBackRefBoundary(locals, transition, guard.getIndex() * 2, index) == -1 || getBackRefBoundary(locals, transition, guard.getIndex() * 2 + 1, index) == -1) {
                         return false;
                     }
                     break;
                 case checkGroupNotMatched:
-                    if (getBackRefBoundary(locals, transition, guard.getIndex() * 2, index) != -1 && getBackRefBoundary(locals, transition, guard.getIndex() * 2, index) != -1) {
+                    if (getBackRefBoundary(locals, transition, guard.getIndex() * 2, index) != -1 && getBackRefBoundary(locals, transition, guard.getIndex() * 2 + 1, index) != -1) {
                         return false;
                     }
                     break;
