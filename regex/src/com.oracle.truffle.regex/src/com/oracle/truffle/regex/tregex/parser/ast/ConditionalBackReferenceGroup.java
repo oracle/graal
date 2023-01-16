@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.tregex.parser.ast;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
@@ -67,11 +68,52 @@ public final class ConditionalBackReferenceGroup extends Group {
         this.referencedGroupNumber = referencedGroupNumber;
     }
 
+    private ConditionalBackReferenceGroup(ConditionalBackReferenceGroup copy) {
+        super(copy);
+        referencedGroupNumber = copy.referencedGroupNumber;
+    }
+
     /**
      * Returns the index of the capture group that is referenced by this conditional expression.
      */
     public int getReferencedGroupNumber() {
         return referencedGroupNumber;
+    }
+
+    @Override
+    public ConditionalBackReferenceGroup copy(RegexAST ast) {
+        return ast.register(new ConditionalBackReferenceGroup(this));
+    }
+
+    @Override
+    public ConditionalBackReferenceGroup copyRecursive(RegexAST ast, CompilationBuffer compilationBuffer) {
+        ConditionalBackReferenceGroup copy = copy(ast);
+        for (Sequence s : getAlternatives()) {
+            copy.add(s.copyRecursive(ast, compilationBuffer));
+        }
+        return copy;
+    }
+
+    @Override
+    public boolean equalsSemantic(RegexASTNode obj, boolean ignoreQuantifier) {
+        if (obj == this) {
+            return true;
+        }
+        if (!(obj instanceof ConditionalBackReferenceGroup)) {
+            return false;
+        }
+        ConditionalBackReferenceGroup o = (ConditionalBackReferenceGroup) obj;
+        assert size() == 2 && o.size() == 2;
+        assert getGroupNumber() == -1 && o.getGroupNumber() == -1;
+        if (referencedGroupNumber != o.referencedGroupNumber || isLoop() != o.isLoop() || (!ignoreQuantifier && !quantifierEquals(o))) {
+            return false;
+        }
+        for (int i = 0; i < size(); i++) {
+            if (!getAlternatives().get(i).equalsSemantic(o.getAlternatives().get(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @CompilerDirectives.TruffleBoundary

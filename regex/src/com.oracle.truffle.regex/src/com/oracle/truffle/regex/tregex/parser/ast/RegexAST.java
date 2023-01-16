@@ -361,6 +361,11 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return group;
     }
 
+    public ConditionalBackReferenceGroup register(ConditionalBackReferenceGroup group) {
+        nodeCount.inc();
+        return group;
+    }
+
     public LookAheadAssertion register(LookAheadAssertion lookAheadAssertion) {
         nodeCount.inc();
         return lookAheadAssertion;

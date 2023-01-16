@@ -94,7 +94,7 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
         setGroupNumber(groupNumber);
     }
 
-    private Group(Group copy) {
+    protected Group(Group copy) {
         super(copy);
         groupNumber = copy.groupNumber;
         enclosedCaptureGroupsLow = copy.enclosedCaptureGroupsLow;
