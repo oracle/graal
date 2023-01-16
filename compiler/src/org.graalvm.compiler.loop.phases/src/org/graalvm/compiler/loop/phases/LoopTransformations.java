@@ -152,7 +152,7 @@ public abstract class LoopTransformations {
                     if (n.isAlive() && (n instanceof IfNode || n instanceof SwitchNode || n instanceof FixedGuardNode || n instanceof BeginNode)) {
                         Simplifiable s = (Simplifiable) n;
                         s.simplify(defaultSimplifier);
-                        graph.getOptimizationLog().report(LoopTransformations.class, "LoopCfgSimplification", n);
+                        graph.getOptimizationLog().report(LoopTransformations.class, "LoopFullUnrollCfgSimplification", n);
                     }
                 }
                 if (graph.getNodeCount() > initialNodeCount + MaximumDesiredSize.getValue(graph.getOptions()) * 2 ||
