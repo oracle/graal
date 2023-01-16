@@ -418,13 +418,17 @@ public class PythonTests extends RegexTestBase {
         // GR-42256
         test("(a)b(?<=(?(1)c|x))(c)", "", "abc", 0, false);
 
-        // test_re_groupref_exists
+        // test_groupref_exists
         test("^(\\()?([^()]+)(?(1)\\))$", "", "a", 0, true, 0, 1, -1, -1, 0, 1, 2);
-        // test_re_lookahead
+        // test_lookahead
         test("(?:(a)|(x))b(?=(?(2)x|c))c", "", "abc", 0, true, 0, 3, 0, 1, -1, -1, 1);
-        // test_re_lookbehind
+        test("(a)b(?=(?(2)x|c))(c)", "", "abc", 0, true, 0, 3, 0, 1, 2, 3, 2);
+        // test_lookbehind
         test("(?:(a)|(x))b(?<=(?(2)x|b))c", "", "abc", 0, true, 0, 3, 0, 1, -1, -1, 1);
-        expectSyntaxError("(a)b(?<=(?(2)b|x))(c)", "", "invalid group reference 2");
+
+        // Test that we respect the order of capture group updates and condition checks
+        test("(?(1)()a|b)", "", "a", 0, false);
+        test("(?(1)()a|b)", "", "b", 0, true, 0, 1, -1, -1, -1);
     }
 
     @Test
@@ -488,5 +492,8 @@ public class PythonTests extends RegexTestBase {
         expectSyntaxError("()(?(1)a|b", "", "missing ), unterminated subpattern", 2);
         expectSyntaxError("()(?(2)a)", "", "invalid group reference 2", 5);
         expectSyntaxError("(?(a))", "", "unknown group name 'a'", 3);
+        expectSyntaxError("(a)b(?<=(?(2)b|x))(c)", "", "cannot refer to an open group", 13);
+        expectSyntaxError("(?(2147483648)a|b)", "", "invalid group reference 2147483648", 3);
+        expectSyntaxError("(?(42)a|b)[", "", "unterminated character set", 10);
     }
 }

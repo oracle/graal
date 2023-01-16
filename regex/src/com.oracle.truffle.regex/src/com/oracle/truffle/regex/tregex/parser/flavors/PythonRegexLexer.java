@@ -602,7 +602,7 @@ public final class PythonRegexLexer extends RegexLexer {
                 }
             }
             case '(':
-                return parseConditionalBackreference();
+                return parseConditionalBackReference();
             case '-':
             case 'i':
             case 'L':
@@ -627,9 +627,9 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     /**
-     * Parses a conditional backreference, assuming that the prefix '(?(' was already parsed.
+     * Parses a conditional back-reference, assuming that the prefix '(?(' was already parsed.
      */
-    private Token parseConditionalBackreference() {
+    private Token parseConditionalBackReference() {
         final int groupNumber;
         ParseGroupNameResult result = parseGroupName(')');
         switch (result.state) {
@@ -639,20 +639,22 @@ public final class PythonRegexLexer extends RegexLexer {
                 throw syntaxErrorAtRel(PyErrorMessages.UNTERMINATED_NAME, result.groupName.length());
             case invalidStart:
             case invalidRest:
-                if (isDecimalDigit(result.groupName.charAt(0))) {
-                    try {
-                        groupNumber = Integer.parseInt(result.groupName);
-                        if (groupNumber == 0) {
-                            throw syntaxErrorAtRel(PyErrorMessages.BAD_GROUP_NUMBER, result.groupName.length() + 1);
-                        } else if (groupNumber >= nGroups) {
-                            throw syntaxErrorAtRel(PyErrorMessages.invalidGroupReference(result.groupName), result.groupName.length() + 1);
-                        }
-                        break;
-                    } catch (NumberFormatException e) {
-                        // fallthrough
-                    }
+                position -= result.groupName.length() + 1;
+                assert lookahead(result.groupName + ")");
+                int groupNumberLength = countDecimalDigits();
+                if (groupNumberLength != result.groupName.length()) {
+                    position += result.groupName.length() + 1;
+                    throw handleBadCharacterInGroupName(result);
                 }
-                throw handleBadCharacterInGroupName(result);
+                groupNumber = parseIntSaturated(0, result.groupName.length(), -1);
+                assert curChar() == ')';
+                advance();
+                if (groupNumber == 0) {
+                    throw syntaxErrorAtRel(PyErrorMessages.BAD_GROUP_NUMBER, result.groupName.length() + 1);
+                } else if (groupNumber == -1) {
+                    throw syntaxErrorAtRel(PyErrorMessages.invalidGroupReference(result.groupName), result.groupName.length() + 1);
+                }
+                break;
             case valid:
                 // group referenced by name
                 if (namedCaptureGroups != null && namedCaptureGroups.containsKey(result.groupName)) {

@@ -100,6 +100,9 @@ patterns = [
     r'()(?(1)a|b',
     r'()(?(2)a)',
     r'(?(a))',
+    r'(a)b(?<=(?(2)b|x))(c)',
+    r'(?(2147483648)a|b)',
+    r'(?(42)a|b)[',
 ]
 
 def escape_backslash(string):
