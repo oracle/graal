@@ -428,27 +428,37 @@ final class BundleSupport {
     }
 
     void complete() {
-        if (Files.exists(outputDir)) {
-            copyFiles(outputDir, bundlePath.resolve(nativeImage.imageName + "." + outputDir.getFileName()), true);
+        assert status.buildImage || status.writeBundle : "Superfluous bundle operations";
+
+        Path workDir = nativeImage.config.getWorkingDirectory();
+
+        if (status.buildImage) {
+            Path externalOutputDir = bundlePath.resolve(nativeImage.imageName + "." + outputDir.getFileName());
+            copyFiles(outputDir, externalOutputDir, true);
+            nativeImage.showNewline();
+            nativeImage.showMessage("Bundle output written to " + workDir.relativize(externalOutputDir));
         }
 
         try {
-            writeBundle();
+            if (status.writeBundle) {
+                Path bundleFilePath = writeBundle();
+                if (!status.buildImage) {
+                    nativeImage.showNewline();
+                }
+                nativeImage.showMessage("Bundle written to " + workDir.relativize(bundleFilePath));
+            }
         } finally {
+            nativeImage.showNewline();
             nativeImage.deleteAllFiles(rootDir);
         }
     }
 
-    public void setBundleLocation(Path imagePath, String imageName) {
+    void setBundleLocation(Path imagePath, String imageName) {
         bundlePath = imagePath;
         bundleName = imageName + bundleFileExtension;
     }
 
-    void writeBundle() {
-        if (!status.writeBundle) {
-            return;
-        }
-
+    private Path writeBundle() {
         String originalOutputDirName = outputDir.getFileName().toString() + originalDirExtension;
         Path originalOutputDir = rootDir.resolve(originalOutputDirName);
         if (Files.exists(originalOutputDir)) {
@@ -503,7 +513,8 @@ final class BundleSupport {
             throw NativeImage.showError("Failed to write bundle-file " + pathSubstitutionsFile, e);
         }
 
-        try (JarOutputStream jarOutStream = new JarOutputStream(Files.newOutputStream(bundlePath.resolve(bundleName)), new Manifest())) {
+        Path bundleFilePath = this.bundlePath.resolve(bundleName);
+        try (JarOutputStream jarOutStream = new JarOutputStream(Files.newOutputStream(bundleFilePath), new Manifest())) {
             try (Stream<Path> walk = Files.walk(rootDir)) {
                 walk.forEach(bundleEntry -> {
                     if (Files.isDirectory(bundleEntry)) {
@@ -524,6 +535,8 @@ final class BundleSupport {
         } catch (IOException e) {
             throw NativeImage.showError("Failed to create bundle file " + bundleName, e);
         }
+
+        return bundleFilePath;
     }
 
     private static final String substitutionMapSrcField = "src";
