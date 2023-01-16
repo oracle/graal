@@ -78,7 +78,14 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         }
     }
 
+    private enum NativizedState {
+        Managed,
+        Conversion,
+        Native
+    }
+
     private long address;
+    private volatile NativizedState nativizedState = NativizedState.Managed;
 
     @CompilationFinal private State contents;
 
@@ -150,9 +157,25 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         fallbackContents = value;
     }
 
+    @TruffleBoundary
+    public synchronized void waitForToNative() {
+        assert nativizedState != NativizedState.Managed;
+    }
+
     @ExportMessage
     public boolean isPointer() {
-        return address != 0;
+        switch (nativizedState) {
+            case Managed:
+                return false;
+            case Conversion:
+                // ensures the nativization is completed first if running on another thread
+                waitForToNative();
+                return true;
+            case Native:
+                return true;
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
     }
 
     @ExportMessage
@@ -175,16 +198,22 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
 
     @ExportMessage
     public void toNative() {
-        if (address == 0) {
+        if (!isPointer()) {
+            // Only perform to native if no other thread is performing to native
             doToNative();
         }
     }
 
     @TruffleBoundary
     private synchronized void doToNative() {
-        if (address == 0) {
+        if (nativizedState == NativizedState.Managed) {
             LLVMMemory memory = LLVMLanguage.get(null).getLLVMMemory();
             LLVMNativePointer pointer = memory.allocateMemory(null, 8);
+
+            // The global container will only be visible as native to this thread
+            address = pointer.asNative();
+            nativizedState = NativizedState.Conversion;
+
             long value;
             Object global = getFallback();
             if (global instanceof Number) {
@@ -193,8 +222,9 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
                 value = LLVMNativePointerSupportFactory.ToNativePointerNodeGen.getUncached().execute(global).asNative();
             }
             memory.putI64(LLVMNativePointerSupportFactory.ToNativePointerNodeGen.getUncached(), pointer, value);
-            // only set the address once the container has been prepared
-            address = pointer.asNative();
+
+            // The global container will be visible as native to all threads
+            nativizedState = NativizedState.Native;
         }
     }
 
