@@ -430,13 +430,11 @@ final class BundleSupport {
     void complete() {
         assert status.buildImage || status.writeBundle : "Superfluous bundle operations";
 
-        Path workDir = nativeImage.config.getWorkingDirectory();
-
         if (status.buildImage) {
             Path externalOutputDir = bundlePath.resolve(nativeImage.imageName + "." + outputDir.getFileName());
             copyFiles(outputDir, externalOutputDir, true);
             nativeImage.showNewline();
-            nativeImage.showMessage("Bundle output written to " + workDir.relativize(externalOutputDir));
+            nativeImage.showMessage("Bundle output written to " + externalOutputDir);
         }
 
         try {
@@ -445,7 +443,7 @@ final class BundleSupport {
                 if (!status.buildImage) {
                     nativeImage.showNewline();
                 }
-                nativeImage.showMessage("Bundle written to " + workDir.relativize(bundleFilePath));
+                nativeImage.showMessage("Bundle written to " + bundleFilePath);
             }
         } finally {
             nativeImage.showNewline();
