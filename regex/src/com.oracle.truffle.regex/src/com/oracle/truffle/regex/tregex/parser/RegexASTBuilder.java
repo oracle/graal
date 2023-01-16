@@ -136,6 +136,10 @@ public final class RegexASTBuilder {
         return curTerm;
     }
 
+    /**
+     * Returns the code position of the beginning (opening parenthesis) of the current {@link Group}
+     * ({@link #getCurGroup()}).
+     */
     public int getCurGroupStartPosition() {
         return groupStartPositions.get(curGroup, 0);
     }
@@ -264,6 +268,13 @@ public final class RegexASTBuilder {
         pushLookBehindAssertion(null, negate);
     }
 
+    /**
+     * Creates and enters a new atomic group. This call should be paired with a call to
+     * {@link #popGroup}.
+     *
+     * @param token a {@link Token} whose source section should be included in the group's source
+     *            sections, or {@code null} if none
+     */
     public void pushAtomicGroup(Token token) {
         AtomicGroup atomicGroup = ast.createAtomicGroup();
         ast.addSourceSection(atomicGroup, token);
@@ -275,6 +286,15 @@ public final class RegexASTBuilder {
         pushAtomicGroup(null);
     }
 
+    /**
+     * Creates and enters a new conditional back-reference group. This call should be paired with a
+     * call to {@link #popGroup}.
+     *
+     * @param token a {@link Token} whose source section should be included in the group's source
+     *            sections, or {@code null} if none
+     * @param referencedGroupNumber the number of the capture group referenced by the group's
+     *            condition
+     */
     public void pushConditionalBackReferenceGroup(Token token, int referencedGroupNumber) {
         pushGroup(token, ast.createConditionalBackReferenceGroup(referencedGroupNumber), null);
     }

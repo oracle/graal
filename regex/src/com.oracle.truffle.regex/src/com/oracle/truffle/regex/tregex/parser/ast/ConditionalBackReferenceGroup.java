@@ -44,14 +44,32 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
+/**
+ * Conditional back-reference groups represent the following construct found, e.g., in Python:
+ * <p>
+ * {@code (?(group_name)then_branch|else_branch}
+ * <p>
+ * Every conditional back-reference group has exactly 2 alternatives. The first alternative can only
+ * be taken if the referenced group was matched and the second alternative can be taken only if the
+ * referenced group was *not* matched.
+ */
 public final class ConditionalBackReferenceGroup extends Group {
 
     private final int referencedGroupNumber;
 
+    /**
+     * Creates an empty conditional back-reference group. It should later be filled with exactly 2
+     * {@link Sequence}s as its alternatives.
+     * 
+     * @param referencedGroupNumber The number of the capture group referenced in the condition.
+     */
     public ConditionalBackReferenceGroup(int referencedGroupNumber) {
         this.referencedGroupNumber = referencedGroupNumber;
     }
 
+    /**
+     * Returns the index of the capture group that is referenced by this conditional expression.
+     */
     public int getReferencedGroupNumber() {
         return referencedGroupNumber;
     }

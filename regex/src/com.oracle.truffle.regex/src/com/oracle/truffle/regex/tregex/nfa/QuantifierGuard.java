@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.nfa;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
+import com.oracle.truffle.regex.tregex.parser.ast.ConditionalBackReferenceGroup;
 
 import java.util.Objects;
 
@@ -115,7 +116,17 @@ public final class QuantifierGuard {
          * {@link #exitZeroWidth}.
          */
         updateCG,
+        /**
+         * Transition is entering the then-branch (the first alternative) of a
+         * {@link ConditionalBackReferenceGroup}. The capture group identified by
+         * {@link #getIndex()} must be matched in order to proceed.
+         */
         checkGroupMatched,
+        /**
+         * Transition is entering the else-branch (the second alternative) of a
+         * {@link ConditionalBackReferenceGroup}. The capture group identified by
+         * {@link #getIndex()} must be *not* matched in order to proceed.
+         */
         checkGroupNotMatched
     }
 
