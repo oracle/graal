@@ -62,23 +62,19 @@ final class BundleSupport {
     static final String BUNDLE_OPTION = "--bundle";
 
     enum BundleStatus {
-        prepare(false, false, true),
-        create(false, false, true),
-        update(false, true, true),
-        apply(true, true, false);
+        create(false, true, true),
+        apply(true, false, true),
+        prepare(false, true, false),
+        amend(true, true, false);
 
-        final boolean hidden;
         final boolean loadBundle;
         final boolean writeBundle;
+        final boolean buildImage;
 
-        BundleStatus(boolean hidden, boolean loadBundle, boolean writeBundle) {
-            this.hidden = hidden;
+        BundleStatus(boolean loadBundle, boolean writeBundle, boolean buildImage) {
             this.loadBundle = loadBundle;
             this.writeBundle = writeBundle;
-        }
-
-        boolean show() {
-            return !hidden;
+            this.buildImage = buildImage;
         }
     }
 
@@ -114,20 +110,13 @@ final class BundleSupport {
         }
 
         BundleStatus bundleStatus;
-        if (bundleArg.equals(BUNDLE_OPTION)) {
-            /* Handle short form of --bundle-apply */
-            bundleStatus = BundleStatus.apply;
-        } else {
-            String bundleVariant = bundleArg.substring(BUNDLE_OPTION.length() + 1);
-            try {
-                bundleStatus = BundleStatus.valueOf(bundleVariant);
-            } catch (IllegalArgumentException e) {
-                String suggestedVariants = Arrays.stream(BundleStatus.values())
-                                .filter(BundleStatus::show)
-                                .map(v -> BUNDLE_OPTION + "-" + v)
-                                .collect(Collectors.joining(", "));
-                throw NativeImage.showError("Unknown option " + bundleArg + ". Valid variants are: " + suggestedVariants + ".");
-            }
+        try {
+            bundleStatus = BundleStatus.valueOf(bundleArg.substring(BUNDLE_OPTION.length() + 1));
+        } catch (StringIndexOutOfBoundsException | IllegalArgumentException e) {
+            String suggestedVariants = Arrays.stream(BundleStatus.values())
+                            .map(v -> BUNDLE_OPTION + "-" + v)
+                            .collect(Collectors.joining(", "));
+            throw NativeImage.showError("Unknown option " + bundleArg + ". Valid variants are: " + suggestedVariants + ".");
         }
         BundleSupport bundleSupport;
         if (bundleStatus.loadBundle) {
@@ -361,6 +350,7 @@ final class BundleSupport {
             /* Refuse /, C:, D:, ... */
             if (origPath.equals(rootDirectory)) {
                 forbiddenPath = true;
+                break;
             }
         }
         if (forbiddenPath) {
@@ -555,7 +545,7 @@ final class BundleSupport {
         }
 
         @Override
-        public void parseAndRegister(Object json, URI origin) throws IOException {
+        public void parseAndRegister(Object json, URI origin) {
             for (var rawEntry : asList(json, "Expected a list of path substitution objects")) {
                 var entry = asMap(rawEntry, "Expected a substitution object");
                 Object srcPathString = entry.get(substitutionMapSrcField);
@@ -581,7 +571,7 @@ final class BundleSupport {
         }
 
         @Override
-        public void parseAndRegister(Object json, URI origin) throws IOException {
+        public void parseAndRegister(Object json, URI origin) {
             for (var arg : asList(json, "Expected a list of arguments")) {
                 args.add(arg.toString());
             }

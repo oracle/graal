@@ -1412,7 +1412,7 @@ public class NativeImage {
             showVerboseMessage(isVerbose() || dryRun, "]");
         }
 
-        if (dryRun || useBundle() && bundleSupport.status == BundleSupport.BundleStatus.prepare) {
+        if (dryRun || useBundle() && !bundleSupport.status.buildImage) {
             return ExitStatus.OK.getValue();
         }
 
