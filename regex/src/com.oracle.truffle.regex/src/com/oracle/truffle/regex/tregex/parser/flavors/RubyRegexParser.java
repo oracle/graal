@@ -521,6 +521,12 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         }
     }
 
+    private void pushConditionalBackReferenceGroup(int referencedGroupNumber) {
+        if (!silent) {
+            astBuilder.pushConditionalBackReferenceGroup(referencedGroupNumber);
+        }
+    }
+
     private void pushLookAheadAssertion(boolean negate) {
         if (!silent) {
             astBuilder.pushLookAheadAssertion(negate);
@@ -2235,7 +2241,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                     break;
 
                 case '(':
-                    conditionalBackreference();
+                    conditionalBackReference();
                     break;
 
                 case '~':
@@ -2369,27 +2375,33 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     }
 
     /**
-     * Parses a conditional backreference, assuming that the prefix '(?(' was already parsed.
+     * Parses a conditional back-reference, assuming that the prefix '(?(' was already parsed.
      */
-    private void conditionalBackreference() {
-        bailOut("conditional backreference groups not supported");
+    private void conditionalBackReference() {
+        List<Integer> groupNumbers;
         if (match("<")) {
-            parseGroupReference('>', true, true, true, true);
+            groupNumbers = parseGroupReference('>', true, true, true, true);
             mustMatch(")");
         } else if (match("'")) {
-            parseGroupReference('\'', true, true, true, true);
+            groupNumbers = parseGroupReference('\'', true, true, true, true);
             mustMatch(")");
         } else if (isDecDigit(curChar())) {
-            parseGroupReference(')', true, false, true, true);
+            groupNumbers = parseGroupReference(')', true, false, true, true);
         } else {
             throw syntaxErrorHere(RbErrorMessages.INVALID_GROUP_NAME);
         }
-        disjunction();
+        pushConditionalBackReferenceGroup(groupNumbers.get(0));
+        alternative();
         if (match("|")) {
-            disjunction();
+            nextSequence();
+            canHaveQuantifier = false;
+            alternative();
             if (curChar() == '|') {
                 throw syntaxErrorHere(RbErrorMessages.CONDITIONAL_BACKREF_WITH_MORE_THAN_TWO_BRANCHES);
             }
+        } else {
+            // Generate the implicit empty else-branch, if it was not specified.
+            nextSequence();
         }
         if (!match(")")) {
             throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
