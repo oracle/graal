@@ -58,6 +58,8 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Introspectable;
@@ -668,7 +670,10 @@ public class AOTSupportTest extends AbstractPolyglotTest {
             }
 
             @Specialization(guards = {"arg == 10"})
-            static int nop2(AOTInitializable receiver, int arg) {
+            static int nop2(AOTInitializable receiver, int arg,
+                            @Bind("$node") Node node,
+                            @Cached AOTInlineAndReplaceTest test) {
+                test.execute(node, 42);
                 return arg;
             }
 
@@ -771,6 +776,26 @@ public class AOTSupportTest extends AbstractPolyglotTest {
             return dispatchTarget;
         }
 
+    }
+
+    @GenerateInline(true)
+    @GenerateCached(false)
+    @GenerateAOT
+    @GenerateUncached
+    @SuppressWarnings("unused")
+    abstract static class AOTInlineAndReplaceTest extends Node {
+
+        abstract Object execute(Node node, Object arg);
+
+        @Specialization
+        String s0(String value) {
+            return "s0";
+        }
+
+        @Specialization(replaces = "s0")
+        String s1(int value) {
+            return "s1";
+        }
     }
 
     @ExportLibrary(value = AOTTestLibrary.class, receiverType = AOTDynamicDispatch.class, useForAOT = true, useForAOTPriority = 1)
