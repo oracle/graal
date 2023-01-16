@@ -69,6 +69,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.ResourceLimitEvent;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.ByteSequence;
@@ -231,11 +232,13 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @SuppressWarnings("unchecked")
     @Override
-    public Engine buildEngine(String[] permittedLanguages, OutputStream out, OutputStream err, InputStream in, Map<String, String> originalOptions, boolean useSystemProperties,
+    public Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> originalOptions,
+                    boolean useSystemProperties,
                     final boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, LogHandler logHandler, Object hostLanguage, boolean hostLanguageOnly,
                     boolean registerInActiveEngines, AbstractPolyglotHostService polyglotHostService) {
         PolyglotEngineImpl impl = null;
         try {
+            validateSandbox(sandboxPolicy);
             if (TruffleOptions.AOT) {
                 EngineAccessor.ACCESSOR.initializeNativeImageTruffleLocator();
             }
@@ -271,7 +274,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
             if (impl != null) {
                 assert hostLanguage.getClass() == impl.getHostLanguageSPI().getClass() || PreInitContextHostLanguage.isInstance(impl.hostLanguage);
-                impl.patch(dispatchOut,
+                impl.patch(sandboxPolicy, dispatchOut,
                                 dispatchErr,
                                 resolvedIn,
                                 engineOptions,
@@ -286,7 +289,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
             }
             if (impl == null) {
-                impl = new PolyglotEngineImpl(this,
+                impl = new PolyglotEngineImpl(this, sandboxPolicy,
                                 permittedLanguages,
                                 dispatchOut,
                                 dispatchErr,
@@ -303,6 +306,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 hostLanguageOnly,
                                 usePolyglotHostService);
             }
+            impl.validateOptionsSandbox();
             return getAPIAccess().newEngine(engineDispatch, impl, registerInActiveEngines);
         } catch (Throwable t) {
             if (impl == null) {
@@ -310,6 +314,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             } else {
                 throw PolyglotImpl.guestToHostException(impl, t);
             }
+        }
+    }
+
+    private void validateSandbox(SandboxPolicy sandboxPolicy) {
+        if (sandboxPolicy.ordinal() > SandboxPolicy.RELAXED.ordinal()) {
+            throw PolyglotEngineException.illegalArgument(String.format("The sandbox policy %s is not supported by the GraalVM community edition.", sandboxPolicy));
         }
     }
 
@@ -360,7 +370,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         DispatchOutputStream err = INSTRUMENT.createDispatchOutput(System.err);
         LogHandler logHandler = PolyglotEngineImpl.createLogHandler(this, logConfig, err);
         EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
-        final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, new String[0], out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
+        final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, SandboxPolicy.TRUSTED, new String[0], out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
                         true, true, null, logHandler, hostLanguage, false, new DefaultPolyglotHostService(this));
         getAPIAccess().newEngine(engineDispatch, engine, false);
         return engine;
@@ -497,6 +507,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public boolean isInternalFileSystem(FileSystem fileSystem) {
         return FileSystems.isInternal(getRootImpl(), fileSystem);
+    }
+
+    @Override
+    public boolean isHostFileSystem(FileSystem fileSystem) {
+        return FileSystems.isHostFileSystem(fileSystem);
     }
 
     @Override

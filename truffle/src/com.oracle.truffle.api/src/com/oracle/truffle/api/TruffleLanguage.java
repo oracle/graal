@@ -3511,7 +3511,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         public SandboxPolicy getSandboxPolicy() {
-            return null;
+            return LanguageAccessor.engineAccess().getContextSandboxPolicy(this.polyglotLanguageContext);
         }
 
         /*

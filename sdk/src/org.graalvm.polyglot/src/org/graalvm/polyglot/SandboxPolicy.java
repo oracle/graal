@@ -93,7 +93,12 @@ public enum SandboxPolicy {
      *
      * @since 23.0
      */
-    TRUSTED,
+    TRUSTED {
+        @Override
+        HostAccess createDefaultHostAccess(boolean allAccess) {
+            return allAccess ? HostAccess.ALL : HostAccess.EXPLICIT;
+        }
+    },
 
     /**
      * Policy intended for trusted, but potentially buggy applications. In this mode any access to
@@ -150,7 +155,13 @@ public enum SandboxPolicy {
      *
      * @since 23.0
      */
-    RELAXED,
+    RELAXED {
+        @Override
+        HostAccess createDefaultHostAccess(boolean allAccess) {
+            assert !allAccess : "All access cannot be enabled";
+            return HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).allowImplementationsAnnotatedBy(HostAccess.Implementable.class).allowMutableTargetMappings().build();
+        }
+    },
 
     /**
      * Policy intended for trusted, but applications that might have security vulnerabilities. For
@@ -175,7 +186,14 @@ public enum SandboxPolicy {
      *
      * TODO minimal example that fullfils the critera
      */
-    ISOLATED,
+    ISOLATED {
+        @Override
+        HostAccess createDefaultHostAccess(boolean allAccess) {
+            assert !allAccess : "All access cannot be enabled";
+            return HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).allowImplementationsAnnotatedBy(HostAccess.Implementable.class).allowMutableTargetMappings().methodScoping(
+                            true).build();
+        }
+    },
 
     /**
      * Policy intended for fully untrusted applications. This assumes that a malicious actor is
@@ -197,6 +215,13 @@ public enum SandboxPolicy {
      * TODO minimal example that fullfils the critera
      *
      */
-    UNTRUSTED;
+    UNTRUSTED {
+        @Override
+        HostAccess createDefaultHostAccess(boolean allAccess) {
+            return ISOLATED.createDefaultHostAccess(allAccess);
+        }
+    };
+
+    abstract HostAccess createDefaultHostAccess(boolean allAccess);
 
 }

@@ -55,6 +55,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 import org.graalvm.home.Version;
+import org.graalvm.polyglot.SandboxPolicy;
 
 final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -306,5 +307,9 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
 
     String getWebsite() {
         return websiteSubstitutions(cache.getWebsite());
+    }
+
+    public SandboxPolicy getSandboxPolicy() {
+        return cache.getSandboxPolicy();
     }
 }

@@ -128,6 +128,10 @@ final class FileSystems {
         return fileSystem instanceof PolyglotFileSystem && ((PolyglotFileSystem) fileSystem).isInternal(polyglot);
     }
 
+    static boolean isHostFileSystem(FileSystem fileSystem) {
+        return fileSystem instanceof PolyglotFileSystem && ((PolyglotFileSystem) fileSystem).isHost();
+    }
+
     static Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> newFileTypeDetectorsSupplier(Iterable<LanguageCache> languageCaches) {
         return new FileTypeDetectorsSupplier(languageCaches);
     }
@@ -270,6 +274,11 @@ final class FileSystems {
         @Override
         public boolean hasNoAccess() {
             return delegate instanceof PolyglotFileSystem && ((PolyglotFileSystem) delegate).hasNoAccess();
+        }
+
+        @Override
+        public boolean isHost() {
+            return delegate instanceof PolyglotFileSystem && ((PolyglotFileSystem) delegate).isHost();
         }
 
         @Override
@@ -733,6 +742,11 @@ final class FileSystems {
         }
 
         @Override
+        public boolean isHost() {
+            return isDefault;
+        }
+
+        @Override
         public Path parsePath(URI uri) {
             if (!fileSystemProvider.getScheme().equals(uri.getScheme())) {
                 // Throw a UnsupportedOperationException with a better message than the default
@@ -1015,6 +1029,11 @@ final class FileSystems {
         }
 
         @Override
+        public boolean isHost() {
+            return false;
+        }
+
+        @Override
         public Path parsePath(final URI uri) {
             if (!defaultFileSystemProvider.getScheme().equals(uri.getScheme())) {
                 // Throw a UnsupportedOperationException with a better message than the default
@@ -1152,6 +1171,11 @@ final class FileSystems {
         @Override
         public boolean hasNoAccess() {
             return (delegateFileSystem instanceof PolyglotFileSystem) && ((PolyglotFileSystem) delegateFileSystem).hasNoAccess();
+        }
+
+        @Override
+        public boolean isHost() {
+            return (delegateFileSystem instanceof PolyglotFileSystem) && ((PolyglotFileSystem) delegateFileSystem).isHost();
         }
 
         @Override
@@ -1575,6 +1599,11 @@ final class FileSystems {
         }
 
         @Override
+        public boolean isHost() {
+            return false;
+        }
+
+        @Override
         public Path parsePath(URI uri) {
             throw new UnsupportedOperationException("ParsePath not supported on InvalidFileSystem");
         }
@@ -1695,6 +1724,8 @@ final class FileSystems {
         boolean isInternal(AbstractPolyglotImpl polyglot);
 
         boolean hasNoAccess();
+
+        boolean isHost();
     }
 
     private static SecurityException forbidden(final Path path) {

@@ -61,6 +61,7 @@ import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.IOAccessor;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
@@ -1066,6 +1067,7 @@ public final class Context implements AutoCloseable {
                 Objects.requireNonNull(language);
             }
             this.permittedLanguages = permittedLanguages;
+            this.sandboxPolicy = SandboxPolicy.TRUSTED;
         }
 
         /**
@@ -1681,6 +1683,7 @@ public final class Context implements AutoCloseable {
         }
 
         public Builder sandbox(SandboxPolicy policy) {
+            Engine.validateSandboxPolicy(this.sandboxPolicy, policy);
             this.sandboxPolicy = policy;
             return this;
         }
@@ -1785,18 +1788,110 @@ public final class Context implements AutoCloseable {
         }
 
         void validateSandbox() {
-            if (sandboxPolicy == null || sandboxPolicy == SandboxPolicy.TRUSTED) {
+            if (sandboxPolicy == SandboxPolicy.TRUSTED) {
                 return;
             }
-
-            // TODO permittedLanguages can maybe inferred with an explicit engine?
-            if (permittedLanguages == null || permittedLanguages.length == 0) {
-                throw new IllegalArgumentException(
-                                String.format("If sandbox policy %s is set, the number of languages needs to be set for a context. For example, Context.newBuilder(\"js\").", this.sandboxPolicy));
+            if (sandboxPolicy.ordinal() >= SandboxPolicy.RELAXED.ordinal()) {
+                // TODO permittedLanguages can maybe inferred with an explicit engine?
+                if (permittedLanguages == null || permittedLanguages.length == 0) {
+                    throw new IllegalArgumentException(
+                                    String.format("If the sandbox policy %s is set, the number of languages needs to be set for a context. For example, Context.newBuilder(\"js\").",
+                                                    this.sandboxPolicy));
+                }
+                if (allowAllAccess) {
+                    throw new IllegalArgumentException(
+                                    String.format("If the sandbox policy %s is set, allowAllAccess must not be set for the context.", this.sandboxPolicy));
+                }
+                if (Boolean.TRUE.equals(allowNativeAccess)) {
+                    throw new IllegalArgumentException(
+                                    String.format("If the sandbox policy %s is set, allowNativeAccess must not be set for the context.", this.sandboxPolicy));
+                }
+                if (Boolean.TRUE.equals(allowHostClassLoading)) {
+                    throw new IllegalArgumentException(
+                                    String.format("If the sandbox policy %s is set, allowHostClassLoading must not be set for the context.", this.sandboxPolicy));
+                }
+                if (Boolean.TRUE.equals(allowCreateProcess)) {
+                    throw new IllegalArgumentException(
+                                    String.format("If the sandbox policy %s is set, allowCreateProcess must not be set for the context.", this.sandboxPolicy));
+                }
+                if (useSystemExit) {
+                    throw new IllegalArgumentException(
+                                    String.format("If the sandbox policy %s is set, useSystemExit must not be set for the context.", this.sandboxPolicy));
+                }
+                if (Engine.isSystemStream(in) || Engine.isSystemStream(out) || Engine.isSystemStream(err)) {
+                    throw new IllegalArgumentException(
+                                    String.format("If the sandbox policy %s is set, the stdin, stdout and stderr for the context cannot be redirected to System.in, System.out or System.err.",
+                                                    this.sandboxPolicy));
+                }
+                FileSystem fileSystem = null;
+                if (ioAccess != null) {
+                    if (ioAccess == IOAccess.ALL) {
+                        throw new IllegalArgumentException(
+                                        String.format("If the sandbox policy %s is set, the allowIO value for the context must not be set to IOAccess.ALL.", this.sandboxPolicy));
+                    }
+                    IOAccessor ioAccessor = Engine.getImpl().getIO();
+                    if (ioAccessor.hasHostFileAccess(ioAccess)) {
+                        throw new IllegalArgumentException(
+                                        String.format("If the sandbox policy %s is set, the IOAccess used for allowIO must not have the allowHostFileAccess set.", this.sandboxPolicy));
+                    }
+                    if (ioAccessor.hasHostSocketAccess(ioAccess)) {
+                        throw new IllegalArgumentException(
+                                        String.format("If the sandbox policy %s is set, the IOAccess used for allowIO must not have the allowHostSocketAccess set.", this.sandboxPolicy));
+                    }
+                    assert customFileSystem == null;
+                    fileSystem = ioAccessor.getFileSystem(ioAccess);
+                } else {
+                    fileSystem = customFileSystem;
+                }
+                if (fileSystem != null && Engine.getImpl().isHostFileSystem(fileSystem)) {
+                    throw new IllegalArgumentException(String.format("If the sandbox policy %s is set, the default (host) file system must not be set for a context.", this.sandboxPolicy));
+                }
+                if (Boolean.TRUE.equals(allowIO)) {
+                    throw new IllegalArgumentException(
+                                    String.format("If the sandbox policy %s is set, the allowIO value for the context must not be set to true.", this.sandboxPolicy));
+                }
+                if (environmentAccess != EnvironmentAccess.NONE) {
+                    throw new IllegalArgumentException(
+                                    String.format("If the sandbox policy %s is set, the allowEnvironmentAccess value for the context must be set to EnvironmentAccess.NONE. For example, Context.newBuilder(\"js\").allowEnvironmentAccess(EnvironmentAccess.NONE).",
+                                                    this.sandboxPolicy));
+                }
+                if (Boolean.TRUE.equals(allowHostAccess)) {
+                    throw new IllegalArgumentException(
+                                    String.format("If the sandbox policy %s is set, allowHostAccess must not be set for the context.", this.sandboxPolicy));
+                }
+                if (hostClassFilter == UNSET_HOST_LOOKUP) {
+                    throw new IllegalArgumentException(
+                                    String.format("If the sandbox policy %s is set, allowHostClassLookup needs to be set for a context. For example, Context.newBuilder(\"js\").allowHostClassLookup(cn -> cn.startsWith(\"com.mycompany.hostclasses.\")).",
+                                                    this.sandboxPolicy));
+                }
+                if (hostAccess != null) {
+                    if (hostAccess == HostAccess.ALL) {
+                        throw new IllegalArgumentException(
+                                        String.format("If the sandbox policy %s is set, the allowHostAccess value for the context must not be set to HostAccess.ALL.", this.sandboxPolicy));
+                    }
+                    if (hostAccess.allowPublic) {
+                        throw new IllegalArgumentException(
+                                        String.format("If the sandbox policy %s is set, the HostAccess used for allowHostAccess must not have the allowPublicAccess set.", this.sandboxPolicy));
+                    }
+                    if (hostAccess.allowAccessInheritance) {
+                        throw new IllegalArgumentException(
+                                        String.format("If the sandbox policy %s is set, the HostAccess used for allowHostAccess must not have the allowAccessInheritance set.", this.sandboxPolicy));
+                    }
+                    HostAccess.MutableTargetMapping[] mutableTargetMappings = hostAccess.getMutableTargetMappings();
+                    if (mutableTargetMappings.length > 0) {
+                        throw new IllegalArgumentException(
+                                        String.format("If the sandbox policy %s is set, the HostAccess used for allowHostAccess must not have the allowMutableTargetMappings set.",
+                                                        this.sandboxPolicy));
+                    }
+                }
             }
-
-            // TODO validate basic stuff that can be validated here
-
+            if (sandboxPolicy.ordinal() >= SandboxPolicy.ISOLATED.ordinal()) {
+                if (hostAccess != null && hostAccess.isMethodScopingEnabled()) {
+                    throw new IllegalArgumentException(
+                                    String.format("If the sandbox policy %s is set, the HostAccess used for allowHostAccess must have the methodScoping set.",
+                                                    this.sandboxPolicy));
+                }
+            }
         }
 
         /**
@@ -1840,8 +1935,7 @@ public final class Context implements AutoCloseable {
                 hostAccess = HostAccess.ALL;
             }
             if (hostAccess == null) {
-                // TODO preset sandbox for host access
-                hostAccess = this.allowAllAccess ? HostAccess.ALL : HostAccess.EXPLICIT;
+                hostAccess = sandboxPolicy.createDefaultHostAccess(allowAllAccess);
             }
 
             PolyglotAccess polyglotAccess = this.polyglotAccess;
@@ -1862,10 +1956,7 @@ public final class Context implements AutoCloseable {
             }
 
             boolean createProcess = orAllAccess(allowCreateProcess);
-            // TODO preset sandbox for environment access
-            if (environmentAccess == null) {
-                environmentAccess = this.allowAllAccess ? EnvironmentAccess.INHERIT : EnvironmentAccess.NONE;
-            }
+            EnvironmentAccess useEnvironmentAccess = environmentAccess != null ? environmentAccess : allowAllAccess ? EnvironmentAccess.INHERIT : EnvironmentAccess.NONE;
             Object limits;
             if (resourceLimits != null) {
                 limits = resourceLimits.receiver;
@@ -1939,10 +2030,10 @@ public final class Context implements AutoCloseable {
                 contextIn = in;
             }
             LogHandler logHandler = customLogHandler != null ? Engine.getImpl().newLogHandler(customLogHandler) : null;
-            ctx = engine.dispatch.createContext(engine.receiver, contextOut, contextErr, contextIn, hostClassLookupEnabled,
+            ctx = engine.dispatch.createContext(engine.receiver, sandboxPolicy, contextOut, contextErr, contextIn, hostClassLookupEnabled,
                             hostAccess, polyglotAccess, nativeAccess, createThread, hostClassLoading, innerContextOptions,
                             experimentalOptions, localHostLookupFilter, contextOptions, arguments == null ? Collections.emptyMap() : arguments,
-                            permittedLanguages, useIOAccess, logHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
+                            permittedLanguages, useIOAccess, logHandler, createProcess, processHandler, useEnvironmentAccess, environment, zone, limits,
                             localCurrentWorkingDirectory, hostClassLoader, allowValueSharing, useSystemExit);
             return ctx;
         }

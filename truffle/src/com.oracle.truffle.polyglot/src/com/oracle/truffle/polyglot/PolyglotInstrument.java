@@ -51,6 +51,7 @@ import org.graalvm.polyglot.Instrument;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
+import org.graalvm.polyglot.SandboxPolicy;
 
 class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -167,6 +168,11 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
 
     void ensureCreated() {
         if (!created) {
+            if (getSandboxPolicy().ordinal() < engine.sandboxPolicy.ordinal()) {
+                throw PolyglotEngineException.illegalArgument(
+                                String.format("Instrument %s can be used in an engine with at least %s sandbox policy, but the %s sandbox policy is set for an engine.\", " +
+                                                getId(), getSandboxPolicy(), engine.sandboxPolicy));
+            }
             PolyglotContextImpl[] contexts = null;
             synchronized (instrumentLock) {
                 if (!created) {
@@ -252,5 +258,9 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
 
     public String getWebsite() {
         return PolyglotLanguage.websiteSubstitutions(cache.getWebsite());
+    }
+
+    public SandboxPolicy getSandboxPolicy() {
+        return cache.getSandboxPolicy();
     }
 }

@@ -397,14 +397,20 @@ public final class Engine implements AutoCloseable {
 
     static void validateSandboxPolicy(SandboxPolicy previous, SandboxPolicy policy) {
         Objects.requireNonNull(policy, "The set policy must not be null.");
-        if (previous != null) {
-            if (previous.ordinal() < policy.ordinal()) {
-                throw new IllegalArgumentException(
-                                String.format("The sandbox policy %s was set for this builder and the newly set policy %s is less restrictive than the previous policy. " +
-                                                "Only equal or more strict policies are allowed. ",
-                                                previous, policy));
-            }
+        if (previous.ordinal() > policy.ordinal()) {
+            throw new IllegalArgumentException(
+                            String.format("The sandbox policy %s was set for this builder and the newly set policy %s is less restrictive than the previous policy. " +
+                                            "Only equal or more strict policies are allowed. ",
+                                            previous, policy));
         }
+    }
+
+    static boolean isSystemStream(InputStream in) {
+        return System.in == in;
+    }
+
+    static boolean isSystemStream(OutputStream out) {
+        return System.out == out || System.err == out;
     }
 
     private static final Engine EMPTY = new Engine(null, null);
@@ -429,6 +435,7 @@ public final class Engine implements AutoCloseable {
         private SandboxPolicy sandboxPolicy;
 
         Builder(String[] permittedLanguages) {
+            sandboxPolicy = SandboxPolicy.TRUSTED;
             Objects.requireNonNull(permittedLanguages);
             for (String language : permittedLanguages) {
                 Objects.requireNonNull(language);
@@ -637,17 +644,22 @@ public final class Engine implements AutoCloseable {
         }
 
         void validateSandbox() {
-            if (sandboxPolicy == null || sandboxPolicy == SandboxPolicy.TRUSTED) {
+            if (sandboxPolicy == SandboxPolicy.TRUSTED) {
                 return;
             }
-
             if (permittedLanguages == null || permittedLanguages.length == 0) {
                 throw new IllegalArgumentException(
-                                String.format("If sandbox policy %s is set, the number of languages needs to be set for the engine. For example, Engine.newBuilder(\"js\").", this.sandboxPolicy));
+                                String.format("If the sandbox policy %s is set, the number of languages needs to be set for the engine. For example, Engine.newBuilder(\"js\").", this.sandboxPolicy));
             }
-
-            // TODO validate basic stuff that can be validate
-
+            if (isSystemStream(in) || isSystemStream(out) || isSystemStream(err)) {
+                throw new IllegalArgumentException(
+                                String.format("If the sandbox policy %s is set, the stdin, stdout and stderr need to be set for the engine. For example, Engine.newBuilder(\"js\").stdin(in).stdout(out).stderr(err).",
+                                                this.sandboxPolicy));
+            }
+            if (messageTransport != null) {
+                throw new IllegalArgumentException(
+                                String.format("If the sandbox policy %s is set, the serverTransport must not be set for the engine.", this.sandboxPolicy));
+            }
         }
 
         /**
@@ -664,7 +676,7 @@ public final class Engine implements AutoCloseable {
             validateSandbox();
 
             LogHandler logHandler = customLogHandler != null ? polyglot.newLogHandler(customLogHandler) : null;
-            Engine engine = polyglot.buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions,
+            Engine engine = polyglot.buildEngine(permittedLanguages, sandboxPolicy, out, err, in, options, useSystemProperties, allowExperimentalOptions,
                             boundEngine, messageTransport, logHandler, polyglot.createHostLanguage(polyglot.createHostAccess()), false, true, null);
             return engine;
         }
@@ -1035,7 +1047,8 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Engine buildEngine(String[] permittedLanguages, OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, boolean useSystemProperties,
+        public Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments,
+                        boolean useSystemProperties,
                         boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, LogHandler logHandler, Object hostLanguage,
                         boolean hostLanguageOnly, boolean registerInActiveEngines, AbstractPolyglotHostService polyglotHostService) {
             throw noPolyglotImplementationFound();

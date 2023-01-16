@@ -80,9 +80,11 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.TruffleOptionDescriptors;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.home.HomeFinder;
+import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
@@ -90,6 +92,7 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
@@ -167,6 +170,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     final Object instrumentationHandler;
     final String[] permittedLanguages;
     final PolyglotImpl impl;
+    SandboxPolicy sandboxPolicy;    // effectively final
     DispatchOutputStream out;       // effectively final
     DispatchOutputStream err;       // effectively final
     InputStream in;                 // effectively final
@@ -243,13 +247,14 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     private final Set<InstrumentSystemThread> activeSystemThreads = Collections.newSetFromMap(new HashMap<>());
 
     @SuppressWarnings("unchecked")
-    PolyglotEngineImpl(PolyglotImpl impl, String[] permittedLanguages,
+    PolyglotEngineImpl(PolyglotImpl impl, SandboxPolicy sandboxPolicy, String[] permittedLanguages,
                     DispatchOutputStream out, DispatchOutputStream err, InputStream in, OptionValuesImpl engineOptions,
                     Map<String, Level> logLevels,
                     EngineLoggerProvider engineLogger, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean boundEngine, boolean preInitialization,
                     MessageTransport messageInterceptor, LogHandler logHandler,
                     TruffleLanguage<Object> hostImpl, boolean hostLanguageOnly, AbstractPolyglotHostService polyglotHostService) {
+        this.sandboxPolicy = sandboxPolicy;
         this.messageInterceptor = messageInterceptor;
         this.impl = impl;
         this.permittedLanguages = permittedLanguages;
@@ -455,6 +460,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     @SuppressWarnings("unchecked")
     PolyglotEngineImpl(PolyglotEngineImpl prototype) {
+        this.sandboxPolicy = prototype.sandboxPolicy;
         this.messageInterceptor = prototype.messageInterceptor;
         this.instrumentationHandler = INSTRUMENT.createInstrumentationHandler(
                         this,
@@ -605,7 +611,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         return OptionDescriptors.createUnion(engineOptionDescriptors, compilerOptionDescriptors);
     }
 
-    void patch(DispatchOutputStream newOut,
+    void patch(SandboxPolicy newSandboxPolicy,
+                    DispatchOutputStream newOut,
                     DispatchOutputStream newErr,
                     InputStream newIn,
                     OptionValuesImpl engineOptions,
@@ -617,6 +624,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     TruffleLanguage<?> newHostLanguage,
                     AbstractPolyglotHostService newPolyglotHostService) {
         CompilerAsserts.neverPartOfCompilation();
+        this.sandboxPolicy = newSandboxPolicy;
         this.out = newOut;
         this.err = newErr;
         this.in = newIn;
@@ -1635,7 +1643,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     }
 
     @SuppressWarnings({"all"})
-    public PolyglotContextImpl createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostLookup,
+    public PolyglotContextImpl createContext(SandboxPolicy contextSandboxPolicy, OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostLookup,
                     HostAccess hostAccess, PolyglotAccess polyglotAccess,
                     boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostClassLoading, boolean allowContextOptions, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguagesArray, IOAccess ioAccess, LogHandler handler,
@@ -1645,6 +1653,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         boolean replayEvents;
         boolean contextAddedToEngine;
         try {
+            final FileSystem customFileSystem = getImpl().getIO().getFileSystem(ioAccess);
+            validateSandbox(contextSandboxPolicy);
             synchronized (this.lock) {
                 checkState();
                 if (boundEngine && !contexts.isEmpty()) {
@@ -1690,7 +1700,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             if (error != null) {
                 throw PolyglotEngineException.illegalArgument(error);
             }
-            final FileSystem customFileSystem = getImpl().getIO().getFileSystem(ioAccess);
             final boolean allowHostFileAccess = getImpl().getIO().hasHostFileAccess(ioAccess);
             final FileSystemConfig fileSystemConfig;
             if (!ALLOW_IO) {
@@ -1751,7 +1760,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 throw PolyglotEngineException.illegalArgument("Cannot allow EnvironmentAccess because the privilege is removed at image build time");
             }
             PolyglotLimits polyglotLimits = (PolyglotLimits) limitsImpl;
-            PolyglotContextConfig config = new PolyglotContextConfig(this, null, useOut, useErr, useIn,
+            PolyglotContextConfig config = new PolyglotContextConfig(this, contextSandboxPolicy, null, useOut, useErr, useIn,
                             allowHostLookup, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading, allowContextOptions,
                             allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fileSystemConfig, useHandler, allowCreateProcess, useProcessHandler,
                             environmentAccess, environment, zone, polyglotLimits, hostClassLoader, hostAccess, allowValueSharing, useSystemExit, null, null, null, null);
@@ -1837,6 +1846,13 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
         checkTruffleRuntime();
         return context;
+    }
+
+    private void validateSandbox(SandboxPolicy contextSandboxPolicy) {
+        if (contextSandboxPolicy.ordinal() != sandboxPolicy.ordinal()) {
+            throw PolyglotEngineException.illegalArgument(String.format(
+                            "Both Engine and Context must have the same SandboxPolicy. Engine is configured with %s, while Context is configured with %s.", sandboxPolicy, contextSandboxPolicy));
+        }
     }
 
     private PolyglotContextImpl loadPreinitializedContext(PolyglotContextConfig config) {
@@ -2221,6 +2237,41 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     void removeSystemThread(InstrumentSystemThread thread) {
         synchronized (lock) {
             activeSystemThreads.remove(thread);
+        }
+    }
+
+    void validateOptionsSandbox() {
+        if (sandboxPolicy == SandboxPolicy.TRUSTED) {
+            return;
+        }
+        validateOptionsSandbox(sandboxPolicy, engineOptionValues);
+        for (PolyglotLanguage language : idToLanguage.values()) {
+            OptionValuesImpl optionValues = language.getOptionValuesIfExists();
+            if (optionValues != null) {
+                validateOptionsSandbox(sandboxPolicy, optionValues);
+            }
+        }
+        for (PolyglotInstrument instrument : idToInstrument.values()) {
+            OptionValuesImpl optionValues = instrument.getOptionValuesIfExists();
+            if (optionValues != null) {
+                validateOptionsSandbox(sandboxPolicy, optionValues);
+            }
+        }
+    }
+
+    static void validateOptionsSandbox(SandboxPolicy sandboxPolicy, OptionValuesImpl optionValues) {
+        OptionDescriptors optionDescriptors = optionValues.getDescriptors();
+        if (optionDescriptors instanceof TruffleOptionDescriptors) {
+            TruffleOptionDescriptors truffleOptionDescriptors = (TruffleOptionDescriptors) optionDescriptors;
+            for (OptionDescriptor descriptor : optionValues.getDescriptors()) {
+                if (optionValues.hasBeenSet(descriptor.getKey())) {
+                    SandboxPolicy optionSandboxPolicy = truffleOptionDescriptors.getSandboxPolicy(descriptor.getName());
+                    if (optionSandboxPolicy.ordinal() < sandboxPolicy.ordinal()) {
+                        PolyglotEngineException.illegalArgument(String.format("The option %s requires at least the %s sandbox policy, but the %s sandbox policy is set for a context.",
+                                        descriptor.getName(), optionSandboxPolicy, sandboxPolicy));
+                    }
+                }
+            }
         }
     }
 

@@ -58,6 +58,7 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
@@ -151,7 +152,7 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
     }
 
     @Override
-    public Context createContext(Object oreceiver, OutputStream out, OutputStream err, InputStream in,
+    public Context createContext(Object oreceiver, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in,
                     boolean allowHostLookup,
                     HostAccess hostAccess, PolyglotAccess polyglotAccess, boolean allowNativeAccess,
                     boolean allowCreateThread, boolean allowHostClassLoading, boolean allowInnerContextOptions,
@@ -160,7 +161,7 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
                     ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory,
                     ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
-        PolyglotContextImpl context = receiver.createContext(out, err, in, allowHostLookup, hostAccess, polyglotAccess,
+        PolyglotContextImpl context = receiver.createContext(sandboxPolicy, out, err, in, allowHostLookup, hostAccess, polyglotAccess,
                         allowNativeAccess, allowCreateThread, allowHostClassLoading,
                         allowInnerContextOptions,
                         allowExperimentalOptions,
@@ -204,6 +205,9 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
                     boolean roots,
                     Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions) {
         PolyglotEngineImpl engine = (PolyglotEngineImpl) engineReceiver;
+        if (engine.sandboxPolicy.ordinal() >= SandboxPolicy.RELAXED.ordinal()) {
+            throw new IllegalArgumentException(String.format("If the sandbox policy %s is set for an engine, execution listeners are not allowed.", engine.sandboxPolicy));
+        }
         Instrumenter instrumenter = (Instrumenter) EngineAccessor.INSTRUMENT.getEngineInstrumenter(engine.instrumentationHandler);
 
         List<Class<? extends Tag>> tags = new ArrayList<>();

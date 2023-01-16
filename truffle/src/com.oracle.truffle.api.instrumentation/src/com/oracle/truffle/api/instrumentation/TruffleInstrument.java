@@ -1258,7 +1258,7 @@ public abstract class TruffleInstrument {
         }
 
         public SandboxPolicy getSandboxPolicy() {
-            return null;
+            return ENGINE.getEngineSandboxPolicy(polyglotInstrument);
         }
 
     }
