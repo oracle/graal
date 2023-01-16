@@ -48,6 +48,7 @@ import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.common.option.LocatableOption;
 import com.oracle.svm.common.option.MultiOptionValue;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOption.APIOptionKind;
@@ -396,21 +397,29 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 
     String transformBuilderArgument(String builderArgument, BiFunction<Path, BundleMember.Role, Path> transformFunction) {
-        BuilderArgumentParts parts = BuilderArgumentParts.from(builderArgument);
-        if (parts.optionValue == null) {
+        BuilderArgumentParts argumentParts = BuilderArgumentParts.from(builderArgument);
+        if (argumentParts.optionValue == null) {
+            /* Option has no value that could need transforming -> early exit */
             return builderArgument;
         }
-        PathsOptionInfo pathsOptionInfo = pathOptions.get(parts.optionName);
+        PathsOptionInfo pathsOptionInfo = pathOptions.get(argumentParts.option.name);
         if (pathsOptionInfo == null || pathsOptionInfo.role == BundleMember.Role.Ignore) {
+            /* Not an option that request value-transforming -> early exit */
             return builderArgument;
         }
+
+        /*
+         * Option requests value-transformations, first split value aggregate into individual values
+         */
         List<String> rawEntries;
         String delimiter = pathsOptionInfo.delimiter;
         if (delimiter.isEmpty()) {
-            rawEntries = List.of(parts.optionValue);
+            rawEntries = List.of(argumentParts.optionValue);
         } else {
-            rawEntries = List.of(StringUtil.split(parts.optionValue, delimiter));
+            rawEntries = List.of(StringUtil.split(argumentParts.optionValue, delimiter));
         }
+
+        /* Perform value-transformation on individual values with given transformFunction */
         try {
             String transformedOptionValue = rawEntries.stream()
                             .filter(s -> !s.isEmpty())
@@ -418,43 +427,41 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                             .map(src -> transformFunction.apply(src, pathsOptionInfo.role))
                             .map(Path::toString)
                             .collect(Collectors.joining(delimiter));
-            parts.optionValue = transformedOptionValue;
-            return parts.toString();
+            /* Update argumentParts with transformed aggregate value and return as string */
+            argumentParts.optionValue = transformedOptionValue;
+            return argumentParts.toString();
         } catch (BundleSupport.BundlePathSubstitutionError error) {
-            Object optionOrigin = OptionOrigin.from(parts.optionOrigin, false);
-            if (optionOrigin == null && parts.optionOrigin != null) {
-                optionOrigin = parts.optionOrigin;
+            String originStr = argumentParts.option.origin;
+            Object optionOrigin = OptionOrigin.from(originStr, false);
+            if (optionOrigin == null && originStr != null) {
+                /* If we cannot get an OptionOrigin, fallback to the raw originStr */
+                optionOrigin = originStr;
             }
             String fromPart = optionOrigin != null ? " from '" + optionOrigin + "'" : "";
-            throw NativeImage.showError("Failed to prepare path entry '" + error.origPath + "' of option " + parts.optionName + fromPart + " for bundle inclusion.", error);
+            throw NativeImage.showError("Failed to prepare path entry '" + error.origPath + "' of option " + argumentParts.option.name + fromPart + " for bundle inclusion.", error);
         }
     }
 
     static final class BuilderArgumentParts {
 
-        final String optionName;
-        final String optionOrigin;
+        final LocatableOption option;
         String optionValue;
 
-        private BuilderArgumentParts(String optionName, String optionOrigin, String optionValue) {
-            this.optionName = optionName;
-            this.optionOrigin = optionOrigin;
+        private BuilderArgumentParts(LocatableOption option, String optionValue) {
+            this.option = option;
             this.optionValue = optionValue;
         }
 
         static BuilderArgumentParts from(String builderArgument) {
             String[] nameAndValue = StringUtil.split(builderArgument, "=", 2);
             String optionValue = nameAndValue.length != 2 ? null : nameAndValue[1];
-            String[] nameAndOrigin = StringUtil.split(nameAndValue[0], "@", 2);
-            String optionName = nameAndOrigin[0];
-            String optionOrigin = nameAndOrigin.length == 2 ? nameAndOrigin[1] : null;
-            return new BuilderArgumentParts(optionName, optionOrigin, optionValue);
+            return new BuilderArgumentParts(LocatableOption.from(nameAndValue[0]), optionValue);
         }
 
         @Override
         public String toString() {
-            String nameAndOrigin = optionOrigin == null ? optionName : optionName + "@" + optionOrigin;
-            return optionValue == null ? nameAndOrigin : nameAndOrigin + "=" + optionValue;
+            String optionName = option.rawName();
+            return optionValue == null ? optionName : optionName + "=" + optionValue;
         }
     }
 

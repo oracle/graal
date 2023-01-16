@@ -361,7 +361,9 @@ final class BundleSupport {
             throw new BundlePathSubstitutionError("Bundles do not allow inclusion of directory " + origPath, origPath);
         }
 
-        if (!Files.isReadable(origPath)) {
+        boolean isOutputPath = destinationDir.startsWith(outputDir);
+
+        if (!isOutputPath && !Files.isReadable(origPath)) {
             /* Prevent subsequent retries to substitute invalid paths */
             pathSubstitutions.put(origPath, origPath);
             return origPath;
@@ -388,7 +390,7 @@ final class BundleSupport {
             substitutedPath = destinationDir.resolve(baseName + "_" + collisionIndex + extension);
         }
 
-        if (!destinationDir.startsWith(outputDir)) {
+        if (!isOutputPath) {
             copyFiles(origPath, substitutedPath, false);
         }
 
