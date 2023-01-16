@@ -42,6 +42,7 @@ package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -52,14 +53,13 @@ import com.oracle.truffle.nfi.SignatureTypeCachedStateFactory.ClosureToNativeFac
 import com.oracle.truffle.nfi.SignatureTypeCachedStateFactory.FunctionPtrFromNativeFactory;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
 
-//TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining"})
 final class SignatureTypeCachedState {
 
     static final TypeCachedState INSTANCE = new TypeCachedState(1, ClosureToNativeFactory.getInstance(), FunctionPtrFromNativeFactory.getInstance());
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class ClosureToNative extends ConvertTypeNode {
 
         @Specialization(limit = "3", guards = "interop.isExecutable(value)")
@@ -79,6 +79,7 @@ final class SignatureTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class FunctionPtrFromNative extends ConvertTypeNode {
 
         @Specialization(guards = "nullValue == 0")

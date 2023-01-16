@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -78,8 +79,6 @@ import com.oracle.truffle.nfi.api.SerializableLibrary;
 import com.oracle.truffle.nfi.backend.spi.BackendNativePointerLibrary;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
-//TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining"})
 final class SimpleTypeCachedState {
 
     private static final TypeCachedState nopCachedState;
@@ -132,6 +131,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class NopConvert extends ConvertTypeNode {
 
         @Specialization
@@ -142,6 +142,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class Nothing extends ConvertTypeNode {
 
         @Specialization
@@ -153,6 +154,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class Injected extends ConvertTypeNode {
 
         @Specialization
@@ -163,6 +165,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class NullableToNative extends ConvertTypeNode {
 
         @GenerateAOT.Exclude
@@ -183,6 +186,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class PointerFromNative extends ConvertTypeNode {
 
         @Specialization(guards = "arg == null")
@@ -211,6 +215,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class ToInt8 extends ConvertTypeNode {
 
         @Specialization
@@ -273,6 +278,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class FromUInt8 extends ConvertTypeNode {
 
         @Specialization
@@ -289,6 +295,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class ToInt16 extends ConvertTypeNode {
 
         @Specialization
@@ -346,6 +353,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class FromUInt16 extends ConvertTypeNode {
 
         @Specialization
@@ -362,6 +370,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class ToInt32 extends ConvertTypeNode {
 
         @Specialization
@@ -419,6 +428,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class FromUInt32 extends ConvertTypeNode {
 
         @Specialization
@@ -435,6 +445,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class ToInt64 extends ConvertTypeNode {
 
         @Specialization
@@ -486,6 +497,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class ToFloat extends ConvertTypeNode {
 
         @Specialization
@@ -542,6 +554,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class ToDouble extends ConvertTypeNode {
 
         @Specialization
@@ -593,6 +606,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class ToFP80 extends ConvertTypeNode {
 
         @Specialization(limit = "3", guards = "interop.isNumber(arg)")
@@ -619,6 +633,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class FromFP80 extends ConvertTypeNode {
 
         @Specialization(limit = "1", guards = {"interop.hasBufferElements(arg)", "!interop.isNumber(arg)"})
@@ -637,6 +652,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class ToFP128 extends ConvertTypeNode {
 
         @Specialization(limit = "3", guards = "interop.isNumber(arg)")
@@ -663,6 +679,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class FromFP128 extends ConvertTypeNode {
 
         @Specialization(limit = "1", guards = {"interop.hasBufferElements(arg)", "!interop.isNumber(arg)"})

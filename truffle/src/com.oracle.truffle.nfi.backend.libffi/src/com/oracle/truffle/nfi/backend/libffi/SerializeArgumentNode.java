@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
@@ -75,8 +76,6 @@ import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.GetInt
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.GetLongArrayTagNodeGen;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.GetShortArrayTagNodeGen;
 
-//TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining"})
 abstract class SerializeArgumentNode extends Node {
 
     final CachedTypeInfo type;
@@ -430,16 +429,17 @@ abstract class SerializeArgumentNode extends Node {
         }
 
         @Specialization(limit = "3", replaces = {"putPointer", "putNull"})
-        void putGeneric(Object arg, NativeArgumentBuffer buffer,
+        static void putGeneric(Object arg, NativeArgumentBuffer buffer,
                         @CachedLibrary("arg") InteropLibrary interop,
                         @Bind("$node") Node node,
+                        @Bind("type.size") int size,
                         @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
                 if (!interop.isPointer(arg)) {
                     interop.toNative(arg);
                 }
                 if (interop.isPointer(arg)) {
-                    buffer.putPointerKeepalive(arg, interop.asPointer(arg), type.size);
+                    buffer.putPointerKeepalive(arg, interop.asPointer(arg), size);
                     return;
                 }
             } catch (UnsupportedMessageException ex) {
@@ -447,12 +447,12 @@ abstract class SerializeArgumentNode extends Node {
             }
             exception.enter(node);
             if (interop.isNull(arg)) {
-                buffer.putPointer(0, type.size);
+                buffer.putPointer(0, size);
                 return;
             } else {
                 try {
                     if (interop.isNumber(arg)) {
-                        buffer.putPointer(interop.asLong(arg), type.size);
+                        buffer.putPointer(interop.asLong(arg), size);
                         return;
                     }
                 } catch (UnsupportedMessageException ex2) {
@@ -461,7 +461,7 @@ abstract class SerializeArgumentNode extends Node {
                 try {
                     // workaround: some objects do not yet adhere to the contract of
                     // toNative/isPointer/asPointer, ask for pointer one more time
-                    buffer.putPointerKeepalive(arg, interop.asPointer(arg), type.size);
+                    buffer.putPointerKeepalive(arg, interop.asPointer(arg), size);
                     return;
                 } catch (UnsupportedMessageException e) {
                     // fallthrough
@@ -496,13 +496,14 @@ abstract class SerializeArgumentNode extends Node {
         }
 
         @Specialization(limit = "3", replaces = {"putPointer", "putString", "putNull"})
-        void putGeneric(Object value, NativeArgumentBuffer buffer,
+        static void putGeneric(Object value, NativeArgumentBuffer buffer,
                         @CachedLibrary("value") InteropLibrary interop,
                         @Bind("$node") Node node,
+                        @Bind("type.size") int size,
                         @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
                 if (interop.isPointer(value)) {
-                    buffer.putPointerKeepalive(value, interop.asPointer(value), type.size);
+                    buffer.putPointerKeepalive(value, interop.asPointer(value), size);
                     return;
                 }
             } catch (UnsupportedMessageException ex) {
@@ -510,7 +511,7 @@ abstract class SerializeArgumentNode extends Node {
             }
             try {
                 if (interop.isString(value)) {
-                    buffer.putObject(TypeTag.STRING, interop.asString(value), type.size);
+                    buffer.putObject(TypeTag.STRING, interop.asString(value), size);
                     return;
                 }
             } catch (UnsupportedMessageException ex) {
@@ -518,7 +519,7 @@ abstract class SerializeArgumentNode extends Node {
             }
             exception.enter(node);
             if (interop.isNull(value)) {
-                buffer.putPointer(0, type.size);
+                buffer.putPointer(0, size);
             } else {
                 throw UnsupportedTypeException.create(new Object[]{value});
             }
@@ -649,6 +650,7 @@ abstract class SerializeArgumentNode extends Node {
         }
     }
 
+    @GenerateInline(false)
     abstract static class GetByteArrayTagNode extends GetTypeTagNode {
 
         @Specialization
@@ -664,6 +666,7 @@ abstract class SerializeArgumentNode extends Node {
         }
     }
 
+    @GenerateInline(false)
     abstract static class GetShortArrayTagNode extends GetTypeTagNode {
 
         @Specialization
@@ -679,6 +682,7 @@ abstract class SerializeArgumentNode extends Node {
         }
     }
 
+    @GenerateInline(false)
     abstract static class GetIntArrayTagNode extends GetTypeTagNode {
 
         @Specialization
@@ -688,6 +692,7 @@ abstract class SerializeArgumentNode extends Node {
         }
     }
 
+    @GenerateInline(false)
     abstract static class GetLongArrayTagNode extends GetTypeTagNode {
 
         @Specialization
@@ -697,6 +702,7 @@ abstract class SerializeArgumentNode extends Node {
         }
     }
 
+    @GenerateInline(false)
     abstract static class GetFloatArrayTagNode extends GetTypeTagNode {
 
         @Specialization
@@ -706,6 +712,7 @@ abstract class SerializeArgumentNode extends Node {
         }
     }
 
+    @GenerateInline(false)
     abstract static class GetDoubleArrayTagNode extends GetTypeTagNode {
 
         @Specialization

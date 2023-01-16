@@ -41,6 +41,7 @@
 package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -54,8 +55,6 @@ import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayBuilderFactory;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayFactory;
 
-//TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining"})
 final class SignatureRootNode extends RootNode {
 
     final String backendId;
@@ -151,6 +150,7 @@ final class SignatureRootNode extends RootNode {
         }
     }
 
+    @GenerateInline(false)
     abstract static class MakeVarargs extends ArgumentBuilderNode {
 
         @Specialization(limit = "1")
@@ -203,6 +203,7 @@ final class SignatureRootNode extends RootNode {
         }
     }
 
+    @GenerateInline(false)
     abstract static class GetEnvTypeNode extends GetTypeNode {
 
         @Specialization(limit = "1")
