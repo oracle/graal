@@ -70,6 +70,11 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
     }
 
     @Override
+    public <State> void updateVerificationState(VirtualFrameVerificationStateUpdater<State> updater, State state) {
+
+    }
+
+    @Override
     public void virtualize(VirtualizerTool tool) {
         ValueNode tagAlias = tool.getAlias(frame.getTagArray(type));
         ValueNode dataAlias = tool.getAlias(

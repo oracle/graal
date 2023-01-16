@@ -27,6 +27,13 @@ package org.graalvm.compiler.truffle.compiler.nodes.frame;
 
 import org.graalvm.compiler.nodes.ValueNodeInterface;
 
+/**
+ * Interface used to update the frame verification state in
+ * {@link org.graalvm.compiler.truffle.compiler.phases.FrameAccessVerificationPhase}.
+ * <p>
+ * Since the verification phase only verify coherent frames at merges, this interface does not
+ * perform tag or access checks, it only provides the state to the phase.
+ */
 public interface VirtualFrameAccessVerificationNode extends ValueNodeInterface {
     VirtualFrameAccessType getType();
 
@@ -34,11 +41,26 @@ public interface VirtualFrameAccessVerificationNode extends ValueNodeInterface {
 
     NewFrameNode getFrame();
 
-    @SuppressWarnings("unused")
-    default <State> void updateVerificationState(VirtualFrameVerificationStateUpdater<State> updater, State state) {
+    /**
+     * Frame accesses that modify the frame should implement this method to update the given
+     * {@code state} using the given {@code updater}.
+     * <p>
+     * Due to how the
+     * {@link org.graalvm.compiler.truffle.compiler.phases.FrameAccessVerificationPhase verification
+     * phase} works, accesses that do not modify the frame can provide a void implementation.
+     * 
+     * @see VirtualFrameCopyNode#updateVerificationState(VirtualFrameVerificationStateUpdater,
+     *      Object)
+     * @see VirtualFrameGetNode#updateVerificationState(VirtualFrameVerificationStateUpdater,
+     *      Object)
+     */
+    <State> void updateVerificationState(VirtualFrameVerificationStateUpdater<State> updater, State state);
 
-    }
-
+    /**
+     * Provides control over a given state representation of a virtual frame during
+     * {@link org.graalvm.compiler.truffle.compiler.phases.FrameAccessVerificationPhase frame
+     * verification}.
+     */
     interface VirtualFrameVerificationStateUpdater<State> {
         void set(State state, int slot, byte tag);
 
