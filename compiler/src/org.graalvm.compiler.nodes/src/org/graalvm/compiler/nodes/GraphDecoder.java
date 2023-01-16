@@ -130,22 +130,23 @@ public class GraphDecoder {
         /**
          * The decoded inlining log. If this is the root method scope, it
          * {@link StructuredGraph#setInliningLog replaces} the inlining log of the graph. Otherwise,
-         * the inlining log is transferred to the callee.
+         * the inlining log is {@link InliningLog#inlineByTransfer transferred} to the caller.
          */
         public InliningLog inliningLog;
 
         /**
          * The decoded optimization log. If this is the root method scope, it
          * {@link StructuredGraph#setOptimizationLog replaces} the optimization log of the graph.
-         * Otherwise, the optimization log is transferred to the callee.
+         * Otherwise, the optimization log is {@link OptimizationLog#inline inlined} in the caller.
          */
         public OptimizationLog optimizationLog;
 
         /**
          * The stateful decoder for the {@link #inliningLog}, which is needed to map order IDs back
-         * to decoded graph nodes.
+         * to decoded graph nodes. The decoder also responsible for tracking new callsites in the
+         * inlining log. {@code null} if the inlining log is not being decoded.
          */
-        public CompanionObjectCodec.Decoder<InliningLog> inliningLogDecoder = new InliningLogCodec().singleObjectDecoder();
+        public CompanionObjectCodec.Decoder<InliningLog> inliningLogDecoder;
 
         @SuppressWarnings("unchecked")
         protected MethodScope(LoopScope callerLoopScope, StructuredGraph graph, EncodedGraph encodedGraph, LoopExplosionKind loopExplosion) {
@@ -160,7 +161,12 @@ public class GraphDecoder {
                 maxFixedNodeOrderId = reader.getUVInt();
                 graph.getGraphState().setGuardsStage((GraphState.GuardsStage) readObject(this));
                 graph.getGraphState().getStageFlags().addAll((EnumSet<StageFlag>) readObject(this));
-                inliningLog = inliningLogDecoder.decode(graph, readObject(this));
+
+                CompanionObjectCodec.Decoder<InliningLog> inliningDecoder = new InliningLogCodec().singleObjectDecoder();
+                inliningLog = inliningDecoder.decode(graph, readObject(this));
+                if (inliningLog != null) {
+                    inliningLogDecoder = inliningDecoder;
+                }
                 optimizationLog = new OptimizationLogCodec().singleObjectDecoder().decode(graph, readObject(this));
 
                 int nodeCount = reader.getUVInt();
@@ -1686,7 +1692,9 @@ public class GraphDecoder {
         assert allowNull || node != null;
         assert allowOverwrite || lookupNode(loopScope, nodeOrderId) == null;
         loopScope.createdNodes[nodeOrderId] = node;
-        loopScope.methodScope.inliningLogDecoder.registerNode(loopScope.methodScope.inliningLog, node, nodeOrderId);
+        if (loopScope.methodScope.inliningLogDecoder != null) {
+            loopScope.methodScope.inliningLogDecoder.registerNode(loopScope.methodScope.inliningLog, node, nodeOrderId);
+        }
     }
 
     protected int readOrderId(MethodScope methodScope) {
