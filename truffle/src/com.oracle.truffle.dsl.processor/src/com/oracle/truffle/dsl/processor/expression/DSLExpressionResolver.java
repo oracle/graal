@@ -265,6 +265,7 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
                     return parent.resolveVariable(variable);
                 }
 
+                // should have more specific type
                 if (name.equals("this") || name.equals("$root")) {
                     return new CodeVariableElement(ProcessorContext.getInstance().getTypes().Node, "this");
                 }

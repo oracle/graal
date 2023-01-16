@@ -120,7 +120,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         }
 
         if (mirror != null) {
-            AnnotationValue nameValue = ElementUtils.getAnnotationValue(mirror, "name", false);
+            AnnotationValue nameValue = ElementUtils.getAnnotationValue(mirror, isShortCircuit ? "name" : "operationName", false);
             if (nameValue != null) {
                 name = (String) nameValue.getValue();
             }
@@ -390,7 +390,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         for (int i = 0; i < signature.valueBoxingElimination.length; i++) {
             if (signature.valueBoxingElimination[i]) {
                 // we could move these to cached-only fields, but then we need more processing
-                // once we go uncached -> cached
+                // once we go uncached -> cached (recalculating the value offsets and child indices)
                 instr.addField(context.getType(int.class), "op_childValue" + i + "_boxing_", true);
             }
         }

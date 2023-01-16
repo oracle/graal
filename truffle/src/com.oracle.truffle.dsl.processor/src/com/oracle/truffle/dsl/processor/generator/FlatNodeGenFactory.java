@@ -577,7 +577,7 @@ public class FlatNodeGenFactory {
         }
 
         if (specialization == null) {
-            throw new AssertionError("if specialization is null it must be shared cache");
+            throw new AssertionError("if specialization is null it must be shared cache: " + specialization + " " + cache + " " + sharedCaches);
         }
 
         Parameter parameter = cache.getParameter();
@@ -3647,7 +3647,7 @@ public class FlatNodeGenFactory {
             boolean found = false;
             for (NodeExecutionData otherExecution : node.getChildExecutions()) {
                 if (found) {
-                    LocalVariable childEvaluatedValue = slowPathFrameState.createValue(otherExecution, genericType);
+                    LocalVariable childEvaluatedValue = slowPathFrameState.createValue(otherExecution, node.getGenericType(otherExecution));
                     builder.tree(createAssignExecuteChild(slowPathFrameState.copy(), slowPathFrameState, builder, otherExecution, delegateType, childEvaluatedValue));
                     slowPathFrameState.setValue(otherExecution, childEvaluatedValue);
                 } else {

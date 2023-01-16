@@ -50,11 +50,9 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.LocalSetter;
-import com.oracle.truffle.api.operation.LocalSetterRange;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.OperationRootNode;
@@ -62,7 +60,7 @@ import com.oracle.truffle.api.operation.Variadic;
 import com.oracle.truffle.api.operation.test.ExpectError;
 import com.oracle.truffle.api.source.SourceSection;
 
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused", "static-method", "truffle"})
 public class ErrorTests {
     @ExpectError("Operations class must be declared abstract.")
     @GenerateOperations(languageClass = ErrorLanguage.class)
@@ -104,7 +102,7 @@ public class ErrorTests {
         }
     }
 
-    @ExpectError("Operations class requires a (TruffleLanguage, FrameDescriptor) constructor.")
+    @ExpectError("Operations class requires a (TruffleLanguage<C>, FrameDescriptor) constructor.")
     @GenerateOperations(languageClass = ErrorLanguage.class)
     public abstract class MustHaveFDConstructor extends RootNode implements OperationRootNode {
         protected MustHaveFDConstructor(TruffleLanguage<?> language, FrameDescriptor.Builder builder) {
@@ -112,13 +110,13 @@ public class ErrorTests {
         }
     }
 
-    @ExpectError("Invalid constructor declaration, expected (TruffleLanguage, FrameDescriptor) or (TruffleLanguage, FrameDescriptor.Builder). Remove this constructor.")
     @GenerateOperations(languageClass = ErrorLanguage.class)
     public abstract class InvalidConstructor extends RootNode implements OperationRootNode {
         protected InvalidConstructor(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
         }
 
+        @ExpectError("Invalid constructor declaration, expected (TruffleLanguage<C>, FrameDescriptor) or (TruffleLanguage<C>, FrameDescriptor.Builder). Remove this constructor.")
         protected InvalidConstructor(TruffleLanguage<?> language) {
             super(language);
         }
@@ -141,7 +139,7 @@ public class ErrorTests {
         }
     }
 
-    @ExpectError({"Type referenced by @OperationProxy must be a class, not int.", "Error generating operation. Fix issues on the referenced class first."})
+    @ExpectError({"Could not proxy operation: the proxied type must be a class, not int."})
     @GenerateOperations(languageClass = ErrorLanguage.class)
     @OperationProxy(int.class)
     public abstract class BadProxyType extends RootNode implements OperationRootNode {
@@ -150,7 +148,6 @@ public class ErrorTests {
         }
     }
 
-    @ExpectError("Class referenced by @OperationProxy must have all its specializations static. Use @Bind(\"this\") parameter if you need a Node instance.")
     @GenerateOperations(languageClass = ErrorLanguage.class)
     @OperationProxy(TestNode.class)
     public abstract static class OperationErrorTests extends RootNode implements OperationRootNode {
@@ -178,50 +175,39 @@ public class ErrorTests {
         public static final class TestOperation3 implements Cloneable {
         }
 
-        @ExpectError("@Operation annotated class must not contain non-static members.")
         @Operation
         public static final class TestOperation4 {
+            @ExpectError("@Operation annotated class must not contain non-static members.")
             public void doSomething() {
             }
         }
 
-        @ExpectError("Multiple @Variadic arguments are not supported.")
         @Operation
         public static final class TestOperation5 {
             @Specialization
-            public static void spec(@Variadic Object[] a, @Variadic Object[] b) {
+            public static void spec(@Variadic Object[] a,
+                            @ExpectError("Multiple variadic arguments not allowed to an operation. Split up the operation if such behaviour is required.") @Variadic Object[] b) {
             }
         }
 
-        @ExpectError("Value arguments after LocalSetter are not supported.")
         @Operation
         public static final class TestOperation6 {
             @Specialization
-            public static void spec(LocalSetter a, Object b) {
+            public static void spec(LocalSetter a, @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") Object b) {
             }
         }
 
-        @ExpectError("Mixing regular and range local setters is not supported.")
-        @Operation
-        public static final class TestOperation7 {
-            @Specialization
-            public static void spec(LocalSetter a, LocalSetterRange b) {
-            }
-        }
-
-        @ExpectError("Value arguments after @Variadic are not supported.")
         @Operation
         public static final class TestOperation8 {
             @Specialization
-            public static void spec(@Variadic Object[] a, Object b) {
+            public static void spec(@Variadic Object[] a, @ExpectError("Non-variadic value parameters must precede variadic ones.") Object b) {
             }
         }
 
-        @ExpectError("Value arguments after LocalSetter are not supported.")
         @Operation
         public static final class TestOperation9 {
             @Specialization
-            public static void spec(LocalSetter a, Object b) {
+            public static void spec(LocalSetter a, @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") Object b) {
             }
         }
     }
@@ -238,10 +224,11 @@ public class ErrorTests {
         }
     }
 
-    public abstract static class TestNode extends Node {
-        public abstract int execute(int x, int y);
+    @ExpectError("Operation specification must have all its specializations static. Use @Bind(\"this\") parameter if you need a Node instance.")
+    public static final class TestNode {
 
         @Specialization
+        @ExpectError("@Operation annotated class must not contain non-static members.")
         public int add(int x, int y) {
             return x + y;
         }

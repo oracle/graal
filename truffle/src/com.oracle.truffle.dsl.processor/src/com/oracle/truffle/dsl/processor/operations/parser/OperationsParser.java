@@ -194,7 +194,7 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
             TypeMirror proxiedType = getTypeMirror(ElementUtils.getAnnotationValue(mir, "value"));
 
             if (proxiedType.getKind() != TypeKind.DECLARED) {
-                model.addError("Could not proxy operation: the proxied type must be a class, not %s", proxiedType);
+                model.addError("Could not proxy operation: the proxied type must be a class, not %s.", proxiedType);
                 continue;
             }
 

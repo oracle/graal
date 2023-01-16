@@ -53,7 +53,11 @@ public class TruffleTypes {
     // Checkstyle: stop
 
     // Testing API
-    private static final String[] EXPECT_ERROR_TYPES = new String[]{TruffleTypes.EXPECT_ERROR_CLASS_NAME1, TruffleTypes.EXPECT_ERROR_CLASS_NAME2};
+    private static final String[] EXPECT_ERROR_TYPES = new String[]{
+                    TruffleTypes.EXPECT_ERROR_CLASS_NAME1,
+                    TruffleTypes.EXPECT_ERROR_CLASS_NAME2,
+                    TruffleTypes.EXPECT_ERROR_CLASS_NAME3
+    };
     public static final String ALWAYS_SLOW_PATH_MODE_NAME = "com.oracle.truffle.api.dsl.test.AlwaysGenerateOnlySlowPath";
     public static final String DISABLE_STATE_BITWIDTH_MODIFICATION = "com.oracle.truffle.api.dsl.test.DisableStateBitWidthModfication";
     public static final String EXPECT_ERROR_CLASS_NAME1 = "com.oracle.truffle.api.dsl.test.ExpectError";

@@ -164,6 +164,7 @@ public class OperationsNodeFactory {
         operationNodeGen.add(createCreate());
 
         operationNodeGen.add(createExecute());
+        operationNodeGen.add(createSneakyThrow());
 
         operationNodeGen.add(createGetIntrospectionData());
 
@@ -182,7 +183,7 @@ public class OperationsNodeFactory {
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLocals")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "buildIndex")));
         if (model.hasBoxingElimination()) {
-            operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(byte[].class), "localBoxingState")));
+            operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(byte[].class), "localBoxingState")));
         }
         if (model.generateUncached) {
             operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "uncachedExecuteCount")).createInitBuilder().string("16");
@@ -307,10 +308,11 @@ public class OperationsNodeFactory {
                         b.statement("newData." + field.name + " = curData." + field.name);
                     }
 
-                    b.statement("clone.objs[bci] = newData");
+                    b.statement("clone.objs[bci] = clone.insert(newData)");
 
                     break;
                 default:
+                    b.statement("assert !(this.objs[bci] instanceof Node)");
                     b.statement("clone.objs[bci] = this.objs[bci]");
                     break;
             }
@@ -374,6 +376,15 @@ public class OperationsNodeFactory {
         CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "execute");
         CodeTreeBuilder b = ex.createBuilder();
 
+        // todo: only generate executeProlog/Epilog calls and the try/finally if they are overridden
+
+        b.statement("Throwable throwable = null");
+        b.statement("Object returnValue = null");
+
+        b.statement("this.executeProlog(frame)");
+
+        b.startTryBlock();
+
         b.statement("int state = numLocals << 16");
 
         b.startWhile().string("true").end().startBlock();
@@ -390,7 +401,23 @@ public class OperationsNodeFactory {
         b.end();
         b.end();
 
-        b.startReturn().string("frame.getObject((state >> 16) & 0xffff)").end();
+        b.startAssign("returnValue").string("frame.getObject((state >> 16) & 0xffff)").end();
+        b.statement("return returnValue");
+
+        b.end().startCatchBlock(context.getType(Throwable.class), "th");
+        b.statement("throw sneakyThrow(throwable = th)");
+        b.end().startFinallyBlock();
+        b.statement("this.executeEpilog(frame, returnValue, throwable)");
+        b.end();
+
+        return ex;
+    }
+
+    private CodeExecutableElement createSneakyThrow() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), null, "<E extends Throwable> RuntimeException sneakyThrow(Throwable e) throws E { //");
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.statement("throw (E) e");
 
         return ex;
     }
@@ -457,8 +484,18 @@ public class OperationsNodeFactory {
                     buildIntrospectionArgument(b, "ARGUMENT", "data");
                     break;
                 case LOAD_LOCAL:
-                case LOAD_LOCAL_MATERIALIZED:
+                    if (model.hasBoxingElimination()) {
+                        buildIntrospectionArgument(b, "LOCAL", "(int) ((LoadLocalData) data).v_index");
+                        break;
+                    }
+                    // fall-through
                 case STORE_LOCAL:
+                    if (model.hasBoxingElimination()) {
+                        buildIntrospectionArgument(b, "LOCAL", "(int) ((StoreLocalData) data).s_index");
+                        break;
+                    }
+                    // fall-through
+                case LOAD_LOCAL_MATERIALIZED:
                 case STORE_LOCAL_MATERIALIZED:
                     buildIntrospectionArgument(b, "LOCAL", "((IntRef) data).value");
                     break;
@@ -1101,6 +1138,11 @@ public class OperationsNodeFactory {
                 b.startAssign("result.nodes").string("nodes").end();
                 b.startAssign("result.bc").string("Arrays.copyOf(bc, bci)").end();
                 b.startAssign("result.objs").string("Arrays.copyOf(objs, bci)").end();
+                b.startFor().string("int i = 0; i < bci; i++").end().startBlock();
+                b.startIf().string("objs[i] instanceof Node").end().startBlock();
+                b.statement("result.insert((Node) objs[i])");
+                b.end();
+                b.end();
                 b.startAssign("result.handlers").string("Arrays.copyOf(exHandlers, exHandlerCount)").end();
                 b.startAssign("result.numLocals").string("numLocals").end();
                 b.startAssign("result.buildIndex").string("buildIndex").end();
@@ -1339,9 +1381,29 @@ public class OperationsNodeFactory {
                 b.startStaticCall(types.LocalSetter, "create");
                 b.string("((IntRef)((OperationLocalImpl)((Object[]) operationData[operationSp])[" + (argBase + i) + "]).index).value");
                 b.end(2);
+
             }
 
             argBase += instruction.signature.localSetterCount;
+
+            for (int i = 0; i < instruction.signature.localSetterRangeCount; i++) {
+                b.startBlock();
+                b.statement("OperationLocal[] argg = (OperationLocal[]) ((Object[]) operationData[operationSp])[" + (argBase + i) + "]");
+                b.statement("int[] indices = new int[argg.length]");
+
+                b.startFor().string("int ix = 0; ix < indices.length; ix++").end().startBlock();
+                b.startAssign("indices[ix]").string("((IntRef) ((OperationLocalImpl) argg[ix]).index).value").end();
+                b.end();
+
+                b.startAssign("argument.op_localSetterRange" + i + "_");
+                b.startStaticCall(types.LocalSetterRange, "create");
+                b.string("indices");
+                b.end(2);
+
+                b.end();
+            }
+
+            argBase += instruction.signature.localSetterRangeCount;
 
         }
 
@@ -2182,7 +2244,7 @@ public class OperationsNodeFactory {
 
                     b.startCase().tree(boxingTypeToInt(mir)).end().startBlock();
 
-                    if (signature.possibleBoxingResults != null && signature.possibleBoxingResults.contains(mir)) {
+                    if (signature.possibleBoxingResults == null || signature.possibleBoxingResults.contains(mir)) {
                         b.startTryBlock();
 
                         b.startStatement().startCall("frame.set" + frameName);

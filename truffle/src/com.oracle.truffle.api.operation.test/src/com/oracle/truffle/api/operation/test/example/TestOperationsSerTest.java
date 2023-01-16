@@ -43,7 +43,6 @@ package com.oracle.truffle.api.operation.test.example;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -63,13 +62,14 @@ public class TestOperationsSerTest {
 
     private static TestOperations deserialize(byte[] byteArray) {
         OperationNodes<TestOperations> nodes2 = null;
-        try {
-            nodes2 = TestOperationsGen.deserialize(null, OperationConfig.DEFAULT, ByteBuffer.wrap(byteArray), (ctx, buf2) -> {
-                return buf2.readLong();
-            });
-        } catch (IOException e) {
-            Assert.fail();
-        }
+// try {
+// nodes2 = TestOperationsGen.deserialize(null, OperationConfig.DEFAULT, ByteBuffer.wrap(byteArray),
+// (ctx, buf2) -> {
+// return buf2.readLong();
+// });
+// } catch (IOException e) {
+// Assert.fail();
+// }
 
         return nodes2.getNodes().get(0);
     }
