@@ -72,6 +72,7 @@ public class TruffleProcessorOptions {
     private static final String GenerateSlowPathOnlyOptionName = "GenerateSlowPathOnly";
     private static final String GenerateSlowPathOnlyFilterOptionName = "GenerateSlowPathOnlyFilter";
     private static final String SuppressAllWarnings = "SuppressAllWarnings";
+    private static final String SuppressWarnings = "SuppressWarnings";
     private static final String CacheSharingWarningsEnabledOptionName = "cacheSharingWarningsEnabled";
     private static final String StateBitWidth = "StateBitWidth";
     private static final String PrintTimings = "PrintTimings";
@@ -95,7 +96,27 @@ public class TruffleProcessorOptions {
 
     public static boolean suppressAllWarnings(ProcessingEnvironment env) {
         String v = env.getOptions().get(OptionsPrefix + SuppressAllWarnings);
-        return Boolean.parseBoolean(v);
+        boolean suppress = Boolean.parseBoolean(v);
+        if (suppress) {
+            return suppress;
+        }
+        String[] warnings = suppressDSLWarnings(env);
+        if (warnings != null) {
+            Set<String> warningsSet = Set.of(warnings);
+            if (warningsSet.contains(TruffleSuppressedWarnings.ALL) || warningsSet.contains(TruffleSuppressedWarnings.TRUFFLE)) {
+                return true;
+            }
+        }
+        return false;
+
+    }
+
+    public static String[] suppressDSLWarnings(ProcessingEnvironment env) {
+        String v = env.getOptions().get(OptionsPrefix + SuppressWarnings);
+        if (v != null) {
+            return v.split(",");
+        }
+        return null;
     }
 
     public static boolean cacheSharingWarningsEnabled(ProcessingEnvironment env) {
@@ -135,6 +156,7 @@ public class TruffleProcessorOptions {
         result.add(OptionsPrefix + CacheSharingWarningsEnabledOptionName);
         result.add(OptionsPrefix + StateBitWidth);
         result.add(OptionsPrefix + SuppressAllWarnings);
+        result.add(OptionsPrefix + SuppressWarnings);
         result.add(OptionsPrefix + PrintTimings);
         return result;
     }

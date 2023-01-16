@@ -14,7 +14,7 @@ The following sections describe how to handle and eventually suppress warnings.
 All warnings of Truffle DSL can be suppressed using the `-Atruffle.dsl.SuppressAllWarnings=true` option. 
 If a language uses strict checks where warnings are treated as errors in their CI, it is recommended to add this option to the Java compilation command line. This can be useful to avoid CI failures when Truffle DSL adds new warning messages. Adding new warning messages in Truffle DSL is considered a compatible change.
 
-Truffle DSL warnigns can be suppressed just like Java warnings using the `@SuppressWarnings` annotation or with`@SuppressPackageWarnings` for entire packages.
+Truffle DSL warnings can be suppressed just like Java warnings using the `@SuppressWarnings` annotation or with`@SuppressPackageWarnings` for entire packages.
 The following warning keys are supported:
 
 * `all` all warnings emitted by the Java compiler or Truffle DSL
@@ -26,6 +26,7 @@ The following warning keys are supported:
 * `truffle-static-method` warnings when the DSL recommends to use the `static` modifier.
 * `truffle-unused` warnings if a DSL attribute or annotation has no effect and is recommended to be removed. 
 
+Specific warnings can also be suppressed globally using the `-Atruffle.dsl.SuppressWarnings=truffle-inlining,truffle-neverdefault` Java compiler processor option. 
 
 Suppressing a specific warning should be preferred over suppressing all warnings.
 Find the latest list of warnings in the [source code](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.dsl.processor/src/com/oracle/truffle/dsl/processor/TruffleSuppressedWarnings.java)

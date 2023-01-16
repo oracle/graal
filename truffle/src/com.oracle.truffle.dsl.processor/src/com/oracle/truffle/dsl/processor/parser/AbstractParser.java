@@ -120,7 +120,7 @@ public abstract class AbstractParser<M extends MessageContainer> {
             }
 
             if (emitErrors) {
-                model.emitMessages(context, log);
+                model.emitMessages(log);
             }
             if (model instanceof NodeData || model instanceof LibraryData) {
                 return model;
