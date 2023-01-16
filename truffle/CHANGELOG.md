@@ -34,6 +34,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-31342 Deprecated `ConditionProfile.createBinaryProfile()` and `ConditionProfile.createCountingProfile()`. Use `ConditionProfile.create()` and `CountingConditionProfile.create()` instead.
 * GR-31342 Added `ValueProfile.create()` that automatically creates an exact class value profile. This allows its usage in `@Cached` without specifying a cached initializer.
 * GR-31342 The node `insert` method is now public instead of protected. This avoids the need to create cumbersome accessor methods when needed in corner-cases.
+* GR-43492 `LanguageReference#get()` is now always supported inside of `InstrumentableNode#materializeInstrumentableNodes()`.
 
 ## Version 22.3.0
 
