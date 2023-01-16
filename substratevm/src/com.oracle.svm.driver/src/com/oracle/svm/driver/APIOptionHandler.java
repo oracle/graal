@@ -451,6 +451,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             return new BuilderArgumentParts(optionName, optionOrigin, optionValue);
         }
 
+        @Override
         public String toString() {
             String nameAndOrigin = optionOrigin == null ? optionName : optionName + "@" + optionOrigin;
             return optionValue == null ? nameAndOrigin : nameAndOrigin + "=" + optionValue;
