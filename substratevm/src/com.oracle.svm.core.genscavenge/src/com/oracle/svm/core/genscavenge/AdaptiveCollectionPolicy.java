@@ -383,16 +383,10 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
             latestMinorMutatorIntervalNanos = timer.getMeasuredNanos();
         }
 
-        // Capture the fraction of bytes in aligned chunks at the start to include all allocated
-        // (also dead) objects, because we use it to reserve aligned chunks for future allocations
-        UnsignedWord youngChunkBytes = GCImpl.getGCImpl().getAccounting().getYoungChunkBytesBefore();
-        if (youngChunkBytes.notEqual(0)) {
-            UnsignedWord youngAlignedChunkBytes = HeapImpl.getHeapImpl().getYoungGeneration().getAlignedChunkBytes();
-            avgYoungGenAlignedChunkFraction.sample(UnsignedUtils.toDouble(youngAlignedChunkBytes) / UnsignedUtils.toDouble(youngChunkBytes));
-        }
-
         timer.reset();
         timer.open(); // measure collection pause
+
+        super.onCollectionBegin(completeCollection, requestingNanoTime);
     }
 
     @Override

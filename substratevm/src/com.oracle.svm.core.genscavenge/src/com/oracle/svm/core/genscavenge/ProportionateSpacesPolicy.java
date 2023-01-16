@@ -121,7 +121,7 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
         tenuringThreshold = Math.min(i + 1, MAX_TENURING_THRESHOLD);
     }
 
-    private void computeNewOldGenSize(boolean resizeOnlyForPromotions) { // CardGeneration::compute_new_size
+    private void computeNewOldGenSize(boolean resizeOnlyForPromotions) { // TenuredGeneration::compute_new_size_inner
         UnsignedWord capacityAtPrologue = oldSize;
         UnsignedWord usedAfterGc = GCImpl.getGCImpl().getAccounting().getOldGenerationAfterChunkBytes();
         if (oldSize.belowThan(usedAfterGc)) {
