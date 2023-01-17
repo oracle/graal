@@ -144,7 +144,7 @@ To build a native executable from a JAR file in the current working directory, u
 native-image [options] -jar jarfile [imagename]
 ```
 
-The `native-image` tool can provide the class path for all classes using the existing option from the java launcher: `-cp`, followed by a list of directories or JAR files, separated by `:` on Linux and macOS platforms, or `;` on Windows. The name of the class containing the `main` method is the last argument, or you can use the `-jar` option and provide a JAR file that specifies the `main` method in its manifest.
+The default behavior of `native-image` is aligned with the `java` command which means you can pass the `-jar`, `-cp`, `-m`  options to build with Native Image as you would normally do with `java`. For example, `java -jar App.jar someArgument` becomes `native-image -jar App.jar` and `./App someArgument`.
 
 [Follow this guide](guides/build-native-executable-from-jar.md) to build a native executable from a JAR file.
 
