@@ -191,8 +191,7 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
            return DoubleHelper.NEGATIVE_INFINITY;
        } else {
            long doubleExponent = getUnbiasedExponent() + DoubleHelper.DOUBLE_EXPONENT_BIAS;
-           long doubleFraction = 1L;
-           doubleFraction |= (expSignFraction & FRACTION_MASK) << (DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH - EXPONENT_POSITION); // 48bits from expSignFraction, with 4 bits shift left.
+           long doubleFraction = (expSignFraction & FRACTION_MASK) << (DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH - EXPONENT_POSITION); // 48bits from expSignFraction, with 4 bits shift left.
            doubleFraction |= fraction >>> (Long.SIZE - (DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH - EXPONENT_POSITION)); // 4bits from fraction
            long shiftedSignBit = (getSign() ? 1L : 0L) << DoubleHelper.DOUBLE_SIGN_POS;
            long shiftedExponent = doubleExponent << DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH; //TODO: overflow case. Test this.
@@ -208,8 +207,7 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
             return FloatHelper.NEGATIVE_INFINITY;
         } else {
             int floatExponent = (int) getUnbiasedExponent() + FLOAT_EXPONENT_BIAS;
-            int floatFraction = 1;
-            floatFraction |= (expSignFraction & FRACTION_MASK) >>> (EXPONENT_POSITION - FloatHelper.FLOAT_FRACTION_BIT_WIDTH);
+            int floatFraction = (int) (expSignFraction & FRACTION_MASK) >>> (EXPONENT_POSITION - FloatHelper.FLOAT_FRACTION_BIT_WIDTH);
             int shiftedSignBit = (getSign() ? 1 : 0) << FloatHelper.FLOAT_SIGN_POS;
             int shiftedExponent = floatExponent << FloatHelper.FLOAT_FRACTION_BIT_WIDTH;
             int rawVal = floatFraction | shiftedExponent | shiftedSignBit;

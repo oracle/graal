@@ -199,12 +199,12 @@ final class LongDoubleUtil {
     static final class FP128Number implements TruffleObject {
 
         static final long DOUBLE_FRACTION_BIT_WIDTH = 52;
-        private static final int SIGN_MASK = 1 << 15;
-        private static final int EXPONENT_MASK = SIGN_MASK - 1;
+        private static final long SIGN_MASK = 1L << 63;
         private static final int EXPONENT_BIAS = 16383;
         private static final int FRACTION_BIT_WIDTH = 112;
         public static final int EXPONENT_POSITION = FRACTION_BIT_WIDTH - Long.SIZE; // 112 - 64 = 48
-        public static final long FRACTION_MASK = (1L << EXPONENT_POSITION) - 1; //
+        public static final long EXPONENT_MASK = 0b111111111111111L << EXPONENT_POSITION;
+        public static final long FRACTION_MASK = (1L << EXPONENT_POSITION) - 1;
 
         final Object number;
 
@@ -234,7 +234,7 @@ final class LongDoubleUtil {
                         return;
                     }
 
-                    int sign = number < 0 ? SIGN_MASK : 0;
+                    int sign = (int) (number < 0 ? SIGN_MASK : 0);
                     long val = Math.abs(number);
 
                     int leadingOnePosition = Long.SIZE - Long.numberOfLeadingZeros(val);
@@ -244,10 +244,10 @@ final class LongDoubleUtil {
                     long exponentFraction;
 
                     if (shiftAmount >= Long.SIZE) { // TODO: Need to test both cases.
-                        exponentFraction = (exponent << EXPONENT_POSITION) | (val << (shiftAmount - Long.SIZE));
+                        exponentFraction = (exponent << EXPONENT_POSITION) | ((val << (shiftAmount - Long.SIZE)) & FRACTION_MASK);
                         fraction = 0;
                     } else {
-                        exponentFraction = (exponent << EXPONENT_POSITION) | (val >> (Long.SIZE - shiftAmount));
+                        exponentFraction = (exponent << EXPONENT_POSITION) | ((val >> (Long.SIZE - shiftAmount)) & FRACTION_MASK);
                         fraction = val << (shiftAmount);
                     }
 
@@ -265,7 +265,7 @@ final class LongDoubleUtil {
                 try {
                     double number = numberInterop.asDouble(self.number);
                     long rawValue = Double.doubleToRawLongBits(number);
-                    int sign = rawValue < 0 ? SIGN_MASK : 0;
+                    int sign = (int) (rawValue < 0 ? SIGN_MASK : 0);
 
                     long absRaw = Math.abs(rawValue);
                     if (absRaw == 0) {
@@ -714,25 +714,14 @@ final class LongDoubleUtil {
                     }
                 }
                 long doubleExponent = getUnbiasedExponent(expSignFraction) + DoubleHelper.EXPONENT_BIAS;
-                long doubleFraction = 1L;
-                doubleFraction |= (expSignFraction & FP128Number.FRACTION_MASK) << (FP128Number.DOUBLE_FRACTION_BIT_WIDTH - FP128Number.EXPONENT_POSITION); // 48bits
-                                                                                                                                                            // from
-                                                                                                                                                            // expSignFraction,
-                                                                                                                                                            // with
-                                                                                                                                                            // 4
-                                                                                                                                                            // bits
-                                                                                                                                                            // shift
-                                                                                                                                                            // left.
-                doubleFraction |= fraction >>> (Long.SIZE - (FP128Number.DOUBLE_FRACTION_BIT_WIDTH - FP128Number.EXPONENT_POSITION)); // 4bits
-                                                                                                                                      // from
-                                                                                                                                      // fraction
-
+                /* 48bits from expSignFraction, with 4 bits shift left. */
+                long doubleFraction = (expSignFraction & FP128Number.FRACTION_MASK) << (FP128Number.DOUBLE_FRACTION_BIT_WIDTH - FP128Number.EXPONENT_POSITION);
+                // 4bits from fraction
+                doubleFraction |= fraction >>> (Long.SIZE - (FP128Number.DOUBLE_FRACTION_BIT_WIDTH - FP128Number.EXPONENT_POSITION));
                 long signBit = (expSignFraction & FP80Number.SIGN_MASK) << (Long.SIZE - Short.SIZE);
-                long shiftedExponent = doubleExponent << FP128Number.DOUBLE_FRACTION_BIT_WIDTH; // TODO:
-                                                                                                // overflow
-                                                                                                // case.
-                                                                                                // Test
-                                                                                                // this.
+
+                // TODO: overflow case. Test this.
+                long shiftedExponent = doubleExponent << FP128Number.DOUBLE_FRACTION_BIT_WIDTH;
                 long rawVal = doubleFraction | shiftedExponent | signBit;
                 return Double.longBitsToDouble(rawVal);
 
