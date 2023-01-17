@@ -234,7 +234,7 @@ final class LongDoubleUtil {
                         return;
                     }
 
-                    int sign = (int) (number < 0 ? SIGN_MASK : 0);
+                    long sign = number < 0 ? SIGN_MASK : 0;
                     long val = Math.abs(number);
 
                     int leadingOnePosition = Long.SIZE - Long.numberOfLeadingZeros(val);
@@ -265,7 +265,7 @@ final class LongDoubleUtil {
                 try {
                     double number = numberInterop.asDouble(self.number);
                     long rawValue = Double.doubleToRawLongBits(number);
-                    int sign = (int) (rawValue < 0 ? SIGN_MASK : 0);
+                    long sign = rawValue < 0 ? SIGN_MASK : 0;
 
                     long absRaw = Math.abs(rawValue);
                     if (absRaw == 0) {
