@@ -154,7 +154,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
         // Proxy the method, so that we have the same callTarget if it is not yet initialized.
         // Allows for not duplicating the codeAttribute
-        this.proxy = method.proxy == null ? method : method.proxy;
+        this.proxy = method.proxy;
         this.isLeaf = method.isLeaf;
     }
 
@@ -174,12 +174,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             Meta meta = getMeta();
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
         }
-        this.proxy = null;
+        this.proxy = this;
         this.isLeaf = getContext().getClassHierarchyOracle().createLeafAssumptionForNewMethod(this);
     }
 
     public Method identity() {
-        return proxy == null ? this : proxy;
+        return proxy;
     }
 
     @Override
@@ -1238,7 +1238,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 if (callTarget != null) {
                     return;
                 }
-                if (proxy != null) {
+                if (proxy != Method.this) {
                     this.callTarget = proxy.getCallTarget();
                     return;
                 }
