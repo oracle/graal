@@ -670,7 +670,7 @@ public class CompileQueue {
             ProgressReporter.singleton().reportStageProgress();
             inliningProgress = false;
             round++;
-            try (Indent ignored = debug.logAndIndent("==== Trivial Inlining  round %d\n", round)) {
+            try (Indent ignored = debug.logAndIndent("==== Trivial Inlining  round %d%n", round)) {
 
                 executor.init();
                 universe.getMethods().forEach(method -> {

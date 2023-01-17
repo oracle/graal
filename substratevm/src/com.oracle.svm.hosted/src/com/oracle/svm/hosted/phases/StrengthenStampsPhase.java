@@ -165,7 +165,7 @@ public class StrengthenStampsPhase extends Phase {
             Stamp newStamp = strengthenStamp(node, typeProfile);
             if (!newStamp.equals(node.stamp(NodeView.DEFAULT))) {
                 assert !parseOnce : "Must be done by StrengthenGraphs";
-                node.getDebug().log("STAMP UPDATE  method %s  node %s  old %s  new %s\n", node.graph().method().format("%H.%n(%p)"), node, node.stamp(NodeView.DEFAULT), newStamp);
+                node.getDebug().log("STAMP UPDATE  method %s  node %s  old %s  new %s%n", node.graph().method().format("%H.%n(%p)"), node, node.stamp(NodeView.DEFAULT), newStamp);
                 node.setStamp(newStamp);
             }
         }

@@ -797,7 +797,7 @@ public class LinearScan {
                 try (Indent indent2 = debug.logAndIndent("Basic Blocks")) {
                     for (int i = 0; i < blockCount(); i++) {
                         BasicBlock<?> block = blockAt(i);
-                        debug.log("B%d [%d, %d, %s] ", block.getId(), getFirstLirInstructionId(block), getLastLirInstructionId(block), block.getLoop());
+                        debug.log("B%d [%d, %d, %s] ", (int) block.getId(), getFirstLirInstructionId(block), getLastLirInstructionId(block), block.getLoop());
                     }
                 }
             }
