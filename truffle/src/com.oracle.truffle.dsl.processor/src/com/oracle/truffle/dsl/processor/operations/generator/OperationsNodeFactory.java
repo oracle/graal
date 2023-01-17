@@ -595,7 +595,8 @@ public class OperationsNodeFactory {
         b.startReturn().cast(resultType).string("result").end();
         b.end().startElseBlock(); // } {
         b.tree(createTransferToInterpreterAndInvalidate("$this"));
-        b.statement("System.err.printf(\" [**] expected " + resultType + " but got %s %s [no BE]%n\", result == null ? \"null\" : result.getClass(), result)");
+// b.statement("System.err.printf(\" [**] expected " + resultType + " but got %s %s [no BE]%n\",
+// result == null ? \"null\" : result.getClass(), result)");
         b.startThrow().startNew(types.UnexpectedResultException).string("result").end(2);
         b.end(); // }
 
@@ -613,8 +614,9 @@ public class OperationsNodeFactory {
         b.string("((BoxableInterface) objs[boxing & 0xffff]).setBoxing((boxing >> 16) & 0xffff, (byte) ").tree(boxingTypeToInt(resultType)).string(")");
         b.end();
 
-        b.statement("System.err.printf(\" [**] expected " + resultType +
-                        " but got %s %s (%08x %s) [BE faul]%n\", result == null ? \"null\" : result.getClass(), result, boxing, objs[boxing & 0xffff].getClass())");
+// b.statement("System.err.printf(\" [**] expected " + resultType +
+// " but got %s %s (%08x %s) [BE faul]%n\", result == null ? \"null\" : result.getClass(), result,
+// boxing, objs[boxing & 0xffff].getClass())");
 
         b.startIf().string("result").instanceOf(boxType(resultType)).end().startBlock(); // {
         b.startReturn().cast(resultType).string("result").end();
@@ -1364,6 +1366,8 @@ public class OperationsNodeFactory {
                 b.statement(instruction.getInternalName() + "Gen argument = new " + instruction.getInternalName() + "Gen()");
             }
 
+            boolean inEmit = !operation.isVariadic && operation.numChildren == 0;
+
             if (instruction.signature.isVariadic) {
                 b.statement("argument.op_variadicCount_ = operationChildCount[operationSp] - " + instruction.signature.valueCount);
             }
@@ -1379,7 +1383,11 @@ public class OperationsNodeFactory {
             for (int i = 0; i < instruction.signature.localSetterCount; i++) {
                 b.startAssign("argument.op_localSetter" + i + "_");
                 b.startStaticCall(types.LocalSetter, "create");
-                b.string("((IntRef)((OperationLocalImpl)((Object[]) operationData[operationSp])[" + (argBase + i) + "]).index).value");
+                if (inEmit) {
+                    b.string("((OperationLocalImpl)arg" + (argBase + i) + ").index.value");
+                } else {
+                    b.string("((IntRef)((OperationLocalImpl)((Object[]) operationData[operationSp])[" + (argBase + i) + "]).index).value");
+                }
                 b.end(2);
 
             }
@@ -1388,11 +1396,15 @@ public class OperationsNodeFactory {
 
             for (int i = 0; i < instruction.signature.localSetterRangeCount; i++) {
                 b.startBlock();
-                b.statement("OperationLocal[] argg = (OperationLocal[]) ((Object[]) operationData[operationSp])[" + (argBase + i) + "]");
+                if (inEmit) {
+                    b.statement("OperationLocal[] argg = arg" + (argBase + i));
+                } else {
+                    b.statement("OperationLocal[] argg = (OperationLocal[]) ((Object[]) operationData[operationSp])[" + (argBase + i) + "]");
+                }
                 b.statement("int[] indices = new int[argg.length]");
 
                 b.startFor().string("int ix = 0; ix < indices.length; ix++").end().startBlock();
-                b.startAssign("indices[ix]").string("((IntRef) ((OperationLocalImpl) argg[ix]).index).value").end();
+                b.startAssign("indices[ix]").string("((OperationLocalImpl) argg[ix]).index.value").end();
                 b.end();
 
                 b.startAssign("argument.op_localSetterRange" + i + "_");
