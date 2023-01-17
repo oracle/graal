@@ -550,6 +550,9 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     Meta meta) {
         // TODO this needs to be the correct lookup (static, interface, virtual etc.)
         Method target;
+        if (refKind == REF_invokeVirtual && resolutionKlass.isInterface()) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, cat("Found interface ", resolutionKlass.getName(), ", but class was expected"));
+        }
         if (refKind == REF_invokeInterface || (refKind == REF_invokeSpecial && resolutionKlass.isInterface())) {
             target = doInterfaceMethodLookup(resolutionKlass, name, sig, meta);
         } else {
