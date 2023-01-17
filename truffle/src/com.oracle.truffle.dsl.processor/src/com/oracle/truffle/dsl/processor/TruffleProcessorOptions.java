@@ -77,25 +77,33 @@ public class TruffleProcessorOptions {
     private static final String StateBitWidth = "StateBitWidth";
     private static final String PrintTimings = "PrintTimings";
 
+    private static String getOption(ProcessingEnvironment env, String key) {
+        String value = env.getOptions().get(key);
+        if (value != null) {
+            return value;
+        }
+        return System.getProperty(key);
+    }
+
     public static Boolean generateSpecializationStatistics(ProcessingEnvironment env) {
-        String value = env.getOptions().get(OptionsPrefix + GenerateSpecializationStatisticsOptionName);
+        String value = getOption(env, OptionsPrefix + GenerateSpecializationStatisticsOptionName);
         return value == null ? null : Boolean.parseBoolean(value);
     }
 
     public static boolean generateSlowPathOnly(ProcessingEnvironment env) {
-        return Boolean.parseBoolean(env.getOptions().get(OptionsPrefix + GenerateSlowPathOnlyOptionName));
+        return Boolean.parseBoolean(getOption(env, OptionsPrefix + GenerateSlowPathOnlyOptionName));
     }
 
     public static boolean printTimings(ProcessingEnvironment env) {
-        return Boolean.parseBoolean(env.getOptions().get(OptionsPrefix + PrintTimings));
+        return Boolean.parseBoolean(getOption(env, OptionsPrefix + PrintTimings));
     }
 
     public static String generateSlowPathOnlyFilter(ProcessingEnvironment env) {
-        return env.getOptions().get(OptionsPrefix + GenerateSlowPathOnlyFilterOptionName);
+        return getOption(env, OptionsPrefix + GenerateSlowPathOnlyFilterOptionName);
     }
 
     public static boolean suppressAllWarnings(ProcessingEnvironment env) {
-        String v = env.getOptions().get(OptionsPrefix + SuppressAllWarnings);
+        String v = getOption(env, OptionsPrefix + SuppressAllWarnings);
         boolean suppress = Boolean.parseBoolean(v);
         if (suppress) {
             return suppress;
@@ -112,7 +120,7 @@ public class TruffleProcessorOptions {
     }
 
     public static String[] suppressDSLWarnings(ProcessingEnvironment env) {
-        String v = env.getOptions().get(OptionsPrefix + SuppressWarnings);
+        String v = getOption(env, OptionsPrefix + SuppressWarnings);
         if (v != null) {
             return v.split(",");
         }
@@ -120,7 +128,7 @@ public class TruffleProcessorOptions {
     }
 
     public static boolean cacheSharingWarningsEnabled(ProcessingEnvironment env) {
-        String s = env.getOptions().get(OptionsPrefix + CacheSharingWarningsEnabledOptionName);
+        String s = getOption(env, OptionsPrefix + CacheSharingWarningsEnabledOptionName);
         if (s == null) {
             return !TruffleProcessorOptions.generateSlowPathOnly(env);
         }
@@ -140,7 +148,7 @@ public class TruffleProcessorOptions {
             }
         }
 
-        String value = context.getEnvironment().getOptions().get(OptionsPrefix + StateBitWidth);
+        String value = getOption(context.getEnvironment(), OptionsPrefix + StateBitWidth);
         if (value == null) {
             return FlatNodeGenFactory.DEFAULT_MAX_BIT_WIDTH;
         } else {

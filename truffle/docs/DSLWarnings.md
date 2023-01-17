@@ -27,6 +27,7 @@ The following warning keys are supported:
 * `truffle-unused` warnings if a DSL attribute or annotation has no effect and is recommended to be removed. 
 
 Specific warnings can also be suppressed globally using the `-Atruffle.dsl.SuppressWarnings=truffle-inlining,truffle-neverdefault` Java compiler processor option. 
+Note that also Java system properties can be used to configure the annotation processor. (e.g. by passing `-J-Dtruffle.dsl.SuppressWarnings=truffle-inlining,truffle-neverdefault` to javac)
 
 Suppressing a specific warning should be preferred over suppressing all warnings.
 Find the latest list of warnings in the [source code](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.dsl.processor/src/com/oracle/truffle/dsl/processor/TruffleSuppressedWarnings.java)
