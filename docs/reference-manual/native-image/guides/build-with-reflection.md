@@ -16,7 +16,7 @@ This guide demonstrates how to configure `native-image` with the agent. The agen
 
 To learn how to build a native executable with the metadata pre-computed in the code, [follow this guide](use-reachability-metadata-repository-gradle.md).
 
-The example application in this guide uses Java reflection. The `native-image` tool only partially detects application elements that are accessed using the Java Reflection API. Thus, it requires to be informed about reflectively accessed classes, methods, and fields.
+The example application in this guide uses Java reflection. The `native-image` tool only partially detects application elements that are accessed using the Java Reflection API. So, you need to provide it with details about reflectively accessed classes, methods, and fields.
 ## Example with No Configuration
 
 The following application demonstrates the use of Java reflection.
@@ -88,7 +88,7 @@ The following application demonstrates the use of Java reflection.
 
 The following steps demonstrate how to use the agent, and its output, to create a native executable that relies on reflection and requires configuration.
 
-1. Create a directory `META-INF/native-image` in the working directory:
+1. Create a directory named _META-INF/native-image_ in the working directory:
     ```shell
     mkdir -p META-INF/native-image
     ```
@@ -146,7 +146,7 @@ The following steps demonstrate how to use the agent, and its output, to create 
     ]
     ```
 
-6. Rebuild a native executable and run the resulting file.
+6. Rebuild the native executable and run it.
     ```shell
     $JAVA_HOME/bin/native-image ReflectionExample
     ./reflectionexample StringCapitalizer capitalize "hello"
