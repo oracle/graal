@@ -826,7 +826,7 @@ public class SystemUtils {
      * as relative.
      * 
      * @param pathOrURL path or URL to check.
-     * @return true, if the path is actually an URL.
+     * @return true, if the path is actually a URL.
      */
     public static boolean isRemotePath(String pathOrURL) {
         try {
