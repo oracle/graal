@@ -854,7 +854,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public Class<?> getJavaClass() {
-        return OriginalClassProvider.getJavaClass(universe.getOriginalSnippetReflection(), wrapped);
+        return OriginalClassProvider.getJavaClass(wrapped);
     }
 
     @Override

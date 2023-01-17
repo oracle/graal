@@ -200,6 +200,6 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
 
     @Override
     public Field getJavaField() {
-        return OriginalFieldProvider.getJavaField(getDeclaringClass().universe.getSnippetReflection(), wrapped);
+        return wrapped.getJavaField();
     }
 }

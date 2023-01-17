@@ -70,7 +70,6 @@ import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -462,10 +461,10 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             Class<?>[] searchSignature = signatureToClasses(searchMethod);
             Class<?> searchReturnType = null;
             if (searchMethod.getSignature().getReturnType(null) instanceof ResolvedJavaType) {
-                searchReturnType = OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), (ResolvedJavaType) searchMethod.getSignature().getReturnType(null));
+                searchReturnType = OriginalClassProvider.getJavaClass((ResolvedJavaType) searchMethod.getSignature().getReturnType(null));
             }
 
-            Class<?> declaringClass = OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), declaringType);
+            Class<?> declaringClass = OriginalClassProvider.getJavaClass(declaringType);
             for (Class<?> cur = declaringClass; cur != null; cur = cur.getSuperclass()) {
                 Executable[] methods = null;
                 try {
@@ -506,7 +505,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             for (int i = 0; i < paramCount; i++) {
                 JavaType parameterType = method.getSignature().getParameterType(0, null);
                 if (parameterType instanceof ResolvedJavaType) {
-                    result[i] = OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), (ResolvedJavaType) parameterType);
+                    result[i] = OriginalClassProvider.getJavaClass((ResolvedJavaType) parameterType);
                 }
             }
             return result;

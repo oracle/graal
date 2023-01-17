@@ -501,7 +501,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         throw GraalError.shouldNotReachHere("Required field " + name + " not found in " + type);
     }
 
-    private void registerInvocationPlugins(InvocationPlugins plugins, Replacements replacements) {
+    private static void registerInvocationPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, "java.lang.invoke.DirectMethodHandle", replacements);
         r.register(new RequiredInvocationPlugin("ensureInitialized", Receiver.class) {
             @Override
@@ -557,7 +557,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                      * If both, the MethodHandle and the MethodType are constant, we can evaluate
                      * asType eagerly and embed the result as a constant in the graph.
                      */
-                    SnippetReflectionProvider snippetReflection = aUniverse.getOriginalSnippetReflection();
+                    SnippetReflectionProvider snippetReflection = GraalAccess.getOriginalSnippetReflection();
                     MethodHandle mh = snippetReflection.asObject(MethodHandle.class, methodHandleNode.asJavaConstant());
                     MethodType mt = snippetReflection.asObject(MethodType.class, newTypeNode.asJavaConstant());
                     if (mh == null || mt == null) {

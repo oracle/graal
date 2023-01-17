@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.jfr.JfrEventWriterAccess;
 import com.oracle.svm.core.jfr.JfrJavaEvents;
 import com.oracle.svm.core.util.VMError;
@@ -141,7 +140,7 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
 
     private static Boolean initEventClass(ResolvedJavaType eventType) throws RuntimeException {
         try {
-            Class<? extends Event> newEventClass = OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), eventType).asSubclass(Event.class);
+            Class<? extends Event> newEventClass = OriginalClassProvider.getJavaClass(eventType).asSubclass(Event.class);
             eventType.initialize();
             SecuritySupport.registerEvent(newEventClass);
             JfrJavaEvents.registerEventClass(newEventClass);

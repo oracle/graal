@@ -46,7 +46,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.MethodFilter;
@@ -146,7 +145,6 @@ public class SVMHost extends HostVM {
     private final LinkAtBuildTimeSupport linkAtBuildTimeSupport;
     private final HostedStringDeduplication stringTable;
     private final UnsafeAutomaticSubstitutionProcessor automaticSubstitutions;
-    private final SnippetReflectionProvider originalSnippetReflection;
 
     /**
      * Optionally keep the Graal graphs alive during analysis. This increases the memory footprint
@@ -166,10 +164,9 @@ public class SVMHost extends HostVM {
     private final Set<AnalysisField> finalFieldsInitializedOutsideOfConstructor = ConcurrentHashMap.newKeySet();
 
     public SVMHost(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
-                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform, SnippetReflectionProvider originalSnippetReflection) {
+                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform) {
         super(options, classLoader);
         this.classInitializationSupport = classInitializationSupport;
-        this.originalSnippetReflection = originalSnippetReflection;
         this.stringTable = HostedStringDeduplication.singleton();
         this.forbiddenTypes = setupForbiddenTypes(options);
         this.automaticSubstitutions = automaticSubstitutions;
@@ -519,7 +516,7 @@ public class SVMHost extends HostVM {
 
     @Override
     public void checkType(ResolvedJavaType type, AnalysisUniverse universe) {
-        Class<?> originalClass = OriginalClassProvider.getJavaClass(originalSnippetReflection, type);
+        Class<?> originalClass = OriginalClassProvider.getJavaClass(type);
         ClassLoader originalClassLoader = originalClass.getClassLoader();
         if (NativeImageSystemClassLoader.singleton().isDisallowedClassLoader(originalClassLoader)) {
             String message = "Class " + originalClass.getName() + " was loaded by " + originalClassLoader + " and not by the current image class loader " + classLoader + ". ";
@@ -745,7 +742,7 @@ public class SVMHost extends HostVM {
     @Override
     public boolean platformSupported(AnnotatedElement element) {
         if (element instanceof ResolvedJavaType) {
-            Package p = OriginalClassProvider.getJavaClass(originalSnippetReflection, (ResolvedJavaType) element).getPackage();
+            Package p = OriginalClassProvider.getJavaClass((ResolvedJavaType) element).getPackage();
             if (p != null && !platformSupported(p)) {
                 return false;
             }

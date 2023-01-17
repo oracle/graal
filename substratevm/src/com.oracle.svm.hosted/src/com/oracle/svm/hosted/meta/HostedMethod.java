@@ -506,7 +506,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public Executable getJavaMethod() {
-        return OriginalMethodProvider.getJavaMethod(getDeclaringClass().universe.getSnippetReflection(), wrapped);
+        return wrapped.getJavaMethod();
     }
 
     @Override

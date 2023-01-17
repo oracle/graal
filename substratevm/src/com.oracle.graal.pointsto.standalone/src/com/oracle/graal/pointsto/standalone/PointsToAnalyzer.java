@@ -135,7 +135,7 @@ public final class PointsToAnalyzer {
 
         JavaKind wordKind = JavaKind.fromWordSize(wordSize);
         AnalysisUniverse aUniverse = new AnalysisUniverse(standaloneHost, wordKind,
-                        analysisPolicy, SubstitutionProcessor.IDENTITY, originalMetaAccess, snippetReflection, snippetReflection, new PointsToAnalysisFactory(), null);
+                        analysisPolicy, SubstitutionProcessor.IDENTITY, originalMetaAccess, snippetReflection, new PointsToAnalysisFactory(), null);
         AnalysisMetaAccess aMetaAccess = new AnalysisMetaAccess(aUniverse, originalMetaAccess);
         StandaloneConstantReflectionProvider aConstantReflection = new StandaloneConstantReflectionProvider(aUniverse, HotSpotJVMCIRuntime.runtime());
         StandaloneConstantFieldProvider aConstantFieldProvider = new StandaloneConstantFieldProvider(aMetaAccess);

@@ -530,7 +530,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     @Override
     public Field getJavaField() {
-        return OriginalFieldProvider.getJavaField(getUniverse().getOriginalSnippetReflection(), wrapped);
+        return OriginalFieldProvider.getJavaField(wrapped);
     }
 
     public void addAnalysisFieldObserver(AnalysisFieldObserver observer) {

@@ -415,6 +415,6 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
 
     @Override
     public Class<?> getJavaClass() {
-        return OriginalClassProvider.getJavaClass(universe.getSnippetReflection(), wrapped);
+        return wrapped.getJavaClass();
     }
 }
