@@ -44,8 +44,6 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
-import jdk.vm.ci.code.BytecodePosition;
-
 public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
     protected final PointsToAnalysisMethod method;
@@ -245,8 +243,8 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return returnedParameterIndex;
     }
 
-    public BytecodePosition getParsingReason() {
-        return parsingReason != null ? parsingReason.getSource() : null;
+    public Object getParsingReason() {
+        return PointsToAnalysisMethod.unwrapInvokeReason(parsingReason);
     }
 
     @Override

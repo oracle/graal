@@ -285,22 +285,28 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     /**
      * @return the position of the invocation that triggered parsing for this method, or null
      */
-    public abstract BytecodePosition getParsingReason();
+    public abstract Object getParsingReason();
 
     /**
      * @return the parsing context in which given method was parsed
      */
     public final StackTraceElement[] getParsingContext() {
         List<StackTraceElement> trace = new ArrayList<>();
-        BytecodePosition curr = getParsingReason();
+        Object curr = getParsingReason();
 
         while (curr != null) {
+            if (!(curr instanceof BytecodePosition)) {
+                AnalysisError.guarantee(curr instanceof String, "Parsing reason should be a BytecodePosition or String: %s", curr);
+                trace.add(ReportUtils.rootMethodSentinel((String) curr));
+                break;
+            }
             if (trace.size() > parsingContextMaxDepth) {
                 trace.add(ReportUtils.truncatedStackTraceSentinel(this));
                 break;
             }
-            AnalysisMethod caller = (AnalysisMethod) curr.getMethod();
-            trace.add(caller.asStackTraceElement(curr.getBCI()));
+            BytecodePosition position = (BytecodePosition) curr;
+            AnalysisMethod caller = (AnalysisMethod) position.getMethod();
+            trace.add(caller.asStackTraceElement(position.getBCI()));
             curr = caller.getParsingReason();
         }
         return trace.toArray(new StackTraceElement[0]);
