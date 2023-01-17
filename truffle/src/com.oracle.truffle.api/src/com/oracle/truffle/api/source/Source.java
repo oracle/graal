@@ -84,7 +84,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
  *
  * The starting point is {@link Source#newBuilder(String, TruffleFile)} method.
  *
- * <h3>Read from an URL</h3>
+ * <h3>Read from a URL</h3>
  *
  * One can read remote or in JAR resources using the {@link Source#newBuilder(String, java.net.URL)}
  * factory: <br>

@@ -58,7 +58,7 @@ import org.graalvm.component.installer.persist.DirectoryStorage;
  * <ol>
  * <li>{@link #overrideCatalogSpec}, which should be set from {@code -C} or GRAALVM_CATALOG_URL
  * environment variable by installer launcher.
- * <li>catalog related properties from the release file; each software sources has an URL
+ * <li>catalog related properties from the release file; each software sources has a URL
  * (mandatory), label and potentially parameters.
  * <li>component_catalog property, which defines all the software sources in a single property
  * </ol>
