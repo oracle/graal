@@ -634,5 +634,16 @@ public final class Management extends NativeEnv {
         }
     }
 
+    @ManagementImpl
+    public @JavaType(Thread[].class) StaticObject FindCircularBlockedThreads(@Inject Meta meta) {
+        return FindDeadlocks(true, meta);
+    }
+
+    @ManagementImpl
+    public @JavaType(Thread[].class) StaticObject FindDeadlocks(boolean objectMonitorsOnly, @Inject Meta meta) {
+        getLogger().warning(() -> "Calling unimplemented Management.FindDeadlocks(" + objectMonitorsOnly + ")");
+        return StaticObject.createArray(meta.java_lang_Thread.getArrayClass(), StaticObject.EMPTY_ARRAY, getContext());
+    }
+
     // Checkstyle: resume method name check
 }
