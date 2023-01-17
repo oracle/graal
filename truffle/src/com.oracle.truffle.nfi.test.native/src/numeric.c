@@ -84,7 +84,7 @@ GEN_NUMERIC_TEST(POINTER, intptr_t)
 GEN_NUMERIC_TEST(FP80, long double)
 
 #elif defined(__aarch64__) || defined(_M_ARM64)
-printf("%s\n", 'a');
+printf("%d\n",1);
 GEN_NUMERIC_TEST(FP128, long double)
 
 #endif
