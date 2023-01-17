@@ -13,7 +13,7 @@ Here you will learn how to:
 
 - [Access Environment Variables](access-environment-variables.md)
 - [Add Logging to a Native Executable](add-logging-to-native-executable.md)
-- [Build a Native Executable from a JAR](build-native-executable-from-jar.md)
+- [Build a Native Executable from a JAR File](build-native-executable-from-jar.md)
 - [Build and Run Native Executables with JFR](build-and-run-native-executable-with-jfr.md)
 - [Build Java Modules into a Native Executable](build-java-module-app-aot.md)
 - [Build a Native Shared Library](build-native-shared-library.md)
