@@ -69,12 +69,12 @@ public class SharedCachedTest {
         abstract Object execute(Object arg);
 
         @Specialization(guards = "arg == 42")
-        Object s0(int arg, @Shared("shared") @Cached("arg") int primitive) {
+        Object s0(int arg, @Shared @Cached("arg") int primitive) {
             return arg;
         }
 
         @Specialization(guards = "arg == 43")
-        Object s1(int arg, @Shared("shared") @Cached("arg") int primitive) {
+        Object s1(int arg, @Shared @Cached("arg") int primitive) {
             return arg;
         }
     }
@@ -87,12 +87,12 @@ public class SharedCachedTest {
         abstract Object execute(Object arg);
 
         @Specialization(guards = "arg == ARG0")
-        Object s0(Object arg, @Shared("shared") @Cached("arg") Object cachedArg) {
+        Object s0(Object arg, @Shared @Cached("arg") Object cachedArg) {
             return cachedArg;
         }
 
         @Specialization(guards = "arg == ARG1")
-        Object s1(Object arg, @Shared("shared") @Cached("arg") Object cachedArg) {
+        Object s1(Object arg, @Shared @Cached("arg") Object cachedArg) {
             return cachedArg;
         }
     }
@@ -165,17 +165,17 @@ public class SharedCachedTest {
         abstract Object execute(Node node, Object arg);
 
         @Specialization
-        static Object doInt(Node node, int arg, @Shared("inner") @Cached SimpleNode innerNode) {
+        static Object doInt(Node node, int arg, @Shared @Cached SimpleNode innerNode) {
             return innerNode.execute(node, arg);
         }
 
         @Specialization
-        static Object doLong(Node node, long arg, @Shared("inner") @Cached SimpleNode innerNode) {
+        static Object doLong(Node node, long arg, @Shared @Cached SimpleNode innerNode) {
             return innerNode.execute(node, arg);
         }
 
         @Specialization
-        static Object doObject(Node node, Object arg, @Shared("inner") @Cached SimpleNode innerNode) {
+        static Object doObject(Node node, Object arg, @Shared @Cached SimpleNode innerNode) {
             return innerNode.execute(node, arg);
         }
 
@@ -206,12 +206,12 @@ public class SharedCachedTest {
         abstract Object execute(Object arg);
 
         @Specialization(guards = "arg == 42")
-        Object s0(int arg, @Shared("group") @Cached TestNode node) {
+        Object s0(int arg, @Shared @Cached TestNode group) {
             return arg;
         }
 
         @Specialization(guards = "arg == 43")
-        Object s1(int arg, @Shared("group") @Cached TestNode node) {
+        Object s1(int arg, @Shared @Cached TestNode group) {
             return arg;
         }
     }
@@ -228,6 +228,21 @@ public class SharedCachedTest {
 
         @Specialization(guards = {"node.execute(arg)", "arg == 43"}, limit = "3")
         Object s1(int arg, @Cached TestNode node) {
+            return arg;
+        }
+    }
+
+    abstract static class ExplicitNameTestNode extends Node {
+
+        abstract Object execute(Object arg);
+
+        @Specialization(guards = "arg == 42")
+        Object s0(int arg, @Shared("group") @Cached TestNode value) {
+            return arg;
+        }
+
+        @Specialization(guards = "arg == 43")
+        Object s1(int arg, @Shared @Cached TestNode group) {
             return arg;
         }
     }
@@ -396,6 +411,26 @@ public class SharedCachedTest {
         public Object s1(String name,
                         @Cached(value = "name", neverDefault = true) @Shared("name") String cachedName) {
             return cachedName;
+        }
+    }
+
+    abstract static class ErrorNoSharingTestNode extends Node {
+
+        abstract Object execute(Object arg);
+
+        @Specialization(guards = "arg == 42")
+        Object s0(int arg,
+                        @ExpectError("The cached parameter may be shared with: %n  - s1(..., @Cached(...) TestNode group)%") //
+                        @Cached TestNode value) {
+            return arg;
+        }
+
+        @Specialization(guards = "arg == 43")
+        Object s1(int arg,
+                        @ExpectError("No other cached parameters are specified as shared with the group 'group'.")
+                        //
+                        @Shared @Cached TestNode group) {
+            return arg;
         }
     }
 
