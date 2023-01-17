@@ -1,17 +1,17 @@
 ---
 layout: ni-docs
 toc_group: how-to-guides
-link_title: Build a Native Executable from a JAR
+link_title: Build a Native Executable from a JAR file
 permalink: /reference-manual/native-image/guides/build-native-executable-from-jar/
 ---
 
-# Build a Native Executable from a JAR
+# Build a Native Executable from a JAR file
 
 You can build a native executable from a class file, from a JAR file, or from a module (with Java 9 and higher). This guide demonstrates how to build a  native executable from a JAR file. 
 
 To build a native executable from a JAR file in the current working directory, use the following command:
 ```shell
-native-image [options] -jar jarfile [imagename]
+native-image [options] -jar jarfile [executable name]
 ```
 
 1. Prepare the application.
@@ -25,7 +25,7 @@ native-image [options] -jar jarfile [imagename]
         |          -- App.java
         ```
 
-    - Add the following Java code into the _src/com/example/App.java_ file:
+    - Add the following Java code to the _src/com/example/App.java_ file:
 
         ```java
         package com.example;
@@ -74,7 +74,7 @@ native-image [options] -jar jarfile [imagename]
     ./App
     ```
 
-The `native-image` tool can provide the class path for all classes using the existing option from the java launcher: `-cp`, followed by a list of directories or JAR files, separated by `:` on Linux and macOS platforms, or `;` on Windows. The name of the class containing the `main` method is the last argument, or you can use the `-jar` option and provide a JAR file that specifies the `main` method in its manifest.
+You can provide `native-image` with the class path for all classes using the existing option from the java launcher: `-cp`, followed by a list of directories or JAR files, separated by `:` on Linux and macOS platforms, or `;` on Windows. The name of the class containing the `main` method is the last argument, or you can use the `-jar` option and provide a JAR file that specifies the `main` method in its manifest.
 
 ### Related Documentation
 
