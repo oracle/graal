@@ -1716,42 +1716,13 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                     throw EspressoError.shouldNotReachHere("expecting IF_ACMPEQ,IF_ACMPNE");
             }
         } else {
+            boolean equal = InterpreterToVM.referenceIdentityEqual(operand1, operand2, getLanguage());
             switch (opcode) {
                 case IF_ACMPEQ: {
-                    if (operand1 == operand2) {
-                        return true;
-                    }
-                    // Espresso null == foreign null
-                    if (StaticObject.isNull(operand1) && StaticObject.isNull(operand2)) {
-                        return true;
-                    }
-                    // an Espresso object can never be identical to a foreign object
-                    if (operand1.isForeignObject() && operand2.isForeignObject()) {
-                        Object foreignOp1 = operand1.rawForeignObject(getLanguage());
-                        Object foreignOp2 = operand2.rawForeignObject(getLanguage());
-                        InteropLibrary operand1Lib = InteropLibrary.getUncached(foreignOp1);
-                        InteropLibrary operand2Lib = InteropLibrary.getUncached(foreignOp2);
-                        return operand1Lib.isIdentical(foreignOp1, foreignOp2, operand2Lib);
-                    }
-                    return false;
+                    return equal;
                 }
                 case IF_ACMPNE: {
-                    if (operand1 == operand2) {
-                        return false;
-                    }
-                    // Espresso null == foreign null
-                    if (StaticObject.isNull(operand1) && StaticObject.isNull(operand2)) {
-                        return false;
-                    }
-                    // an Espresso object can never be identical to a foreign object
-                    if (operand1.isForeignObject() && operand2.isForeignObject()) {
-                        Object foreignOp1 = operand1.rawForeignObject(getLanguage());
-                        Object foreignOp2 = operand2.rawForeignObject(getLanguage());
-                        InteropLibrary operand1Lib = InteropLibrary.getUncached(foreignOp1);
-                        InteropLibrary operand2Lib = InteropLibrary.getUncached(foreignOp2);
-                        return !operand1Lib.isIdentical(foreignOp1, foreignOp2, operand2Lib);
-                    }
-                    return operand1 != operand2;
+                    return !equal;
                 }
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();

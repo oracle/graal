@@ -3530,7 +3530,11 @@ public final class VM extends NativeEnv {
             getMeta().throwNullPointerException();
         }
         EspressoReference host = (EspressoReference) getMeta().HIDDEN_HOST_REFERENCE.getHiddenObject(ref);
-        assert host instanceof Reference;
+        if (host == null) {
+            // reference was cleared
+            return StaticObject.isNull(object);
+        }
+        assert host instanceof Reference : host;
         // Call host's refersTo. Not available in 8 or 11.
         return ReferenceSupport.phantomReferenceRefersTo((Reference) host, object);
     }
@@ -3538,15 +3542,28 @@ public final class VM extends NativeEnv {
     @SuppressWarnings({"rawtypes", "unchecked"})
     @VmImpl(isJni = true)
     public boolean JVM_ReferenceRefersTo(@JavaType(Reference.class) StaticObject ref, @JavaType(Object.class) StaticObject object,
-                    @Inject SubstitutionProfiler profiler) {
+                    @Inject SubstitutionProfiler profiler, @Inject Meta meta, @Inject EspressoLanguage language) {
         if (StaticObject.isNull(ref)) {
             profiler.profile(0);
             getMeta().throwNullPointerException();
         }
-        EspressoReference host = (EspressoReference) getMeta().HIDDEN_HOST_REFERENCE.getHiddenObject(ref);
-        assert host instanceof Reference;
-        // Call host's refersTo. Not available in 8 or 11.
-        return ReferenceSupport.referenceRefersTo((Reference) host, object);
+
+        if (InterpreterToVM.instanceOf(ref, meta.java_lang_ref_WeakReference) //
+                || InterpreterToVM.instanceOf(ref, meta.java_lang_ref_SoftReference) //
+                || InterpreterToVM.instanceOf(ref, meta.java_lang_ref_PhantomReference) //
+                || InterpreterToVM.instanceOf(ref, meta.java_lang_ref_FinalReference)) {
+            EspressoReference host = (EspressoReference) getMeta().HIDDEN_HOST_REFERENCE.getHiddenObject(ref);
+            if (host == null) {
+                // reference was cleared
+                return StaticObject.isNull(object);
+            }
+            assert host instanceof Reference : host;
+            // Call host's refersTo. Not available in 8 or 11.
+            return ReferenceSupport.referenceRefersTo((Reference) host, object);
+        } else {
+            StaticObject referent = (StaticObject) meta.java_lang_ref_Reference_referent.get(ref);
+            return InterpreterToVM.referenceIdentityEqual(referent, object, language);
+        }
     }
 
     @VmImpl(isJni = true)
