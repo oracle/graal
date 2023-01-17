@@ -148,6 +148,7 @@ public abstract class NFATraversalRegexASTVisitor {
     private RegexASTNode cur;
     private Set<LookBehindAssertion> traversableLookBehindAssertions;
     private boolean canTraverseCaret = false;
+    private TBitSet matchedConditionGroups;
     private boolean forward = true;
     private boolean done = false;
 
@@ -228,11 +229,24 @@ public abstract class NFATraversalRegexASTVisitor {
         this.canTraverseCaret = canTraverseCaret;
     }
 
+    public void setMatchedConditionGroups(TBitSet matchedConditionGroups) {
+        this.matchedConditionGroups = matchedConditionGroups;
+    }
+
+    public TBitSet getMatchedConditionGroups() {
+        assert isBuildingDFA();
+        return matchedConditionGroups;
+    }
+
     public void setReverse() {
         this.forward = false;
     }
 
-    protected abstract boolean canTraverseLookArounds();
+    protected abstract boolean isBuildingDFA();
+
+    private boolean canTraverseLookArounds() {
+        return isBuildingDFA();
+    }
 
     protected void run(Term runRoot) {
         assert insideLoops.isEmpty();
@@ -383,6 +397,14 @@ public abstract class NFATraversalRegexASTVisitor {
         }
         if (cur.isSequence()) {
             final Sequence sequence = (Sequence) cur;
+            if (sequence.getParent().isConditionalBackReferenceGroup() && isBuildingDFA()) {
+                int referencedGroupNumber = sequence.getParent().asConditionalBackReferenceGroup().getReferencedGroupNumber();
+                boolean groupMatched = (getMatchedConditionGroups().get(referencedGroupNumber) && !captureGroupClears.get(referencedGroupNumber * 2 + 1)) ||
+                                captureGroupUpdates.get(referencedGroupNumber * 2 + 1);
+                if (groupMatched != sequence.isFirstInGroup()) {
+                    return retreat();
+                }
+            }
             if (sequence.isEmpty()) {
                 Group parent = sequence.getParent();
                 if (sequence.isExpandedQuantifier()) {
@@ -619,7 +641,7 @@ public abstract class NFATraversalRegexASTVisitor {
         // two states of the traversal that differ only in capture groups, since the state that was
         // encountered first will dominate the one found later and any empty capture groups that
         // would have been matched along the way cannot affect future matching.
-        boolean captureGroupsMatter = ast.getOptions().getFlavor().backreferencesToUnmatchedGroupsFail();
+        boolean captureGroupsMatter = ast.getOptions().getFlavor().backreferencesToUnmatchedGroupsFail() || (isBuildingDFA() && !ast.getConditionGroups().isEmpty());
         DeduplicationKey key;
         if (captureGroupsMatter) {
             key = CGSensitiveDeduplicationKey.create(cur, lookAroundsOnPath, dollarsOnPath, quantifierGuards, captureGroupUpdates, captureGroupClears, lastGroup);
@@ -1027,7 +1049,7 @@ public abstract class NFATraversalRegexASTVisitor {
 
     /// Quantifier guard data handling
     private boolean useQuantifierGuards() {
-        return !canTraverseLookArounds();
+        return !isBuildingDFA();
     }
 
     private void clearQuantifierGuards() {

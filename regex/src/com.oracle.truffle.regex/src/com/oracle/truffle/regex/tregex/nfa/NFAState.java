@@ -86,14 +86,16 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
     private TBitSet possibleResults;
     private final CodePointSet matcherBuilder;
     private final Set<LookBehindAssertion> finishedLookBehinds;
+    private final TBitSet matchedConditionGroups;
 
     public NFAState(short id,
                     StateSet<RegexAST, ? extends RegexASTNode> stateSet,
                     CodePointSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds,
                     boolean hasPrefixStates,
-                    boolean mustAdvance) {
-        this(id, stateSet, initFlags(hasPrefixStates, mustAdvance), null, matcherBuilder, finishedLookBehinds);
+                    boolean mustAdvance,
+                    TBitSet matchedConditionGroups) {
+        this(id, stateSet, initFlags(hasPrefixStates, mustAdvance), null, matcherBuilder, finishedLookBehinds, matchedConditionGroups);
     }
 
     private static byte initFlags(boolean hasPrefixStates, boolean mustAdvance) {
@@ -104,8 +106,9 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
                     StateSet<RegexAST, ? extends RegexASTNode> stateSet,
                     short flags,
                     CodePointSet matcherBuilder,
-                    Set<LookBehindAssertion> finishedLookBehinds) {
-        this(id, stateSet, flags, null, matcherBuilder, finishedLookBehinds);
+                    Set<LookBehindAssertion> finishedLookBehinds,
+                    TBitSet matchedConditionGroups) {
+        this(id, stateSet, flags, null, matcherBuilder, finishedLookBehinds, matchedConditionGroups);
     }
 
     private NFAState(short id,
@@ -113,17 +116,19 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
                     short flags,
                     TBitSet possibleResults,
                     CodePointSet matcherBuilder,
-                    Set<LookBehindAssertion> finishedLookBehinds) {
+                    Set<LookBehindAssertion> finishedLookBehinds,
+                    TBitSet matchedConditionGroups) {
         super(id, EMPTY_TRANSITIONS);
         setFlag(flags);
         this.stateSet = stateSet;
         this.possibleResults = possibleResults;
         this.matcherBuilder = matcherBuilder;
         this.finishedLookBehinds = finishedLookBehinds;
+        this.matchedConditionGroups = matchedConditionGroups;
     }
 
     public NFAState createTraceFinderCopy(short copyID) {
-        return new NFAState(copyID, getStateSet(), getFlags(), matcherBuilder, finishedLookBehinds);
+        return new NFAState(copyID, getStateSet(), getFlags(), matcherBuilder, finishedLookBehinds, matchedConditionGroups);
     }
 
     public CodePointSet getCharSet() {
@@ -152,6 +157,10 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
 
     public void setMustAdvance(boolean value) {
         setFlag(FLAG_MUST_ADVANCE, value);
+    }
+
+    public TBitSet getMatchedConditionGroups() {
+        return matchedConditionGroups;
     }
 
     public boolean hasTransitionToAnchoredFinalState(boolean forward) {
@@ -338,6 +347,7 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
                         Json.prop("mustAdvance", isMustAdvance()),
                         Json.prop("sourceSections", sourceSectionsToJson()),
                         Json.prop("matcherBuilder", matcherBuilder.toString()),
+                        Json.prop("matchedConditionGroups", Json.array(getMatchedConditionGroups().stream().toArray())),
                         Json.prop("forwardAnchoredFinalState", isAnchoredFinalState()),
                         Json.prop("forwardUnAnchoredFinalState", isUnAnchoredFinalState()),
                         Json.prop("reverseAnchoredFinalState", isAnchoredInitialState()),
@@ -353,6 +363,7 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
                         Json.prop("mustAdvance", isMustAdvance()),
                         Json.prop("sourceSections", sourceSectionsToJson()),
                         Json.prop("matcherBuilder", matcherBuilder.toString()),
+                        Json.prop("matchedConditionGroups", Json.array(getMatchedConditionGroups().stream().toArray())),
                         Json.prop("anchoredFinalState", isAnchoredFinalState(forward)),
                         Json.prop("unAnchoredFinalState", isUnAnchoredFinalState(forward)),
                         Json.prop("transitions", Arrays.stream(getSuccessors(forward)).map(x -> Json.val(x.getId()))));

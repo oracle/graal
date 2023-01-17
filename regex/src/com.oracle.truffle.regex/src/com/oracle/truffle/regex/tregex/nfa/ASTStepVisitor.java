@@ -46,6 +46,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Set;
 
+import com.oracle.truffle.regex.util.TBitSet;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
@@ -128,6 +129,7 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
         Term root = (Term) stepRoot.getRoot();
         setTraversableLookBehindAssertions(expandState.getFinishedLookBehinds());
         setCanTraverseCaret(root instanceof PositionAssertion && ast.getNfaAnchoredInitialStates().contains(root));
+        setMatchedConditionGroups(expandState.getMatchedConditionGroups());
         run(root);
         curLookAheads.clear();
         curLookBehinds.clear();
@@ -178,7 +180,7 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
 
     @Override
     protected void enterLookAhead(LookAheadAssertion assertion) {
-        ASTStepCacheKey key = new ASTStepCacheKey(assertion, canTraverseCaret(), getTraversableLookBehindAssertions());
+        ASTStepCacheKey key = new ASTStepCacheKey(assertion, canTraverseCaret(), getTraversableLookBehindAssertions(), getMatchedConditionGroups());
         ASTStep laStep = lookAheadMap.get(key);
         if (laStep == null) {
             laStep = new ASTStep(assertion.getGroup());
@@ -198,11 +200,13 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
         private final RegexASTNode root;
         private final boolean canTraverseCaret;
         private final Set<LookBehindAssertion> traversableLookBehindAssertions;
+        private final TBitSet matchedConditionGroups;
 
-        ASTStepCacheKey(RegexASTNode root, boolean canTraverseCaret, Set<LookBehindAssertion> traversableLookBehindAssertions) {
+        ASTStepCacheKey(RegexASTNode root, boolean canTraverseCaret, Set<LookBehindAssertion> traversableLookBehindAssertions, TBitSet matchedConditionGroups) {
             this.root = root;
             this.canTraverseCaret = canTraverseCaret;
             this.traversableLookBehindAssertions = traversableLookBehindAssertions;
+            this.matchedConditionGroups = matchedConditionGroups;
         }
 
         @Override
@@ -211,17 +215,18 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
                 return false;
             }
             ASTStepCacheKey that = (ASTStepCacheKey) obj;
-            return this.root.equals(that.root) && this.canTraverseCaret == that.canTraverseCaret && this.traversableLookBehindAssertions.equals(that.traversableLookBehindAssertions);
+            return this.root.equals(that.root) && this.canTraverseCaret == that.canTraverseCaret && this.traversableLookBehindAssertions.equals(that.traversableLookBehindAssertions) &&
+                            this.matchedConditionGroups.equals(that.matchedConditionGroups);
         }
 
         @Override
         public int hashCode() {
-            return root.hashCode() + 31 * (Boolean.hashCode(canTraverseCaret) + 31 * traversableLookBehindAssertions.hashCode());
+            return root.hashCode() + 31 * (Boolean.hashCode(canTraverseCaret) + 31 * (traversableLookBehindAssertions.hashCode() + 31 * matchedConditionGroups.hashCode()));
         }
     }
 
     @Override
-    protected boolean canTraverseLookArounds() {
+    protected boolean isBuildingDFA() {
         return true;
     }
 }

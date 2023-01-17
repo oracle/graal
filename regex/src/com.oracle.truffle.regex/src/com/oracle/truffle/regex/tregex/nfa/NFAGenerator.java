@@ -104,7 +104,7 @@ public final class NFAGenerator {
         this.transitionGBClearIndices = new TBitSet(ast.getNumberOfCaptureGroups() * 2);
         this.astTransitionCanonicalizer = new ASTTransitionCanonicalizer(ast, true, false);
         this.compilationBuffer = compilationBuffer;
-        dummyInitialState = new NFAState((short) stateID.inc(), StateSet.create(ast, ast.getWrappedRoot()), CodePointSet.getEmpty(), Collections.emptySet(), false, ast.getOptions().isMustAdvance());
+        dummyInitialState = new NFAState((short) stateID.inc(), StateSet.create(ast, ast.getWrappedRoot()), CodePointSet.getEmpty(), Collections.emptySet(), false, ast.getOptions().isMustAdvance(), TBitSet.getEmptyInstance());
         nfaStates.put(NFAStateID.create(dummyInitialState), dummyInitialState);
         anchoredFinalState = createFinalState(StateSet.create(ast, ast.getReachableDollars()), false);
         anchoredFinalState.setAnchoredFinalState();
@@ -285,8 +285,9 @@ public final class NFAGenerator {
                         }
                     } else if (!containsPositionAssertion) {
                         assert mergeBuilder.getCodePointSet().matchesSomething();
+                        TBitSet updatedMatchedConditionGroups = updateMatchedConditionGroups(sourceState.getMatchedConditionGroups());
                         NFAState targetState = registerMatcherState(stateSetCC, mergeBuilder.getCodePointSet(), finishedLookBehinds, containsPrefixStates,
-                                        sourceState.isMustAdvance() && !ast.getHardPrefixNodes().isDisjoint(stateSetCC));
+                                        sourceState.isMustAdvance() && !ast.getHardPrefixNodes().isDisjoint(stateSetCC), updatedMatchedConditionGroups);
                         transitionsBuffer.add(createTransition(sourceState, targetState, mergeBuilder.getCodePointSet(), lastGroup));
                     }
                 }
@@ -297,8 +298,23 @@ public final class NFAGenerator {
         return transitionsBuffer.toArray(new NFAStateTransition[transitionsBuffer.size()]);
     }
 
+    private TBitSet updateMatchedConditionGroups(TBitSet matchedConditionGroups) {
+        TBitSet updatedMatchedConditionGroups = matchedConditionGroups.copy();
+        for (int clearIndex : transitionGBClearIndices) {
+            if (clearIndex % 2 != 0 && ast.getConditionGroups().get(clearIndex / 2)) {
+                updatedMatchedConditionGroups.clear(clearIndex / 2);
+            }
+        }
+        for (int updateIndex : transitionGBUpdateIndices) {
+            if (updateIndex % 2 != 0 && ast.getConditionGroups().get(updateIndex / 2)) {
+                updatedMatchedConditionGroups.set(updateIndex / 2);
+            }
+        }
+        return updatedMatchedConditionGroups;
+    }
+
     private NFAState createFinalState(StateSet<RegexAST, ? extends RegexASTNode> stateSet, boolean mustAdvance) {
-        NFAState state = new NFAState((short) stateID.inc(), stateSet, ast.getEncoding().getFullSet(), Collections.emptySet(), false, mustAdvance);
+        NFAState state = new NFAState((short) stateID.inc(), stateSet, ast.getEncoding().getFullSet(), Collections.emptySet(), false, mustAdvance, TBitSet.getEmptyInstance());
         assert !nfaStates.containsKey(NFAStateID.create(state));
         nfaStates.put(NFAStateID.create(state), state);
         return state;
@@ -312,12 +328,13 @@ public final class NFAGenerator {
                     CodePointSet matcherBuilder,
                     StateSet<RegexAST, LookBehindAssertion> finishedLookBehinds,
                     boolean containsPrefixStates,
-                    boolean mustAdvance) {
-        NFAStateID nfaStateID = new NFAStateID(stateSetCC, mustAdvance);
+                    boolean mustAdvance,
+                    TBitSet matchedConditionGroups) {
+        NFAStateID nfaStateID = new NFAStateID(stateSetCC, mustAdvance, matchedConditionGroups);
         if (nfaStates.containsKey(nfaStateID)) {
             return nfaStates.get(nfaStateID);
         } else {
-            NFAState state = new NFAState((short) stateID.inc(), stateSetCC, matcherBuilder, finishedLookBehinds, containsPrefixStates, mustAdvance);
+            NFAState state = new NFAState((short) stateID.inc(), stateSetCC, matcherBuilder, finishedLookBehinds, containsPrefixStates, mustAdvance, matchedConditionGroups);
             expansionQueue.push(state);
             nfaStates.put(nfaStateID, state);
             return state;
@@ -335,14 +352,16 @@ public final class NFAGenerator {
 
         private final StateSet<RegexAST, ? extends RegexASTNode> stateSet;
         private final boolean mustAdvance;
+        private final TBitSet matchedConditionGroups;
 
-        NFAStateID(StateSet<RegexAST, ? extends RegexASTNode> stateSet, boolean mustAdvance) {
+        NFAStateID(StateSet<RegexAST, ? extends RegexASTNode> stateSet, boolean mustAdvance, TBitSet matchedConditionGroups) {
             this.stateSet = stateSet;
             this.mustAdvance = mustAdvance;
+            this.matchedConditionGroups = matchedConditionGroups;
         }
 
         public static NFAStateID create(NFAState state) {
-            return new NFAStateID(state.getStateSet(), state.isMustAdvance());
+            return new NFAStateID(state.getStateSet(), state.isMustAdvance(), state.getMatchedConditionGroups());
         }
 
         @Override
@@ -354,12 +373,12 @@ public final class NFAGenerator {
                 return false;
             }
             NFAStateID that = (NFAStateID) o;
-            return mustAdvance == that.mustAdvance && stateSet.equals(that.stateSet);
+            return mustAdvance == that.mustAdvance && stateSet.equals(that.stateSet) && matchedConditionGroups.equals(that.matchedConditionGroups);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(stateSet, mustAdvance);
+            return Objects.hash(stateSet, mustAdvance, matchedConditionGroups);
         }
     }
 }
