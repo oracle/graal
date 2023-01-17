@@ -83,7 +83,7 @@ public class GDSTokenStorage {
     private static Properties load(Path propertiesPath, Feedback feedback) {
         Properties properties = new Properties();
         if (Files.exists(propertiesPath)) {
-            try ( InputStream is = Files.newInputStream(propertiesPath)) {
+            try (InputStream is = Files.newInputStream(propertiesPath)) {
                 properties.load(is);
             } catch (IllegalArgumentException | IOException ex) {
                 feedback.error("ERR_CouldNotLoadToken", ex, propertiesPath, ex.getLocalizedMessage());
@@ -165,10 +165,10 @@ public class GDSTokenStorage {
             file.setWritable(true);
         } else {
             Files.setPosixFilePermissions(parent, Set.of(PosixFilePermission.OWNER_READ,
-                    PosixFilePermission.OWNER_WRITE,
-                    PosixFilePermission.OWNER_EXECUTE));
+                            PosixFilePermission.OWNER_WRITE,
+                            PosixFilePermission.OWNER_EXECUTE));
         }
-        try ( OutputStream os = Files.newOutputStream(propsPath)) {
+        try (OutputStream os = Files.newOutputStream(propsPath)) {
             properties.store(os, null);
         }
         if (SystemUtils.isWindows()) {
@@ -180,8 +180,8 @@ public class GDSTokenStorage {
             file.setWritable(true);
         } else {
             Files.setPosixFilePermissions(propsPath,
-                    Set.of(PosixFilePermission.OWNER_READ,
-                            PosixFilePermission.OWNER_WRITE));
+                            Set.of(PosixFilePermission.OWNER_READ,
+                                            PosixFilePermission.OWNER_WRITE));
         }
         changed = false;
     }

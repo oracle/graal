@@ -51,10 +51,12 @@ class TestGDSTokenStorage extends GDSTokenStorage {
         return testPath;
     }
 
+    public boolean makeConn = true;
+
     @Override
     protected GDSRESTConnector makeConnector() {
         fb.verbatimOut("GDSTokenStorage.makeConnector", false);
-        return new GDSRESTConnector("http://mock.url", fb, PATH_USER_GU, Version.fromString("1.0.0")) {
+        return makeConn ? new GDSRESTConnector("http://mock.url", fb, PATH_USER_GU, Version.fromString("1.0.0")) {
             @Override
             public void revokeToken(String token) {
                 fb.verbatimOut("GDSRESTConnector.revokeToken:" + token, false);
@@ -64,6 +66,6 @@ class TestGDSTokenStorage extends GDSTokenStorage {
             public void revokeTokens(String mail) {
                 fb.verbatimOut("GDSRESTConnector.revokeTokens:" + mail, false);
             }
-        };
+        } : null;
     }
 }
