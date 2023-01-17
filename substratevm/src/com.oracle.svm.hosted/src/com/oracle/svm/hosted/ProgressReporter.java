@@ -42,6 +42,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.Executors;
@@ -633,19 +634,26 @@ public class ProgressReporter {
                         .a(String.format("%9s for %s more object types", Utils.bytesToHuman(totalHeapBytes - printedHeapBytes), numHeapItems - printedHeapItems)).flushln();
     }
 
-    public void printEpilog(String imageName, NativeImageGenerator generator, FeatureHandler featureHandler, ImageClassLoader classLoader, Throwable error, OptionValues parsedHostedOptions) {
+    public void printEpilog(Optional<String> optionalImageName, Optional<NativeImageGenerator> optionalGenerator, ImageClassLoader classLoader, Optional<Throwable> optionalError,
+                    OptionValues parsedHostedOptions) {
         executor.shutdown();
 
-        if (error != null) {
-            Path errorReportPath = NativeImageOptions.getErrorFilePath();
-            ReportUtils.report("GraalVM Native Image Error Report", errorReportPath, p -> VMErrorReporter.generateErrorReport(p, buildOutputLog, classLoader, featureHandler, error), false);
-            BuildArtifacts.singleton().add(ArtifactType.BUILD_INFO, errorReportPath);
+        if (optionalError.isPresent()) {
+            Path errorReportPath = NativeImageOptions.getErrorFilePath(parsedHostedOptions);
+            Optional<FeatureHandler> featureHandler = optionalGenerator.isEmpty() ? Optional.empty() : Optional.ofNullable(optionalGenerator.get().featureHandler);
+            ReportUtils.report("GraalVM Native Image Error Report", errorReportPath, p -> VMErrorReporter.generateErrorReport(p, buildOutputLog, classLoader, featureHandler, optionalError.get()),
+                            false);
+            if (ImageSingletonsSupport.isInstalled()) {
+                BuildArtifacts.singleton().add(ArtifactType.BUILD_INFO, errorReportPath);
+            }
         }
 
-        if (imageName == null || generator == null) {
-            printErrorMessage(error);
+        if (optionalImageName.isEmpty() || optionalGenerator.isEmpty()) {
+            printErrorMessage(optionalError, parsedHostedOptions);
             return;
         }
+        String imageName = optionalImageName.get();
+        NativeImageGenerator generator = optionalGenerator.get();
 
         l().printLineSeparator();
         printResourceStatistics();
@@ -653,7 +661,7 @@ public class ProgressReporter {
         double totalSeconds = Utils.millisToSeconds(getTimer(TimerCollection.Registry.TOTAL).getTotalTime());
         recordJsonMetric(ResourceUsageKey.TOTAL_SECS, totalSeconds);
 
-        createAdditionalArtifacts(imageName, generator, error, parsedHostedOptions);
+        createAdditionalArtifacts(imageName, generator, optionalError, parsedHostedOptions);
         printArtifacts(generator.getBuildArtifacts());
 
         l().printHeadlineSeparator();
@@ -664,19 +672,20 @@ public class ProgressReporter {
         } else {
             timeStats = String.format("%dm %ds", (int) totalSeconds / 60, (int) totalSeconds % 60);
         }
-        l().a(error == null ? "Finished" : "Failed").a(" generating '").bold().a(imageName).reset().a("' ")
-                        .a(error == null ? "in" : "after").a(" ").a(timeStats).a(".").println();
+        l().a(optionalError.isEmpty() ? "Finished" : "Failed").a(" generating '").bold().a(imageName).reset().a("' ")
+                        .a(optionalError.isEmpty() ? "in" : "after").a(" ").a(timeStats).a(".").println();
 
-        printErrorMessage(error);
+        printErrorMessage(optionalError, parsedHostedOptions);
     }
 
-    private void printErrorMessage(Throwable error) {
-        if (error == null) {
+    private void printErrorMessage(Optional<Throwable> optionalError, OptionValues parsedHostedOptions) {
+        if (optionalError.isEmpty()) {
             return;
         }
+        Throwable error = optionalError.get();
         l().println();
         l().redBold().a("The build process encountered an unexpected error:").reset().println();
-        if (NativeImageOptions.ReportExceptionStackTraces.getValue()) {
+        if (NativeImageOptions.ReportExceptionStackTraces.getValue(parsedHostedOptions)) {
             l().dim().println();
             error.printStackTrace(builderIO.getOut());
             l().reset().println();
@@ -685,17 +694,17 @@ public class ProgressReporter {
             l().dim().a("> %s", error).reset().println();
             l().println();
             l().a("Please inspect the generated error report at:").println();
-            l().link(NativeImageOptions.getErrorFilePath()).println();
+            l().link(NativeImageOptions.getErrorFilePath(parsedHostedOptions)).println();
             l().println();
             l().a("If you are unable to resolve this problem, please file an issue with the error report at:").println();
-            var supportURL = ImageSingletons.lookup(VM.class).supportURL;
+            var supportURL = ImageSingletonsSupport.isInstalled() ? ImageSingletons.lookup(VM.class).supportURL : new VM().supportURL;
             l().link(supportURL, supportURL).println();
         }
     }
 
-    private void createAdditionalArtifacts(String imageName, NativeImageGenerator generator, Throwable error, OptionValues parsedHostedOptions) {
+    private void createAdditionalArtifacts(String imageName, NativeImageGenerator generator, Optional<Throwable> error, OptionValues parsedHostedOptions) {
         BuildArtifacts artifacts = BuildArtifacts.singleton();
-        if (error == null && jsonHelper != null) {
+        if (error.isEmpty() && jsonHelper != null) {
             artifacts.add(ArtifactType.BUILD_INFO, jsonHelper.printToFile());
         }
         if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
