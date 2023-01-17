@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,17 +55,21 @@ public abstract class VirtualFrameAccessorNode extends FixedWithNextNode impleme
     protected final int frameSlotIndex;
     protected final int accessTag;
     protected final VirtualFrameAccessType type;
+    protected final VirtualFrameAccessFlags accessFlags;
 
-    protected VirtualFrameAccessorNode(NodeClass<? extends VirtualFrameAccessorNode> c, Stamp stamp, Receiver frame, int frameSlotIndex, int accessTag, VirtualFrameAccessType type) {
-        this(c, stamp, (NewFrameNode) frame.get(), frameSlotIndex, accessTag, type);
+    protected VirtualFrameAccessorNode(NodeClass<? extends VirtualFrameAccessorNode> c, Stamp stamp, Receiver frame, int frameSlotIndex,
+                    int accessTag, VirtualFrameAccessType type, VirtualFrameAccessFlags accessFlags) {
+        this(c, stamp, (NewFrameNode) frame.get(), frameSlotIndex, accessTag, type, accessFlags);
     }
 
-    protected VirtualFrameAccessorNode(NodeClass<? extends VirtualFrameAccessorNode> c, Stamp stamp, NewFrameNode frame, int frameSlotIndex, int accessTag, VirtualFrameAccessType type) {
+    protected VirtualFrameAccessorNode(NodeClass<? extends VirtualFrameAccessorNode> c, Stamp stamp, NewFrameNode frame, int frameSlotIndex,
+                    int accessTag, VirtualFrameAccessType type, VirtualFrameAccessFlags accessFlags) {
         super(c, stamp);
         this.type = type;
         this.frame = frame;
         this.frameSlotIndex = frameSlotIndex;
         this.accessTag = accessTag;
+        this.accessFlags = accessFlags;
     }
 
     protected final ValueNode getConstant(int n) {
@@ -117,5 +121,10 @@ public abstract class VirtualFrameAccessorNode extends FixedWithNextNode impleme
             tool.addNode(unusedValue);
             tool.replaceWith(unusedValue);
         }
+    }
+
+    @Override
+    public <State> void updateVerificationState(VirtualFrameVerificationStateUpdater<State> updater, State state) {
+        assert !accessFlags.updatesFrame() : "This node modifies the frame and must override `updateVerificationState`.";
     }
 }

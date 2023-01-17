@@ -50,22 +50,16 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
 
     @Input private ValueNode value;
 
-    private final byte accessFlags;
-
-    public VirtualFrameSetNode(Receiver frame, int frameSlotIndex, int accessTag, ValueNode value, VirtualFrameAccessType type, byte accessFlags) {
-        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, accessTag, type);
+    public VirtualFrameSetNode(Receiver frame, int frameSlotIndex, int accessTag, ValueNode value, VirtualFrameAccessType type, VirtualFrameAccessFlags accessFlags) {
+        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, accessTag, type, accessFlags);
         this.value = value;
-        this.accessFlags = accessFlags;
+        assert accessFlags.updatesFrame();
     }
 
-    public VirtualFrameSetNode(NewFrameNode frame, int frameSlotIndex, int accessTag, ValueNode value, VirtualFrameAccessType type, byte accessFlags) {
-        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, accessTag, type);
+    public VirtualFrameSetNode(NewFrameNode frame, int frameSlotIndex, int accessTag, ValueNode value, VirtualFrameAccessType type, VirtualFrameAccessFlags accessFlags) {
+        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, accessTag, type, accessFlags);
         this.value = value;
-        this.accessFlags = accessFlags;
-    }
-
-    public VirtualFrameSetNode(Receiver frame, int frameSlotIndex, int accessTag, ValueNode value, VirtualFrameAccessType type) {
-        this(frame, frameSlotIndex, accessTag, value, type, VirtualFrameAccessFlags.NON_STATIC);
+        assert accessFlags.updatesFrame();
     }
 
     @Override
@@ -95,8 +89,8 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
                 VirtualObjectNode dataVirtual = (VirtualObjectNode) dataAlias;
 
                 if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < dataVirtual.entryCount()) {
-                    if ((accessFlags & VirtualFrameAccessFlags.SET_TAG_FLAG) != 0) {
-                        if ((accessFlags & VirtualFrameAccessFlags.STATIC_FLAG) != 0) {
+                    if (accessFlags.setsTag()) {
+                        if (accessFlags.isStatic()) {
                             tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstantWithStaticModifier(accessTag));
                         } else {
                             tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag));
@@ -159,7 +153,7 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
     }
 
     private boolean isOSRRawStaticAccess() {
-        return ((accessFlags & VirtualFrameAccessFlags.STATIC_FLAG) != 0) && frame.isBytecodeOSRTransferTarget();
+        return accessFlags.isStatic() && frame.isBytecodeOSRTransferTarget();
     }
 
     @Override

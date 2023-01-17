@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,22 +56,12 @@ import jdk.vm.ci.meta.JavaKind;
 public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implements Virtualizable {
     public static final NodeClass<VirtualFrameGetNode> TYPE = NodeClass.create(VirtualFrameGetNode.class);
 
-    private final byte accessFlags;
     private final JavaKind accessKind;
 
-    public VirtualFrameGetNode(Receiver frame, int frameSlotIndex, JavaKind accessKind, int accessTag, VirtualFrameAccessType type, byte accessFlags) {
-        super(TYPE, StampFactory.forKind(accessKind), frame, frameSlotIndex, accessTag, type);
-        this.accessFlags = accessFlags;
+    public VirtualFrameGetNode(Receiver frame, int frameSlotIndex, JavaKind accessKind, int accessTag, VirtualFrameAccessType type, VirtualFrameAccessFlags accessFlags) {
+        super(TYPE, StampFactory.forKind(accessKind), frame, frameSlotIndex, accessTag, type, accessFlags);
         this.accessKind = accessKind;
-    }
-
-    public VirtualFrameGetNode(Receiver frame, int frameSlotIndex, JavaKind accessKind, int accessTag, VirtualFrameAccessType type) {
-        this(frame, frameSlotIndex, accessKind, accessTag, type, VirtualFrameAccessFlags.NON_STATIC);
-    }
-
-    @Override
-    public <State> void updateVerificationState(VirtualFrameVerificationStateUpdater<State> updater, State state) {
-
+        assert !accessFlags.updatesFrame();
     }
 
     @Override
@@ -97,7 +87,7 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
 
             if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < dataVirtual.entryCount()) {
                 ValueNode actualTag = tool.getEntry(tagVirtual, frameSlotIndex);
-                final boolean staticAccess = (accessFlags & VirtualFrameAccessFlags.STATIC_FLAG) != 0;
+                final boolean staticAccess = accessFlags.isStatic();
                 if (!staticAccess && (!actualTag.isConstant() || actualTag.asJavaConstant().asInt() != accessTag)) {
                     /*
                      * We cannot constant fold the tag-check immediately, so we need to create a
@@ -182,6 +172,6 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
     }
 
     private boolean isOSRRawStaticAccess() {
-        return ((accessFlags & VirtualFrameAccessFlags.STATIC_FLAG) != 0) && frame.isBytecodeOSRTransferTarget();
+        return accessFlags.isStatic() && frame.isBytecodeOSRTransferTarget();
     }
 }

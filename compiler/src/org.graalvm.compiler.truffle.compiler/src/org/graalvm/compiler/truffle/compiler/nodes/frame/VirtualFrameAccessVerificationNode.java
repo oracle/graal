@@ -48,7 +48,7 @@ public interface VirtualFrameAccessVerificationNode extends ValueNodeInterface {
      * Due to how the
      * {@link org.graalvm.compiler.truffle.compiler.phases.FrameAccessVerificationPhase verification
      * phase} works, accesses that do not modify the frame can provide a void implementation.
-     * 
+     *
      * @see VirtualFrameCopyNode#updateVerificationState(VirtualFrameVerificationStateUpdater,
      *      Object)
      * @see VirtualFrameGetNode#updateVerificationState(VirtualFrameVerificationStateUpdater,

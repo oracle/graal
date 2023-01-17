@@ -45,15 +45,9 @@ import jdk.vm.ci.meta.JavaKind;
 public class VirtualFrameClearNode extends VirtualFrameAccessorNode implements Virtualizable, IterableNodeType {
     public static final NodeClass<VirtualFrameClearNode> TYPE = NodeClass.create(VirtualFrameClearNode.class);
 
-    private final byte accessMode;
-
-    public VirtualFrameClearNode(Receiver frame, int frameSlotIndex, int illegalTag, VirtualFrameAccessType type, byte accessMode) {
-        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, illegalTag, type);
-        this.accessMode = accessMode;
-    }
-
-    public VirtualFrameClearNode(Receiver frame, int frameSlotIndex, int illegalTag, VirtualFrameAccessType type) {
-        this(frame, frameSlotIndex, illegalTag, type, VirtualFrameAccessFlags.NON_STATIC);
+    public VirtualFrameClearNode(Receiver frame, int frameSlotIndex, int illegalTag, VirtualFrameAccessType type, VirtualFrameAccessFlags accessFlags) {
+        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, illegalTag, type, accessFlags);
+        assert accessFlags.updatesFrame();
     }
 
     @Override
@@ -69,15 +63,15 @@ public class VirtualFrameClearNode extends VirtualFrameAccessorNode implements V
                 // Simply set kind to illegal. A later phase will clear the slots.
                 JavaKind tagKind = tagVirtual.entryKind(tool.getMetaAccessExtensionProvider(), frameSlotIndex);
                 boolean success;
-                if ((accessMode & VirtualFrameAccessFlags.STATIC_FLAG) != 0) {
+                if (accessFlags.isStatic()) {
                     success = tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstantWithStaticModifier(accessTag), tagKind, -1);
                 } else {
                     success = tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag), tagKind, -1);
                 }
-                if ((accessMode & VirtualFrameAccessFlags.OBJECT_FLAG) != 0) {
+                if (accessFlags.isObject()) {
                     success = success && tool.setVirtualEntry(localsVirtual, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Object, graph()), JavaKind.Object, -1);
                 }
-                if ((accessMode & VirtualFrameAccessFlags.PRIMITIVE_FLAG) != 0) {
+                if (accessFlags.isPrimitive()) {
                     success = success && tool.setVirtualEntry(primitiveVirtual, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Long, graph()), JavaKind.Long, -1);
                 }
                 if (success) {
