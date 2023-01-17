@@ -50,6 +50,7 @@ import com.ibm.icu.lang.UCharacter;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.chardata.UnicodeCharacterAliases;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
@@ -765,7 +766,7 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     private static void bailOut(String s) {
-        throw CompilerDirectives.shouldNotReachHere(s);
+        throw new UnsupportedRegexException(s);
     }
 
     private void mustHaveMore() {
