@@ -118,7 +118,7 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
         return "<" + ClassUtil.getUnqualifiedName(valueType).toLowerCase() + ">*";
     }
 
-    public static class Strings extends LocatableMultiOptionValue<String> {
+    public static final class Strings extends LocatableMultiOptionValue<String> {
 
         private Strings(Strings other) {
             super(other);
@@ -146,7 +146,7 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
         }
     }
 
-    public static class Paths extends LocatableMultiOptionValue<Path> {
+    public static final class Paths extends LocatableMultiOptionValue<Path> {
 
         private Paths(Paths other) {
             super(other);
