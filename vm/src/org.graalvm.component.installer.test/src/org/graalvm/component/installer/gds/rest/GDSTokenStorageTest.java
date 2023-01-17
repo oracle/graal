@@ -178,7 +178,7 @@ public class GDSTokenStorageTest extends CommandTestBase {
     }
 
     @Test
-    public void testRevokeToken() throws IOException {
+    public void testRevokeToken() {
         ts.revokeToken(null);
         mf.checkMem(0, Case.MSG, "GDSTokenStorage.makeConnector");
         mf.checkMem(1, Case.MSG, "MSG_NoRevokableToken");
@@ -221,7 +221,7 @@ public class GDSTokenStorageTest extends CommandTestBase {
     }
 
     @Test
-    public void testRevokeAllTokens() throws IOException {
+    public void testRevokeAllTokens() {
         ts.revokeAllTokens(null);
         mf.checkMem(0, Case.MSG, "GDSTokenStorage.makeConnector");
         mf.checkMem(1, Case.MSG, "MSG_NoEmail");

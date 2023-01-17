@@ -204,12 +204,12 @@ public class GDSTokenStorage {
             feedback.message("MSG_NoGDSAddress");
             return;
         }
-        email = MailStorage.checkEmailAddress(email, feedback);
-        if (email == null || email.isEmpty()) {
+        String m = MailStorage.checkEmailAddress(email, feedback);
+        if (m == null || m.isEmpty()) {
             feedback.message("MSG_NoEmail");
             return;
         }
-        connector.revokeTokens(email);
+        connector.revokeTokens(m);
         feedback.message("MSG_AcceptRevoke");
     }
 
