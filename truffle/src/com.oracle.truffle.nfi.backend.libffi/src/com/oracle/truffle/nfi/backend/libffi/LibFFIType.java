@@ -96,7 +96,8 @@ final class LibFFIType {
                 return new SimpleType(simpleType, size, alignment);
             case FP80:
                 return new FP80Type(size, alignment);
-
+            case FP128:
+                return new FP128Type(size, alignment);
             case POINTER:
                 return new PointerType(size, alignment);
             case STRING:
