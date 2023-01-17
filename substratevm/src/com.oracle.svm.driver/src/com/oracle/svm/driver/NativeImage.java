@@ -1138,7 +1138,8 @@ public class NativeImage {
              * that we can now use to derive the new bundle name from. For apply-mode setting
              * imagePath determines where to copy the bundle output to.
              */
-            bundleSupport.setBundleLocation(imagePath, imageName);
+            imageName = bundleSupport.setBundleLocation(imagePath, imageName);
+            updateArgumentEntryValue(imageBuilderArgs, imageNameEntry, imageName);
             /* The imagePath has to be redirected to be within the bundle */
             imagePath = bundleSupport.substituteImagePath(imagePath);
             /* and we need to adjust the argument that passes the imagePath to the builder */

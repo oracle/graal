@@ -453,9 +453,17 @@ final class BundleSupport {
         }
     }
 
-    void setBundleLocation(Path imagePath, String imageName) {
+    String setBundleLocation(Path imagePath, String imageName) {
+        String fixedImageName;
+        if (imageName.endsWith(bundleFileExtension)) {
+            int endIndex = imageName.length() - bundleFileExtension.length();
+            fixedImageName = imageName.substring(0, endIndex);
+        } else {
+            fixedImageName = imageName;
+        }
         bundlePath = imagePath;
-        bundleName = imageName + bundleFileExtension;
+        bundleName = fixedImageName + bundleFileExtension;
+        return fixedImageName;
     }
 
     private Path writeBundle() {
