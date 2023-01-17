@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,11 +35,16 @@ import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import org.graalvm.nativeimage.StackValue;
 import com.oracle.svm.core.jfr.JfrThreadLocal;
+import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 
 public class ObjectAllocationSampleEvent {
+    private static final FastThreadLocalLong lastAllocationSize = FastThreadLocalFactory.createLong("ObjectAllocationSampleEvent.lastAllocationSize");
     public static void emit(long startTicks, Class clazz, long weight) {
         if (HasJfrSupport.get()) {
-            if (SubstrateJVM.get().shouldCommit(JfrEvent.ObjectAllocationSample)) { // TODO: consider moving this to after the isRecording check. Might be a pain to deal with uninterruptibility though.
+            // TODO: consider moving this to after the isRecording check in emit0 to avoid duplicate checks. Might be a pain to deal with uninterruptibility though.
+            // Doesn't hurt to check twice, might save us some time doing the sampling
+            if (SubstrateJVM.isRecordingInterruptible() && SubstrateJVM.get().isEnabled(JfrEvent.ObjectAllocationSample) && SubstrateJVM.get().shouldCommit(JfrEvent.ObjectAllocationSample)) {
                 emit0(startTicks, clazz, weight);
             }
         }
@@ -49,21 +54,23 @@ public class ObjectAllocationSampleEvent {
     private static void emit0(long startTicks, Class clazz, long weight) {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.ObjectAllocationSample)) {
             JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) SubstrateJVM.getThreadLocal();
-
             // This check is needed to avoid issues upon allocation from the thread that invokes the
             // Java main method and shutdown.
             if (!jfrThreadLocal.initialized()) {
                 return;
             }
+            long currentAllocationSize = com.oracle.svm.core.thread.PlatformThreads.getThreadAllocatedBytes(Thread.currentThread().getId());
+
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ObjectAllocationSample);
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putEventThread(data);
-//            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ObjectAllocationSample, 0)); //This causes problems during JFR shutdown
+            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ObjectAllocationSample, 0)); //This causes problems during JFR shutdown
             JfrNativeEventWriter.putClass(data, clazz);
-            JfrNativeEventWriter.putLong(data, weight);
+            JfrNativeEventWriter.putLong(data, currentAllocationSize - lastAllocationSize.get());
             JfrNativeEventWriter.endSmallEvent(data);
+            lastAllocationSize.set(currentAllocationSize);
         }
     }
 }

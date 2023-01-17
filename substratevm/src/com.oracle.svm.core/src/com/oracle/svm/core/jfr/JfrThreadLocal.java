@@ -326,7 +326,8 @@ public class JfrThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.", callerMustBe = true)
     public boolean initialized() {
-        return threadId.get() > 0;
+        // Thread start event must have already been emitted.
+        return threadId.get() > 0 && (javaBuffer.get().isNonNull() || nativeBuffer.get().isNonNull());
     }
 
 

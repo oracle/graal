@@ -9,7 +9,7 @@ import com.oracle.svm.core.jfr.JfrThrottler;
 /**
  * Each event that supports throttling has its own throttler that can be accessed through this class.
  * TODO: Consider making this a proper singleton later
- * When more evnets support throttling, some sort of allocation free hashmap should be used.
+ * When more events support throttling, some sort of allocation free hashmap should be used.
  */
 public class JfrThrottlerSupport {
     JfrThrottler objectAllocationSampleThrottler;
