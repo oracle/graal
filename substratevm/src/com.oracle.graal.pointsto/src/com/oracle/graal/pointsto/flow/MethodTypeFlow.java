@@ -158,7 +158,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
     private synchronized void createFlowsGraph(PointsToAnalysis bb, InvokeTypeFlow reason) {
         if (flowsGraph == null) {
             AnalysisError.guarantee(reason == null || reason.getSource() == null ||
-                            !reason.getSource().getMethod().equals(method), "Parsing reason cannot be in the target method itself " + method.format("%H.%n"));
+                            !reason.getSource().getMethod().equals(method), "Parsing reason cannot be in the target method itself: %s", method);
 
             parsingReason = reason;
             try {
