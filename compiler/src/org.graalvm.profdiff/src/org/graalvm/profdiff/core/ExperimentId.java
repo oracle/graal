@@ -29,6 +29,7 @@ package org.graalvm.profdiff.core;
  * assigned the ID {@code ONE} and the second is assigned the ID {@code TWO}.
  */
 public enum ExperimentId {
+    ZERO,
     /**
      * The ID of the first experiment.
      */
@@ -41,6 +42,8 @@ public enum ExperimentId {
     @Override
     public String toString() {
         switch (this) {
+            case ZERO:
+                return "0";
             case ONE:
                 return "1";
             case TWO:
