@@ -83,7 +83,7 @@ public class GDSTokenStorage {
     private static Properties load(Path propertiesPath, Feedback feedback) {
         Properties properties = new Properties();
         if (Files.exists(propertiesPath)) {
-            try (InputStream is = Files.newInputStream(propertiesPath)) {
+            try ( InputStream is = Files.newInputStream(propertiesPath)) {
                 properties.load(is);
             } catch (IllegalArgumentException | IOException ex) {
                 feedback.error("ERR_CouldNotLoadToken", ex, propertiesPath, ex.getLocalizedMessage());
@@ -165,10 +165,10 @@ public class GDSTokenStorage {
             file.setWritable(true);
         } else {
             Files.setPosixFilePermissions(parent, Set.of(PosixFilePermission.OWNER_READ,
-                            PosixFilePermission.OWNER_WRITE,
-                            PosixFilePermission.OWNER_EXECUTE));
+                    PosixFilePermission.OWNER_WRITE,
+                    PosixFilePermission.OWNER_EXECUTE));
         }
-        try (OutputStream os = Files.newOutputStream(propsPath)) {
+        try ( OutputStream os = Files.newOutputStream(propsPath)) {
             properties.store(os, null);
         }
         if (SystemUtils.isWindows()) {
@@ -180,8 +180,8 @@ public class GDSTokenStorage {
             file.setWritable(true);
         } else {
             Files.setPosixFilePermissions(propsPath,
-                            Set.of(PosixFilePermission.OWNER_READ,
-                                            PosixFilePermission.OWNER_WRITE));
+                    Set.of(PosixFilePermission.OWNER_READ,
+                            PosixFilePermission.OWNER_WRITE));
         }
         changed = false;
     }
@@ -199,12 +199,14 @@ public class GDSTokenStorage {
     }
 
     public void revokeAllTokens(String email) {
-        email = MailStorage.checkEmailAddress(email, feedback);
-        if (email == null || email.isEmpty()) {
-            return;
-        }
         GDSRESTConnector connector = makeConnector();
         if (connector == null) {
+            feedback.message("MSG_NoGDSAddress");
+            return;
+        }
+        email = MailStorage.checkEmailAddress(email, feedback);
+        if (email == null || email.isEmpty()) {
+            feedback.message("MSG_NoEmail");
             return;
         }
         connector.revokeTokens(email);
@@ -212,17 +214,19 @@ public class GDSTokenStorage {
     }
 
     public void revokeToken(String token) {
+        GDSRESTConnector connector = makeConnector();
+        if (connector == null) {
+            feedback.message("MSG_NoGDSAddress");
+            return;
+        }
         String t = token;
         if (t == null || t.isEmpty()) {
             t = getFileToken();
             if (t == null || t.isEmpty()) {
+                feedback.message("MSG_NoRevokableToken");
                 return;
             }
             removeFileToken();
-        }
-        GDSRESTConnector connector = makeConnector();
-        if (connector == null) {
-            return;
         }
         connector.revokeToken(t);
         feedback.message("MSG_AcceptRevoke");
