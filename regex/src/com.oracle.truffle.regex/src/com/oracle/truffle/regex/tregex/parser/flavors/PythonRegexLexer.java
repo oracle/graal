@@ -443,7 +443,8 @@ public final class PythonRegexLexer extends RegexLexer {
 
     @Override
     protected RegexSyntaxException handleInvalidGroupBeginQ() {
-        return syntaxError(PyErrorMessages.unknownExtensionQ(curChar()));
+        retreat();
+        return syntaxErrorAtAbs(PyErrorMessages.unknownExtensionQ(curChar()), getLastTokenPosition() + 1);
     }
 
     @Override
@@ -473,7 +474,7 @@ public final class PythonRegexLexer extends RegexLexer {
 
     @Override
     protected RegexSyntaxException handleUnmatchedLeftBracket() {
-        return syntaxError(PyErrorMessages.UNTERMINATED_CHARACTER_SET);
+        return syntaxErrorAtAbs(PyErrorMessages.UNTERMINATED_CHARACTER_SET, getLastTokenPosition());
     }
 
     @Override
@@ -546,7 +547,7 @@ public final class PythonRegexLexer extends RegexLexer {
                 }
                 int nameStart = position;
                 int nameEnd = pattern.indexOf('}', position);
-                if (nameEnd == position) {
+                if (atEnd() || nameEnd == position) {
                     throw syntaxErrorHere(PyErrorMessages.missing("character name"));
                 }
                 if (nameEnd < 0) {
@@ -628,7 +629,7 @@ public final class PythonRegexLexer extends RegexLexer {
         if (atEnd()) {
             throw syntaxErrorHere(PyErrorMessages.UNEXPECTED_END_OF_PATTERN);
         }
-        throw syntaxError(PyErrorMessages.unknownExtensionP(curChar()));
+        throw syntaxErrorAtAbs(PyErrorMessages.unknownExtensionLt(curChar()), getLastTokenPosition() + 1);
     }
 
     /**
@@ -811,7 +812,7 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     private String substring(int length) {
-        return pattern.substring(getLastTokenPosition(), getLastTokenPosition() + length);
+        return pattern.substring(getLastAtomPosition(), getLastAtomPosition() + length);
     }
 
     public RegexSyntaxException syntaxErrorAtAbs(String msg, int i) {

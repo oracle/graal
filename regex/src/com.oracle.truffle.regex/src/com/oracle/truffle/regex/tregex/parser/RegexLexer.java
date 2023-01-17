@@ -74,6 +74,7 @@ public abstract class RegexLexer {
     protected int position = 0;
     protected Map<String, Integer> namedCaptureGroups = null;
     private int curStartIndex = 0;
+    private int charClassCurAtomStartIndex = 0;
     private int nGroups = 1;
     private boolean identifiedAllGroups = false;
 
@@ -361,6 +362,10 @@ public abstract class RegexLexer {
      */
     public int getLastTokenPosition() {
         return curStartIndex;
+    }
+
+    protected int getLastAtomPosition() {
+        return Math.max(curStartIndex, charClassCurAtomStartIndex);
     }
 
     protected char curChar() {
@@ -882,6 +887,7 @@ public abstract class RegexLexer {
 
     private void parseCharClassRange(char c) throws RegexSyntaxException {
         int startPos = position - 1;
+        charClassCurAtomStartIndex = position - 1;
         CodePointSet firstAtomCC = parseCharClassAtomPredefCharClass(c);
         int firstAtomCP = firstAtomCC == null ? parseCharClassAtomCodePoint(c) : -1;
         if (consumingLookahead("-")) {
@@ -890,6 +896,7 @@ public abstract class RegexLexer {
                 curCharClass.addRange('-', '-');
             } else {
                 char nextC = consumeChar();
+                charClassCurAtomStartIndex = position - 1;
                 CodePointSet secondAtomCC = parseCharClassAtomPredefCharClass(nextC);
                 int secondAtomCP = secondAtomCC == null ? parseCharClassAtomCodePoint(nextC) : -1;
                 // Runtime Semantics: CharacterRangeOrUnion(firstAtom, secondAtom)
@@ -1015,7 +1022,7 @@ public abstract class RegexLexer {
     }
 
     public RegexSyntaxException syntaxError(String msg) {
-        return RegexSyntaxException.createPattern(source, msg, curStartIndex);
+        return RegexSyntaxException.createPattern(source, msg, getLastAtomPosition());
     }
 
     @FunctionalInterface
