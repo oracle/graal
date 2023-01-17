@@ -1318,7 +1318,12 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             // https://docs.oracle.com/javase/specs/jls/se7/html/jls-15.html#jls-15.19
 
             LLVMTypeRef typeA = typeOf(a);
-            final int bitWidthA = LLVMIRBuilder.integerTypeWidth(typeA);
+            int bitWidthA = LLVMIRBuilder.integerTypeWidth(typeA);
+
+            if (bitWidthA == 8 || bitWidthA == 16) {
+                bitWidthA = 32;
+            }
+
             assert bitWidthA == 32 || bitWidthA == 64;
 
             LLVMValueRef shiftDistanceBitMask = builder.constantInteger(bitWidthA - 1, bitWidthA);
