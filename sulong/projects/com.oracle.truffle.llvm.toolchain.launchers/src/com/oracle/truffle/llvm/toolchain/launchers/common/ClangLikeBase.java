@@ -46,7 +46,8 @@ public abstract class ClangLikeBase extends Driver {
     public enum Tool {
         Clang,
         ClangXX,
-        ClangCL;
+        ClangCL,
+        Flang;
 
         public String getToolName() {
             switch (this) {
@@ -56,6 +57,8 @@ public abstract class ClangLikeBase extends Driver {
                     return "clang++";
                 case ClangCL:
                     return "clang-cl";
+                case Flang:
+                    return "flang-new";
                 default:
                     throw new IllegalArgumentException("Unknown Tool " + this.toString());
             }
