@@ -521,9 +521,9 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         }
     }
 
-    private void pushConditionalBackReferenceGroup(int referencedGroupNumber) {
+    private void pushConditionalBackReferenceGroup(int referencedGroupNumber, boolean namedReference) {
         if (!silent) {
-            astBuilder.pushConditionalBackReferenceGroup(referencedGroupNumber);
+            astBuilder.pushConditionalBackReferenceGroup(referencedGroupNumber, namedReference);
         }
     }
 
@@ -563,9 +563,9 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         }
     }
 
-    private void addBackReference(int groupNumber) {
+    private void addBackReference(int groupNumber, boolean namedReference) {
         if (!silent) {
-            astBuilder.addBackReference(groupNumber);
+            astBuilder.addBackReference(groupNumber, namedReference);
         }
     }
 
@@ -1335,7 +1335,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 position = restorePosition;
                 return false;
             }
-            buildBackreference(groupNumber);
+            buildBackreference(groupNumber, false);
             return true;
         } else {
             return false;
@@ -1431,19 +1431,19 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         if (groupNumbers.length == 0) {
             throw syntaxErrorHere(RbErrorMessages.undefinedReference(name));
         } else if (groupNumbers.length == 1) {
-            buildBackreference(groupNumbers[0]);
+            buildBackreference(groupNumbers[0], true);
         } else {
             pushGroup();
-            buildBackreference(groupNumbers[groupNumbers.length - 1]);
+            buildBackreference(groupNumbers[groupNumbers.length - 1], true);
             for (int i = groupNumbers.length - 2; i >= 0; i--) {
                 nextSequence();
-                buildBackreference(groupNumbers[i]);
+                buildBackreference(groupNumbers[i], true);
             }
             popGroup();
         }
     }
 
-    private void buildBackreference(int groupNumber) {
+    private void buildBackreference(int groupNumber, boolean namedReference) {
         if (isCaptureGroupOpen(groupNumber)) {
             // Ruby syntax allows references to an open capture group. However, such a reference can
             // never match anything as the capture group is reset on entry.
@@ -1451,7 +1451,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         } else if (getLocalFlags().isIgnoreCase()) {
             bailOut("case insensitive backreferences not supported");
         } else {
-            addBackReference(groupNumber);
+            addBackReference(groupNumber, namedReference);
         }
     }
 
@@ -2379,18 +2379,22 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      */
     private void conditionalBackReference() {
         List<Integer> groupNumbers;
+        boolean namedReference;
         if (match("<")) {
+            namedReference = curChar() != '-' && !isDecDigit(curChar());
             groupNumbers = parseGroupReference('>', true, true, true, true);
             mustMatch(")");
         } else if (match("'")) {
+            namedReference = curChar() != '-' && !isDecDigit(curChar());
             groupNumbers = parseGroupReference('\'', true, true, true, true);
             mustMatch(")");
         } else if (isDecDigit(curChar())) {
+            namedReference = false;
             groupNumbers = parseGroupReference(')', true, false, true, true);
         } else {
             throw syntaxErrorHere(RbErrorMessages.INVALID_GROUP_NAME);
         }
-        pushConditionalBackReferenceGroup(groupNumbers.get(0));
+        pushConditionalBackReferenceGroup(groupNumbers.get(0), namedReference);
         alternative();
         if (match("|")) {
             nextSequence();

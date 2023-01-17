@@ -323,12 +323,12 @@ public final class JSRegexLexer extends RegexLexer {
                 String groupName = jsParseGroupName();
                 // backward reference
                 if (namedCaptureGroups != null && namedCaptureGroups.containsKey(groupName)) {
-                    return Token.createBackReference(namedCaptureGroups.get(groupName));
+                    return Token.createBackReference(namedCaptureGroups.get(groupName), false);
                 }
                 // possible forward reference
                 Map<String, Integer> allNamedCaptureGroups = getNamedCaptureGroups();
                 if (allNamedCaptureGroups != null && allNamedCaptureGroups.containsKey(groupName)) {
-                    return Token.createBackReference(allNamedCaptureGroups.get(groupName));
+                    return Token.createBackReference(allNamedCaptureGroups.get(groupName), false);
                 }
                 handleInvalidBackReference(groupName);
             } else {

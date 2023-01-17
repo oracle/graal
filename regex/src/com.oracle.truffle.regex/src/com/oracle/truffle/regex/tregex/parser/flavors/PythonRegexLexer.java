@@ -637,6 +637,7 @@ public final class PythonRegexLexer extends RegexLexer {
      */
     private Token parseConditionalBackReference() {
         final int groupNumber;
+        final boolean namedReference;
         ParseGroupNameResult result = parseGroupName(')');
         switch (result.state) {
             case empty:
@@ -653,6 +654,7 @@ public final class PythonRegexLexer extends RegexLexer {
                     throw handleBadCharacterInGroupName(result);
                 }
                 groupNumber = parseIntSaturated(0, result.groupName.length(), -1);
+                namedReference = false;
                 assert curChar() == ')';
                 advance();
                 if (groupNumber == 0) {
@@ -665,6 +667,7 @@ public final class PythonRegexLexer extends RegexLexer {
                 // group referenced by name
                 if (namedCaptureGroups != null && namedCaptureGroups.containsKey(result.groupName)) {
                     groupNumber = namedCaptureGroups.get(result.groupName);
+                    namedReference = true;
                 } else {
                     throw syntaxErrorAtRel(PyErrorMessages.unknownGroupName(result.groupName), result.groupName.length() + 1);
                 }
@@ -672,7 +675,7 @@ public final class PythonRegexLexer extends RegexLexer {
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
-        return Token.createConditionalBackReference(groupNumber);
+        return Token.createConditionalBackReference(groupNumber, namedReference);
     }
 
     /**
@@ -796,13 +799,13 @@ public final class PythonRegexLexer extends RegexLexer {
             case empty:
                 throw syntaxErrorHere(PyErrorMessages.MISSING_GROUP_NAME);
             case unterminated:
-                throw syntaxError(PyErrorMessages.UNTERMINATED_NAME);
+                throw syntaxErrorAtRel(PyErrorMessages.UNTERMINATED_NAME, result.groupName.length());
             case invalidStart:
             case invalidRest:
                 throw handleBadCharacterInGroupName(result);
             case valid:
                 if (namedCaptureGroups != null && namedCaptureGroups.containsKey(result.groupName)) {
-                    return Token.createBackReference(namedCaptureGroups.get(result.groupName));
+                    return Token.createBackReference(namedCaptureGroups.get(result.groupName), true);
                 } else {
                     throw syntaxErrorAtRel(PyErrorMessages.unknownGroupName(result.groupName), result.groupName.length() + 1);
                 }

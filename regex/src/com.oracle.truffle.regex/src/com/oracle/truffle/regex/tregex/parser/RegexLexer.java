@@ -643,7 +643,7 @@ public abstract class RegexLexer {
             final int restoreIndex = position;
             final int backRefNumber = parseIntSaturated(c - '0', countDecimalDigits(getMaxBackReferenceDigits() - 1), Integer.MAX_VALUE);
             if (backRefNumber < (featureEnabledForwardReferences() ? totalNumberOfCaptureGroups() : nGroups)) {
-                return Token.createBackReference(backRefNumber);
+                return Token.createBackReference(backRefNumber, false);
             } else {
                 handleInvalidBackReference(backRefNumber);
             }

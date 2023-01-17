@@ -136,8 +136,8 @@ public class Token implements JsonConvertible {
         return GROUP_END;
     }
 
-    public static BackReference createBackReference(int groupNr) {
-        return new BackReference(Kind.backReference, groupNr);
+    public static BackReference createBackReference(int groupNr, boolean namedReference) {
+        return new BackReference(Kind.backReference, groupNr, namedReference);
     }
 
     public static Quantifier createQuantifier(int min, int max, boolean greedy) {
@@ -164,8 +164,8 @@ public class Token implements JsonConvertible {
         return new InlineFlags(flags, global);
     }
 
-    public static Token createConditionalBackReference(int groupNr) {
-        return new BackReference(Kind.conditionalBackreference, groupNr);
+    public static Token.BackReference createConditionalBackReference(int groupNr, boolean namedReference) {
+        return new BackReference(Kind.conditionalBackreference, groupNr, namedReference);
     }
 
     public final Kind kind;
@@ -357,11 +357,13 @@ public class Token implements JsonConvertible {
     public static final class BackReference extends Token {
 
         private final int groupNr;
+        private final boolean namedReference;
 
-        public BackReference(Token.Kind kind, int groupNr) {
+        public BackReference(Token.Kind kind, int groupNr, boolean namedReference) {
             super(kind);
             assert kind == Kind.backReference || kind == Kind.conditionalBackreference;
             this.groupNr = groupNr;
+            this.namedReference = namedReference;
         }
 
         @TruffleBoundary
@@ -372,6 +374,10 @@ public class Token implements JsonConvertible {
 
         public int getGroupNr() {
             return groupNr;
+        }
+
+        public boolean isNamedReference() {
+            return namedReference;
         }
     }
 

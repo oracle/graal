@@ -292,15 +292,14 @@ public final class RegexASTBuilder {
      *
      * @param token a {@link Token} whose source section should be included in the group's source
      *            sections, or {@code null} if none
-     * @param referencedGroupNumber the number of the capture group referenced by the group's
-     *            condition
      */
-    public void pushConditionalBackReferenceGroup(Token token, int referencedGroupNumber) {
-        pushGroup(token, ast.createConditionalBackReferenceGroup(referencedGroupNumber), null);
+    public void pushConditionalBackReferenceGroup(Token.BackReference token) {
+        assert token.kind == Token.Kind.conditionalBackreference;
+        pushGroup(token, ast.createConditionalBackReferenceGroup(token.getGroupNr()), null);
     }
 
-    public void pushConditionalBackReferenceGroup(int referencedGroupNumber) {
-        pushConditionalBackReferenceGroup(null, referencedGroupNumber);
+    public void pushConditionalBackReferenceGroup(int referencedGroupNumber, boolean namedReference) {
+        pushConditionalBackReferenceGroup(Token.createConditionalBackReference(referencedGroupNumber, namedReference));
     }
 
     private Group pushGroup(Token token, Group group, RegexASTSubtreeRootNode parent) {
@@ -524,6 +523,7 @@ public final class RegexASTBuilder {
      *            referenced
      */
     public void addBackReference(Token.BackReference token, boolean ignoreCase) {
+        assert token.kind == Token.Kind.backReference;
         BackReference backReference = ast.createBackReference(token.getGroupNr());
         ast.addSourceSection(backReference, token);
         addTerm(backReference);
@@ -537,8 +537,8 @@ public final class RegexASTBuilder {
         }
     }
 
-    public void addBackReference(int groupNumber) {
-        addBackReference(Token.createBackReference(groupNumber));
+    public void addBackReference(int groupNumber, boolean namedReference) {
+        addBackReference(Token.createBackReference(groupNumber, namedReference));
     }
 
     private static boolean isNestedBackReference(BackReference backReference) {

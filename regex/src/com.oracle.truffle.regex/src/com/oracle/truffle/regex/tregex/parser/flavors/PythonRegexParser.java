@@ -185,8 +185,9 @@ public final class PythonRegexParser implements RegexParser {
                     }
                     break;
                 case backReference:
-                    verifyGroupReference(((Token.BackReference) token).getGroupNr(), false);
-                    astBuilder.addBackReference((Token.BackReference) token, getLocalFlags().isIgnoreCase());
+                    Token.BackReference backRefToken = (Token.BackReference) token;
+                    verifyGroupReference(backRefToken);
+                    astBuilder.addBackReference(backRefToken, getLocalFlags().isIgnoreCase());
                     break;
                 case quantifier:
                     if (prevKind == Token.Kind.quantifier) {
@@ -232,11 +233,10 @@ public final class PythonRegexParser implements RegexParser {
                     astBuilder.addCharClass((Token.CharacterClass) token);
                     break;
                 case conditionalBackreference:
-                    Token.BackReference backReferenceToken = (Token.BackReference) token;
-                    int referencedGroupNumber = backReferenceToken.getGroupNr();
-                    verifyGroupReference(referencedGroupNumber, true);
-                    conditionalBackReferences.add(backReferenceToken);
-                    astBuilder.pushConditionalBackReferenceGroup(token, referencedGroupNumber);
+                    Token.BackReference conditionalBackRefToken = (Token.BackReference) token;
+                    verifyGroupReference(conditionalBackRefToken);
+                    conditionalBackReferences.add(conditionalBackRefToken);
+                    astBuilder.pushConditionalBackReferenceGroup(conditionalBackRefToken);
                     break;
                 case inlineFlags:
                     // flagStack push is handled in the lexer
@@ -270,11 +270,12 @@ public final class PythonRegexParser implements RegexParser {
     /**
      * Verifies that making a back-reference to a certain group is legal in the current context.
      *
-     * @param groupNumber the index of the referred group
-     * @param conditional whether the back-reference is a conditional back-reference
+     * @param backRefToken the back-reference in question
      * @throws RegexSyntaxException if the back-reference is not valid
      */
-    private void verifyGroupReference(int groupNumber, boolean conditional) throws RegexSyntaxException {
+    private void verifyGroupReference(Token.BackReference backRefToken) throws RegexSyntaxException {
+        boolean conditional = backRefToken.kind == Token.Kind.conditionalBackreference;
+        int groupNumber = backRefToken.getGroupNr();
         boolean insideLookBehind = insideLookBehind();
         // CPython allows conditional back-references to be forward references and to also refer to
         // an open group. However, this is not the case when inside a look-behind assertion. In such
@@ -289,7 +290,8 @@ public final class PythonRegexParser implements RegexParser {
             RegexASTNode parent = astBuilder.getCurGroup();
             while (parent != null) {
                 if (parent instanceof Group && ((Group) parent).getGroupNumber() == groupNumber) {
-                    throw syntaxError(PyErrorMessages.CANNOT_REFER_TO_AN_OPEN_GROUP);
+                    int errorPosition = backRefToken.isNamedReference() ? backRefToken.getPosition() + 4 : backRefToken.getPosition();
+                    throw syntaxErrorAtAbs(PyErrorMessages.CANNOT_REFER_TO_AN_OPEN_GROUP, errorPosition);
                 }
                 parent = parent.getParent();
             }
