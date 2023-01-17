@@ -82,9 +82,8 @@ GEN_NUMERIC_TEST(POINTER, intptr_t)
  * support FP80, it treats the `long double` type as double precision.
  */
 GEN_NUMERIC_TEST(FP80, long double)
+#endif
 
-#elif defined(__aarch64__) || defined(_M_ARM64)
-printf("%d\n",1);
+#if defined(__aarch64__) || defined(_M_ARM64)
 GEN_NUMERIC_TEST(FP128, long double)
-
 #endif
