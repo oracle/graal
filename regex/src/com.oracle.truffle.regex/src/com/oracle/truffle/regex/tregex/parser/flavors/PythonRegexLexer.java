@@ -233,6 +233,10 @@ public final class PythonRegexLexer extends RegexLexer {
                                             groupVerbosityStack.push(groupVerbosityStack.peek() || positiveFlags.isVerbose());
                                             break;
                                         case '-':
+                                            if (atEnd()) {
+                                                // malformed local flags
+                                                continue;
+                                            }
                                             ch = consumeChar();
                                             PythonFlags negativeFlags = PythonFlags.EMPTY_INSTANCE;
                                             while (!atEnd() && PythonFlags.isValidFlagChar(ch)) {
