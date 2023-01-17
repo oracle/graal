@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.util.UserError;
 
 public abstract class InfoTreeVisitor {
@@ -48,7 +50,17 @@ public abstract class InfoTreeVisitor {
         /* Defining the comparator chain on multiple lines requires less type annotations. */
         Comparator<ElementInfo> classNameComparator = Comparator.comparing(e -> e.getClass().getName());
         Comparator<ElementInfo> nameComparator = classNameComparator.thenComparing(e -> e.getName());
-        elementInfoComparator = nameComparator.thenComparing(e -> e.getAnnotatedElement().toString());
+        elementInfoComparator = nameComparator.thenComparing(e -> asString(e.getAnnotatedElement()));
+    }
+
+    private static String asString(Object annotatedElement) {
+        if (annotatedElement instanceof AnalysisMethod) {
+            return ((AnalysisMethod) annotatedElement).getQualifiedName();
+        } else if (annotatedElement instanceof AnalysisType) {
+            return ((AnalysisType) annotatedElement).getName();
+        } else {
+            return annotatedElement.toString();
+        }
     }
 
     protected final void processChildren(ElementInfo info) {

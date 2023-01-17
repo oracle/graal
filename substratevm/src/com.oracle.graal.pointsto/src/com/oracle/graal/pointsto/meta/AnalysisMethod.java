@@ -348,7 +348,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
          * the method as invoked, it would have an unwanted side effect, where this method could
          * return before the class gets marked as reachable.
          */
-        getDeclaringClass().registerAsReachable("declared method " + this.format("%H.%n(%p)") + " is registered as implementation invoked");
+        getDeclaringClass().registerAsReachable("declared method " + qualifiedName + " is registered as implementation invoked");
         return AtomicUtils.atomicSetAndRun(this, reason, isImplementationInvokedUpdater, this::onReachable);
     }
 
@@ -387,7 +387,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * as in {@link AnalysisMethod#registerAsImplementationInvoked(Object)}.
      */
     public boolean registerAsVirtualRootMethod() {
-        getDeclaringClass().registerAsReachable("declared method " + this.format("%H.%n(%p)") + " is registered as virtual root");
+        getDeclaringClass().registerAsReachable("declared method " + qualifiedName + " is registered as virtual root");
         return AtomicUtils.atomicMark(this, isVirtualRootMethodUpdater);
     }
 
@@ -395,7 +395,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * Registers this method as a direct (special or static) root for the analysis.
      */
     public boolean registerAsDirectRootMethod() {
-        getDeclaringClass().registerAsReachable("declared method " + this.format("%H.%n(%p)") + " is registered as direct root");
+        getDeclaringClass().registerAsReachable("declared method " + qualifiedName + " is registered as direct root");
         return AtomicUtils.atomicMark(this, isDirectRootMethodUpdater);
     }
 

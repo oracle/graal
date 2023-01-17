@@ -1124,11 +1124,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return result;
     }
 
-    private AnalysisField[] convertFields(ResolvedJavaField[] original, List<AnalysisField> list, boolean listIncludesSuperClassesFields) {
-        for (int i = 0; i < original.length; i++) {
-            if (!original[i].isInternal()) {
+    private AnalysisField[] convertFields(ResolvedJavaField[] originals, List<AnalysisField> list, boolean listIncludesSuperClassesFields) {
+        for (ResolvedJavaField original : originals) {
+            if (!original.isInternal() && universe.hostVM.platformSupported(original)) {
                 try {
-                    AnalysisField aField = universe.lookup(original[i]);
+                    AnalysisField aField = universe.lookup(original);
                     if (aField != null) {
                         if (listIncludesSuperClassesFields || aField.isStatic()) {
                             /*
