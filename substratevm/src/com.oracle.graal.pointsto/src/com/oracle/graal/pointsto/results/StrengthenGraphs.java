@@ -468,7 +468,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 setInvokeProfiles(invoke, typeProfile, methodProfile);
             }
 
-            if (!methodFlow.getMethod().isDeoptTarget()) {
+            if (getAnalysis().optimizeReturnedParameter() && !methodFlow.getMethod().isDeoptTarget()) {
                 /*
                  * Optimizing the return parameter can make new values live across deoptimization
                  * entrypoints.
