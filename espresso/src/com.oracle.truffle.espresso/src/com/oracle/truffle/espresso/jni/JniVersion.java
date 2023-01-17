@@ -32,7 +32,8 @@ public enum JniVersion {
     JNI_VERSION_1_8(0x00010008),
     JNI_VERSION_9(0x00090000),
     JNI_VERSION_10(0x000A0000),
-    JNI_VERSION_19(0x00130000);
+    JNI_VERSION_19(0x00130000),
+    JNI_VERSION_20(0x00140000);
 
     private final int version;
 
@@ -54,32 +55,24 @@ public enum JniVersion {
         }
     }
 
-    /**
-     * JNI version implemented by Espresso when running a java 8 home.
-     */
-    static final JniVersion JNI_VERSION_ESPRESSO_8 = JNI_VERSION_1_8;
-
-    /**
-     * JNI version implemented by Espresso when running a java 11 home.
-     */
-    static final JniVersion JNI_VERSION_ESPRESSO_11 = JNI_VERSION_10;
-
-    /**
-     * JNI version implemented by Espresso when running a java 17 home.
-     */
-    static final JniVersion JNI_VERSION_ESPRESSO_17 = JNI_VERSION_10;
-
-    /**
-     * JNI version implemented by Espresso when running a java 19 home.
-     */
-    static final JniVersion JNI_VERSION_ESPRESSO_19 = JNI_VERSION_19;
-
-    public static boolean isSupported(int version, JavaVersion contextVersion) {
-        for (JniVersion v : JniVersion.values()) {
-            if (v.version == version && contextVersion.compareTo(v.getJavaVersion()) >= 0) {
-                return true;
+    public static JniVersion decodeVersion(int encoded) {
+        for (JniVersion version : JniVersion.values()) {
+            if (version.version == encoded) {
+                return version;
             }
         }
-        return false;
+        return null;
+    }
+
+    public static JniVersion getJniVersion(JavaVersion javaVersion) {
+        JniVersion latestSupportedJniVersion = null;
+        for (JniVersion version : JniVersion.values()) {
+            assert latestSupportedJniVersion == null || latestSupportedJniVersion.getJavaVersion().compareTo(version.getJavaVersion()) < 0;
+            if (version.getJavaVersion().compareTo(javaVersion) <= 0) {
+                latestSupportedJniVersion = version;
+            }
+        }
+        assert latestSupportedJniVersion != null;
+        return latestSupportedJniVersion;
     }
 }

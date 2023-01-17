@@ -1525,7 +1525,7 @@ public final class VM extends NativeEnv {
         JavaVMAttachArgs.JavaVMAttachArgsWrapper attachArgs = getStructs().javaVMAttachArgs.wrap(jni(), argsPtr);
         StaticObject group = null;
         String name = null;
-        if (JniVersion.isSupported(attachArgs.version(), getContext().getJavaVersion())) {
+        if (JVM_IsSupportedJNIVersion(attachArgs.version())) {
             group = attachArgs.group();
             name = NativeUtils.fromUTF8Ptr(attachArgs.name());
         } else {
@@ -1637,7 +1637,7 @@ public final class VM extends NativeEnv {
                 return JNI_EVERSION;
             }
         }
-        if (JniVersion.isSupported(version, getContext().getJavaVersion())) {
+        if (JVM_IsSupportedJNIVersion(version)) {
             StaticObject currentThread = getContext().getCurrentThread();
             if (currentThread == null) {
                 return JNI_EDETACHED;
@@ -2218,7 +2218,8 @@ public final class VM extends NativeEnv {
 
     @VmImpl
     public boolean JVM_IsSupportedJNIVersion(int version) {
-        return JniVersion.isSupported(version, getJavaVersion());
+        JniVersion jniVersion = JniVersion.decodeVersion(version);
+        return jniVersion != null && jniVersion.getJavaVersion().compareTo(getJavaVersion()) <= 0;
     }
 
     @VmImpl
@@ -3768,7 +3769,6 @@ public final class VM extends NativeEnv {
                     @Inject Meta meta) {
         return JVM_CallStackWalk19(stackStream, mode, skipframes, StaticObject.NULL, StaticObject.NULL, batchSize, startIndex, frames, language, meta);
     }
-
 
     @TruffleBoundary
     public @JavaType(Object.class) StaticObject JVM_CallStackWalk19(

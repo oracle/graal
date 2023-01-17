@@ -351,7 +351,16 @@ typedef uint64_t julong;
     V(JVM_ExtentLocalCache) \
     V(JVM_SetExtentLocalCache) \
     V(JVM_GetNextThreadIdOffset) \
-    V(JVM_RegisterContinuationMethods)
+    V(JVM_RegisterContinuationMethods) \
+    /* V(JVM_DumpClassListToFile) */ \
+    /* V(JVM_DumpDynamicArchive) */ \
+    /* V(JVM_VirtualThreadMountBegin) */ \
+    /* V(JVM_VirtualThreadMountEnd) */ \
+    /* V(JVM_VirtualThreadUnmountBegin) */ \
+    /* V(JVM_VirtualThreadUnmountEnd) */ \
+    /* Java 20 VM methods */ \
+    /* V(JVM_VirtualThreadHideFrames) */ \
+    /* V(JVM_GetClassFileVersion) */
 
 #ifdef __cplusplus
 extern "C" {

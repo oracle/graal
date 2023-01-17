@@ -1624,6 +1624,15 @@ JNIEXPORT void JNICALL JVM_VirtualThreadUnmountEnd(JNIEnv* env, jobject vthread,
   UNIMPLEMENTED(JVM_VirtualThreadUnmountEnd);
 }
 
+JNIEXPORT void JNICALL JVM_VirtualThreadHideFrames(JNIEnv* env, jobject vthread, jboolean hide) {
+  UNIMPLEMENTED(JVM_VirtualThreadHideFrames);
+}
+
+JNIEXPORT jint JNICALL JVM_GetClassFileVersion(JNIEnv *env, jclass current) {
+  UNIMPLEMENTED(JVM_GetClassFileVersion);
+  return 0;
+}
+
 // region Invocation API
 
 jboolean is_supported_jni_version(jint version) {
@@ -1633,7 +1642,10 @@ jboolean is_supported_jni_version(jint version) {
         case JNI_VERSION_1_6:
         case JNI_VERSION_1_8:
         case JNI_VERSION_9:
-        case JNI_VERSION_10: return JNI_TRUE;
+        case JNI_VERSION_10:
+        case JNI_VERSION_19:
+        case JNI_VERSION_20:
+		return JNI_TRUE;
     }
     return JNI_FALSE;
 }

@@ -536,6 +536,18 @@ JNIEXPORT jclass JNICALL
 JVM_GetCallerClass(JNIEnv *env, int n);
 
 /*
+ * Returns the immediate caller class of the native method invoking
+ * JVM_GetCallerClass.  The Method.invoke and other frames due to
+ * reflection machinery are skipped.
+ *
+ * The caller is expected to be marked with
+ * jdk.internal.reflect.CallerSensitive. The JVM will throw an
+ * error if it is not marked properly.
+ */
+// JNIEXPORT jclass JNICALL
+// JVM_GetCallerClass(JNIEnv *env);
+
+/*
  * Find primitive classes
  * utf: class name
  */
@@ -921,6 +933,15 @@ JVM_DoPrivileged(JNIEnv *env, jclass cls,
 
 JNIEXPORT jobject JNICALL
 JVM_GetInheritedAccessControlContext(JNIEnv *env, jclass cls);
+
+/*
+ * Ensure that code doing a stackwalk and using javaVFrame::locals() to
+ * get the value will see a materialized value and not a scalar-replaced
+ * null value.
+ */
+#define JVM_EnsureMaterializedForStackWalk(env, value) \
+    do {} while(0) // Nothing to do.  The fact that the value escaped
+                   // through a native method is enough.
 
 JNIEXPORT jobject JNICALL
 JVM_GetStackAccessControlContext(JNIEnv *env, jclass cls);
@@ -1819,6 +1840,15 @@ JVM_VirtualThreadUnmountBegin(JNIEnv* env, jobject vthread, jboolean last_unmoun
 
 JNIEXPORT void JNICALL
 JVM_VirtualThreadUnmountEnd(JNIEnv* env, jobject vthread, jboolean last_unmount);
+
+JNIEXPORT void JNICALL
+JVM_VirtualThreadHideFrames(JNIEnv* env, jobject vthread, jboolean hide);
+
+/*
+ * Core reflection support.
+ */
+JNIEXPORT jint JNICALL
+JVM_GetClassFileVersion(JNIEnv *env, jclass current);
 
 /*
  * Java thread state support

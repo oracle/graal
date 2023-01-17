@@ -61,7 +61,7 @@ public final class JavaVersion implements Comparable<JavaVersion> {
     }
 
     public static final JavaVersion HOST_VERSION = forVersion(System.getProperty("java.version"));
-    public static final int LATEST_SUPPORTED = 19;
+    public static final int LATEST_SUPPORTED = 20;
 
     private final int version;
 
