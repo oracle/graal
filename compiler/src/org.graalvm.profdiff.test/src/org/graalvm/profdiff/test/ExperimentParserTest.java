@@ -135,8 +135,8 @@ public class ExperimentParserTest {
                     assertEquals("foo.bar.Foo$Bar.methodName()",
                                     compilationUnit.getMethod().getMethodName());
 
-                    InliningTreeNode inliningTreeRoot = new InliningTreeNode(compilationUnit.getMethod().getMethodName(), -1, true, null, false, null);
-                    inliningTreeRoot.addChild(new InliningTreeNode("java.lang.String.equals(Object)", 44, false, List.of("not inlined"), false, null));
+                    InliningTreeNode inliningTreeRoot = new InliningTreeNode(compilationUnit.getMethod().getMethodName(), -1, true, null, false, null, false);
+                    inliningTreeRoot.addChild(new InliningTreeNode("java.lang.String.equals(Object)", 44, false, List.of("not inlined"), false, null, true));
                     assertEquals(inliningTreeRoot, trees.getInliningTree().getRoot());
                     OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
                     OptimizationPhase someTier = new OptimizationPhase("SomeTier");
@@ -152,9 +152,9 @@ public class ExperimentParserTest {
                 case "2": {
                     assertEquals("Klass.someMethod()",
                                     compilationUnit.getMethod().getMethodName());
-                    InliningTreeNode inliningTreeRoot = new InliningTreeNode(compilationUnit.getMethod().getMethodName(), -1, true, null, false, null);
+                    InliningTreeNode inliningTreeRoot = new InliningTreeNode(compilationUnit.getMethod().getMethodName(), -1, true, null, false, null, false);
                     ReceiverTypeProfile receiverTypeProfile = new ReceiverTypeProfile(true, List.of(new ReceiverTypeProfile.ProfiledType("KlassImpl", 1.0, "KlassImpl.abstractMethod()")));
-                    inliningTreeRoot.addChild(new InliningTreeNode("Klass.abstractMethod()", 1, false, null, true, receiverTypeProfile));
+                    inliningTreeRoot.addChild(new InliningTreeNode("Klass.abstractMethod()", 1, false, null, true, receiverTypeProfile, true));
                     assertEquals(inliningTreeRoot, trees.getInliningTree().getRoot());
                     OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
                     rootPhase.addChild(new Optimization(

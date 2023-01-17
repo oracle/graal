@@ -85,7 +85,8 @@ public class CompilationUnitTreeParser implements CompilationUnit.TreeLoader {
             }
         }
         boolean indirect = map.property(OptimizationLogImpl.INDIRECT_PROPERTY).asBoolean();
-        InliningTreeNode inliningTreeNode = new InliningTreeNode(methodName, bci, positive, reason, indirect, parseProfilingInfo(map));
+        boolean alive = map.property(OptimizationLogImpl.ALIVE_PROPERTY).asBoolean();
+        InliningTreeNode inliningTreeNode = new InliningTreeNode(methodName, bci, positive, reason, indirect, parseProfilingInfo(map), alive);
         ExperimentJSONParser.JSONLiteral invokes = map.property(OptimizationLogImpl.INVOKES_PROPERTY);
         if (invokes.isNull()) {
             return inliningTreeNode;

@@ -91,7 +91,7 @@ public interface Invokable extends DeoptBciSupplier {
                 assert log.containsLeafCallsite(this) : "Node " + this + " not contained in the log.";
                 assert log.containsLeafCallsite((Invokable) other) : "Sibling " + other + " not contained in the log.";
                 log.removeLeafCallsite(this);
-                log.trackDuplicatedCallsite((Invokable) other, this);
+                log.trackDuplicatedCallsite((Invokable) other, this, null);
             } else {
                 // This node was added from a different graph.
                 // The adder is responsible for providing a context.

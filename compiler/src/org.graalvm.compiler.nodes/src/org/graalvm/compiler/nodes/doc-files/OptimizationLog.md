@@ -136,6 +136,20 @@ have been inlined to the caller or not. We store the result of the decision (i.e
 for this decision. There may be several negative decisions until a method is finally inlined. The children of a node are
 the methods invoked in the method. The bci of the callsite is also stored for each method in the tree.
 
+Each node except the root represents an invoke node in Graal IR. An invoke node may be deleted as a result of
+optimization. The call target of a callsite may be indirect. An indirect callsite cannot be directly inlined, but it may
+be devirtualized by the compiler. Devirtualized invokes are represented as the children of a indirect callsite in the
+inlining tree.
+
+Using all the properties described above, we classify each inlining-tree node into one of the following callsite kinds:
+
+- `root` - the compiled root method
+- `inlined` - an inlined method
+- `direct` - a direct method invocation, which was not inlined and not deleted
+- `indirect` - an indirect method invocation, which was not inlined and not deleted
+- `deleted` - a deleted method invocation
+- `devirtualized` - an indirect invocation which was devirtualized
+
 ## Example: optimization log of a benchmark
 
 Run a benchmark with the flag `-Dgraal.OptimizationLog=Directory` to produce an output and save it to the directory
@@ -180,6 +194,7 @@ compilation unit, after formatting, is the following:
     "inlined": true,
     "reason": null,
     "indirect": false,
+    "alive": false,
     "invokes": [
       {
         "methodName": "java.lang.String.isLatin1()",
@@ -190,6 +205,7 @@ compilation unit, after formatting, is the following:
           "trivial (relevance=1.000000, probability=0.618846, bonus=1.000000, nodes=9)"
         ],
         "indirect": false,
+        "alive": false,
         "invokes": null
       },
       {
@@ -201,6 +217,7 @@ compilation unit, after formatting, is the following:
           "relevance-based (relevance=1.000000, probability=0.618846, bonus=1.000000, nodes=27 <= 300.000000)"
         ],
         "indirect": false,
+        "alive": false,
         "invokes": null
       }
     ]
@@ -220,8 +237,9 @@ compilation unit.
 `inliningTree` contains the root of the inlining tree, i.e, the name of the root method matches `methodName`.
 `invokes` are the invoked methods which were considered for inlining. The final result of the inlining decisions is
 reflected by the `inlined` property. Its value equals `true` if the method was inlined, otherwise it is `false`. The
-reasons for the decisions, in their original order, are listed in the `reason` property. Finally, `callsiteBci` is the
-byte code index of the invoke node in the callsite.
+reasons for the decisions, in their original order, are listed in the `reason` property. The property `alive` is `true`
+iff the associated invoke node was not deleted at the end of the compilation. Finally, `callsiteBci` is the byte code
+index of the invoke node in the callsite.
 
 The `indirect` property is `true` iff the call is known to be indirect, i.e., it is an invoke through an
 interface or a virtual method call. Indirect calls contain
@@ -238,6 +256,7 @@ indirect call to `Iterator.next()` below.
     "call is indirect."
   ],
   "indirect": true,
+  "alive": false,
   "receiverTypeProfile": {
     "mature": true,
     "profiledTypes": [

@@ -208,7 +208,8 @@ public class InliningTree {
      */
     public InliningTree cloneSubtreeAt(List<Integer> index) {
         InliningTreeNode rootNode = root.atIndex(index);
-        InliningTreeNode clonedNode = new InliningTreeNode(rootNode.getName(), Optimization.UNKNOWN_BCI, rootNode.isPositive(), null, rootNode.isIndirect(), rootNode.getReceiverTypeProfile());
+        InliningTreeNode clonedNode = new InliningTreeNode(rootNode.getName(), Optimization.UNKNOWN_BCI, rootNode.isPositive(), null, rootNode.isIndirect(),
+                        rootNode.getReceiverTypeProfile(), rootNode.isAlive());
         cloneSubtreeInto(rootNode, clonedNode);
         return new InliningTree(clonedNode);
     }
@@ -222,7 +223,7 @@ public class InliningTree {
     private static void cloneSubtreeInto(InliningTreeNode originalNode, InliningTreeNode clonedNode) {
         for (InliningTreeNode originalChild : originalNode.getChildren()) {
             InliningTreeNode clonedChild = new InliningTreeNode(originalChild.getName(), originalChild.getBCI(), originalChild.isPositive(), originalChild.getReason(),
-                            originalChild.isIndirect(), originalChild.getReceiverTypeProfile());
+                            originalChild.isIndirect(), originalChild.getReceiverTypeProfile(), originalChild.isAlive());
             cloneSubtreeInto(originalChild, clonedChild);
             clonedNode.addChild(clonedChild);
         }

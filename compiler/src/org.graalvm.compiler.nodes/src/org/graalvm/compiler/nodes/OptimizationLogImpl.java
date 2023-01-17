@@ -124,6 +124,11 @@ public class OptimizationLogImpl implements OptimizationLog {
     public static final String INDIRECT_PROPERTY = "indirect";
 
     /**
+     * The key of the property which is {@code true} iff the invoke of a callsite is alive.
+     */
+    public static final String ALIVE_PROPERTY = "alive";
+
+    /**
      * The key of the reason property. The property holds a list of reasons for inlining decisions
      * in their original order.
      */
@@ -827,6 +832,7 @@ public class OptimizationLogImpl implements OptimizationLog {
         map.put(INLINED_PROPERTY, isInlined);
         map.put(REASON_PROPERTY, reason);
         map.put(INDIRECT_PROPERTY, callsite.isIndirect());
+        map.put(ALIVE_PROPERTY, callsite.getInvoke() instanceof Node && ((Node) callsite.getInvoke()).isAlive());
         if (callsite.isIndirect()) {
             EconomicMap<String, Object> receiverTypeProfile = receiverTypeProfileAsJSONMap(callsite, methodNameFormatter);
             if (receiverTypeProfile != null) {

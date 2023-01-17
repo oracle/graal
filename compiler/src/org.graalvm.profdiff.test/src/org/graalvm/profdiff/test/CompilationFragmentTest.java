@@ -89,12 +89,12 @@ public class CompilationFragmentTest {
      */
     @Test
     public void compilationFragmentTreeCreation() throws ExperimentParserError {
-        InliningTreeNode a = new InliningTreeNode("a()", -1, true, null, false, null);
-        InliningTreeNode b = new InliningTreeNode("b()", 1, true, null, false, null);
-        InliningTreeNode d = new InliningTreeNode("d()", 3, true, null, false, null);
-        InliningTreeNode c = new InliningTreeNode("c()", 2, true, null, false, null);
-        InliningTreeNode e = new InliningTreeNode("e()", 3, false, null, true, null);
-        InliningTreeNode f = new InliningTreeNode("f()", 3, true, null, false, null);
+        InliningTreeNode a = new InliningTreeNode("a()", -1, true, null, false, null, false);
+        InliningTreeNode b = new InliningTreeNode("b()", 1, true, null, false, null, false);
+        InliningTreeNode d = new InliningTreeNode("d()", 3, true, null, false, null, false);
+        InliningTreeNode c = new InliningTreeNode("c()", 2, true, null, false, null, false);
+        InliningTreeNode e = new InliningTreeNode("e()", 3, false, null, true, null, true);
+        InliningTreeNode f = new InliningTreeNode("f()", 3, true, null, false, null, false);
         a.addChild(b);
         a.addChild(c);
         a.addChild(e);
@@ -149,8 +149,8 @@ public class CompilationFragmentTest {
         InliningTreeNode actualInliningTreeRoot = treePair.getInliningTree().getRoot();
         OptimizationTreeNode actualOptimizationTreeRoot = treePair.getOptimizationTree().getRoot();
 
-        InliningTreeNode fb = new InliningTreeNode("b()", -1, true, null, false, null);
-        InliningTreeNode fd = new InliningTreeNode("d()", 3, true, null, false, null);
+        InliningTreeNode fb = new InliningTreeNode("b()", -1, true, null, false, null, false);
+        InliningTreeNode fd = new InliningTreeNode("d()", 3, true, null, false, null, false);
         fb.addChild(fd);
         assertEquals(fb, actualInliningTreeRoot);
 

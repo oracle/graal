@@ -254,10 +254,10 @@ As an instance, consider the inlining and optimization tree below:
 ```
 A compilation unit of the method a()
     Inlining tree
-        a()
-            b() at bci 1
-                d() at bci 3
-            c() at bci 2
+        (root) a()
+            (inlined) b() at bci 1
+                (inlined) d() at bci 3
+            (inlined) c() at bci 2
     Optimization tree
         RootPhase
             SomeOptimizationPhase
@@ -272,13 +272,13 @@ By combining the trees, we obtain the following optimization-context tree:
 ```
 A compilation unit of the method a()
     Optimization-context tree
-        a()
+        (root) a()
             OptimizationA at bci 3
-            b() at bci 1
+            (inlined) b() at bci 1
                 OptimizationB at bci 4
-                d() at bci 3
+                (inlined) d() at bci 3
                     OptimizationD at bci 6
-            c() at bci 2
+            (inlined) c() at bci 2
               OptimizationC at bci 5
 ```
 
@@ -288,12 +288,12 @@ that `b() at bci 1` is called in a loop, which gets peeled. The inlining tree th
 ```
 A compilation unit of the method a() with duplication
     Inlining tree
-        a()
-            b() at bci 1
-                d() at bci 3
-            b() at bci 1
-                d() at bci 3
-            c() at bci 2
+        (root) a()
+            (inlined) b() at bci 1
+                (inlined) d() at bci 3
+            (inlined) b() at bci 1
+                (inlined) d() at bci 3
+            (inlined) c() at bci 2
 ```
 
 It is not clear to which `b() at bci 1` the optimization `OptimizationB at bci {b(): 4, a(): 1}` belongs.
@@ -308,21 +308,21 @@ The optimization optimization-context tree for the above example would look like
 ```
 A compilation unit of the method a() with duplication
     Optimization-context tree
-        a()
+        (root) a()
             OptimizationA at bci 3
-            b() at bci 1
+            (inlined) b() at bci 1
                 Warning: Optimizations cannot be unambiguously attributed (duplicate path)
                 OptimizationB at bci 4
-                d() at bci 3
+                (inlined) d() at bci 3
                     Warning: Optimizations cannot be unambiguously attributed (duplicate path)
                     OptimizationD at bci 6
-            b() at bci 1
+            (inlined) b() at bci 1
                 Warning: Optimizations cannot be unambiguously attributed (duplicate path)
                 OptimizationB at bci 4
-                d() at bci 3
+                (inlined) d() at bci 3
                     Warning: Optimizations cannot be unambiguously attributed (duplicate path)
                     OptimizationD at bci 6
-            c() at bci 2
+            (inlined) c() at bci 2
               OptimizationC at bci 5
 ```
 
@@ -406,7 +406,15 @@ canonical replacements in the 1st compilation and one different replacement in t
 ### Inlining tree matching
 
 The matching of inlining trees is similar to the matching of optimization trees, except with an extra relabelling
-operation. Negative inlining decisions also make the interpretation a bit more complicated.
+operation. Different callsite kinds also make the interpretation a bit more complicated. As a reminder, each
+inlining-tree node has one of the following callsite kinds:
+
+- `root` - the compiled root method
+- `inlined` - an inlined method
+- `direct` - a direct method invocation, which was not inlined and not deleted
+- `indirect` - an indirect method invocation, which was not inlined and not deleted
+- `deleted` - a deleted method invocation
+- `devirtualized` - a deleted indirect invocation which was devirtualized
 
 The result of 2 matched inlining trees is again a delta tree. Each node in the delta tree is an inlining tree node
 paired with an edit operation. Edit operations include insertion, deletion, relabelling, and identity. The kind of the
@@ -415,38 +423,38 @@ edit operation is indicated by the prefix of the node.
 - prefix `.` = this inlining tree node is present and unchanged in both compilations (identity)
 - prefix `-` = this inlining tree node is present in the 1st compilation but absent in the 2nd compilation (deletion)
 - prefix `+` = this inlining tree node is absent in the 1st compilation but present in the 2nd compilation (insertion)
-- prefix `*` = this inlining tree node is present in both compilations but the inlining decisions are different
+- prefix `*` = this inlining tree node is present in both compilations but the *callsite kind* is different
   (relabelling)
 
 Provided that there 2 kinds of inlining tree nodes with respect to the inlining decision (inlined and not inlined),
 there are 2 * 4 cases to be interpreted.
 
-For instance, consider a non-root method in a compilation like `java.lang.String.equals(Object) at bci 44`. After being
-evaluated by the inlining algorithm, it would appear in the inlining tree either
-as`java.lang.String.equals(Object) at bci 44` (after being inlined)
-or `(not inlined) java.lang.String.equals(Object) at bci 44`, depending on the outcome of the inlining decision. It is
-also possible that the call would not be present in a different compilation of the same root method.
-This is the case when the caller of `java.lang.String.equals(Object)` is not inlined. If a call is present in one of the
-compilations but not the other, the matching algorithm reports a difference with the prefix `-` or `+`. If a call is
-present in both compilations, the prefix is `.` if the final inlining decision has the same outcome or `*` otherwise.
+For instance, consider a non-root method in a compilation like `(direct) java.lang.String.equals(Object) at bci 44`.
+This means that there is an invocation of the `equals` method in the target machine code, which is a direct invocation (
+there is no dynamic dispatch). If the method was inlined by the inliner, it would appear
+as `(inlined) java.lang.String.equals(Object) at bci 44`. If an optimization phase completely removed the call to
+the `equals` method, it would appear as `(deleted) java.lang.String.equals(Object) at bci 44`
 
-Therefore, all possible combinations in the delta tree are:
+It is also possible that although a callsite is present in a compilation of some root method, it may not be present in a
+different compilation of the same method. Note that this is different that the callsite being deleted. In our example,
+the callsite `java.lang.String.equals(Object)` would disappear from the inlining tree if its caller was not inlined. If
+a call is present in one of the compilations but absent in the other, the matching algorithm reports a difference with
+the prefix `-` or `+`. If a call is present in both compilations, the prefix is `.` if the callsite kind is the same
+or `*` otherwise.
 
-- `. java.lang.String.equals(Object) at bci 44` = the call is present and inlined in both compilations
-- `. (not inlined) java.lang.String.equals(Object) at bci 44` = the call is present but not inlined in both
-  compilations
-- `- java.lang.String.equals(Object) at bci 44` = the method was inlined in the 1st compilation, but the call is not
-  present in the 2nd compilation
-- `- (not inlined) java.lang.String.equals(Object) at bci 44` = the call is present but not inlined in the 1st
-  compilation, and not present in the 2nd compilation
-- `+ java.lang.String.equals(Object) at bci 44` = the call is not present in the 1st compilation, but present and
-  inlined in the 2nd compilation
-- `+ (not inlined) java.lang.String.equals(Object) at bci 44` = the call is not present in the 1st compilation,
-  but present and not inlined in the 2nd compilation
-- `* (inlined -> not inlined) java.lang.String.equals(Object) at bci 44` = the call is present in both
-  compilations, and inlined the 1st compilation but not inlined in the 2nd compilation
-- `* (not inlined -> inlined) java.lang.String.equals(Object) at bci 44` = the call is present in both
-  compilations, and not inlined the 1st compilation but inlined in the 2nd compilation
+Some examples of operations in the inlining tree are below.
+
+- `. (inlined) someMethod()` - the callsite is inlined in both compilations
+- `. (direct) someMethod()` - there is a direct invocation in both compilations
+- `. (deleted) someMethod()` - the callsite is deleted in both compilations
+- `* (inlined -> direct) someMethod()` - the callsite is inlined in the 1st compilation but there is a direct invocation
+  in the 2nd compilation
+- `* (direct -> deleted) someMethod()` - there is a direct invocation in the 1st compilation but the callsite is deleted
+  in the 2nd compilation
+- `- (inlined) someMethod()` - the callsite is inlined in the 1st compilation but absent in the 2nd compilation
+- `+ (direct) someMethod()` - the callsite is absent in the 1st compilation but there is a direct invocation in the 2nd
+  compilation
+- `+ (deleted) someMethod()` - the callsite is absent in the 1st compilation and it is deleted in the 2nd compilation
 
 ### Compilation fragments
 
@@ -462,16 +470,16 @@ compiled and `b()` is inlined. In experiment 2, only the method `b()` is compile
 Method a() is hot only in experiment 1
     Compilation unit X
         Inlining tree
-            a()
+            (root) a()
                 ...
                     ...
-                    b()
+                    (inlined) b()
                         ...
                 ...
 Method b() is hot only in experiment 2
     Compilation unit Y
         Inlining tree
-            b()
+            (root) b()
                 ...
 ```
 
@@ -483,11 +491,11 @@ fragment.
 Method b()
     Compilation fragment X#1 in experiment 1
         Inlining tree
-            b()
+            (root) b()
                 ...
     Compilation unit Y in experiment 2
         Inlining tree
-            b()
+            (root) b()
                 ...
 ```
 
@@ -498,10 +506,10 @@ To illustrate how the optimization tree of a fragment is constructed, consider t
 ```
 Compilation unit X
     Inlining tree
-        a()
-            b() at bci 1
-                d() at bci 3
-            c() at bci 2
+        (root) a()
+            (inlined) b() at bci 1
+                (inlined) d() at bci 3
+            (inlined) c() at bci 2
     Optimization tree
          RootPhase
              Tier1
@@ -523,8 +531,8 @@ to `b()`.
 ```
 Compilation fragment X#1
     Inlining tree
-         b()
-             d() at bci 3
+         (root) b()
+             (inlined) d() at bci 3
     Optimization tree
          RootPhase
              Tier1

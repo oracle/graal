@@ -99,14 +99,14 @@ public class OptimizationContextTreeTest {
      */
     @Test
     public void createdCorrectly() {
-        InliningTreeNode a = new InliningTreeNode("a()", -1, true, null, false, null);
-        InliningTreeNode b1 = new InliningTreeNode("b()", 1, true, null, false, null);
-        InliningTreeNode d1 = new InliningTreeNode("d()", 3, true, null, false, null);
-        InliningTreeNode b2 = new InliningTreeNode("b()", 1, true, null, false, null);
-        InliningTreeNode d2 = new InliningTreeNode("d()", 3, true, null, false, null);
-        InliningTreeNode c = new InliningTreeNode("c()", 2, true, null, false, null);
-        InliningTreeNode e = new InliningTreeNode("e()", 3, false, null, true, null);
-        InliningTreeNode f = new InliningTreeNode("f()", 3, true, null, false, null);
+        InliningTreeNode a = new InliningTreeNode("a()", -1, true, null, false, null, false);
+        InliningTreeNode b1 = new InliningTreeNode("b()", 1, true, null, false, null, false);
+        InliningTreeNode d1 = new InliningTreeNode("d()", 3, true, null, false, null, false);
+        InliningTreeNode b2 = new InliningTreeNode("b()", 1, true, null, false, null, false);
+        InliningTreeNode d2 = new InliningTreeNode("d()", 3, true, null, false, null, false);
+        InliningTreeNode c = new InliningTreeNode("c()", 2, true, null, false, null, false);
+        InliningTreeNode e = new InliningTreeNode("e()", 3, false, null, true, null, true);
+        InliningTreeNode f = new InliningTreeNode("f()", 3, true, null, false, null, false);
 
         a.addChild(b1);
         a.addChild(b2);

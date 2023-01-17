@@ -569,11 +569,8 @@ public class InliningLog {
         }
         return inliningLog.openUpdateScope((originalInvoke, newInvoke) -> {
             if (originalInvoke != null) {
-                inliningLog.removeLeafCallsite(newInvoke);
-                Callsite siblingCallsite = inliningLog.leaves.get(originalInvoke);
-                Callsite parentCallsite = siblingCallsite.parent;
-                Callsite callsite = parentCallsite.addChild(newInvoke, siblingCallsite);
-                inliningLog.leaves.put(newInvoke, callsite);
+                assert !inliningLog.containsLeafCallsite(newInvoke);
+                inliningLog.trackDuplicatedCallsite(originalInvoke, newInvoke, inliningLog.leaves.get(originalInvoke));
             }
         });
     }
@@ -740,10 +737,11 @@ public class InliningLog {
         return currentRootScope != null ? currentRootScope.replacementRoot : root;
     }
 
-    public void trackDuplicatedCallsite(Invokable sibling, Invokable newInvoke) {
+    public void trackDuplicatedCallsite(Invokable sibling, Invokable newInvoke, Callsite childOriginalCallsite) {
         Callsite siblingCallsite = leaves.get(sibling);
         Callsite parentCallsite = siblingCallsite.parent;
-        Callsite callsite = parentCallsite.addChild(newInvoke, null);
+        Callsite callsite = parentCallsite.addChild(newInvoke, childOriginalCallsite);
+        callsite.decisions.addAll(siblingCallsite.decisions);
         leaves.put(newInvoke, callsite);
     }
 
