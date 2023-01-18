@@ -53,7 +53,6 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
      */
     private static final class OptimizationPhase implements OptimizationTreeNode {
         private final CharSequence phaseName;
-
         private List<OptimizationTreeNode> children;
 
         private OptimizationPhase(CharSequence phaseName) {
@@ -74,11 +73,8 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
      */
     private static final class Optimization implements OptimizationTreeNode {
         private final EconomicMap<String, Object> properties;
-
         private final NodeSourcePosition position;
-
         private final String optimizationName;
-
         private final String eventName;
 
         private Optimization(EconomicMap<String, Object> properties, NodeSourcePosition position, String optimizationName, String eventName) {
@@ -92,7 +88,7 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
     /**
      * An encoded representation of the {@link OptimizationLog}.
      */
-    protected static final class EncodedOptimizationLog implements EncodedObject {
+    protected static final class EncodedOptimizationLog implements CompanionObjectCodec.EncodedObject {
         private OptimizationPhase root;
     }
 
@@ -104,13 +100,13 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
 
         @Override
         public EncodedOptimizationLog prepare(OptimizationLog optimizationLog) {
-            assert shouldBeEncoded(optimizationLog) && optimizationLog instanceof OptimizationLogImpl;
+            assert shouldBeEncoded(optimizationLog) && optimizationLog instanceof OptimizationLogImpl : "prepare should be called iff there is anything to encode";
             return new EncodedOptimizationLog();
         }
 
         @Override
         public void encode(EncodedOptimizationLog encodedObject, OptimizationLog optimizationLog, Function<Node, Integer> mapper) {
-            assert encodedObject.root == null && shouldBeEncoded(optimizationLog) && optimizationLog instanceof OptimizationLogImpl;
+            assert encodedObject.root == null && shouldBeEncoded(optimizationLog) && optimizationLog instanceof OptimizationLogImpl : "encode should be once iff there is anything to encode";
             encodedObject.root = (OptimizationPhase) encodeSubtree(((OptimizationLogImpl) optimizationLog).findRootPhase());
         }
 
@@ -139,7 +135,7 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
             OptimizationLogImpl optimizationLog = new OptimizationLogImpl(graph);
             if (encodedObject != null) {
                 EncodedOptimizationLog instance = (EncodedOptimizationLog) encodedObject;
-                assert instance.root != null;
+                assert instance.root != null : "an empty optimization tree should be encoded as null";
                 if (instance.root.children != null) {
                     for (OptimizationTreeNode child : instance.root.children) {
                         decodeSubtreeInto(child, optimizationLog);
@@ -166,7 +162,7 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
                     }
                 }
             } else {
-                assert node instanceof Optimization;
+                assert node instanceof Optimization : "an optimization-tree node is either a phase or an optimization";
                 Optimization optimization = (Optimization) node;
                 optimizationLog.getCurrentPhase().addChild(new OptimizationLogImpl.OptimizationNode(optimization.properties,
                                 optimization.position, optimization.optimizationName, optimization.eventName));
@@ -190,8 +186,7 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
         if (!original.isOptimizationLogEnabled() || !decoded.isOptimizationLogEnabled()) {
             return true;
         }
-        assert original instanceof OptimizationLogImpl;
-        assert decoded instanceof OptimizationLogImpl;
+        assert original instanceof OptimizationLogImpl && decoded instanceof OptimizationLogImpl : "enabled optimization log implies instanceof OptimizationLogImpl";
         return subtreesEqual(((OptimizationLogImpl) original).findRootPhase(), ((OptimizationLogImpl) decoded).findRootPhase());
     }
 

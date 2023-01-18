@@ -113,7 +113,7 @@ public class InliningLogCodec extends CompanionObjectCodec<InliningLog, Inlining
      * An encoded instance of the inlining log. It is not necessary to encode leaf callsites,
      * because they are created on {@link InliningLogDecoder#registerNode registration}.
      */
-    protected static final class EncodedInliningLog implements EncodedObject {
+    protected static final class EncodedInliningLog implements CompanionObjectCodec.EncodedObject {
         private EncodedCallsite root;
     }
 
@@ -125,13 +125,13 @@ public class InliningLogCodec extends CompanionObjectCodec<InliningLog, Inlining
 
         @Override
         public EncodedInliningLog prepare(InliningLog inliningLog) {
-            assert shouldBeEncoded(inliningLog);
+            assert shouldBeEncoded(inliningLog) : "prepare should be called iff there is anything to encode";
             return new EncodedInliningLog();
         }
 
         @Override
         public void encode(EncodedInliningLog encodedObject, InliningLog inliningLog, Function<Node, Integer> mapper) {
-            assert shouldBeEncoded(inliningLog);
+            assert shouldBeEncoded(inliningLog) : "encode should be once iff there is anything to encode";
             EconomicMap<InliningLog.Callsite, EncodedCallsite> replacements = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
             encodedObject.root = encodeSubtree(inliningLog.getRootCallsite(), mapper, replacements);
         }
@@ -165,7 +165,7 @@ public class InliningLogCodec extends CompanionObjectCodec<InliningLog, Inlining
             if (graph.getInliningLog() == null) {
                 return null;
             }
-            assert orderIdToCallsite == null;
+            assert orderIdToCallsite == null : "decode should be called at most once";
             orderIdToCallsite = EconomicMap.create();
             InliningLog inliningLog = new InliningLog(null);
             if (encodedObject != null) {
@@ -185,7 +185,7 @@ public class InliningLogCodec extends CompanionObjectCodec<InliningLog, Inlining
             if (!(node instanceof Invokable)) {
                 return;
             }
-            assert orderIdToCallsite != null;
+            assert orderIdToCallsite != null : "registerNode should be called after decode";
             Invokable invokable = (Invokable) node;
             if (inliningLog.containsLeafCallsite(invokable)) {
                 return;

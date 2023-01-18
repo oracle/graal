@@ -21,7 +21,7 @@ There are 3 general use cases:
 - compare 2 JIT experiments including proftool data,
 - compare a JIT experiment (including proftool data) with an AOT experiment.
 
-These use cases are facilitated by the commands `mx profdiff report`, `mx profdiff jit-vs-jit`,
+These use cases are implemented as the commands `mx profdiff report`, `mx profdiff jit-vs-jit`,
 and `mx profdiff jit-vs-aot` respectively. Run `mx profdiff help` to show the general help or `mx profdiff help COMMAND`
 to show help for a command.
 
@@ -31,7 +31,8 @@ Run a benchmark with the optimization log and node source positions enabled. Nod
 optimization log to correlate individual optimizations with a position in the bytecode.
 
 ```sh
-mx benchmark renaissance:scrabble -- -Dgraal.OptimizationLog=Directory -Dgraal.OptimizationLogPath=$(pwd)/scrabble_log
+mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraal.OptimizationLog=Directory \
+  -Dgraal.OptimizationLogPath=$(pwd)/scrabble_log
 ```
 
 It is not necessary to specify `-Dgraal.TrackNodeSourcePositions=true`, because it is inserted implicitly by
@@ -249,7 +250,7 @@ Optimization-context trees make it easier to attribute optimizations to inlining
 the optimization tree is lost. The feature is enabled using the option `--optimization-context-tree`, and is compatible
 with each command, e.g., `mx profdiff --optimization-context-tree=true report scrabble_log`.
 
-As an instance, consider the inlining and optimization tree below:
+As an instance, consider the inlining and optimization trees below:
 
 ```
 A compilation unit of the method a()
@@ -279,7 +280,7 @@ A compilation unit of the method a()
                 (inlined) d() at bci 3
                     OptimizationD at bci 6
             (inlined) c() at bci 2
-              OptimizationC at bci 5
+                OptimizationC at bci 5
 ```
 
 However, code duplication makes the attribution of optimizations to the inlining tree ambiguous. For example, suppose
@@ -297,7 +298,7 @@ A compilation unit of the method a() with duplication
 ```
 
 It is not clear to which `b() at bci 1` the optimization `OptimizationB at bci {b(): 4, a(): 1}` belongs.
-If `OptimizationB` was performed before the duplication, it affects both calls to `b()`. For these reasons,
+If `OptimizationB` were performed before the duplication, it would affect both calls to `b()`. For these reasons,
 
 - profdiff inserts warnings about the ambiguity to all calls whose *inlining path from root* is not unique in the
   inlining tree,
@@ -323,7 +324,7 @@ A compilation unit of the method a() with duplication
                     Warning: Optimizations cannot be unambiguously attributed (duplicate path)
                     OptimizationD at bci 6
             (inlined) c() at bci 2
-              OptimizationC at bci 5
+                OptimizationC at bci 5
 ```
 
 ## Comparing experiments
@@ -362,12 +363,12 @@ Otherwise, hot compilations are printed without any diffing.
 Note that a compilation fragment is a kind of compilation. However, fragments are diffed only with other compilation
 units, i.e., pairs of 2 compilation fragments are skipped.
 
-### Optimization tree matching
+### Optimization-tree matching
 
-The tool displays the diff of optimization trees for each pair of hot compilations. The diff of 2 optimization trees is
-displayed in the form of a delta tree. Each node in the delta tree is an optimization phase/individual optimization
-paired with an edit operation. Edit operations include insertion, deletion, and identity. The kind of the edit operation
-is displayed as the prefix of the node.
+The tool computes a matching between optimization trees for each pair of hot compilations. The matching is displayed in
+the form of a delta tree. Each node in the delta tree is an optimization phase/individual optimization paired with an
+edit operation. Edit operations include insertion, deletion, and identity. The kind of edit operation is displayed as
+the prefix of the node.
 
 - prefix `.` = this phase/optimization is present and unchanged in both compilations (identity)
 - prefix `-` = this phase/optimization is present in the 1st compilation but absent in the 2nd compilation (deletion)
@@ -390,8 +391,8 @@ Method java.util.stream.ReduceOps$ReduceOp.evaluateSequential(PipelineHelper, Sp
                   ...
 ```
 
-We can see a few phase names with the prefix `.`, which means the phases present in both compilations. Further down, we
-can observe something like this:
+We can see a few phase names with the prefix `.`, which means that the phases are present in both compilations. Further
+down, we can observe a difference between applied optimizations:
 
 ```
 . CanonicalizerPhase
@@ -400,13 +401,13 @@ can observe something like this:
     + Canonicalizer CanonicalReplacement at bci 6 {replacedNodeClass: Pi, canonicalNodeClass: Pi}
 ```
 
-The interpretation here is that the `CanonicalizerPhase` was present in both compilations. However, it performed 2
+The interpretation here is that the `CanonicalizerPhase` is present in both compilations. However, it performed 2
 canonical replacements in the 1st compilation and one different replacement in the 2nd compilation.
 
-### Inlining tree matching
+### Inlining-tree matching
 
-The matching of inlining trees is similar to the matching of optimization trees, except with an extra relabelling
-operation. Different callsite kinds also make the interpretation a bit more complicated. As a reminder, each
+The matching between inlining trees is similar to the matching between optimization trees, except with an extra
+relabelling operation. Different callsite kinds also make the interpretation a bit more complicated. As a reminder, each
 inlining-tree node has one of the following callsite kinds:
 
 - `root` - the compiled root method
@@ -414,10 +415,10 @@ inlining-tree node has one of the following callsite kinds:
 - `direct` - a direct method invocation, which was not inlined and not deleted
 - `indirect` - an indirect method invocation, which was not inlined and not deleted
 - `deleted` - a deleted method invocation
-- `devirtualized` - a deleted indirect invocation which was devirtualized
+- `devirtualized` - an indirect method invocation that was devirtualized to at least one direct call and then deleted
 
 The result of 2 matched inlining trees is again a delta tree. Each node in the delta tree is an inlining tree node
-paired with an edit operation. Edit operations include insertion, deletion, relabelling, and identity. The kind of the
+paired with an edit operation. Edit operations include insertion, deletion, relabelling, and identity. The kind of
 edit operation is indicated by the prefix of the node.
 
 - prefix `.` = this inlining tree node is present and unchanged in both compilations (identity)
@@ -426,9 +427,6 @@ edit operation is indicated by the prefix of the node.
 - prefix `*` = this inlining tree node is present in both compilations but the *callsite kind* is different
   (relabelling)
 
-Provided that there 2 kinds of inlining tree nodes with respect to the inlining decision (inlined and not inlined),
-there are 2 * 4 cases to be interpreted.
-
 For instance, consider a non-root method in a compilation like `(direct) java.lang.String.equals(Object) at bci 44`.
 This means that there is an invocation of the `equals` method in the target machine code, which is a direct invocation (
 there is no dynamic dispatch). If the method was inlined by the inliner, it would appear
@@ -436,7 +434,7 @@ as `(inlined) java.lang.String.equals(Object) at bci 44`. If an optimization pha
 the `equals` method, it would appear as `(deleted) java.lang.String.equals(Object) at bci 44`
 
 It is also possible that although a callsite is present in a compilation of some root method, it may not be present in a
-different compilation of the same method. Note that this is different that the callsite being deleted. In our example,
+different compilation of the same method. Note that this is different from the callsite being deleted. In our example,
 the callsite `java.lang.String.equals(Object)` would disappear from the inlining tree if its caller was not inlined. If
 a call is present in one of the compilations but absent in the other, the matching algorithm reports a difference with
 the prefix `-` or `+`. If a call is present in both compilations, the prefix is `.` if the callsite kind is the same
@@ -460,11 +458,11 @@ Some examples of operations in the inlining tree are below.
 
 A compilation fragment is created from a compilation unit's inlining tree and optimization tree. A subtree of the
 inlining tree becomes the inlining tree of the newly created fragment. The optimization tree of the fragment is created
-from a subgraph of the compilation's unit optimization tree. This enables the tool to compare a fragment of a
+from a subgraph of the compilation unit's optimization tree. This enables the tool to compare a fragment of a
 compilation unit with a different compilation unit.
 
-Consider the following scenario. A method `a()` calls an important method `b()`. In experiment 1, the method `a()` is
-compiled and `b()` is inlined. In experiment 2, only the method `b()` is compiled.
+Consider the following scenario. Method `a()` calls an important method `b()`. In experiment 1, method `a()` is compiled
+and `b()` is inlined. In experiment 2, only method `b()` is compiled.
 
  ```
 Method a() is hot only in experiment 1
@@ -524,7 +522,7 @@ Compilation unit X
 ```
 
 The fragment rooted in `b()` is visualized below. The optimization tree of a fragment always contains all optimization
-phases from its original compilation unit. Individual optimizations are kept only if their position is in the subtree
+phases from its original compilation unit. Individual optimizations are kept only if their positions are in the subtree
 of `b()`. Notice that the positions of the optimizations in the fragment are corrected, so that they are relative
 to `b()`.
 

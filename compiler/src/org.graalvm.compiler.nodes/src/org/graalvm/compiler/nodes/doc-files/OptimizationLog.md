@@ -44,13 +44,13 @@ Similarly, the equivalent options `-H:OptimizationLog` and `-H:OptimizationLogPa
 The value of the option `-Dgraal.OptimizationLog` specifies where the structured optimization log is printed.
 The accepted values are:
 
-- `Directory` - format the structured optimization as JSON and print it to files a directory. The directory
+- `Directory` - format the structured optimization as JSON and print it to files in a directory. The directory
   is specified by the option `-Dgraal.OptimizationLogPath`. If `OptimizationLogPath` is not set, the target directory is
   `DumpPath/optimization_log` (specified by `-Dgraal.DumpPath`). Directories are created if they do not exist.
 - `Stdout` - print the structured optimization log to the standard output.
 - `Dump` - dump optimization trees for IdealGraphVisualizer according to the `-Dgraal.PrintGraph` option.
 
-Multiple targets can be specified at once by separating them with a comma, e.g., `-Dgraal.OptimizationLog=Stdout,Dump`.
+Multiple targets can be specified together by separating them with a comma, e.g., `-Dgraal.OptimizationLog=Stdout,Dump`.
 The generated files are human-readable but verbose. Therefore, it is best to inspect them with `mx profdiff`. Read
 `Profdiff.md` for more information.
 
@@ -81,9 +81,9 @@ graph.getOptimizationLog().withLazyProperty("replacedNodeClass", nodeClass::shor
 
 ## Optimization tree
 
-The context of the optimizations is also collected when `-Dgraal.OptimizationLog` is enabled. This is achieved by
+The context of optimizations is also collected when `-Dgraal.OptimizationLog` is enabled. This is achieved by
 notifying the graph's `OptimizationLog` whenever an optimization phase is entered or exited. We establish parent-child
-relationships between optimization phases and optimizations. The result is an optimization tree.
+relationships between the optimization phases and the optimizations. The result is an optimization tree.
 
 We create an artificial `RootPhase`, which is the root of the tree and initially is the *current phase*. When a phase is
 entered, the new phase is a child of the current phase and after that the current phase is set to the newly-entered
@@ -126,7 +126,8 @@ that performs inlining may be whole optimization subtrees rooted in a `RootPhase
 ```
 
 In reality, however, the trees are significantly larger than in this example. Read `Profdiff.md` to learn how to inspect
-a real tree. The sections below explain the format of a serialized optimization tree, and how to view the tree in IGV.
+a real tree. The sections below explain the format of a serialized optimization tree, and how to view an optimization
+tree in IGV.
 
 ## Inlining tree
 
@@ -134,11 +135,12 @@ a real tree. The sections below explain the format of a serialized optimization 
 decisions. The root of the tree is the root-compiled method. Each node of the tree corresponds to one method, which may
 have been inlined to the caller or not. We store the result of the decision (i.e., inlined or not) and also the reason
 for this decision. There may be several negative decisions until a method is finally inlined. The children of a node are
-the methods invoked in the method. The bci of the callsite is also stored for each method in the tree.
+the methods invoked in the method represented by the node. The bci of the callsite is also stored for each method in the
+tree.
 
 Each node except the root represents an invoke node in Graal IR. An invoke node may be deleted as a result of
 optimization. The call target of a callsite may be indirect. An indirect callsite cannot be directly inlined, but it may
-be devirtualized by the compiler. Devirtualized invokes are represented as the children of a indirect callsite in the
+be devirtualized by the compiler. Devirtualized invokes are represented as the children of an indirect callsite in the
 inlining tree.
 
 Using all the properties described above, we classify each inlining-tree node into one of the following callsite kinds:
@@ -148,16 +150,17 @@ Using all the properties described above, we classify each inlining-tree node in
 - `direct` - a direct method invocation, which was not inlined and not deleted
 - `indirect` - an indirect method invocation, which was not inlined and not deleted
 - `deleted` - a deleted method invocation
-- `devirtualized` - an indirect invocation which was devirtualized
+- `devirtualized` - an indirect method invocation that was devirtualized to at least one direct call and then deleted
 
 ## Example: optimization log of a benchmark
 
 Run a benchmark with the flag `-Dgraal.OptimizationLog=Directory` to produce an output and save it to the directory
-specified by the `-Dgraal.OptimizationLogPath` option. The command `mx benchmark` implicitly
-adds `-Dgraal.TrackNodeSourcePosition=true`, so that optimizations can be linked with a source position.
+specified by the `-Dgraal.OptimizationLogPath` option. Run it jointly with `-Dgraal.TrackNodeSourcePosition=true`, so
+that optimizations can be linked with a source position.
 
 ```sh
-mx benchmark renaissance:scrabble -- -Dgraal.OptimizationLog=Directory -Dgraal.OptimizationLogPath=$(pwd)/optimization_log
+mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraal.OptimizationLog=Directory \
+  -Dgraal.OptimizationLogPath=$(pwd)/optimization_log
 ```
 
 An equivalent set of commands for Native Image is:
@@ -338,16 +341,18 @@ method. In the presence of inlining, the positions are more complex. Consider th
 }
 ```
 
-We can see that the `NodeRemoval` occurred at bci 10 in the inlined `java.lang.StringLatin1.hashCode(byte[])` method,
-which callsite is at bci 27 in the root method. Note that the order of keys is important in this case.
+We can see that a `NodeRemoval` occurred at bci 10 in the inlined `java.lang.StringLatin1.hashCode(byte[])` method,
+whose callsite is at bci 27 in the root method. Note that the order of keys is important in this case.
 
 ## IGV output
 
 Optimization trees can be printed to Ideal Graph Visualizer. First, start an IGV instance. After that, run a benchmark
-with the flag `-Dgraal.OptimizationLog=Dump`.
+with the flag `-Dgraal.OptimizationLog=Dump`. Run it jointly with `-Dgraal.TrackNodeSourcePosition=true`, so that
+optimizations can be linked with a source position.
 
 ```sh
-mx benchmark renaissance:scrabble -- -Dgraal.OptimizationLog=Dump -Dgraal.PrintGraph=Network
+mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraal.OptimizationLog=Dump \
+  -Dgraal.PrintGraph=Network
 ```
 
 Optimization trees for each compilation should now be available in IGV.

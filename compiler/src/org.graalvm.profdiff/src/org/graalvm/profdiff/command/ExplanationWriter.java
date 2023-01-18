@@ -156,7 +156,7 @@ public class ExplanationWriter {
         writer.writeln(Direct.prefix() + "- a direct method invocation, which was not inlined and not deleted");
         writer.writeln(Indirect.prefix() + "- an indirect method invocation, which was not inlined and not deleted");
         writer.writeln(Deleted.prefix() + "- a deleted method invocation");
-        writer.writeln(Devirtualized.prefix() + "- an indirect invocation which was devirtualized");
+        writer.writeln(Devirtualized.prefix() + "- an indirect method invocation that was devirtualized to at least one direct call and then deleted");
         writer.decreaseIndent();
     }
 

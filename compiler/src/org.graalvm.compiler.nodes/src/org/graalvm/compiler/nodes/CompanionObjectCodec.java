@@ -72,7 +72,7 @@ import java.util.function.Function;
  * graph nodes.
  *
  * @param <T> the type of the companion object
- * @param <E>the type of the encoded companion object
+ * @param <E> the type of the encoded companion object
  */
 public abstract class CompanionObjectCodec<T, E extends CompanionObjectCodec.EncodedObject> {
     /**

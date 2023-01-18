@@ -1374,12 +1374,12 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         if (methodScope.inliningLog != null) {
-            assert inlineScope.inliningLog != null;
+            assert inlineScope.inliningLog != null : "all inlinees should have an inlining log if the root requires it";
             methodScope.inliningLog.inlineByTransfer(invoke, invokeData.callTarget, inlineScope.inliningLog, "PEGraphDecoder",
                             "inlined during decoding");
         }
         if (methodScope.optimizationLog != null) {
-            assert inlineScope.optimizationLog != null;
+            assert inlineScope.optimizationLog != null : "all inlinees should have an optimization log if the root requires it";
             methodScope.optimizationLog.inline(inlineScope.optimizationLog, false, null);
         }
     }

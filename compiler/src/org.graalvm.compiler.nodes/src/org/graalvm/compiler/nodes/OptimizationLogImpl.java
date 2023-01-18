@@ -269,7 +269,8 @@ public class OptimizationLogImpl implements OptimizationLog {
 
     /**
      * Represents a performed optimization in the optimization tree. The parent (predecessor) is the
-     * phase that performed the optimization. This is always a leaf node.
+     * phase that performed the optimization. An optimization does not have any children of its own;
+     * it is always a leaf node in the optimization tree.
      */
     @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED, shortName = "Optimization", nameTemplate = "{p#event}")
     public static class OptimizationNode extends OptimizationTreeNode {
@@ -599,7 +600,7 @@ public class OptimizationLogImpl implements OptimizationLog {
      *
      * @param node the root of the optimization subtree to be inlined
      * @param updatePosition the node source positions should be updated
-     * @param invokePosition the position of the inlined invoke, ignored iff {@link !updatePosition}
+     * @param invokePosition the position of the inlined invoke, ignored iff {@code !updatePosition}
      */
     @SuppressWarnings("try")
     private void inlineSubtree(OptimizationTreeNode node, boolean updatePosition, NodeSourcePosition invokePosition) {

@@ -540,7 +540,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * @param newInliningLog the new inlining log instance
      */
     public void setInliningLog(InliningLog newInliningLog) {
-        assert (inliningLog == null) == (newInliningLog == null);
+        assert (inliningLog == null) == (newInliningLog == null) : "the new inlining log must be null iff the previous is null";
         inliningLog = newInliningLog;
     }
 
@@ -1217,7 +1217,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * @param newOptimizationLog the optimization log instance
      */
     public void setOptimizationLog(OptimizationLog newOptimizationLog) {
-        assert newOptimizationLog != null;
+        assert newOptimizationLog != null : "the optimization log must not be null";
         optimizationLog = newOptimizationLog;
     }
 }
