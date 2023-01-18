@@ -1,23 +1,25 @@
 ---
-layout: ni-docs
+layout: ni-docs-landing
 toc_group: how-to-guides
-link_title: How-to Guides
-permalink: /reference-manual/native-image/guides/
+link_title: User Guides
+permalink: /native-image/guides/
+redirect_from: /reference-manual/native-image/guides/
 ---
 
-# Native Image How-to Guides
+# Native Image User Guides
 
-These guides are to help developers get started with GraalVM Native Image, acquaint them with the available features, and describe potential usage scenarios. 
+These guides help developers get started with GraalVM Native Image, acquaint them with available features, and describe potential usage scenarios. 
 Here you will learn how to:
 
 - [Access Environment Variables](access-environment-variables.md)
 - [Add Logging to a Native Executable](add-logging-to-native-executable.md)
+- [Build a Native Executable from a JAR File](build-native-executable-from-jar.md)
 - [Build and Run Native Executables with JFR](build-and-run-native-executable-with-jfr.md)
 - [Build Java Modules into a Native Executable](build-java-module-app-aot.md)
 - [Build a Native Shared Library](build-native-shared-library.md)
 - [Build a Polyglot Native Executable (Java and JavaScript)](build-polyglot-native-executable.md)
 - [Build a Static or Mostly-Static Native Executable](build-static-and-mostly-static-executable.md)
-- [Build a Native Executable with Reflection](build-with-reflection.md)
+- [Configure Native Image with the Tracing Agent](build-with-reflection.md)
 - [Containerise a Native Executable and Run in a Docker Container](containerise-native-executable-with-docker.md)
 - [Create a Heap Dump from a Native Executable](create-heap-dump-from-native-executable.md)
 - [Debug Native Executables with GDB](debug-native-executables-with-gdb.md)
