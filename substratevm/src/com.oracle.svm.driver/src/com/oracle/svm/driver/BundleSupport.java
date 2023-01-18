@@ -26,6 +26,7 @@ package com.oracle.svm.driver;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.Reader;
 import java.net.URI;
 import java.nio.file.CopyOption;
@@ -41,6 +42,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Properties;
+import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
@@ -83,6 +86,8 @@ final class BundleSupport {
     final BundleStatus status;
 
     final Path rootDir;
+    final Path bundlePropertiesFile;
+
     final Path stageDir;
     final Path classPathDir;
     final Path modulePathDir;
@@ -96,6 +101,10 @@ final class BundleSupport {
 
     private final List<String> buildArgs;
     private Collection<String> updatedBuildArgs;
+
+    private static final Path bundlePropertiesFileName = Path.of("META-INF/nibundle.properties");
+    private static final int bundleFileFormatVersionMajor = 0;
+    private static final int bundleFileFormatVersionMinor = 9;
 
     private static final String bundleTempDirPrefix = "bundleRoot-";
     private static final String bundleFileExtension = ".nib";
@@ -140,6 +149,8 @@ final class BundleSupport {
         this.status = status;
         try {
             rootDir = Files.createTempDirectory(bundleTempDirPrefix);
+            bundlePropertiesFile = rootDir.resolve(bundlePropertiesFileName);
+
             Path inputDir = rootDir.resolve("input");
             stageDir = Files.createDirectories(inputDir.resolve("stage"));
             auxiliaryDir = Files.createDirectories(inputDir.resolve("auxiliary"));
@@ -179,6 +190,8 @@ final class BundleSupport {
 
         try {
             rootDir = Files.createTempDirectory(bundleTempDirPrefix);
+            bundlePropertiesFile = rootDir.resolve(bundlePropertiesFileName);
+
             outputDir = rootDir.resolve("output");
             String originalOutputDirName = outputDir.getFileName().toString() + originalDirExtension;
 
@@ -206,6 +219,8 @@ final class BundleSupport {
 
         bundlePath = bundleFile.getParent();
         bundleName = bundleFileName;
+
+        verifyBundleProperties(bundlePropertiesFile);
 
         try {
             Path inputDir = rootDir.resolve("input");
@@ -485,7 +500,8 @@ final class BundleSupport {
         if (Files.exists(originalOutputDir)) {
             nativeImage.deleteAllFiles(originalOutputDir);
         }
-        Path metaInfDir = rootDir.resolve("META-INF");
+
+        Path metaInfDir = rootDir.resolve(JarFile.MANIFEST_NAME);
         if (Files.exists(metaInfDir)) {
             nativeImage.deleteAllFiles(metaInfDir);
         }
@@ -534,8 +550,10 @@ final class BundleSupport {
             throw NativeImage.showError("Failed to write bundle-file " + pathSubstitutionsFile, e);
         }
 
+        writeBundleProperties(bundlePropertiesFile);
+
         Path bundleFilePath = this.bundlePath.resolve(bundleName);
-        try (JarOutputStream jarOutStream = new JarOutputStream(Files.newOutputStream(bundleFilePath), new Manifest())) {
+        try (JarOutputStream jarOutStream = new JarOutputStream(Files.newOutputStream(bundleFilePath), createManifest())) {
             try (Stream<Path> walk = Files.walk(rootDir)) {
                 walk.forEach(bundleEntry -> {
                     if (Files.isDirectory(bundleEntry)) {
@@ -558,6 +576,58 @@ final class BundleSupport {
         }
 
         return bundleFilePath;
+    }
+
+    private Manifest createManifest() {
+        Manifest mf = new Manifest();
+        Attributes attributes = mf.getMainAttributes();
+        attributes.put(Attributes.Name.MANIFEST_VERSION, "1.0");
+        /* If we add run-bundle-as-java-application a launcher mainclass would be added here */
+        return mf;
+    }
+
+    private void writeBundleProperties(Path bundlePropertiesFile) {
+        Properties nibp = new Properties();
+        nibp.setProperty("BundleFileVersionMajor", String.valueOf(bundleFileFormatVersionMajor));
+        nibp.setProperty("BundleFileVersionMinor", String.valueOf(bundleFileFormatVersionMinor));
+        boolean imageBuilt = status.buildImage && !nativeImage.isDryRun();
+        nibp.setProperty("ImageBuilt", String.valueOf(imageBuilt));
+        if (imageBuilt) {
+            nibp.setProperty("BuildContainerized", String.valueOf(false));
+        }
+        nibp.setProperty("NativeImagePlatform", NativeImage.platform);
+        nibp.setProperty("NativeImageVersion", NativeImage.graalvmVersion);
+        NativeImage.ensureDirectoryExists(bundlePropertiesFile.getParent());
+        try (OutputStream outputStream = Files.newOutputStream(bundlePropertiesFile)) {
+            nibp.store(outputStream, "Native Image bundle file properties");
+        } catch (IOException e) {
+            throw NativeImage.showError("Creating bundle properties file failed", e);
+        }
+    }
+
+    private void verifyBundleProperties(Path propertiesFile) {
+        if (!Files.isReadable(propertiesFile)) {
+            throw NativeImage.showError("The given bundle file " + bundleName + " does not contain a bundle properties file");
+        }
+
+        Map<String, String> bundleProperties = NativeImage.loadProperties(propertiesFile);
+        String fileVersionKey = "BundleFileVersionMajor";
+        try {
+            int major = Integer.valueOf(bundleProperties.getOrDefault(fileVersionKey, "-1"));
+            fileVersionKey = "BundleFileVersionMinor";
+            int minor = Integer.valueOf(bundleProperties.getOrDefault(fileVersionKey, "-1"));
+            String message = String.format("The given bundle file %s was created with newer bundle file version %d.%d." +
+                            " Update to the latest version of native-image.", bundleName, major, minor);
+            if (major > bundleFileFormatVersionMajor) {
+                throw NativeImage.showError(message);
+            } else if (major == bundleFileFormatVersionMajor) {
+                if (minor > bundleFileFormatVersionMinor) {
+                    NativeImage.showWarning(message);
+                }
+            }
+        } catch (NumberFormatException e) {
+            throw NativeImage.showError(fileVersionKey + " in " + bundlePropertiesFileName + " is missing or ill-defined", e);
+        }
     }
 
     private static final String substitutionMapSrcField = "src";

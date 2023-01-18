@@ -772,7 +772,7 @@ public class NativeImage {
         return Paths.get(userHomeStr);
     }
 
-    protected static void ensureDirectoryExists(Path dir) {
+    static void ensureDirectoryExists(Path dir) {
         if (Files.exists(dir)) {
             if (!Files.isDirectory(dir)) {
                 throw showError("File " + dir + " is not a directory");
