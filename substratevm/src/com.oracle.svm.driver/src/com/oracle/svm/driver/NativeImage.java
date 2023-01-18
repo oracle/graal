@@ -109,6 +109,16 @@ public class NativeImage {
         return (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase();
     }
 
+    static String getNativeImageVersion() {
+        String message;
+        if (IS_AOT) {
+            message = System.getProperty("java.vm.version");
+        } else {
+            message = "native-image " + graalvmVersion + " " + graalvmConfig;
+        }
+        return message;
+    }
+
     static final String graalvmVersion = System.getProperty("org.graalvm.version", "dev");
     static final String graalvmConfig = System.getProperty("org.graalvm.config", "CE");
     static final String graalvmVendor = System.getProperty("org.graalvm.vendor", "Oracle Corporation");

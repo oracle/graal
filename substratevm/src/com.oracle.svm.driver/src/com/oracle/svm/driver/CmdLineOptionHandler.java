@@ -82,12 +82,7 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             case "--version":
                 args.poll();
                 singleArgumentCheck(args, headArg);
-                String message;
-                if (NativeImage.IS_AOT) {
-                    message = System.getProperty("java.vm.version");
-                } else {
-                    message = "native-image " + NativeImage.graalvmVersion + " " + NativeImage.graalvmConfig;
-                }
+                String message = NativeImage.getNativeImageVersion();
                 message += " (Java Version " + javaRuntimeVersion + ")";
                 nativeImage.showMessage(message);
                 System.exit(ExitStatus.OK.getValue());

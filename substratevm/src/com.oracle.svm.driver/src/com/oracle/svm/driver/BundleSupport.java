@@ -596,7 +596,7 @@ final class BundleSupport {
             properties.setProperty("BuildContainerized", String.valueOf(false));
         }
         properties.setProperty("NativeImagePlatform", NativeImage.platform);
-        properties.setProperty("NativeImageVersion", NativeImage.graalvmVersion);
+        properties.setProperty("NativeImageVersion", NativeImage.getNativeImageVersion());
         NativeImage.ensureDirectoryExists(bundlePropertiesFile.getParent());
         try (OutputStream outputStream = Files.newOutputStream(bundlePropertiesFile)) {
             properties.store(outputStream, "Native Image bundle file properties");
@@ -630,11 +630,12 @@ final class BundleSupport {
         }
         String bundlePlatform = properties.getOrDefault("NativeImagePlatform", "unknown");
         if (!bundlePlatform.equals(NativeImage.platform)) {
-            NativeImage.showWarning(String.format("The given bundle file %s was created on platform %s (current %s).", bundleName, bundlePlatform, NativeImage.platform));
+            NativeImage.showWarning(String.format("The given bundle file %s was created on platform '%s' (current '%s').", bundleName, bundlePlatform, NativeImage.platform));
         }
         String bundleNativeImageVersion = properties.getOrDefault("NativeImageVersion", "unknown");
-        if (!bundleNativeImageVersion.equals(NativeImage.graalvmVersion)) {
-            NativeImage.showWarning(String.format("The given bundle file %s was created with native-image %s (current %s).", bundleName, bundleNativeImageVersion, NativeImage.graalvmVersion));
+        if (!bundleNativeImageVersion.equals(NativeImage.getNativeImageVersion())) {
+            NativeImage.showWarning(
+                            String.format("The given bundle file %s was created with native-image version '%s' (current '%s').", bundleName, bundleNativeImageVersion, NativeImage.getNativeImageVersion()));
         }
     }
 
