@@ -3549,9 +3549,9 @@ public final class VM extends NativeEnv {
         }
 
         if (InterpreterToVM.instanceOf(ref, meta.java_lang_ref_WeakReference) //
-                || InterpreterToVM.instanceOf(ref, meta.java_lang_ref_SoftReference) //
-                || InterpreterToVM.instanceOf(ref, meta.java_lang_ref_PhantomReference) //
-                || InterpreterToVM.instanceOf(ref, meta.java_lang_ref_FinalReference)) {
+                        || InterpreterToVM.instanceOf(ref, meta.java_lang_ref_SoftReference) //
+                        || InterpreterToVM.instanceOf(ref, meta.java_lang_ref_PhantomReference) //
+                        || InterpreterToVM.instanceOf(ref, meta.java_lang_ref_FinalReference)) {
             EspressoReference host = (EspressoReference) getMeta().HIDDEN_HOST_REFERENCE.getHiddenObject(ref);
             if (host == null) {
                 // reference was cleared
