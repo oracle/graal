@@ -578,7 +578,7 @@ final class BundleSupport {
         return bundleFilePath;
     }
 
-    private Manifest createManifest() {
+    private static Manifest createManifest() {
         Manifest mf = new Manifest();
         Attributes attributes = mf.getMainAttributes();
         attributes.put(Attributes.Name.MANIFEST_VERSION, "1.0");
@@ -586,7 +586,7 @@ final class BundleSupport {
         return mf;
     }
 
-    private void writeBundleProperties(Path bundlePropertiesFile) {
+    private void writeBundleProperties(Path propertiesFile) {
         Properties properties = new Properties();
         properties.setProperty("BundleFileVersionMajor", String.valueOf(bundleFileFormatVersionMajor));
         properties.setProperty("BundleFileVersionMinor", String.valueOf(bundleFileFormatVersionMinor));
@@ -597,8 +597,8 @@ final class BundleSupport {
         }
         properties.setProperty("NativeImagePlatform", NativeImage.platform);
         properties.setProperty("NativeImageVersion", NativeImage.getNativeImageVersion());
-        NativeImage.ensureDirectoryExists(bundlePropertiesFile.getParent());
-        try (OutputStream outputStream = Files.newOutputStream(bundlePropertiesFile)) {
+        NativeImage.ensureDirectoryExists(propertiesFile.getParent());
+        try (OutputStream outputStream = Files.newOutputStream(propertiesFile)) {
             properties.store(outputStream, "Native Image bundle file properties");
         } catch (IOException e) {
             throw NativeImage.showError("Creating bundle properties file failed", e);
@@ -630,12 +630,14 @@ final class BundleSupport {
         }
         String bundlePlatform = properties.getOrDefault("NativeImagePlatform", "unknown");
         if (!bundlePlatform.equals(NativeImage.platform)) {
-            NativeImage.showWarning(String.format("The given bundle file %s was created on platform '%s' (current '%s').", bundleName, bundlePlatform, NativeImage.platform));
+            NativeImage.showWarning(String.format("The given bundle file %s was created on platform '%s' (current '%s').",
+                            bundleName, bundlePlatform, NativeImage.platform));
         }
         String bundleNativeImageVersion = properties.getOrDefault("NativeImageVersion", "unknown");
         if (!bundleNativeImageVersion.equals(NativeImage.getNativeImageVersion())) {
             NativeImage.showWarning(
-                            String.format("The given bundle file %s was created with native-image version '%s' (current '%s').", bundleName, bundleNativeImageVersion, NativeImage.getNativeImageVersion()));
+                            String.format("The given bundle file %s was created with native-image version '%s' (current '%s').",
+                                            bundleName, bundleNativeImageVersion, NativeImage.getNativeImageVersion()));
         }
     }
 
