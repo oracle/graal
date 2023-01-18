@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,27 +38,27 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.nfa;
+package com.oracle.truffle.regex.tregex.nodes;
 
-import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.TruffleString;
 
-public final class PureNFAIndex extends SimpleStateIndex<PureNFA> {
+@GenerateWrapper
+public abstract class TRegexExecutorBaseNode extends Node implements InstrumentableNode {
 
-    public static PureNFAIndex getEmptyInstance(RegexLanguage language) {
-        return language.emptyNFAIndex;
-    }
+    public abstract Object execute(VirtualFrame frame, TRegexExecutorLocals locals, TruffleString.CodeRange codeRange, boolean tString);
 
-    public PureNFAIndex(int size) {
-        super(size);
+    @Override
+    public final boolean isInstrumentable() {
+        return true;
     }
 
     @Override
-    protected int getStateId(PureNFA state) {
-        return state.getSubTreeId();
-    }
-
-    @Override
-    protected void setStateId(PureNFA state, int id) {
+    public WrapperNode createWrapper(ProbeNode probeNode) {
+        return new TRegexExecutorBaseNodeWrapper(this, probeNode);
     }
 }

@@ -20,7 +20,7 @@ We recommend that you follow the instructions and create the application step-by
 git clone https://github.com/graalvm/graalvm-demos && cd graalvm-demos/fortune-demo/fortune
 ```
 
-> You must have [GraalVM installed with Native Image support](../README.md#install-native-image).
+> Note: To use the Native Build Tools, first install GraalVM. The easiest way to install GraalVM is to use the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader): `bash <(curl -sL https://get.graalvm.org/jdk)`.
 
 ## Prepare a Demo Application
 
@@ -204,7 +204,7 @@ git clone https://github.com/graalvm/graalvm-demos && cd graalvm-demos/fortune-d
 
     ```xml
     <properties>
-        <native.maven.plugin.version>0.9.12</native.maven.plugin.version>
+        <native.maven.plugin.version>0.9.18</native.maven.plugin.version>
         <junit.jupiter.version>5.8.1</junit.jupiter.version>
         <maven.compiler.source>${java.specification.version}</maven.compiler.source>
         <maven.compiler.target>${java.specification.version}</maven.compiler.target>
@@ -212,8 +212,8 @@ git clone https://github.com/graalvm/graalvm-demos && cd graalvm-demos/fortune-d
         <mainClass>demo.Fortune</mainClass>
     </properties>
     ```
-    The statements "hardcoded" plugin versions and the entry point class to your application.
-    The next steps will show you how enable the Maven plugin for GraalVM Native Image.
+    The statements "hardcoded" plugin versions and the entry point class to your application. 
+    The next steps demonstrate what you should do to enable the [Native Image Maven plugin](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html).
 
 6. Register the Maven plugin for GraalVM Native Image, `native-maven-plugin`, in the profile called `native` by adding the following to the  _pom.xml_ file:
     ```xml
@@ -263,7 +263,7 @@ git clone https://github.com/graalvm/graalvm-demos && cd graalvm-demos/fortune-d
     ```
     The plugin discovers which JAR files it needs to pass to the `native-image` builder and what the executable main class should be. With this plugin you can already build a native executable directly with Maven by running `mvn -Pnative package` (if your application does not call any methods reflectively at run time).
     
-    This demo application is a little more complicated than `HelloWorld`, and and [requires metadata](../ReachabilityMetadata.md) before building a native executable. You do not have to configure anything manually: the Native Image Maven plugin can generate the required metadata for you by injecting the [Java agent](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html#agent-support) at package time. The agent is disabled by default, and can be enabled in project's _pom.xml_ file or via the command line.
+    This demo application is a little more complicated than `HelloWorld`, and [requires metadata](../ReachabilityMetadata.md) before building a native executable. You do not have to configure anything manually: the Native Image Maven plugin can generate the required metadata for you by injecting the [Java agent](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html#agent-support) at package time. The agent is disabled by default, and can be enabled in project's _pom.xml_ file or via the command line.
     - To enable the agent via the _pom.xml_ file, specify `<enabled>true</enabled>` in the `native-maven-plugin` plugin configuration:
 
         ```xml
@@ -336,7 +336,7 @@ git clone https://github.com/graalvm/graalvm-demos && cd graalvm-demos/fortune-d
     ```
     When the command completes a native executable, _fortune_, is created in the _/target_ directory of the project and ready for use.
 
-    The executable's name is derived from the artifact ID, but you can specify any custom name in the `native-maven-plugin` plugin within a <configuration> node:
+    The executable's name is derived from the artifact ID, but you can specify any custom name in `native-maven-plugin` within a `<configuration>` node:
 
     ```xml
     <configuration>

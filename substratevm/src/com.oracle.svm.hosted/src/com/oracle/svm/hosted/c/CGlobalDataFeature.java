@@ -29,8 +29,8 @@ import static org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.util.Comparator;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -235,37 +235,46 @@ public class CGlobalDataFeature implements InternalFeature {
         return obj;
     }
 
+    private static CGlobalDataInfo assignCGlobalDataSize(Map.Entry<CGlobalDataImpl<?>, CGlobalDataInfo> entry, int wordSize) {
+        CGlobalDataImpl<?> data = entry.getKey();
+        CGlobalDataInfo info = entry.getValue();
+
+        if (data.bytesSupplier != null) {
+            byte[] bytes = data.bytesSupplier.get();
+            info.assignSize(bytes.length);
+            info.assignBytes(bytes);
+        } else {
+            if (data.sizeSupplier != null) {
+                info.assignSize(data.sizeSupplier.getAsInt());
+            } else {
+                assert data.symbolName != null : "CGlobalData without bytes, size, or referenced symbol";
+                /*
+                 * A symbol reference: we support only instruction-pointer-relative addressing with
+                 * 32-bit immediates, which might not be sufficient for the target symbol's address.
+                 * Therefore, reserve space for a word with the symbol's true address.
+                 */
+                info.assignSize(wordSize);
+            }
+        }
+        return info;
+    }
+
     private void layout() {
         assert !isLayouted() : "Already layouted";
         final int wordSize = ConfigurationValues.getTarget().wordSize;
-        int offset = 0;
-        for (Entry<CGlobalDataImpl<?>, CGlobalDataInfo> entry : map.entrySet()) {
-            CGlobalDataImpl<?> data = entry.getKey();
-            CGlobalDataInfo info = entry.getValue();
-            int size;
-            byte[] bytes = null;
-            if (data.bytesSupplier != null) {
-                bytes = data.bytesSupplier.get();
-                size = bytes.length;
-            } else {
-                if (data.sizeSupplier != null) {
-                    size = data.sizeSupplier.getAsInt();
-                } else {
-                    assert data.symbolName != null : "CGlobalData without bytes, size, or referenced symbol";
-                    /*
-                     * A symbol reference: we support only instruction-pointer-relative addressing
-                     * with 32-bit immediates, which might not be sufficient for the target symbol's
-                     * address. Therefore, reserve space for a word with the symbol's true address.
-                     */
-                    size = wordSize;
-                }
-            }
-            info.assign(offset, bytes);
+        /*
+         * Put larger blobs at the end so that offsets are reasonable (<24bit imm) for smaller
+         * entries
+         */
+        totalSize = map.entrySet().stream()
+                        .map(entry -> assignCGlobalDataSize(entry, wordSize))
+                        .sorted(Comparator.comparing(CGlobalDataInfo::getSize))
+                        .reduce(0, (currentOffset, info) -> {
+                            info.assignOffset(currentOffset);
 
-            offset += size;
-            offset = (offset + (wordSize - 1)) & ~(wordSize - 1); // align
-        }
-        totalSize = offset;
+                            int nextOffset = currentOffset + info.getSize();
+                            return (nextOffset + (wordSize - 1)) & ~(wordSize - 1); // align
+                        }, Integer::sum);
         assert isLayouted();
     }
 
@@ -293,7 +302,7 @@ public class CGlobalDataFeature implements InternalFeature {
             if (data.symbolName != null && !info.isSymbolReference()) {
                 createSymbol.apply(info.getOffset(), data.symbolName, info.isGlobalSymbol());
             }
-            if (data.nonConstant) {
+            if (data.nonConstant && data.symbolName != null) {
                 createSymbolReference.apply(info.getOffset(), data.symbolName, info.isGlobalSymbol());
             }
         }

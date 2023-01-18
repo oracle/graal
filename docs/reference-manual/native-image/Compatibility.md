@@ -113,7 +113,7 @@ Mostly all Native Image features are supported on Linux ARM 64-bit architecture,
 
 Find a complete list of options to the `native-image` builder [here](BuildOptions.md).
 
-### Further Reading
+### Related Documentation
 
 * [Class Initialization in Native Image](ClassInitialization.md)
 * [Reachability Metadata](ReachabilityMetadata.md)

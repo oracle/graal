@@ -40,7 +40,7 @@ import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExcepti
 import org.junit.Test;
 
 /**
- * Tests that stubs are successful compiled. Stubs are normally lazily compiled.
+ * Tests that stubs are successfully compiled. Stubs are normally lazily compiled.
  */
 public class HotSpotStubsTest extends GraalCompilerTest {
 

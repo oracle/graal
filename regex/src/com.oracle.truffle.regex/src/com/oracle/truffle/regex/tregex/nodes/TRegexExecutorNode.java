@@ -42,10 +42,10 @@ package com.oracle.truffle.regex.tregex.nodes;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.regex.RegexExecNode;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputReadNode;
@@ -54,7 +54,7 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding.UTF16;
 
-public abstract class TRegexExecutorNode extends Node {
+public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
 
     private final RegexSource source;
     private final int numberOfCaptureGroups;
@@ -116,10 +116,10 @@ public abstract class TRegexExecutorNode extends Node {
 
     /**
      * The length of the {@code input} argument given to
-     * {@link TRegexExecNode#execute(Object, int)}.
+     * {@link RegexExecNode#execute(VirtualFrame)}.
      *
      * @return the length of the {@code input} argument given to
-     *         {@link TRegexExecNode#execute(Object, int)}.
+     *         {@link RegexExecNode#execute(VirtualFrame)}.
      */
     public int getInputLength(TRegexExecutorLocals locals) {
         if (lengthNode == null) {
@@ -396,9 +396,6 @@ public abstract class TRegexExecutorNode extends Node {
 
     public abstract TRegexExecutorNode shallowCopy();
 
-    public void initialize() {
-    }
-
     public abstract String getName();
 
     public abstract boolean isForward();
@@ -409,6 +406,4 @@ public abstract class TRegexExecutorNode extends Node {
     public abstract boolean writesCaptureGroups();
 
     public abstract TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex);
-
-    public abstract Object execute(TRegexExecutorLocals locals, TruffleString.CodeRange codeRange, boolean tString);
 }

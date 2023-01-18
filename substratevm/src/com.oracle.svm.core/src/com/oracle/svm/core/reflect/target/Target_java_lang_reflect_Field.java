@@ -48,8 +48,13 @@ import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.util.VMError;
 
+import sun.reflect.generics.repository.FieldRepository;
+
 @TargetClass(value = Field.class)
 public final class Target_java_lang_reflect_Field {
+    /** Generic info is created on demand at run time. */
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    private FieldRepository genericInfo;
 
     /** Field accessor and annotation objects are created on demand at image runtime. */
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //

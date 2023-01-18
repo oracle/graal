@@ -21,9 +21,9 @@
 # questions.
 #
 suite = {
-    "mxversion": "6.1.14",
+    "mxversion": "6.9.1",
     "name": "espresso",
-    "version" : "22.3.0.2",
+    "version" : "22.3.1",
     "release" : False,
     "groupId" : "org.graalvm.espresso",
     "url" : "https://www.graalvm.org/reference-manual/java-on-truffle/",
