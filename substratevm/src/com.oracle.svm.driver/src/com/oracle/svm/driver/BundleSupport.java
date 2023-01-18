@@ -613,9 +613,9 @@ final class BundleSupport {
         Map<String, String> bundleProperties = NativeImage.loadProperties(propertiesFile);
         String fileVersionKey = "BundleFileVersionMajor";
         try {
-            int major = Integer.valueOf(bundleProperties.getOrDefault(fileVersionKey, "-1"));
+            int major = Integer.parseInt(bundleProperties.getOrDefault(fileVersionKey, "-1"));
             fileVersionKey = "BundleFileVersionMinor";
-            int minor = Integer.valueOf(bundleProperties.getOrDefault(fileVersionKey, "-1"));
+            int minor = Integer.parseInt(bundleProperties.getOrDefault(fileVersionKey, "-1"));
             String message = String.format("The given bundle file %s was created with newer bundle file version %d.%d." +
                             " Update to the latest version of native-image.", bundleName, major, minor);
             if (major > bundleFileFormatVersionMajor) {
