@@ -86,8 +86,10 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
+import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionField;
+import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel.CustomSignature;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel.OperationKind;
@@ -158,6 +160,7 @@ public class OperationsNodeFactory {
             operationNodeGen.add(new StoreLocalDataFactory().create());
         }
 
+        operationNodeGen.add(createStaticConstructor());
         operationNodeGen.add(createFrameDescriptorConstructor());
         operationNodeGen.add(createFrameDescriptorBuliderConstructor());
 
@@ -187,6 +190,9 @@ public class OperationsNodeFactory {
         }
         if (model.generateUncached) {
             operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "uncachedExecuteCount")).createInitBuilder().string("16");
+        }
+        if (model.enableTracing) {
+            operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean[].class), "basicBlockBoundary")));
         }
         operationNodeGen.add(createInterpreterField());
 
@@ -347,6 +353,43 @@ public class OperationsNodeFactory {
         CodeVariableElement fld = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), interpreterType.asType(), name + "_INTERPRETER");
         fld.createInitBuilder().startNew(interpreterType.asType()).end();
         return fld;
+    }
+
+    private CodeExecutableElement createStaticConstructor() {
+        CodeExecutableElement ctor = new CodeExecutableElement(Set.of(STATIC), null, "<cinit>");
+        CodeTreeBuilder b = ctor.createBuilder();
+
+        if (model.enableTracing) {
+            b.startStatement().startStaticCall(types.ExecutionTracer, "initialize");
+            b.typeLiteral(model.templateType.asType());
+            b.doubleQuote(model.decisionsFilePath);
+
+            b.startNewArray(arrayOf(context.getType(String.class)), null);
+            b.string("null");
+            for (InstructionModel instruction : model.getInstructions()) {
+                b.doubleQuote(instruction.name);
+            }
+            b.end();
+
+            b.startNewArray(arrayOf(context.getType(String[].class)), null);
+            b.string("null");
+            for (InstructionModel instruction : model.getInstructions()) {
+                if (instruction.kind == InstructionKind.CUSTOM || instruction.kind == InstructionKind.CUSTOM_SHORT_CIRCUIT) {
+                    b.startNewArray(arrayOf(context.getType(String.class)), null);
+                    for (SpecializationData spec : instruction.nodeData.getSpecializations()) {
+                        b.doubleQuote(spec.getId());
+                    }
+                    b.end();
+                } else {
+                    b.string("null");
+                }
+            }
+            b.end();
+
+            b.end(2);
+        }
+
+        return ctor;
     }
 
     private CodeExecutableElement createFrameDescriptorConstructor() {
@@ -717,7 +760,7 @@ public class OperationsNodeFactory {
 
         // this is per-function state that needs to be stored/restored when going into/out of
         // functions
-        CodeVariableElement[] builderState = new CodeVariableElement[]{
+        List<CodeVariableElement> builderState = new ArrayList<>(List.of(new CodeVariableElement[]{
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(short[].class), "bc"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "bci"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(Object[].class), "objs"),
@@ -743,11 +786,17 @@ public class OperationsNodeFactory {
 
                         // must be last
                         new CodeVariableElement(Set.of(PRIVATE), savedState.asType(), "savedState"),
-        };
+        }));
+
+        {
+            if (model.enableTracing) {
+                builderState.add(0, new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean[].class), "basicBlockBoundary"));
+            }
+        }
 
         class SavedStateFactory {
             private CodeTypeElement create() {
-                savedState.addAll(List.of(builderState));
+                savedState.addAll(builderState);
                 savedState.add(createConstructorUsingFields(Set.of(), savedState, null));
 
                 return savedState;
@@ -772,7 +821,7 @@ public class OperationsNodeFactory {
             operationBuilder.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "buildIndex"));
             operationBuilder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(context.getDeclaredType(ArrayList.class), types.Source), "sources"));
 
-            operationBuilder.addAll(List.of(builderState));
+            operationBuilder.addAll(builderState);
 
             operationBuilder.add(createCreateLocal());
             operationBuilder.add(createCreateLabel());
@@ -926,13 +975,16 @@ public class OperationsNodeFactory {
             if (operation.kind == OperationKind.ROOT) {
                 b.startIf().string("bc != null").end().startBlock(); // {
                 b.startAssign("savedState").startNew(savedState.asType());
-                b.variables(List.of(builderState));
+                b.variables(builderState);
                 b.end(2);
                 b.end(); // }
 
                 b.statement("bc = new short[32]");
                 b.statement("bci = 0");
                 b.statement("objs = new Object[32]");
+                if (model.enableTracing) {
+                    b.statement("basicBlockBoundary = new boolean[33]");
+                }
                 b.statement("operationStack = new int[8]");
                 b.statement("operationData = new Object[8]");
                 b.statement("operationChildCount = new int[8]");
@@ -1013,6 +1065,10 @@ public class OperationsNodeFactory {
 
                     b.statement("doEmitSourceInfo(sourceIndexStack[sourceIndexSp - 1], arg0, arg1)");
                     break;
+                case WHILE:
+                    if (model.enableTracing) {
+                        b.statement("basicBlockBoundary[bci] = true");
+                    }
             }
 
             return ex;
@@ -1140,6 +1196,9 @@ public class OperationsNodeFactory {
                 b.startAssign("result.nodes").string("nodes").end();
                 b.startAssign("result.bc").string("Arrays.copyOf(bc, bci)").end();
                 b.startAssign("result.objs").string("Arrays.copyOf(objs, bci)").end();
+                if (model.enableTracing) {
+                    b.startAssign("result.basicBlockBoundary").string("Arrays.copyOf(basicBlockBoundary, bci)").end();
+                }
                 b.startFor().string("int i = 0; i < bci; i++").end().startBlock();
                 b.startIf().string("objs[i] instanceof Node").end().startBlock();
                 b.statement("result.insert((Node) objs[i])");
@@ -1169,7 +1228,9 @@ public class OperationsNodeFactory {
                 b.statement("bc = null");
                 b.end().startElseBlock(); // } {
                 for (CodeVariableElement state : builderState) {
-                    b.startAssign("this." + state.getName()).string("savedState." + state.getName()).end();
+                    if (state != null) {
+                        b.startAssign("this." + state.getName()).string("savedState." + state.getName()).end();
+                    }
                 }
                 b.end();
 
@@ -1196,6 +1257,9 @@ public class OperationsNodeFactory {
                     b.end();
                     break;
                 case CUSTOM_SHORT_CIRCUIT:
+                    if (model.enableTracing) {
+                        b.statement("basicBlockBoundary[bci] = true");
+                    }
                     b.statement("((IntRef) ((Object[]) operationData[operationSp])[0]).value = bci");
                     break;
                 case SOURCE_SECTION:
@@ -1212,6 +1276,14 @@ public class OperationsNodeFactory {
                     b.statement("sourceLocationSp -= 2");
                     b.statement("sourceIndexSp -= 1");
                     b.statement("doEmitSourceInfo(sourceIndexStack[sourceIndexSp], -1, -1)");
+                    break;
+                case IF_THEN:
+                case IF_THEN_ELSE:
+                case CONDITIONAL:
+                case WHILE:
+                    if (model.enableTracing) {
+                        b.statement("basicBlockBoundary[bci] = true");
+                    }
                     break;
                 default:
                     if (operation.instruction != null) {
@@ -1505,6 +1577,9 @@ public class OperationsNodeFactory {
                         b.end().startElseBlock();
                         b.statement("((IntRef) data).value = bci");
                         b.end();
+                        if (model.enableTracing) {
+                            b.statement("basicBlockBoundary[bci] = true");
+                        }
                         break;
                     case CONDITIONAL:
                     case IF_THEN_ELSE:
@@ -1516,6 +1591,9 @@ public class OperationsNodeFactory {
                         b.end().startElseBlock();
                         b.statement("((IntRef[]) data)[1].value = bci");
                         b.end();
+                        if (model.enableTracing) {
+                            b.statement("basicBlockBoundary[bci] = true");
+                        }
                         break;
                     case WHILE:
                         b.startIf().string("childIndex == 0").end().startBlock();
@@ -1524,6 +1602,9 @@ public class OperationsNodeFactory {
                         buildEmitInstruction(b, model.branchInstruction, "((IntRef[]) data)[0]");
                         b.statement("((IntRef[]) data)[1].value = bci");
                         b.end();
+                        if (model.enableTracing) {
+                            b.statement("basicBlockBoundary[bci] = true");
+                        }
                         break;
                     case TRY_CATCH:
                         b.startIf().string("childIndex == 0").end().startBlock();
@@ -1533,6 +1614,9 @@ public class OperationsNodeFactory {
                         buildEmitInstruction(b, model.branchInstruction, "dArray[5]");
                         b.statement("dArray[2] = bci");
                         b.end();
+                        if (model.enableTracing) {
+                            b.statement("basicBlockBoundary[bci] = true");
+                        }
                         break;
                 }
 
@@ -1569,8 +1653,17 @@ public class OperationsNodeFactory {
             b.end(2);
             b.startAssign("objs").startStaticCall(context.getType(Arrays.class), "copyOf");
             b.string("objs");
-            b.string("objs.length * 2");
+            b.string("bc.length * 2");
             b.end(2);
+            if (model.enableTracing) {
+                // since we can mark a start of the BB before it's first instruction is emitted,
+                // basicBlockBoundary must always be at least 1 longer than `bc` array to prevent
+                // ArrayIndexOutOfBoundsException
+                b.startAssign("basicBlockBoundary").startStaticCall(context.getType(Arrays.class), "copyOf");
+                b.string("basicBlockBoundary");
+                b.string("(bc.length * 2) + 1");
+                b.end(2);
+            }
             b.end(); // }
 
             b.statement("bc[bci] = (short) instr");
@@ -1913,13 +2006,33 @@ public class OperationsNodeFactory {
             b.statement("int bci = startState & 0xffff");
             b.statement("int sp = (startState >> 16) & 0xffff");
 
+            if (model.enableTracing) {
+                b.declaration(context.getType(boolean[].class), "basicBlockBoundary", "$this.basicBlockBoundary");
+
+                b.declaration(types.ExecutionTracer, "tracer");
+
+                b.startAssign("tracer").startStaticCall(types.ExecutionTracer, "get");
+                b.typeLiteral(model.templateType.asType());
+                b.end(2);
+
+                b.statement("tracer.startFunction($this)");
+
+                b.startTryBlock();
+            }
+
+            if (isUncached) {
+                b.statement("int uncachedExecuteCount = $this.uncachedExecuteCount");
+            }
+
             b.string("loop: ").startWhile().string("true").end().startBlock();
 
             b.statement("int curOpcode = bc[bci]");
             b.statement("Object curObj = objs[bci]");
 
-            if (isUncached) {
-                b.statement("int uncachedExecuteCount = $this.uncachedExecuteCount");
+            if (model.enableTracing) {
+                b.startIf().string("basicBlockBoundary[bci]").end().startBlock();
+                b.statement("tracer.traceStartBasicBlock(bci)");
+                b.end();
             }
 
             b.startTryBlock();
@@ -1933,6 +2046,15 @@ public class OperationsNodeFactory {
                 }
 
                 b.startCase().string(instr.id + " /* " + instr.name + " */").end().startBlock();
+
+                if (model.enableTracing) {
+                    b.startStatement().startCall("tracer.traceInstruction");
+                    b.string("bci");
+                    b.string(instr.id);
+                    b.string(instr.isControlFlow() ? "1" : "0");
+                    b.string((instr.signature != null && instr.signature.isVariadic) ? "1" : "0");
+                    b.end(2);
+                }
 
                 switch (instr.kind) {
                     case BRANCH:
@@ -2171,6 +2293,12 @@ public class OperationsNodeFactory {
 
             b.end(); // while (true)
 
+            if (model.enableTracing) {
+                b.end().startFinallyBlock();
+                b.statement("tracer.endFunction($this)");
+                b.end();
+            }
+
             return ex;
         }
 
@@ -2180,6 +2308,8 @@ public class OperationsNodeFactory {
             CustomSignature signature = instr.signature;
 
             String extraArguments = "$this, objs, bci, sp";
+
+            // todo: trace active specializations
 
             if (signature.isVariadic) {
                 b.startAssign("int variadicCount");

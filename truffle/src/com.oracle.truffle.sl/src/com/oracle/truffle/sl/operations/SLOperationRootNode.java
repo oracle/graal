@@ -88,7 +88,8 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 @GenerateOperations(//
                 languageClass = SLLanguage.class, //
                 decisionsFile = "decisions.json", //
-                boxingEliminationTypes = {long.class, boolean.class})
+                boxingEliminationTypes = {long.class, boolean.class}, //
+                forceTracing = true)
 @GenerateUncached
 @TypeSystemReference(SLTypes.class)
 @OperationProxy(SLAddNode.class)
@@ -130,10 +131,6 @@ public abstract class SLOperationRootNode extends SLRootNode implements Operatio
     public void setTSName(TruffleString tsName) {
         this.tsName = tsName;
     }
-
-// @GenerateOperations.Metadata //
-// public static final MetadataKey<TruffleString> MethodName = new
-// MetadataKey<>(SLStrings.EMPTY_STRING);
 
     private TruffleString tsName;
 

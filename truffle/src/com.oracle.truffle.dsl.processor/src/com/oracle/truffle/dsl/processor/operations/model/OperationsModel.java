@@ -92,6 +92,10 @@ public class OperationsModel extends Template implements InfoDumpable {
     public TypeSystemData typeSystem;
     public Set<TypeMirror> boxingEliminatedTypes;
 
+    public boolean enableTracing;
+    public String decisionsFilePath;
+    public boolean enableOptimizations;
+
     public OperationModel blockOperation;
     public OperationModel rootOperation;
 

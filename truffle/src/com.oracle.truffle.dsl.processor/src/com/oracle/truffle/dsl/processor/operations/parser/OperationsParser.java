@@ -44,6 +44,8 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.getAnnotationVa
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getQualifiedName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
 
+import java.io.File;
+import java.nio.file.Path;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
@@ -60,7 +62,9 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
+import com.oracle.truffle.dsl.processor.TruffleProcessorOptions;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.operations.model.OperationsModel;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
@@ -216,7 +220,37 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
             new CustomOperationParser(model, mir, true).parse(te);
         }
 
+        AnnotationValue decisionsFilePathValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionsFile", false);
+        if (decisionsFilePathValue != null) {
+            model.decisionsFilePath = resolveElementRelativePath(typeElement, (String) decisionsFilePathValue.getValue());
+        }
+
+        // todo: find and bind decisionOverrideFiles
+
+        if (TruffleProcessorOptions.operationsEnableTracing(processingEnv)) {
+            model.enableTracing = true;
+        } else if ((boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "forceTracing", true).getValue()) {
+            model.addWarning("Operation DSL execution tracing is forced on. Use this only during development.");
+            model.enableTracing = true;
+        }
+
+        if (model.enableTracing && decisionsFilePathValue == null) {
+            model.addError(generateOperationsMirror, null,
+                            "Tracing Operation DSL execution is not supported without specifying decisionsFile path. Add 'decisionsFile=\"...\"' to @GenerateOperations annotation to fix this error.");
+        }
+
+        model.enableOptimizations = decisionsFilePathValue != null && !model.enableTracing;
+
+        if (model.enableOptimizations) {
+            // todo: read from decisions file path and apply optimizations
+        }
+
         return model;
+    }
+
+    private String resolveElementRelativePath(Element element, String relativePath) {
+        File filePath = CompilerFactory.getCompiler(element).getEnclosingSourceFile(processingEnv, element);
+        return Path.of(filePath.getPath()).getParent().resolve(relativePath).toAbsolutePath().toString();
     }
 
     private TypeMirror getTypeMirror(AnnotationValue value) throws AssertionError {
