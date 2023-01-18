@@ -7,7 +7,7 @@ permalink: /reference-manual/native-image/guides/build-native-executable-from-ja
 
 # Build a Native Executable from a JAR File
 
-You can build a native executable from a class file, from a JAR file, or from a module (with Java 9 and higher). This guide demonstrates how to build a  native executable from a JAR file. 
+You can build a native executable from a class file, from a JAR file, or from a module. This guide demonstrates how to build a native executable from a JAR file.
 
 To build a native executable from a JAR file in the current working directory, use the following command:
 ```shell
