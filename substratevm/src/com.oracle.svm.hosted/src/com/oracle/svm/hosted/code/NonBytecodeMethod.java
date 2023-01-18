@@ -31,7 +31,7 @@ import java.lang.reflect.Type;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.AnnotationWrapper;
+import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;

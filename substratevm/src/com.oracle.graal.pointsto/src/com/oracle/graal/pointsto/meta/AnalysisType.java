@@ -24,7 +24,6 @@
  */
 package com.oracle.graal.pointsto.meta;
 
-import java.lang.reflect.AnnotatedElement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -848,6 +847,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return universe.substitutions.resolve(wrapped);
     }
 
+    @Override
     public ResolvedJavaType getWrappedWithoutResolve() {
         return wrapped;
     }
@@ -1152,11 +1152,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     @Override
-    public AnnotatedElement getAnnotationRoot() {
-        return wrapped;
-    }
-
-    @Override
     public String getSourceFileName() {
         // getSourceFileName is not implemented for primitive types
         return wrapped.isPrimitive() ? null : wrapped.getSourceFileName();
@@ -1261,6 +1256,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return universe.lookup(wrapped.getHostClass());
     }
 
+    @Override
     public AnalysisUniverse getUniverse() {
         return universe;
     }

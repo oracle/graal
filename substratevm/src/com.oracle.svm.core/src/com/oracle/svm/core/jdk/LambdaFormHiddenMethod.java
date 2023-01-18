@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -47,11 +46,5 @@ public @interface LambdaFormHiddenMethod {
 
         /** Instance of the annotation, useful when the annotation is manually injected. */
         public static final LambdaFormHiddenMethod INSTANCE = AnnotationAccess.getAnnotation(Holder.class, LambdaFormHiddenMethod.class);
-
-        /**
-         * Array that contains only the instance of the annotation, useful when the annotation is
-         * manually injected.
-         */
-        public static final Annotation[] ARRAY = new Annotation[]{INSTANCE};
     }
 }

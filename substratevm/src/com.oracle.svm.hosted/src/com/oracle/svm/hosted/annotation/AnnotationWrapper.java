@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,56 +24,41 @@
  */
 package com.oracle.svm.hosted.annotation;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
-import com.oracle.svm.core.meta.ReadableJavaField;
-import com.oracle.svm.core.util.VMError;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
-import jdk.vm.ci.meta.ResolvedJavaType;
+public interface AnnotationWrapper extends AnnotatedElement {
+    AnnotatedElement getAnnotationRoot();
 
-public abstract class CustomSubstitutionField implements ReadableJavaField, OriginalFieldProvider, AnnotationWrapper {
-
-    protected final ResolvedJavaType declaringClass;
-
-    public CustomSubstitutionField(ResolvedJavaType declaringClass) {
-        this.declaringClass = declaringClass;
-    }
-
-    @Override
-    public int getModifiers() {
-        return Modifier.PRIVATE;
-    }
-
-    @Override
-    public int getOffset() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean isInternal() {
-        return false;
-    }
-
-    @Override
-    public boolean isSynthetic() {
-        return false;
-    }
-
-    @Override
-    public ResolvedJavaType getDeclaringClass() {
-        return declaringClass;
-    }
-
-    @Override
-    public AnnotatedElement getAnnotationRoot() {
+    default AnnotationValue[] getInjectedAnnotations() {
         return null;
     }
 
     @Override
-    public Field getJavaField() {
-        throw VMError.shouldNotReachHere();
+    default boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
+        return ImageSingletons.lookup(AnnotationExtractor.class).hasAnnotation(this, annotationClass);
+    }
+
+    @Override
+    default <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+        return ImageSingletons.lookup(AnnotationExtractor.class).extractAnnotation(this, annotationClass, false);
+    }
+
+    @Override
+    default <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
+        return ImageSingletons.lookup(AnnotationExtractor.class).extractAnnotation(this, annotationClass, true);
+    }
+
+    @Override
+    default Annotation[] getAnnotations() {
+        return ImageSingletons.lookup(AnnotationExtractor.class).extractAnnotations(this, false);
+    }
+
+    @Override
+    default Annotation[] getDeclaredAnnotations() {
+        return ImageSingletons.lookup(AnnotationExtractor.class).extractAnnotations(this, true);
     }
 }

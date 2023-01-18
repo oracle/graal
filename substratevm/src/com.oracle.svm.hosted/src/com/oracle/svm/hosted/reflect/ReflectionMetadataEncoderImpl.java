@@ -417,7 +417,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         boolean isMethod = object instanceof Method;
 
         /* Register string and class values in annotations */
-        AnnotatedElement analysisObject = (AnnotatedElement) hostedObject.getWrapped();
+        AnnotatedElement analysisObject = hostedObject.getWrapped();
         AnnotationValue[] annotations = registerAnnotationValues(analysisObject);
         AnnotationValue[][] parameterAnnotations = isExecutable ? registerParameterAnnotationValues((AnalysisMethod) analysisObject) : null;
         TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(analysisObject);
