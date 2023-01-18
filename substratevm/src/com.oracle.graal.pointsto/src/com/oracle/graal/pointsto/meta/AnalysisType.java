@@ -844,12 +844,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public ResolvedJavaType getWrapped() {
-        return universe.substitutions.resolve(wrapped);
+        return wrapped;
     }
 
-    @Override
-    public ResolvedJavaType getWrappedWithoutResolve() {
-        return wrapped;
+    public ResolvedJavaType getWrappedWithResolve() {
+        return universe.substitutions.resolve(wrapped);
     }
 
     @Override
@@ -938,8 +937,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public boolean isAssignableFrom(ResolvedJavaType other) {
-        ResolvedJavaType subst = universe.substitutions.resolve(((AnalysisType) other).wrapped);
-        return wrapped.isAssignableFrom(subst);
+        return wrapped.isAssignableFrom(((AnalysisType) other).getWrappedWithResolve());
     }
 
     @Override
@@ -1000,8 +998,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public AnalysisType findLeastCommonAncestor(ResolvedJavaType otherType) {
-        ResolvedJavaType subst = universe.substitutions.resolve(((AnalysisType) otherType).wrapped);
-        return universe.lookup(wrapped.findLeastCommonAncestor(subst));
+        return universe.lookup(wrapped.findLeastCommonAncestor(((AnalysisType) otherType).getWrappedWithResolve()));
     }
 
     @Override

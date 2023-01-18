@@ -293,7 +293,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
     private static ResolvedJavaType getOriginal(HostedType hostedType) {
         /* partially unwrap then traverse through substitutions to the original */
-        ResolvedJavaType javaType = hostedType.getWrapped().getWrappedWithoutResolve();
+        ResolvedJavaType javaType = hostedType.getWrapped().getWrapped();
         if (javaType instanceof SubstitutionType) {
             return ((SubstitutionType) javaType).getOriginal();
         } else if (javaType instanceof CustomSubstitutionType<?, ?>) {

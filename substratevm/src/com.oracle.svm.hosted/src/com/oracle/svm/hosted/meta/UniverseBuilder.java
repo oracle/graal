@@ -55,7 +55,6 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
-import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -289,10 +288,10 @@ public class UniverseBuilder {
     }
 
     private HostedMethod makeMethod(AnalysisMethod aMethod) {
-        HostedType holder;
-        holder = lookupType(aMethod.getDeclaringClass());
-        Signature signature = makeSignature(aMethod.getSignature(), holder);
-        ConstantPool constantPool = makeConstantPool(aMethod.getConstantPool(), holder);
+        AnalysisType aDeclaringClass = aMethod.getDeclaringClass();
+        HostedType hDeclaringClass = lookupType(aDeclaringClass);
+        Signature signature = makeSignature(aMethod.getSignature(), aDeclaringClass);
+        ConstantPool constantPool = makeConstantPool(aMethod.getConstantPool(), aDeclaringClass);
 
         ExceptionHandler[] aHandlers = aMethod.getExceptionHandlers();
         ExceptionHandler[] sHandlers = new ExceptionHandler[aHandlers.length];
@@ -307,7 +306,7 @@ public class UniverseBuilder {
             sHandlers[i] = new ExceptionHandler(h.getStartBCI(), h.getEndBCI(), h.getHandlerBCI(), h.catchTypeCPI(), catchType);
         }
 
-        HostedMethod hMethod = HostedMethod.create(hUniverse, aMethod, holder, signature, constantPool, sHandlers);
+        HostedMethod hMethod = HostedMethod.create(hUniverse, aMethod, hDeclaringClass, signature, constantPool, sHandlers);
 
         boolean isCFunction = aMethod.getAnnotation(CFunction.class) != null;
         boolean hasCFunctionOptions = aMethod.getAnnotation(CFunctionOptions.class) != null;
@@ -329,10 +328,10 @@ public class UniverseBuilder {
         return hMethod;
     }
 
-    private Signature makeSignature(Signature aSignature, WrappedJavaType defaultAccessingClass) {
+    private Signature makeSignature(Signature aSignature, AnalysisType aDefaultAccessingClass) {
         WrappedSignature hSignature = hUniverse.signatures.get(aSignature);
         if (hSignature == null) {
-            hSignature = new WrappedSignature(hUniverse, aSignature, defaultAccessingClass);
+            hSignature = new WrappedSignature(hUniverse, aSignature, aDefaultAccessingClass);
             hUniverse.signatures.put(aSignature, hSignature);
 
             for (int i = 0; i < aSignature.getParameterCount(false); i++) {
@@ -343,10 +342,10 @@ public class UniverseBuilder {
         return hSignature;
     }
 
-    private ConstantPool makeConstantPool(ConstantPool aConstantPool, WrappedJavaType defaultAccessingClass) {
+    private ConstantPool makeConstantPool(ConstantPool aConstantPool, AnalysisType aDefaultAccessingClass) {
         WrappedConstantPool hConstantPool = hUniverse.constantPools.get(aConstantPool);
         if (hConstantPool == null) {
-            hConstantPool = new WrappedConstantPool(hUniverse, aConstantPool, defaultAccessingClass);
+            hConstantPool = new WrappedConstantPool(hUniverse, aConstantPool, aDefaultAccessingClass);
             hUniverse.constantPools.put(aConstantPool, hConstantPool);
         }
         return hConstantPool;

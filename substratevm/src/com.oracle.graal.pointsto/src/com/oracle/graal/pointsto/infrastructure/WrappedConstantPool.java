@@ -50,9 +50,9 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
     protected final Universe universe;
     protected final ConstantPool wrapped;
-    private final WrappedJavaType defaultAccessingClass;
+    private final ResolvedJavaType defaultAccessingClass;
 
-    public WrappedConstantPool(Universe universe, ConstantPool wrapped, WrappedJavaType defaultAccessingClass) {
+    public WrappedConstantPool(Universe universe, ConstantPool wrapped, ResolvedJavaType defaultAccessingClass) {
         this.universe = universe;
         this.wrapped = wrapped;
         this.defaultAccessingClass = defaultAccessingClass;

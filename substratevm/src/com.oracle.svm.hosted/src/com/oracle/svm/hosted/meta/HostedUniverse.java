@@ -49,7 +49,6 @@ import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
-import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -413,13 +412,13 @@ public class HostedUniverse implements Universe {
     }
 
     @Override
-    public WrappedSignature lookup(Signature signature, WrappedJavaType defaultAccessingClass) {
+    public WrappedSignature lookup(Signature signature, ResolvedJavaType defaultAccessingClass) {
         assert signatures.containsKey(signature) : signature;
         return signatures.get(signature);
     }
 
     @Override
-    public WrappedConstantPool lookup(ConstantPool constantPool, WrappedJavaType defaultAccessingClass) {
+    public WrappedConstantPool lookup(ConstantPool constantPool, ResolvedJavaType defaultAccessingClass) {
         assert constantPools.containsKey(constantPool) : constantPool;
         return constantPools.get(constantPool);
     }

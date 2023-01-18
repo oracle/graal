@@ -277,7 +277,7 @@ public class AnalysisUniverse implements Universe {
         }
 
         try {
-            JavaKind storageKind = getStorageKind(type, originalMetaAccess);
+            JavaKind storageKind = originalMetaAccess.lookupJavaType(WordBase.class).isAssignableFrom(substitutions.resolve(type)) ? wordKind : type.getJavaKind();
             AnalysisType newValue = analysisFactory.createType(this, type, storageKind, objectClass, cloneableClass);
 
             synchronized (this) {
@@ -330,13 +330,6 @@ public class AnalysisUniverse implements Universe {
                 types.remove(type, claim);
             }
         }
-    }
-
-    public JavaKind getStorageKind(ResolvedJavaType type, MetaAccessProvider metaAccess) {
-        if (metaAccess.lookupJavaType(WordBase.class).isAssignableFrom(substitutions.resolve(type))) {
-            return wordKind;
-        }
-        return type.getJavaKind();
     }
 
     @Override
@@ -476,8 +469,9 @@ public class AnalysisUniverse implements Universe {
     }
 
     @Override
-    public WrappedSignature lookup(Signature signature, WrappedJavaType defaultAccessingClass) {
+    public WrappedSignature lookup(Signature signature, ResolvedJavaType defaultAccessingClass) {
         assert !(signature instanceof WrappedSignature);
+        assert !(defaultAccessingClass instanceof WrappedJavaType);
         WrappedSignature result = signatures.get(signature);
         if (result == null) {
             WrappedSignature newValue = new WrappedSignature(this, signature, defaultAccessingClass);
@@ -488,8 +482,9 @@ public class AnalysisUniverse implements Universe {
     }
 
     @Override
-    public WrappedConstantPool lookup(ConstantPool constantPool, WrappedJavaType defaultAccessingClass) {
+    public WrappedConstantPool lookup(ConstantPool constantPool, ResolvedJavaType defaultAccessingClass) {
         assert !(constantPool instanceof WrappedConstantPool);
+        assert !(defaultAccessingClass instanceof WrappedJavaType);
         WrappedConstantPool result = constantPools.get(constantPool);
         if (result == null) {
             WrappedConstantPool newValue = new AnalysisConstantPool(this, constantPool, defaultAccessingClass);

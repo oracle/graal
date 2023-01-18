@@ -540,7 +540,7 @@ public class PermissionsFeature implements Feature {
      * @return the methods accepted by {@code filter}
      */
     static Set<AnalysisMethodNode> findMethods(BigBang bb, AnalysisType owner, Predicate<ResolvedJavaMethod> filter) {
-        return findImpl(bb, owner.getWrappedWithoutResolve().getDeclaredMethods(), filter);
+        return findImpl(bb, owner.getWrapped().getDeclaredMethods(), filter);
     }
 
     /**
@@ -553,7 +553,7 @@ public class PermissionsFeature implements Feature {
      * @return the constructors accepted by {@code filter}
      */
     static Set<AnalysisMethodNode> findConstructors(BigBang bb, AnalysisType owner, Predicate<ResolvedJavaMethod> filter) {
-        return findImpl(bb, owner.getWrappedWithoutResolve().getDeclaredConstructors(), filter);
+        return findImpl(bb, owner.getWrapped().getDeclaredConstructors(), filter);
     }
 
     private static Set<AnalysisMethodNode> findImpl(BigBang bb, ResolvedJavaMethod[] methods, Predicate<ResolvedJavaMethod> filter) {

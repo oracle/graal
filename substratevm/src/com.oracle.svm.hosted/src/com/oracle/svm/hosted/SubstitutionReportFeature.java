@@ -77,7 +77,7 @@ public class SubstitutionReportFeature implements InternalFeature {
     private void findSubstitutedTypes(FeatureImpl.AfterAnalysisAccessImpl access) {
         for (AnalysisType type : access.getUniverse().getTypes()) {
             if (type.isReachable() && !type.isArray()) {
-                ResolvedJavaType t = type.getWrappedWithoutResolve();
+                ResolvedJavaType t = type.getWrapped();
                 if (t instanceof SubstitutionType) {
                     SubstitutionType subType = (SubstitutionType) t;
                     if (subType.isUserSubstitution()) {

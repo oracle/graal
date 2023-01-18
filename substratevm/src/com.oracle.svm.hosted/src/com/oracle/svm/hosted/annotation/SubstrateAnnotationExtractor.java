@@ -176,7 +176,7 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
     private AnnotationValue[] getAnnotationData(AnnotatedElement element, boolean declaredOnly) {
         AnnotatedElement cur = element;
         while (cur instanceof WrappedElement) {
-            cur = ((WrappedElement) cur).getWrappedWithoutResolve();
+            cur = ((WrappedElement) cur).getWrapped();
         }
         AnnotationValue[] result = NO_ANNOTATIONS;
         while (cur instanceof AnnotationWrapper) {
