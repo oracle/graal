@@ -94,7 +94,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
             this.nodes = new Node[elements.length];
             for (int i = 0; i < elements.length; i++) {
                 this.nodes[i] = elements[i];
-                assert this.nodes[i] == null || !this.nodes[i].isDeleted() : "Initializing nodelist with deleted element : " + nodes[i];
+                assert this.nodes[i] == null || !this.nodes[i].isDeleted() : "Initializing node list at index " + i + " with deleted element : " + nodes[i];
             }
         }
     }

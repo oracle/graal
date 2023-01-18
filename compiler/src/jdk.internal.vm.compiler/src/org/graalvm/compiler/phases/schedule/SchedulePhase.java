@@ -83,6 +83,7 @@ import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.cfg.LocationSet;
+import org.graalvm.compiler.nodes.extended.OpaqueNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
@@ -1193,6 +1194,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
 
             MicroBlock earliestBlock = startBlock;
             for (Node input : current.inputs()) {
+                GraalError.guarantee(input != current, "Cannot have direct cycles on schedulable nodes %s", current);
                 MicroBlock inputBlock = nodeToBlock.get(input);
                 if (inputBlock == null) {
                     earliestBlock = null;

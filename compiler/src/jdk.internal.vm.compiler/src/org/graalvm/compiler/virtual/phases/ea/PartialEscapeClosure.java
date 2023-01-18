@@ -132,7 +132,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         return false;
     }
 
-    private final class CollectVirtualObjectsClosure2 extends VirtualState.NodePositionClosure<Node> {
+    private final class CollectVirtualObjectsClosure2 implements VirtualState.NodePositionClosure<Node> {
         private final EconomicSet<VirtualObjectNode> virtual;
         private final GraphEffectList effects;
         private final BlockT state;

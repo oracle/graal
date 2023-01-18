@@ -69,6 +69,7 @@ public class GraalError extends Error {
         throw new GraalError(cause, "should not reach here: %s", msg);
     }
 
+
     /**
      * Checks a given condition and throws a {@link GraalError} if it is false. Guarantees are
      * stronger than assertions in that they are always checked. Error messages for guarantee

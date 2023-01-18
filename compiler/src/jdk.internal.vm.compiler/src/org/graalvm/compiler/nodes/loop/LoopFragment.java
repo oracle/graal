@@ -69,6 +69,7 @@ public abstract class LoopFragment {
     protected NodeBitMap nodes;
     protected boolean nodesReady;
     private EconomicMap<Node, Node> duplicationMap;
+    protected List<PhiNode> introducedPhis;
 
     public LoopFragment(LoopEx loop) {
         this(loop, null);
@@ -94,6 +95,14 @@ public abstract class LoopFragment {
 
     public boolean contains(Node n) {
         return nodes().isMarkedAndGrow(n);
+    }
+
+    public UnmodifiableEconomicMap<Node, Node> duplicationMap() {
+        return this.duplicationMap;
+    }
+
+    public List<PhiNode> getIntroducedPhis() {
+        return this.introducedPhis;
     }
 
     @SuppressWarnings("unchecked")
@@ -468,6 +477,7 @@ public abstract class LoopFragment {
     protected void mergeEarlyExits() {
         assert isDuplicate();
         StructuredGraph graph = graph();
+        this.introducedPhis = new ArrayList<>();
         for (AbstractBeginNode earlyExit : LoopFragment.toHirBlocks(original().loop().loop().getLoopExits())) {
             FixedNode next = earlyExit.next();
             if (earlyExit.isDeleted() || !this.original().contains(earlyExit)) {
@@ -538,6 +548,7 @@ public abstract class LoopFragment {
                         phi.setNodeSourcePosition(merge.getNodeSourcePosition());
                         phi.addInput(vpn);
                         phi.addInput(newVpn);
+                        introducedPhis.add(phi);
                         replaceWith = phi;
                     } else {
                         replaceWith = vpn.value();

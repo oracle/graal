@@ -29,6 +29,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
+import org.graalvm.compiler.nodes.extended.OpaqueValueNode;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
@@ -68,7 +69,7 @@ public class MathMultiplyHighTest extends MethodSubstitutionTest {
 
     @Test
     public void testSwapConstantAndMulHighZero() {
-        IntegerMulHighNode mulHigh = new IntegerMulHighNode(ConstantNode.forLong(0), new OpaqueNode(ConstantNode.forLong(-1)));
+        IntegerMulHighNode mulHigh = new IntegerMulHighNode(ConstantNode.forLong(0), new OpaqueValueNode(ConstantNode.forLong(-1)));
         ValueNode canonical = mulHigh.canonical(simplifierTool);
         Assert.assertTrue("expected constant folding: " + canonical, canonical.isJavaConstant());
         long expected = Math.multiplyHigh(0, -1);

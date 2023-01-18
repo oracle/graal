@@ -135,6 +135,7 @@ import org.graalvm.compiler.nodes.extended.JavaWriteNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.ObjectIsArrayNode;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
+import org.graalvm.compiler.nodes.extended.OpaqueValueNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.extended.SwitchCaseProbabilityNode;
@@ -1848,7 +1849,7 @@ public class StandardGraphBuilderPlugins {
                 r.register(new RequiredInvocationPlugin("opaque", javaClass) {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                        b.addPush(kind, new OpaqueNode(value));
+                        b.addPush(kind, new OpaqueValueNode(value));
                         return true;
                     }
                 });
