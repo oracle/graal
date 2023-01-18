@@ -73,7 +73,7 @@ public class CharacterClass extends QuantifiableTerm {
 
     private CodePointSet charSet;
     // look-behind groups which might match the same character as this CharacterClass node
-    private StateSet<SubTreeIndex, LookBehindAssertion> lookBehindEntries;
+    private StateSet<GlobalSubTreeIndex, LookBehindAssertion> lookBehindEntries;
 
     /**
      * Creates a new {@link CharacterClass} node which matches the set of characters specified by

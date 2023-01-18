@@ -55,6 +55,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilationPrinter;
+import org.graalvm.compiler.core.CompilationWatchDog;
 import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.core.GraalCompiler;
@@ -124,7 +125,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * Coordinates partial evaluation of a Truffle AST and subsequent compilation via Graal.
  */
-public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
+public abstract class TruffleCompilerImpl implements TruffleCompilerBase, CompilationWatchDog.EventHandler {
 
     protected TruffleCompilerConfiguration config;
     protected final GraphBuilderConfiguration builderConfig;
@@ -665,6 +666,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         return config.snippetReflection().asObject(CompilableTruffleAST.class, constant);
     }
 
+    @Override
+    public void onStuckCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier compilation, StackTraceElement[] stackTrace, int stuckTime) {
+        CompilationWatchDog.EventHandler.super.onStuckCompilation(watchDog, watched, compilation, stackTrace, stuckTime);
+        TTY.println("Compilation %s on %s appears stuck - exiting VM", compilation, watched);
+        exitHostVM(STUCK_COMPILATION_EXIT_CODE);
+    }
+
     /**
      * Wrapper for performing a Truffle compilation that can retry upon failure.
      */
@@ -730,10 +738,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             return null;
         }
 
+        @SuppressWarnings("try")
         @Override
         protected Void performCompilation(DebugContext debug) {
-            compileAST(this, debug);
-            return null;
+            try (CompilationWatchDog watch = CompilationWatchDog.watch(compilationId, debug.getOptions(), false, TruffleCompilerImpl.this)) {
+                compileAST(this, debug);
+                return null;
+            }
         }
 
         /**

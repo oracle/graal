@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
-import static jdk.vm.ci.amd64.AMD64.k0;
 import static jdk.vm.ci.amd64.AMD64.k1;
 import static jdk.vm.ci.amd64.AMD64.k2;
 import static jdk.vm.ci.amd64.AMD64.k3;
@@ -107,7 +106,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
     private final MetaAccessProvider metaAccess;
     private final boolean useBasePointer;
 
-    private static final RegisterArray MASK_REGISTERS = new RegisterArray(k0, k1, k2, k3, k4, k5, k6, k7);
+    private static final RegisterArray MASK_REGISTERS = new RegisterArray(k1, k2, k3, k4, k5, k6, k7);
 
     public SubstrateAMD64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, boolean useBasePointer) {
         this.target = target;

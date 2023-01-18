@@ -125,11 +125,11 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
     }
 
     public boolean isLookAhead(RegexAST ast) {
-        return isSubMatcher() && ast.getSubtrees().get(getSubtreeId()).isLookAheadAssertion();
+        return isSubMatcher() && getAstNode(ast).isLookAheadAssertion();
     }
 
     public boolean isLookBehind(RegexAST ast) {
-        return isSubMatcher() && ast.getSubtrees().get(getSubtreeId()).isLookBehindAssertion();
+        return isSubMatcher() && getAstNode(ast).isLookBehindAssertion();
     }
 
     public boolean isAtomicGroup() {

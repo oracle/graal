@@ -14,10 +14,8 @@ Here you will learn how to:
 - [Add Logging to a Native Executable](add-logging-to-native-executable.md)
 - [Build and Run Native Executables with JFR](build-and-run-native-executable-with-jfr.md)
 - [Build Java Modules into a Native Executable](build-java-module-app-aot.md)
-- [Build a Micronaut Application into a Native Executable](build-micronaut-app-into-native-executable.md)
 - [Build a Native Shared Library](build-native-shared-library.md)
 - [Build a Polyglot Native Executable (Java and JavaScript)](build-polyglot-native-executable.md)
-- [Build a Spring Boot Application into a Native Executable](build-spring-app-into-native-executable.md)
 - [Build a Static or Mostly-Static Native Executable](build-static-and-mostly-static-executable.md)
 - [Build a Native Executable with Reflection](build-with-reflection.md)
 - [Containerise a Native Executable and Run in a Docker Container](containerise-native-executable-with-docker.md)
@@ -30,5 +28,13 @@ Here you will learn how to:
 - [Use Maven to Build a Native Executable from a Java Application](use-native-image-maven-plugin.md)
 - [Use Shared Reachability Metadata with Native Image Gradle Plugin](use-reachability-metadata-repository-gradle.md)
 - [Use System Properties in a Native Executable](use-system-properties.md)
+
+## Microservices Frameworks
+
+- <a href="https://docs.spring.io/spring-boot/docs/3.0.0/reference/htmlsingle/#native-image.developing-your-first-application" target="_blank">Build a Native Executable from a Spring Boot 3 Application</a>
+- <a href="https://guides.micronaut.io/latest/micronaut-creating-first-graal-app.html" target="_blank">Build a Native Executable from a Micronaut Application</a>
+- <a href="https://quarkus.io/guides/building-native-image" target="_blank">Build a Native Executable from a Quarkus Application</a>
+- <a href="https://helidon.io/docs/v3/#/mp/guides/graalnative" target="_blank">Build a Native Executable from a Helidon MP Application</a>
+- <a href="https://helidon.io/docs/v3/#/se/guides/graalnative" target="_blank">Build a Native Executable from a Helidon SP Application</a>
 
 > Note: To follow these guides, a user is expected to have [GraalVM installed with Native Image support](../README.md#install-native-image). 

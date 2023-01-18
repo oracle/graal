@@ -63,7 +63,7 @@ public class TRegexLazyFindStartRootNode extends RegexBodyNode {
         final Object[] args = frame.getArguments();
         assert args.length == 1;
         final RegexResult receiver = (RegexResult) args[0];
-        int start = (int) entryNode.execute(receiver.getInput(), receiver.getFromIndex(), receiver.getEnd(), receiver.getEnd());
+        int start = (int) entryNode.execute(frame, receiver.getInput(), receiver.getFromIndex(), receiver.getEnd(), receiver.getEnd());
         if (setResult) {
             receiver.setResult(new int[]{start, receiver.getEnd(), -1});
         }

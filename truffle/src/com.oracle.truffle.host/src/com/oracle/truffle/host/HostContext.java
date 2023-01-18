@@ -189,6 +189,8 @@ final class HostContext {
             }
         } catch (ClassNotFoundException e) {
             throw new HostLanguageException(String.format("Access to host class %s is not allowed or does not exist.", className));
+        } catch (LinkageError e) {
+            throw new HostLanguageException(String.format("Access to host class %s is not allowed or does not exist.", className));
         }
     }
 

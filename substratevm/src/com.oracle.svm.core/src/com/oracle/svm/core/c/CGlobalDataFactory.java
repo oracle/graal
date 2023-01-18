@@ -42,7 +42,7 @@ import com.oracle.svm.core.util.Utf8;
  * objects} can be used to access the data by address at runtime. In order for the data to be
  * actually allocated in the native image, it must be reachable during the static analysis.
  * <p>
- * All method of this class can only be used at native image build time, and not at run time. It is
+ * All methods of this class can only be used at native image build time, and not at run time. It is
  * not possible to extend the data section of an executable or define new symbols in an executable
  * at run time.
  */
@@ -58,11 +58,13 @@ public final class CGlobalDataFactory {
 
     /**
      * Create a reference to the symbol with the specified name. Calling {@link CGlobalData#get()}
-     * on the returned object at runtime returns the referenced symbol's address.
+     * on the returned object at runtime returns the referenced symbol's address. This introduces a
+     * linking dependency on that symbol in the image.
      *
-     * @param nonConstant the provided object does not have to be used as a compile-time constant
-     *            (for example, it can be retrieved from a map), but it will always introduce a
-     *            linking dependency on that symbol in the image.
+     * @param nonConstant if {@code true}, the returned value is not restricted to be used as a
+     *            build time constant. For example, it can be stored in and retrieved from a map. If
+     *            {@code false}, the returned value must be a build time constant (e.g., accessed
+     *            from a static final field).
      */
     public static <T extends PointerBase> CGlobalData<T> forSymbol(String symbolName, boolean nonConstant) {
         return new CGlobalDataImpl<>(symbolName, nonConstant);
@@ -128,11 +130,24 @@ public final class CGlobalDataFactory {
      * name for the allocated word.
      */
     public static <T extends PointerBase> CGlobalData<T> createWord(WordBase initialValue, String symbolName) {
+        return createWord(initialValue, symbolName, false);
+    }
+
+    /**
+     * Same as {@link #createWord(WordBase)}, and additionally creates a symbol with the provided
+     * name for the allocated word.
+     *
+     * @param nonConstant if {@code true}, the returned value is not restricted to be used as a
+     *            build time constant. For example, it can be stored in and retrieved from a map. If
+     *            {@code false}, the returned value must be a build time constant (e.g., accessed
+     *            from a static final field).
+     */
+    public static <T extends PointerBase> CGlobalData<T> createWord(WordBase initialValue, String symbolName, boolean nonConstant) {
         Supplier<byte[]> supplier = () -> {
             assert ConfigurationValues.getTarget().wordSize == Long.BYTES;
             return ByteBuffer.allocate(Long.BYTES).order(ConfigurationValues.getTarget().arch.getByteOrder()).putLong(initialValue.rawValue()).array();
         };
-        return new CGlobalDataImpl<>(symbolName, supplier);
+        return new CGlobalDataImpl<>(symbolName, supplier, nonConstant);
     }
 
     /**

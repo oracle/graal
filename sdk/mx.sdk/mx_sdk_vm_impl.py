@@ -2890,7 +2890,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         main_component = _get_main_component(components)
         only_native_launchers = not main_component.launcher_configs or has_svm_launcher(main_component)
         only_native_libraries = not main_component.library_configs or (_get_svm_support().is_supported() and not _has_skipped_libraries(main_component))
-        if isinstance(main_component, mx_sdk.GraalVmTruffleComponent) and only_native_launchers and only_native_libraries:
+        if isinstance(main_component, mx_sdk.GraalVmTruffleComponent) and only_native_launchers and only_native_libraries and not _disable_standalone(main_component):
             dependencies = main_component.standalone_dependencies.keys()
             missing_dependencies = [dep for dep in dependencies if not has_component(dep) or _has_skipped_libraries(get_component(dep)) or (get_component(dep).library_configs and not _get_svm_support().is_supported())]
             if missing_dependencies:
@@ -3412,6 +3412,8 @@ mx.add_argument('--disable-libpolyglot', action='store_true', help='Disable the 
 mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'polyglot\' launcher project.')
 mx.add_argument('--disable-installables', action='store', help='Disable the \'installable\' distributions for gu.'
                                                                'This can be a comma-separated list of disabled components short names or `true` to disable all installables.', default=None)
+mx.add_argument('--disable-standalones', action='store', help='Disable the \'standalone\' distributions.'
+                                                              'This can be a comma-separated list of disabled components short names or `true` to disable all standalones.', default=None)
 mx.add_argument('--debug-images', action='store_true', help='Build native images in debug mode: \'-O0\' and with \'-ea\'.')
 mx.add_argument('--native-images', action='store', help='Comma-separated list of launchers and libraries (syntax: LAUNCHER_NAME or lib:polyglot or suite:NAME) to build with Native Image.')
 mx.add_argument('--force-bash-launchers', action='store', help='Force the use of bash launchers instead of native images.'
@@ -3659,6 +3661,21 @@ def _disabled_installables():
 def _disable_installable(component):
     """ :type component: str | mx_sdk.GraalVmComponent """
     disabled = _disabled_installables()
+    if isinstance(disabled, bool):
+        return disabled
+    else:
+        if isinstance(component, mx_sdk.GraalVmComponent):
+            component = component.short_name
+        return component in disabled
+
+
+def _disabled_standalones():
+    return _parse_cmd_arg('disable_standalones', default_value=str(not has_vm_suite()))
+
+
+def _disable_standalone(component):
+    """ :type component: str | mx_sdk.GraalVmComponent """
+    disabled = _disabled_standalones()
     if isinstance(disabled, bool):
         return disabled
     else:

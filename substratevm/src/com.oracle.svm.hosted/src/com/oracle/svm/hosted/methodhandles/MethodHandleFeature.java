@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.methodhandles;
 
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -36,7 +35,6 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.internal.misc.Unsafe;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
@@ -188,9 +186,6 @@ public class MethodHandleFeature implements InternalFeature {
                         access.findClassByName("java.lang.invoke.VarHandle"));
 
         access.registerSubtypeReachabilityHandler(MethodHandleFeature::scanBoundMethodHandle, boundMethodHandleClass);
-
-        access.registerReachabilityHandler(MethodHandleFeature::registerUnsafePutReference,
-                        ReflectionUtil.lookupMethod(MethodHandles.Lookup.class, "unreflectSetter", Field.class));
     }
 
     private static void registerMHImplFunctionsForReflection(DuringAnalysisAccess access) {
@@ -265,10 +260,6 @@ public class MethodHandleFeature implements InternalFeature {
                 }
             }
         }
-    }
-
-    private static void registerUnsafePutReference(DuringAnalysisAccess access) {
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(Unsafe.class, "putReference", Object.class, long.class, Object.class));
     }
 
     private static String valueConverterName(Wrapper src, Wrapper dest) {
