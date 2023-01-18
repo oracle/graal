@@ -1006,6 +1006,9 @@ public class NativeImage {
         }
 
         if (shouldAddCWDToCP()) {
+            if (useBundle()) {
+                throw NativeImage.showError("Bundle support requires -cp or -p to be set (implicit current directory classpath unsupported).");
+            }
             addImageClasspath(Paths.get("."));
         }
         imageClasspath.addAll(customImageClasspath);
