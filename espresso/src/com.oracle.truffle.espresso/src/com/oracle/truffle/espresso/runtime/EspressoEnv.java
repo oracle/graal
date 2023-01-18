@@ -139,8 +139,8 @@ public final class EspressoEnv {
         if (useHostFinalReferenceOption && !FinalizationSupport.canUseHostFinalReference()) {
             if (env.getOptions().hasBeenSet(EspressoOptions.UseHostFinalReference)) {
                 context.getLogger().warning("--java.UseHostFinalReference is set to 'true' but Espresso cannot access the host java.lang.ref.FinalReference class.\n" +
-                        "Ensure that host system properties '-Despresso.finalization.InjectClasses=true' and '-Despresso.finalization.UnsafeOverride=true' are set.\n" +
-                        "Espresso's guest FinalReference(s) will fallback to WeakReference semantics.");
+                                "Ensure that host system properties '-Despresso.finalization.InjectClasses=true' and '-Despresso.finalization.UnsafeOverride=true' are set.\n" +
+                                "Espresso's guest FinalReference(s) will fallback to WeakReference semantics.");
             }
         }
 
