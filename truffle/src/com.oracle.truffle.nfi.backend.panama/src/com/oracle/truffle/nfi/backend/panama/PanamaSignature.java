@@ -64,6 +64,7 @@ import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayBuilderFactory;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayFactory;
+import com.oracle.truffle.nfi.backend.panama.PanamaClosure.MonomorphicClosureInfo;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
@@ -182,6 +183,11 @@ final class PanamaSignature {
         return handle.type() == upcallType;
     }
 
+    MethodType getUpcallMethodType() {
+        return upcallType;
+    }
+
+
     @TruffleBoundary
     MemoryAddress bind(MethodHandle cachedHandle, Object receiver) {
         MethodHandle bound = cachedHandle.bindTo(receiver);
@@ -189,20 +195,64 @@ final class PanamaSignature {
     }
 
     @ExportMessage
+    @ImportStatic(PanamaNFILanguage.class)
     static final class CreateClosure {
 
-        @Specialization(guards = "receiver.checkUpcallMethodHandle(cachedHandle)")
-        static PanamaSymbol createCached(PanamaSignature receiver, Object executable,
-                        @Cached("receiver.createCachedUpcallHandle()") MethodHandle cachedHandle) {
-            MemoryAddress ret = receiver.bind(cachedHandle, executable);
-            return new PanamaSymbol(ret);
+//        @Specialization(guards = "receiver.checkUpcallMethodHandle(cachedHandle)")
+//        static PanamaClosure createCached(PanamaSignature receiver, Object executable,
+//                        @Cached("receiver.createCachedUpcallHandle()") MethodHandle cachedHandle) {
+//            MemoryAddress ret = receiver.bind(cachedHandle, executable);
+//            return new PanamaClosure(ret);
+//        }
+//
+//        @Specialization(replaces = "createCached")
+//        static PanamaClosure createGeneric(PanamaSignature receiver, Object executable) {
+//            MethodHandle handle = receiver.getUncachedUpcallHandle();
+//            MemoryAddress ret = receiver.bind(handle, executable);
+//            return new PanamaClosure(ret);
+//        }
+
+        @Specialization(guards = {"signature.signatureInfo == cachedSignatureInfo", "executable == cachedExecutable"}, assumptions = "getSingleContextAssumption()")
+        static PanamaClosure doCachedExecutable(PanamaSignature signature, Object executable,
+                                                @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
+                                                @Cached("executable") Object cachedExecutable,
+                                                @CachedLibrary("signature") NFIBackendSignatureLibrary self,
+                                                @Cached("create(cachedSignatureInfo, cachedExecutable)") MonomorphicClosureInfo cachedClosureInfo) {
+            // what needs to happen
+            // 1. we need to get the cachedHandle
+            //    this comes from the RootNode and binding it to the upcall target
+            // 2. we need the Monomorphic info but don't really know why
+            //    upcall
+            assert signature.signatureInfo == cachedSignatureInfo && executable == cachedExecutable;
+            // no need to cache duplicated allocation in the single-context case
+            // the NFI frontend is taking care of that already
+            MethodHandle cachedHandle = cachedClosureInfo.cachedHandle.asType(signature.getUpcallMethodType());
+            MemoryAddress ret = signature.bind(cachedHandle, executable);
+            return new PanamaClosure(ret);
         }
 
-        @Specialization(replaces = "createCached")
-        static PanamaSymbol createGeneric(PanamaSignature receiver, Object executable) {
-            MethodHandle handle = receiver.getUncachedUpcallHandle();
-            MemoryAddress ret = receiver.bind(handle, executable);
-            return new PanamaSymbol(ret);
+//        @Specialization(replaces = "doCachedExecutable", guards = "signature.signatureInfo == cachedSignatureInfo")
+//        static PanamaClosure doCachedSignature(PanamaSignature signature, Object executable,
+//                                               @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
+//                                               @CachedLibrary("signature") NFIBackendSignatureLibrary self,
+//                                               @Cached("create(cachedSignatureInfo)") PolymorphicClosureInfo cachedClosureInfo) {
+//            assert signature.signatureInfo == cachedSignatureInfo;
+//            ClosureNativePointer nativePointer = cachedClosureInfo.allocateClosure(LibFFIContext.get(self), signature, executable);
+//            return LibFFIClosure.newClosureWrapper(nativePointer);
+//            MemoryAddress ret = receiver.bind(cachedHandle, executable);
+//            return new PanamaClosure(ret);
+//        }
+
+        @TruffleBoundary
+        @Specialization(replaces = "doCachedExecutable") // TODO impl cached other
+        static PanamaClosure createClosure(PanamaSignature signature, Object executable,
+                                           @CachedLibrary("signature") NFIBackendSignatureLibrary self) {
+//            PolymorphicClosureInfo cachedClosureInfo = signature.signatureInfo.getCachedClosureInfo();
+//            ClosureNativePointer nativePointer = cachedClosureInfo.allocateClosure(LibFFIContext.get(self), signature, executable);
+//            return LibFFIClosure.newClosureWrapper(nativePointer);
+            MethodHandle handle = signature.getUncachedUpcallHandle();
+            MemoryAddress ret = signature.bind(handle, executable);
+            return new PanamaClosure(ret);
         }
     }
 
@@ -357,17 +407,17 @@ final class PanamaSignature {
             MethodHandle handle = signature.createDowncallHandle(functionPointer);
 
             try {
-                if (retType.type == NativeSimpleType.STRING) {
-                    MemoryAddress stringAddress = (MemoryAddress) (Object) handle.invokeExact(args);
-                    return stringAddress.getUtf8String(0);
-                } else if (retType.type == NativeSimpleType.VOID) {
-                    Object result = handle.invokeExact(args);
+                Object result = (Object) handle.invokeExact(args);
+                if (result == null) {
                     return NativePointer.NULL;
+                } else if (retType.type == NativeSimpleType.STRING) {
+                    MemoryAddress test = (MemoryAddress) result;
+                    return new NativeString(test.toRawLongValue());
+                } else if (retType.type == NativeSimpleType.VOID) {
+                    return NativePointer.NULL; // TODO check this vs NativePointer.NULL
                 } else if (retType.type == NativeSimpleType.POINTER) {
-                    Object result = handle.invokeExact(args); // TODO
-                    return NativePointer.create(0);
+                    return NativePointer.create((long) result);
                 } else {
-                    Object result = handle.invokeExact(args);
                     return result;
                 }
             } catch (Throwable e) {

@@ -122,7 +122,11 @@ abstract class ArgumentNode extends Node {
         long doConvert(Object value,
                        @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
             try {
-                return interop.asPointer(value);
+                if (interop.isPointer(value)) {
+                    return interop.asPointer(value);
+                } else {
+                    return NativePointer.NULL.asPointer();
+                }
             } catch (UnsupportedMessageException e) {
                 throw new RuntimeException(e);
             }

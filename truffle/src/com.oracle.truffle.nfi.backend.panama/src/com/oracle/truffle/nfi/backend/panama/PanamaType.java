@@ -43,6 +43,8 @@ package com.oracle.truffle.nfi.backend.panama;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
+import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNodeFactory.StringClosureArgumentNodeGen;
+import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNodeFactory.GenericClosureArgumentNodeGen;
 
 import java.lang.foreign.Addressable;
 import java.lang.foreign.MemoryAddress;
@@ -50,7 +52,7 @@ import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.ValueLayout;
 
 
-final class PanamaType {
+class PanamaType {
 
     final MemoryLayout nativeLayout;
     final Class<?> javaType;
@@ -153,6 +155,42 @@ final class PanamaType {
                 throw CompilerDirectives.shouldNotReachHere("Nullable not imple");
             default:
                 throw CompilerDirectives.shouldNotReachHere("Type does not exist.");
+        }
+    }
+
+    public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
+        switch (type) {
+            case VOID:
+            case UINT8:
+            case SINT8:
+            case UINT16:
+            case SINT16:
+            case UINT32:
+            case SINT32:
+            case UINT64:
+            case SINT64:
+            case POINTER:
+            case FLOAT:
+            case FP80:
+            case DOUBLE:
+                return GenericClosureArgumentNodeGen.create(this, arg);
+            case STRING:
+                return StringClosureArgumentNodeGen.create(this, arg);
+            case OBJECT:
+                // TODO
+                throw CompilerDirectives.shouldNotReachHere("OBJ not imple");
+            case NULLABLE:
+                // TODO
+                throw CompilerDirectives.shouldNotReachHere("Nullable not imple");
+            default:
+                throw CompilerDirectives.shouldNotReachHere("Type does not exist.");
+        }
+    }
+
+    static final class EnvType extends PanamaType {
+
+        EnvType(NativeSimpleType type) throws UnsupportedOperationException {
+            super(NativeSimpleType.VOID);
         }
     }
 }

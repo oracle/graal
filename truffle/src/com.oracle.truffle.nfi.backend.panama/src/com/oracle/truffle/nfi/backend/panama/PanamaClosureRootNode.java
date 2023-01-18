@@ -51,18 +51,20 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
-final class PanamaClosureRootNode extends RootNode {
+abstract class PanamaClosureRootNode extends RootNode {
 
     // Object closure(Object receiver, Object[] args)
     static final MethodType METHOD_TYPE = MethodType.methodType(Object.class, Object.class, Object[].class);
 
     public static MethodHandle createUpcallHandle(PanamaNFILanguage language) {
-        CompilerAsserts.neverPartOfCompilation();
-
-        RootNode upcallRoot = new PanamaClosureRootNode(language);
-        CallTarget upcallTarget = upcallRoot.getCallTarget();
-
-        return handle_CallTarget_call.bindTo(upcallTarget).asCollector(Object[].class, 2).asType(METHOD_TYPE).asVarargsCollector(Object[].class);
+        assert false; // should not be here
+        return null;
+//        CompilerAsserts.neverPartOfCompilation();
+//
+//        RootNode upcallRoot = new PanamaClosureRootNode(language);
+//        CallTarget upcallTarget = upcallRoot.getCallTarget();
+//
+//        return handle_CallTarget_call.bindTo(upcallTarget).asCollector(Object[].class, 2).asType(METHOD_TYPE).asVarargsCollector(Object[].class);
     }
 
     @Child InteropLibrary interop;
@@ -72,18 +74,8 @@ final class PanamaClosureRootNode extends RootNode {
         this.interop = InteropLibrary.getFactory().createDispatched(3);
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        Object receiver = frame.getArguments()[0];
-        Object[] args = (Object[]) frame.getArguments()[1];
-        try {
-            return interop.execute(receiver, args);
-        } catch (InteropException ex) {
-            throw CompilerDirectives.shouldNotReachHere(ex);
-        }
-    }
 
-    private static final MethodHandle handle_CallTarget_call;
+    static final MethodHandle handle_CallTarget_call;
 
     static {
         MethodType callType = MethodType.methodType(Object.class, Object[].class);
