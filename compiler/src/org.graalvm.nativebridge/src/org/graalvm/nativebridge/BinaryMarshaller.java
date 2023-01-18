@@ -36,14 +36,14 @@ import java.util.Objects;
 public interface BinaryMarshaller<T> {
 
     /**
-     * Used by the callee to read parameter in an over the boundary call.
-     */
-    T read(BinaryInput input);
-
-    /**
-     * Used by the caller to pass parameter to an over the boundary call.
+     * Decomposes and serializes the given object passed to a foreign method.
      */
     void write(BinaryOutput output, T object);
+
+    /**
+     * Deserializes and recreates an object passed to a foreign method.
+     */
+    T read(BinaryInput input);
 
     /**
      * Estimates a size in bytes needed to marshall given object. The returned value is used to
@@ -57,22 +57,22 @@ public interface BinaryMarshaller<T> {
     }
 
     /**
-     * Used by the callee to pass back an {@link Out} parameter. Marshallers that do not support
-     * {@link Out} parameters do not need to implement this method. The default implementation
-     * throws {@link UnsupportedOperationException}. To support {@link Out} parameters the
-     * {@link BinaryMarshaller} must implement also {@link #readUpdate(BinaryInput, Object)} and
-     * {@link #inferUpdateSize(Object)}.
+     * Decomposes and serializes the mutable state of a given object to support {@link Out}
+     * semantics. Marshallers that do not support {@link Out} parameters do not need to implement
+     * this method. The default implementation throws {@link UnsupportedOperationException}. To
+     * support {@link Out} parameters the {@link BinaryMarshaller} must implement also
+     * {@link #readUpdate(BinaryInput, Object)} and {@link #inferUpdateSize(Object)}.
      * <p>
      * The {@link Out} parameters are passed in the following way:
      * <ol>
      * <li>The start point method writes the parameter using
      * {@link #write(BinaryOutput, Object)}.</li>
-     * <li>Over the boundary call is made.</li>
+     * <li>A foreign method call is made.</li>
      * <li>The end point method reads the parameter using {@link #read(BinaryInput)}.</li>
-     * <li>The receiver method is called with the unmarshalled parameter.</li>
+     * <li>The end point receiver method is called with the unmarshalled parameter.</li>
      * <li>After calling the receiver method, the end point method writes the mutated {@link Out}
      * parameter state using {@link #writeUpdate(BinaryOutput, Object)}.</li>
-     * <li>The call returns from the over the boundary call.</li>
+     * <li>A foreign method returns.</li>
      * <li>The state of the {@link Out} parameter is updated using
      * {@link #readUpdate(BinaryInput, Object)}.</li>
      * </ol>
@@ -87,11 +87,10 @@ public interface BinaryMarshaller<T> {
     }
 
     /**
-     * Used by the caller to update the {@link Out} parameter after an over the boundary call.
-     * Compared to {@link #read(BinaryInput)} this method updates an existing object state.
-     * Marshallers that do not support {@link Out} parameters do not need to implement this method.
-     * The default implementation throws {@link UnsupportedOperationException}. To support
-     * {@link Out} parameters the {@link BinaryMarshaller} must implement also
+     * Deserializes and updates the mutable state of a given object to support {@link Out}
+     * semantics. Marshallers that do not support {@link Out} parameters do not need to implement
+     * this method. The default implementation throws {@link UnsupportedOperationException}. To
+     * support {@link Out} parameters the {@link BinaryMarshaller} must implement also
      * {@link #writeUpdate(BinaryOutput, Object)} and {@link #inferUpdateSize(Object)}.
      *
      * @see BinaryMarshaller#writeUpdate(BinaryOutput, Object)
@@ -104,8 +103,8 @@ public interface BinaryMarshaller<T> {
 
     /**
      * Estimates a size in bytes needed to marshall {@link Out} parameter passed back to caller from
-     * an over the boundary call. The accuracy of the estimate affects the speed of marshalling. If
-     * the estimate is too small, the pre-allocated buffer must be re-allocated and the already
+     * a foreign method call. The accuracy of the estimate affects the speed of marshalling. If the
+     * estimate is too small, the pre-allocated buffer must be re-allocated and the already
      * marshalled data must be copied. Too large a value may cause the static buffer to be unused
      * and the dynamic buffer to be unnecessarily allocated. Marshallers that do not support
      * {@link Out} parameters do not need to implement this method. The default implementation

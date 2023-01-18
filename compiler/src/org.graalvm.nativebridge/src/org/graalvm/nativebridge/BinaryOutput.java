@@ -69,7 +69,7 @@ public abstract class BinaryOutput {
     static final byte STRING = DOUBLE + 1;
     static final byte ARRAY = STRING + 1;
 
-    private byte[] byteBuffer;
+    private byte[] tempDecodingBuffer;
     protected int pos;
 
     private BinaryOutput() {
@@ -203,14 +203,14 @@ public abstract class BinaryOutput {
         if (utfLen > MAX_SHORT_LENGTH) {
             headerSize = Integer.BYTES;
             ensureBufferSize(headerSize, utfLen);
-            byteBuffer[count++] = (byte) ((LARGE_STRING_TAG | (utfLen >>> 24)) & 0xff);
-            byteBuffer[count++] = (byte) ((utfLen >>> 16) & 0xFF);
+            tempDecodingBuffer[count++] = (byte) ((LARGE_STRING_TAG | (utfLen >>> 24)) & 0xff);
+            tempDecodingBuffer[count++] = (byte) ((utfLen >>> 16) & 0xFF);
         } else {
             headerSize = Short.BYTES;
             ensureBufferSize(headerSize, utfLen);
         }
-        byteBuffer[count++] = (byte) ((utfLen >>> 8) & 0xFF);
-        byteBuffer[count++] = (byte) (utfLen & 0xFF);
+        tempDecodingBuffer[count++] = (byte) ((utfLen >>> 8) & 0xFF);
+        tempDecodingBuffer[count++] = (byte) (utfLen & 0xFF);
 
         int i = 0;
         for (; i < len; i++) {
@@ -218,23 +218,23 @@ public abstract class BinaryOutput {
             if (!((c >= 0x0001) && (c <= 0x007F))) {
                 break;
             }
-            byteBuffer[count++] = (byte) c;
+            tempDecodingBuffer[count++] = (byte) c;
         }
 
         for (; i < len; i++) {
             c = string.charAt(i);
             if ((c >= 0x0001) && (c <= 0x007F)) {
-                byteBuffer[count++] = (byte) c;
+                tempDecodingBuffer[count++] = (byte) c;
             } else if (c > 0x07FF) {
-                byteBuffer[count++] = (byte) (0xE0 | ((c >> 12) & 0x0F));
-                byteBuffer[count++] = (byte) (0x80 | ((c >> 6) & 0x3F));
-                byteBuffer[count++] = (byte) (0x80 | (c & 0x3F));
+                tempDecodingBuffer[count++] = (byte) (0xE0 | ((c >> 12) & 0x0F));
+                tempDecodingBuffer[count++] = (byte) (0x80 | ((c >> 6) & 0x3F));
+                tempDecodingBuffer[count++] = (byte) (0x80 | (c & 0x3F));
             } else {
-                byteBuffer[count++] = (byte) (0xC0 | ((c >> 6) & 0x1F));
-                byteBuffer[count++] = (byte) (0x80 | (c & 0x3F));
+                tempDecodingBuffer[count++] = (byte) (0xC0 | ((c >> 6) & 0x1F));
+                tempDecodingBuffer[count++] = (byte) (0x80 | (c & 0x3F));
             }
         }
-        write(byteBuffer, 0, headerSize + utfLen);
+        write(tempDecodingBuffer, 0, headerSize + utfLen);
     }
 
     /**
@@ -302,9 +302,9 @@ public abstract class BinaryOutput {
     public final void write(boolean[] array, int off, int len) {
         ensureBufferSize(0, len);
         for (int i = 0, j = 0; i < len; i++, j++) {
-            byteBuffer[j] = (byte) (array[off + i] ? 1 : 0);
+            tempDecodingBuffer[j] = (byte) (array[off + i] ? 1 : 0);
         }
-        write(byteBuffer, 0, len);
+        write(tempDecodingBuffer, 0, len);
     }
 
     /**
@@ -315,10 +315,10 @@ public abstract class BinaryOutput {
         int size = len * Short.BYTES;
         ensureBufferSize(0, size);
         for (int i = 0, j = 0; i < len; i++) {
-            byteBuffer[j++] = (byte) ((array[off + i] >>> 8) & 0xff);
-            byteBuffer[j++] = (byte) (array[off + i] & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 8) & 0xff);
+            tempDecodingBuffer[j++] = (byte) (array[off + i] & 0xff);
         }
-        write(byteBuffer, 0, size);
+        write(tempDecodingBuffer, 0, size);
     }
 
     /**
@@ -329,10 +329,10 @@ public abstract class BinaryOutput {
         int size = len * Character.BYTES;
         ensureBufferSize(0, size);
         for (int i = 0, j = 0; i < len; i++) {
-            byteBuffer[j++] = (byte) ((array[off + i] >>> 8) & 0xff);
-            byteBuffer[j++] = (byte) (array[off + i] & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 8) & 0xff);
+            tempDecodingBuffer[j++] = (byte) (array[off + i] & 0xff);
         }
-        write(byteBuffer, 0, size);
+        write(tempDecodingBuffer, 0, size);
     }
 
     /**
@@ -343,12 +343,12 @@ public abstract class BinaryOutput {
         int size = len * Integer.BYTES;
         ensureBufferSize(0, size);
         for (int i = 0, j = 0; i < len; i++) {
-            byteBuffer[j++] = (byte) ((array[off + i] >>> 24) & 0xff);
-            byteBuffer[j++] = (byte) ((array[off + i] >>> 16) & 0xff);
-            byteBuffer[j++] = (byte) ((array[off + i] >>> 8) & 0xff);
-            byteBuffer[j++] = (byte) (array[off + i] & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 24) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 16) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 8) & 0xff);
+            tempDecodingBuffer[j++] = (byte) (array[off + i] & 0xff);
         }
-        write(byteBuffer, 0, size);
+        write(tempDecodingBuffer, 0, size);
     }
 
     /**
@@ -359,16 +359,16 @@ public abstract class BinaryOutput {
         int size = len * Long.BYTES;
         ensureBufferSize(0, size);
         for (int i = 0, j = 0; i < len; i++) {
-            byteBuffer[j++] = (byte) ((array[off + i] >>> 56) & 0xff);
-            byteBuffer[j++] = (byte) ((array[off + i] >>> 48) & 0xff);
-            byteBuffer[j++] = (byte) ((array[off + i] >>> 40) & 0xff);
-            byteBuffer[j++] = (byte) ((array[off + i] >>> 32) & 0xff);
-            byteBuffer[j++] = (byte) ((array[off + i] >>> 24) & 0xff);
-            byteBuffer[j++] = (byte) ((array[off + i] >>> 16) & 0xff);
-            byteBuffer[j++] = (byte) ((array[off + i] >>> 8) & 0xff);
-            byteBuffer[j++] = (byte) (array[off + i] & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 56) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 48) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 40) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 32) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 24) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 16) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((array[off + i] >>> 8) & 0xff);
+            tempDecodingBuffer[j++] = (byte) (array[off + i] & 0xff);
         }
-        write(byteBuffer, 0, size);
+        write(tempDecodingBuffer, 0, size);
     }
 
     /**
@@ -382,12 +382,12 @@ public abstract class BinaryOutput {
         ensureBufferSize(0, size);
         for (int i = 0, j = 0; i < len; i++) {
             int bits = Float.floatToIntBits(array[off + i]);
-            byteBuffer[j++] = (byte) ((bits >>> 24) & 0xff);
-            byteBuffer[j++] = (byte) ((bits >>> 16) & 0xff);
-            byteBuffer[j++] = (byte) ((bits >>> 8) & 0xff);
-            byteBuffer[j++] = (byte) (bits & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((bits >>> 24) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((bits >>> 16) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((bits >>> 8) & 0xff);
+            tempDecodingBuffer[j++] = (byte) (bits & 0xff);
         }
-        write(byteBuffer, 0, size);
+        write(tempDecodingBuffer, 0, size);
     }
 
     /**
@@ -401,21 +401,21 @@ public abstract class BinaryOutput {
         ensureBufferSize(Integer.BYTES, size);
         for (int i = 0, j = 0; i < len; i++) {
             long bits = Double.doubleToLongBits(array[off + i]);
-            byteBuffer[j++] = (byte) ((bits >>> 56) & 0xff);
-            byteBuffer[j++] = (byte) ((bits >>> 48) & 0xff);
-            byteBuffer[j++] = (byte) ((bits >>> 40) & 0xff);
-            byteBuffer[j++] = (byte) ((bits >>> 32) & 0xff);
-            byteBuffer[j++] = (byte) ((bits >>> 24) & 0xff);
-            byteBuffer[j++] = (byte) ((bits >>> 16) & 0xff);
-            byteBuffer[j++] = (byte) ((bits >>> 8) & 0xff);
-            byteBuffer[j++] = (byte) (bits & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((bits >>> 56) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((bits >>> 48) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((bits >>> 40) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((bits >>> 32) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((bits >>> 24) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((bits >>> 16) & 0xff);
+            tempDecodingBuffer[j++] = (byte) ((bits >>> 8) & 0xff);
+            tempDecodingBuffer[j++] = (byte) (bits & 0xff);
         }
-        write(byteBuffer, 0, size);
+        write(tempDecodingBuffer, 0, size);
     }
 
     private void ensureBufferSize(int headerSize, int dataSize) {
-        if (byteBuffer == null || byteBuffer.length < (headerSize + dataSize)) {
-            byteBuffer = new byte[bufferSize(headerSize, dataSize)];
+        if (tempDecodingBuffer == null || tempDecodingBuffer.length < (headerSize + dataSize)) {
+            tempDecodingBuffer = new byte[bufferSize(headerSize, dataSize)];
         }
     }
 

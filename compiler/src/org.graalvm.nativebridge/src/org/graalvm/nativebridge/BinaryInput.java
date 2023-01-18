@@ -52,8 +52,8 @@ public abstract class BinaryInput {
 
     private static final int EOF = -1;
 
-    private byte[] byteBuffer;
-    private char[] charBuffer;
+    private byte[] tempEncodingByteBuffer;
+    private char[] tempEncodingCharBuffer;
     protected final int length;
     protected int pos;
 
@@ -258,8 +258,8 @@ public abstract class BinaryInput {
             len = (b1 << 8) + b2;
         }
         ensureBufferSize(len);
-        if (charBuffer == null || charBuffer.length < len) {
-            charBuffer = new char[Math.max(bufferSize(0, len), 80)];
+        if (tempEncodingCharBuffer == null || tempEncodingCharBuffer.length < len) {
+            tempEncodingCharBuffer = new char[Math.max(bufferSize(0, len), 80)];
         }
 
         int c1;
@@ -268,19 +268,19 @@ public abstract class BinaryInput {
         int byteCount = 0;
         int charCount = 0;
 
-        read(byteBuffer, 0, len);
+        read(tempEncodingByteBuffer, 0, len);
 
         while (byteCount < len) {
-            c1 = byteBuffer[byteCount] & 0xff;
+            c1 = tempEncodingByteBuffer[byteCount] & 0xff;
             if (c1 > 127) {
                 break;
             }
             byteCount++;
-            charBuffer[charCount++] = (char) c1;
+            tempEncodingCharBuffer[charCount++] = (char) c1;
         }
 
         while (byteCount < len) {
-            c1 = byteBuffer[byteCount] & 0xff;
+            c1 = tempEncodingByteBuffer[byteCount] & 0xff;
             switch (c1 >> 4) {
                 case 0:
                 case 1:
@@ -292,7 +292,7 @@ public abstract class BinaryInput {
                 case 7:
                     /* 0xxxxxxx */
                     byteCount++;
-                    charBuffer[charCount++] = (char) c1;
+                    tempEncodingCharBuffer[charCount++] = (char) c1;
                     break;
                 case 12:
                 case 13:
@@ -301,11 +301,11 @@ public abstract class BinaryInput {
                     if (byteCount > len) {
                         throw new IllegalArgumentException("Partial character at end");
                     }
-                    c2 = byteBuffer[byteCount - 1];
+                    c2 = tempEncodingByteBuffer[byteCount - 1];
                     if ((c2 & 0xC0) != 0x80) {
                         throw new IllegalArgumentException("malformed input around byte " + byteCount);
                     }
-                    charBuffer[charCount++] = (char) (((c1 & 0x1F) << 6) | (c2 & 0x3F));
+                    tempEncodingCharBuffer[charCount++] = (char) (((c1 & 0x1F) << 6) | (c2 & 0x3F));
                     break;
                 case 14:
                     /* 1110 xxxx 10xx xxxx 10xx xxxx */
@@ -313,12 +313,12 @@ public abstract class BinaryInput {
                     if (byteCount > len) {
                         throw new IllegalArgumentException("malformed input: partial character at end");
                     }
-                    c2 = byteBuffer[byteCount - 2];
-                    c3 = byteBuffer[byteCount - 1];
+                    c2 = tempEncodingByteBuffer[byteCount - 2];
+                    c3 = tempEncodingByteBuffer[byteCount - 1];
                     if (((c2 & 0xC0) != 0x80) || ((c3 & 0xC0) != 0x80)) {
                         throw new IllegalArgumentException("malformed input around byte " + (byteCount - 1));
                     }
-                    charBuffer[charCount++] = (char) (((c1 & 0x0F) << 12) | ((c2 & 0x3F) << 6) | (c3 & 0x3F));
+                    tempEncodingCharBuffer[charCount++] = (char) (((c1 & 0x0F) << 12) | ((c2 & 0x3F) << 6) | (c3 & 0x3F));
                     break;
                 default:
                     /* 10xx xxxx, 1111 xxxx */
@@ -326,7 +326,7 @@ public abstract class BinaryInput {
             }
         }
         // The number of chars produced may be less than len
-        return new String(charBuffer, 0, charCount);
+        return new String(tempEncodingCharBuffer, 0, charCount);
     }
 
     /**
@@ -380,10 +380,10 @@ public abstract class BinaryInput {
      */
     public final void read(boolean[] b, int off, int len) {
         ensureBufferSize(len);
-        read(byteBuffer, 0, len);
+        read(tempEncodingByteBuffer, 0, len);
         int limit = off + len;
         for (int i = off, j = 0; i < limit; i++) {
-            b[i] = byteBuffer[j++] != 0;
+            b[i] = tempEncodingByteBuffer[j++] != 0;
         }
     }
 
@@ -395,11 +395,11 @@ public abstract class BinaryInput {
     public final void read(short[] b, int off, int len) {
         int size = len * Short.BYTES;
         ensureBufferSize(size);
-        read(byteBuffer, 0, size);
+        read(tempEncodingByteBuffer, 0, size);
         int limit = off + len;
         for (int i = off, j = 0; i < limit; i++) {
-            int b1 = (byteBuffer[j++] & 0xff);
-            int b2 = (byteBuffer[j++] & 0xff);
+            int b1 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b2 = (tempEncodingByteBuffer[j++] & 0xff);
             b[i] = packShort(b1, b2);
         }
     }
@@ -412,11 +412,11 @@ public abstract class BinaryInput {
     public final void read(char[] b, int off, int len) {
         int size = len * Character.BYTES;
         ensureBufferSize(size);
-        read(byteBuffer, 0, size);
+        read(tempEncodingByteBuffer, 0, size);
         int limit = off + len;
         for (int i = off, j = 0; i < limit; i++) {
-            int b1 = (byteBuffer[j++] & 0xff);
-            int b2 = (byteBuffer[j++] & 0xff);
+            int b1 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b2 = (tempEncodingByteBuffer[j++] & 0xff);
             b[i] = packChar(b1, b2);
         }
     }
@@ -429,13 +429,13 @@ public abstract class BinaryInput {
     public final void read(int[] b, int off, int len) {
         int size = len * Integer.BYTES;
         ensureBufferSize(size);
-        read(byteBuffer, 0, size);
+        read(tempEncodingByteBuffer, 0, size);
         int limit = off + len;
         for (int i = off, j = 0; i < limit; i++) {
-            int b1 = (byteBuffer[j++] & 0xff);
-            int b2 = (byteBuffer[j++] & 0xff);
-            int b3 = (byteBuffer[j++] & 0xff);
-            int b4 = (byteBuffer[j++] & 0xff);
+            int b1 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b2 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b3 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b4 = (tempEncodingByteBuffer[j++] & 0xff);
             b[i] = packInt(b1, b2, b3, b4);
         }
     }
@@ -448,17 +448,17 @@ public abstract class BinaryInput {
     public final void read(long[] b, int off, int len) {
         int size = len * Long.BYTES;
         ensureBufferSize(size);
-        read(byteBuffer, 0, size);
+        read(tempEncodingByteBuffer, 0, size);
         int limit = off + len;
         for (int i = off, j = 0; i < limit; i++) {
-            int b1 = (byteBuffer[j++] & 0xff);
-            int b2 = (byteBuffer[j++] & 0xff);
-            int b3 = (byteBuffer[j++] & 0xff);
-            int b4 = (byteBuffer[j++] & 0xff);
-            int b5 = (byteBuffer[j++] & 0xff);
-            int b6 = (byteBuffer[j++] & 0xff);
-            int b7 = (byteBuffer[j++] & 0xff);
-            int b8 = (byteBuffer[j++] & 0xff);
+            int b1 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b2 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b3 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b4 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b5 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b6 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b7 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b8 = (tempEncodingByteBuffer[j++] & 0xff);
             b[i] = packLong(b1, b2, b3, b4, b5, b6, b7, b8);
         }
     }
@@ -471,13 +471,13 @@ public abstract class BinaryInput {
     public final void read(float[] b, int off, int len) {
         int size = len * Float.BYTES;
         ensureBufferSize(size);
-        read(byteBuffer, 0, size);
+        read(tempEncodingByteBuffer, 0, size);
         int limit = off + len;
         for (int i = off, j = 0; i < limit; i++) {
-            int b1 = (byteBuffer[j++] & 0xff);
-            int b2 = (byteBuffer[j++] & 0xff);
-            int b3 = (byteBuffer[j++] & 0xff);
-            int b4 = (byteBuffer[j++] & 0xff);
+            int b1 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b2 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b3 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b4 = (tempEncodingByteBuffer[j++] & 0xff);
             b[i] = Float.intBitsToFloat(packInt(b1, b2, b3, b4));
         }
     }
@@ -490,17 +490,17 @@ public abstract class BinaryInput {
     public final void read(double[] b, int off, int len) {
         int size = len * Double.BYTES;
         ensureBufferSize(size);
-        read(byteBuffer, 0, size);
+        read(tempEncodingByteBuffer, 0, size);
         int limit = off + len;
         for (int i = off, j = 0; i < limit; i++) {
-            int b1 = (byteBuffer[j++] & 0xff);
-            int b2 = (byteBuffer[j++] & 0xff);
-            int b3 = (byteBuffer[j++] & 0xff);
-            int b4 = (byteBuffer[j++] & 0xff);
-            int b5 = (byteBuffer[j++] & 0xff);
-            int b6 = (byteBuffer[j++] & 0xff);
-            int b7 = (byteBuffer[j++] & 0xff);
-            int b8 = (byteBuffer[j++] & 0xff);
+            int b1 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b2 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b3 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b4 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b5 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b6 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b7 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b8 = (tempEncodingByteBuffer[j++] & 0xff);
             b[i] = Double.longBitsToDouble(packLong(b1, b2, b3, b4, b5, b6, b7, b8));
         }
     }
@@ -526,8 +526,8 @@ public abstract class BinaryInput {
     abstract int readImpl(byte[] b, int off, int len);
 
     private void ensureBufferSize(int len) {
-        if (byteBuffer == null || byteBuffer.length < len) {
-            byteBuffer = new byte[Math.max(bufferSize(0, len), 80)];
+        if (tempEncodingByteBuffer == null || tempEncodingByteBuffer.length < len) {
+            tempEncodingByteBuffer = new byte[Math.max(bufferSize(0, len), 80)];
         }
     }
 
