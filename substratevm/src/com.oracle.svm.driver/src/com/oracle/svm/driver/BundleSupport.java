@@ -287,7 +287,7 @@ final class BundleSupport {
     }
 
     Path substituteImagePath(Path origPath) {
-        pathSubstitutions.put(origPath, imagePathOutputDir);
+        pathSubstitutions.put(origPath, rootDir.relativize(imagePathOutputDir));
         return imagePathOutputDir;
     }
 
