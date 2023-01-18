@@ -275,9 +275,10 @@ public abstract class RuntimeCompilationFeature {
                         runtimeProviders.getLoopsDataProvider());
 
         FeatureHandler featureHandler = config.getFeatureHandler();
+        final boolean supportsStubBasedPlugins = !SubstrateOptions.useLLVMBackend();
         NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, runtimeConfig, hostedProviders, config.getMetaAccess(), config.getUniverse(), null, null, config.getNativeLibraries(),
                         config.getImageClassLoader(), ParsingReason.JITCompilation, ((Inflation) config.getBigBang()).getAnnotationSubstitutionProcessor(),
-                        new SubstrateClassInitializationPlugin(config.getHostVM()), ConfigurationValues.getTarget());
+                        new SubstrateClassInitializationPlugin(config.getHostVM()), ConfigurationValues.getTarget(), supportsStubBasedPlugins);
 
         NativeImageGenerator.registerReplacements(DebugContext.forCurrentThread(), featureHandler, runtimeConfig, runtimeConfig.getProviders(), false, true);
         featureHandler.forEachGraalFeature(feature -> feature.registerCodeObserver(runtimeConfig));
