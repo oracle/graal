@@ -5574,7 +5574,8 @@ public class FlatNodeGenFactory {
                     }
                 }
             }
-            builder.tree((multiState.createSet(frameState, transaction, StateQuery.create(SpecializationActive.class, excludesSpecializations), false, false)));
+            builder.tree((multiState.createSet(frameState, transaction,
+                            StateQuery.create(SpecializationActive.class, excludesSpecializations), false, transaction == null)));
         }
 
         return builder.build();
