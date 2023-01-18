@@ -50,7 +50,7 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
         this.valueType = valueType;
         this.delimiter = delimiter;
         values = new ArrayList<>();
-        values.addAll(defaults.stream().map(val -> Pair.create(val, "default")).collect(Collectors.toList()));
+        values.addAll(defaults.stream().map(val -> Pair.<T, String> createLeft(val)).collect(Collectors.toList()));
     }
 
     private LocatableMultiOptionValue(LocatableMultiOptionValue<T> other) {
