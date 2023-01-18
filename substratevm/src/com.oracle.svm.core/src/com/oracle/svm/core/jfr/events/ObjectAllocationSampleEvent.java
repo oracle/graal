@@ -37,21 +37,22 @@ import org.graalvm.nativeimage.StackValue;
 import com.oracle.svm.core.jfr.JfrThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
+import com.oracle.svm.core.thread.PlatformThreads;
 
 public class ObjectAllocationSampleEvent {
     private static final FastThreadLocalLong lastAllocationSize = FastThreadLocalFactory.createLong("ObjectAllocationSampleEvent.lastAllocationSize");
-    public static void emit(long startTicks, Class clazz, long weight) {
+    public static void emit(long startTicks, Class clazz) {
         if (HasJfrSupport.get()) {
             // TODO: consider moving this to after the isRecording check in emit0 to avoid duplicate checks. Might be a pain to deal with uninterruptibility though.
             // Doesn't hurt to check twice, might save us some time doing the sampling
             if (SubstrateJVM.isRecordingInterruptible() && SubstrateJVM.get().isEnabled(JfrEvent.ObjectAllocationSample) && SubstrateJVM.get().shouldCommit(JfrEvent.ObjectAllocationSample)) {
-                emit0(startTicks, clazz, weight);
+                emit0(startTicks, clazz);
             }
         }
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void emit0(long startTicks, Class clazz, long weight) {
+    private static void emit0(long startTicks, Class clazz) {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.ObjectAllocationSample)) {
             JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) SubstrateJVM.getThreadLocal();
             // This check is needed to avoid issues upon allocation from the thread that invokes the
@@ -59,7 +60,7 @@ public class ObjectAllocationSampleEvent {
             if (!jfrThreadLocal.initialized()) {
                 return;
             }
-            long currentAllocationSize = com.oracle.svm.core.thread.PlatformThreads.getThreadAllocatedBytes(Thread.currentThread().getId());
+            long currentAllocationSize = PlatformThreads.getThreadAllocatedBytes(Thread.currentThread().getId());
 
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);

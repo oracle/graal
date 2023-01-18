@@ -26,7 +26,6 @@ public class JfrThrottlerSupport {
     }
 
     public boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {
-        //TODO  may need to protect with mutex
         JfrThrottler throttler = getThrottler(eventTypeId);
         if (throttler == null) {
             //event doesn't support throttling

@@ -240,7 +240,7 @@ public final class ThreadLocalAllocation {
             return allocateInstanceInNewTlab(hub, newTlab);
         } finally {
             ObjectAllocationInNewTLABEvent.emit(startTicks, hub, LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding()), HeapParameters.getAlignedHeapChunkSize());
-            ObjectAllocationSampleEvent.emit(startTicks, DynamicHub.toClass(hub), 0);
+            ObjectAllocationSampleEvent.emit(startTicks, DynamicHub.toClass(hub));
             DeoptTester.enableDeoptTesting();
         }
     }
@@ -319,8 +319,12 @@ public final class ThreadLocalAllocation {
             }
             return array;
         } finally {
+<<<<<<< HEAD
             ObjectAllocationInNewTLABEvent.emit(startTicks, hub, size, tlabSize);
             ObjectAllocationSampleEvent.emit(startTicks, DynamicHub.toClass(hub), 0);
+=======
+            ObjectAllocationSampleEvent.emit(startTicks, DynamicHub.toClass(hub));
+>>>>>>> 7bf8d435e5a (evenly space out samples based on previous window)
             DeoptTester.enableDeoptTesting();
         }
     }
