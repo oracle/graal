@@ -116,7 +116,7 @@ The following table lists production-ready and experimental features in GraalVM 
 | Python          | experimental | not available | experimental | not available | not available |
 | Ruby            | experimental | experimental  | experimental | experimental  | not available |
 | R               | experimental | not available | experimental | not available | not available |
-| WebAssembly     | experimental | experimental  | experimental | experimental  | experimental  |
+| WebAssembly     | experimental | experimental  | experimental | not available | experimental  |
 
 ## What to Read Next
 
