@@ -587,19 +587,19 @@ final class BundleSupport {
     }
 
     private void writeBundleProperties(Path bundlePropertiesFile) {
-        Properties nibp = new Properties();
-        nibp.setProperty("BundleFileVersionMajor", String.valueOf(bundleFileFormatVersionMajor));
-        nibp.setProperty("BundleFileVersionMinor", String.valueOf(bundleFileFormatVersionMinor));
+        Properties properties = new Properties();
+        properties.setProperty("BundleFileVersionMajor", String.valueOf(bundleFileFormatVersionMajor));
+        properties.setProperty("BundleFileVersionMinor", String.valueOf(bundleFileFormatVersionMinor));
         boolean imageBuilt = status.buildImage && !nativeImage.isDryRun();
-        nibp.setProperty("ImageBuilt", String.valueOf(imageBuilt));
+        properties.setProperty("ImageBuilt", String.valueOf(imageBuilt));
         if (imageBuilt) {
-            nibp.setProperty("BuildContainerized", String.valueOf(false));
+            properties.setProperty("BuildContainerized", String.valueOf(false));
         }
-        nibp.setProperty("NativeImagePlatform", NativeImage.platform);
-        nibp.setProperty("NativeImageVersion", NativeImage.graalvmVersion);
+        properties.setProperty("NativeImagePlatform", NativeImage.platform);
+        properties.setProperty("NativeImageVersion", NativeImage.graalvmVersion);
         NativeImage.ensureDirectoryExists(bundlePropertiesFile.getParent());
         try (OutputStream outputStream = Files.newOutputStream(bundlePropertiesFile)) {
-            nibp.store(outputStream, "Native Image bundle file properties");
+            properties.store(outputStream, "Native Image bundle file properties");
         } catch (IOException e) {
             throw NativeImage.showError("Creating bundle properties file failed", e);
         }
@@ -610,14 +610,14 @@ final class BundleSupport {
             throw NativeImage.showError("The given bundle file " + bundleName + " does not contain a bundle properties file");
         }
 
-        Map<String, String> bundleProperties = NativeImage.loadProperties(propertiesFile);
+        Map<String, String> properties = NativeImage.loadProperties(propertiesFile);
         String fileVersionKey = "BundleFileVersionMajor";
         try {
-            int major = Integer.parseInt(bundleProperties.getOrDefault(fileVersionKey, "-1"));
+            int major = Integer.parseInt(properties.getOrDefault(fileVersionKey, "-1"));
             fileVersionKey = "BundleFileVersionMinor";
-            int minor = Integer.parseInt(bundleProperties.getOrDefault(fileVersionKey, "-1"));
-            String message = String.format("The given bundle file %s was created with newer bundle file version %d.%d." +
-                            " Update to the latest version of native-image.", bundleName, major, minor);
+            int minor = Integer.parseInt(properties.getOrDefault(fileVersionKey, "-1"));
+            String message = String.format("The given bundle file %s was created with newer bundle-file-format version %d.%d" +
+                            " (current %d.%d). Update to the latest version of native-image.", bundleName, major, minor, bundleFileFormatVersionMajor, bundleFileFormatVersionMinor);
             if (major > bundleFileFormatVersionMajor) {
                 throw NativeImage.showError(message);
             } else if (major == bundleFileFormatVersionMajor) {
@@ -627,6 +627,14 @@ final class BundleSupport {
             }
         } catch (NumberFormatException e) {
             throw NativeImage.showError(fileVersionKey + " in " + bundlePropertiesFileName + " is missing or ill-defined", e);
+        }
+        String bundlePlatform = properties.getOrDefault("NativeImagePlatform", "unknown");
+        if (!bundlePlatform.equals(NativeImage.platform)) {
+            NativeImage.showWarning(String.format("The given bundle file %s was created on platform %s (current %s).", bundleName, bundlePlatform, NativeImage.platform));
+        }
+        String bundleNativeImageVersion = properties.getOrDefault("NativeImageVersion", "unknown");
+        if (!bundleNativeImageVersion.equals(NativeImage.graalvmVersion)) {
+            NativeImage.showWarning(String.format("The given bundle file %s was created with native-image %s (current %s).", bundleName, bundleNativeImageVersion, NativeImage.graalvmVersion));
         }
     }
 
