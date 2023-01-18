@@ -57,7 +57,7 @@ java -truffle [options] class
 ```
 To execute a JAR file:
 ```shell
-java -truffle [options] --jar jarfile
+java -truffle [options] -jar jarfile
 ```
 
 Using Java 11 based GraalVM distribution, you can also run a Java application from the main class in a module, or run a single source-file program:
