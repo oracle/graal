@@ -1239,6 +1239,11 @@ public class NativeImage {
             return false;
         }
 
+        if (useBundle() && bundleSupport.status.loadBundle) {
+            /* If bundle was loaded we have valid -cp and/or -p from within the bundle */
+            return false;
+        }
+
         /* If no customImageClasspath was specified put "." on classpath */
         return customImageClasspath.isEmpty() && imageModulePath.isEmpty();
     }
