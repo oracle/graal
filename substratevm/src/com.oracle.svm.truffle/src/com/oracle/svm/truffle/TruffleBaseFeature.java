@@ -799,7 +799,18 @@ public final class TruffleBaseFeature implements InternalFeature {
             }
 
             static void onBuildInvocation(Class<?> storageSuperClass, Class<?> factoryInterface) {
-                generateArrayBasedStorage(storageSuperClass, factoryInterface, beforeAnalysisAccess);
+                try {
+                    /*
+                     * Trigger code generation also for those (storageSuperClass; factoryInterface)
+                     * pairs that are not encountered during context pre-initialization. Since
+                     * ArrayBasedShapeGenerator caches generated classes, there won't be code
+                     * generation at run time.
+                     */
+                    ClassLoader generatorCL = getGeneratorClassLoader(factoryInterface);
+                    getGetShapeGenerator(generatorCL, storageSuperClass, factoryInterface);
+                } catch (ReflectiveOperationException e) {
+                    throw VMError.shouldNotReachHere(e);
+                }
             }
 
             static void duringAnalysis(DuringAnalysisAccess access) {
@@ -834,16 +845,6 @@ public final class TruffleBaseFeature implements InternalFeature {
                 }
             }
 
-            @SuppressWarnings("unused")
-            private static void generateArrayBasedStorage(Class<?> storageSuperClass, Class<?> factoryInterface, BeforeAnalysisAccess access) {
-                try {
-                    ClassLoader generatorCL = getGeneratorClassLoader(factoryInterface);
-                    getGetShapeGenerator(generatorCL, storageSuperClass, factoryInterface);
-                } catch (ReflectiveOperationException e) {
-                    throw VMError.shouldNotReachHere(e);
-                }
-            }
-
             private static ClassLoader getGeneratorClassLoader(Class<?> factoryInterface) throws ReflectiveOperationException {
                 ClassLoader cl = CLASS_LOADERS.get(factoryInterface);
                 if (cl == null) {
@@ -856,9 +857,6 @@ public final class TruffleBaseFeature implements InternalFeature {
                 return cl;
             }
 
-            /*
-             * Triggers shape generation.
-             */
             private static void getGetShapeGenerator(ClassLoader generatorCL, Class<?> storageSuperClass, Class<?> factoryInterface) throws ReflectiveOperationException {
                 String storageClassName = (String) STORAGE_CLASS_NAME.invoke(null);
                 GET_ARRAY_BASED_SHAPE_GENERATOR.invoke(null, null, generatorCL, storageSuperClass, factoryInterface, storageClassName);
