@@ -431,20 +431,33 @@ final class BundleSupport {
 
     void complete() {
         assert status.buildImage || status.writeBundle : "Superfluous bundle operations";
+        final boolean[] firstMessage = {true};
+        Runnable outputNewline = () -> {
+            if (firstMessage[0]) {
+                nativeImage.showNewline();
+                firstMessage[0] = false;
+            }
+        };
 
         if (status.buildImage) {
-            Path externalOutputDir = bundlePath.resolve(nativeImage.imageName + "." + outputDir.getFileName());
-            copyFiles(outputDir, externalOutputDir, true);
-            nativeImage.showNewline();
-            nativeImage.showMessage("Bundle output written to " + externalOutputDir);
+            boolean writeOutput;
+            try (Stream<Path> pathOutputFiles = Files.list(imagePathOutputDir); Stream<Path> auxiliaryOutputFiles = Files.list(auxiliaryOutputDir)) {
+                writeOutput = pathOutputFiles.findAny().isPresent() || auxiliaryOutputFiles.findAny().isPresent();
+            } catch (IOException e) {
+                throw NativeImage.showError("Unable to determine if bundle output should be written.");
+            }
+            if (writeOutput) {
+                Path externalOutputDir = bundlePath.resolve(nativeImage.imageName + "." + outputDir.getFileName());
+                copyFiles(outputDir, externalOutputDir, true);
+                outputNewline.run();
+                nativeImage.showMessage("Bundle build output written to " + externalOutputDir);
+            }
         }
 
         try {
             if (status.writeBundle) {
                 Path bundleFilePath = writeBundle();
-                if (!status.buildImage) {
-                    nativeImage.showNewline();
-                }
+                outputNewline.run();
                 nativeImage.showMessage("Bundle written to " + bundleFilePath);
             }
         } finally {
