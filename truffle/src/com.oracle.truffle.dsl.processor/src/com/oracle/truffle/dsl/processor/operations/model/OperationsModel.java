@@ -95,6 +95,7 @@ public class OperationsModel extends Template implements InfoDumpable {
     public boolean enableTracing;
     public String decisionsFilePath;
     public boolean enableOptimizations;
+    public OptimizationDecisionsModel optimizationDecisions;
 
     public OperationModel blockOperation;
     public OperationModel rootOperation;

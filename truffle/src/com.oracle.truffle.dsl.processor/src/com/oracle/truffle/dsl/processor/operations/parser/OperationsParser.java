@@ -45,6 +45,8 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.getQualifiedNam
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.nio.file.Path;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -67,8 +69,16 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.operations.model.OperationsModel;
+import com.oracle.truffle.dsl.processor.operations.model.OptimizationDecisionsModel;
+import com.oracle.truffle.dsl.processor.operations.model.OptimizationDecisionsModel.CommonInstructionDecision;
+import com.oracle.truffle.dsl.processor.operations.model.OptimizationDecisionsModel.QuickenDecision;
+import com.oracle.truffle.dsl.processor.operations.model.OptimizationDecisionsModel.SuperInstructionDecision;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.dsl.processor.parser.TypeSystemParser;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONException;
+import com.oracle.truffle.tools.utils.json.JSONObject;
+import com.oracle.truffle.tools.utils.json.JSONTokener;
 
 public class OperationsParser extends AbstractParser<OperationsModel> {
 
@@ -220,11 +230,13 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
             new CustomOperationParser(model, mir, true).parse(te);
         }
 
-        AnnotationValue decisionsFilePathValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionsFile", false);
-        if (decisionsFilePathValue != null) {
-            model.decisionsFilePath = resolveElementRelativePath(typeElement, (String) decisionsFilePathValue.getValue());
+        AnnotationValue decisionsFileValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionsFile", false);
+        AnnotationValue decisionsOverrideFilesValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionsOverrideFiles", false);
+        String decisionsFilePath = null;
+        String[] decisionsOverrideFilesPath = new String[0];
 
-            // todo: find and bind decisionOverrideFiles
+        if (decisionsFileValue != null) {
+            model.decisionsFilePath = resolveElementRelativePath(typeElement, (String) decisionsFileValue.getValue());
 
             if (TruffleProcessorOptions.operationsEnableTracing(processingEnv)) {
                 model.enableTracing = true;
@@ -234,10 +246,14 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
             }
         }
 
-        model.enableOptimizations = decisionsFilePathValue != null && !model.enableTracing;
+        if (decisionsOverrideFilesValue != null) {
+            decisionsOverrideFilesPath = ((List<AnnotationValue>) decisionsOverrideFilesValue.getValue()).stream().map(x -> (String) x.getValue()).toArray(String[]::new);
+        }
+
+        model.enableOptimizations = (decisionsFileValue != null || decisionsOverrideFilesValue != null) && !model.enableTracing;
 
         if (model.enableOptimizations) {
-            // todo: read from decisions file path and apply optimizations
+            model.optimizationDecisions = parseDecisions(model, model.decisionsFilePath, decisionsOverrideFilesPath);
         }
 
         return model;
@@ -246,6 +262,74 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
     private String resolveElementRelativePath(Element element, String relativePath) {
         File filePath = CompilerFactory.getCompiler(element).getEnclosingSourceFile(processingEnv, element);
         return Path.of(filePath.getPath()).getParent().resolve(relativePath).toAbsolutePath().toString();
+    }
+
+    private static OptimizationDecisionsModel parseDecisions(OperationsModel model, String decisionsFile, String[] decisionOverrideFiles) {
+        OptimizationDecisionsModel result = new OptimizationDecisionsModel();
+        result.decisionsFilePath = decisionsFile;
+        result.decisionsOverrideFilePaths = decisionOverrideFiles;
+
+        if (decisionsFile != null) {
+            parseDecisionsFile(model, result, decisionsFile, true);
+        }
+
+        return result;
+    }
+
+    private static void parseDecisionsFile(OperationsModel model, OptimizationDecisionsModel result, String filePath, boolean isMain) {
+        try {
+            FileInputStream fi = new FileInputStream(filePath);
+            JSONArray o = new JSONArray(new JSONTokener(fi));
+            for (int i = 0; i < o.length(); i++) {
+                if (o.get(i) instanceof String) {
+                    // strings are treated as comments
+                    continue;
+                } else {
+                    parseDecision(model, result, filePath, o.getJSONObject(i));
+                }
+            }
+        } catch (FileNotFoundException ex) {
+            if (isMain) {
+                model.addError("Decisions file '%s' not found. Build & run with tracing enabled to generate it.", filePath);
+            } else {
+                model.addError("Decisions file '%s' not found. Create it, or remove it from decisionOverrideFiles to resolve this error.", filePath);
+            }
+        } catch (JSONException ex) {
+            model.addError("Decisions file '%s' is invalid: %s", filePath, ex);
+        }
+    }
+
+    private static void parseDecision(OperationsModel model, OptimizationDecisionsModel result, String filePath, JSONObject decision) {
+        switch (decision.getString("type")) {
+            case "SuperInstruction": {
+                SuperInstructionDecision m = new SuperInstructionDecision();
+                m.id = decision.getString("id");
+                m.instructions = jsonGetStringArray(decision, "instructions");
+                result.superInstructionDecisions.add(m);
+                break;
+            }
+            case "CommonInstruction": {
+                CommonInstructionDecision m = new CommonInstructionDecision();
+                m.id = decision.getString("id");
+                result.commonInstructionDecisions.add(m);
+                break;
+            }
+            case "Quicken": {
+                QuickenDecision m = new QuickenDecision();
+                m.id = decision.getString("id");
+                m.instruction = decision.getString("instruction");
+                m.specializations = jsonGetStringArray(decision, "specializations");
+                result.quickenDecisions.add(m);
+                break;
+            }
+            default:
+                model.addError("Unknown optimization decision type: '%s'.", decision.getString("type"));
+                break;
+        }
+    }
+
+    private static String[] jsonGetStringArray(JSONObject obj, String key) {
+        return ((List<?>) obj.getJSONArray(key).toList()).toArray(String[]::new);
     }
 
     private TypeMirror getTypeMirror(AnnotationValue value) throws AssertionError {
