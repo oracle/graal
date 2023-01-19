@@ -36,7 +36,8 @@
 
   "catch_files" : [
     "Graal diagnostic output saved in '(?P<filename>[^']+)'",
-    "Dumping debug output to '(?P<filename>[^']+)'"
+    "Dumping debug output to '(?P<filename>[^']+)'",
+    " (?P<filename>.+/svm_err_b_\\d+T\\d+\\.\\d+_pid\\d+\\.md)"
   ],
 
   "deps": {
