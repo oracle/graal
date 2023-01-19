@@ -42,8 +42,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -190,7 +190,10 @@ public class ReachabilityHandlerFeature implements InternalFeature, Reachability
                 Set<Object> prevReachable = handledTriggers.computeIfAbsent(trigger, c -> new HashSet<>());
                 newReachable.removeAll(prevReachable);
                 for (AnalysisMethod reachable : newReachable) {
-                    toOverrideCallback(callback).accept(access, reachable.getJavaMethod());
+                    Executable javaMethod = reachable.getJavaMethod();
+                    if (javaMethod != null) {
+                        toOverrideCallback(callback).accept(access, javaMethod);
+                    }
                     prevReachable.add(reachable);
                 }
             } else {
