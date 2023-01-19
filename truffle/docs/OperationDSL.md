@@ -541,6 +541,99 @@ With this, we can define some common short-circuiting operations:
     continueWhen = true)
 ```
 
+## Translating your language into operations
+
+When writing the Operation DSL parser for a language, your task is to translate the semantics of your language into individual operations. This is a process called "desugaring", as it can be thought as a similar process to removing syntax sugar from a language - translating higher level language constructs into lower, more verbose level. As an example of this process, lets take a simple iterator-style `for` loop (we use `«...»` as metaqotes):
+
+```python
+for x in «iterable»:
+  «body»
+```
+
+The semantics of this language construct can be expressed as follows:
+* Evaluate the iterable
+* Get the iterator from `«iterable»`
+* As long as you can get a value from the iterator:
+  * Bind the value to the variable `x`
+  * Evaluate the `«body»`
+
+Now we need to express this in terms of operations. In general, you can think of Operation DSL's operations as Java with some additional features:
+* Custom operations are similar to functions, except they can also take "output" parameters (similar to by-reference C++ parameters, or `out` parameters in C#).
+  * Short-circuiting operations are the exception, as different execution order rules apply to them.
+* Blocks can appear anywhere in the expression, allowing you to insert statements in the middle of otherwise "expression" contexts (similar to blocks in Rust).
+* Currently there are no static types - everything is an `Object`.
+* TryExcept does not allow filtering exceptions based on type.
+
+Now we can write the previous semantics in this pseudo-Java language. To help us, we will introduce a temporary local, `tmpIterator`.
+
+```csharp
+var tmpIterator = GetIterator(«iterable»);
+var x;
+while (GetNextFromIterator(tmpIterator, out x)) {
+  «body»
+}
+```
+
+To implement this, we need 2 custom operations:
+
+* `GetIterator(iterable)` whilch will take an iterable, and produce the iterator from it.
+* `GetNextFromIterator(iterator, out value)` which will take an iterator and then either:
+  * Set the `value` to the next element of the iterator, and return `true`, or
+  * Return `false` once we reach the end of the iterator.
+
+These operations can easily be implemented using Operation DSL. For example:
+
+
+```java
+@Operation
+public static final class GetIterator {
+  @Specialization
+  public MyIterator perform(MyIterable iterable) {
+    return iterable.createIterator();
+  }
+}
+
+@Operation
+public static final class GetNextFromIterator {
+  @Specialization
+  public boolean perform(MyIterator iterator, LocalSetter value) {
+    if (iterator.hasNext()) {
+      value.setObject(iterator.getNext());
+      return true;
+    } else {
+      return false;
+    }
+  }
+}
+```
+
+Then, we need to transform the previously written "desugared" form into individual builder calls in our parser. If we are using a visitor pattern parser, this would look something like this (indented for readability):
+
+```java
+// in our ast visitor
+public void visit(ForNode node) {
+  OperationLocal tmpIterator = b.createLocal();
+  
+  b.beginStoreLocal(tmpIterator);
+    b.beginGetIterator();
+      node.iterator.accept(this);
+    b.endGetIterator();
+  b.endStoreLocal();
+  
+  b.beginWhile();
+    b.beginGetNextFromIterator(valueLocal);
+      b.emitLoadLocal(tmpIterator);
+    b.endGetNextFromIterator();
+    
+    b.beginBlock();
+      // if your language supports destructuring (e.g. `for x, y in ...`)
+      // you would do that here as well
+      node.body.accept(this);
+    b.endBlock();
+  b.endWhile();
+}
+```
+
 ## Tracing and optimizations
 
 A large benefit of Operation DSL is that automated optimizations, that would otherwise need manual maintenance, can be automatically generated. To help with determining which optimizations are worth implementing (since most optimizations has some drawbacks that need to be considered), an automated system of *tracing* and *decision derivation* is implemented.
