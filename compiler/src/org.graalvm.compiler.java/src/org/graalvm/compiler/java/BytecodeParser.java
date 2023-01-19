@@ -1998,7 +1998,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         TypeReference checkedTypeRef = TypeReference.createTrusted(graph.getAssumptions(), checkedType);
         LogicNode condition = genUnique(InstanceOfNode.create(checkedTypeRef, object));
         ValueNode guardingNode;
-        if (needsExplicitException()) {
+        if (needsExplicitIncompatibleClassChangeError()) {
             guardingNode = emitBytecodeExceptionCheck(condition, true, BytecodeExceptionKind.INCOMPATIBLE_CLASS_CHANGE);
         } else {
             guardingNode = append(new FixedGuardNode(condition, ClassCastException, None, false));
@@ -4746,6 +4746,15 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     protected boolean needsIncompatibleClassChangeErrorCheck() {
+        return false;
+    }
+
+    protected boolean needsExplicitIncompatibleClassChangeError() {
+        /*
+         * Note that we cannot use needsExplicitException() here: The "exception seen" profiling
+         * information for an invokeinterface bytecode is not related to the incompatible class
+         * change check, i.e., the Java HotSpot VM never has profiling information.
+         */
         return false;
     }
 
