@@ -298,7 +298,7 @@ public class SVMHost extends HostVM {
         }
 
         /* Compute the automatic substitutions. */
-        automaticSubstitutions.computeSubstitutions(this, GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()), options);
+        automaticSubstitutions.computeSubstitutions(this, GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()));
     }
 
     @Override

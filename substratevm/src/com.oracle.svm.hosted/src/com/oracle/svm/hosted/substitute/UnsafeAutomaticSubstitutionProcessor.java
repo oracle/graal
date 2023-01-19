@@ -49,6 +49,7 @@ import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.java.GraphBuilderPhase;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -64,11 +65,13 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
+import org.graalvm.compiler.nodes.util.ConstantFoldUtil;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -91,6 +94,7 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializerGraphBuilderPha
 import com.oracle.svm.hosted.phases.ConstantFoldLoadFieldPlugin;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
@@ -147,9 +151,11 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
     private Plugins plugins;
 
-    private SnippetReflectionProvider snippetReflection;
+    private final OptionValues options;
+    private final SnippetReflectionProvider snippetReflection;
 
-    public UnsafeAutomaticSubstitutionProcessor(AnnotationSubstitutionProcessor annotationSubstitutions, SnippetReflectionProvider snippetReflection) {
+    public UnsafeAutomaticSubstitutionProcessor(OptionValues options, AnnotationSubstitutionProcessor annotationSubstitutions, SnippetReflectionProvider snippetReflection) {
+        this.options = options;
         this.snippetReflection = snippetReflection;
         this.annotationSubstitutions = annotationSubstitutions;
         this.fieldSubstitutions = new ConcurrentHashMap<>();
@@ -280,7 +286,13 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
         ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions, classInitializationPlugin, plugins.getInvocationPlugins(), null,
                         ParsingReason.UnsafeSubstitutionAnalysis);
-        plugins.appendNodePlugin(new ConstantFoldLoadFieldPlugin(ParsingReason.UnsafeSubstitutionAnalysis));
+
+        /*
+         * Note: ConstantFoldLoadFieldPlugin should not be installed because it will disrupt
+         * patterns that we try to match, e.g., like processArrayIndexShiftFromField() which relies
+         * on the fact that the array index shift computation can be tracked back to the matching
+         * array index scale.
+         */
 
         /*
          * Analyzing certain classes leads to false errors. We disable reporting for those classes
@@ -337,7 +349,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
     }
 
     @SuppressWarnings("try")
-    public void computeSubstitutions(SVMHost hostVM, ResolvedJavaType hostType, OptionValues options) {
+    public void computeSubstitutions(SVMHost hostVM, ResolvedJavaType hostType) {
         if (hostType.isArray()) {
             return;
         }
@@ -373,7 +385,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
              */
             DebugContext debug = new Builder(options).build();
             try (DebugContext.Scope s = debug.scope("Field offset computation", clinit)) {
-                StructuredGraph clinitGraph = getStaticInitializerGraph(clinit, options, debug);
+                StructuredGraph clinitGraph = getStaticInitializerGraph(clinit, debug);
 
                 for (Invoke invoke : clinitGraph.getInvokes()) {
                     if (invoke.callTarget() instanceof MethodCallTargetNode) {
@@ -417,17 +429,48 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         String targetFieldName = null;
 
         String methodFormat = invoke.callTarget().targetMethod().format("%H.%n(%P)");
-        ValueNode fieldArgument = invoke.callTarget().arguments().get(1);
-        if (fieldArgument.isConstant()) {
-            Field targetField = snippetReflection.asObject(Field.class, fieldArgument.asJavaConstant());
+        ValueNode fieldArgumentNode = invoke.callTarget().arguments().get(1);
+        JavaConstant fieldArgument = nodeAsConstant(fieldArgumentNode);
+        if (fieldArgument != null) {
+            Field targetField = snippetReflection.asObject(Field.class, fieldArgument);
             if (isValidField(invoke, targetField, unsuccessfulReasons, methodFormat)) {
                 targetFieldHolder = targetField.getDeclaringClass();
                 targetFieldName = targetField.getName();
             }
         } else {
-            unsuccessfulReasons.add("The argument of " + methodFormat + " is not a constant field.");
+            unsuccessfulReasons.add("The argument of " + methodFormat + " is not a constant value or a field load that can be constant-folded.");
         }
         processUnsafeFieldComputation(type, invoke, kind, unsuccessfulReasons, targetFieldHolder, targetFieldName);
+    }
+
+    /**
+     * Try to extract a {@link JavaConstant} from a {@link ValueNode}. If the node is a
+     * {@link LoadFieldNode} it attempts to constant fold it. We manually constant fold just
+     * specific nodes instead of globally installing {@link ConstantFoldLoadFieldPlugin} to avoid
+     * folding load filed nodes that could disrupt other patterns that we try to match, e.g., like
+     * {@link #processArrayIndexShiftFromField(ResolvedJavaType, ResolvedJavaField, Class, StructuredGraph)}.
+     */
+    private JavaConstant nodeAsConstant(ValueNode node) {
+        if (node.isConstant()) {
+            return node.asJavaConstant();
+        } else if (node instanceof LoadFieldNode) {
+            LoadFieldNode loadFieldNode = (LoadFieldNode) node;
+            ResolvedJavaField field = loadFieldNode.field();
+            JavaConstant receiver = null;
+            if (!field.isStatic()) {
+                ValueNode receiverNode = loadFieldNode.object();
+                if (receiverNode.isConstant()) {
+                    receiver = receiverNode.asJavaConstant();
+                }
+            }
+            Providers p = GraalAccess.getOriginalProviders();
+            ConstantNode result = ConstantFoldUtil.tryConstantFold(p.getConstantFieldProvider(), p.getConstantReflection(), p.getMetaAccess(),
+                            field, receiver, options, loadFieldNode.getNodeSourcePosition());
+            if (result != null) {
+                return result.asJavaConstant();
+            }
+        }
+        return null;
     }
 
     private boolean isValidField(Invoke invoke, Field field, List<String> unsuccessfulReasons, String methodFormat) {
@@ -629,6 +672,9 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
      *          byteArrayIndexShift = 31 - Integer.numberOfLeadingZeros(byteArrayIndexScale);
      *      }
      * </code>
+     * 
+     * It is important that constant folding is not enabled for the byteArrayIndexScale load because
+     * it would break the link between the scale and shift computations.
      */
     private boolean processArrayIndexShiftFromField(ResolvedJavaType type, ResolvedJavaField indexScaleField, Class<?> arrayClass, StructuredGraph clinitGraph) {
         for (LoadFieldNode load : clinitGraph.getNodes().filter(LoadFieldNode.class)) {
@@ -1109,7 +1155,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         return annotationSubstitutions.isAliased(type);
     }
 
-    private StructuredGraph getStaticInitializerGraph(ResolvedJavaMethod clinit, OptionValues options, DebugContext debug) {
+    private StructuredGraph getStaticInitializerGraph(ResolvedJavaMethod clinit, DebugContext debug) {
         assert clinit.hasBytecodes();
 
         HighTierContext context = new HighTierContext(GraalAccess.getOriginalProviders(), null, OptimisticOptimizations.NONE);
