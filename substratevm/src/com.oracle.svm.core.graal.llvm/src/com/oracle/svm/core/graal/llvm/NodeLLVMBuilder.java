@@ -748,6 +748,10 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
                         "value type doesn't match node stamp (" + node.stamp(NodeView.DEFAULT).toString() + ")", llvmOperand.get());
 
         gen.getDebugInfoPrinter().setValueName(llvmOperand, node);
+        if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
+                LLVMValueRef instr = llvmOperand.get();
+                builder.buildDebugInfoForInstr(node, instr);
+        }
         valueMap.put(node, llvmOperand);
         return operand;
     }
