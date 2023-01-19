@@ -79,11 +79,13 @@ public class InstructionModel implements InfoDumpable {
         public final TypeMirror type;
         public final String name;
         public final boolean needInUncached;
+        public final boolean needLocationFixup;
 
-        public InstructionField(TypeMirror type, String name, boolean needInUncached) {
+        public InstructionField(TypeMirror type, String name, boolean needInUncached, boolean needLocationFixup) {
             this.type = type;
             this.name = name;
             this.needInUncached = needInUncached;
+            this.needLocationFixup = needLocationFixup;
         }
     }
 
@@ -147,8 +149,8 @@ public class InstructionModel implements InfoDumpable {
         return false;
     }
 
-    public void addField(TypeMirror type, String fieldName, boolean needInUncached) {
-        fields.add(new InstructionField(type, fieldName, needInUncached));
+    public void addField(TypeMirror type, String fieldName, boolean needInUncached, boolean needLocationFixup) {
+        fields.add(new InstructionField(type, fieldName, needInUncached, needLocationFixup));
     }
 
     public List<InstructionField> getUncachedFields() {

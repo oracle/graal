@@ -61,7 +61,7 @@ public final class OperationIntrospection {
     // format: [int 0, Object[] instructions, Object[] exHandlers, Object[] sourceInfo or null]
     // instruction: [int index, String name, short[] bytes, Object[] argumentValues]
     // argumentValue: [ArgumentKind kind, Object value]
-    // exHandler: [int startIndex, int endIndex, int handlerIndex]
+    // exHandler: [int startIndex, int endIndex, int handlerIndex, int exVariable]
     // sourceInfo: [int startIndex, int endIndex, SourceSection ss]
 
     private OperationIntrospection(Object[] data) {

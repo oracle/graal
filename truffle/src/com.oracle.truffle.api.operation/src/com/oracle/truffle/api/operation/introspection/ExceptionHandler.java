@@ -60,8 +60,12 @@ public final class ExceptionHandler {
         return (int) data[2];
     }
 
+    public int getExceptionVariableIndex() {
+        return (int) data[3];
+    }
+
     @Override
     public String toString() {
-        return String.format("[%04x : %04x] -> %04x", getStartIndex(), getEndIndex(), getHandlerIndex());
+        return String.format("[%04x : %04x] -> %04x ex: local(%d)", getStartIndex(), getEndIndex(), getHandlerIndex(), getExceptionVariableIndex());
     }
 }

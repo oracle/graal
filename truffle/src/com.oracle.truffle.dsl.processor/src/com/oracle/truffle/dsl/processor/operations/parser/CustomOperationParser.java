@@ -384,32 +384,32 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         instr.nodeData.redirectMessagesOnGeneratedElements(parent);
 
         if (signature.resultBoxingElimination) {
-            instr.addField(context.getType(byte.class), "op_resultType_", false);
+            instr.addField(context.getType(byte.class), "op_resultType_", false, false);
         }
 
         for (int i = 0; i < signature.valueBoxingElimination.length; i++) {
             if (signature.valueBoxingElimination[i]) {
                 // we could move these to cached-only fields, but then we need more processing
                 // once we go uncached -> cached (recalculating the value offsets and child indices)
-                instr.addField(context.getType(int.class), "op_childValue" + i + "_boxing_", true);
+                instr.addField(context.getType(int.class), "op_childValue" + i + "_boxing_", true, true);
             }
         }
 
         if (signature.isVariadic) {
-            instr.addField(context.getType(int.class), "op_variadicCount_", true);
+            instr.addField(context.getType(int.class), "op_variadicCount_", true, false);
         }
 
         for (int i = 0; i < signature.localSetterCount; i++) {
-            instr.addField(types.LocalSetter, "op_localSetter" + i + "_", true);
+            instr.addField(types.LocalSetter, "op_localSetter" + i + "_", true, false);
         }
 
         for (int i = 0; i < signature.localSetterRangeCount; i++) {
-            instr.addField(types.LocalSetterRange, "op_localSetterRange" + i + "_", true);
+            instr.addField(types.LocalSetterRange, "op_localSetterRange" + i + "_", true, false);
         }
 
         if (isShortCircuit) {
             instr.continueWhen = (boolean) ElementUtils.getAnnotationValue(mirror, "continueWhen").getValue();
-            instr.addField(new GeneratedTypeMirror("", "IntRef"), "op_branchTarget_", true);
+            instr.addField(new GeneratedTypeMirror("", "IntRef"), "op_branchTarget_", true, true);
         }
 
         return instr;

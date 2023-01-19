@@ -102,12 +102,14 @@ public class OperationsModel extends Template implements InfoDumpable {
     public InstructionModel popInstruction;
     public InstructionModel branchInstruction;
     public InstructionModel branchFalseInstruction;
+    public InstructionModel throwInstruction;
 
     public void addDefault() {
 
         popInstruction = instruction(InstructionKind.POP, "pop");
         branchInstruction = instruction(InstructionKind.BRANCH, "branch");
         branchFalseInstruction = instruction(InstructionKind.BRANCH_FALSE, "branch.false");
+        throwInstruction = instruction(InstructionKind.THROW, "throw");
 
         blockOperation = operation(OperationKind.BLOCK, "Block") //
                         .setTransparent(true) //

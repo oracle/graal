@@ -53,6 +53,7 @@ import static javax.lang.model.element.Modifier.STATIC;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -251,6 +252,7 @@ public class OperationsNodeFactory {
 
     private CodeExecutableElement createGetSourceSectionAtBci() {
         CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.OperationRootNode, "getSourceSectionAtBci");
+        ex.renameArguments("bci");
         CodeTreeBuilder b = ex.createBuilder();
 
         b.startIf().string("sourceInfo == null || sourceInfo.length == 0").end().startBlock();
@@ -417,6 +419,7 @@ public class OperationsNodeFactory {
 
     private CodeExecutableElement createExecute() {
         CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "execute");
+        ex.renameArguments("frame");
         CodeTreeBuilder b = ex.createBuilder();
 
         // todo: only generate executeProlog/Epilog calls and the try/finally if they are overridden
@@ -432,7 +435,7 @@ public class OperationsNodeFactory {
 
         b.startWhile().string("true").end().startBlock();
         b.startAssign("state").startCall("interpreter.continueAt");
-        b.string("this, frame, bc, objs, handlers, state");
+        b.string("this, frame, bc, objs, handlers, state, numLocals");
         if (model.hasBoxingElimination()) {
             b.string("localBoxingState");
         }
@@ -540,6 +543,7 @@ public class OperationsNodeFactory {
                     // fall-through
                 case LOAD_LOCAL_MATERIALIZED:
                 case STORE_LOCAL_MATERIALIZED:
+                case THROW:
                     buildIntrospectionArgument(b, "LOCAL", "((IntRef) data).value");
                     break;
                 case CUSTOM_SHORT_CIRCUIT:
@@ -558,8 +562,16 @@ public class OperationsNodeFactory {
 
         b.end();
 
+        b.statement("Object[] exHandlersInfo = new Object[handlers.length / 5]");
+
+        b.startFor().string("int idx = 0; idx < exHandlersInfo.length; idx++").end().startBlock();
+        b.statement("exHandlersInfo[idx] = new Object[]{ handlers[idx*5], handlers[idx*5 + 1], handlers[idx*5 + 2], handlers[idx*5 + 4] }");
+        b.end();
+
+        // todo: source info
+
         b.startReturn().startStaticCall(types.OperationIntrospection_Provider, "create");
-        b.string("new Object[]{0, instructions, new Object[0], null}");
+        b.string("new Object[]{0, instructions, exHandlersInfo, null}");
         b.end(2);
 
         return ex;
@@ -607,7 +619,7 @@ public class OperationsNodeFactory {
 
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.startIf().string("boxing == 0xffff0000 || frame.isObject(slot)").end().startBlock(); // {
+        b.startIf().string("(boxing & 0xffff000) == 0xffff0000 || frame.isObject(slot)").end().startBlock(); // {
         b.startReturn().string("frame.getObject(slot)").end();
         b.end(); // }
 
@@ -631,7 +643,7 @@ public class OperationsNodeFactory {
 
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.startIf().string("boxing == 0xffff0000").end().startBlock(); // {
+        b.startIf().string("(boxing & 0xffff000) == 0xffff0000").end().startBlock(); // {
         b.statement("Object result = frame.getObject(slot)");
 
         b.startIf().string("result").instanceOf(boxType(resultType)).end().startBlock(); // {
@@ -757,14 +769,16 @@ public class OperationsNodeFactory {
     class BuilderFactory {
 
         CodeTypeElement savedState = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "SavedState");
+        CodeTypeElement finallyTryContext = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "FinallyTryContext");
 
         // this is per-function state that needs to be stored/restored when going into/out of
         // functions
-        List<CodeVariableElement> builderState = new ArrayList<>(List.of(new CodeVariableElement[]{
+        List<CodeVariableElement> builderState = new ArrayList<>(List.of(
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(short[].class), "bc"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "bci"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(Object[].class), "objs"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "operationStack"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "operationStartSpStack"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(Object[].class), "operationData"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "operationChildCount"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "opSeqNumStack"),
@@ -783,10 +797,10 @@ public class OperationsNodeFactory {
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "opSeqNum"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceInfo"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceInfoIndex"),
+                        new CodeVariableElement(Set.of(PRIVATE), finallyTryContext.asType(), "finallyTryContext"),
 
                         // must be last
-                        new CodeVariableElement(Set.of(PRIVATE), savedState.asType(), "savedState"),
-        }));
+                        new CodeVariableElement(Set.of(PRIVATE), savedState.asType(), "savedState")));
 
         {
             if (model.enableTracing) {
@@ -803,11 +817,49 @@ public class OperationsNodeFactory {
             }
         }
 
+        class FinallyTryContextFactory {
+            private CodeTypeElement create() {
+                if (model.enableTracing) {
+                    finallyTryContext.add(new CodeVariableElement(context.getType(boolean[].class), "basicBlockBoundary"));
+                }
+                finallyTryContext.addAll(List.of(
+                                new CodeVariableElement(context.getType(short[].class), "bc"),
+                                new CodeVariableElement(context.getType(int.class), "bci"),
+                                new CodeVariableElement(context.getType(Object[].class), "objs"),
+                                new CodeVariableElement(context.getType(int.class), "curStack"),
+                                new CodeVariableElement(context.getType(int.class), "maxStack"),
+                                new CodeVariableElement(context.getType(int[].class), "sourceInfo"),
+                                new CodeVariableElement(context.getType(int.class), "sourceInfoIndex"),
+                                new CodeVariableElement(context.getType(int[].class), "exHandlers"),
+                                new CodeVariableElement(context.getType(int.class), "exHandlerCount"),
+                                new CodeVariableElement(context.getType(int.class), "finallyTrySequenceNumber"),
+                                new CodeVariableElement(generic(context.getDeclaredType(HashSet.class), intRef.asType()), "outerReferences"),
+                                new CodeVariableElement(finallyTryContext.asType(), "finallyTryContext")));
+
+                finallyTryContext.add(GeneratorUtils.createConstructorUsingFields(Set.of(), finallyTryContext, null));
+
+                // these could be merged with their counterparts above
+                finallyTryContext.addAll(List.of(
+                                new CodeVariableElement(context.getType(short[].class), "handlerBc"),
+                                new CodeVariableElement(context.getType(Object[].class), "handlerObjs"),
+                                new CodeVariableElement(context.getType(int.class), "handlerMaxStack"),
+                                new CodeVariableElement(context.getType(int[].class), "handlerSourceInfo"),
+                                new CodeVariableElement(context.getType(int[].class), "handlerExHandlers")));
+
+                if (model.enableTracing) {
+                    finallyTryContext.add(new CodeVariableElement(context.getType(boolean[].class), "handlerBasicBlockBoundary"));
+                }
+
+                return finallyTryContext;
+            }
+        }
+
         private CodeTypeElement create() {
             operationBuilder.setSuperClass(types.OperationBuilder);
             operationBuilder.setEnclosingElement(operationNodeGen);
 
             operationBuilder.add(new SavedStateFactory().create());
+            operationBuilder.add(new FinallyTryContextFactory().create());
 
             operationBuilder.add(createConstructor());
 
@@ -840,8 +892,10 @@ public class OperationsNodeFactory {
             operationBuilder.add(createEmitHelperBegin());
             operationBuilder.add(createBeforeChild());
             operationBuilder.add(createAfterChild());
-            operationBuilder.add(createEmitInstruction());
-            operationBuilder.add(createdoEmitSourceInfo());
+            operationBuilder.add(createDoEmitFinallyHandler());
+            operationBuilder.add(createDoEmitInstruction());
+            operationBuilder.add(createDoCreateExceptionHandler());
+            operationBuilder.add(createDoEmitSourceInfo());
             operationBuilder.add(createFinish());
             operationBuilder.add(createDoEmitLeaves());
 
@@ -886,6 +940,7 @@ public class OperationsNodeFactory {
             b.startReturn().startNew(operationLabelImpl.asType());
             b.startNew(intRef.asType()).string("-1").end();
             b.string("opSeqNumStack[operationSp - 1]");
+            b.string("finallyTryContext == null ? -1 : finallyTryContext.finallyTrySequenceNumber");
             b.end(2);
 
             return ex;
@@ -931,6 +986,10 @@ public class OperationsNodeFactory {
             b.string("operationStack");
             b.string("operationStack.length * 2");
             b.end(2);
+            b.startAssign("operationStartSpStack").startStaticCall(context.getType(Arrays.class), "copyOf");
+            b.string("operationStartSpStack");
+            b.string("operationStartSpStack.length * 2");
+            b.end(2);
             b.startAssign("operationChildCount").startStaticCall(context.getType(Arrays.class), "copyOf");
             b.string("operationChildCount");
             b.string("operationChildCount.length * 2");
@@ -948,6 +1007,7 @@ public class OperationsNodeFactory {
             b.statement("operationStack[operationSp] = id");
             b.statement("operationChildCount[operationSp] = 0");
             b.statement("operationData[operationSp] = data");
+            b.statement("operationStartSpStack[operationSp] = curStack");
             b.statement("opSeqNumStack[operationSp++] = opSeqNum++");
 
             return ex;
@@ -987,6 +1047,7 @@ public class OperationsNodeFactory {
                 }
                 b.statement("operationStack = new int[8]");
                 b.statement("operationData = new Object[8]");
+                b.statement("operationStartSpStack = new int[8]");
                 b.statement("operationChildCount = new int[8]");
                 b.statement("opSeqNumStack = new int[8]");
                 b.statement("opSeqNum = 0");
@@ -1069,6 +1130,46 @@ public class OperationsNodeFactory {
                     if (model.enableTracing) {
                         b.statement("basicBlockBoundary[bci] = true");
                     }
+                    break;
+                case FINALLY_TRY:
+                case FINALLY_TRY_NO_EXCEPT:
+                    b.startAssign("finallyTryContext").startNew(finallyTryContext.asType());
+                    if (model.enableTracing) {
+                        b.string("basicBlockBoundary");
+                    }
+                    b.string("bc");
+                    b.string("bci");
+                    b.string("objs");
+                    b.string("curStack");
+                    b.string("maxStack");
+                    b.string("sourceInfo");
+                    b.string("sourceInfoIndex");
+                    b.string("exHandlers");
+                    b.string("exHandlerCount");
+                    b.string("opSeqNum - 1");
+                    b.string("new HashSet<>()");
+                    b.string("finallyTryContext");
+                    b.end(2);
+
+                    b.statement("bc = new short[16]");
+                    b.statement("bci = 0");
+                    b.statement("objs = new Object[16]");
+                    b.statement("curStack = 0");
+                    b.statement("maxStack = 0");
+                    if (model.enableTracing) {
+                        b.statement("basicBlockBoundary = new boolean[17]");
+                        b.statement("basicBlockBoundary[0] = true");
+                    }
+
+                    b.startIf().string("withSource").end().startBlock();
+                    b.statement("sourceInfo = new int[15]");
+                    b.statement("sourceInfoIndex = 0");
+                    b.end();
+
+                    b.statement("exHandlers = new int[10]");
+                    b.statement("exHandlerCount = 0");
+
+                    break;
             }
 
             return ex;
@@ -1244,16 +1345,8 @@ public class OperationsNodeFactory {
                     b.statement("Object[] data = (Object[])operationData[operationSp]");
                     b.statement("((IntRef) data[5]).value = bci");
 
-                    b.startIf().string("exHandlers.length <= exHandlerCount + 5").end().startBlock();
-                    b.statement("exHandlers = Arrays.copyOf(exHandlers, exHandlers.length * 2)");
-                    b.end();
-
-                    b.statement("exHandlers[exHandlerCount++] = (int) data[0]");
-                    b.statement("exHandlers[exHandlerCount++] = (int) data[1]");
-                    b.statement("exHandlers[exHandlerCount++] = (int) data[2]");
-                    b.statement("exHandlers[exHandlerCount++] = (int) data[3]");
-                    b.statement("exHandlers[exHandlerCount++] = ((OperationLocalImpl) data[4]).index.value");
-
+                    // todo: ordering is bad, this should be moved to after the first child
+                    b.statement("doCreateExceptionHandler((int) data[0], (int) data[1], (int) data[2], (int) data[3], ((OperationLocalImpl) data[4]).index.value)");
                     b.end();
                     break;
                 case CUSTOM_SHORT_CIRCUIT:
@@ -1284,6 +1377,34 @@ public class OperationsNodeFactory {
                     if (model.enableTracing) {
                         b.statement("basicBlockBoundary[bci] = true");
                     }
+                    break;
+                case FINALLY_TRY:
+                    b.statement("FinallyTryContext ctx = (FinallyTryContext) operationData[operationSp]");
+                    b.statement("int exceptionLocal = numLocals++");
+                    b.statement("int exHandlerIndex = doCreateExceptionHandler(ctx.bci, bci, -1, curStack, exceptionLocal)");
+
+                    b.statement("doEmitFinallyHandler(ctx)");
+
+                    b.statement("IntRef endBranch = new IntRef(-1)");
+                    buildEmitInstruction(b, model.branchInstruction, "endBranch");
+
+                    // set handlerBci for the exception handler
+                    b.statement("exHandlers[exHandlerIndex + 2] = bci");
+
+                    b.statement("doEmitFinallyHandler(ctx)");
+
+                    buildEmitInstruction(b, model.throwInstruction, "new IntRef(exceptionLocal)");
+
+                    b.statement("endBranch.value = bci");
+
+                    break;
+                case FINALLY_TRY_NO_EXCEPT:
+                    b.statement("FinallyTryContext ctx = (FinallyTryContext) operationData[operationSp]");
+                    b.statement("doEmitFinallyHandler(ctx)");
+                    break;
+                case RETURN:
+                    b.statement("doEmitLeaves(-1)");
+                    buildEmitOperationInstruction(b, operation);
                     break;
                 default:
                     if (operation.instruction != null) {
@@ -1407,10 +1528,11 @@ public class OperationsNodeFactory {
                     buildThrowIllegalStateException(b, "\"Branch must be targeting a label that is declared in an enclosing operation. Jumps into other operations are not permitted.\"");
                     b.end();
 
+                    b.startIf().string("finallyTryContext != null && lbl.finallyTryOp != finallyTryContext.finallyTrySequenceNumber").end().startBlock();
+                    b.statement("finallyTryContext.outerReferences.add(lbl.index)");
+                    b.end();
+
                     b.statement("doEmitLeaves(lbl.declaringOp)");
-                    break;
-                case RETURN:
-                    b.statement("doEmitLeave(-1)");
                     break;
             }
 
@@ -1618,6 +1740,36 @@ public class OperationsNodeFactory {
                             b.statement("basicBlockBoundary[bci] = true");
                         }
                         break;
+                    case FINALLY_TRY:
+                    case FINALLY_TRY_NO_EXCEPT:
+                        b.startIf().string("childIndex == 0").end().startBlock();
+                        b.statement("finallyTryContext.handlerBc = Arrays.copyOf(bc, bci)");
+                        b.statement("finallyTryContext.handlerObjs = Arrays.copyOf(objs, bci)");
+                        b.statement("finallyTryContext.handlerMaxStack = maxStack");
+                        if (model.enableTracing) {
+                            b.statement("finallyTryContext.handlerBasicBlockBoundary = Arrays.copyOf(basicBlockBoundary, bci + 1)");
+                        }
+                        b.startIf().string("withSource").end().startBlock();
+                        b.statement("finallyTryContext.handlerSourceInfo = Arrays.copyOf(sourceInfo, sourceInfoIndex)");
+                        b.end();
+                        b.statement("finallyTryContext.handlerExHandlers = Arrays.copyOf(exHandlers, exHandlerCount)");
+
+                        b.statement("operationData[operationSp - 1] = finallyTryContext");
+                        b.statement("bc = finallyTryContext.bc");
+                        b.statement("bci = finallyTryContext.bci");
+                        b.statement("objs = finallyTryContext.objs");
+                        b.statement("curStack = finallyTryContext.curStack");
+                        b.statement("maxStack = finallyTryContext.maxStack");
+                        if (model.enableTracing) {
+                            b.statement("basicBlockBoundary = finallyTryContext.basicBlockBoundary");
+                        }
+                        b.statement("sourceInfo = finallyTryContext.sourceInfo");
+                        b.statement("sourceInfoIndex = finallyTryContext.sourceInfoIndex");
+                        b.statement("exHandlers = finallyTryContext.exHandlers");
+                        b.statement("exHandlerCount = finallyTryContext.exHandlerCount");
+                        b.statement("finallyTryContext = finallyTryContext.finallyTryContext");
+                        b.end();
+                        break;
                 }
 
                 b.statement("break");
@@ -1639,7 +1791,145 @@ public class OperationsNodeFactory {
             b.end(2);
         }
 
-        private CodeExecutableElement createEmitInstruction() {
+        private void buildCalculateNewLengthOfArray(CodeTreeBuilder b, String start, String target) {
+            b.statement("int resultLength = " + start);
+
+            b.startWhile().string(target, " > resultLength").end().startBlock();
+            b.statement("resultLength *= 2");
+            b.end();
+        }
+
+        private CodeExecutableElement createDoEmitFinallyHandler() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitFinallyHandler");
+            ex.addParameter(new CodeVariableElement(finallyTryContext.asType(), "context"));
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.statement("int offsetBci = bci");
+            b.statement("short[] handlerBc = context.handlerBc");
+            b.statement("Object[] handlerObjs = context.handlerObjs");
+
+            // b.statement("System.err.println(Arrays.toString(handlerBc))");
+
+            // resize all arrays
+            b.startIf().string("bci + handlerBc.length > bc.length").end().startBlock();
+            buildCalculateNewLengthOfArray(b, "bc.length", "bci + handlerBc.length");
+
+            b.statement("bc = Arrays.copyOf(bc, resultLength)");
+            b.statement("objs = Arrays.copyOf(objs, resultLength)");
+            if (model.enableTracing) {
+                b.statement("basicBlockBoundary = Arrays.copyOf(basicBlockBoundary, resultLength + 1)");
+            }
+            b.end();
+
+            b.startIf().string("withSource && sourceInfoIndex + context.handlerSourceInfo.length > sourceInfo.length").end().startBlock();
+            buildCalculateNewLengthOfArray(b, "sourceInfo.length", "sourceInfoIndex + context.handlerSourceInfo.length ");
+            b.statement("sourceInfo = Arrays.copyOf(sourceInfo, resultLength)");
+            b.end();
+
+            b.startIf().string("exHandlerCount + context.handlerExHandlers.length > exHandlers.length").end().startBlock();
+            buildCalculateNewLengthOfArray(b, "exHandlers.length", "exHandlerCount + context.handlerExHandlers.length");
+            b.statement("exHandlers = Arrays.copyOf(exHandlers, resultLength)");
+            b.end();
+
+            b.statement("System.arraycopy(context.handlerBc, 0, bc, bci, context.handlerBc.length)");
+            if (model.enableTracing) {
+                b.statement("System.arraycopy(context.handlerBasicBlockBoundary, 0, basicBlockBoundary, bci, context.handlerBasicBlockBoundary.length)");
+            }
+
+            b.startFor().string("int idx = 0; idx < handlerBc.length; idx++").end().startBlock();
+            b.startSwitch().string("handlerBc[idx]").end().startBlock();
+
+            for (InstructionModel instr : model.getInstructions()) {
+                switch (instr.kind) {
+                    case BRANCH:
+                    case BRANCH_FALSE:
+                        b.startCase().string("" + instr.id + " /* " + instr.name + " */").end().startBlock();
+
+                        b.startIf().string("context.outerReferences.contains(handlerObjs[idx])").end().startBlock();
+                        b.statement("objs[offsetBci + idx] = handlerObjs[idx]");
+                        b.end().startElseBlock();
+                        b.startAssert().string("((IntRef) handlerObjs[idx]).value != -1").end();
+                        b.statement("objs[offsetBci + idx] = new IntRef(((IntRef) handlerObjs[idx]).value + offsetBci)");
+                        b.end();
+
+                        b.statement("break");
+                        b.end();
+                        break;
+                    case CUSTOM:
+                    case CUSTOM_SHORT_CIRCUIT:
+                        b.startCase().string("" + instr.id + " /* " + instr.name + " */").end().startBlock();
+
+                        if (model.generateUncached && !instr.needsUncachedData()) {
+                            b.startAssert().string("handlerObjs[idx] == EPSILON").end();
+                            b.statement("objs[offsetBci + idx] = EPSILON");
+                        } else {
+                            String dataClassName = instr.getInternalName() + "Gen" + (model.generateUncached ? "_UncachedData" : "");
+
+                            b.statement(dataClassName + " curObj = (" + dataClassName + ") handlerObjs[idx]");
+                            b.statement(dataClassName + " newObj = new " + dataClassName + "()");
+                            b.statement("objs[offsetBci + idx] = newObj");
+
+                            for (InstructionField field : instr.getUncachedFields()) {
+                                b.startAssign("newObj." + field.name);
+                                if (field.needLocationFixup) {
+                                    if (ElementUtils.typeEquals(field.type, context.getType(int.class))) {
+                                        b.string("curObj.", field.name, " + offsetBci");
+                                    } else if (ElementUtils.typeEquals(field.type, new GeneratedTypeMirror("", "IntRef"))) {
+                                        b.string("new IntRef(curObj.", field.name, ".value + offsetBci)");
+                                    } else {
+                                        throw new UnsupportedOperationException("how?");
+                                    }
+                                } else {
+                                    b.string("curObj.", field.name);
+                                }
+                                b.end();
+                            }
+                        }
+
+                        b.statement("break");
+                        b.end();
+                        break;
+                }
+            }
+
+            b.caseDefault().startBlock();
+            b.statement("objs[offsetBci + idx] = handlerObjs[idx]");
+            b.statement("break");
+            b.end();
+
+            b.end();
+            b.end();
+
+            b.statement("bci += handlerBc.length");
+
+            b.startIf().string("curStack + context.handlerMaxStack > maxStack").end().startBlock();
+            b.statement("maxStack = curStack + context.handlerMaxStack");
+            b.end();
+
+            b.startIf().string("withSource").end().startBlock();
+            b.startFor().string("int idx = 0; idx < context.handlerSourceInfo.length; idx += 3").end().startBlock();
+            b.statement("sourceInfo[sourceInfoIndex + idx] = context.handlerSourceInfo[idx] + offsetBci");
+            b.statement("sourceInfo[sourceInfoIndex + idx + 1] = context.handlerSourceInfo[idx + 1]");
+            b.statement("sourceInfo[sourceInfoIndex + idx + 2] = context.handlerSourceInfo[idx + 2]");
+            b.end();
+
+            b.statement("sourceInfoIndex += context.handlerSourceInfo.length");
+            b.end();
+
+            b.startFor().string("int idx = 0; idx < context.handlerExHandlers.length; idx += 5").end().startBlock();
+            b.statement("exHandlers[exHandlerCount + idx] = context.handlerExHandlers[idx] + offsetBci");
+            b.statement("exHandlers[exHandlerCount + idx + 1] = context.handlerExHandlers[idx + 1] + offsetBci");
+            b.statement("exHandlers[exHandlerCount + idx + 2] = context.handlerExHandlers[idx + 2] + offsetBci");
+            b.statement("exHandlers[exHandlerCount + idx + 3] = context.handlerExHandlers[idx + 3]");
+            b.statement("exHandlers[exHandlerCount + idx + 4] = context.handlerExHandlers[idx + 4]");
+            b.end();
+
+            b.statement("exHandlerCount += context.handlerExHandlers.length");
+
+            return ex;
+        }
+
+        private CodeExecutableElement createDoEmitInstruction() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitInstruction");
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "instr"));
             ex.addParameter(new CodeVariableElement(context.getType(Object.class), "data"));
@@ -1692,7 +1982,6 @@ public class OperationsNodeFactory {
         }
 
         private void buildEmitInstruction(CodeTreeBuilder b, InstructionModel instr, String argument) {
-
             if (model.hasBoxingElimination()) {
                 switch (instr.kind) {
                     case BRANCH:
@@ -1768,10 +2057,10 @@ public class OperationsNodeFactory {
                 case LOAD_LOCAL_MATERIALIZED:
                 case THROW:
                 case YIELD:
+                case RETURN:
                     break;
                 case BRANCH_FALSE:
                 case CUSTOM_SHORT_CIRCUIT:
-                case RETURN:
                 case POP:
                 case STORE_LOCAL:
                     b.statement("curStack -= 1");
@@ -1821,7 +2110,7 @@ public class OperationsNodeFactory {
             b.end(2);
         }
 
-        private CodeExecutableElement createdoEmitSourceInfo() {
+        private CodeExecutableElement createDoEmitSourceInfo() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitSourceInfo");
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "sourceIndex"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "start"));
@@ -1853,6 +2142,33 @@ public class OperationsNodeFactory {
             return ex;
         }
 
+        private CodeExecutableElement createDoCreateExceptionHandler() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(int.class), "doCreateExceptionHandler");
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "startBci"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "endBci"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "handlerBci"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "spStart"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "exceptionLocal"));
+
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startIf().string("exHandlers.length <= exHandlerCount + 5").end().startBlock();
+            b.statement("exHandlers = Arrays.copyOf(exHandlers, exHandlers.length * 2)");
+            b.end();
+
+            b.statement("int result = exHandlerCount");
+
+            b.statement("exHandlers[exHandlerCount++] = startBci");
+            b.statement("exHandlers[exHandlerCount++] = endBci");
+            b.statement("exHandlers[exHandlerCount++] = handlerBci");
+            b.statement("exHandlers[exHandlerCount++] = spStart");
+            b.statement("exHandlers[exHandlerCount++] = exceptionLocal");
+
+            b.statement("return result");
+
+            return ex;
+        }
+
         private CodeExecutableElement createDoEmitLeaves() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitLeaves");
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "targetSeq"));
@@ -1869,6 +2185,17 @@ public class OperationsNodeFactory {
 
             for (OperationModel op : model.getOperations()) {
                 switch (op.kind) {
+                    case FINALLY_TRY:
+                    case FINALLY_TRY_NO_EXCEPT:
+                        b.startCase().string(op.id + " /* " + op.name + " */").end().startBlock();
+
+                        b.startIf().string("operationData[i] != null").end().startBlock();
+                        b.statement("doEmitFinallyHandler((FinallyTryContext) operationData[i])");
+                        b.end();
+
+                        b.statement("break");
+                        b.end();
+                        break;
                 }
             }
 
@@ -1924,6 +2251,7 @@ public class OperationsNodeFactory {
 
         private CodeExecutableElement createReparseImpl() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.OperationNodes, "reparseImpl");
+            ex.renameArguments("config", "parse", "nodes");
             CodeTreeBuilder b = ex.createBuilder();
 
             b.statement("Builder builder = new Builder(this, true, config)");
@@ -1966,6 +2294,7 @@ public class OperationsNodeFactory {
             ex.addParameter(new CodeVariableElement(context.getType(Object[].class), "objs"));
             ex.addParameter(new CodeVariableElement(context.getType(int[].class), "handlers"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "startState"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "numLocals"));
             if (model.hasBoxingElimination()) {
                 ex.addParameter(new CodeVariableElement(context.getType(byte[].class), "localBoxingState"));
             }
@@ -2034,6 +2363,8 @@ public class OperationsNodeFactory {
                 b.statement("tracer.traceStartBasicBlock(bci)");
                 b.end();
             }
+
+            // b.statement("System.err.printf(\"Trace: @%04x %04x%n\", bci, curOpcode)");
 
             b.startTryBlock();
 
@@ -2255,6 +2586,7 @@ public class OperationsNodeFactory {
                         b.statement("sp -= 2");
                         break;
                     case THROW:
+                        b.statement("throw sneakyThrow((Throwable) frame.getObject(((IntRef) curObj).value))");
                         break;
                     case YIELD:
                         break;
@@ -2275,17 +2607,25 @@ public class OperationsNodeFactory {
 
             b.end().startCatchBlock(context.getDeclaredType("com.oracle.truffle.api.exception.AbstractTruffleException"), "ex");
 
+            // b.statement("System.err.printf(\" Caught %s @ %04x ... \", ex, bci)");
+
             b.startFor().string("int idx = 0; idx < handlers.length; idx += 5").end().startBlock();
 
+            // todo: this could get improved
             b.startIf().string("handlers[idx] > bci").end().startBlock().statement("continue").end();
-            b.startIf().string("handlers[idx + 1] <= bci").end().startBlock().statement("break").end();
+            b.startIf().string("handlers[idx + 1] <= bci").end().startBlock().statement("continue").end();
 
             b.statement("bci = handlers[idx + 2]");
-            b.statement("sp = handlers[idx + 3]");
+            b.statement("sp = handlers[idx + 3] + numLocals");
             b.statement("frame.setObject(handlers[idx + 4], ex)");
+
+            // b.statement("System.err.printf(\"going to %04x%n\", bci)");
+
             b.statement("continue loop");
 
             b.end(); // for
+
+            // b.statement("System.err.printf(\"rethrowing%n\")");
 
             b.statement("throw ex");
 
@@ -2534,6 +2874,7 @@ public class OperationsNodeFactory {
 
             operationLabelImpl.add(new CodeVariableElement(intRef.asType(), "index"));
             operationLabelImpl.add(new CodeVariableElement(context.getType(int.class), "declaringOp"));
+            operationLabelImpl.add(new CodeVariableElement(context.getType(int.class), "finallyTryOp"));
 
             operationLabelImpl.add(createConstructorUsingFields(Set.of(), operationLabelImpl, null));
 
