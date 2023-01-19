@@ -41,6 +41,10 @@ local graal_suite_root = root_ci.graal_suite_root;
       nodejs: '==8.9.4',
     },
     capabilities+: ['linux'],
+    docker: {
+      "image": "buildslave_ol7",
+      "mount_modules": true
+    },
   },
 
   windows: self.common + {
@@ -78,10 +82,6 @@ local graal_suite_root = root_ci.graal_suite_root;
   },
 
   emsdk: {
-    docker: {
-      "image": "phx.ocir.io/oraclelabs2/c_graal/buildslave:buildslave_ol7",
-      "mount_modules": true
-    },
     downloads+: {
       EMSDK_DIR: {name: 'emsdk', version: '1.39.13', platformspecific: true},
     },
@@ -91,10 +91,6 @@ local graal_suite_root = root_ci.graal_suite_root;
   },
 
   ocamlbuild: {
-    docker: {
-      "image": "phx.ocir.io/oraclelabs2/c_graal/buildslave:buildslave_ol7",
-      "mount_modules": true
-    },
     downloads+: {
       OCAML_DIR: {name: 'ocamlbuild', version: '0.14.0', platformspecific: true},
     },

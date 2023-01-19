@@ -36,10 +36,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     },
   },
 
-  ol65: self.linux + {
-    capabilities+: ['ol65'],
-  },
-
   x52: self.linux + {
     capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
   },
