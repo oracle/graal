@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jni;
+package com.oracle.svm.core.jni.headers;
 
-import com.oracle.svm.core.jni.access.JNIReflectionDictionary;
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CConstant;
 
-/**
- * Provides access to implementation-specific information for testing.
- */
-public final class JNITestingBackdoor {
+@CContext(JNIHeaderDirectives.class)
+public class JNIMode {
+    // Checkstyle: stop
 
-    public static int getThreadLocalHandleCount() {
-        return JNIObjectHandles.getLocalHandleCount();
-    }
+    @CConstant
+    public static native int JNI_COMMIT();
 
-    public static long getGlobalHandleCount() {
-        return JNIObjectHandles.computeCurrentGlobalHandleCount();
-    }
+    @CConstant
+    public static native int JNI_ABORT();
 
-    public static int getThreadLocalPinnedObjectCount() {
-        return JNIThreadLocalPrimitiveArrayViews.getCount();
-    }
-
-    public static long getMethodID(Class<?> clazz, String name, String signature, boolean isStatic) {
-        return JNIReflectionDictionary.singleton().getMethodID(clazz, name, signature, isStatic).rawValue();
-    }
-
-    public static int getThreadLocalOwnedMonitorsCount() {
-        return JNIThreadOwnedMonitors.ownedMonitorsCount();
-    }
+    // Checkstyle: resume
 }
