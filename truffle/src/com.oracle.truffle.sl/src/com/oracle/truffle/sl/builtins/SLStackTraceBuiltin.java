@@ -69,6 +69,7 @@ public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
     public static final TruffleString FRAME = SLStrings.constant("Frame: root ");
     public static final TruffleString SEPARATOR = SLStrings.constant(", ");
     public static final TruffleString EQUALS = SLStrings.constant("=");
+    public static final TruffleString UNKNOWN = SLStrings.constant("Unknown");
 
     @Specialization
     public TruffleString trace() {
@@ -104,7 +105,8 @@ public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
                 int count = frameDescriptor.getNumberOfSlots();
                 for (int i = 0; i < count; i++) {
                     str.appendStringUncached(SEPARATOR);
-                    str.appendStringUncached((TruffleString) frameDescriptor.getSlotName(i));
+                    TruffleString slotName = (TruffleString) frameDescriptor.getSlotName(i);
+                    str.appendStringUncached(slotName == null ? UNKNOWN : slotName);
                     str.appendStringUncached(EQUALS);
                     str.appendStringUncached(SLStrings.fromObject(frame.getValue(i)));
                 }

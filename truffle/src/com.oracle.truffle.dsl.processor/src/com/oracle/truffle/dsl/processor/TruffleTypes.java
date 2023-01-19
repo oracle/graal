@@ -302,7 +302,6 @@ public class TruffleTypes {
     // Operation DSL API
     public static final String BuilderSourceInfo_Name = "com.oracle.truffle.api.operation.BuilderSourceInfo";
     public static final String GenerateOperations_Name = "com.oracle.truffle.api.operation.GenerateOperations";
-    public static final String GenerateOperations_Metadata_Name = "com.oracle.truffle.api.operation.GenerateOperations.Metadata";
     public static final String InterpreterLocal_Name = "com.oracle.truffle.api.operation.InterpreterLocal";
     public static final String MetadataKey_Name = "com.oracle.truffle.api.operation.MetadataKey";
     public static final String LocalSetter_Name = "com.oracle.truffle.api.operation.LocalSetter";
@@ -319,6 +318,12 @@ public class TruffleTypes {
     public static final String OperationNodes_Name = "com.oracle.truffle.api.operation.OperationNodes";
     public static final String OperationProxy_Name = "com.oracle.truffle.api.operation.OperationProxy";
     public static final String OperationBuilder_Name = "com.oracle.truffle.api.operation.OperationBuilder";
+    public static final String OperationSerializer_Name = "com.oracle.truffle.api.operation.serialization.OperationSerializer";
+    public static final String OperationSerializer_SerializerContext_Name = "com.oracle.truffle.api.operation.serialization.OperationSerializer.SerializerContext";
+    public static final String OperationDeserializer_Name = "com.oracle.truffle.api.operation.serialization.OperationDeserializer";
+    public static final String OperationDeserializer_DeserializerContext_Name = "com.oracle.truffle.api.operation.serialization.OperationDeserializer.DeserializerContext";
+
+    public static final String SerializationUtils_Name = "com.oracle.truffle.api.operation.serialization.SerializationUtils";
     public static final String OperationsConstantPool_Name = "com.oracle.truffle.api.operation.OperationsConstantPool";
     public static final String OperationsInstrumentTreeNode_Name = "com.oracle.truffle.api.operation.OperationsInstrumentTreeNode";
     public static final String Variadic_Name = "com.oracle.truffle.api.operation.Variadic";
@@ -329,7 +334,6 @@ public class TruffleTypes {
 
     public final DeclaredType BuilderSourceInfo = c.getDeclaredTypeOptional(BuilderSourceInfo_Name);
     public final DeclaredType GenerateOperations = c.getDeclaredTypeOptional(GenerateOperations_Name);
-    public final DeclaredType GenerateOperations_Metadata = c.getDeclaredTypeOptional(GenerateOperations_Metadata_Name);
     public final DeclaredType InterpreterLocal = c.getDeclaredTypeOptional(InterpreterLocal_Name);
     public final DeclaredType LocalSetter = c.getDeclaredTypeOptional(LocalSetter_Name);
     public final DeclaredType LocalSetterRange = c.getDeclaredTypeOptional(LocalSetterRange_Name);
@@ -346,6 +350,10 @@ public class TruffleTypes {
     public final DeclaredType OperationNodes = c.getDeclaredTypeOptional(OperationNodes_Name);
     public final DeclaredType OperationProxy = c.getDeclaredTypeOptional(OperationProxy_Name);
     public final DeclaredType OperationBuilder = c.getDeclaredTypeOptional(OperationBuilder_Name);
+    public final DeclaredType OperationSerializer = c.getDeclaredTypeOptional(OperationSerializer_Name);
+    public final DeclaredType OperationSerializer_SerializerContext = c.getDeclaredTypeOptional(OperationSerializer_SerializerContext_Name);
+    public final DeclaredType OperationDeserializer = c.getDeclaredTypeOptional(OperationDeserializer_Name);
+    public final DeclaredType OperationDeserializer_DeserializerContext = c.getDeclaredTypeOptional(OperationDeserializer_DeserializerContext_Name);
     public final DeclaredType OperationsConstantPool = c.getDeclaredTypeOptional(OperationsConstantPool_Name);
     public final DeclaredType OperationsInstrumentTreeNode = c.getDeclaredTypeOptional(OperationsInstrumentTreeNode_Name);
     public final DeclaredType ShortCircuitOperation = c.getDeclaredTypeOptional(ShortCircuitOperation_Name);
@@ -402,6 +410,7 @@ public class TruffleTypes {
     public static final String InstrumentableNode_WrapperNode_Name = "com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode";
     public static final String ProbeNode_Name = "com.oracle.truffle.api.instrumentation.ProbeNode";
     public static final String ProvidedTags_Name = "com.oracle.truffle.api.instrumentation.ProvidedTags";
+    public static final String Tag_Name = "com.oracle.truffle.api.instrumentation.Tag";
     public static final String TruffleInstrument_Name = "com.oracle.truffle.api.instrumentation.TruffleInstrument";
     public static final String TruffleInstrument_Provider_Name = "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider";
     public static final String TruffleInstrument_Registration_Name = "com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration";
@@ -417,6 +426,7 @@ public class TruffleTypes {
     public final DeclaredType InstrumentableNode_WrapperNode = c.getDeclaredTypeOptional(InstrumentableNode_WrapperNode_Name);
     public final DeclaredType ProbeNode = c.getDeclaredTypeOptional(ProbeNode_Name);
     public final DeclaredType ProvidedTags = c.getDeclaredTypeOptional(ProvidedTags_Name);
+    public final DeclaredType Tag = c.getDeclaredTypeOptional(Tag_Name);
     public final DeclaredType TruffleInstrument = c.getDeclaredTypeOptional(TruffleInstrument_Name);
     public final DeclaredType TruffleInstrument_Provider = c.getDeclaredTypeOptional(TruffleInstrument_Provider_Name);
     public final DeclaredType TruffleInstrument_Registration = c.getDeclaredTypeOptional(TruffleInstrument_Registration_Name);

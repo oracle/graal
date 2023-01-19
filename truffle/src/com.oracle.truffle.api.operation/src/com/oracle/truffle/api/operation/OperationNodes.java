@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.operation;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -49,12 +47,11 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.operation.serialization.OperationSerializer;
 import com.oracle.truffle.api.source.Source;
 
-public abstract class OperationNodes<NodeType extends RootNode & OperationRootNode> {
+public abstract class OperationNodes<T extends RootNode & OperationRootNode> {
     protected final OperationParser<? extends OperationBuilder> parse;
-    @CompilationFinal(dimensions = 1) protected NodeType[] nodes;
+    @CompilationFinal(dimensions = 1) protected T[] nodes;
     @CompilationFinal(dimensions = 1) protected Source[] sources;
     @CompilationFinal private boolean hasInstrumentation;
 
@@ -68,7 +65,7 @@ public abstract class OperationNodes<NodeType extends RootNode & OperationRootNo
     }
 
     @SuppressWarnings({"unchecked", "cast", "rawtypes"})
-    public List<NodeType> getNodes() {
+    public List<T> getNodes() {
         return List.of(nodes);
     }
 
@@ -125,8 +122,4 @@ public abstract class OperationNodes<NodeType extends RootNode & OperationRootNo
         }
     }
 
-    @SuppressWarnings("unused")
-    public void serialize(OperationConfig config, DataOutputStream buffer, OperationSerializer callback) throws IOException {
-        throw new UnsupportedOperationException("Serialization not supported");
-    }
 }

@@ -138,6 +138,8 @@ public class OperationModel extends MessageContainer implements InfoDumpable {
         }
     }
 
+    private static final TypeMirror[] EMPTY_ARGUMENTS = new TypeMirror[0];
+
     public final OperationsModel parent;
     public final int id;
     public final OperationKind kind;
@@ -154,7 +156,7 @@ public class OperationModel extends MessageContainer implements InfoDumpable {
     public int numChildren;
 
     public InstructionModel instruction;
-    public TypeMirror[] operationArguments;
+    public TypeMirror[] operationArguments = EMPTY_ARGUMENTS;
 
     public CustomSignature signature;
 
@@ -164,6 +166,10 @@ public class OperationModel extends MessageContainer implements InfoDumpable {
         this.id = id;
         this.kind = kind;
         this.name = name;
+    }
+
+    public boolean hasChildren() {
+        return isVariadic || numChildren > 0;
     }
 
     public OperationModel setTransparent(boolean isTransparent) {

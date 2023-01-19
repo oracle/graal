@@ -46,7 +46,6 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.ChildExecutionResult;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
@@ -64,14 +63,12 @@ import com.oracle.truffle.dsl.processor.operations.model.InstructionModel;
 public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
     private final ProcessorContext context;
-    private final TruffleTypes types;
     private final TypeMirror nodeType;
     private final InstructionModel instr;
     private final boolean isBoxingOperations;
 
     public OperationNodeGeneratorPlugs(ProcessorContext context, TypeMirror nodeType, InstructionModel instr) {
         this.context = context;
-        this.types = context.getTypes();
         this.nodeType = nodeType;
         this.instr = instr;
 

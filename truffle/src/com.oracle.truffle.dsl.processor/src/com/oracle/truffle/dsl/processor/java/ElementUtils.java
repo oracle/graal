@@ -994,7 +994,18 @@ public class ElementUtils {
 
     public static String createConstantName(String simpleName) {
         StringBuilder b = new StringBuilder(simpleName);
+
         int i = 0;
+        while (i < b.length()) {
+            char c = b.charAt(i);
+            if (Character.isUpperCase(c) && i != 0 &&
+                            Character.isUpperCase(b.charAt(i - 1))) {
+                b.setCharAt(i, Character.toLowerCase(c));
+            }
+            i++;
+        }
+
+        i = 0;
         while (i < b.length()) {
             char c = b.charAt(i);
             if (Character.isUpperCase(c) && i != 0) {

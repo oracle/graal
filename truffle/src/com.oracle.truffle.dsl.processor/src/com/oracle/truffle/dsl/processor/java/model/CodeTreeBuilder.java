@@ -802,6 +802,10 @@ public class CodeTreeBuilder {
         return this;
     }
 
+    public CodeTreeBuilder cast(TypeMirror type, String content) {
+        return cast(type, CodeTreeBuilder.singleString(content));
+    }
+
     public CodeTreeBuilder cast(TypeMirror type, CodeTree content) {
         if (ElementUtils.isVoid(type)) {
             tree(content);

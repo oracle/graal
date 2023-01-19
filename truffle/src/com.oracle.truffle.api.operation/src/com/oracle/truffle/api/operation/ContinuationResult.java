@@ -49,6 +49,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public final class ContinuationResult {
+
     final ContinuationLocation location;
     final MaterializedFrame frame;
     private final Object result;
@@ -68,6 +69,7 @@ public final class ContinuationResult {
     }
 
     public abstract static class ContinueNode extends Node {
+
         public abstract Object execute(ContinuationResult result, Object value);
 
         public static final int LIMIT = 3;

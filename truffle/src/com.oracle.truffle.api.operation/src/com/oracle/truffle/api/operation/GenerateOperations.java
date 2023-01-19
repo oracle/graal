@@ -63,9 +63,6 @@ public @interface GenerateOperations {
 
     boolean enableYield() default false;
 
-    @Retention(RetentionPolicy.SOURCE)
-    @Target({ElementType.FIELD})
-    @interface Metadata {
-        String name() default "";
-    }
+    boolean enableSerialization() default false;
+
 }

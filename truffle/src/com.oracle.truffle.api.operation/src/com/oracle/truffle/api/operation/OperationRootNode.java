@@ -42,7 +42,6 @@ package com.oracle.truffle.api.operation;
 
 import java.util.List;
 import java.util.Set;
-import java.util.function.Function;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -54,13 +53,6 @@ import com.oracle.truffle.api.operation.introspection.OperationIntrospection;
 import com.oracle.truffle.api.source.SourceSection;
 
 public interface OperationRootNode extends NodeInterface, OperationIntrospection.Provider {
-    default <T> T getMetadata(MetadataKey<T> key) {
-        return key.getValue(this);
-    }
-
-    static <T> void setMetadataAccessor(MetadataKey<T> key, Function<OperationRootNode, T> getter) {
-        key.setGetter(getter);
-    }
 
     default String dump() {
         StringBuilder sb = new StringBuilder();

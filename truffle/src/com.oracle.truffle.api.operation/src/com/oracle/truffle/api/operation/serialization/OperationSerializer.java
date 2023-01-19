@@ -48,8 +48,13 @@ import com.oracle.truffle.api.operation.OperationRootNode;
 @FunctionalInterface
 public interface OperationSerializer {
     interface SerializerContext {
-        void serializeOperationNode(DataOutput buffer, OperationRootNode node) throws IOException;
+
+        void writeOperationNode(DataOutput buffer, OperationRootNode node) throws IOException;
+
     }
 
+    /**
+     * Must not be dependent on any side-effects of the language.
+     */
     void serialize(SerializerContext context, DataOutput buffer, Object object) throws IOException;
 }

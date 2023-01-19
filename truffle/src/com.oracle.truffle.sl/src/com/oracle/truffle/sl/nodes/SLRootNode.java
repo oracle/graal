@@ -70,9 +70,9 @@ import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 @NodeInfo(language = "SL", description = "The root of all SL execution trees")
 public abstract class SLRootNode extends RootNode {
 
-    private boolean isCloningAllowed;
+    protected boolean isCloningAllowed;
 
-    @CompilationFinal(dimensions = 1) private SLWriteLocalVariableNode[] argumentNodesCache;
+    @CompilationFinal(dimensions = 1) private transient SLWriteLocalVariableNode[] argumentNodesCache;
 
     public SLRootNode(SLLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);

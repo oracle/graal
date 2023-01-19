@@ -41,19 +41,23 @@
 package com.oracle.truffle.api.operation.test.example;
 
 import java.io.ByteArrayOutputStream;
+import java.io.DataInput;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.function.Supplier;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationNodes;
+import com.oracle.truffle.api.operation.serialization.SerializationUtils;
 
 public class TestOperationsSerTest {
 
     @Test
-    public void testSer() {
+    public void testSerialization() {
         byte[] byteArray = createByteArray();
         TestOperations root = deserialize(byteArray);
 
@@ -62,45 +66,60 @@ public class TestOperationsSerTest {
 
     private static TestOperations deserialize(byte[] byteArray) {
         OperationNodes<TestOperations> nodes2 = null;
-// try {
-// nodes2 = TestOperationsGen.deserialize(null, OperationConfig.DEFAULT, ByteBuffer.wrap(byteArray),
-// (ctx, buf2) -> {
-// return buf2.readLong();
-// });
-// } catch (IOException e) {
-// Assert.fail();
-// }
+        try {
+            Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(byteArray));
+            nodes2 = TestOperationsGen.deserialize(null, OperationConfig.DEFAULT, input,
+                            (context, buffer) -> {
+                                switch (buffer.readByte()) {
+                                    case 0:
+                                        return buffer.readLong();
+                                    case 1:
+                                        return buffer.readUTF();
+                                    case 2:
+                                        return null;
+                                    default:
+                                        throw new AssertionError();
+                                }
+                            });
+        } catch (IOException e) {
+            Assert.fail();
+        }
 
         return nodes2.getNodes().get(0);
     }
 
     private static byte[] createByteArray() {
 
-        OperationNodes<TestOperations> nodes = TestOperationsGen.create(OperationConfig.DEFAULT, b -> {
-            b.beginRoot(null);
-
-            b.beginReturn();
-            b.beginAddOperation();
-            b.emitLoadConstant(1L);
-            b.emitLoadConstant(2L);
-            b.endAddOperation();
-            b.endReturn();
-
-            b.endRoot();
-        });
-
         boolean[] haveConsts = new boolean[2];
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try {
-            nodes.serialize(OperationConfig.DEFAULT, new DataOutputStream(output), (ctx, buf2, obj) -> {
-                if (obj instanceof Long) {
-                    haveConsts[(int) (long) obj - 1] = true;
-                    buf2.writeLong((long) obj);
-                } else {
-                    assert false;
-                }
-            });
+            TestOperationsGen.serialize(OperationConfig.DEFAULT, new DataOutputStream(output),
+                            (context, buffer, object) -> {
+                                if (object instanceof Long) {
+                                    buffer.writeByte(0);
+                                    haveConsts[(int) (long) object - 1] = true;
+                                    buffer.writeLong((long) object);
+                                } else if (object instanceof String) {
+                                    buffer.writeByte(1);
+                                    buffer.writeUTF((String) object);
+                                } else if (object == null) {
+                                    buffer.writeByte(2);
+                                } else {
+                                    assert false;
+                                }
+                            }, b -> {
+                                b.beginRoot(null);
+
+                                b.beginReturn();
+                                b.beginAddOperation();
+                                b.emitLoadConstant(1L);
+                                b.emitLoadConstant(2L);
+                                b.endAddOperation();
+                                b.endReturn();
+
+                                b.endRoot();
+                            });
         } catch (IOException e) {
             assert false;
         }

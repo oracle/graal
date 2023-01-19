@@ -44,6 +44,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public abstract class ContinuationLocation {
+
     public abstract RootNode getRootNode();
 
     // todo: create accessor

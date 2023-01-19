@@ -46,9 +46,14 @@ import java.io.IOException;
 import com.oracle.truffle.api.operation.OperationRootNode;
 
 public interface OperationDeserializer {
+
     interface DeserializerContext {
-        OperationRootNode deserializeOperationNode(DataInput buffer) throws IOException;
+
+        OperationRootNode readOperationNode(DataInput buffer) throws IOException;
     }
 
+    /**
+     * Must not be dependent on any side-effects of the language.
+     */
     Object deserialize(DeserializerContext context, DataInput buffer) throws IOException;
 }

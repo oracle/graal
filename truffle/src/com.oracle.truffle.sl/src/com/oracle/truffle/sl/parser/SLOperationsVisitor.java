@@ -58,6 +58,8 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationLocal;
+import com.oracle.truffle.api.operation.OperationNodes;
+import com.oracle.truffle.api.operation.OperationParser;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
@@ -95,21 +97,24 @@ import com.oracle.truffle.sl.runtime.SLNull;
 public final class SLOperationsVisitor extends SLBaseVisitor {
 
     private static final boolean DO_LOG_NODE_CREATION = false;
-    private static final boolean FORCE_SERIALIZE = false;
+    private static final boolean FORCE_SERIALIZE = true;
 
     public static void parseSL(SLLanguage language, Source source, Map<TruffleString, RootCallTarget> functions) {
-        var nodes = SLOperationRootNodeGen.create(OperationConfig.WITH_SOURCE, builder -> {
-            SLOperationsVisitor visitor = new SLOperationsVisitor(language, source, builder);
+        OperationParser<SLOperationRootNodeGen.Builder> slParser = (b) -> {
+            SLOperationsVisitor visitor = new SLOperationsVisitor(language, source, b);
             parseSLImpl(source, visitor);
-        });
+        };
 
+        OperationNodes<SLOperationRootNode> nodes;
         if (FORCE_SERIALIZE) {
             try {
-                byte[] serializedData = SLOperationSerialization.serializeNodes(nodes);
+                byte[] serializedData = SLOperationSerialization.serializeNodes(slParser);
                 nodes = SLOperationSerialization.deserializeNodes(language, serializedData);
             } catch (IOException ex) {
                 throw new RuntimeException(ex);
             }
+        } else {
+            nodes = SLOperationRootNodeGen.create(OperationConfig.WITH_SOURCE, slParser);
         }
 
         for (SLOperationRootNode node : nodes.getNodes()) {

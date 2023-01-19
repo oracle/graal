@@ -54,11 +54,14 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.WildcardTypeMirror;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.Template;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
@@ -85,12 +88,14 @@ public class OperationsModel extends Template implements InfoDumpable {
     private final Map<String, OperationModel> operationNames = new HashMap<>();
 
     public boolean enableYield;
+    public boolean enableSerialization = true;
     public DeclaredType languageClass;
     public ExecutableElement fdConstructor;
     public ExecutableElement fdBuilderConstructor;
     public boolean generateUncached;
     public TypeSystemData typeSystem;
     public Set<TypeMirror> boxingEliminatedTypes;
+    public List<VariableElement> serializedFields;
 
     public boolean enableTracing;
     public String decisionsFilePath;
@@ -105,8 +110,15 @@ public class OperationsModel extends Template implements InfoDumpable {
     public InstructionModel branchFalseInstruction;
     public InstructionModel throwInstruction;
 
-    public void addDefault() {
+    public List<TypeMirror> getProvidedTags() {
+        AnnotationMirror providedTags = ElementUtils.findAnnotationMirror(ElementUtils.castTypeElement(languageClass), types.ProvidedTags);
+        if (providedTags == null) {
+            return Collections.emptyList();
+        }
+        return ElementUtils.getAnnotationValueList(TypeMirror.class, providedTags, "value");
+    }
 
+    public void addDefault() {
         popInstruction = instruction(InstructionKind.POP, "pop");
         branchInstruction = instruction(InstructionKind.BRANCH, "branch");
         branchFalseInstruction = instruction(InstructionKind.BRANCH_FALSE, "branch.false");
@@ -208,8 +220,12 @@ public class OperationsModel extends Template implements InfoDumpable {
         operation(OperationKind.INSTRUMENT_TAG, "Tag") //
                         .setNumChildren(1) //
                         .setTransparent(true) //
-                        .setOperationArguments(new GeneratedTypeMirror("java.lang", "Class<? extends com.oracle.truffle.api.instrumentation.Tag>"));
+                        .setOperationArguments(generic(context.getDeclaredType(Class.class), new WildcardTypeMirror(types.Tag, null)));
 
+    }
+
+    private static TypeMirror generic(DeclaredType el, TypeMirror... args) {
+        return new DeclaredCodeTypeMirror((TypeElement) el.asElement(), List.of(args));
     }
 
     public OperationModel operation(OperationKind kind, String name) {

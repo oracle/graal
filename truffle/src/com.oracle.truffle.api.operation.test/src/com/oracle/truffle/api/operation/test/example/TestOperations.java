@@ -43,29 +43,31 @@ package com.oracle.truffle.api.operation.test.example;
 import java.util.List;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.ProvidedTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.AbstractOperationsTruffleException;
 import com.oracle.truffle.api.operation.GenerateOperations;
-import com.oracle.truffle.api.operation.GenerateOperations.Metadata;
 import com.oracle.truffle.api.operation.LocalSetter;
-import com.oracle.truffle.api.operation.MetadataKey;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.Variadic;
 
-@GenerateOperations(languageClass = TestLanguage.class, enableYield = true)
+@GenerateOperations(languageClass = TestLanguage.class, enableYield = true, enableSerialization = true)
 @GenerateAOT
 @OperationProxy(SomeOperationNode.class)
 public abstract class TestOperations extends RootNode implements OperationRootNode {
@@ -78,7 +80,7 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
         super(language, frameDescriptor);
     }
 
-    @Metadata public static final MetadataKey<String> TestData = new MetadataKey<>("default value");
+    protected String testData;
 
     private static class TestException extends AbstractOperationsTruffleException {
         private static final long serialVersionUID = -9143719084054578413L;
@@ -141,6 +143,7 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
     static final class AppenderOperation {
         @SuppressWarnings("unchecked")
         @Specialization
+        @TruffleBoundary
         public static void perform(List<?> list, Object value) {
             ((List<Object>) list).add(value);
         }
@@ -215,6 +218,7 @@ class TestClosure {
     }
 }
 
+@ProvidedTags(ExpressionTag.class)
 class TestLanguage extends TruffleLanguage<Object> {
     @Override
     protected Object createContext(Env env) {
@@ -228,6 +232,7 @@ class Association {
         return new Object();
     }
 
+    @NeverDefault
     public Assumption getAssumption() {
         return Assumption.ALWAYS_VALID;
     }
