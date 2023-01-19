@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,7 +54,6 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -71,7 +70,6 @@ import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
@@ -105,11 +103,10 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.vm.ci.meta.JavaConstant;
 
 public class ProgressReporter {
+    private static final boolean IS_CI = System.console() == null || System.getenv("CI") != null;
     private static final int CHARACTERS_PER_LINE;
     private static final String HEADLINE_SEPARATOR;
     private static final String LINE_SEPARATOR;
-    private static final boolean IS_CI = System.console() == null || System.getenv("CI") != null;
-    private static final boolean IS_DUMB_TERM = isDumbTerm();
     private static final int MAX_NUM_BREAKDOWN = 10;
     private static final String STAGE_DOCS_URL = "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md";
     private static final double EXCESSIVE_GC_MIN_THRESHOLD_MILLIS = 15_000;
@@ -178,11 +175,6 @@ public class ProgressReporter {
         LINE_SEPARATOR = Utils.stringFilledWith(CHARACTERS_PER_LINE, "-");
     }
 
-    private static boolean isDumbTerm() {
-        String term = System.getenv("TERM");
-        return (term == null || term.equals("") || term.equals("dumb") || term.equals("unknown"));
-    }
-
     public static ProgressReporter singleton() {
         return ImageSingletons.lookup(ProgressReporter.class);
     }
@@ -200,38 +192,10 @@ public class ProgressReporter {
             jsonHelper = null;
         }
         usePrefix = SubstrateOptions.BuildOutputPrefix.getValue(options);
-        boolean enableColors = !IS_DUMB_TERM && !IS_CI && OS.getCurrent() != OS.WINDOWS &&
-                        System.getenv("NO_COLOR") == null /* https://no-color.org/ */;
-        if (SubstrateOptions.BuildOutputColorful.hasBeenSet(options)) {
-            enableColors = SubstrateOptions.BuildOutputColorful.getValue(options);
-        }
-        if (enableColors) {
-            colorStrategy = new ColorfulStrategy();
-            /* Add a shutdown hook to reset the ANSI mode. */
-            try {
-                Runtime.getRuntime().addShutdownHook(new Thread(ProgressReporter::resetANSIMode));
-            } catch (IllegalStateException e) {
-                /* If the VM is already shutting down, we do not need to register shutdownHook. */
-            }
-        } else {
-            colorStrategy = new ColorlessStrategy();
-        }
-
-        /*
-         * When logging is enabled, progress cannot be reported as logging works around
-         * NativeImageSystemIOWrappers to access stdio handles.
-         */
-        boolean loggingEnabled = DebugOptions.Log.getValue(options) != null;
-        boolean enableProgress = !IS_DUMB_TERM && !IS_CI && !loggingEnabled;
-        if (SubstrateOptions.BuildOutputProgress.hasBeenSet(options)) {
-            enableProgress = SubstrateOptions.BuildOutputProgress.getValue(options);
-        }
-        stagePrinter = enableProgress ? new CharacterwiseStagePrinter() : new LinewiseStagePrinter();
-        boolean showLinks = enableColors;
-        if (SubstrateOptions.BuildOutputLinks.hasBeenSet(options)) {
-            showLinks = SubstrateOptions.BuildOutputLinks.getValue(options);
-        }
-        linkStrategy = showLinks ? new LinkyStrategy() : new LinklessStrategy();
+        boolean enableColors = SubstrateOptions.BuildOutputColorful.getValue(options);
+        colorStrategy = enableColors ? new ColorfulStrategy() : new ColorlessStrategy();
+        stagePrinter = SubstrateOptions.BuildOutputProgress.getValue(options) ? new CharacterwiseStagePrinter() : new LinewiseStagePrinter();
+        linkStrategy = SubstrateOptions.BuildOutputLinks.getValue(options) ? new LinkyStrategy() : new LinklessStrategy();
 
         if (SubstrateOptions.useEconomyCompilerConfig(options)) {
             l().magentaBold().a("You enabled -Ob for this image build. This will configure some optimizations to reduce image build time.").println();
@@ -790,10 +754,6 @@ public class ProgressReporter {
 
     private static Timer getTimer(TimerCollection.Registry type) {
         return TimerCollection.singleton().get(type);
-    }
-
-    private static void resetANSIMode() {
-        NativeImageSystemIOWrappers.singleton().getOut().print(ANSI.RESET);
     }
 
     private static class Utils {

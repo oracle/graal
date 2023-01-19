@@ -192,6 +192,8 @@ public class NativeImage {
     final APIOptionHandler apiOptionHandler;
 
     public static final String oH = "-H:";
+    static final String oHEnabled = oH + "+";
+    static final String oHDisabled = oH + "-";
     static final String oR = "-R:";
 
     final String enablePrintFlags = CommonOptions.PrintFlags.getName();
@@ -206,6 +208,14 @@ public class NativeImage {
         return oH + option.getName() + "@" + origin + "=";
     }
 
+    private static String oHEnabled(OptionKey<Boolean> option) {
+        return oHEnabled + option.getName();
+    }
+
+    private static String oHDisabled(OptionKey<Boolean> option) {
+        return oHDisabled + option.getName();
+    }
+
     private static <T> String oR(OptionKey<T> option) {
         return oR + option.getName() + "=";
     }
@@ -214,7 +224,10 @@ public class NativeImage {
     final String oHClass = oH(SubstrateOptions.Class);
     final String oHName = oH(SubstrateOptions.Name);
     final String oHPath = oH(SubstrateOptions.Path);
-    final String oHEnableSharedLibraryFlag = oH + "+" + SubstrateOptions.SharedLibrary.getName();
+    final String oHEnableSharedLibraryFlag = oHEnabled(SubstrateOptions.SharedLibrary);
+    final String oHEnableBuildOutputColorful = oHEnabled(SubstrateOptions.BuildOutputColorful);
+    final String oHEnableBuildOutputProgress = oHEnabled(SubstrateOptions.BuildOutputProgress);
+    final String oHEnableBuildOutputLinks = oHEnabled(SubstrateOptions.BuildOutputLinks);
     final String oHCLibraryPath = oH(SubstrateOptions.CLibraryPath);
     final String oHFallbackThreshold = oH(SubstrateOptions.FallbackThreshold);
     final String oHFallbackExecutorJavaArg = oH(FallbackExecutor.Options.FallbackExecutorJavaArg);
@@ -642,8 +655,8 @@ public class NativeImage {
             buildArgs.add(fallbackExecutorJavaArg);
         }
 
-        buildArgs.add(oH + "+" + SubstrateOptions.BuildOutputSilent.getName());
-        buildArgs.add(oH + "+" + SubstrateOptions.ParseRuntimeOptions.getName());
+        buildArgs.add(oHEnabled(SubstrateOptions.BuildOutputSilent));
+        buildArgs.add(oHEnabled(SubstrateOptions.ParseRuntimeOptions));
         Path imagePathPath;
         try {
             imagePathPath = canonicalize(Paths.get(imagePath));
@@ -674,7 +687,7 @@ public class NativeImage {
          * The fallback image on purpose captures the Java home directory used for image generation,
          * see field FallbackExecutor.buildTimeJavaHome
          */
-        buildArgs.add(oH + "-" + SubstrateOptions.DetectUserDirectoriesInImageHeap.getName());
+        buildArgs.add(oHDisabled(SubstrateOptions.DetectUserDirectoriesInImageHeap));
 
         buildArgs.add(FallbackExecutor.class.getName());
         buildArgs.add(imageName);
@@ -1148,13 +1161,21 @@ public class NativeImage {
             imageBuilderJavaArgs.add(DefaultOptionHandler.addModulesOption + "=ALL-DEFAULT");
         }
 
+        boolean useColorfulOutput = configureBuildOutput();
+
         List<String> finalImageBuilderJavaArgs = Stream.concat(config.getBuilderJavaArgs().stream(), imageBuilderJavaArgs.stream()).collect(Collectors.toList());
-        return buildImage(finalImageBuilderJavaArgs, imageBuilderClasspath, imageBuilderModulePath, imageBuilderArgs, finalImageClasspath, finalImageModulePath);
+        try {
+            return buildImage(finalImageBuilderJavaArgs, imageBuilderClasspath, imageBuilderModulePath, imageBuilderArgs, finalImageClasspath, finalImageModulePath);
+        } finally {
+            if (useColorfulOutput) {
+                showMessagePart("\033[0m"); // ANSI reset
+            }
+        }
     }
 
     private static String getLocationAgnosticArgPrefix(String argPrefix) {
         VMError.guarantee(argPrefix.startsWith(oH) && argPrefix.endsWith("="), "argPrefix has to be a hosted option that ends with \"=\"");
-        return "^" + argPrefix.substring(0, argPrefix.length() - 1) + "(@[^=]*)?" + argPrefix.substring(argPrefix.length() - 1);
+        return "^" + argPrefix.substring(0, argPrefix.length() - 1) + "(@[^=]*)?=";
     }
 
     protected static String getHostedOptionFinalArgumentValue(List<String> args, String argPrefix) {
@@ -1174,6 +1195,19 @@ public class NativeImage {
             }
         }
         return values;
+    }
+
+    private static Boolean getHostedOptionFinalBooleanArgumentValue(List<String> args, OptionKey<Boolean> option) {
+        String locationAgnosticBooleanPattern = "^" + oH + "[+-]" + option.getName() + "(@[^=]*)?$";
+        Pattern pattern = Pattern.compile(locationAgnosticBooleanPattern);
+        Boolean result = null;
+        for (String arg : args) {
+            Matcher matcher = pattern.matcher(arg);
+            if (matcher.find()) {
+                result = arg.startsWith(oHEnabled); // otherwise must start with "-H:-"
+            }
+        }
+        return result;
     }
 
     private boolean shouldAddCWDToCP() {
@@ -1847,6 +1881,46 @@ public class NativeImage {
             return maxXmx;
         }
         return Long.toUnsignedString(memMax);
+    }
+
+    private static final boolean IS_CI = System.console() == null || System.getenv("CI") != null;
+    private static final boolean IS_DUMB_TERM = isDumbTerm();
+
+    private static boolean isDumbTerm() {
+        String term = System.getenv().getOrDefault("TERM", "");
+        return term.isEmpty() || term.equals("dumb") || term.equals("unknown");
+    }
+
+    private static boolean hasColorSupport() {
+        return !IS_DUMB_TERM && !IS_CI && OS.getCurrent() != OS.WINDOWS &&
+                        System.getenv("NO_COLOR") == null /* https://no-color.org/ */;
+    }
+
+    private static boolean hasProgressSupport(List<String> imageBuilderArgs) {
+        return !IS_DUMB_TERM && !IS_CI &&
+                        /*
+                         * When DebugOptions.Log is used, progress cannot be reported as logging
+                         * works around NativeImageSystemIOWrappers to access stdio handles.
+                         */
+                        getHostedOptionArgumentValues(imageBuilderArgs, oH + "Log=").isEmpty();
+    }
+
+    private boolean configureBuildOutput() {
+        boolean useColorfulOutput = false;
+        Boolean buildOutputColorfulValue = getHostedOptionFinalBooleanArgumentValue(imageBuilderArgs, SubstrateOptions.BuildOutputColorful);
+        if (buildOutputColorfulValue != null) {
+            useColorfulOutput = buildOutputColorfulValue; // use value set by user
+        } else if (hasColorSupport()) {
+            useColorfulOutput = true;
+            addPlainImageBuilderArg(oHEnableBuildOutputColorful);
+        }
+        if (getHostedOptionFinalBooleanArgumentValue(imageBuilderArgs, SubstrateOptions.BuildOutputProgress) == null && hasProgressSupport(imageBuilderArgs)) {
+            addPlainImageBuilderArg(oHEnableBuildOutputProgress);
+        }
+        if (getHostedOptionFinalBooleanArgumentValue(imageBuilderArgs, SubstrateOptions.BuildOutputLinks) == null && buildOutputColorfulValue == null && useColorfulOutput) {
+            addPlainImageBuilderArg(oHEnableBuildOutputLinks);
+        }
+        return useColorfulOutput;
     }
 
     static Map<String, String> loadProperties(Path propertiesPath) {
