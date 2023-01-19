@@ -218,6 +218,23 @@ public class LLVMIRBuilder implements AutoCloseable {
         }
     }
 
+    public void setFunctionCallingConvention(LLVMCallingConvention cc) {
+        setFunctionCallingConvention(function, cc);
+    }
+
+    public void setFunctionCallingConvention(LLVMValueRef func, LLVMCallingConvention cc) {
+        LLVM.LLVMSetFunctionCallConv(func, cc.value);
+    }
+
+    public enum LLVMCallingConvention {
+        GraalCallingConvention(102);
+
+        private final int value;
+
+        LLVMCallingConvention(int value) {
+            this.value = value;
+        }
+    }
     /* Basic blocks */
 
     public LLVMBasicBlockRef appendBasicBlock(String name) {
@@ -637,6 +654,11 @@ public class LLVMIRBuilder implements AutoCloseable {
     public LLVMValueRef buildReadRegister(LLVMValueRef register) {
         LLVMTypeRef readRegisterType = functionType(wordType(), metadataType());
         return buildIntrinsicCall("llvm.read_register." + intrinsicType(wordType()), readRegisterType, register);
+    }
+
+    public void buildWriteRegister(LLVMValueRef register, LLVMValueRef value) {
+        LLVMTypeRef writeRegisterType = functionType(voidType(), metadataType(), wordType());
+        buildIntrinsicCall("llvm.write_register." + intrinsicType(wordType()), writeRegisterType, register, value);
     }
 
     public LLVMValueRef buildExtractValue(LLVMValueRef struct, int i) {

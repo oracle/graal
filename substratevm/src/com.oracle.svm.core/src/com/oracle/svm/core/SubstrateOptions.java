@@ -336,25 +336,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> ForceNoROSectionRelocations = new HostedOptionKey<>(false);
 
     @Option(help = "Support multiple isolates.") //
-    public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<>(null) {
-        @Override
-        public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
-            if (!values.containsKey(this)) {
-                /*
-                 * With the LLVM backend, isolate support has a significant performance cost, so we
-                 * disable it unless it is explicitly enabled.
-                 */
-                return !useLLVMBackend();
-            }
-            return (Boolean) values.get(this);
-        }
-
-        @Override
-        public Boolean getValue(OptionValues values) {
-            assert checkDescriptorExists();
-            return getValueOrDefault(values.getMap());
-        }
-    };
+    public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<>(true);
 
     @Option(help = "At CEntryPoints check that the passed IsolateThread is valid.") //
     public static final HostedOptionKey<Boolean> CheckIsolateThreadAtEntry = new HostedOptionKey<>(false);

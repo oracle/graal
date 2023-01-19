@@ -54,6 +54,16 @@ public interface LLVMTargetSpecific {
     }
 
     /**
+     * Snippet that gets the value of an arbitrary register.
+     */
+    String getRegisterInlineAsm(String register);
+
+    /**
+     * Snippet that sets the value of an arbitrary register.
+     */
+    String setRegisterInlineAsm(String register);
+
+    /**
      * Snippet that jumps to a runtime-computed address.
      */
     String getJumpInlineAsm();
@@ -150,6 +160,15 @@ class LLVMAMD64TargetSpecificFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(LLVMTargetSpecific.class, new LLVMTargetSpecific() {
+            @Override
+            public String getRegisterInlineAsm(String register) {
+                return "movq %" + register + ", $0";
+            }
+
+            @Override
+            public String setRegisterInlineAsm(String register) {
+                return "movq $0, %" + register;
+            }
 
             @Override
             public String getJumpInlineAsm() {
@@ -163,7 +182,7 @@ class LLVMAMD64TargetSpecificFeature implements InternalFeature {
 
             @Override
             public String getAddInlineAssembly(String outputRegister, String inputRegister) {
-                return "addq $0, %" + inputRegister;
+                return "addq %" + inputRegister + ", %" + outputRegister;
             }
 
             @Override
@@ -237,6 +256,15 @@ class LLVMAArch64TargetSpecificFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(LLVMTargetSpecific.class, new LLVMTargetSpecific() {
+            @Override
+            public String getRegisterInlineAsm(String register) {
+                return "MOV $0, " + getLLVMRegisterName(register);
+            }
+
+            @Override
+            public String setRegisterInlineAsm(String register) {
+                return "MOV " + getLLVMRegisterName(register) + ", $0";
+            }
 
             @Override
             public String getJumpInlineAsm() {
@@ -250,7 +278,7 @@ class LLVMAArch64TargetSpecificFeature implements InternalFeature {
 
             @Override
             public String getAddInlineAssembly(String outputRegister, String inputRegister) {
-                return "ADD $0, " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(inputRegister);
+                return "ADD " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(inputRegister);
             }
 
             @Override
@@ -329,6 +357,16 @@ class LLVMRISCV64TargetSpecificFeature implements InternalFeature {
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(LLVMTargetSpecific.class, new LLVMTargetSpecific() {
             @Override
+            public String getRegisterInlineAsm(String register) {
+                return "mv $0, " + getLLVMRegisterName(register);
+            }
+
+            @Override
+            public String setRegisterInlineAsm(String register) {
+                return "mv " + getLLVMRegisterName(register) + ", $0";
+            }
+
+            @Override
             public String getJumpInlineAsm() {
                 return "jr $0";
             }
@@ -340,7 +378,7 @@ class LLVMRISCV64TargetSpecificFeature implements InternalFeature {
 
             @Override
             public String getAddInlineAssembly(String outputRegister, String inputRegister) {
-                return "add $0, " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(inputRegister);
+                return "add " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(inputRegister);
             }
 
             @Override
