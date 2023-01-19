@@ -225,23 +225,7 @@ Traceback (most recent call last):
 AssertionError: Too many reachable methods: 12128
 ```
 
-## Build Output Options
-
-Run `native-image --expert-options-all | grep "BuildOutput"` to see all build output options:
-
-```
--H:±BuildOutputBreakdowns    Show code and heap breakdowns as part of the build output. Default: + (enabled).
--H:±BuildOutputColorful      Colorize build output. Default: + (enabled).
--H:±BuildOutputGCWarnings    Print GC warnings as part of build output. Default: + (enabled).
--H:BuildOutputJSONFile=""    Print build output statistics as JSON to the specified file. The output is according to the JSON schema located at:
-                             docs/reference-manual/native-image/assets/build-output-schema-v0.9.1.json.
--H:±BuildOutputLinks         Show links in build output. Default: + (enabled).
--H:±BuildOutputPrefix        Prefix build output with '<pid>:<name of binary>'. Default: - (disabled).
--H:±BuildOutputProgress      Report progress in build output. Default: + (enabled).
--H:±BuildOutputSilent        Silence build output. Default: - (disabled).
-```
-
-### Related Documentation
+## Related Documentation
 
 - [Build a Native Shared Library](guides/build-native-shared-library.md)
 - [Build a Statically Linked or Mostly-Statically Linked Native Executable](guides/build-static-and-mostly-static-executable.md)
