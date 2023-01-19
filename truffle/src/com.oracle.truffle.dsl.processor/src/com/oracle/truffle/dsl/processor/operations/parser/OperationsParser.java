@@ -223,20 +223,15 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
         AnnotationValue decisionsFilePathValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionsFile", false);
         if (decisionsFilePathValue != null) {
             model.decisionsFilePath = resolveElementRelativePath(typeElement, (String) decisionsFilePathValue.getValue());
-        }
 
-        // todo: find and bind decisionOverrideFiles
+            // todo: find and bind decisionOverrideFiles
 
-        if (TruffleProcessorOptions.operationsEnableTracing(processingEnv)) {
-            model.enableTracing = true;
-        } else if ((boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "forceTracing", true).getValue()) {
-            model.addWarning("Operation DSL execution tracing is forced on. Use this only during development.");
-            model.enableTracing = true;
-        }
-
-        if (model.enableTracing && decisionsFilePathValue == null) {
-            model.addError(generateOperationsMirror, null,
-                            "Tracing Operation DSL execution is not supported without specifying decisionsFile path. Add 'decisionsFile=\"...\"' to @GenerateOperations annotation to fix this error.");
+            if (TruffleProcessorOptions.operationsEnableTracing(processingEnv)) {
+                model.enableTracing = true;
+            } else if ((boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "forceTracing", true).getValue()) {
+                model.addWarning("Operation DSL execution tracing is forced on. Use this only during development.");
+                model.enableTracing = true;
+            }
         }
 
         model.enableOptimizations = decisionsFilePathValue != null && !model.enableTracing;
