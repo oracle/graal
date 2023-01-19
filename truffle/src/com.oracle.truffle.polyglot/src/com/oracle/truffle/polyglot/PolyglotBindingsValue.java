@@ -108,7 +108,7 @@ final class PolyglotBindingsValue extends PolyglotValueDispatch {
     }
 
     @Override
-    public String toStringImpl(Object context, Object receiver) {
+    public String toStringImpl(PolyglotLanguageContext context, Object receiver) {
         return delegateBindings.toString();
     }
 

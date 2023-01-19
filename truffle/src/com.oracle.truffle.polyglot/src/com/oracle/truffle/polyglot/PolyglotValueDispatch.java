@@ -1508,25 +1508,40 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     @Override
     public final String toString(Object languageContext, Object receiver) {
         PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
-        Object prev = hostEnter(context);
+        Object prev = null;
+
+        if (context != null) {
+            PolyglotContextImpl.State localContextState = context.context.state;
+            if (localContextState.isInvalidOrClosed()) {
+                /*
+                 * Performance improvement for closed or invalid to avoid recurring exceptions.
+                 */
+                return "Error in toString(): Context is invalid or closed.";
+            }
+        }
+
+        try {
+            prev = PolyglotValueDispatch.hostEnter(context);
+        } catch (Throwable t) {
+            // enter might fail if context was closed.
+            // Can no longer call interop.
+            return String.format("Error in toString(): Could not enter context: %s.", t.getMessage());
+        }
         try {
             return toStringImpl(context, receiver);
         } catch (Throwable e) {
-            throw guestToHostException(context, e, true);
+            throw PolyglotValueDispatch.guestToHostException(context, e, true);
         } finally {
-            hostLeave(context, prev);
+            try {
+                PolyglotValueDispatch.hostLeave(languageContext, prev);
+            } catch (Throwable t) {
+                // ignore errors leaving we cannot propagate them.
+            }
         }
     }
 
-    protected String toStringImpl(@SuppressWarnings("unused") Object languageContext, Object receiver) throws AssertionError {
-        InteropLibrary lib = InteropLibrary.getFactory().getUncached(receiver);
-        Object result = lib.toDisplayString(receiver);
-        InteropLibrary resultLib = InteropLibrary.getFactory().getUncached(result);
-        try {
-            return resultLib.asString(result);
-        } catch (UnsupportedMessageException e) {
-            throw shouldNotReachHere("toDisplayString must be coercible to java.lang.String, but is not.", e);
-        }
+    String toStringImpl(PolyglotLanguageContext context, Object receiver) throws AssertionError {
+        return PolyglotWrapper.toStringImpl(context, receiver);
     }
 
     @Override
@@ -1832,8 +1847,8 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         }
 
         @Override
-        protected String toStringImpl(Object languageContext, Object receiver) throws AssertionError {
-            return super.toStringImpl(languageContext, getLanguageView(languageContext, receiver));
+        String toStringImpl(PolyglotLanguageContext context, Object receiver) throws AssertionError {
+            return super.toStringImpl(context, getLanguageView(context, receiver));
         }
 
         private Object getLanguageView(Object languageContext, Object receiver) {
