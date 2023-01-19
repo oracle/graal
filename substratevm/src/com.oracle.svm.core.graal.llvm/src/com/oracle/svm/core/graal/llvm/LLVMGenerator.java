@@ -110,6 +110,7 @@ import com.oracle.svm.core.graal.llvm.util.LLVMTargetSpecific;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMConstant;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMKind;
+import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMPendingPtrToInt;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMPendingSpecialRegisterRead;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMStackSlot;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMValueWrapper;
@@ -609,6 +610,23 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             return new LLVMVariable(getVal(input));
         }
         throw shouldNotReachHere("Unknown move input"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public Variable emitMove(ValueKind<?> dst, Value src) {
+        LLVMValueRef source = getVal(src);
+        LLVMTypeRef sourceType = typeOf(source);
+        LLVMTypeRef destType = ((LLVMKind) dst.getPlatformKind()).get();
+
+        /* Floating word cast */
+        if (LLVMIRBuilder.isObjectType(destType) && LLVMIRBuilder.isWordType(sourceType)) {
+            source = builder.buildIntToPtr(source, destType);
+        } else if (((LIRKind) dst).isValue() && LLVMIRBuilder.isWordType(destType) && LLVMIRBuilder.isObjectType(sourceType)) {
+            source = builder.buildPtrToInt(source);
+        } else if (!((LIRKind) dst).isValue() && LLVMIRBuilder.isWordType(destType) && LLVMIRBuilder.isObjectType(sourceType)) {
+            return new LLVMPendingPtrToInt(this, source);
+        }
+        return new LLVMVariable(source);
     }
 
     @Override

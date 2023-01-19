@@ -160,6 +160,8 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     Variable emitMove(Value input);
 
+    Variable emitMove(ValueKind<?> dst, Value src);
+
     void emitMove(AllocatableValue dst, Value src);
 
     Variable emitReadRegister(Register register, ValueKind<?> kind);
