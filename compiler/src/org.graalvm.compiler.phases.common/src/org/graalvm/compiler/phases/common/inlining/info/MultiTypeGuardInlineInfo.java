@@ -347,7 +347,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
     private void dispatchToTarget(StructuredGraph graph, StampProvider stampProvider, ConstantReflectionProvider constantReflection, ResolvedJavaMethod target, boolean invokeIsOnlySuccessor) {
         AbstractBeginNode invocationEntry = graph.add(new BeginNode());
         AbstractBeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
-        AbstractBeginNode[] successors = new AbstractBeginNode[]{invocationEntry, unknownTypeSux};
+        AbstractBeginNode[] successors = {invocationEntry, unknownTypeSux};
         createDispatchOnTypeBeforeInvoke(graph, successors, invokeIsOnlySuccessor, stampProvider, constantReflection);
 
         invocationEntry.setNext(invoke.asFixedNode());
