@@ -74,6 +74,7 @@ public abstract class RegexLexer {
     protected int position = 0;
     protected Map<String, Integer> namedCaptureGroups = null;
     private int curStartIndex = 0;
+    private int charClassCurAtomStartIndex = 0;
     private int nGroups = 1;
     private boolean identifiedAllGroups = false;
 
@@ -351,6 +352,7 @@ public abstract class RegexLexer {
     public Token next() throws RegexSyntaxException {
         curStartIndex = position;
         Token t = getNext();
+        t.setPosition(curStartIndex);
         setSourceSection(t, curStartIndex, position);
         return t;
     }
@@ -360,6 +362,10 @@ public abstract class RegexLexer {
      */
     public int getLastTokenPosition() {
         return curStartIndex;
+    }
+
+    protected int getLastAtomPosition() {
+        return Math.max(curStartIndex, charClassCurAtomStartIndex);
     }
 
     protected char curChar() {
@@ -479,6 +485,11 @@ public abstract class RegexLexer {
         return nGroups;
     }
 
+    public int numberOfCaptureGroupsSoFar() {
+        assert !identifiedAllGroups;
+        return nGroups;
+    }
+
     public Map<String, Integer> getNamedCaptureGroups() throws RegexSyntaxException {
         if (!identifiedAllGroups) {
             identifyCaptureGroups();
@@ -517,8 +528,9 @@ public abstract class RegexLexer {
     }
 
     /**
-     * Only call this from languages which do not support comments. Currently, only being called
-     * from JS.
+     * Only call this from languages which do not support comments. Also, must not be called from
+     * languages that disallow forward references (and therefore need {@link #nGroups} to represent
+     * the number of capture groups found *so far*). Currently, only being called from JS.
      */
     private void identifyCaptureGroups() throws RegexSyntaxException {
         // We are counting capture groups, so we only care about '(' characters and special
@@ -631,7 +643,7 @@ public abstract class RegexLexer {
             final int restoreIndex = position;
             final int backRefNumber = parseIntSaturated(c - '0', countDecimalDigits(getMaxBackReferenceDigits() - 1), Integer.MAX_VALUE);
             if (backRefNumber < (featureEnabledForwardReferences() ? totalNumberOfCaptureGroups() : nGroups)) {
-                return Token.createBackReference(backRefNumber);
+                return Token.createBackReference(backRefNumber, false);
             } else {
                 handleInvalidBackReference(backRefNumber);
             }
@@ -807,7 +819,7 @@ public abstract class RegexLexer {
         return false;
     }
 
-    private int parseIntSaturated(int firstDigit, int length, int returnOnOverflow) {
+    protected int parseIntSaturated(int firstDigit, int length, int returnOnOverflow) {
         int fromIndex = position;
         position += length;
         int ret = firstDigit;
@@ -825,7 +837,7 @@ public abstract class RegexLexer {
         return ret;
     }
 
-    private int countDecimalDigits() {
+    protected int countDecimalDigits() {
         return count(RegexLexer::isDecimalDigit);
     }
 
@@ -875,6 +887,7 @@ public abstract class RegexLexer {
 
     private void parseCharClassRange(char c) throws RegexSyntaxException {
         int startPos = position - 1;
+        charClassCurAtomStartIndex = position - 1;
         CodePointSet firstAtomCC = parseCharClassAtomPredefCharClass(c);
         int firstAtomCP = firstAtomCC == null ? parseCharClassAtomCodePoint(c) : -1;
         if (consumingLookahead("-")) {
@@ -883,6 +896,7 @@ public abstract class RegexLexer {
                 curCharClass.addRange('-', '-');
             } else {
                 char nextC = consumeChar();
+                charClassCurAtomStartIndex = position - 1;
                 CodePointSet secondAtomCC = parseCharClassAtomPredefCharClass(nextC);
                 int secondAtomCP = secondAtomCC == null ? parseCharClassAtomCodePoint(nextC) : -1;
                 // Runtime Semantics: CharacterRangeOrUnion(firstAtom, secondAtom)
@@ -1008,7 +1022,7 @@ public abstract class RegexLexer {
     }
 
     public RegexSyntaxException syntaxError(String msg) {
-        return RegexSyntaxException.createPattern(source, msg, curStartIndex);
+        return RegexSyntaxException.createPattern(source, msg, getLastAtomPosition());
     }
 
     @FunctionalInterface

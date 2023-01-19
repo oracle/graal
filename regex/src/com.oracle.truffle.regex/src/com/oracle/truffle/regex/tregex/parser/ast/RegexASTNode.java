@@ -474,6 +474,10 @@ public abstract class RegexASTNode implements JsonConvertible {
         return this instanceof Group;
     }
 
+    public boolean isConditionalBackReferenceGroup() {
+        return this instanceof ConditionalBackReferenceGroup;
+    }
+
     public boolean isLookAroundAssertion() {
         return this instanceof LookAroundAssertion;
     }
@@ -532,6 +536,10 @@ public abstract class RegexASTNode implements JsonConvertible {
 
     public Group asGroup() {
         return (Group) this;
+    }
+
+    public ConditionalBackReferenceGroup asConditionalBackReferenceGroup() {
+        return (ConditionalBackReferenceGroup) this;
     }
 
     public LookAroundAssertion asLookAroundAssertion() {

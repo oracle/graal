@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,9 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.AbstractRegexObject;
@@ -105,6 +107,7 @@ public final class PythonRegexParser implements RegexParser {
         if (lexer.source.getOptions().getPythonMethod() == PythonMethod.fullmatch) {
             astBuilder.pushGroup();
         }
+        List<Token.BackReference> conditionalBackReferences = new ArrayList<>();
         Token token = null;
         Token.Kind prevKind;
         while (lexer.hasNext()) {
@@ -182,8 +185,9 @@ public final class PythonRegexParser implements RegexParser {
                     }
                     break;
                 case backReference:
-                    verifyGroupReference(((Token.BackReference) token).getGroupNr());
-                    astBuilder.addBackReference((Token.BackReference) token, getLocalFlags().isIgnoreCase());
+                    Token.BackReference backRefToken = (Token.BackReference) token;
+                    verifyGroupReference(backRefToken);
+                    astBuilder.addBackReference(backRefToken, getLocalFlags().isIgnoreCase());
                     break;
                 case quantifier:
                     if (prevKind == Token.Kind.quantifier) {
@@ -195,13 +199,10 @@ public final class PythonRegexParser implements RegexParser {
                     astBuilder.addQuantifier((Token.Quantifier) token);
                     break;
                 case alternation:
+                    if (astBuilder.getCurGroup().isConditionalBackReferenceGroup() && astBuilder.getCurGroup().getAlternatives().size() == 2) {
+                        throw syntaxError(PyErrorMessages.CONDITIONAL_BACKREF_WITH_MORE_THAN_TWO_BRANCHES);
+                    }
                     astBuilder.nextSequence();
-                    // TODO:
-                    // if (astBuilder.getCurGroup().isConditionalBackReference() &&
-                    // astBuilder.getCurGroup().getAlternatives().size() == 2) {
-                    // throw
-                    // syntaxError(PyErrorMessages.CONDITIONAL_BACKREF_WITH_MORE_THAN_TWO_BRANCHES);
-                    // }
                     break;
                 case captureGroupBegin:
                     astBuilder.pushCaptureGroup(token);
@@ -222,18 +223,25 @@ public final class PythonRegexParser implements RegexParser {
                     if (astBuilder.getCurGroup().isLocalFlags()) {
                         lexer.popLocalFlags();
                     }
+                    if (astBuilder.getCurGroup().isConditionalBackReferenceGroup() && astBuilder.getCurGroup().getAlternatives().size() == 1) {
+                        // generate the implicit empty else branch
+                        astBuilder.nextSequence();
+                    }
                     astBuilder.popGroup(token);
                     break;
                 case charClass:
                     astBuilder.addCharClass((Token.CharacterClass) token);
                     break;
                 case conditionalBackreference:
-                    bailOut("conditional backreference groups not supported");
+                    Token.BackReference conditionalBackRefToken = (Token.BackReference) token;
+                    verifyGroupReference(conditionalBackRefToken);
+                    conditionalBackReferences.add(conditionalBackRefToken);
+                    astBuilder.pushConditionalBackReferenceGroup(conditionalBackRefToken);
                     break;
                 case inlineFlags:
                     // flagStack push is handled in the lexer
                     if (!((Token.InlineFlags) token).isGlobal()) {
-                        astBuilder.pushGroup();
+                        astBuilder.pushGroup(token);
                         astBuilder.getCurGroup().setLocalFlags(true);
                     }
                     break;
@@ -244,9 +252,15 @@ public final class PythonRegexParser implements RegexParser {
             astBuilder.addDollar();
         }
         if (!astBuilder.curGroupIsRoot()) {
-            throw syntaxError(PyErrorMessages.UNTERMINATED_SUBPATTERN);
+            throw syntaxErrorAtAbs(PyErrorMessages.UNTERMINATED_SUBPATTERN, astBuilder.getCurGroupStartPosition());
         }
-        return astBuilder.popRootGroup();
+        RegexAST ast = astBuilder.popRootGroup();
+        for (Token.BackReference conditionalBackReference : conditionalBackReferences) {
+            if (conditionalBackReference.getGroupNr() >= ast.getNumberOfCaptureGroups()) {
+                throw syntaxErrorAtAbs(PyErrorMessages.invalidGroupReference(Integer.toString(conditionalBackReference.getGroupNr())), conditionalBackReference.getPosition() + 3);
+            }
+        }
+        return ast;
     }
 
     private static void bailOut(String s) {
@@ -254,29 +268,62 @@ public final class PythonRegexParser implements RegexParser {
     }
 
     /**
-     * Verifies that making a backreference to a certain group is legal in the current context.
+     * Verifies that making a back-reference to a certain group is legal in the current context.
      *
-     * @param groupNumber the index of the referred group
-     * @throws RegexSyntaxException if the backreference is not valid
+     * @param backRefToken the back-reference in question
+     * @throws RegexSyntaxException if the back-reference is not valid
      */
-    private void verifyGroupReference(int groupNumber) throws RegexSyntaxException {
-        RegexASTNode parent = astBuilder.getCurGroup();
-        while (parent != null) {
-            if (parent instanceof Group && ((Group) parent).getGroupNumber() == groupNumber) {
-                throw syntaxError(PyErrorMessages.CANNOT_REFER_TO_AN_OPEN_GROUP);
+    private void verifyGroupReference(Token.BackReference backRefToken) throws RegexSyntaxException {
+        boolean conditional = backRefToken.kind == Token.Kind.conditionalBackreference;
+        int groupNumber = backRefToken.getGroupNr();
+        boolean insideLookBehind = insideLookBehind();
+        // CPython allows conditional back-references to be forward references and to also refer to
+        // an open group. However, this is not the case when inside a look-behind assertion. In such
+        // cases, the 'cannot refer to an open group' error message is used when an open group is
+        // references but also when a forward reference is made.
+        if (conditional && insideLookBehind) {
+            if (groupNumber >= lexer.numberOfCaptureGroupsSoFar()) {
+                throw syntaxErrorHere(PyErrorMessages.CANNOT_REFER_TO_AN_OPEN_GROUP);
             }
-            parent = parent.getParent();
         }
-        if (astBuilder.getCurGroup() == null) {
-            return;
-        }
-        parent = astBuilder.getCurGroup().getSubTreeParent();
-        while (parent != null) {
-            if (parent instanceof LookBehindAssertion && ((LookBehindAssertion) parent).getGroup().getEnclosedCaptureGroupsLow() <= groupNumber) {
-                throw syntaxErrorHere(PyErrorMessages.CANNOT_REFER_TO_GROUP_DEFINED_IN_THE_SAME_LOOKBEHIND_SUBPATTERN);
+        if (!conditional || insideLookBehind) {
+            RegexASTNode parent = astBuilder.getCurGroup();
+            while (parent != null) {
+                if (parent instanceof Group && ((Group) parent).getGroupNumber() == groupNumber) {
+                    int errorPosition = backRefToken.isNamedReference() ? backRefToken.getPosition() + 4 : backRefToken.getPosition();
+                    throw syntaxErrorAtAbs(PyErrorMessages.CANNOT_REFER_TO_AN_OPEN_GROUP, errorPosition);
+                }
+                parent = parent.getParent();
             }
-            parent = parent.getSubTreeParent();
+            if (astBuilder.getCurGroup() == null) {
+                return;
+            }
+            parent = astBuilder.getCurGroup().getSubTreeParent();
+            // CPython allows forward references when using conditional "back"-reference groups.
+            // The legality of forward references is checked at the end of parsing, so we do the
+            // same here. If we were to check for this eagerly (e.g. by scanning for all available
+            // capture groups ahead-of-time), we might end up reporting this error instead of some
+            // other error that appears later in the expression. In such cases, we would not be
+            // compatible with CPython error messages.
+            while (parent != null) {
+                if (parent instanceof LookBehindAssertion && ((LookBehindAssertion) parent).getGroup().getEnclosedCaptureGroupsLow() <= groupNumber) {
+                    throw syntaxErrorHere(PyErrorMessages.CANNOT_REFER_TO_GROUP_DEFINED_IN_THE_SAME_LOOKBEHIND_SUBPATTERN);
+                }
+                parent = parent.getSubTreeParent();
+            }
         }
+    }
+
+    private boolean insideLookBehind() {
+        RegexASTNode subTreeParent = astBuilder.getCurGroup().getSubTreeParent();
+        boolean insideLookBehind = false;
+        while (subTreeParent != null) {
+            if (subTreeParent.isLookBehindAssertion()) {
+                insideLookBehind = true;
+            }
+            subTreeParent = subTreeParent.getSubTreeParent();
+        }
+        return insideLookBehind;
     }
 
     private RegexSyntaxException syntaxError(String msg) {
@@ -285,5 +332,9 @@ public final class PythonRegexParser implements RegexParser {
 
     private RegexSyntaxException syntaxErrorHere(String msg) {
         return lexer.syntaxErrorHere(msg);
+    }
+
+    private RegexSyntaxException syntaxErrorAtAbs(String msg, int i) {
+        return lexer.syntaxErrorAtAbs(msg, i);
     }
 }

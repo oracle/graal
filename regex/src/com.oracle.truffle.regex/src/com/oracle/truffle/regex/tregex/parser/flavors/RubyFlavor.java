@@ -85,7 +85,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * <li>(?~...) absent expressions: These constructs can be used in Ruby regular expressions to match
  * strings that do not contain a match for a given expression. TRegex doesn't have support for this
  * kind of construction.</li>
- * <li>conditional backreferences (?(group)then|else)</li>
  * </ul>
  *
  * <p>
@@ -224,7 +223,8 @@ public final class RubyFlavor extends RegexFlavor {
     public static final RubyFlavor INSTANCE = new RubyFlavor();
 
     private RubyFlavor() {
-        super(BACKREFERENCES_TO_UNMATCHED_GROUPS_FAIL | EMPTY_CHECKS_MONITOR_CAPTURE_GROUPS | NESTED_CAPTURE_GROUPS_KEPT_ON_LOOP_REENTRY | FAILING_EMPTY_CHECKS_DONT_BACKTRACK);
+        super(BACKREFERENCES_TO_UNMATCHED_GROUPS_FAIL | EMPTY_CHECKS_MONITOR_CAPTURE_GROUPS | NESTED_CAPTURE_GROUPS_KEPT_ON_LOOP_REENTRY | FAILING_EMPTY_CHECKS_DONT_BACKTRACK |
+                        HAS_CONDITIONAL_BACKREFERENCES);
     }
 
     @Override

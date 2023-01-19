@@ -299,6 +299,11 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return register(new Group(groupNumber));
     }
 
+    public Group createConditionalBackReferenceGroup(int referencedGroupNumber) {
+        referencedGroups.set(referencedGroupNumber);
+        return register(new ConditionalBackReferenceGroup(referencedGroupNumber));
+    }
+
     public LookAheadAssertion createLookAheadAssertion(boolean negated) {
         final LookAheadAssertion assertion = new LookAheadAssertion(negated);
         createNFAHelperNodes(assertion);
@@ -352,6 +357,11 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     }
 
     public Group register(Group group) {
+        nodeCount.inc();
+        return group;
+    }
+
+    public ConditionalBackReferenceGroup register(ConditionalBackReferenceGroup group) {
         nodeCount.inc();
         return group;
     }
@@ -608,6 +618,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return getNumberOfNodes() <= TRegexOptions.TRegexMaxParseTreeSizeForDFA &&
                         getNumberOfCaptureGroups() <= TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA &&
                         !(getProperties().hasBackReferences() ||
+                                        getProperties().hasConditionalBackReferences() ||
                                         getProperties().hasLargeCountedRepetitions() ||
                                         getProperties().hasNegativeLookAheadAssertions() ||
                                         getProperties().hasNonLiteralLookBehindAssertions() ||
@@ -628,6 +639,9 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         }
         if (getProperties().hasBackReferences()) {
             sb.add("regex has back-references");
+        }
+        if (getProperties().hasConditionalBackReferences()) {
+            sb.add("regex has conditional back-references");
         }
         if (getProperties().hasLargeCountedRepetitions()) {
             sb.add(String.format("regex has large counted repetitions (threshold: %d for single CC, %d for groups)",
