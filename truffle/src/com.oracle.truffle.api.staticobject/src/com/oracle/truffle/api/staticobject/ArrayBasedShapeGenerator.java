@@ -42,6 +42,7 @@ package com.oracle.truffle.api.staticobject;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -91,8 +92,11 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.V1_8;
 
 final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
     private static final ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> generatorCache = TruffleOptions.AOT ? new ConcurrentHashMap<>() : null;
-    private static final String[] ARRAY_SIZE_FIELDS = new String[]{"primitiveArraySize", "objectArraySize"};
     private static final String STATIC_SHAPE_DESCRIPTOR = Type.getDescriptor(ArrayBasedStaticShape.class);
+    private static final String BYTE_ARRAY_DESCRIPTOR = Type.getDescriptor(byte[].class);
+    private static final String OBJECT_ARRAY_DESCRIPTOR = Type.getDescriptor(Object[].class);
+    private static final String[] ARRAY_SIZE_FIELDS = new String[]{"primitiveArraySize", "objectArraySize"};
+    private static final String[] ARRAY_DESCRIPTORS = new String[]{BYTE_ARRAY_DESCRIPTOR, OBJECT_ARRAY_DESCRIPTOR};
 
     private final Class<?> generatedStorageClass;
     private final Class<? extends T> generatedFactoryClass;
@@ -186,39 +190,10 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         for (Class<?> parameter : superConstructor.getParameterTypes()) {
             sb.append(Type.getDescriptor(parameter));
         }
-        sb.append(STATIC_SHAPE_DESCRIPTOR);
-        return sb.append("II)V").toString();
-    }
-
-    private static Object getFrameLocal(Class<?> clazz) {
-        if (clazz.isPrimitive()) {
-            if (clazz == Boolean.TYPE || clazz == Byte.TYPE || clazz == Character.TYPE || clazz == Integer.TYPE || clazz == Short.TYPE) {
-                return INTEGER;
-            } else if (clazz == Double.TYPE) {
-                return DOUBLE;
-            } else if (clazz == Float.TYPE) {
-                return FLOAT;
-            } else if (clazz == Long.TYPE) {
-                return LONG;
-            } else {
-                throw new AssertionError();
-            }
-        } else {
-            return Type.getInternalName(clazz);
-        }
-    }
-
-    private static Object[] getFrameLocals(String storageName, Class<?>[] constructorParameters) {
-        Object[] frameLocals = new Object[constructorParameters.length + 4];
-        int idx = 0;
-        frameLocals[idx++] = storageName; // this
-        for (; idx <= constructorParameters.length; idx++) {
-            frameLocals[idx] = getFrameLocal(constructorParameters[idx - 1]);
-        }
-        frameLocals[idx++] = Type.getInternalName(ArrayBasedStaticShape.class); // shape
-        frameLocals[idx++] = INTEGER; // primitiveArraySize
-        frameLocals[idx++] = INTEGER; // objectArraySize
-        return frameLocals;
+        sb.append(STATIC_SHAPE_DESCRIPTOR); // ArrayBasedStaticShape shape
+        sb.append(BYTE_ARRAY_DESCRIPTOR);  // byte[] primitive
+        sb.append(OBJECT_ARRAY_DESCRIPTOR); // Object[] object
+        return sb.append(")V").toString();
     }
 
     private static void addStorageConstructors(ClassVisitor cv, String storageName, Class<?> storageSuperClass, String storageSuperName) {
@@ -242,48 +217,23 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             }
             mv.visitMethodInsn(INVOKESPECIAL, storageSuperName, "<init>", superConstructorDescriptor, false);
 
-            // Prepare array of frame locals for jumps
-            Object[] frameLocals = getFrameLocals(storageName, constructorParameters);
-
             // this.shape = shape;
             mv.visitVarInsn(ALOAD, 0);
             mv.visitVarInsn(ALOAD, maxLocals++);
             mv.visitFieldInsn(PUTFIELD, storageName, "shape", STATIC_SHAPE_DESCRIPTOR);
 
-            // primitive = primitiveArraySize > 0 ? new byte[primitiveArraySize] : null;
+            // this.primitive = primitive;
             mv.visitVarInsn(ALOAD, 0);
-            mv.visitVarInsn(ILOAD, maxLocals);
-            Label lNoPrimitives = new Label();
-            mv.visitJumpInsn(IFLE, lNoPrimitives);
-            mv.visitVarInsn(ILOAD, maxLocals++);
-            mv.visitIntInsn(NEWARRAY, T_BYTE);
-            Label lSetPrimitive = new Label();
-            mv.visitJumpInsn(GOTO, lSetPrimitive);
-            mv.visitLabel(lNoPrimitives);
-            mv.visitFrame(F_FULL, frameLocals.length, frameLocals, 1, new Object[]{storageName});
-            mv.visitInsn(ACONST_NULL);
-            mv.visitLabel(lSetPrimitive);
-            mv.visitFrame(F_FULL, frameLocals.length, frameLocals, 2, new Object[]{storageName, "[B"});
-            mv.visitFieldInsn(PUTFIELD, storageName, "primitive", "[B");
+            mv.visitVarInsn(ALOAD, maxLocals++);
+            mv.visitFieldInsn(PUTFIELD, storageName, "primitive", BYTE_ARRAY_DESCRIPTOR);
 
-            // object = objectArraySize > 0 ? new Object[objectArraySize] : null;
+            // this.object = object;
             mv.visitVarInsn(ALOAD, 0);
-            mv.visitVarInsn(ILOAD, maxLocals);
-            Label lNoObjects = new Label();
-            mv.visitJumpInsn(IFLE, lNoObjects);
-            mv.visitVarInsn(ILOAD, maxLocals++);
-            mv.visitTypeInsn(ANEWARRAY, "java/lang/Object");
-            Label lSetObject = new Label();
-            mv.visitJumpInsn(GOTO, lSetObject);
-            mv.visitLabel(lNoObjects);
-            mv.visitFrame(F_FULL, frameLocals.length, frameLocals, 1, new Object[]{storageName});
-            mv.visitInsn(ACONST_NULL);
-            mv.visitLabel(lSetObject);
-            mv.visitFrame(F_FULL, frameLocals.length, frameLocals, 2, new Object[]{storageName, "[Ljava/lang/Object;"});
-            mv.visitFieldInsn(PUTFIELD, storageName, "object", "[Ljava/lang/Object;");
+            mv.visitVarInsn(ALOAD, maxLocals++);
+            mv.visitFieldInsn(PUTFIELD, storageName, "object", OBJECT_ARRAY_DESCRIPTOR);
 
             mv.visitInsn(RETURN);
-            mv.visitMaxs(Math.max(maxStack, 3), maxLocals);
+            mv.visitMaxs(Math.max(maxStack, 2), maxLocals);
 
             mv.visitEnd();
         }
@@ -387,18 +337,49 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         mv.visitEnd();
     }
 
+    private static Object getFrameLocal(Class<?> clazz) {
+        if (clazz.isPrimitive()) {
+            if (clazz == Boolean.TYPE || clazz == Byte.TYPE || clazz == Character.TYPE || clazz == Integer.TYPE || clazz == Short.TYPE) {
+                return INTEGER;
+            } else if (clazz == Double.TYPE) {
+                return DOUBLE;
+            } else if (clazz == Float.TYPE) {
+                return FLOAT;
+            } else if (clazz == Long.TYPE) {
+                return LONG;
+            } else {
+                throw new AssertionError();
+            }
+        } else {
+            return Type.getInternalName(clazz);
+        }
+    }
+
+    private static Object[] getFactoryFrameLocals(String factoryName, Class<?>[] constructorParameters) {
+        Object[] frameLocals = new Object[constructorParameters.length + 1];
+        int idx = 0;
+        frameLocals[idx++] = factoryName; // this
+        for (; idx <= constructorParameters.length; idx++) {
+            frameLocals[idx] = getFrameLocal(constructorParameters[idx - 1]);
+        }
+        return frameLocals;
+    }
+
     private static void addFactoryMethods(ClassVisitor cv, Class<?> storageClass, Class<?> storageFactoryInterface, String factoryName) {
         for (Method m : storageFactoryInterface.getMethods()) {
             MethodVisitor mv = cv.visitMethod(ACC_PUBLIC | ACC_FINAL, m.getName(), Type.getMethodDescriptor(m), null, null);
             mv.visitCode();
+            Label label0 = new Label();
+            mv.visitLabel(label0);
             mv.visitTypeInsn(NEW, Type.getInternalName(storageClass));
             mv.visitInsn(DUP);
             StringBuilder constructorDescriptor = new StringBuilder();
             constructorDescriptor.append('(');
-            Class<?>[] params = m.getParameterTypes();
+
+            Class<?>[] constructorParameters = m.getParameterTypes();
             int maxStack = 2; // DUP
             int maxLocals = 1; // this
-            for (Class<?> param : params) {
+            for (Class<?> param : constructorParameters) {
                 Type parameterType = Type.getType(param);
                 int loadOpcode = parameterType.getOpcode(ILOAD);
                 mv.visitVarInsn(loadOpcode, maxLocals);
@@ -408,14 +389,48 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
                 constructorDescriptor.append(Type.getDescriptor(param));
             }
 
+            // Prepare arrays of frame locals and stack for jumps
+            Object[] frameLocals = getFactoryFrameLocals(factoryName, constructorParameters);
+            ArrayList<Object> frameStack = new ArrayList<>();
+            frameStack.add(label0);
+            frameStack.add(label0);
+            for (int i = 1; i < frameLocals.length; i++) {
+                frameStack.add(frameLocals[i]);
+            }
+
             constructorDescriptor.append(STATIC_SHAPE_DESCRIPTOR);
             mv.visitVarInsn(ALOAD, 0);
             mv.visitFieldInsn(GETFIELD, factoryName, "shape", STATIC_SHAPE_DESCRIPTOR);
+            frameStack.add(Type.getInternalName(ArrayBasedStaticShape.class));
             maxStack++;
-            for (String fieldName : ARRAY_SIZE_FIELDS) {
-                constructorDescriptor.append("I");
+
+            for (int i = 0; i < ARRAY_SIZE_FIELDS.length; i++) {
+                String fieldName = ARRAY_SIZE_FIELDS[i];
+                String arrayDescriptor = ARRAY_DESCRIPTORS[i];
+
+                constructorDescriptor.append(arrayDescriptor);
+
+                // Example:
+                // byte[] primitive = primitiveArraySize > 0 ? new byte[primitiveArraySize] : null;
                 mv.visitVarInsn(ALOAD, 0);
                 mv.visitFieldInsn(GETFIELD, factoryName, fieldName, "I");
+                Label nonPositiveArraySize = new Label();
+                mv.visitJumpInsn(IFLE, nonPositiveArraySize);
+                mv.visitVarInsn(ALOAD, 0);
+                mv.visitFieldInsn(GETFIELD, factoryName, fieldName, "I");
+                if (arrayDescriptor.equals(BYTE_ARRAY_DESCRIPTOR)) {
+                    mv.visitIntInsn(NEWARRAY, T_BYTE);
+                } else {
+                    mv.visitTypeInsn(ANEWARRAY, "java/lang/Object");
+                }
+                Label done = new Label();
+                mv.visitJumpInsn(GOTO, done);
+                mv.visitLabel(nonPositiveArraySize);
+                mv.visitFrame(F_FULL, frameLocals.length, frameLocals, frameStack.size(), frameStack.toArray());
+                mv.visitInsn(ACONST_NULL);
+                mv.visitLabel(done);
+                frameStack.add(arrayDescriptor);
+                mv.visitFrame(F_FULL, frameLocals.length, frameLocals, frameStack.size(), frameStack.toArray());
                 maxStack++;
             }
 
