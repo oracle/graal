@@ -286,6 +286,25 @@ Return operation executes its child, and then returns from the currently executi
 
 Yield operation executes its child, and then returns from the currently executing function with a ContinuationResult containing that value as the result. Upon continuing the continuation, the control continues from Yield operation, with the Yield returning the value passed to the continuation (see "Yielding and coroutines")
 
+**TryExcept**
+* Arity: 2
+* Returns value: no
+* `begin` arguments: (OperationLocal)
+
+TryExcept executes its first child. If any Truffle exception occurrs during that execution, the exception is stored in the local provided, and the second child is executed. This operation models the behavior of `try ... catch` construct in the Java language, but without the option to filter exceptions based on type. It does not return a value in either case.
+
+**FinallyTry**
+* Arity: 2
+* Returns value: no
+
+FinallyTry executes its second child. When that execution finished (either normally, through an explicit control flow transfer (Return, Branch, ...), or an exception), the first child is executed. This operation models the `try ... finally` construct in the Java language, but the order of children is flipped. If the first child finishes execution normally, the control flow resumes where it would after executing the second child. Otherwise, the control flow continues where it would continue after executing the first child.
+
+**FinallyTryNoExcept**
+* Arity: 2
+* Returns value: no
+
+FinallyTryNoExcept executes its second child. If that execution finished without an exception (either normally, or through an explicit control flow transfer (Return, Branch, ...)), the first child is executed. This is similar to FinallyTry, but does not handle exceptions.
+
 **Source**
 * Arity: 1
 * Returns value: Only if the child returns a value
