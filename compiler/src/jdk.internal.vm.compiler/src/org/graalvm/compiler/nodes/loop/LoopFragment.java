@@ -70,6 +70,7 @@ public abstract class LoopFragment {
     protected boolean nodesReady;
     private EconomicMap<Node, Node> duplicationMap;
     protected List<PhiNode> introducedPhis;
+    protected List<MergeNode> introducedMerges;
 
     public LoopFragment(LoopEx loop) {
         this(loop, null);
@@ -103,6 +104,10 @@ public abstract class LoopFragment {
 
     public List<PhiNode> getIntroducedPhis() {
         return this.introducedPhis;
+    }
+
+    public List<MergeNode> getIntroducedMerges() {
+        return this.introducedMerges;
     }
 
     @SuppressWarnings("unchecked")
@@ -478,6 +483,7 @@ public abstract class LoopFragment {
         assert isDuplicate();
         StructuredGraph graph = graph();
         this.introducedPhis = new ArrayList<>();
+        this.introducedMerges = new ArrayList<>();
         for (AbstractBeginNode earlyExit : LoopFragment.toHirBlocks(original().loop().loop().getLoopExits())) {
             FixedNode next = earlyExit.next();
             if (earlyExit.isDeleted() || !this.original().contains(earlyExit)) {
@@ -501,6 +507,7 @@ public abstract class LoopFragment {
             earlyExit.setNext(originalEnd);
             newEarlyExit.setNext(newEnd);
             merge.setNext(next);
+            introducedMerges.add(merge);
 
             FrameState exitState = null;
             if (earlyExit instanceof LoopExitNode) {
