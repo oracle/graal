@@ -205,6 +205,7 @@ final class LongDoubleUtil {
         public static final int EXPONENT_POSITION = FRACTION_BIT_WIDTH - Long.SIZE; // 112 - 64 = 48
         public static final long EXPONENT_MASK = 0b111111111111111L << EXPONENT_POSITION;
         public static final long FRACTION_MASK = (1L << EXPONENT_POSITION) - 1;
+        public static final int DOUBLE_SIGN_POS = 63;
 
         final Object number;
 
@@ -718,7 +719,7 @@ final class LongDoubleUtil {
                 long doubleFraction = (expSignFraction & FP128Number.FRACTION_MASK) << (FP128Number.DOUBLE_FRACTION_BIT_WIDTH - FP128Number.EXPONENT_POSITION);
                 // 4bits from fraction
                 doubleFraction |= fraction >>> (Long.SIZE - (FP128Number.DOUBLE_FRACTION_BIT_WIDTH - FP128Number.EXPONENT_POSITION));
-                long signBit = (expSignFraction & FP128Number.SIGN_MASK) << (Long.SIZE - Short.SIZE);
+                long signBit = (getSign(expSignFraction) ? 1L : 0L) << FP128Number.DOUBLE_SIGN_POS;
 
                 // TODO: overflow case. Test this.
                 long shiftedExponent = doubleExponent << FP128Number.DOUBLE_FRACTION_BIT_WIDTH;
@@ -728,6 +729,10 @@ final class LongDoubleUtil {
             } catch (InvalidBufferOffsetException ex) {
                 throw UnsupportedMessageException.create();
             }
+        }
+
+        private static boolean getSign(long expSignFraction) {
+            return (expSignFraction & FP128Number.SIGN_MASK) != 0;
         }
 
         @TruffleBoundary
