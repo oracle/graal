@@ -191,7 +191,7 @@ public abstract class InvokeVirtual extends EspressoNode {
 
     static Method.MethodVersion genericMethodLookup(EspressoContext context, Method resolutionSeed, Klass receiverKlass,
                     BranchProfile error) {
-        if (resolutionSeed.isRemovedByRedefition()) {
+        if (resolutionSeed.isRemovedByRedefinition()) {
             /*
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop.

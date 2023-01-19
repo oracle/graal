@@ -562,27 +562,29 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public static Method getHostReflectiveMethodRoot(StaticObject seed, Meta meta) {
         assert seed.getKlass().getMeta().java_lang_reflect_Method.isAssignableFrom(seed.getKlass());
         StaticObject curMethod = seed;
-        Method target = null;
-        while (target == null) {
-            target = (Method) meta.HIDDEN_METHOD_KEY.getHiddenObject(curMethod);
-            if (target == null) {
-                curMethod = meta.java_lang_reflect_Method_root.getObject(curMethod);
+        while (curMethod != null && StaticObject.notNull(curMethod)) {
+            Method target = (Method) meta.HIDDEN_METHOD_KEY.getHiddenObject(curMethod);
+            if (target != null) {
+                return target;
             }
+            curMethod = meta.java_lang_reflect_Method_root.getObject(curMethod);
         }
-        return target;
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Could not find HIDDEN_METHOD_KEY");
     }
 
     public static Method getHostReflectiveConstructorRoot(StaticObject seed, Meta meta) {
         assert seed.getKlass().getMeta().java_lang_reflect_Constructor.isAssignableFrom(seed.getKlass());
         StaticObject curMethod = seed;
-        Method target = null;
-        while (target == null) {
-            target = (Method) meta.HIDDEN_CONSTRUCTOR_KEY.getHiddenObject(curMethod);
-            if (target == null) {
-                curMethod = meta.java_lang_reflect_Constructor_root.getObject(curMethod);
+        while (curMethod != null && StaticObject.notNull(curMethod)) {
+            Method target = (Method) meta.HIDDEN_CONSTRUCTOR_KEY.getHiddenObject(curMethod);
+            if (target != null) {
+                return target;
             }
+            curMethod = meta.java_lang_reflect_Constructor_root.getObject(curMethod);
         }
-        return target;
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Could not find HIDDEN_CONSTRUCTOR_KEY");
     }
 
     // Polymorphic signature method 'creation'
@@ -968,7 +970,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             // we block until class redefinition is done
             // unless we're the redefine thread
             getContext().getClassRedefinition().check();
-            if (isRemovedByRedefition()) {
+            if (isRemovedByRedefinition()) {
                 // for a removed method, we return the latest known
                 // method version in case active frames try to
                 // retrieve information for obsolete methods
@@ -985,7 +987,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         removedByRedefinition = true;
     }
 
-    public boolean isRemovedByRedefition() {
+    public boolean isRemovedByRedefinition() {
         return removedByRedefinition;
     }
 
@@ -1423,7 +1425,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public Object invokeMethod(Object callee, Object[] args) {
-            if (getMethod().isRemovedByRedefition()) {
+            if (getMethod().isRemovedByRedefinition()) {
                 Meta meta = getMeta();
                 throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
                                 meta.toGuestString(getMethod().getDeclaringKlass().getNameAsString() + "." + getName() + getRawSignature()));

@@ -49,7 +49,7 @@ public final class Target_sun_reflect_NativeConstructorAccessorImpl {
                         @Inject EspressoLanguage language,
                         @Inject Meta meta);
 
-        @Specialization()
+        @Specialization
         public @JavaType(Object.class) StaticObject newInstance(
                         @JavaType(Constructor.class) StaticObject constructor,
                         @JavaType(Object[].class) StaticObject args0,
