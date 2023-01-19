@@ -718,7 +718,7 @@ final class LongDoubleUtil {
                 long doubleFraction = (expSignFraction & FP128Number.FRACTION_MASK) << (FP128Number.DOUBLE_FRACTION_BIT_WIDTH - FP128Number.EXPONENT_POSITION);
                 // 4bits from fraction
                 doubleFraction |= fraction >>> (Long.SIZE - (FP128Number.DOUBLE_FRACTION_BIT_WIDTH - FP128Number.EXPONENT_POSITION));
-                long signBit = (expSignFraction & FP80Number.SIGN_MASK) << (Long.SIZE - Short.SIZE);
+                long signBit = (expSignFraction & FP128Number.SIGN_MASK) << (Long.SIZE - Short.SIZE);
 
                 // TODO: overflow case. Test this.
                 long shiftedExponent = doubleExponent << FP128Number.DOUBLE_FRACTION_BIT_WIDTH;
