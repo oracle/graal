@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -241,6 +241,7 @@ public class StandardGraphBuilderPlugins {
         registerMethodHandleImplPlugins(plugins, replacements);
         registerPreconditionsPlugins(plugins, replacements);
         registerJcovCollectPlugins(plugins, replacements);
+        registerThreadPlugin(plugins, replacements);
 
         if (supportsStubBasedPlugins) {
             registerArraysPlugins(plugins, replacements);
@@ -2281,5 +2282,26 @@ public class StandardGraphBuilderPlugins {
                 return templates.implMultiplyToLen;
             }
         });
+    }
+
+    private static boolean hasEnsureMaterializedForStackWalk() {
+        try {
+            Thread.class.getDeclaredMethod("ensureMaterializedForStackWalk", Object.class);
+        } catch (Exception e) {
+            return false;
+        }
+        return true;
+    }
+
+    private static void registerThreadPlugin(InvocationPlugins plugins, Replacements replacements) {
+        InvocationPlugin threadPlugin = new InvocationPlugin("ensureMaterializedForStackWalk", Object.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
+                b.add(new BlackholeNode(object));
+                return true;
+            }
+        };
+        Registration r = new Registration(plugins, Thread.class, replacements);
+        r.registerConditional(hasEnsureMaterializedForStackWalk(), threadPlugin);
     }
 }
