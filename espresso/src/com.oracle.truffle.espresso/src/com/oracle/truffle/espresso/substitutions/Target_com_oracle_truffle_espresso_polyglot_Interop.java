@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1982,7 +1982,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(ToEspressoNode.getMetaName(metaObject, exceptionInterop));
                     if (converter != null) {
                         StaticObject converted = (StaticObject) converter.convert(foreignException);
-                        // the back trace of the foreign exception wrapper must be set to the foreign
+                        // the back trace of the foreign exception wrapper must be set to the
+                        // foreign
                         // exception object, then the back trace is retained in the guest code
                         // and the stackTrace field set to null to trigger backtrace lookups
                         Meta meta = getMeta();

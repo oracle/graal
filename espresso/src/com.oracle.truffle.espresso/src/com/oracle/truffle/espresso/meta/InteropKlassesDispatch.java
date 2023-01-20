@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,6 @@
 
 package com.oracle.truffle.espresso.meta;
 
-import com.oracle.truffle.espresso.runtime.dispatch.ForeignExceptionInterop;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -31,6 +30,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.ForeignExceptionInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.InterruptedExceptionInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.IterableInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.IteratorInterop;
