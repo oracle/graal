@@ -25,6 +25,9 @@
 package org.graalvm.nativebridge;
 
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+
+import java.nio.ByteBuffer;
 
 import static org.graalvm.nativebridge.BinaryOutput.LARGE_STRING_TAG;
 import static org.graalvm.nativebridge.BinaryOutput.NULL;
@@ -219,19 +222,7 @@ public abstract class BinaryInput {
      *
      * @throws IndexOutOfBoundsException if there are not enough bytes to read
      */
-    public final void read(byte[] b, int off, int len) throws IndexOutOfBoundsException {
-        if (len < 0) {
-            throw new IllegalArgumentException(String.format("Len must be non negative but was %d", len));
-        }
-        int n = 0;
-        while (n < len) {
-            int count = readImpl(b, off + n, len - n);
-            if (count < 0) {
-                throw new IndexOutOfBoundsException();
-            }
-            n += count;
-        }
-    }
+    public abstract void read(byte[] b, int off, int len) throws IndexOutOfBoundsException;
 
     /**
      * Reads a string using a modified UTF-8 encoding in a machine-independent manner.
@@ -520,11 +511,6 @@ public abstract class BinaryInput {
         return new CCharPointerInput(address, length);
     }
 
-    /**
-     * Reads up to {@code len} bytes into a byte array starting at offset {@code off}.
-     */
-    abstract int readImpl(byte[] b, int off, int len);
-
     private void ensureBufferSize(int len) {
         if (tempEncodingByteBuffer == null || tempEncodingByteBuffer.length < len) {
             tempEncodingByteBuffer = new byte[Math.max(bufferSize(0, len), 80)];
@@ -549,20 +535,33 @@ public abstract class BinaryInput {
         }
 
         @Override
-        public int readImpl(byte[] b, int off, int len) {
-            if (pos >= length) {
-                return EOF;
+        public void read(byte[] b, int off, int len) {
+            if (len < 0) {
+                throw new IllegalArgumentException(String.format("Len must be non negative but was %d", len));
             }
-            int toRead = Math.min(len, length - pos);
-            System.arraycopy(buffer, pos, b, off, toRead);
-            pos += toRead;
-            return toRead;
+            if (pos + len > length) {
+                throw new IndexOutOfBoundsException();
+            }
+            System.arraycopy(buffer, pos, b, off, len);
+            pos += len;
         }
     }
 
     private static final class CCharPointerInput extends BinaryInput {
 
+        /**
+         * Represents the point at which the average cost of a JNI call exceeds the expense of an
+         * element by element copy. See {@code java.nio.Bits#JNI_COPY_TO_ARRAY_THRESHOLD}.
+         */
+        private static final int BYTEBUFFER_COPY_TO_ARRAY_THRESHOLD = 6;
+
         private final CCharPointer address;
+        /**
+         * ByteBuffer view of this {@link CCharPointerInput} direct memory. The ByteBuffer is used
+         * for bulk data transfers, where the bulk ByteBuffer operations outperform element by
+         * element copying by an order of magnitude.
+         */
+        private ByteBuffer byteBufferView;
 
         CCharPointerInput(CCharPointer address, int length) {
             super(length);
@@ -578,16 +577,25 @@ public abstract class BinaryInput {
         }
 
         @Override
-        public int readImpl(byte[] b, int off, int len) {
-            if (pos >= length) {
-                return EOF;
+        public void read(byte[] b, int off, int len) {
+            if (len < 0) {
+                throw new IllegalArgumentException(String.format("Len must be non negative but was %d", len));
             }
-            int i = 0;
-            for (int j = pos; i < len && j < length; i++, j++) {
-                b[off + i] = address.read(j);
+            if (pos + len > length) {
+                throw new IndexOutOfBoundsException();
             }
-            pos += i;
-            return i;
+            if (len > BYTEBUFFER_COPY_TO_ARRAY_THRESHOLD) {
+                if (byteBufferView == null) {
+                    byteBufferView = CTypeConversion.asByteBuffer(address, length);
+                }
+                byteBufferView.position(pos);
+                byteBufferView.get(b, off, len);
+            } else {
+                for (int i = 0, j = pos; i < len; i++, j++) {
+                    b[off + i] = address.read(j);
+                }
+            }
+            pos += len;
         }
     }
 }

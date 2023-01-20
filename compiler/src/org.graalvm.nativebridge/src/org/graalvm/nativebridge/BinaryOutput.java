@@ -27,9 +27,11 @@ package org.graalvm.nativebridge;
 import org.graalvm.nativebridge.JNIConfig.Builder;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.WordFactory;
 
 import java.io.Closeable;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -527,9 +529,21 @@ public abstract class BinaryOutput {
      */
     public static final class CCharPointerBinaryOutput extends BinaryOutput implements Closeable {
 
+        /**
+         * Represents the point at which the average cost of a JNI call exceeds the expense of an
+         * element by element copy. See {@code java.nio.Bits#JNI_COPY_FROM_ARRAY_THRESHOLD}.
+         */
+        private static final int BYTEBUFFER_COPY_FROM_ARRAY_THRESHOLD = 6;
+
         private CCharPointer address;
         private int length;
         private boolean unmanaged;
+        /**
+         * ByteBuffer view of this {@link CCharPointerBinaryOutput} direct memory. The ByteBuffer is
+         * used for bulk data transfers, where the bulk ByteBuffer operations outperform element by
+         * element copying by an order of magnitude.
+         */
+        private ByteBuffer byteBufferView;
 
         private CCharPointerBinaryOutput(CCharPointer address, int length, boolean unmanaged) {
             this.address = address;
@@ -565,8 +579,16 @@ public abstract class BinaryOutput {
                 throw new IndexOutOfBoundsException("offset: " + off + ", length: " + len + ", array length: " + b.length);
             }
             ensureCapacity(pos + len);
-            for (int i = 0; i < len; i++) {
-                address.write(pos + i, b[off + i]);
+            if (len > BYTEBUFFER_COPY_FROM_ARRAY_THRESHOLD) {
+                if (byteBufferView == null) {
+                    byteBufferView = CTypeConversion.asByteBuffer(address, length);
+                }
+                byteBufferView.position(pos);
+                byteBufferView.put(b, off, len);
+            } else {
+                for (int i = 0; i < len; i++) {
+                    address.write(pos + i, b[off + i]);
+                }
             }
             pos += len;
         }
@@ -584,6 +606,7 @@ public abstract class BinaryOutput {
         public void close() {
             if (unmanaged) {
                 UnmanagedMemory.free(address);
+                byteBufferView = null;
                 address = WordFactory.nullPointer();
                 length = 0;
                 unmanaged = false;
@@ -599,6 +622,7 @@ public abstract class BinaryOutput {
 
         private void ensureCapacity(int neededCapacity) {
             if (neededCapacity - length > 0) {
+                byteBufferView = null;
                 int newCapacity = length << 1;
                 if (newCapacity - neededCapacity < 0) {
                     newCapacity = neededCapacity;

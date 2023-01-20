@@ -79,6 +79,10 @@ final class CodeBuilder {
         this.scope = scope;
     }
 
+    int position() {
+        return body.length();
+    }
+
     CodeBuilder indent() {
         indentLevel++;
         return this;

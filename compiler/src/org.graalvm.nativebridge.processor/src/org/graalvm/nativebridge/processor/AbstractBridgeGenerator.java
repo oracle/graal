@@ -273,66 +273,76 @@ abstract class AbstractBridgeGenerator {
         builder.lineStart().write(types.getPrimitiveType(TypeKind.INT)).space().write(targetVar).write(" = ");
         boolean first = true;
         for (MarshalledParameter e : marshalledParameters) {
-            if (first) {
-                first = false;
-            } else {
+            if (!first) {
                 builder.spaceIfNeeded().write("+").space();
             }
+            int mark = builder.position();
             switch (e.marshallerData.kind) {
                 case CUSTOM:
-                    if (e.parameterType.getKind() == TypeKind.ARRAY) {
-                        TypeMirror componentType = ((ArrayType) e.parameterType).getComponentType();
-                        if (componentType.getKind() == TypeKind.ARRAY) {
-                            // For multidimensional arrays it's impossible to infer size in a
-                            // constant time, because any sub-array may be null.
-                            // We rather use a constant estimate.
-                            builder.write("128");
+                    // Reservation for custom types is hard to guess as we don't have an instance
+                    // yet. It's highly probable that reallocation is needed anyway, we ignore it.
+                    if (!e.reservation) {
+                        if (e.parameterType.getKind() == TypeKind.ARRAY) {
+                            TypeMirror componentType = ((ArrayType) e.parameterType).getComponentType();
+                            if (componentType.getKind() == TypeKind.ARRAY) {
+                                // For multidimensional arrays it's impossible to infer size in a
+                                // constant time, because any sub-array may be null.
+                                // We rather use a constant estimate.
+                                builder.write("128");
+                            } else {
+                                CharSequence firstElement = new CodeBuilder(builder).arrayElement(e.parameterName, "0").build();
+                                builder.memberSelect(types.boxedClass(types.getPrimitiveType(TypeKind.INT)).asType(), "BYTES", false).write(" + ").write("(").write(e.parameterName).write(
+                                                " != null && ").memberSelect(e.parameterName, "length", false).write(" > 0 ? ").memberSelect(e.parameterName, "length", false).write(" * ").invoke(
+                                                                e.marshallerData.name, "inferSize", firstElement).write(" : 0").write(")");
+                            }
                         } else {
-                            CharSequence firstElement = new CodeBuilder(builder).arrayElement(e.parameterName, "0").build();
-                            builder.memberSelect(types.boxedClass(types.getPrimitiveType(TypeKind.INT)).asType(), "BYTES", false).write(" + ").write("(").write(e.parameterName).write(
-                                            " != null && ").memberSelect(e.parameterName, "length", false).write(" > 0 ? ").memberSelect(e.parameterName, "length", false).write(" * ").invoke(
-                                                            e.marshallerData.name, "inferSize", firstElement).write(" : 0").write(")");
+                            CharSequence inferMethodName = isOutParametersUpdate && !e.isResult ? "inferUpdateSize" : "inferSize";
+                            builder.invoke(e.marshallerData.name, inferMethodName, e.parameterName);
                         }
-                    } else {
-                        CharSequence inferMethodName = isOutParametersUpdate && !e.isResult ? "inferUpdateSize" : "inferSize";
-                        builder.invoke(e.marshallerData.name, inferMethodName, e.parameterName);
                     }
                     break;
                 case REFERENCE:
                     if (e.parameterType.getKind() == TypeKind.ARRAY) {
-                        CharSequence arrayLength = null;
-                        if (e.marshallerData.in != null) {
-                            arrayLength = e.marshallerData.in.lengthParameter;
-                        } else if (e.marshallerData.out != null) {
-                            arrayLength = e.marshallerData.out.lengthParameter;
+                        // Reservation for arrays is hard to guess as we don't have an instance yet.
+                        // It's highly probable that reallocation is needed anyway, we ignore it.
+                        if (!e.reservation) {
+                            CharSequence arrayLength = null;
+                            if (e.marshallerData.in != null) {
+                                arrayLength = e.marshallerData.in.lengthParameter;
+                            } else if (e.marshallerData.out != null) {
+                                arrayLength = e.marshallerData.out.lengthParameter;
+                            }
+                            if (arrayLength == null) {
+                                arrayLength = new CodeBuilder(builder).memberSelect(e.parameterName, "length", false).build();
+                            }
+                            TypeMirror boxedLong = types.boxedClass(types.getPrimitiveType(TypeKind.LONG)).asType();
+                            if (addReferenceArrayLength) {
+                                TypeMirror boxedInt = types.boxedClass(types.getPrimitiveType(TypeKind.INT)).asType();
+                                builder.memberSelect(boxedInt, "BYTES", false).write(" + ");
+                            }
+                            builder.write("(").write(e.parameterName).write(" != null ? ").write(arrayLength).write(" * ").memberSelect(boxedLong, "BYTES", false).write(" : 0").write(")");
                         }
-                        if (arrayLength == null) {
-                            arrayLength = new CodeBuilder(builder).memberSelect(e.parameterName, "length", false).build();
-                        }
-                        TypeMirror boxedLong = types.boxedClass(types.getPrimitiveType(TypeKind.LONG)).asType();
-                        if (addReferenceArrayLength) {
-                            TypeMirror boxedInt = types.boxedClass(types.getPrimitiveType(TypeKind.INT)).asType();
-                            builder.memberSelect(boxedInt, "BYTES", false).write(" + ");
-                        }
-                        builder.write("(").write(e.parameterName).write(" != null ? ").write(arrayLength).write(" * ").memberSelect(boxedLong, "BYTES", false).write(" : 0").write(")");
                     } else {
-                        generateSizeOf(builder, e.parameterName, types.getPrimitiveType(TypeKind.LONG));
+                        generateSizeOf(builder, e.parameterName, types.getPrimitiveType(TypeKind.LONG), e.reservation);
                     }
                     break;
                 case VALUE:
-                    generateSizeOf(builder, e.parameterName, e.parameterType);
+                    generateSizeOf(builder, e.parameterName, e.parameterType, e.reservation);
                     break;
                 case RAW_REFERENCE:
-                    generateSizeOf(builder, e.parameterName, types.getPrimitiveType(TypeKind.LONG));
+                    generateSizeOf(builder, e.parameterName, types.getPrimitiveType(TypeKind.LONG), e.reservation);
                     break;
                 default:
                     throw new IllegalStateException(String.format("Unsupported marshaller %s of kind %s.", e.marshallerData.name, e.marshallerData.kind));
+            }
+            if (mark != builder.position()) {
+                first = false;
             }
         }
         builder.lineEnd(";");
     }
 
-    private void generateSizeOf(CodeBuilder builder, CharSequence variable, TypeMirror type) {
+    private void generateSizeOf(CodeBuilder builder, CharSequence variable, TypeMirror type, boolean reservation) {
         switch (type.getKind()) {
             case BOOLEAN:
             case BYTE:
@@ -347,21 +357,29 @@ abstract class AbstractBridgeGenerator {
                 builder.memberSelect(types.boxedClass((PrimitiveType) type).asType(), "BYTES", false);
                 break;
             case ARRAY:
-                builder.memberSelect(variable, "length", false);
-                builder.write(" * ");
-                TypeMirror componentType = ((ArrayType) type).getComponentType();
-                if (componentType.getKind().isPrimitive()) {
-                    generateSizeOf(builder, null, componentType);
-                } else {
-                    assert types.isSameType(typeCache.string, type);
-                    builder.write("32");    // String array element size estimate
+                // Reservation for arrays is hard to guess as we don't have an instance yet. It's
+                // highly probable that reallocation is needed anyway, we ignore it.
+                if (!reservation) {
+                    builder.memberSelect(variable, "length", false);
+                    builder.write(" * ");
+                    TypeMirror componentType = ((ArrayType) type).getComponentType();
+                    if (componentType.getKind().isPrimitive()) {
+                        generateSizeOf(builder, null, componentType, reservation);
+                    } else {
+                        assert types.isSameType(typeCache.string, type);
+                        builder.write("32");    // String array element size estimate
+                    }
                 }
                 break;
             case DECLARED:
-                assert types.isSameType(typeCache.string, type);
-                generateSizeOf(builder, null, types.getPrimitiveType(TypeKind.INT));
-                builder.write(" + ");
-                builder.invoke(variable, "length");
+                // Reservation for strings is hard to guess as we don't have an instance yet. It's
+                // highly probable that reallocation is needed anyway, we ignore it.
+                if (!reservation) {
+                    assert types.isSameType(typeCache.string, type);
+                    generateSizeOf(builder, null, types.getPrimitiveType(TypeKind.INT), reservation);
+                    builder.write(" + ");
+                    builder.invoke(variable, "length");
+                }
                 break;
             default:
                 throw new IllegalArgumentException(String.valueOf(type));
@@ -979,15 +997,25 @@ abstract class AbstractBridgeGenerator {
     }
 
     static final class MarshalledParameter {
+        final boolean reservation;
         final CharSequence parameterName;
         final TypeMirror parameterType;
         final boolean isResult;
         final MarshallerData marshallerData;
 
         MarshalledParameter(CharSequence parameterName, TypeMirror parameterType, boolean isResult, MarshallerData marshallerData) {
+            this.reservation = false;
             this.parameterName = parameterName;
             this.parameterType = parameterType;
             this.isResult = isResult;
+            this.marshallerData = marshallerData;
+        }
+
+        MarshalledParameter(TypeMirror resultType, MarshallerData marshallerData) {
+            this.reservation = true;
+            this.parameterName = null;
+            this.parameterType = resultType;
+            this.isResult = true;
             this.marshallerData = marshallerData;
         }
     }

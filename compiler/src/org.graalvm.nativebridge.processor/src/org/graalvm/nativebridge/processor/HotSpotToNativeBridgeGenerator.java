@@ -235,7 +235,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
             builder.line(enterScope.build());
             builder.line("try {");
             builder.indent();
-            generateByteArrayBinaryOutputInit(builder, marshalledParametersOutput, binaryMarshalledParameters);
+            generateByteArrayBinaryOutputInit(builder, methodData, marshalledParametersOutput, binaryMarshalledParameters, firstOutMarshalledParameter != null);
             boolean needsPostMarshallParameters = generatePreMarshallParameters(builder, allParameters, marshalledParametersOutput, overrides);
             CharSequence nativeCall = generateMarshallParameters(builder, nativeMethodName, allParameters, marshalledParametersOutput, syntheticPrependParameters, syntheticAppendParameters,
                             overrides);
@@ -259,7 +259,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
             builder.line(enterScope.build());
             builder.line("try {");
             builder.indent();
-            generateByteArrayBinaryOutputInit(builder, marshalledParametersOutput, binaryMarshalledParameters);
+            generateByteArrayBinaryOutputInit(builder, methodData, marshalledParametersOutput, binaryMarshalledParameters, firstOutMarshalledParameter != null);
             boolean needsPostMarshallParameters = generatePreMarshallParameters(builder, allParameters, marshalledParametersOutput, overrides);
             CharSequence nativeCall = generateMarshallParameters(builder, nativeMethodName, allParameters, marshalledParametersOutput, syntheticPrependParameters, syntheticAppendParameters,
                             overrides);
@@ -391,10 +391,19 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
         return marshalledResultInput;
     }
 
-    private void generateByteArrayBinaryOutputInit(CodeBuilder builder, CharSequence marshalledParametersOutputVar, List<MarshalledParameter> marshalledParameters) {
+    private void generateByteArrayBinaryOutputInit(CodeBuilder builder, MethodData methodData, CharSequence marshalledParametersOutputVar, List<MarshalledParameter> marshalledParameters,
+                    boolean reserveSpaceForResult) {
         if (marshalledParametersOutputVar != null) {
             CharSequence sizeVar = "marshalledParametersSizeEstimate";
-            generateSizeEstimate(builder, sizeVar, marshalledParameters, true, false);
+            List<MarshalledParameter> usedParameters;
+            if (reserveSpaceForResult && methodData.type.getReturnType().getKind() != TypeKind.VOID) {
+                usedParameters = new ArrayList<>(1 + marshalledParameters.size());
+                usedParameters.add(new MarshalledParameter(methodData.type.getReturnType(), methodData.getReturnTypeMarshaller()));
+                usedParameters.addAll(marshalledParameters);
+            } else {
+                usedParameters = marshalledParameters;
+            }
+            generateSizeEstimate(builder, sizeVar, usedParameters, true, false);
             builder.lineStart().write(typeCache.byteArrayBinaryOutput).space().write(marshalledParametersOutputVar).write(" = ").invokeStatic(typeCache.byteArrayBinaryOutput, "create",
                             sizeVar).lineEnd(";");
         }
