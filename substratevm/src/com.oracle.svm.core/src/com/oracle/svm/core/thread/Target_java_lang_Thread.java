@@ -53,8 +53,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.ContinuationsNotSupported;
 import com.oracle.svm.core.jdk.ContinuationsSupported;
-import com.oracle.svm.core.jdk.HasSetExtentLocalCache;
-import com.oracle.svm.core.jdk.HasSetScopedValueCache;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
@@ -186,7 +184,7 @@ public final class Target_java_lang_Thread {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     Object lockHelper;
 
-    @Inject @TargetElement(onlyWith = {HasSetScopedValueCache.class, HasScopedValueCache.class, HasSetExtentLocalCache.class, HasExtentLocalCache.class, LoomJDK.class}) //
+    @Inject @TargetElement(onlyWith = {HasScopedValueCache.class, HasExtentLocalCache.class, LoomJDK.class}) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     Object[] scopedValueCache;
 
@@ -657,7 +655,7 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitute
-    @TargetElement(onlyWith = HasSetExtentLocalCache.class)
+    @TargetElement(onlyWith = HasExtentLocalCache.class)
     static void setExtentLocalCache(Object[] cache) {
         JavaThreads.toTarget(currentCarrierThread()).scopedValueCache = cache;
     }
@@ -669,7 +667,7 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitute
-    @TargetElement(onlyWith = HasSetScopedValueCache.class)
+    @TargetElement(onlyWith = HasScopedValueCache.class)
     static void setScopedValueCache(Object[] cache) {
         JavaThreads.toTarget(currentCarrierThread()).scopedValueCache = cache;
     }
