@@ -34,7 +34,6 @@ import java.lang.reflect.Type;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.util.GraalAccess;
-import com.oracle.svm.util.AnnotationWrapper;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;

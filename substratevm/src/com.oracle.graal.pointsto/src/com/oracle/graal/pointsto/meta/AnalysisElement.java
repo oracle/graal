@@ -24,6 +24,8 @@
  */
 package com.oracle.graal.pointsto.meta;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.util.List;
 import java.util.Map;
@@ -43,7 +45,40 @@ import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ModifiersProvider;
 
-public abstract class AnalysisElement {
+public abstract class AnalysisElement implements AnnotatedElement {
+
+    public abstract AnnotatedElement getWrapped();
+
+    public AnnotatedElement getWrappedWithoutResolve() {
+        return getWrapped();
+    }
+
+    protected abstract AnalysisUniverse getUniverse();
+
+    @Override
+    public final boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
+        return getUniverse().getAnnotationExtractor().hasAnnotation(getWrappedWithoutResolve(), annotationClass);
+    }
+
+    @Override
+    public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+        return getUniverse().getAnnotationExtractor().extractAnnotation(getWrappedWithoutResolve(), annotationClass, false);
+    }
+
+    @Override
+    public final <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
+        return getUniverse().getAnnotationExtractor().extractAnnotation(getWrappedWithoutResolve(), annotationClass, true);
+    }
+
+    @Override
+    public final Annotation[] getAnnotations() {
+        return getUniverse().getAnnotationExtractor().extractAnnotations(getWrappedWithoutResolve(), false);
+    }
+
+    @Override
+    public final Annotation[] getDeclaredAnnotations() {
+        return getUniverse().getAnnotationExtractor().extractAnnotations(getWrappedWithoutResolve(), true);
+    }
 
     /**
      * Contains reachability handlers that are notified when the element is marked as reachable.

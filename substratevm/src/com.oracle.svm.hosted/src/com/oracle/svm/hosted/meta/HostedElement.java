@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.infrastructure;
+package com.oracle.svm.hosted.meta;
 
-import jdk.vm.ci.meta.ResolvedJavaField;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 
-public interface WrappedJavaField extends ResolvedJavaField, WrappedElement {
+public abstract class HostedElement implements AnnotatedElement {
+
+    protected abstract AnnotatedElement getWrapped();
 
     @Override
-    ResolvedJavaField getWrapped();
+    public final boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
+        return getWrapped().isAnnotationPresent(annotationClass);
+    }
+
+    @Override
+    public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+        return getWrapped().getAnnotation(annotationClass);
+    }
+
+    @Override
+    public final <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
+        return getWrapped().getDeclaredAnnotation(annotationClass);
+    }
+
+    @Override
+    public final Annotation[] getAnnotations() {
+        return getWrapped().getAnnotations();
+    }
+
+    @Override
+    public final Annotation[] getDeclaredAnnotations() {
+        return getWrapped().getDeclaredAnnotations();
+    }
 }
