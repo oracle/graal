@@ -1516,11 +1516,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.startIf().string("operationStack == null").end().startBlock(); // {
-            b.startThrow().startNew(context.getType(IllegalStateException.class));
-            b.string("\"Unexpected operation begin - no root operation present. Did you forget a beginRoot()?\"").end();
-            b.end(2);
-            b.end(); // }
+            createCheckRoot(b);
 
             b.startIf().string("operationSp == operationStack.length").end().startBlock(); // {
             b.startAssign("operationStack").startStaticCall(context.getType(Arrays.class), "copyOf");
@@ -2250,6 +2246,8 @@ public class OperationsNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "beforeChild");
             CodeTreeBuilder b = ex.createBuilder();
 
+            createCheckRoot(b);
+
             b.statement("Object data = operationData[operationSp - 1]");
             b.statement("int childIndex = operationChildCount[operationSp - 1]");
 
@@ -2282,6 +2280,14 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.end();
 
             return ex;
+        }
+
+        private void createCheckRoot(CodeTreeBuilder b) {
+            b.startIf().string("operationStack == null").end().startBlock(); // {
+            b.startThrow().startNew(context.getType(IllegalStateException.class));
+            b.string("\"Unexpected operation begin - no root operation present. Did you forget a beginRoot()?\"").end();
+            b.end(2);
+            b.end(); // }
         }
 
         private CodeExecutableElement createAfterChild() {
