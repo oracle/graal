@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "6.9.1",
+    "mxversion": "6.14.13",
     "name": "espresso",
     "version" : "23.0.0",
     "release" : False,
