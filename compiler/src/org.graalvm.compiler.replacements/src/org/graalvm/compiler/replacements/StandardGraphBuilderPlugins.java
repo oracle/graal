@@ -2340,7 +2340,7 @@ public class StandardGraphBuilderPlugins {
         InvocationPlugin threadPlugin = new InvocationPlugin("ensureMaterializedForStackWalk", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
-                b.add(new BlackholeNode(object));
+                b.add(new BlackholeNode(object, "ensureMaterializedForStackWalk"));
                 return true;
             }
         };
