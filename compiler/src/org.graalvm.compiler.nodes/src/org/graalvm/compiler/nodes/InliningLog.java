@@ -750,4 +750,5 @@ public class InliningLog {
     public Callsite getRootCallsite() {
         return root;
     }
+
 }
