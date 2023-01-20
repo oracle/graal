@@ -235,7 +235,6 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
 
         AnnotationValue decisionsFileValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionsFile", false);
         AnnotationValue decisionsOverrideFilesValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionsOverrideFiles", false);
-        String decisionsFilePath = null;
         String[] decisionsOverrideFilesPath = new String[0];
 
         if (decisionsFileValue != null) {
@@ -326,6 +325,7 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
 
     private static void parseDecisionsFile(OperationsModel model, OptimizationDecisionsModel result, String filePath, boolean isMain) {
         try {
+            // this parsing is very fragile, and error reporting is very useless
             FileInputStream fi = new FileInputStream(filePath);
             JSONArray o = new JSONArray(new JSONTokener(fi));
             for (int i = 0; i < o.length(); i++) {
@@ -351,20 +351,20 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
         switch (decision.getString("type")) {
             case "SuperInstruction": {
                 SuperInstructionDecision m = new SuperInstructionDecision();
-                m.id = decision.getString("id");
+                m.id = decision.optString("id");
                 m.instructions = jsonGetStringArray(decision, "instructions");
                 result.superInstructionDecisions.add(m);
                 break;
             }
             case "CommonInstruction": {
                 CommonInstructionDecision m = new CommonInstructionDecision();
-                m.id = decision.getString("id");
+                m.id = decision.optString("id");
                 result.commonInstructionDecisions.add(m);
                 break;
             }
             case "Quicken": {
                 QuickenDecision m = new QuickenDecision();
-                m.id = decision.getString("id");
+                m.id = decision.optString("id");
                 m.operation = decision.getString("operation");
                 m.specializations = jsonGetStringArray(decision, "specializations");
                 result.quickenDecisions.add(m);

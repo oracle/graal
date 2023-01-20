@@ -2342,6 +2342,13 @@ public class OperationsNodeFactory implements ElementHelpers {
                         buildEmitInstruction(b, model.branchFalseInstruction, "((IntRef[]) data)[0]");
                         b.end().startElseIf().string("childIndex == 1").end().startBlock();
                         buildEmitInstruction(b, model.branchInstruction, "((IntRef[]) data)[1]");
+                        if (op.kind == OperationKind.CONDITIONAL) {
+                            // we have to adjust the stack for the third child
+                            b.statement("curStack -= 1");
+                            if (model.hasBoxingElimination()) {
+                                b.statement("stackValueBciSp -= 1");
+                            }
+                        }
                         b.statement("((IntRef[]) data)[0].value = bci");
                         b.end().startElseBlock();
                         b.statement("((IntRef[]) data)[1].value = bci");

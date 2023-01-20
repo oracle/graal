@@ -67,7 +67,7 @@ public class BoxingOperationsTest {
 
     private static final BoxingLanguage LANGUAGE = null;
 
-    private static final int NUM_ITERATIONS = 10;
+    private static final int NUM_ITERATIONS = 10_000;
 
     private static BoxingOperations parse(OperationParser<BoxingOperationsGen.Builder> parser) {
         OperationNodes<BoxingOperations> nodes = BoxingOperationsGen.create(OperationConfig.DEFAULT, parser);
@@ -336,7 +336,7 @@ public class BoxingOperationsTest {
 
         RootCallTarget callTarget = root.getCallTarget();
 
-        testInvalidations(root, 3, () -> {
+        testInvalidations(root, 5, () -> {
             for (int i = 0; i < NUM_ITERATIONS; i++) {
                 Assert.assertEquals(1L, callTarget.call());
             }
@@ -401,10 +401,11 @@ class BoxingTypeSystem {
 @SuppressWarnings("unused")
 abstract class BoxingOperations extends RootNode implements OperationRootNode {
 
-    private static final boolean LOG = true;
+    private static final boolean LOG = false;
     int totalInvalidations = 0;
 
     protected void transferToInterpreterAndInvalidate() {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         this.totalInvalidations++;
         if (LOG) {
             System.err.println("[INVAL] --------------------");
@@ -412,7 +413,6 @@ abstract class BoxingOperations extends RootNode implements OperationRootNode {
                 System.err.println("   " + sf);
             });
         }
-        CompilerDirectives.transferToInterpreterAndInvalidate();
     }
 
     protected BoxingOperations(TruffleLanguage<?> language, Builder frameDescriptor) {
