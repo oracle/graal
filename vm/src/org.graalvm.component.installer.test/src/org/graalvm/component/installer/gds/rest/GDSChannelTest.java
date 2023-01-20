@@ -22,7 +22,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package org.graalvm.component.installer.gds.rest;
 
 import org.graalvm.component.installer.MemoryFeedback;
@@ -64,7 +63,9 @@ import java.net.URL;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
+import static org.junit.Assert.assertFalse;
 
 /**
  *
@@ -72,6 +73,7 @@ import java.util.Set;
  */
 public class GDSChannelTest extends CommandTestBase {
     private static final String MOCK_TOKEN = "MOCK_TOKEN";
+    private static final String HEADER_DOWNLOAD_CONFIG = "x-download-token";
     @Rule public TestName name = new TestName();
     @Rule public ProxyResource proxyResource = new ProxyResource();
 
@@ -274,6 +276,39 @@ public class GDSChannelTest extends CommandTestBase {
 
         out = channel.interceptDownloadException(ioExc, fd);
         assertSame(ioExc, out);
+    }
+
+    @Test
+    public void testConfigureDownloader() throws MalformedURLException {
+        String mockUrlString = "http://some.mock.url/";
+        URL url = SystemUtils.toURL(mockUrlString);
+        channel.setIndexURL(url);
+        channel.tokStore.setToken(MOCK_TOKEN);
+        FileDownloader fd = new FileDownloader("something", url, this);
+        ComponentInfo ci = new ComponentInfo("ID", "name", "1.0.0");
+        channel.configureDownloader(ci, fd);
+        Map<String, String> headers = fd.getRequestHeaders();
+        assertEquals(MOCK_TOKEN, headers.get(HEADER_DOWNLOAD_CONFIG));
+        assertEquals(3, headers.size());
+
+        fd = new FileDownloader("something", url, this);
+        ci.setImplicitlyAccepted(true);
+        channel.configureDownloader(ci, fd);
+        headers = fd.getRequestHeaders();
+        assertEquals(null, headers.get(HEADER_DOWNLOAD_CONFIG));
+        assertEquals(2, headers.size());
+    }
+
+    @Test
+    public void testNeedToken() {
+        ComponentInfo ci = new ComponentInfo("ID", "name", "1.0.0");
+        assertTrue(channel.needToken(ci));
+
+        ci.setImplicitlyAccepted(true);
+        assertFalse(channel.needToken(ci));
+
+        ci.setImplicitlyAccepted(false);
+        assertTrue(channel.needToken(ci));
     }
 
     final class TestGDSChannel extends GDSChannel {
