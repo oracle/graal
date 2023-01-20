@@ -65,6 +65,7 @@ import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayBuilderFactory;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayFactory;
 import com.oracle.truffle.nfi.backend.panama.PanamaClosure.MonomorphicClosureInfo;
+import com.oracle.truffle.nfi.backend.panama.PanamaClosure.PolymorphicClosureInfo;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
@@ -151,34 +152,6 @@ final class PanamaSignature {
         }
     }
 
-    @TruffleBoundary
-    MethodHandle createCachedUpcallHandle() {
-        PanamaNFILanguage language = PanamaNFILanguage.get(null);
-        MethodHandle base = PanamaClosureRootNode.createUpcallHandle(language);
-        return base.asType(upcallType);
-    }
-
-    @TruffleBoundary
-    private void initUncachedUpcallHandle() {
-        synchronized (this) {
-            if (uncachedUpcallHandle == null) {
-                /*
-                 * The cached and uncached MethodHandle look exactly the same, the only
-                 * difference is the scope of the Truffle profiling info.
-                 */
-                uncachedUpcallHandle = createCachedUpcallHandle();
-            }
-        }
-    }
-
-    MethodHandle getUncachedUpcallHandle() {
-        if (uncachedUpcallHandle == null) {
-            initUncachedUpcallHandle();
-            assert uncachedUpcallHandle != null;
-        }
-        return uncachedUpcallHandle;
-    }
-
     boolean checkUpcallMethodHandle(MethodHandle handle) {
         return handle.type() == upcallType;
     }
@@ -186,7 +159,6 @@ final class PanamaSignature {
     MethodType getUpcallMethodType() {
         return upcallType;
     }
-
 
     @TruffleBoundary
     MemoryAddress bind(MethodHandle cachedHandle, Object receiver) {
@@ -227,31 +199,26 @@ final class PanamaSignature {
             // no need to cache duplicated allocation in the single-context case
             // the NFI frontend is taking care of that already
             MethodHandle cachedHandle = cachedClosureInfo.cachedHandle.asType(signature.getUpcallMethodType());
+            MemoryAddress ret = signature.bind(cachedHandle, cachedExecutable);  // TODO check if this can also be cached
+            return new PanamaClosure(ret);
+        }
+
+        @Specialization(replaces = "doCachedExecutable", guards = "signature.signatureInfo == cachedSignatureInfo")
+        static PanamaClosure doCachedSignature(PanamaSignature signature, Object executable,
+                                               @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
+                                               @Cached("create(cachedSignatureInfo)") PolymorphicClosureInfo cachedClosureInfo) {
+            assert signature.signatureInfo == cachedSignatureInfo;
+            MethodHandle cachedHandle = cachedClosureInfo.cachedHandle.asType(signature.getUpcallMethodType());
             MemoryAddress ret = signature.bind(cachedHandle, executable);
             return new PanamaClosure(ret);
         }
 
-//        @Specialization(replaces = "doCachedExecutable", guards = "signature.signatureInfo == cachedSignatureInfo")
-//        static PanamaClosure doCachedSignature(PanamaSignature signature, Object executable,
-//                                               @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
-//                                               @CachedLibrary("signature") NFIBackendSignatureLibrary self,
-//                                               @Cached("create(cachedSignatureInfo)") PolymorphicClosureInfo cachedClosureInfo) {
-//            assert signature.signatureInfo == cachedSignatureInfo;
-//            ClosureNativePointer nativePointer = cachedClosureInfo.allocateClosure(LibFFIContext.get(self), signature, executable);
-//            return LibFFIClosure.newClosureWrapper(nativePointer);
-//            MemoryAddress ret = receiver.bind(cachedHandle, executable);
-//            return new PanamaClosure(ret);
-//        }
-
         @TruffleBoundary
-        @Specialization(replaces = "doCachedExecutable") // TODO impl cached other
-        static PanamaClosure createClosure(PanamaSignature signature, Object executable,
-                                           @CachedLibrary("signature") NFIBackendSignatureLibrary self) {
-//            PolymorphicClosureInfo cachedClosureInfo = signature.signatureInfo.getCachedClosureInfo();
-//            ClosureNativePointer nativePointer = cachedClosureInfo.allocateClosure(LibFFIContext.get(self), signature, executable);
-//            return LibFFIClosure.newClosureWrapper(nativePointer);
-            MethodHandle handle = signature.getUncachedUpcallHandle();
-            MemoryAddress ret = signature.bind(handle, executable);
+        @Specialization(replaces = "doCachedSignature")
+        static PanamaClosure createClosure(PanamaSignature signature, Object executable) {
+            PolymorphicClosureInfo cachedClosureInfo = PolymorphicClosureInfo.create(signature.signatureInfo);
+            MethodHandle cachedHandle = cachedClosureInfo.cachedHandle.asType(signature.getUpcallMethodType());
+            MemoryAddress ret = signature.bind(cachedHandle, executable);
             return new PanamaClosure(ret);
         }
     }
