@@ -82,7 +82,7 @@ public class PointstoOptions {
     public static final OptionKey<Boolean> PrintSynchronizedAnalysis = new OptionKey<>(false);
 
     @Option(help = "Analysis: Detect methods that return one of their parameters and hardwire the parameter straight to the return.")//
-    public static final OptionKey<Boolean> DivertParameterReturningMethod = new OptionKey<>(true);
+    public static final OptionKey<Boolean> OptimizeReturnedParameter = new OptionKey<>(true);
 
     @Option(help = "Enable extended asserts which slow down analysis.")//
     public static final OptionKey<Boolean> ExtendedAsserts = new OptionKey<>(false);
