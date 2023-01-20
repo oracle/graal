@@ -1037,6 +1037,63 @@ public class TestOperationsParserTest {
     }
 
     @Test
+    public void testYieldFromFinally() {
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            // try {
+            //   yield 1;
+            //   if (false) {
+            //     return 2;
+            //   } else {
+            //     return 3;
+            //   }
+            // } finally {
+            //   yield 4;
+            // }
+
+            b.beginFinallyTry();
+
+            b.beginYield();
+            b.emitLoadConstant(4L);
+            b.endYield();
+
+                b.beginBlock();
+
+                    b.beginYield();
+                    b.emitLoadConstant(1L);
+                    b.endYield();
+
+                    b.beginIfThenElse();
+
+                        b.emitLoadConstant(false);
+
+                        b.beginReturn();
+                        b.emitLoadConstant(2L);
+                        b.endReturn();
+
+                        b.beginReturn();
+                        b.emitLoadConstant(3L);
+                        b.endReturn();
+
+                    b.endIfThenElse();
+
+                b.endBlock();
+            b.endFinallyTry();
+
+            b.endRoot();
+        });
+
+        ContinuationResult r1 = (ContinuationResult) root.call();
+        Assert.assertEquals(1L, r1.getResult());
+
+        ContinuationResult r2 = (ContinuationResult) r1.continueWith(3L);
+        Assert.assertEquals(4L, r2.getResult());
+
+        Assert.assertEquals(3L, r2.continueWith(4L));
+    }
+
+    @Test
     public void testNestedFunctions() {
         RootCallTarget root = parse(b -> {
             // this simulates following in python:
@@ -1068,6 +1125,12 @@ public class TestOperationsParserTest {
 
     @Test
     public void testNonlocalRead() {
+        // todo: this test fails when boxing elimination is enabled
+        // locals accessed non-locally must have boxing elimination disabled
+        // since non-local reads do not do boxing elimination
+
+        // this can be done automatically, or by
+        // having `createLocal(boolean accessedFromClosure)` or similar
         RootCallTarget root = parse(b -> {
             // x = 1
             // return (lambda: x)()

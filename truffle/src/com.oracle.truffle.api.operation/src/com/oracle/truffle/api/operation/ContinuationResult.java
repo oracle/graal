@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.operation;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -68,23 +69,33 @@ public final class ContinuationResult {
         return result;
     }
 
+    @Override
+    public String toString() {
+        return String.format("ContinuationResult [location=%s, result=%s]", location, result);
+    }
+
+    @GenerateInline(true)
     public abstract static class ContinueNode extends Node {
 
-        public abstract Object execute(ContinuationResult result, Object value);
+        public final Object execute(ContinuationResult result, Object value) {
+            return execute(null, result, value);
+        }
+
+        public abstract Object execute(Node node, ContinuationResult result, Object value);
 
         public static final int LIMIT = 3;
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"result.location.getRootNode() == rootNode"}, limit = "LIMIT")
         public static Object invokeDirect(ContinuationResult result, Object value,
-                        @Cached("result.location.getRootNode()") RootNode rootNode,
-                        @Cached("create(rootNode.getCallTarget())") DirectCallNode callNode) {
+                        @Cached(value = "result.location.getRootNode()", inline = false) RootNode rootNode,
+                        @Cached(value = "create(rootNode.getCallTarget())", inline = false) DirectCallNode callNode) {
             return callNode.call(result.frame, value);
         }
 
         @Specialization(replaces = "invokeDirect")
         public static Object invokeIndirect(ContinuationResult result, Object value,
-                        @Cached IndirectCallNode callNode) {
+                        @Cached(inline = false) IndirectCallNode callNode) {
             return callNode.call(result.location.getRootNode().getCallTarget(), result.frame, value);
         }
     }

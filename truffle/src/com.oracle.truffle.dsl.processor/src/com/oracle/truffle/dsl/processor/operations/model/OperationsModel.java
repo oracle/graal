@@ -109,6 +109,7 @@ public class OperationsModel extends Template implements InfoDumpable {
     public InstructionModel branchInstruction;
     public InstructionModel branchFalseInstruction;
     public InstructionModel throwInstruction;
+    public InstructionModel yieldInstruction;
 
     public List<TypeMirror> getProvidedTags() {
         AnnotationMirror providedTags = ElementUtils.findAnnotationMirror(ElementUtils.castTypeElement(languageClass), types.ProvidedTags);
@@ -204,10 +205,11 @@ public class OperationsModel extends Template implements InfoDumpable {
                         .setChildrenMustBeValues(true) //
                         .setInstruction(instruction(InstructionKind.RETURN, "return"));
         if (enableYield) {
+            yieldInstruction = instruction(InstructionKind.YIELD, "yield");
             operation(OperationKind.YIELD, "Yield") //
                             .setNumChildren(1) //
                             .setChildrenMustBeValues(true) //
-                            .setInstruction(instruction(InstructionKind.YIELD, "yield"));
+                            .setInstruction(yieldInstruction);
         }
         operation(OperationKind.SOURCE, "Source") //
                         .setNumChildren(1) //

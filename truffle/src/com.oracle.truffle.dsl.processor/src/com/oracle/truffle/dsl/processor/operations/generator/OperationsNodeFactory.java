@@ -71,6 +71,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Name;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
@@ -120,6 +121,8 @@ public class OperationsNodeFactory implements ElementHelpers {
     private CodeTypeElement storeLocalData = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "StoreLocalData");
     private CodeTypeElement operationLocalImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "OperationLocalImpl");
     private CodeTypeElement operationLabelImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "OperationLabelImpl");
+    private CodeTypeElement continuationRoot;
+    private CodeTypeElement continuationLocationImpl;
 
     private CodeTypeElement baseInterpreter = new CodeTypeElement(Set.of(PRIVATE, STATIC, ABSTRACT), ElementKind.CLASS, null, "BaseInterpreter");
     private CodeTypeElement uncachedInterpreter;
@@ -168,9 +171,15 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(new OperationLocalImplFactory().create());
         operationNodeGen.add(new OperationLabelImplFactory().create());
         operationNodeGen.add(new BoxableInterfaceFactory().create());
+
         if (model.hasBoxingElimination()) {
             operationNodeGen.add(new LoadLocalDataFactory().create());
             operationNodeGen.add(new StoreLocalDataFactory().create());
+        }
+
+        if (model.enableYield) {
+            operationNodeGen.add(new ContinuationRootFactory().create());
+            operationNodeGen.add(new ContinuationLocationImplFactory().create());
         }
 
         operationNodeGen.add(createStaticConstructor());
@@ -180,6 +189,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(createCreate());
 
         operationNodeGen.add(createExecute());
+        operationNodeGen.add(createContinueAt());
         operationNodeGen.add(createSneakyThrow());
 
         if (model.enableSerialization) {
@@ -452,6 +462,28 @@ public class OperationsNodeFactory implements ElementHelpers {
     private CodeExecutableElement createExecute() {
         CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "execute");
         ex.renameArguments("frame");
+
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.startReturn().startCall("continueAt");
+        b.string("frame");
+        if (model.enableYield) {
+            b.string("frame");
+        }
+        b.string("numLocals << 16");
+        b.end(2);
+
+        return ex;
+    }
+
+    private CodeExecutableElement createContinueAt() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(Object.class), "continueAt");
+        ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+        if (model.enableYield) {
+            ex.addParameter(new CodeVariableElement(types.VirtualFrame, "generatorFrame"));
+        }
+        ex.addParameter(new CodeVariableElement(context.getType(int.class), "startState"));
+
         CodeTreeBuilder b = ex.createBuilder();
 
         // todo: only generate executeProlog/Epilog calls and the try/finally if they are overridden
@@ -463,11 +495,15 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         b.startTryBlock();
 
-        b.statement("int state = numLocals << 16");
+        b.statement("int state = startState");
 
         b.startWhile().string("true").end().startBlock();
         b.startAssign("state").startCall("interpreter.continueAt");
-        b.string("this, frame, bc, objs, handlers, state, numLocals");
+        b.string("this, frame");
+        if (model.enableYield) {
+            b.string("generatorFrame");
+        }
+        b.string("bc, objs, handlers, state, numLocals");
         if (model.hasBoxingElimination()) {
             b.string("localBoxingState");
         }
@@ -1067,6 +1103,10 @@ public class OperationsNodeFactory implements ElementHelpers {
             if (model.enableTracing) {
                 builderState.add(0, new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean[].class), "basicBlockBoundary"));
             }
+
+            if (model.enableYield) {
+                builderState.add(0, new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numYields"));
+            }
         }
 
         class SavedStateFactory {
@@ -1097,7 +1137,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                                 new CodeVariableElement(generic(context.getDeclaredType(HashSet.class), intRef.asType()), "outerReferences"),
                                 new CodeVariableElement(finallyTryContext.asType(), "finallyTryContext")));
 
-                finallyTryContext.add(GeneratorUtils.createConstructorUsingFields(Set.of(), finallyTryContext, null));
+                finallyTryContext.add(createConstructorUsingFields(Set.of(), finallyTryContext, null));
 
                 // these could be merged with their counterparts above
                 finallyTryContext.addAll(List.of(
@@ -1121,7 +1161,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 deserializerContextImpl.getImplements().add(types.OperationDeserializer_DeserializerContext);
 
                 deserializerContextImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(context.getDeclaredType(ArrayList.class), operationNodeGen.asType()), "builtNodes"));
-                deserializerContextImpl.add(GeneratorUtils.createConstructorUsingFields(Set.of(PRIVATE), deserializerContextImpl));
+                deserializerContextImpl.add(createConstructorUsingFields(Set.of(PRIVATE), deserializerContextImpl));
 
                 deserializerContextImpl.add(createDeserializeOperationNode());
 
@@ -1922,11 +1962,22 @@ public class OperationsNodeFactory implements ElementHelpers {
                 if (model.enableTracing) {
                     b.startAssign("result.basicBlockBoundary").string("Arrays.copyOf(basicBlockBoundary, bci)").end();
                 }
+
                 b.startFor().string("int i = 0; i < bci; i++").end().startBlock();
+
                 b.startIf().string("objs[i] instanceof Node").end().startBlock();
                 b.statement("result.insert((Node) objs[i])");
                 b.end();
+
+                if (model.enableYield) {
+                    b.startElseIf().string("objs[i] instanceof ContinuationLocationImpl").end().startBlock();
+                    b.statement("ContinuationLocationImpl cl = (ContinuationLocationImpl) objs[i]");
+                    b.statement("cl.rootNode = new ContinuationRoot(language, result.getFrameDescriptor(), result, cl.target)");
+                    b.end();
+                }
+
                 b.end();
+
                 b.startAssign("result.handlers").string("Arrays.copyOf(exHandlers, exHandlerCount)").end();
                 b.startAssign("result.numLocals").string("numLocals").end();
                 b.startAssign("result.buildIndex").string("buildIndex").end();
@@ -2061,7 +2112,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.statement("IntRef argument = ((OperationLocalImpl) operationData[operationSp]).index");
                     break;
                 case RETURN:
-                case YIELD:
                     b.statement("Object argument = EPSILON");
                     break;
                 case LOAD_ARGUMENT:
@@ -2081,6 +2131,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                 case CUSTOM_SIMPLE:
                 case CUSTOM_SHORT_CIRCUIT:
                     buildCustomInitializer(b, operation, operation.instruction);
+                    break;
+                case YIELD:
+                    b.statement("ContinuationLocationImpl argument = new ContinuationLocationImpl(numYields++, (curStack << 16) | (bci + 1))");
                     break;
                 default:
                     b.statement("/* TODO: NOT IMPLEMENTED */");
@@ -2497,6 +2550,16 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.startAssert().string("((IntRef) handlerObjs[idx]).value != -1").end();
                         b.statement("objs[offsetBci + idx] = new IntRef(((IntRef) handlerObjs[idx]).value + offsetBci)");
                         b.end();
+
+                        b.statement("break");
+                        b.end();
+                        break;
+                    case YIELD:
+                        b.startCase().string("" + instr.id + " /* " + instr.name + " */").end().startBlock();
+
+                        b.statement("ContinuationLocationImpl cl = (ContinuationLocationImpl) handlerObjs[idx];");
+                        b.statement("assert (cl.target & 0xffff) == (idx + 1)");
+                        b.statement("objs[offsetBci + idx] = new ContinuationLocationImpl(numYields++, cl.target + ((curStack << 16) | offsetBci))");
 
                         b.statement("break");
                         b.end();
@@ -2944,6 +3007,9 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             ex.addParameter(new CodeVariableElement(operationNodeGen.asType(), "$this"));
             ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+            if (model.enableYield) {
+                ex.addParameter(new CodeVariableElement(types.VirtualFrame, "generatorFrame"));
+            }
             ex.addParameter(new CodeVariableElement(context.getType(short[].class), "bc"));
             ex.addParameter(new CodeVariableElement(context.getType(Object[].class), "objs"));
             ex.addParameter(new CodeVariableElement(context.getType(int[].class), "handlers"));
@@ -3109,11 +3175,12 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("frame.setObject(sp, curObj)");
                         b.statement("sp += 1");
                         break;
-                    case LOAD_LOCAL:
+                    case LOAD_LOCAL: {
+                        String localFrame = model.enableYield ? "generatorFrame" : "frame";
                         if (!model.hasBoxingElimination()) {
-                            b.statement("frame.setObject(sp, frame.getObject(((IntRef) curObj).value))");
+                            b.statement("frame.setObject(sp, " + localFrame + ".getObject(((IntRef) curObj).value))");
                         } else if (isUncached) {
-                            b.statement("frame.setObject(sp, frame.getObject(((LoadLocalData) curObj).v_index))");
+                            b.statement("frame.setObject(sp, " + localFrame + ".getObject(((LoadLocalData) curObj).v_index))");
                         } else {
                             b.statement("LoadLocalData curData = (LoadLocalData) curObj");
                             b.statement("int curIndex = curData.v_index");
@@ -3123,18 +3190,22 @@ public class OperationsNodeFactory implements ElementHelpers {
                             b.startCase().string("0").end().startCaseBlock();
                             // uninitialized
                             b.tree(createTransferToInterpreterAndInvalidate("$this"));
-                            b.statement("doLoadLocalInitialize(frame, sp, curData, curIndex, localBoxingState, true)");
+                            b.statement("doLoadLocalInitialize(frame, " + localFrame + ", sp, curData, curIndex, localBoxingState, true)");
                             b.statement("break");
                             b.end();
 
                             b.startCase().string("-1").end().startCaseBlock();
                             // generic
                             b.startIf().string("frame.isObject(curIndex)").end().startBlock();
-                            b.statement("frame.copyObject(curIndex, sp)");
+                            if (!model.enableYield) {
+                                b.statement("frame.copyObject(curIndex, sp)");
+                            } else {
+                                b.statement("frame.setObject(sp, generatorFrame.getObject(curIndex))");
+                            }
                             b.end().startElseBlock();
                             b.tree(createTransferToInterpreterAndInvalidate("$this"));
-                            b.statement("Object value = frame.getValue(curIndex)");
-                            b.statement("frame.setObject(curIndex, value)");
+                            b.statement("Object value = " + localFrame + ".getValue(curIndex)");
+                            b.statement(localFrame + ".setObject(curIndex, value)");
                             b.statement("frame.setObject(sp, value)");
                             b.end();
                             b.statement("break");
@@ -3148,7 +3219,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                                 b.statement("frame.copyPrimitive(curIndex, sp)");
                                 b.end().startElseBlock();
                                 b.tree(createTransferToInterpreterAndInvalidate("$this"));
-                                b.statement("doLoadLocalInitialize(frame, sp, curData, curIndex, localBoxingState, false)");
+                                b.statement("doLoadLocalInitialize(frame, " + localFrame + ", sp, curData, curIndex, localBoxingState, false)");
                                 b.end();
                                 b.statement("break");
                                 b.end();
@@ -3158,7 +3229,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                                 b.statement("frame.setObject(sp, frame.get" + frameName + "(curIndex))");
                                 b.end().startElseBlock();
                                 b.tree(createTransferToInterpreterAndInvalidate("$this"));
-                                b.statement("doLoadLocalInitialize(frame, sp, curData, curIndex, localBoxingState, false)");
+                                b.statement("doLoadLocalInitialize(frame, " + localFrame + ", sp, curData, curIndex, localBoxingState, false)");
                                 b.end();
                                 b.statement("break");
                                 b.end();
@@ -3172,6 +3243,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         }
                         b.statement("sp += 1");
                         break;
+                    }
                     case LOAD_LOCAL_MATERIALIZED:
                         b.statement("VirtualFrame matFrame = (VirtualFrame) frame.getObject(sp - 1)");
                         b.statement("frame.setObject(sp - 1, matFrame.getObject(((IntRef) curObj).value))");
@@ -3192,11 +3264,12 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                         b.statement("return ((sp - 1) << 16) | 0xffff");
                         break;
-                    case STORE_LOCAL:
+                    case STORE_LOCAL: {
+                        String localFrame = model.enableYield ? "generatorFrame" : "frame";
                         if (!model.hasBoxingElimination()) {
-                            b.statement("frame.setObject(((IntRef) curObj).value, frame.getObject(sp - 1))");
+                            b.statement(localFrame + ".setObject(((IntRef) curObj).value, frame.getObject(sp - 1))");
                         } else if (isUncached) {
-                            b.statement("frame.setObject(((StoreLocalData) curObj).s_index, frame.getObject(sp - 1))");
+                            b.statement(localFrame + ".setObject(((StoreLocalData) curObj).s_index, frame.getObject(sp - 1))");
                         } else {
                             b.statement("StoreLocalData curData = (StoreLocalData) curObj");
                             b.statement("int curIndex = curData.s_index");
@@ -3205,12 +3278,12 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                             b.startCase().string("0").end().startBlock();
                             b.tree(createTransferToInterpreterAndInvalidate("$this"));
-                            b.statement("doStoreLocalInitialize(frame, sp, localBoxingState, curIndex)");
+                            b.statement("doStoreLocalInitialize(frame, " + localFrame + ", sp, localBoxingState, curIndex)");
                             b.statement("break");
                             b.end();
 
                             b.startCase().string("-1").end().startBlock();
-                            b.statement("frame.setObject(curIndex, doPopObject(frame, $this, sp - 1, curData.s_childIndex, objs))");
+                            b.statement(localFrame + ".setObject(curIndex, doPopObject(frame, $this, sp - 1, curData.s_childIndex, objs))");
                             b.statement("break");
                             b.end();
 
@@ -3221,10 +3294,10 @@ public class OperationsNodeFactory implements ElementHelpers {
                                 b.startCase().tree(boxingTypeToInt(mir)).end().startBlock();
 
                                 b.startTryBlock();
-                                b.statement("frame.set" + frameName + "(curIndex, doPopPrimitive" + frameName + "(frame, $this, sp - 1, curData.s_childIndex, objs))");
+                                b.statement(localFrame + ".set" + frameName + "(curIndex, doPopPrimitive" + frameName + "(frame, $this, sp - 1, curData.s_childIndex, objs))");
                                 b.end().startCatchBlock(types.UnexpectedResultException, "ex");
                                 b.statement("localBoxingState[curIndex] = -1");
-                                b.statement("frame.setObject(curIndex, ex.getResult())");
+                                b.statement(localFrame + ".setObject(curIndex, ex.getResult())");
                                 b.end();
                                 b.statement("break");
                                 b.end();
@@ -3234,6 +3307,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         }
                         b.statement("sp -= 1");
                         break;
+                    }
                     case STORE_LOCAL_MATERIALIZED:
                         b.statement("VirtualFrame matFrame = (VirtualFrame) frame.getObject(sp - 2)");
                         b.statement("matFrame.setObject(((IntRef) curObj).value, frame.getObject(sp - 1))");
@@ -3243,6 +3317,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("throw sneakyThrow((Throwable) frame.getObject(((IntRef) curObj).value))");
                         break;
                     case YIELD:
+                        b.statement("frame.copyTo(numLocals, generatorFrame, numLocals, (sp - 1 - numLocals))");
+                        b.statement("frame.setObject(sp - 1, ((ContinuationLocation) curObj).createResult(generatorFrame, frame.getObject(sp - 1)))");
+                        b.statement("return (((sp - 1) << 16) | 0xffff)");
                         break;
                     case SUPERINSTRUCTION:
                         // todo: implement superinstructions
@@ -3482,6 +3559,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         private CodeExecutableElement createDoLoadLocalInitialize() {
             CodeExecutableElement ex = new CodeExecutableElement(context.getType(void.class), "doLoadLocalInitialize");
             ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+            ex.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "sp"));
             ex.addParameter(new CodeVariableElement(loadLocalData.asType(), "curData"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "curIndex"));
@@ -3489,7 +3567,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(context.getType(boolean.class), "prim"));
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.statement("Object value = frame.getValue(curIndex)");
+            b.statement("Object value = localFrame.getValue(curIndex)");
             b.statement("frame.setObject(sp, value)");
 
             b.statement("byte lbs = localBoxingState[curIndex]");
@@ -3501,7 +3579,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                 b.startIf().string("(lbs == 0 || lbs == ").tree(boxingTypeToInt(mir)).string(") && value").instanceOf(boxType(mir)).end().startBlock();
                 b.startAssign("curData.v_kind").tree(boxingTypeToInt(mir)).string(" | 0x40 /* (boxed) */").end();
-                b.statement("frame.set" + frameName + "(curIndex, (" + mir + ") value)");
+                b.statement("localFrame.set" + frameName + "(curIndex, (" + mir + ") value)");
                 b.startAssign("localBoxingState[curIndex]").tree(boxingTypeToInt(mir)).end();
                 b.returnStatement();
                 b.end();
@@ -3510,7 +3588,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.end();
 
             b.startAssign("curData.v_kind").string("-1").end();
-            b.statement("frame.setObject(curIndex, value)");
+            b.statement("localFrame.setObject(curIndex, value)");
             b.statement("localBoxingState[curIndex] = -1");
 
             return ex;
@@ -3519,6 +3597,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         private CodeExecutableElement createDoStoreLocalInitialize() {
             CodeExecutableElement ex = new CodeExecutableElement(context.getType(void.class), "doStoreLocalInitialize");
             ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+            ex.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "sp"));
             ex.addParameter(new CodeVariableElement(context.getType(byte[].class), "localBoxingState"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "curIndex"));
@@ -3534,13 +3613,13 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                 b.startIf().string("value").instanceOf(boxType(mir)).end().startBlock();
                 b.startAssign("localBoxingState[curIndex]").tree(boxingTypeToInt(mir)).end();
-                b.statement("frame.set" + frameName + "(curIndex, (" + mir + ") value)");
+                b.statement("localFrame.set" + frameName + "(curIndex, (" + mir + ") value)");
                 b.returnStatement();
                 b.end();
             }
 
             b.startAssign("localBoxingState[curIndex]").string("-1").end();
-            b.statement("frame.setObject(curIndex, value)");
+            b.statement("localFrame.setObject(curIndex, value)");
 
             return ex;
         }
@@ -3620,6 +3699,90 @@ public class OperationsNodeFactory implements ElementHelpers {
             storeLocalData.add(new CodeVariableElement(context.getType(int.class), "s_childIndex"));
 
             return storeLocalData;
+        }
+    }
+
+    // todo: the next two classes could probably be merged into one
+    class ContinuationRootFactory {
+        private CodeTypeElement create() {
+            continuationRoot = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "ContinuationRoot");
+            continuationRoot.setEnclosingElement(operationNodeGen);
+            continuationRoot.setSuperClass(types.RootNode);
+
+            continuationRoot.add(new CodeVariableElement(Set.of(FINAL), operationNodeGen.asType(), "root"));
+            continuationRoot.add(new CodeVariableElement(Set.of(FINAL), context.getType(int.class), "target"));
+            continuationRoot.add(GeneratorUtils.createConstructorUsingFields(
+                            Set.of(), continuationRoot,
+                            ElementFilter.constructorsIn(((TypeElement) types.RootNode.asElement()).getEnclosedElements()).stream().filter(x -> x.getParameters().size() == 2).findFirst().get()));
+
+            continuationRoot.add(createExecute());
+
+            return continuationRoot;
+        }
+
+        private CodeExecutableElement createExecute() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "execute");
+            ex.renameArguments("frame");
+
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.statement("Object[] args = frame.getArguments()");
+            b.startIf().string("args.length != 2").end().startBlock();
+            b.tree(GeneratorUtils.createShouldNotReachHere("Expected 2 arguments: (parentFrame, inputValue)"));
+            b.end();
+
+            b.declaration(types.MaterializedFrame, "parentFrame", "(MaterializedFrame) args[0]");
+            b.declaration(context.getType(Object.class), "inputValue", "args[1]");
+
+            b.startIf().string("parentFrame.getFrameDescriptor() != frame.getFrameDescriptor()").end().startBlock();
+            b.tree(GeneratorUtils.createShouldNotReachHere("Invalid continuation parent frame passed"));
+            b.end();
+
+            b.declaration("int", "sp", "((target >> 16) & 0xffff) + root.numLocals");
+            b.statement("parentFrame.copyTo(root.numLocals, frame, root.numLocals, sp - 1 - root.numLocals)");
+            b.statement("frame.setObject(sp - 1, inputValue)");
+
+            b.statement("return root.continueAt(frame, parentFrame, (sp << 16) | (target & 0xffff))");
+
+            return ex;
+        }
+    }
+
+    class ContinuationLocationImplFactory {
+        private CodeTypeElement create() {
+            continuationLocationImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "ContinuationLocationImpl");
+            continuationLocationImpl.setEnclosingElement(operationNodeGen);
+            continuationLocationImpl.setSuperClass(types.ContinuationLocation);
+
+            continuationLocationImpl.add(new CodeVariableElement(Set.of(FINAL), context.getType(int.class), "entry"));
+            continuationLocationImpl.add(new CodeVariableElement(Set.of(FINAL), context.getType(int.class), "target"));
+
+            continuationLocationImpl.add(createConstructorUsingFields(Set.of(), continuationLocationImpl, null));
+
+            continuationLocationImpl.add(new CodeVariableElement(types.RootNode, "rootNode"));
+
+            continuationLocationImpl.add(createGetRootNode());
+            continuationLocationImpl.add(createToString());
+
+            return continuationLocationImpl;
+        }
+
+        private CodeExecutableElement createGetRootNode() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ContinuationLocation, "getRootNode");
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startReturn().string("rootNode").end();
+
+            return ex;
+        }
+
+        private CodeExecutableElement createToString() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(context.getDeclaredType(Object.class), "toString");
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.statement("return String.format(\"ContinuationLocation [index=%d, sp=%d, bci=%04x]\", entry, (target >> 16) & 0xffff, target & 0xffff)");
+
+            return ex;
         }
     }
 

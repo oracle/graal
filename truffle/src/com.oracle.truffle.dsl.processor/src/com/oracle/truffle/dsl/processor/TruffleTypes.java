@@ -301,6 +301,8 @@ public class TruffleTypes {
 
     // Operation DSL API
     public static final String BuilderSourceInfo_Name = "com.oracle.truffle.api.operation.BuilderSourceInfo";
+    public static final String ContinuationLocation_Name = "com.oracle.truffle.api.operation.ContinuationLocation";
+    public static final String ContinuationResult_Name = "com.oracle.truffle.api.operation.ContinuationResult";
     public static final String GenerateOperations_Name = "com.oracle.truffle.api.operation.GenerateOperations";
     public static final String InterpreterLocal_Name = "com.oracle.truffle.api.operation.InterpreterLocal";
     public static final String MetadataKey_Name = "com.oracle.truffle.api.operation.MetadataKey";
@@ -333,6 +335,8 @@ public class TruffleTypes {
     public static final String ExecutionTracer_Name = "com.oracle.truffle.api.operation.tracing.ExecutionTracer";
 
     public final DeclaredType BuilderSourceInfo = c.getDeclaredTypeOptional(BuilderSourceInfo_Name);
+    public final DeclaredType ContinuationLocation = c.getDeclaredTypeOptional(ContinuationLocation_Name);
+    public final DeclaredType ContinuationResult = c.getDeclaredTypeOptional(ContinuationResult_Name);
     public final DeclaredType GenerateOperations = c.getDeclaredTypeOptional(GenerateOperations_Name);
     public final DeclaredType InterpreterLocal = c.getDeclaredTypeOptional(InterpreterLocal_Name);
     public final DeclaredType LocalSetter = c.getDeclaredTypeOptional(LocalSetter_Name);
