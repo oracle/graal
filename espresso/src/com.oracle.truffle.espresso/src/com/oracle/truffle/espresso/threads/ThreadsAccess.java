@@ -140,6 +140,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
     }
 
     void setState(StaticObject self, int state) {
+        assert state != 0;
         if (meta.getJavaVersion().java17OrEarlier()) {
             meta.java_lang_Thread_threadStatus.setInt(self, state);
         } else {
