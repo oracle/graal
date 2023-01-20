@@ -3315,6 +3315,12 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
 
             if (isUncached) {
+
+                if (instr.needsUncachedData()) {
+                    b.declaration(uncachedType, "opUncachedData");
+                    b.startAssign("opUncachedData").cast(uncachedType).string("curObj").end();
+                }
+
                 if (signature.isVoid) {
                     b.startStatement();
                 } else {
@@ -3336,6 +3342,14 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                 if (instr.signature.isVariadic) {
                     b.string("readVariadic(frame, sp, variadicCount)");
+                }
+
+                for (int i = 0; i < instr.signature.localSetterCount; i++) {
+                    b.string("opUncachedData.op_localSetter" + i + "_");
+                }
+
+                for (int i = 0; i < instr.signature.localSetterRangeCount; i++) {
+                    b.string("opUncachedData.op_localSetterRange" + i + "_");
                 }
 
                 b.string(extraArguments);
