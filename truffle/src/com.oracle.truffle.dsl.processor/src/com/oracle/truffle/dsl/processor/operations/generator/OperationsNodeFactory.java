@@ -3096,6 +3096,10 @@ public class OperationsNodeFactory implements ElementHelpers {
                     continue;
                 }
 
+                b.startDoc();
+                b.lines(instr.infodump());
+                b.end();
+
                 b.startCase().string(instr.id + " /* " + instr.name + " */").end().startBlock();
 
                 if (model.enableTracing) {
@@ -3127,7 +3131,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("continue loop");
                         break;
                     case BRANCH_FALSE:
-                        b.startIf().string("frame.getObject(sp - 1) == Boolean.TRUE").end().startBlock();
+                        b.statement("Object operand = frame.getObject(sp - 1)");
+                        b.statement("assert operand instanceof Boolean");
+                        b.startIf().string("operand == Boolean.TRUE").end().startBlock();
                         b.statement("sp -= 1");
                         b.statement("bci += 1");
                         b.statement("continue loop");
@@ -3305,12 +3311,15 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                             b.end();
                         }
+                        b.statement("frame.clear(sp - 1)");
                         b.statement("sp -= 1");
                         break;
                     }
                     case STORE_LOCAL_MATERIALIZED:
                         b.statement("VirtualFrame matFrame = (VirtualFrame) frame.getObject(sp - 2)");
                         b.statement("matFrame.setObject(((IntRef) curObj).value, frame.getObject(sp - 1))");
+                        b.statement("frame.clear(sp - 1)");
+                        b.statement("frame.clear(sp - 2)");
                         b.statement("sp -= 2");
                         break;
                     case THROW:
@@ -3549,6 +3558,10 @@ public class OperationsNodeFactory implements ElementHelpers {
                 if (doPush) {
                     b.statement("frame.setObject(resultSp - 1, result)");
                 }
+            }
+
+            for (int i = 0; i < instr.signature.valueCount - (instr.signature.isVoid ? 0 : 1); i++) {
+                b.statement("frame.clear(resultSp + " + i + ")");
             }
 
             if (doPush) {
