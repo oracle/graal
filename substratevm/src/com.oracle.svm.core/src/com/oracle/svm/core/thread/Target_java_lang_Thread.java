@@ -186,11 +186,7 @@ public final class Target_java_lang_Thread {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     Object lockHelper;
 
-    @Inject @TargetElement(onlyWith = {HasSetExtentLocalCache.class, HasExtentLocalCache.class, LoomJDK.class}) //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    Object[] extentLocalCache;
-
-    @Inject @TargetElement(onlyWith = {HasSetScopedValueCache.class, HasScopedValueCache.class, LoomJDK.class}) //
+    @Inject @TargetElement(onlyWith = {HasSetScopedValueCache.class, HasScopedValueCache.class, HasSetExtentLocalCache.class, HasExtentLocalCache.class, LoomJDK.class}) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     Object[] scopedValueCache;
 
@@ -657,13 +653,13 @@ public final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(onlyWith = HasExtentLocalCache.class)
     static Object[] extentLocalCache() {
-        return JavaThreads.toTarget(currentCarrierThread()).extentLocalCache;
+        return JavaThreads.toTarget(currentCarrierThread()).scopedValueCache;
     }
 
     @Substitute
     @TargetElement(onlyWith = HasSetExtentLocalCache.class)
     static void setExtentLocalCache(Object[] cache) {
-        JavaThreads.toTarget(currentCarrierThread()).extentLocalCache = cache;
+        JavaThreads.toTarget(currentCarrierThread()).scopedValueCache = cache;
     }
 
     @Substitute
