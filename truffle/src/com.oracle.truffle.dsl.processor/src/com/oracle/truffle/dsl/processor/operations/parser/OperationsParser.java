@@ -365,7 +365,7 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
             case "Quicken": {
                 QuickenDecision m = new QuickenDecision();
                 m.id = decision.getString("id");
-                m.instruction = decision.getString("instruction");
+                m.operation = decision.getString("operation");
                 m.specializations = jsonGetStringArray(decision, "specializations");
                 result.quickenDecisions.add(m);
                 break;

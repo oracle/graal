@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.sl.operations;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
 import java.util.List;
 
 import com.oracle.truffle.api.Assumption;
@@ -68,9 +65,6 @@ import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.ShortCircuitOperation;
 import com.oracle.truffle.api.operation.Variadic;
-import com.oracle.truffle.api.operation.serialization.OperationDeserializer;
-import com.oracle.truffle.api.operation.serialization.OperationDeserializer.DeserializerContext;
-import com.oracle.truffle.api.operation.serialization.OperationSerializer.SerializerContext;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;

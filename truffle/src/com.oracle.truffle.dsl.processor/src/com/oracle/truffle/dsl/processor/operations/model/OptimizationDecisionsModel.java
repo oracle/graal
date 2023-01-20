@@ -47,7 +47,7 @@ public class OptimizationDecisionsModel implements InfoDumpable {
 
     public static class QuickenDecision {
         public String id;
-        public String instruction;
+        public String operation;
         public String[] specializations;
     }
 

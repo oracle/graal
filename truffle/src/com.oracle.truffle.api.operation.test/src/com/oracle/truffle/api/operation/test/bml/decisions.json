@@ -2,11 +2,13 @@
 	{
 		"type": "Quicken",
 		"operation": "AddQuickened",
-		"specializations": ["Ints"]
+		"specializations": ["Ints"],
+		"id": "foo"
 	},
 	{
 		"type": "Quicken",
 		"operation": "ModQuickened",
-		"specializations": ["Ints"]
+		"specializations": ["Ints"],
+		"id": "bar"
 	}
 ]
