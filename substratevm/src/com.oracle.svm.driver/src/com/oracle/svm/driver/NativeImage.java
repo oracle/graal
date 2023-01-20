@@ -799,7 +799,7 @@ public class NativeImage {
         }
 
         /* Let builder exit on first OutOfMemoryError. */
-        addImageBuilderJavaArgs("-XX:+ExitOnOutOfMemoryError");
+        addImageBuilderJavaArgs("-XX:+CrashOnOutOfMemoryError");
 
         /* Prevent JVM that runs the image builder to steal focus. */
         addImageBuilderJavaArgs("-Djava.awt.headless=true");
