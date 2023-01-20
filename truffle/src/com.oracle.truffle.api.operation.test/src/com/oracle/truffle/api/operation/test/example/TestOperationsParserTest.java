@@ -916,7 +916,6 @@ public class TestOperationsParserTest {
         });
 
         Assert.assertEquals(2L, root.call());
-
     }
 
     @Test

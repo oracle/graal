@@ -80,7 +80,6 @@ public abstract class ExecutionTracer {
 
     public abstract void traceInstruction(int bci, int id, int... arguments);
 
-    // TODO needs implementation. probably using introspection.
     public abstract void traceActiveSpecializations(int bci, int id, boolean[] activeSpecializations);
 
     public abstract void traceSpecialization(int bci, int id, int specializationId, Object... values);

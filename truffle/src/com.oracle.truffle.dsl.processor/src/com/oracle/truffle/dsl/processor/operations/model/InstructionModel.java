@@ -99,6 +99,8 @@ public class InstructionModel implements InfoDumpable {
     public final List<InstructionField> fields = new ArrayList<>();
     public boolean continueWhen;
 
+    public List<InstructionModel> subInstructions;
+
     public InstructionModel(int id, InstructionKind kind, String name) {
         this.id = id;
         this.kind = kind;

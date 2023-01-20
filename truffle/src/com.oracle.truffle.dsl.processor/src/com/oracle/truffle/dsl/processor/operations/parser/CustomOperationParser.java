@@ -217,6 +217,10 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         nodeChildrenAnnotation.setElementValue("value", new CodeAnnotationValue(createNodeChildAnnotations(signature).stream().map(CodeAnnotationValue::new).collect(Collectors.toList())));
         nodeType.addAnnotationMirror(nodeChildrenAnnotation);
 
+        if (parent.enableTracing) {
+            nodeType.addAnnotationMirror(new CodeAnnotationMirror(types.Introspectable));
+        }
+
         data.signature = signature;
         data.numChildren = signature.valueCount;
         data.isVariadic = signature.isVariadic || isShortCircuit;
@@ -227,7 +231,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
             data.operationArguments[i] = types.OperationLocal;
         }
         for (int i = 0; i < signature.localSetterRangeCount; i++) {
-            // we might want to migrate this to a special type that validates order
+            // todo: we might want to migrate this to a special type that validates order
             // e.g. OperationLocalRange
             data.operationArguments[signature.localSetterCount + i] = new CodeTypeMirror.ArrayCodeTypeMirror(types.OperationLocal);
         }

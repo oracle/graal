@@ -277,6 +277,15 @@ public class OperationsModel extends Template implements InfoDumpable {
         return Collections.unmodifiableList(instructions);
     }
 
+    public InstructionModel getInstructionByName(String name) {
+        for (InstructionModel instr : instructions) {
+            if (instr.name.equals(name)) {
+                return instr;
+            }
+        }
+        return null;
+    }
+
     public void dump(Dumper dumper) {
         dumper.field("operations", operations);
         dumper.field("instructions", instructions);

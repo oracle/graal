@@ -2678,9 +2678,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case STORE_LOCAL_MATERIALIZED:
                         b.statement("stackValueBciSp -= 2");
                         break;
-                    case SUPERINSTRUCTION:
-                        // todo
-                        break;
                     case THROW:
                         break;
                     case YIELD:
@@ -2731,9 +2728,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                 case STORE_LOCAL_MATERIALIZED:
                     b.statement("curStack -= 2");
                     break;
-                case SUPERINSTRUCTION:
-                    // todo
-                    break;
                 default:
                     throw new UnsupportedOperationException();
             }
@@ -2754,6 +2748,8 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
             b.end();
             b.end(2);
+
+            // todo: check for superinstructions
         }
 
         private CodeExecutableElement createDoEmitSourceInfo() {
@@ -3248,6 +3244,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                         break;
                     case YIELD:
                         break;
+                    case SUPERINSTRUCTION:
+                        // todo: implement superinstructions
+                        break;
                     default:
                         throw new UnsupportedOperationException("not implemented");
                 }
@@ -3305,9 +3304,30 @@ public class OperationsNodeFactory implements ElementHelpers {
             TypeMirror uncachedType = new GeneratedTypeMirror("", instr.getInternalName() + "Gen_UncachedData");
             CustomSignature signature = instr.signature;
 
-            String extraArguments = "$this, objs, bci, sp";
+            if (!isUncached && model.enableTracing) {
+                b.startBlock();
 
-            // todo: trace active specializations
+                b.startAssign("var specInfo").startStaticCall(types.Introspection, "getSpecializations");
+                b.startGroup().cast(genType).string("curObj").end();
+                b.end(2);
+
+                b.startStatement().startCall("tracer.traceActiveSpecializations");
+                b.string("bci");
+                b.string(instr.id);
+                b.startNewArray(arrayOf(context.getType(boolean.class)), null);
+                for (int i = 0; i < instr.nodeData.getSpecializations().size(); i++) {
+                    if (instr.nodeData.getSpecializations().get(i).isFallback()) {
+                        break;
+                    }
+                    b.string("specInfo.get(" + i + ").isActive()");
+                }
+                b.end();
+                b.end(2);
+
+                b.end();
+            }
+
+            String extraArguments = "$this, objs, bci, sp";
 
             if (signature.isVariadic) {
                 b.startAssign("int variadicCount");

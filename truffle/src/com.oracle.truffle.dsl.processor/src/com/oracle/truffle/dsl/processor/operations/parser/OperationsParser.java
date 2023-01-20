@@ -70,6 +70,8 @@ import com.oracle.truffle.dsl.processor.TruffleProcessorOptions;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
+import com.oracle.truffle.dsl.processor.operations.model.InstructionModel;
+import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationsModel;
 import com.oracle.truffle.dsl.processor.operations.model.OptimizationDecisionsModel;
 import com.oracle.truffle.dsl.processor.operations.model.OptimizationDecisionsModel.CommonInstructionDecision;
@@ -195,8 +197,37 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
                                 mir);
             }
         }
-
         model.boxingEliminatedTypes = beTypes;
+
+        // optimization decisions & tracing
+
+        AnnotationValue decisionsFileValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionsFile", false);
+        AnnotationValue decisionsOverrideFilesValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionsOverrideFiles", false);
+        String[] decisionsOverrideFilesPath = new String[0];
+
+        if (decisionsFileValue != null) {
+            model.decisionsFilePath = resolveElementRelativePath(typeElement, (String) decisionsFileValue.getValue());
+
+            if (TruffleProcessorOptions.operationsEnableTracing(processingEnv)) {
+                model.enableTracing = true;
+            } else if ((boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "forceTracing", true).getValue()) {
+                model.addWarning("Operation DSL execution tracing is forced on. Use this only during development.");
+                model.enableTracing = true;
+            }
+        }
+
+        if (decisionsOverrideFilesValue != null) {
+            decisionsOverrideFilesPath = ((List<AnnotationValue>) decisionsOverrideFilesValue.getValue()).stream().map(x -> (String) x.getValue()).toArray(String[]::new);
+        }
+
+        model.enableOptimizations = (decisionsFileValue != null || decisionsOverrideFilesValue != null) && !model.enableTracing;
+
+        // error sync
+        if (model.hasErrors()) {
+            return model;
+        }
+
+        // custom operations
 
         for (TypeElement te : ElementFilter.typesIn(typeElement.getEnclosedElements())) {
             AnnotationMirror op = ElementUtils.findAnnotationMirror(te, types.Operation);
@@ -233,35 +264,34 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
             new CustomOperationParser(model, mir, true).parse(te);
         }
 
-        AnnotationValue decisionsFileValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionsFile", false);
-        AnnotationValue decisionsOverrideFilesValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionsOverrideFiles", false);
-        String[] decisionsOverrideFilesPath = new String[0];
-
-        if (decisionsFileValue != null) {
-            model.decisionsFilePath = resolveElementRelativePath(typeElement, (String) decisionsFileValue.getValue());
-
-            if (TruffleProcessorOptions.operationsEnableTracing(processingEnv)) {
-                model.enableTracing = true;
-            } else if ((boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "forceTracing", true).getValue()) {
-                model.addWarning("Operation DSL execution tracing is forced on. Use this only during development.");
-                model.enableTracing = true;
-            }
-        }
-
-        if (decisionsOverrideFilesValue != null) {
-            decisionsOverrideFilesPath = ((List<AnnotationValue>) decisionsOverrideFilesValue.getValue()).stream().map(x -> (String) x.getValue()).toArray(String[]::new);
-        }
-
-        model.enableOptimizations = (decisionsFileValue != null || decisionsOverrideFilesValue != null) && !model.enableTracing;
-
-        if (model.enableOptimizations) {
-            model.optimizationDecisions = parseDecisions(model, model.decisionsFilePath, decisionsOverrideFilesPath);
-        }
-
         // error sync
         if (model.hasErrors()) {
             return model;
         }
+
+        // apply optimization decisions
+
+        if (model.enableOptimizations) {
+            model.optimizationDecisions = parseDecisions(model, model.decisionsFilePath, decisionsOverrideFilesPath);
+
+            for (SuperInstructionDecision decision : model.optimizationDecisions.superInstructionDecisions) {
+                String resultingInstructionName = "si." + String.join(".", decision.instructions);
+                InstructionModel instr = model.instruction(InstructionKind.SUPERINSTRUCTION, resultingInstructionName);
+                instr.subInstructions = new ArrayList<>();
+
+                for (String instrName : decision.instructions) {
+                    InstructionModel subInstruction = model.getInstructionByName(instrName);
+                    if (subInstruction == null) {
+                        model.addError("Error reading optimization decisions: Super-instruction '%s' defines a sub-instruction '%s' which does not exist.", resultingInstructionName, instrName);
+                    } else if (subInstruction.kind == InstructionKind.SUPERINSTRUCTION) {
+                        model.addError("Error reading optimization decisions: Super-instruction '%s' cannot contain another super-instruction '%s'.", resultingInstructionName, instrName);
+                    }
+                    instr.subInstructions.add(subInstruction);
+                }
+            }
+        }
+
+        // serialization fields
 
         if (model.enableSerialization) {
             List<VariableElement> serializedFields = new ArrayList<>();
