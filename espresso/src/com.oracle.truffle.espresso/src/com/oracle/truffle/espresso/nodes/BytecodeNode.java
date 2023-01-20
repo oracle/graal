@@ -548,8 +548,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     @Override
     void initializeFrame(VirtualFrame frame) {
         initArguments(frame);
-        // initialize the bci slot
-        setBCI(frame, 0);
     }
 
     // region OSR support
