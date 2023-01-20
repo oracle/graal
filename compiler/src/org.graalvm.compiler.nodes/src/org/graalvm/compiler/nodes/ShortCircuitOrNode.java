@@ -97,28 +97,25 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
         return shortCircuitProbability;
     }
 
-    protected static ShortCircuitOrNode canonicalizeNegation(ShortCircuitOrNode self, LogicNode forX, LogicNode forY) {
-        if (self == null) {
-            return null;
-        }
+    protected static ShortCircuitOrNode canonicalizeNegation(LogicNode forX, boolean xNegated, LogicNode forY, boolean yNegated, BranchProbabilityData shortCircuitProbability) {
         LogicNode xCond = forX;
-        boolean xNeg = self.xNegated;
+        boolean xNeg = xNegated;
         while (xCond instanceof LogicNegationNode) {
             xCond = ((LogicNegationNode) xCond).getValue();
             xNeg = !xNeg;
         }
 
         LogicNode yCond = forY;
-        boolean yNeg = self.yNegated;
+        boolean yNeg = yNegated;
         while (yCond instanceof LogicNegationNode) {
             yCond = ((LogicNegationNode) yCond).getValue();
             yNeg = !yNeg;
         }
 
         if (xCond != forX || yCond != forY) {
-            return new ShortCircuitOrNode(xCond, xNeg, yCond, yNeg, self.shortCircuitProbability);
+            return new ShortCircuitOrNode(xCond, xNeg, yCond, yNeg, shortCircuitProbability);
         } else {
-            return self;
+            return null;
         }
     }
 
@@ -133,12 +130,11 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
 
     private static LogicNode canonicalize(ShortCircuitOrNode self, CanonicalizerTool tool, BranchProbabilityData shortCircuitProbability, LogicNode forX, boolean xNegated, LogicNode forY,
                     boolean yNegated) {
-        ShortCircuitOrNode ret = canonicalizeNegation(self, forX, forY);
-        if (ret != self) {
+        ShortCircuitOrNode ret = canonicalizeNegation(forX, xNegated, forY, yNegated, shortCircuitProbability);
+        if (ret != self && ret != null) {
             return ret;
         }
         NodeView view = tool == null ? NodeView.DEFAULT : NodeView.from(tool);
-
         if (forX == forY) {
             // @formatter:off
             //  a ||  a = a

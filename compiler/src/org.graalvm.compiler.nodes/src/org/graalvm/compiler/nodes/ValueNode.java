@@ -111,7 +111,7 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
     }
 
     /**
-     * Checks whether this value is a constant (i.e. it is of type {@link ConstantNode}.
+     * Checks whether this value is a constant.
      *
      * @return {@code true} if this value is a constant
      */

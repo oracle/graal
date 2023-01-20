@@ -199,4 +199,8 @@ public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, 
         }
         return false;
     }
+
+    public boolean deoptsOnTrue() {
+        return isNegated();
+    }
 }
