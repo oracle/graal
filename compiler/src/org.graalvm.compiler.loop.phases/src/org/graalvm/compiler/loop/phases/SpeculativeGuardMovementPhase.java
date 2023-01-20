@@ -34,19 +34,18 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeMap;
-import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.GuardedValueNode;
-import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -358,7 +357,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         private void optimizeCompare(CompareNode compare, InductionVariable iv, GuardNode guard, OptimizedCompareTests tests) {
             CountedLoopInfo countedLoop = iv.getLoop().counted();
             try (DebugCloseable position = compare.withNodeSourcePosition()) {
-                LogicNode newCompare = ShortCircuitOrNode.and(tests.test1, guard.isNegated(), tests.test2, guard.isNegated(), BranchProbabilityData.unknown());
+                LogicNode newCompare = ShortCircuitOrNode.and(tests.extremumTest, guard.isNegated(), tests.initTest, guard.isNegated(), BranchProbabilityData.unknown());
                 /*
                  * the fact that the guard was negated was integrated in the ShortCircuitOr so it
                  * needs to be reset here
@@ -387,8 +386,12 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         }
 
         private OptimizedCompareTests computeNewCompareGuards(CompareNode compare, InductionVariable iv, ValueNode bound, boolean mirrored, GuardingNode overflowGuard) {
+            return computeNewCompareGuards(compare, iv, bound, mirrored, overflowGuard, null);
+        }
+
+        private OptimizedCompareTests computeNewCompareGuards(CompareNode compare, InductionVariable iv, ValueNode bound, boolean mirrored, GuardingNode overflowGuard, ValueNode maxTripCountNode) {
             ValueNode longBound = IntegerConvertNode.convert(bound, StampFactory.forKind(JavaKind.Long), graph, NodeView.DEFAULT);
-            ValueNode extremum = iv.extremumNode(true, StampFactory.forKind(JavaKind.Long));
+            ValueNode extremum = maxTripCountNode == null ? iv.extremumNode(true, StampFactory.forKind(JavaKind.Long)) : iv.extremumNode(true, StampFactory.forKind(JavaKind.Long), maxTripCountNode);
             ValueNode guardedExtremum = graph.addOrUniqueWithInputs(GuardedValueNode.create(extremum, overflowGuard));
             // guardedExtremum |<| longBound && iv.initNode() |<| bound
             ValueNode y1 = longBound;
@@ -402,26 +405,26 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 x2 = bound;
                 y2 = iv.initNode();
             }
-            LogicNode test1;
-            LogicNode test2;
+            LogicNode extremumTest;
+            LogicNode initTest;
             if (compare instanceof IntegerBelowNode) {
-                test1 = graph.addOrUniqueWithInputs(IntegerBelowNode.create(x1, y1, NodeView.DEFAULT));
-                test2 = graph.addOrUniqueWithInputs(IntegerBelowNode.create(x2, y2, NodeView.DEFAULT));
+                extremumTest = graph.addOrUniqueWithInputs(IntegerBelowNode.create(x1, y1, NodeView.DEFAULT));
+                initTest = graph.addOrUniqueWithInputs(IntegerBelowNode.create(x2, y2, NodeView.DEFAULT));
             } else {
                 assert compare instanceof IntegerLessThanNode;
-                test1 = graph.addOrUniqueWithInputs(IntegerLessThanNode.create(x1, y1, NodeView.DEFAULT));
-                test2 = graph.addOrUniqueWithInputs(IntegerLessThanNode.create(x2, y2, NodeView.DEFAULT));
+                extremumTest = graph.addOrUniqueWithInputs(IntegerLessThanNode.create(x1, y1, NodeView.DEFAULT));
+                initTest = graph.addOrUniqueWithInputs(IntegerLessThanNode.create(x2, y2, NodeView.DEFAULT));
             }
             if (graph.getDebug().isDumpEnabledForMethod()) {
                 if (mirrored) {
                     graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Speculative guard movement: longBound(%s) |<| guardedExtremum(%s) && bound(%s) |<| iv.initNode()(%s) =%s && %s", x1,
-                                    y1, x2, y2, test1, test2);
+                                    y1, x2, y2, extremumTest, initTest);
                 } else {
                     graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Speculative guard movement: guardedExtremum(%s) |<| longBound(%s) && iv.initNode()(%s) |<| bound(%s)=%s && %s", x1,
-                                    y1, x2, y2, test1, test2);
+                                    y1, x2, y2, extremumTest, initTest);
                 }
             }
-            return new OptimizedCompareTests(test1, test2);
+            return new OptimizedCompareTests(initTest, extremumTest);
         }
 
         /**
@@ -429,21 +432,21 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
          */
         private static class OptimizedCompareTests {
             /**
-             * First regular test: extremum < bound.
-             *
-             * if mirrored: bound < extremum
-             */
-            LogicNode test1;
-            /**
-             * Second regular test: init < bound.
+             * Optimized compare test: init < bound.
              *
              * if mirrored: bound < init
              */
-            LogicNode test2;
+            LogicNode initTest;
+            /**
+             * Optimized compare test: extremum < bound.
+             *
+             * if mirrored: bound < extremum
+             */
+            LogicNode extremumTest;
 
-            OptimizedCompareTests(LogicNode test1, LogicNode test2) {
-                this.test1 = test1;
-                this.test2 = test2;
+            OptimizedCompareTests(LogicNode initTest, LogicNode extremumTest) {
+                this.initTest = initTest;
+                this.extremumTest = extremumTest;
             }
         }
 
@@ -610,34 +613,57 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                     return null;
                 }
                 /**
-                 * Special case strip mined loops: for strip mined loops we no longer "see" the
-                 * original phi init value since we only see the outer loop phi of the current
-                 * iteration bucket. We want to avoid moving guards that will fail on the first
-                 * iteration of the outer loop based on the bound of the guard and the loop. Thus we
-                 * create a new IV for the first iteration of the outer loop's values in the inner
-                 * loop and check if we statically fold to a deopting scenario, in which case the
-                 * guard would anyway always fail at runtime.
+                 * Special case outer loop phis: for inner loop phis initialized with outer loop
+                 * phis we no longer "see" the original phi init value since we only see the outer
+                 * loop phi of the current iteration. We want to avoid moving guards that will fail
+                 * on the first iteration of the outer loop based on the bound of the guard and the
+                 * loop. Thus, we create a new IV for the first iteration of the outer loop's values
+                 * in the inner loop and check if we statically fold to a deopting scenario, in
+                 * which case the guard would anyway always fail at runtime.
                  */
-                if (iv.getLoop().loopBegin().isStripMinedInner() && iv.getLoop().loopBegin().loopExits().count() > 1) {
-                    // check the original strip mined inner for the relation between extremum and
-                    // bound, i.e., the initial extremum in the first iteration of the outer loop
-                    // computed already could lead to an unconditional deopt we want to avoid
-                    ValueNode ivInit = iv.getBasic().initNode();
-                    if (ivInit instanceof PhiNode) {
-                        PhiNode phi = (PhiNode) ivInit;
-                        AbstractMergeNode phiM = phi.merge();
-                        if (phiM instanceof LoopBeginNode && ((LoopBeginNode) phiM).isStripMinedOuter()) {
-                            if (iv.getLoop().loopBegin().forwardEnd().predecessor() == phiM) {
-                                ValueNode newInit = phi.valueAt(0);
-                                InductionVariable duplicateOriginalLoopIV = iv.duplicateWithNewInit(newInit);
-                                graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "SpeculativeGuardMovement: new if for strip mining check %s %s", duplicateOriginalLoopIV.valueNode(),
-                                                duplicateOriginalLoopIV);
-                                OptimizedCompareTests testStripMinedIV = computeNewCompareGuards(compare, duplicateOriginalLoopIV, bound, mirrored, iv.getLoop().counted().getOverFlowGuard());
-                                if (optimizedCompareUnconditionalDeopt(guard, testStripMinedIV)) {
-                                    debug.log("shouldOptimizeCompare(%s): guard would immediately deopt in strip mined inner loop", compare);
-                                    return null;
-                                }
-                            }
+                if (iv.getLoop().loop().getDepth() > 1 && iv.getLoop().loopBegin().loopExits().count() > 1) {
+                    InductionVariable currentIv = iv;
+                    LoopEx currentLoop = iv.getLoop();
+                    /*
+                     * Since we are calculating the inner loops max trip count based on the outer
+                     * loop IV we also have to compute a different max trip count node for this
+                     * purpose.
+                     */
+                    InductionVariable countedLoopInitModifiedIV = iv.getLoop().counted().getBodyIV();
+                    boolean initIsParentIV = false;
+                    boolean initIsParentPhi = false;
+                    while (currentLoop.parent() != null &&
+                                    // init is outer IV node
+                                    ((initIsParentIV = currentLoop.parent().getInductionVariables().containsKey(currentIv.getRootIV().initNode())) ||
+                                                    // init is outer phi but not IV
+                                                    (initIsParentPhi = currentLoop.parent().loopBegin().isPhiAtMerge(currentIv.getRootIV().initNode())))) {
+                        if (initIsParentIV) {
+                            InductionVariable parentIv = currentLoop.parent().getInductionVariables().get(currentIv.getRootIV().initNode());
+                            currentIv = currentIv.duplicateWithNewInit(parentIv.entryTripValue());
+                        } else if (initIsParentPhi) {
+                            currentIv = currentIv.duplicateWithNewInit(((PhiNode) currentIv.getRootIV().initNode()).valueAt(0));
+                        } else {
+                            throw GraalError.shouldNotReachHere("Must have never entered loop");
+                        }
+                        if (currentLoop.parent().getInductionVariables().containsKey(countedLoopInitModifiedIV.getRootIV().initNode())) {
+                            InductionVariable parentIVBodyRef = currentLoop.parent().getInductionVariables().get(countedLoopInitModifiedIV.getRootIV().initNode());
+                            countedLoopInitModifiedIV = countedLoopInitModifiedIV.duplicateWithNewInit(parentIVBodyRef.entryTripValue());
+                        }
+                        currentLoop = currentLoop.parent();
+                    }
+                    if (currentLoop != iv.getLoop()) {
+                        InductionVariable duplicateOriginalLoopIV = currentIv;
+                        ValueNode newBodyIVInit = countedLoopInitModifiedIV.initNode();
+                        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "SpeculativeGuardMovement: new if for outer loop check %s %s", duplicateOriginalLoopIV.valueNode(),
+                                        duplicateOriginalLoopIV);
+                        CountedLoopInfo thisLoopCounted = iv.getLoop().counted();
+                        ValueNode outerLoopInitBasedMaxTripCount = thisLoopCounted.maxTripCountNode(true, thisLoopCounted.getCounterIntegerHelper(), newBodyIVInit,
+                                        thisLoopCounted.getTripCountLimit());
+                        OptimizedCompareTests testStripMinedIV = computeNewCompareGuards(compare, duplicateOriginalLoopIV, bound, mirrored, iv.getLoop().counted().getOverFlowGuard(),
+                                        outerLoopInitBasedMaxTripCount);
+                        if (optimizedCompareUnconditionalDeopt(guard, testStripMinedIV)) {
+                            debug.log("shouldOptimizeCompare(%s): guard would immediately deopt in strip mined inner loop", compare);
+                            return null;
                         }
                     }
                 }
@@ -653,18 +679,14 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
          * We will create a guard test1 && test2, this means if one of the two is a boolean that is
          * negative the result is negative and then, depending on the negated flag the guard will
          * fail or not.
-         *
          */
         private static boolean optimizedCompareUnconditionalDeopt(GuardNode guard, OptimizedCompareTests tests) {
-            if (tests.test1.isConstant() || tests.test2.isConstant()) {
+            if (tests.extremumTest.isJavaConstant() || tests.initTest.isJavaConstant()) {
                 // true is the neutral value of &&
-                boolean t1 = tests.test1.isConstant() ? tests.test1.asJavaConstant().asBoolean() : true;
-                boolean t2 = tests.test2.isConstant() ? tests.test2.asJavaConstant().asBoolean() : true;
-
-                boolean result = t1 && t2;
-                if (GuardNode.willDeoptUnconditionally(LogicConstantNode.forBoolean(result), guard.isNegated())) {
-                    return true;
-                }
+                final boolean t1 = tests.extremumTest.isConstant() ? tests.extremumTest.asJavaConstant().asBoolean() : true;
+                final boolean t2 = tests.initTest.isConstant() ? tests.initTest.asJavaConstant().asBoolean() : true;
+                final boolean result = t1 && t2;
+                return result == guard.deoptsOnTrue();
             }
             return false;
         }

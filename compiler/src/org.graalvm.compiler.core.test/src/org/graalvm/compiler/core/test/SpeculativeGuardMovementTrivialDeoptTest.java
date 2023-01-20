@@ -70,12 +70,80 @@ public class SpeculativeGuardMovementTrivialDeoptTest extends GraalCompilerTest 
             GraalDirectives.sideEffect(3);
         }
         return i;
-
     }
 
     @Test
-    public void testContradicting() {
+    public void testContradicting01() {
         test(getInitialOptions(), EnumSet.allOf(DeoptimizationReason.class), "contradictingAfter", createList(100));
+    }
+
+    public static long contradictingAfterInnerOuter(Node head, int foo) {
+        Node cur = head;
+
+        int outerPhi = 0;
+        while (outerPhi < foo) {
+            int i = outerPhi;
+            for (; GraalDirectives.injectIterationCount(10000, i < 500); i++) {
+                if (GraalDirectives.injectBranchProbability(0.0001, cur == null)) {
+                    // this loop effectively ensures the guard below is never triggered
+                    break;
+                }
+                cur = cur.next;
+                GraalDirectives.sideEffect(0);
+                if (i == 123) {
+                    GraalDirectives.sideEffect(1);
+                } else {
+                    GraalDirectives.sideEffect(2);
+                }
+                if (!(i + 1 < 101)) {
+                    GraalDirectives.deoptimizeAndInvalidate();
+                }
+                GraalDirectives.sideEffect(3);
+            }
+            outerPhi++;
+        }
+        return outerPhi;
+    }
+
+    @Test
+    public void testContradicting02() {
+        test(getInitialOptions(), EnumSet.allOf(DeoptimizationReason.class), "contradictingAfterInnerOuter", createList(100), 1);
+    }
+
+    public static long contradictingAfterInnerOuter2(Node head, int foo, int bar) {
+        Node cur = head;
+        int outerOuterPhi = 0;
+        while (outerOuterPhi < bar) {
+            int outerPhi = outerOuterPhi;
+            while (outerPhi < foo) {
+                int i = outerPhi;
+                for (; GraalDirectives.injectIterationCount(10000, i < 500); i++) {
+                    if (GraalDirectives.injectBranchProbability(0.0001, cur == null)) {
+                        // this loop effectively ensures the guard below is never triggered
+                        break;
+                    }
+                    cur = cur.next;
+                    GraalDirectives.sideEffect(0);
+                    if (i == 123) {
+                        GraalDirectives.sideEffect(1);
+                    } else {
+                        GraalDirectives.sideEffect(2);
+                    }
+                    if (!(i + 1 < 101)) {
+                        GraalDirectives.deoptimizeAndInvalidate();
+                    }
+                    GraalDirectives.sideEffect(3);
+                }
+                outerPhi++;
+            }
+            outerOuterPhi++;
+        }
+        return outerOuterPhi;
+    }
+
+    @Test
+    public void testContradicting03() {
+        test(getInitialOptions(), EnumSet.allOf(DeoptimizationReason.class), "contradictingAfterInnerOuter2", createList(100), 1, 1);
     }
 
 }

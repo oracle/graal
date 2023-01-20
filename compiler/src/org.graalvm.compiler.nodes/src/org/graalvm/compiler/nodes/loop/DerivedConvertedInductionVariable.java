@@ -87,6 +87,11 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
     }
 
     @Override
+    public ValueNode extremumNode(boolean assumeLoopEntered, Stamp s, ValueNode maxTripCount) {
+        return base.extremumNode(assumeLoopEntered, s, maxTripCount);
+    }
+
+    @Override
     public ValueNode exitValueNode() {
         return op(base.exitValueNode(), true);
     }
