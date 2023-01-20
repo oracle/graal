@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,26 +24,47 @@
  * questions.
  */
 
-package com.oracle.svm.core.sampler;
+package com.oracle.svm.test.jfr;
 
-import java.util.function.BooleanSupplier;
+import static org.junit.Assert.assertTrue;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.ImageSingletons;
+import java.io.IOException;
 
-/**
- * Returns {@code true} if the Native Image is built with Sampler support. This does not necessarily
- * mean that Sampler is really enabled at runtime (see
- * {@link SubstrateSigprofHandler#isProfilingEnabled()}).
- */
-public class SamplerHasSupport implements BooleanSupplier {
+import org.junit.Test;
+
+import jdk.jfr.consumer.RecordedEvent;
+import jdk.jfr.consumer.RecordedThread;
+
+public class TestThreadSleepEvent extends JfrTest {
+    private static final int MILLIS = 50;
+
+    private Thread sleepingThread;
+
     @Override
-    public boolean getAsBoolean() {
-        return get();
+    public String[] getTestedEvents() {
+        return new String[]{"jdk.ThreadSleep"};
     }
 
-    @Fold
-    public static boolean get() {
-        return ImageSingletons.contains(SubstrateSigprofHandler.class);
+    @Override
+    public void validateEvents() throws IOException {
+        boolean foundSleepEvent = false;
+        for (RecordedEvent event : getEvents()) {
+            String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
+            if (!eventThread.equals(sleepingThread.getName())) {
+                continue;
+            }
+            if (event.getDuration().toMillis() < MILLIS) {
+                continue;
+            }
+            foundSleepEvent = true;
+            break;
+        }
+        assertTrue("Sleep event not found.", foundSleepEvent);
+    }
+
+    @Test
+    public void test() throws Exception {
+        sleepingThread = Thread.currentThread();
+        Thread.sleep(MILLIS);
     }
 }

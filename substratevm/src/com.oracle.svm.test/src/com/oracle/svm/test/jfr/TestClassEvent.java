@@ -26,8 +26,9 @@
 
 package com.oracle.svm.test.jfr;
 
-import com.oracle.svm.test.jfr.events.ClassEvent;
 import org.junit.Test;
+
+import com.oracle.svm.test.jfr.events.ClassEvent;
 
 public class TestClassEvent extends JfrTest {
 

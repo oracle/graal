@@ -29,6 +29,7 @@ import java.util.List;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.Containers;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
@@ -96,15 +97,24 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#isRecording}. */
     @Substitute
+    @Uninterruptible(reason = "Needed for calling SubstrateJVM.isRecording().")
     @TargetElement(onlyWith = JDK17OrLater.class)
     public boolean isRecording() {
-        return SubstrateJVM.get().unsafeIsRecording();
+        return SubstrateJVM.get().isRecording();
     }
 
     /** See {@link JVM#getAllEventClasses}. */
     @Substitute
-    public List<Class<? extends Event>> getAllEventClasses() {
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    public List<Class<? extends jdk.internal.event.Event>> getAllEventClasses() {
         return JfrJavaEvents.getAllEventClasses();
+    }
+
+    /** See {@link JVM#getAllEventClasses}. */
+    @Substitute
+    @TargetElement(name = "getAllEventClasses", onlyWith = JDK11OrEarlier.class)
+    public List<Class<? extends Event>> getAllEventClassesJDK11() {
+        return JfrJavaEvents.getJfrEventClasses();
     }
 
     /** See {@link JVM#getUnloadedEventClassCount}. */

@@ -28,21 +28,19 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertTrue;
 
-import java.util.List;
-
-import jdk.jfr.consumer.RecordedClass;
-import jdk.jfr.consumer.RecordedThread;
 import org.junit.Test;
 
+import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
-import jdk.jfr.consumer.RecordedObject;
+import jdk.jfr.consumer.RecordedThread;
 
-public class TestJavaMonitorEnter extends JfrTest {
+public class TestJavaMonitorEnterEvent extends JfrTest {
     private static final int MILLIS = 60;
-    static volatile boolean passedCheckpoint = false;
-    static Thread firstThread;
-    static Thread secondThread;
-    static final Helper helper = new Helper();
+
+    private final Helper helper = new Helper();
+    private Thread firstThread;
+    private Thread secondThread;
+    private volatile boolean passedCheckpoint;
 
     @Override
     public String[] getTestedEvents() {
@@ -51,16 +49,12 @@ public class TestJavaMonitorEnter extends JfrTest {
 
     @Override
     public void validateEvents() throws Throwable {
-        List<RecordedEvent> events;
-        events = getEvents("jdk.JavaMonitorEnter");
         boolean found = false;
-        for (RecordedEvent event : events) {
-            RecordedObject struct = event;
-            String eventThread = struct.<RecordedThread> getValue("eventThread").getJavaName();
-            if (struct.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName()) && event.getDuration().toMillis() >= MILLIS && secondThread.getName().equals(eventThread)) {
-
+        for (RecordedEvent event : getEvents()) {
+            String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
+            if (event.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName()) && event.getDuration().toMillis() >= MILLIS && secondThread.getName().equals(eventThread)) {
                 // verify previous owner
-                assertTrue("Previous owner is wrong", struct.<RecordedThread> getValue("previousOwner").getJavaName().equals(firstThread.getName()));
+                assertTrue("Previous owner is wrong", event.<RecordedThread> getValue("previousOwner").getJavaName().equals(firstThread.getName()));
                 found = true;
                 break;
             }
@@ -88,13 +82,14 @@ public class TestJavaMonitorEnter extends JfrTest {
         };
         firstThread = new Thread(first);
         secondThread = new Thread(second);
+
         firstThread.start();
 
         firstThread.join();
         secondThread.join();
     }
 
-    static class Helper {
+    private class Helper {
         private synchronized void doWork() throws InterruptedException {
             if (Thread.currentThread().equals(secondThread)) {
                 return; // second thread doesn't need to do work.

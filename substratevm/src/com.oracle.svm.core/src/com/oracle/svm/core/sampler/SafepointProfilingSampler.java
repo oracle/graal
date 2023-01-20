@@ -24,39 +24,31 @@
  */
 package com.oracle.svm.core.sampler;
 
-import java.util.concurrent.TimeUnit;
-
+import com.oracle.svm.core.util.TimeUtils;
 import org.graalvm.collections.LockFreePrefixTree;
-import org.graalvm.nativeimage.Threading;
+import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.RuntimeAnalysisWorkarounds;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
+import com.oracle.svm.core.thread.ThreadListener;
+import com.oracle.svm.core.thread.ThreadingSupportImpl;
 
-public class SafepointProfilingSampler implements ProfilingSampler {
+public class SafepointProfilingSampler implements ProfilingSampler, ThreadListener {
 
-    private final boolean collectingActive;
-    private LockFreePrefixTree prefixTree = new LockFreePrefixTree();
+    private final LockFreePrefixTree prefixTree = new LockFreePrefixTree();
 
-    public SafepointProfilingSampler(boolean collectingActive) {
-        this.collectingActive = collectingActive;
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public SafepointProfilingSampler() {
     }
 
     @Override
-    public boolean isCollectingActive() {
-        return collectingActive;
-    }
-
-    @Override
-    public void registerSampler() {
-        if (collectingActive) {
-            RuntimeAnalysisWorkarounds.avoidFoldingSamplingCodeStart();
-            Threading.registerRecurringCallback(10, TimeUnit.MILLISECONDS, (access) -> {
-                sampleThreadStack();
-            });
-        }
+    public void beforeThreadRun() {
+        ThreadingSupportImpl.RecurringCallbackTimer callback = ThreadingSupportImpl.createRecurringCallbackTimer(TimeUtils.millisToNanos(10), (access) -> sampleThreadStack());
+        ThreadingSupportImpl.setRecurringCallback(CurrentIsolate.getCurrentThread(), callback);
     }
 
     @Override

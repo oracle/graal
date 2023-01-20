@@ -26,6 +26,8 @@
 package com.oracle.svm.core.sampler;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.jfr.JfrThreadLocal;
+import com.oracle.svm.core.jfr.SubstrateJVM;
 
 /**
  * Helper class that holds methods related to {@link SamplerSampleWriterData}.
@@ -40,19 +42,18 @@ public final class SamplerSampleWriterDataAccess {
      * native buffer.
      */
     @Uninterruptible(reason = "Accesses a sampler buffer", callerMustBe = true)
-    public static boolean initialize(SamplerSampleWriterData data, int skipCount, int maxDepth) {
-        SamplerBuffer buffer = SamplerThreadLocal.getThreadLocalBuffer();
+    public static boolean initialize(SamplerSampleWriterData data, int skipCount, boolean allowBufferAllocation) {
+        SamplerBuffer buffer = JfrThreadLocal.getSamplerBuffer();
         if (buffer.isNull()) {
-            /* Pop first free buffer from the pool. */
-            buffer = SubstrateSigprofHandler.singleton().availableBuffers().popBuffer();
+            buffer = SubstrateJVM.getSamplerBufferPool().acquireBuffer(allowBufferAllocation);
             if (buffer.isNull()) {
-                /* No available buffers on the pool. Fallback! */
-                SamplerThreadLocal.increaseMissedSamples();
+                /* No buffer available. */
+                JfrThreadLocal.increaseMissedSamples();
                 return false;
             }
-            SamplerThreadLocal.setThreadLocalBuffer(buffer);
+            JfrThreadLocal.setSamplerBuffer(buffer);
         }
-        initialize(data, buffer, skipCount, maxDepth);
+        initialize0(data, buffer, skipCount, SubstrateJVM.getStackTraceRepo().getStackTraceDepth(), allowBufferAllocation);
         return true;
     }
 
@@ -60,22 +61,18 @@ public final class SamplerSampleWriterDataAccess {
      * Initialize the {@link SamplerSampleWriterData data} so that it uses the given buffer.
      */
     @Uninterruptible(reason = "Accesses a sampler buffer", callerMustBe = true)
-    public static void initialize(SamplerSampleWriterData data, SamplerBuffer buffer, int skipCount, int maxDepth) {
+    private static void initialize0(SamplerSampleWriterData data, SamplerBuffer buffer, int skipCount, int maxDepth, boolean allowBufferAllocation) {
         assert buffer.isNonNull();
 
-        /* Initialize the writer data. */
         data.setSamplerBuffer(buffer);
         data.setStartPos(buffer.getPos());
         data.setCurrentPos(buffer.getPos());
         data.setEndPos(SamplerBufferAccess.getDataEnd(buffer));
-
         data.setHashCode(1);
         data.setMaxDepth(maxDepth);
         data.setTruncated(false);
         data.setSkipCount(skipCount);
         data.setNumFrames(0);
-
-        /* Set the writer data as thread local. */
-        SamplerThreadLocal.setWriterData(data);
+        data.setAllowBufferAllocation(allowBufferAllocation);
     }
 }

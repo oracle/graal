@@ -67,7 +67,10 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ManagementSupport managementSupport = new ManagementSupport();
+        SubstrateThreadMXBean threadMXBean = new SubstrateThreadMXBean();
+        ImageSingletons.add(SubstrateThreadMXBean.class, threadMXBean);
+
+        ManagementSupport managementSupport = new ManagementSupport(threadMXBean);
         ImageSingletons.add(ManagementSupport.class, managementSupport);
         ThreadListenerSupport.get().register(managementSupport);
     }

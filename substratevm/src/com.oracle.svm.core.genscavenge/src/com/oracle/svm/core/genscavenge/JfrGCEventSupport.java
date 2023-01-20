@@ -42,7 +42,6 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.util.VMError;
 
 class JfrGCEventSupport {
@@ -66,7 +65,7 @@ class JfrGCEventSupport {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public void emitGarbageCollectionEvent(UnsignedWord gcEpoch, GCCause cause, long start) {
-        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.GarbageCollection)) {
+        if (JfrEvent.GarbageCollection.shouldEmit()) {
             long pauseTime = JfrTicks.elapsedTicks() - start;
 
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
@@ -87,7 +86,7 @@ class JfrGCEventSupport {
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public void emitGCPhasePauseEvent(UnsignedWord gcEpoch, int level, String name, long startTicks) {
         JfrEvent event = getGCPhasePauseEvent(level);
-        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(event)) {
+        if (event.shouldEmit()) {
             long end = JfrTicks.elapsedTicks();
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);

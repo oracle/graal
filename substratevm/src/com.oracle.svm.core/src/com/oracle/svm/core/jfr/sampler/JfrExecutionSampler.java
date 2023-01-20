@@ -22,55 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jfr.sampler;
 
-package com.oracle.svm.core.sampler;
+import com.oracle.svm.core.Uninterruptible;
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
 
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawStructure;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
-import org.graalvm.word.UnsignedWord;
+public abstract class JfrExecutionSampler {
+    @Fold
+    public static JfrExecutionSampler singleton() {
+        return ImageSingletons.lookup(JfrExecutionSampler.class);
+    }
 
-/**
- * A {@link SamplerBuffer} is a block of native memory into which the results of stack walks are
- * written.
- */
-@RawStructure
-public interface SamplerBuffer extends PointerBase {
+    @Uninterruptible(reason = "Prevent VM operations that modify execution sampling.", callerMustBe = true)
+    public abstract boolean isSampling();
 
-    /**
-     * Returns the buffer that is next in the {@link SamplerBufferStack}, otherwise null.
-     */
-    @RawField
-    SamplerBuffer getNext();
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract void preventSamplingInCurrentThread();
 
-    /**
-     * Sets the successor to this buffer in the {@link SamplerBufferStack}.
-     */
-    @RawField
-    void setNext(SamplerBuffer buffer);
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract void allowSamplingInCurrentThread();
 
-    /**
-     * Returns the current position. Any data before this position is valid sample data.
-     */
-    @RawField
-    Pointer getPos();
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract void disallowThreadsInSamplerCode();
 
-    /**
-     * Sets the current position.
-     */
-    @RawField
-    void setPos(Pointer pos);
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract void allowThreadsInSamplerCode();
 
-    /**
-     * Returns the size of the buffer. This excludes the header of the buffer.
-     */
-    @RawField
-    UnsignedWord getSize();
+    public abstract void setIntervalMillis(long intervalMillis);
 
-    /**
-     * Sets the size of the buffer.
-     */
-    @RawField
-    void setSize(UnsignedWord value);
+    public abstract void update();
 }

@@ -620,6 +620,7 @@ suite = {
             ],
             "requiresConcealed" : {
                 "java.base" : [
+                    "jdk.internal.event",
                     "jdk.internal.misc",
                     "jdk.internal.vm.annotation",
                     "jdk.internal.org.objectweb.asm",

@@ -25,19 +25,29 @@
 
 package com.oracle.svm.core.sampler;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.core.jfr.JfrThreadLocal;
 import com.oracle.svm.core.stack.ParameterizedStackFrameVisitor;
 
-final class SamplerStackWalkVisitor extends ParameterizedStackFrameVisitor {
+/* Uninterruptible visitor that holds all its state in a thread-local because it is used concurrently by multiple threads. */
+public final class SamplerStackWalkVisitor extends ParameterizedStackFrameVisitor {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public SamplerStackWalkVisitor() {
+    }
+
     @Override
     @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
     protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, Object data) {
-        SamplerSampleWriterData writerData = SamplerThreadLocal.getWriterData();
+        SamplerSampleWriterData writerData = JfrThreadLocal.getSamplerWriterData();
+        assert writerData.isNonNull();
+
         boolean shouldSkipFrame = shouldSkipFrame(writerData);
         boolean shouldContinueWalk = shouldContinueWalk(writerData);
         if (!shouldSkipFrame && shouldContinueWalk) {
@@ -73,7 +83,7 @@ final class SamplerStackWalkVisitor extends ParameterizedStackFrameVisitor {
     @Override
     @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
     protected boolean unknownFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, Object data) {
-        SamplerThreadLocal.increaseUnparseableStacks();
+        JfrThreadLocal.increaseUnparseableStacks();
         return false;
     }
 }

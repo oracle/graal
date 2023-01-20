@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -82,7 +80,7 @@ public final class JfrNativeEventWriter {
      */
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void beginEvent(JfrNativeEventWriterData data, JfrEvent event, boolean large) {
-        assert SubstrateJVM.isRecording();
+        assert SubstrateJVM.get().isRecording();
         assert isValid(data);
         assert getUncommittedSize(data).equal(0);
         if (large) {
@@ -210,17 +208,21 @@ public final class JfrNativeEventWriter {
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putEventThread(JfrNativeEventWriterData data) {
-        putThread(data, CurrentIsolate.getCurrentThread());
+        putThread(data, SubstrateJVM.getCurrentThreadId());
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
-    public static void putThread(JfrNativeEventWriterData data, IsolateThread isolateThread) {
-        if (isolateThread.isNull()) {
-            putLong(data, 0L);
+    public static void putThread(JfrNativeEventWriterData data, Thread thread) {
+        if (thread == null) {
+            putThread(data, 0L);
         } else {
-            long threadId = SubstrateJVM.getThreadId(isolateThread);
-            putLong(data, threadId);
+            putThread(data, SubstrateJVM.getThreadId(thread));
         }
+    }
+
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
+    public static void putThread(JfrNativeEventWriterData data, long threadId) {
+        putLong(data, threadId);
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)

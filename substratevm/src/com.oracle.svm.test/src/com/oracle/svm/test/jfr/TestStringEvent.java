@@ -26,8 +26,9 @@
 
 package com.oracle.svm.test.jfr;
 
-import com.oracle.svm.test.jfr.events.StringEvent;
 import org.junit.Test;
+
+import com.oracle.svm.test.jfr.events.StringEvent;
 
 public class TestStringEvent extends JfrTest {
     @Override

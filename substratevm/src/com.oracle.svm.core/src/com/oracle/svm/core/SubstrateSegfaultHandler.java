@@ -58,7 +58,6 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
-import com.oracle.svm.core.util.VMError;
 
 @AutomaticallyRegisteredFeature
 class SubstrateSegfaultHandlerFeature implements InternalFeature {
@@ -72,7 +71,6 @@ class SubstrateSegfaultHandlerFeature implements InternalFeature {
         ImageSingletons.add(SingleIsolateSegfaultSetup.class, singleIsolateSegfaultSetup);
         IsolateListenerSupport.singleton().register(singleIsolateSegfaultSetup);
 
-        VMError.guarantee(ImageSingletons.contains(RegisterDumper.class));
         RuntimeSupport.getRuntimeSupport().addStartupHook(new SubstrateSegfaultHandlerStartupHook());
     }
 }
